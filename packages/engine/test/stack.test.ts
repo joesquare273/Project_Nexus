@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { canPay, manaValue, parseManaCost, planPayment } from '../src/index.ts';
+import {
+  canPay,
+  categoriesOf,
+  isBasicLand,
+  isNonpermanentCard,
+  isPermanentCard,
+  isSpellCard,
+  manaProduced,
+  manaValue,
+  parseManaCost,
+  planPayment,
+} from '../src/index.ts';
 import { emptyManaPool } from '../src/state.ts';
 import { act, addMana, eventsOf, newGame, pass, passAll, put, rejected, setTurn, zoneOf } from './helpers.ts';
 
@@ -47,6 +58,24 @@ describe('lands and mana abilities', () => {
     expect(rejected(s, { type: 'ActivateManaAbility', player: 'P1', card: other, mana: 'U' })).toMatch(/can't produce/);
   });
 
+  it('sorts cards into permanents, nonpermanents and spells', () => {
+    const d = newGame(2).cardDefs;
+    expect(categoriesOf(d.bear!)).toEqual(['permanent', 'spell']);
+    expect(categoriesOf(d.island!)).toEqual(['permanent']);
+    expect(categoriesOf(d.shock!)).toEqual(['nonpermanent', 'spell']);
+    expect([isPermanentCard(d.murder!), isNonpermanentCard(d.murder!), isSpellCard(d.island!)]).toEqual([false, true, false]);
+  });
+
+  it('gives basic land types their mana ability, with nothing printed (rule 305.6)', () => {
+    let s = newGame(2);
+    s.cardDefs = { ...s.cardDefs, bayou: { id: 'bayou', name: 'bayou', types: ['land'], subtypes: ['Swamp', 'Forest'] } };
+    const bayou = put(s, 'P1', 'bayou');
+    expect(manaProduced(s.cardDefs.bayou!)).toEqual(['B', 'G']);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: bayou, mana: 'G' }).state;
+    expect(s.players.P1!.manaPool.G).toBe(1);
+    expect(isBasicLand(s.cardDefs.bayou!)).toBe(false);
+  });
+
   it('puts lands that enter tapped onto the battlefield tapped', () => {
     let s = newGame(2);
     const town = put(s, 'P1', 'town', 'hand');
@@ -66,7 +95,7 @@ describe('casting and resolving', () => {
     s = act(s, { type: 'CastSpell', player: 'P1', card: shock, targets: [player('P2')] }).state;
     s = pass(s).state; // P1 passes; P2 responds
     s = act(s, { type: 'CastSpell', player: 'P2', card: mend, targets: [] }).state;
-    expect(s.stack.map((i) => i.card)).toEqual([shock, mend]);
+    expect(s.stack.map((i) => i.kind === 'spell' && i.card)).toEqual([shock, mend]);
 
     const first = passAll(s);
     expect(eventsOf(first.events, 'StackItemResolved').map((e) => e.card)).toEqual([mend]);

@@ -24,9 +24,19 @@ export function checkInvariants(s: GameState): string[] {
     if (p.eliminated && p.battlefield.length > 0) problems.push(`eliminated ${pid} still has permanents`);
   }
   for (const item of s.stack) {
+    if (item.kind === 'ability') {
+      if (!s.cards[item.source]) problems.push(`ability ${item.id} has unknown source ${item.source}`);
+      if (s.players[item.controller]!.eliminated) problems.push(`ability ${item.id} belongs to an eliminated player`);
+      continue;
+    }
     note(item.card);
     if (s.cards[item.card]?.zone !== 'stack') problems.push(`stack item ${item.id} card is not on the stack`);
   }
+  for (const t of s.triggerQueue) {
+    if (s.players[t.controller]!.eliminated) problems.push(`queued trigger from ${t.source} belongs to an eliminated player`);
+  }
+  if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) problems.push('priority given with triggers still queued');
+  if (s.pending.kind === 'decide' && s.stack.at(-1)?.id !== s.pending.item) problems.push('deciding on an ability not on top');
   for (const c of Object.values(s.cards)) {
     const n = seen.get(c.id) ?? 0;
     if (n !== 1) problems.push(`${c.id} appears in ${n} zones`);

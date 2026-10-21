@@ -56,6 +56,8 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
     turnNumber: 1,
     step: 'untap',
     stack: [],
+    triggerQueue: [],
+    triggeredThisTurn: [],
     combat: null,
     pending: { kind: 'priority', player: turnOrder[0]!, passes: 0 },
     rngState: seedToState(setup.seed),

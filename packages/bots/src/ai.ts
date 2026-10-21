@@ -4,13 +4,17 @@
 // up or to survive.
 
 import {
+  CHOSEN_TARGET_KINDS,
+  canEverCast,
   manaValue,
   parseManaCost,
+  triggerSpec,
   type Action,
   type Attack,
   type Block,
   type CardDefinition,
   type CardInstance,
+  type EffectSpec,
   type GameState,
   type InstanceId,
   type PlayerId,
@@ -74,14 +78,15 @@ function chooseTarget(s: GameState, me: PlayerId, effect: NonNullable<CardDefini
     if (effect.target === 'AnyTarget') return { kind: 'player', player: weakestOpponent(s, me) };
     return null;
   }
+  if (effect.target === 'TargetOpponent') return { kind: 'player', player: weakestOpponent(s, me) };
   // Draw and life gain help the caster.
   return effect.target === 'TargetPlayer' ? { kind: 'player', player: me } : null;
 }
 
-function chooseTargets(s: GameState, me: PlayerId, card: CardDefinition): Target[] | null {
+function chooseTargets(s: GameState, me: PlayerId, effects: readonly EffectSpec[] | undefined): Target[] | null {
   const targets: Target[] = [];
-  for (const effect of card.effects ?? []) {
-    if (!['AnyTarget', 'OpponentCreature', 'TargetCreature', 'TargetPlayer'].includes(effect.target)) continue;
+  for (const effect of effects ?? []) {
+    if (!CHOSEN_TARGET_KINDS.includes(effect.target)) continue;
     const t = chooseTarget(s, me, effect);
     if (!t) return null;
     targets.push(t);
@@ -98,6 +103,8 @@ function isWorthCasting(s: GameState, me: PlayerId, card: CardDefinition): boole
   if (effects.some((e) => e.effect === 'GainLife') && effects.every((e) => e.effect === 'GainLife')) {
     return s.players[me]!.life <= 12;
   }
+  const lifeCost = effects.filter((e) => e.effect === 'LoseLife' && e.target === 'You').reduce((n, e) => n + (e.amount ?? 0), 0);
+  if (lifeCost > 0 && s.players[me]!.life <= lifeCost + 3) return false;
   if (effects.some((e) => e.target === 'EachPlayer' && e.effect === 'DealDamage')) {
     return opponents(s, me).every((p) => s.players[p]!.life < s.players[me]!.life);
   }
@@ -114,13 +121,13 @@ function castStep(s: GameState, me: PlayerId, legal: Action[]): Action | null {
   const hand = s.players[me]!.hand.map((id) => s.cards[id]!);
   const candidates = hand
     .map((c) => ({ c, d: def(s, c) }))
-    .filter(({ d }) => !d.types.includes('land'))
+    .filter(({ d }) => canEverCast(d))
     .filter(({ d }) => sorcerySpeed || d.types.includes('instant') || d.keywords?.includes('Flash'))
     .filter(({ d }) => isWorthCasting(s, me, d))
     .sort((a, b) => manaValue(parseManaCost(b.d.manaCost)) - manaValue(parseManaCost(a.d.manaCost)));
 
   for (const { c, d } of candidates) {
-    const targets = chooseTargets(s, me, d);
+    const targets = chooseTargets(s, me, d.effects);
     if (!targets) continue;
     const taps = planTaps(s, me, d.manaCost);
     if (!taps) continue;
@@ -186,6 +193,32 @@ function chooseBlocks(s: GameState, me: PlayerId): Block[] {
   return blocks;
 }
 
+/** Aims a trigger the same way as a spell, falling back to the first legal choice. */
+function chooseTriggerTargets(s: GameState, me: PlayerId, legal: Action[]): Action {
+  const t = s.triggerQueue[0]!;
+  const effects = s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!.effects;
+  const wanted = chooseTargets(s, me, effects);
+  const same = (a: Target, b: Target) => JSON.stringify(a) === JSON.stringify(b);
+  const match = legal.find(
+    (a) => a.type === 'ChooseTargets' && wanted !== null && a.targets.every((t, i) => same(t, wanted[i]!)),
+  );
+  return match ?? legal[0]!;
+}
+
+/**
+ * "You may" abilities in the supported cards are all upsides, so say yes when
+ * the cost is affordable: tap lands for it first, and keep at least 5 life.
+ */
+function decideOptional(s: GameState, me: PlayerId, legal: Action[]): Action {
+  const item = s.stack.at(-1)!;
+  const cost = item.kind === 'ability' ? triggerSpec(s, item).cost : undefined;
+  const no: Action = { type: 'Decide', player: me, accept: false };
+  if (cost?.life !== undefined && s.players[me]!.life - cost.life < 5) return no;
+  if (legal.some((a) => a.type === 'Decide' && a.accept)) return { type: 'Decide', player: me, accept: true };
+  const taps = planTaps(s, me, cost?.mana);
+  return taps && taps.length > 0 ? tapActions(me, taps)[0]! : no;
+}
+
 /** The basic AI. `seed` is accepted for symmetry with other bots; this one is deterministic. */
 export function basicAi(_seed = 0): Bot {
   return (s, legal) => {
@@ -196,6 +229,8 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'declareBlockers') {
       return { type: 'DeclareBlockers', player: pending.player, blocks: chooseBlocks(s, pending.player) };
     }
+    if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
+    if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;
 

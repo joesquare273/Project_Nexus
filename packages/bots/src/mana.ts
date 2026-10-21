@@ -3,6 +3,7 @@
 
 import {
   MANA_TYPES,
+  manaProduced,
   parseManaCost,
   type Action,
   type CardInstance,
@@ -23,7 +24,7 @@ export function manaSources(s: GameState, playerId: PlayerId): CardInstance[] {
     .map((id) => s.cards[id]!)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
-      if (!def.produces?.length || c.tapped || c.controller !== playerId) return false;
+      if (manaProduced(def).length === 0 || c.tapped || c.controller !== playerId) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick;
     });
@@ -49,7 +50,7 @@ export function planTaps(s: GameState, playerId: PlayerId, manaCost: string | un
   let generic = Math.max(0, cost.generic - leftoverInPool);
 
   const sources = manaSources(s, playerId).sort(
-    (a, b) => s.cardDefs[a.defId]!.produces!.length - s.cardDefs[b.defId]!.produces!.length,
+    (a, b) => manaProduced(s.cardDefs[a.defId]!).length - manaProduced(s.cardDefs[b.defId]!).length,
   );
   const used = new Set<InstanceId>();
   const taps: ManaTap[] = [];
@@ -59,7 +60,7 @@ export function planTaps(s: GameState, playerId: PlayerId, manaCost: string | un
     if (i === colored.length) return true;
     const want = colored[i]!;
     for (const src of sources) {
-      if (used.has(src.id) || !s.cardDefs[src.defId]!.produces!.includes(want)) continue;
+      if (used.has(src.id) || !manaProduced(s.cardDefs[src.defId]!).includes(want)) continue;
       used.add(src.id);
       taps.push({ card: src.id, mana: want });
       if (assign(i + 1)) return true;
@@ -74,7 +75,7 @@ export function planTaps(s: GameState, playerId: PlayerId, manaCost: string | un
     if (generic === 0) break;
     if (used.has(src.id)) continue;
     used.add(src.id);
-    taps.push({ card: src.id, mana: s.cardDefs[src.defId]!.produces![0]! });
+    taps.push({ card: src.id, mana: manaProduced(s.cardDefs[src.defId]!)[0]! });
     generic -= 1;
   }
   return generic === 0 ? taps : null;

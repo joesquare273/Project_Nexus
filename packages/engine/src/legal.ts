@@ -8,29 +8,40 @@
 
 import { canPay, parseManaCost } from './cost.ts';
 import { attackersFor, canBlock } from './combat.ts';
-import { canActAtSorcerySpeed, choosingEffects, hasInstantTiming, isLegalTarget } from './stack.ts';
+import { canActAtSorcerySpeed, canEverCast, choosingEffects, hasInstantTiming, targetOptions, triggerSpec } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
+import { triggerTargetOptions } from './triggers.ts';
+import { manaProduced } from './typerules.ts';
 import type { Action, Block, GameState, PlayerId, Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 32;
 
-function candidateTargets(s: GameState): Target[] {
-  const out: Target[] = alivePlayers(s).map((player) => ({ kind: 'player', player }));
-  for (const pid of s.turnOrder) {
-    for (const card of s.players[pid]!.battlefield) out.push({ kind: 'card', card });
+/** Every combination of one choice per target, up to a limit. */
+function combine(options: Target[][]): Target[][] {
+  let combos: Target[][] = [[]];
+  for (const choices of options) {
+    combos = combos.flatMap((combo) => choices.map((t) => [...combo, t])).slice(0, MAX_TARGET_COMBOS);
   }
-  return out;
+  return combos;
 }
 
 function targetCombos(s: GameState, playerId: PlayerId, cardId: string): Target[][] {
   const def = s.cardDefs[s.cards[cardId]!.defId]!;
-  let combos: Target[][] = [[]];
-  const all = candidateTargets(s);
-  for (const effect of choosingEffects(def)) {
-    const options = all.filter((t) => isLegalTarget(s, effect.target, t, playerId));
-    combos = combos.flatMap((combo) => options.map((t) => [...combo, t])).slice(0, MAX_TARGET_COMBOS);
+  return combine(choosingEffects(def.effects).map((e) => targetOptions(s, e.target, playerId)));
+}
+
+/** Mana abilities the player could activate right now. */
+function manaAbilities(s: GameState, player: PlayerId): Action[] {
+  const actions: Action[] = [];
+  for (const id of s.players[player]!.battlefield) {
+    const c = s.cards[id]!;
+    const def = s.cardDefs[c.defId]!;
+    const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
+    const produced = manaProduced(def);
+    if (produced.length === 0 || c.tapped || c.controller !== player || sick) continue;
+    for (const mana of produced) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
   }
-  return combos;
+  return actions;
 }
 
 export function getLegalActions(s: GameState): Action[] {
@@ -38,6 +49,27 @@ export function getLegalActions(s: GameState): Action[] {
   switch (pending.kind) {
     case 'gameOver':
       return [];
+
+    case 'chooseTargets': {
+      const player = pending.player;
+      return combine(triggerTargetOptions(s, s.triggerQueue[0]!)).map(
+        (targets): Action => ({ type: 'ChooseTargets', player, targets }),
+      );
+    }
+
+    case 'decide': {
+      const player = pending.player;
+      const item = s.stack.at(-1)!;
+      const cost = item.kind === 'ability' ? triggerSpec(s, item).cost : undefined;
+      const p = s.players[player]!;
+      const affordable =
+        (cost?.life === undefined || p.life >= cost.life) && (!cost?.mana || canPay(p.manaPool, parseManaCost(cost.mana)));
+      const actions: Action[] = [{ type: 'Decide', player, accept: false }];
+      if (affordable) actions.push({ type: 'Decide', player, accept: true });
+      // While paying, lands can be tapped for mana.
+      if (cost?.mana) actions.push(...manaAbilities(s, player));
+      return actions;
+    }
 
     case 'declareAttackers': {
       const player = pending.player;
@@ -85,14 +117,7 @@ export function getLegalActions(s: GameState): Action[] {
     case 'priority': {
       const player = pending.player;
       const p = s.players[player]!;
-      const actions: Action[] = [{ type: 'PassPriority', player }];
-      for (const id of p.battlefield) {
-        const c = s.cards[id]!;
-        const def = s.cardDefs[c.defId]!;
-        const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
-        if (!def.produces?.length || c.tapped || c.controller !== player || sick) continue;
-        for (const mana of def.produces) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
-      }
+      const actions: Action[] = [{ type: 'PassPriority', player }, ...manaAbilities(s, player)];
       const sorcerySpeed = canActAtSorcerySpeed(s, player);
       for (const id of p.hand) {
         const def = s.cardDefs[s.cards[id]!.defId]!;
@@ -100,7 +125,7 @@ export function getLegalActions(s: GameState): Action[] {
           if (sorcerySpeed && p.landsPlayedThisTurn < 1) actions.push({ type: 'PlayLand', player, card: id });
           continue;
         }
-        if (!hasInstantTiming(def) && !sorcerySpeed) continue;
+        if (!canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
         if (!canPay(p.manaPool, parseManaCost(def.manaCost))) continue;
         for (const targets of targetCombos(s, player, id)) {
           actions.push({ type: 'CastSpell', player, card: id, targets });

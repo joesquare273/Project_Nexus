@@ -59,6 +59,8 @@ export function cloneState(s: GameState): GameState {
     players,
     turnOrder: [...s.turnOrder],
     stack: s.stack.map((item) => ({ ...item, targets: item.targets.map((t) => ({ ...t })) })),
+    triggerQueue: s.triggerQueue.map((t) => ({ ...t })),
+    triggeredThisTurn: [...s.triggeredThisTurn],
     combat: s.combat && {
       attacks: s.combat.attacks.map((a) => ({ ...a })),
       blocks: s.combat.blocks.map((b) => ({ ...b })),
@@ -98,10 +100,6 @@ export function hasType(s: GameState, c: CardInstance, type: CardType): boolean 
 
 export function hasKeyword(s: GameState, c: CardInstance, keyword: Keyword): boolean {
   return defOf(s, c).keywords?.includes(keyword) ?? false;
-}
-
-export function isPermanentCard(def: CardDefinition): boolean {
-  return !def.types.includes('instant') && !def.types.includes('sorcery');
 }
 
 export function isCreatureOnBattlefield(s: GameState, c: CardInstance | undefined): c is CardInstance {
@@ -160,6 +158,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   }
   const toList = zoneList(ctx.s, c.owner, to);
   if (toList) toList.push(id);
+  const controller = c.controller;
+  if (ctx.s.triggeredThisTurn.length > 0) {
+    // A new object: its once-each-turn abilities can trigger again.
+    ctx.s.triggeredThisTurn = ctx.s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
+  }
   c.zone = to;
   c.tapped = false;
   c.summoningSick = false;
@@ -167,7 +170,15 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   c.deathtouched = false;
   c.controller = c.owner;
   if (!opts.silent) {
-    ctx.ev.push({ type: 'CardMoved', card: id, defId: c.defId, owner: c.owner, from, to });
+    ctx.ev.push({
+      type: 'CardMoved',
+      card: id,
+      defId: c.defId,
+      owner: c.owner,
+      ...(from === 'battlefield' ? { controller } : {}),
+      from,
+      to,
+    });
   }
 }
 

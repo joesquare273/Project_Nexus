@@ -1,20 +1,20 @@
 PROJECT NEXUS - HOW TO RUN AND TEST
 ====================================
 
-There is no graphical client yet. Today you can play against the AI in a
-terminal, watch bots play each other, and run the automated tests.
+The main way to play is the game board in your web browser. You can also
+play in a terminal, watch bots play each other, and run the automated tests.
 
 
 1. ONE-TIME SETUP
 -----------------
-You need Node.js 24 or newer (already installed on this PC).
+You need Node.js 24 or newer.
 
   a. Open a terminal: press the Windows key, type "PowerShell", press Enter.
      (Windows Terminal or the VS Code terminal work too.)
 
-  b. Go to the project folder:
+  b. Go to the project folder (wherever you cloned it), for example:
 
-       cd "C:\Users\Joseph Kim\Desktop\Project_Nexus"
+       cd "$HOME\OneDrive\Desktop\Project_Nexus"
 
   c. Install the project's packages (only needed once, or after pulling
      changes that update package.json):
@@ -26,8 +26,50 @@ You need Node.js 24 or newer (already installed on this PC).
   https://nodejs.org
 
 
-2. PLAY AGAINST THE AI
-----------------------
+2. PLAY IN YOUR BROWSER
+-----------------------
+  npm run dev
+
+  Then open http://localhost:5173 in your browser. Leave the terminal open
+  while you play; press Ctrl+C in it to stop the game server.
+
+  Pick a deck (Red-White or Blue-Black), how many AI opponents (1-3), and
+  press Start game.
+
+  How to play:
+    - Glowing cards in your hand are playable. Click one to play it. Lands
+      tap automatically when you cast a spell.
+    - If a spell or ability needs a target, the legal targets glow gold.
+      Click one.
+    - Attacking: click your creatures to choose attackers (with several
+      opponents, click an opponent first to choose who to attack), then
+      press Attack.
+    - Blocking: click an attacking creature, then the creature that blocks
+      it. Then press Confirm blocks.
+    - The button on the right of the prompt bar passes priority or moves
+      to the next step ("Go to combat", "End turn", "Let it resolve").
+    - Hover over any card to see it large, with its rules text, on the right.
+    - Turns pass automatically when you have nothing to do. Tick "Stop at
+      every step" on the right to stop everywhere.
+
+  THE DECKS: the exact Final Fantasy Starter Kits
+    Every game uses the two real 60-card Final Fantasy Starter Kit decks.
+    Some of their cards aren't fully built yet and show a "not built yet"
+    badge:
+      - Creatures marked "not built yet" can still be cast and fight, with
+        their real power, toughness and keywords (Flying, Reach, Menace,
+        and so on). Their other abilities don't do anything yet.
+      - Noncreature cards marked "not built yet" (Equipment, some spells)
+        can't be cast yet and stay in your hand.
+    As more of the engine is built (see docs/starter-kits.md), these cards
+    start working and lose the badge.
+
+  Card images come from Scryfall, so you need an internet connection to see
+  them. Offline, cards are drawn as simple frames instead.
+
+
+3. PLAY IN THE TERMINAL
+-----------------------
   npm run play
 
   You play the red-white deck against one AI opponent. Options:
@@ -39,46 +81,44 @@ You need Node.js 24 or newer (already installed on this PC).
 
   (Note the extra "--" before the options; npm needs it.)
 
-  How to play:
-    - Type an option's number and press Enter. Press Enter alone to pass.
-    - Lands tap automatically when you cast a spell.
-    - Priority passes for you when you have nothing to do. Type "f" to stop
-      at every step instead.
-    - When attacking, type creature numbers like "1 3", or "a" for all.
-    - When blocking, you're shown each attacker and the creatures that can
-      legally block it.
-    - Other commands: b = show the board, ? = help, q = concede.
-    - At the end the game prints a seed so you can replay the same shuffle.
-
-  The cards are mostly placeholders named "Testbed ..." while the Final
-  Fantasy Starter Kit cards are being built. Real cards so far: the basic
-  lands, Rabanastre, Royal City, Treno, Dark City and Sephiroth's
-  Intervention (in the blue-black deck).
+  Type an option's number and press Enter; press Enter alone to pass.
+  b = show the board, f = stop at every step, ? = help, q = concede.
 
 
-3. WATCH THE BOTS PLAY
+4. WATCH THE BOTS PLAY
 ----------------------
   npm run sim                                 2 AIs, seed 1, full game log
   npm run sim -- --players 4 --seed 7         a 4-player pod
   npm run sim -- --players 3 --quiet          only the result
 
 
-4. RUN THE TESTS
+5. RUN THE TESTS
 ----------------
-  npm test              all automated tests (about 10 seconds)
+  npm test              all automated tests (about 20 seconds)
   npm run typecheck     TypeScript type checking
   npm run check         both of the above
   npm run fuzz          10,000 random bot games checking for rule bugs
-                        (about 20 minutes; "npm run fuzz -- --games 300"
-                        takes under a minute)
+                        ("npm run fuzz -- --games 300" is much quicker)
 
   Every test should pass. If one fails, the output names the test and what
   went wrong.
 
 
-5. WHERE THINGS ARE
+6. UPDATING CARD DATA FROM SCRYFALL
+-----------------------------------
+  npm run scryfall
+
+  Saves image links and rules text for any card not saved yet. Scryfall
+  limits how often its API can be called, so the game itself never calls
+  it; only this command does, in as few requests as possible. Use
+  "npm run scryfall -- --refresh" to fetch everything again.
+
+
+7. WHERE THINGS ARE
 -------------------
-  packages/engine   the rules engine (turns, stack, combat, elimination)
+  packages/client   the browser game board
+  packages/engine   the rules engine (turns, stack, combat, triggers)
   packages/cards    card definitions and the Starter Kit decklists
   packages/bots     the AI, the terminal game, the simulator, the fuzzer
-  docs/             roadmap and decisions (start with docs/starter-kits.md)
+  docs/             development log (development-update.md), roadmap
+                    (starter-kits.md) and decisions (decisions.md)

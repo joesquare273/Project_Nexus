@@ -5,13 +5,13 @@ import type { CardDefId, CardDefinition } from '@nexus/engine';
 import kitsData from '../data/fin-starter-kits.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
-import testbed from '../data/testbed.json' with { type: 'json' };
+import scryfall from '../data/scryfall.json' with { type: 'json' };
 import { validateCardList } from './validate.ts';
 
 export { validateCardDefinition, validateCardList } from './validate.ts';
 
-/** Real cards live in lands.json and fin.json; testbed.json holds placeholders. */
-const all = [...lands, ...fin, ...testbed.cards];
+/** Basic lands and Towns are in lands.json; every other Starter Kit card is in fin.json. */
+const all = [...lands, ...fin];
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 
@@ -36,33 +36,34 @@ export interface StarterKit {
 
 export const FIN_STARTER_KITS = kitsData.kits as StarterKit[];
 
+/** Scryfall details for a real card: image links (loaded from Scryfall at runtime) and Oracle text. */
+export interface ScryfallInfo {
+  name: string;
+  typeLine: string;
+  oracleText: string;
+  set: string;
+  number: string;
+  artist?: string;
+  image: { small: string; normal: string; large: string; artCrop: string };
+  scryfallUri: string;
+}
+
+/** By card id. Refresh with `npm run scryfall`. Placeholder cards have no entry. */
+export const SCRYFALL: Record<CardDefId, ScryfallInfo> = scryfall;
+
 /** Card ids by exact card name, for turning decklists into decks. */
 export const CARD_IDS_BY_NAME: Record<string, CardDefId> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));
 
 /**
- * A legal 60-card two-color testbed deck: 24 lands and 36 spells, mostly
- * placeholders plus the real Starter Kit cards implemented so far. Used by
- * the simulator, fuzz tests and `npm run play` until the kits are playable.
+ * One of the two Final Fantasy Starter Kit decks, exactly as printed: 60
+ * cards, including cards that aren't built yet (see `notBuilt`). Used by the
+ * browser game, the terminal game, the simulator and the fuzz tests.
  */
-export function testbedDeck(colors: 'RW' | 'UB'): CardDefId[] {
-  const deck: CardDefId[] = [];
-  const add = (id: CardDefId, n: number) => {
-    for (let i = 0; i < n; i++) deck.push(id);
-  };
-  if (colors === 'RW') {
-    add('mountain', 10);
-    add('plains', 10);
-    add('rabanastre-royal-city', 4);
-    for (const id of ['tb-ember-pup', 'tb-kiln-duelist', 'tb-cinder-brute', 'tb-twin-blade']) add(id, 4);
-    for (const id of ['tb-shield-knight', 'tb-stone-warden', 'tb-bolt', 'tb-volley', 'tb-mend']) add(id, 4);
-  } else {
-    add('island', 10);
-    add('swamp', 10);
-    add('treno-dark-city', 4);
-    for (const id of ['tb-sky-gull', 'tb-reef-sentry', 'tb-bog-rat', 'tb-grave-hulk']) add(id, 4);
-    for (const id of ['tb-ambusher', 'tb-tide-wall', 'tb-study', 'tb-drain']) add(id, 4);
-    add('sephiroths-intervention', 3);
-    add('tb-doom', 1);
-  }
-  return deck;
+export function starterKitDeck(colors: 'RW' | 'UB'): CardDefId[] {
+  const kit = FIN_STARTER_KITS.find((k) => k.name.endsWith(colors === 'RW' ? 'Red-White' : 'Blue-Black'))!;
+  return kit.cards.flatMap((c) => {
+    const id = CARD_IDS_BY_NAME[c.name];
+    if (!id) throw new Error(`No card definition for "${c.name}".`);
+    return Array<CardDefId>(c.count).fill(id);
+  });
 }

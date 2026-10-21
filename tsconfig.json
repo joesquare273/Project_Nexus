@@ -1,8 +1,17 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/engine" },
-    { "path": "packages/cards" },
-    { "path": "packages/bots" }
+    {
+      "path": "packages/engine"
+    },
+    {
+      "path": "packages/cards"
+    },
+    {
+      "path": "packages/bots"
+    },
+    {
+      "path": "packages/client"
+    }
   ]
 }

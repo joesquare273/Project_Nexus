@@ -61,6 +61,87 @@ export const DEFS: Record<string, CardDefinition> = Object.fromEntries(
       { id: 'mend', name: 'mend', manaCost: '{W}', types: ['instant'], effects: [{ effect: 'GainLife', amount: 3, target: 'You' }] },
       { id: 'study', name: 'study', manaCost: '{1}{U}', types: ['sorcery'], effects: [{ effect: 'DrawCards', amount: 2, target: 'You' }] },
       { id: 'murder', name: 'murder', manaCost: '{1}{B}', types: ['instant'], effects: [{ effect: 'Destroy', target: 'TargetCreature' }] },
+      // Triggered abilities. Each mirrors a real card's shape without its name.
+      {
+        ...creature('drainer', '{2}{B}', 2, 3),
+        triggers: [
+          {
+            when: 'Dies',
+            what: { controller: 'You', types: ['creature', 'artifact'] },
+            effects: [
+              { effect: 'LoseLife', amount: 1, target: 'TargetOpponent' },
+              { effect: 'GainLife', amount: 1, target: 'You' },
+            ],
+          },
+        ],
+      },
+      {
+        ...creature('mourner', '{4}{W}', 3, 5),
+        triggers: [
+          {
+            when: 'Dies',
+            what: { other: true, controller: 'You', types: ['creature', 'artifact'] },
+            oneOrMore: true,
+            oncePerTurn: true,
+            effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }],
+          },
+        ],
+      },
+      {
+        ...creature('revenant', '{2}{B}', 3, 3),
+        entersTapped: true,
+        triggers: [
+          {
+            when: 'SpellCast',
+            what: { controller: 'You', nonTypes: ['creature'] },
+            zone: 'graveyard',
+            cost: { mana: '{B}' },
+            effects: [{ effect: 'ReturnToHand', target: 'This' }],
+          },
+        ],
+      },
+      {
+        ...creature('tyrant', '{4}{U}{U}', 4, 4),
+        triggers: [
+          { when: 'EntersBattlefield', effects: [{ effect: 'Tap', target: 'EachOpponentCreature' }] },
+          {
+            when: 'CombatDamageToPlayer',
+            what: { controller: 'You', types: ['creature'] },
+            effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }],
+          },
+        ],
+      },
+      {
+        ...creature('pinger', '{1}{R}', 1, 1),
+        triggers: [{ when: 'EntersBattlefield', effects: [{ effect: 'DealDamage', amount: 1, target: 'AnyTarget' }] }],
+      },
+      {
+        ...creature('scout', '{1}{U}', 1, 1),
+        triggers: [{ when: 'Attacks', effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }] }],
+      },
+      {
+        ...creature('herald', '{1}{W}', 1, 1),
+        triggers: [{ when: 'BeginCombat', effects: [{ effect: 'GainLife', amount: 1, target: 'You' }] }],
+      },
+      {
+        ...creature('ascetic', '{4}{B}', 5, 5),
+        triggers: [{ when: 'Upkeep', cost: { life: 1 }, effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }] }],
+      },
+      {
+        // "Whenever another nonland permanent you control enters, you gain 1 life."
+        ...creature('gardener', '{1}{G}', 1, 1),
+        triggers: [
+          {
+            when: 'EntersBattlefield',
+            what: { other: true, controller: 'You', categories: ['permanent'], nonTypes: ['land'] },
+            effects: [{ effect: 'GainLife', amount: 1, target: 'You' }],
+          },
+        ],
+      },
+      {
+        ...creature('healer', '{1}{W}', 1, 1),
+        triggers: [{ when: 'EntersBattlefield', optional: true, effects: [{ effect: 'GainLife', amount: 2, target: 'You' }] }],
+      },
     ] satisfies CardDefinition[]
   ).map((d) => [d.id, d]),
 );
