@@ -1,0 +1,542 @@
+{
+  "$comment": "Decklists for the two FIN Starter Kits (source: MTGJSON). 'needs' lists engine features required before the card can be implemented. Card rules text is not stored here.",
+  "kits": [
+    {
+      "name": "Final Fantasy Starter Kit: Red-White",
+      "cards": [
+        {
+          "name": "Adelbert Steiner",
+          "count": 1,
+          "set": "fin",
+          "number": "3",
+          "implemented": false,
+          "needs": [
+            "count-based-pt"
+          ]
+        },
+        {
+          "name": "Barret Wallace",
+          "count": 1,
+          "set": "fin",
+          "number": "129",
+          "implemented": false,
+          "needs": [
+            "attack-triggers",
+            "count-based-amounts"
+          ]
+        },
+        {
+          "name": "Beatrix, Loyal General",
+          "count": 1,
+          "set": "fin",
+          "number": "554",
+          "implemented": false,
+          "needs": [
+            "begin-combat-triggers",
+            "equipment",
+            "choices"
+          ]
+        },
+        {
+          "name": "Cloud, Planet's Champion",
+          "count": 1,
+          "set": "fin",
+          "number": "552",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "conditional-keywords",
+            "cost-modification"
+          ]
+        },
+        {
+          "name": "Cloudbound Moogle",
+          "count": 2,
+          "set": "fin",
+          "number": "11",
+          "implemented": false,
+          "needs": [
+            "etb-triggers",
+            "counters",
+            "landcycling"
+          ]
+        },
+        {
+          "name": "Coeurl",
+          "count": 2,
+          "set": "fin",
+          "number": "12",
+          "implemented": false,
+          "needs": [
+            "activated-abilities",
+            "targeted-tap"
+          ]
+        },
+        {
+          "name": "Dragoon's Lance",
+          "count": 1,
+          "set": "fin",
+          "number": "17",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "job-select",
+            "tokens",
+            "static-buffs",
+            "conditional-keywords",
+            "type-changing"
+          ]
+        },
+        {
+          "name": "Dwarven Castle Guard",
+          "count": 4,
+          "set": "fin",
+          "number": "18",
+          "implemented": false,
+          "needs": [
+            "dies-triggers",
+            "tokens"
+          ]
+        },
+        {
+          "name": "Fate of the Sun-Cryst",
+          "count": 2,
+          "set": "fin",
+          "number": "19",
+          "implemented": false,
+          "needs": [
+            "cost-modification",
+            "destroy-permanent"
+          ]
+        },
+        {
+          "name": "Freya Crescent",
+          "count": 1,
+          "set": "fin",
+          "number": "138",
+          "implemented": false,
+          "needs": [
+            "conditional-keywords",
+            "mana-abilities-on-creatures",
+            "mana-spend-restrictions"
+          ]
+        },
+        {
+          "name": "G'raha Tia",
+          "count": 1,
+          "set": "fin",
+          "number": "21",
+          "implemented": false,
+          "needs": [
+            "dies-triggers",
+            "once-per-turn-triggers"
+          ]
+        },
+        {
+          "name": "Item Shopkeep",
+          "count": 3,
+          "set": "fin",
+          "number": "142",
+          "implemented": false,
+          "needs": [
+            "attack-triggers",
+            "until-end-of-turn-effects"
+          ]
+        },
+        {
+          "name": "Judgment Bolt",
+          "count": 1,
+          "set": "fin",
+          "number": "559",
+          "implemented": false,
+          "needs": [
+            "count-based-amounts"
+          ]
+        },
+        {
+          "name": "Lightning, Security Sergeant",
+          "count": 1,
+          "set": "fin",
+          "number": "560",
+          "implemented": false,
+          "needs": [
+            "combat-damage-triggers",
+            "play-from-exile"
+          ]
+        },
+        {
+          "name": "Rosa, Resolute White Mage",
+          "count": 1,
+          "set": "fin",
+          "number": "555",
+          "implemented": false,
+          "needs": [
+            "begin-combat-triggers",
+            "counters",
+            "until-end-of-turn-effects"
+          ]
+        },
+        {
+          "name": "Samurai's Katana",
+          "count": 2,
+          "set": "fin",
+          "number": "154",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "job-select",
+            "tokens",
+            "static-buffs",
+            "granted-keywords",
+            "type-changing"
+          ]
+        },
+        {
+          "name": "Slash of Light",
+          "count": 2,
+          "set": "fin",
+          "number": "32",
+          "implemented": false,
+          "needs": [
+            "count-based-amounts"
+          ]
+        },
+        {
+          "name": "Suplex",
+          "count": 1,
+          "set": "fin",
+          "number": "164",
+          "implemented": false,
+          "needs": [
+            "modal-spells",
+            "replacement-effects",
+            "exile-artifact"
+          ]
+        },
+        {
+          "name": "The Crystal's Chosen",
+          "count": 1,
+          "set": "fin",
+          "number": "14",
+          "implemented": false,
+          "needs": [
+            "tokens",
+            "counters"
+          ]
+        },
+        {
+          "name": "Ultima Weapon",
+          "count": 1,
+          "set": "fin",
+          "number": "563",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "static-buffs",
+            "granted-triggers"
+          ]
+        },
+        {
+          "name": "Warrior's Sword",
+          "count": 2,
+          "set": "fin",
+          "number": "169",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "job-select",
+            "tokens",
+            "static-buffs",
+            "type-changing"
+          ]
+        },
+        {
+          "name": "White Auracite",
+          "count": 2,
+          "set": "fin",
+          "number": "41",
+          "implemented": false,
+          "needs": [
+            "etb-triggers",
+            "exile-until-leaves",
+            "mana-abilities-on-artifacts"
+          ]
+        },
+        {
+          "name": "White Mage's Staff",
+          "count": 1,
+          "set": "fin",
+          "number": "42",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "job-select",
+            "tokens",
+            "static-buffs",
+            "granted-triggers",
+            "type-changing"
+          ]
+        },
+        {
+          "name": "Mountain",
+          "count": 8,
+          "set": "fin",
+          "number": "303",
+          "implemented": true,
+          "needs": []
+        },
+        {
+          "name": "Plains",
+          "count": 13,
+          "set": "fin",
+          "number": "294",
+          "implemented": true,
+          "needs": []
+        },
+        {
+          "name": "Rabanastre, Royal City",
+          "count": 4,
+          "set": "fin",
+          "number": "287",
+          "implemented": true,
+          "needs": []
+        }
+      ],
+      "total": 60
+    },
+    {
+      "name": "Final Fantasy Starter Kit: Blue-Black",
+      "cards": [
+        {
+          "name": "Al Bhed Salvagers",
+          "count": 3,
+          "set": "fin",
+          "number": "88",
+          "implemented": false,
+          "needs": [
+            "dies-triggers"
+          ]
+        },
+        {
+          "name": "Deadly Embrace",
+          "count": 1,
+          "set": "fin",
+          "number": "557",
+          "implemented": false,
+          "needs": [
+            "destroy-permanent",
+            "turn-history-tracking"
+          ]
+        },
+        {
+          "name": "Dreams of Laguna",
+          "count": 2,
+          "set": "fin",
+          "number": "50",
+          "implemented": false,
+          "needs": [
+            "surveil",
+            "flashback"
+          ]
+        },
+        {
+          "name": "Evil Reawakened",
+          "count": 2,
+          "set": "fin",
+          "number": "98",
+          "implemented": false,
+          "needs": [
+            "reanimation",
+            "counters"
+          ]
+        },
+        {
+          "name": "Il Mheg Pixie",
+          "count": 3,
+          "set": "fin",
+          "number": "57",
+          "implemented": false,
+          "needs": [
+            "attack-triggers",
+            "surveil"
+          ]
+        },
+        {
+          "name": "Magitek Scythe",
+          "count": 1,
+          "set": "fin",
+          "number": "562",
+          "implemented": false,
+          "needs": [
+            "equipment",
+            "etb-triggers",
+            "choices",
+            "must-be-blocked",
+            "static-buffs"
+          ]
+        },
+        {
+          "name": "Overkill",
+          "count": 2,
+          "set": "fin",
+          "number": "109",
+          "implemented": false,
+          "needs": [
+            "until-end-of-turn-effects"
+          ]
+        },
+        {
+          "name": "Relm's Sketching",
+          "count": 1,
+          "set": "fin",
+          "number": "67",
+          "implemented": false,
+          "needs": [
+            "copy-effects",
+            "tokens"
+          ]
+        },
+        {
+          "name": "Retrieve the Esper",
+          "count": 2,
+          "set": "fin",
+          "number": "68",
+          "implemented": false,
+          "needs": [
+            "tokens",
+            "flashback",
+            "counters",
+            "cast-source-tracking"
+          ]
+        },
+        {
+          "name": "Sahagin",
+          "count": 1,
+          "set": "fin",
+          "number": "71",
+          "implemented": false,
+          "needs": [
+            "cast-triggers",
+            "mana-spent-tracking",
+            "counters",
+            "evasion-effects"
+          ]
+        },
+        {
+          "name": "Sephiroth, Planet's Heir",
+          "count": 1,
+          "set": "fin",
+          "number": "553",
+          "implemented": false,
+          "needs": [
+            "etb-triggers",
+            "until-end-of-turn-effects",
+            "dies-triggers",
+            "counters"
+          ]
+        },
+        {
+          "name": "Seymour Flux",
+          "count": 1,
+          "set": "fin",
+          "number": "558",
+          "implemented": false,
+          "needs": [
+            "upkeep-triggers",
+            "optional-costs",
+            "counters"
+          ]
+        },
+        {
+          "name": "Shambling Cie'th",
+          "count": 3,
+          "set": "fin",
+          "number": "117",
+          "implemented": false,
+          "needs": [
+            "cast-triggers",
+            "graveyard-triggers",
+            "optional-costs"
+          ]
+        },
+        {
+          "name": "Shinra Reinforcements",
+          "count": 3,
+          "set": "fin",
+          "number": "118",
+          "implemented": false,
+          "needs": [
+            "etb-triggers",
+            "mill"
+          ]
+        },
+        {
+          "name": "Ultimecia, Temporal Threat",
+          "count": 1,
+          "set": "fin",
+          "number": "556",
+          "implemented": false,
+          "needs": [
+            "etb-triggers",
+            "combat-damage-triggers"
+          ]
+        },
+        {
+          "name": "Undercity Dire Rat",
+          "count": 4,
+          "set": "fin",
+          "number": "123",
+          "implemented": false,
+          "needs": [
+            "dies-triggers",
+            "tokens",
+            "treasure"
+          ]
+        },
+        {
+          "name": "Xande, Dark Mage",
+          "count": 1,
+          "set": "fin",
+          "number": "561",
+          "implemented": false,
+          "needs": [
+            "count-based-pt"
+          ]
+        },
+        {
+          "name": "Island",
+          "count": 9,
+          "set": "fin",
+          "number": "297",
+          "implemented": true,
+          "needs": []
+        },
+        {
+          "name": "Sephiroth's Intervention",
+          "count": 3,
+          "set": "fin",
+          "number": "116",
+          "implemented": true,
+          "needs": []
+        },
+        {
+          "name": "Swamp",
+          "count": 12,
+          "set": "fin",
+          "number": "300",
+          "implemented": true,
+          "needs": []
+        },
+        {
+          "name": "Treno, Dark City",
+          "count": 4,
+          "set": "fin",
+          "number": "290",
+          "implemented": true,
+          "needs": []
+        }
+      ],
+      "total": 60
+    }
+  ]
+}

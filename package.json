@@ -1,0 +1,25 @@
+{
+  "name": "project-nexus",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm test",
+    "sim": "node packages/bots/src/sim.ts",
+    "fuzz": "node packages/bots/src/fuzz.ts",
+    "play": "node packages/bots/src/play.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

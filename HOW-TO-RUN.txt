@@ -1,0 +1,84 @@
+PROJECT NEXUS - HOW TO RUN AND TEST
+====================================
+
+There is no graphical client yet. Today you can play against the AI in a
+terminal, watch bots play each other, and run the automated tests.
+
+
+1. ONE-TIME SETUP
+-----------------
+You need Node.js 24 or newer (already installed on this PC).
+
+  a. Open a terminal: press the Windows key, type "PowerShell", press Enter.
+     (Windows Terminal or the VS Code terminal work too.)
+
+  b. Go to the project folder:
+
+       cd "C:\Users\Joseph Kim\Desktop\Project_Nexus"
+
+  c. Install the project's packages (only needed once, or after pulling
+     changes that update package.json):
+
+       npm install
+
+  If you see "npm is not recognized", close the terminal and open a new one
+  so it picks up Node.js. If it still fails, reinstall Node.js LTS from
+  https://nodejs.org
+
+
+2. PLAY AGAINST THE AI
+----------------------
+  npm run play
+
+  You play the red-white deck against one AI opponent. Options:
+
+    npm run play -- --deck UB              play the blue-black deck instead
+    npm run play -- --opponents 3          a 4-player pod (you + 3 AIs)
+    npm run play -- --seed 42              a specific shuffle (replayable)
+    npm run play -- --bot random           an opponent that plays randomly
+
+  (Note the extra "--" before the options; npm needs it.)
+
+  How to play:
+    - Type an option's number and press Enter. Press Enter alone to pass.
+    - Lands tap automatically when you cast a spell.
+    - Priority passes for you when you have nothing to do. Type "f" to stop
+      at every step instead.
+    - When attacking, type creature numbers like "1 3", or "a" for all.
+    - When blocking, you're shown each attacker and the creatures that can
+      legally block it.
+    - Other commands: b = show the board, ? = help, q = concede.
+    - At the end the game prints a seed so you can replay the same shuffle.
+
+  The cards are mostly placeholders named "Testbed ..." while the Final
+  Fantasy Starter Kit cards are being built. Real cards so far: the basic
+  lands, Rabanastre, Royal City, Treno, Dark City and Sephiroth's
+  Intervention (in the blue-black deck).
+
+
+3. WATCH THE BOTS PLAY
+----------------------
+  npm run sim                                 2 AIs, seed 1, full game log
+  npm run sim -- --players 4 --seed 7         a 4-player pod
+  npm run sim -- --players 3 --quiet          only the result
+
+
+4. RUN THE TESTS
+----------------
+  npm test              all automated tests (about 10 seconds)
+  npm run typecheck     TypeScript type checking
+  npm run check         both of the above
+  npm run fuzz          10,000 random bot games checking for rule bugs
+                        (about 20 minutes; "npm run fuzz -- --games 300"
+                        takes under a minute)
+
+  Every test should pass. If one fails, the output names the test and what
+  went wrong.
+
+
+5. WHERE THINGS ARE
+-------------------
+  packages/engine   the rules engine (turns, stack, combat, elimination)
+  packages/cards    card definitions and the Starter Kit decklists
+  packages/bots     the AI, the terminal game, the simulator, the fuzzer
+  docs/             roadmap and decisions (start with docs/starter-kits.md)

@@ -1,0 +1,23 @@
+{
+  "$comment": "Placeholder cards for simulations and fuzz tests, not real cards. They exercise every engine feature so far and will be retired as real Starter Kit cards are implemented.",
+  "cards": [
+    { "id": "tb-ember-pup", "name": "Testbed Ember Pup", "manaCost": "{R}", "types": ["creature"], "power": 1, "toughness": 1, "keywords": ["Haste"], "text": "Haste" },
+    { "id": "tb-kiln-duelist", "name": "Testbed Kiln Duelist", "manaCost": "{1}{R}", "types": ["creature"], "power": 2, "toughness": 1, "keywords": ["FirstStrike"], "text": "First strike" },
+    { "id": "tb-cinder-brute", "name": "Testbed Cinder Brute", "manaCost": "{2}{R}", "types": ["creature"], "power": 3, "toughness": 2, "keywords": ["Menace"], "text": "Menace" },
+    { "id": "tb-twin-blade", "name": "Testbed Twin Blade", "manaCost": "{2}{R}{W}", "types": ["creature"], "power": 2, "toughness": 3, "keywords": ["DoubleStrike"], "text": "Double strike" },
+    { "id": "tb-sky-gull", "name": "Testbed Sky Gull", "manaCost": "{U}", "types": ["creature"], "power": 1, "toughness": 1, "keywords": ["Flying"], "text": "Flying" },
+    { "id": "tb-reef-sentry", "name": "Testbed Reef Sentry", "manaCost": "{1}{U}", "types": ["artifact", "creature"], "power": 1, "toughness": 3, "keywords": ["Reach"], "text": "Reach" },
+    { "id": "tb-shield-knight", "name": "Testbed Shield Knight", "manaCost": "{1}{W}", "types": ["creature"], "power": 2, "toughness": 2, "keywords": ["Vigilance", "Lifelink"], "text": "Vigilance, lifelink" },
+    { "id": "tb-stone-warden", "name": "Testbed Stone Warden", "manaCost": "{3}{W}", "types": ["creature"], "power": 1, "toughness": 4, "keywords": ["Indestructible"], "text": "Indestructible" },
+    { "id": "tb-bog-rat", "name": "Testbed Bog Rat", "manaCost": "{1}{B}", "types": ["creature"], "power": 1, "toughness": 1, "keywords": ["Deathtouch"], "text": "Deathtouch" },
+    { "id": "tb-grave-hulk", "name": "Testbed Grave Hulk", "manaCost": "{3}{B}{B}", "types": ["creature"], "power": 5, "toughness": 4, "keywords": ["Trample"], "text": "Trample" },
+    { "id": "tb-ambusher", "name": "Testbed Ambusher", "manaCost": "{1}{U}{B}", "types": ["creature"], "power": 3, "toughness": 2, "keywords": ["Flash"], "text": "Flash" },
+    { "id": "tb-bolt", "name": "Testbed Bolt", "manaCost": "{R}", "types": ["instant"], "effects": [{ "effect": "DealDamage", "amount": 2, "target": "AnyTarget" }], "text": "Deal 2 damage to any target." },
+    { "id": "tb-volley", "name": "Testbed Volley", "manaCost": "{1}{R}", "types": ["sorcery"], "effects": [{ "effect": "DealDamage", "amount": 1, "target": "EachOpponent" }], "text": "Deal 1 damage to each opponent." },
+    { "id": "tb-mend", "name": "Testbed Mend", "manaCost": "{W}", "types": ["instant"], "effects": [{ "effect": "GainLife", "amount": 4, "target": "You" }], "text": "You gain 4 life." },
+    { "id": "tb-study", "name": "Testbed Study", "manaCost": "{1}{U}", "types": ["sorcery"], "effects": [{ "effect": "DrawCards", "amount": 2, "target": "You" }], "text": "Draw two cards." },
+    { "id": "tb-tide-wall", "name": "Testbed Tide Wall", "manaCost": "{2}{U}", "types": ["creature"], "power": 0, "toughness": 5, "keywords": ["Reach"], "text": "Reach" },
+    { "id": "tb-drain", "name": "Testbed Drain", "manaCost": "{1}{B}", "types": ["sorcery"], "effects": [{ "effect": "DealDamage", "amount": 1, "target": "EachOpponent" }, { "effect": "GainLife", "amount": 1, "target": "You" }], "text": "Deal 1 damage to each opponent. You gain 1 life." },
+    { "id": "tb-doom", "name": "Testbed Doom", "manaCost": "{2}{B}", "types": ["instant"], "effects": [{ "effect": "Destroy", "target": "TargetCreature" }], "text": "Destroy target creature." }
+  ]
+}

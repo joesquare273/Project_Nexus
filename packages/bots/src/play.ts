@@ -1,0 +1,444 @@
+// Play against the AI in your terminal.
+//
+//   npm run play
+//   npm run play -- --opponents 2 --deck UB --seed 42
+//
+// You choose from numbered options. Lands tap automatically when you cast a
+// spell. Priority passes automatically when you have nothing to do, so you
+// only stop when a decision matters (type "f" to stop at every step).
+
+import {
+  FREE_FOR_ALL,
+  applyAction,
+  canBlock,
+  createGame,
+  filterEventsFor,
+  getLegalActions,
+  viewFor,
+  type Action,
+  type Block,
+  type CardInstance,
+  type GameEvent,
+  type GameState,
+  type PlayerId,
+} from '@nexus/engine';
+import { CARD_DEFS, testbedDeck } from '@nexus/cards';
+import { createInterface } from 'node:readline/promises';
+import { parseArgs } from 'node:util';
+import { basicAi, planTaps, randomBot, tapActions, type Bot } from './index.ts';
+import { cardName, describe, rulesSummary, stepName, targetName } from './narrate.ts';
+
+const YOU: PlayerId = 'You';
+
+const { values } = parseArgs({
+  options: {
+    opponents: { type: 'string', default: '1' },
+    deck: { type: 'string', default: 'RW' },
+    seed: { type: 'string' },
+    bot: { type: 'string', default: 'ai' },
+  },
+});
+
+const opponentCount = Math.min(3, Math.max(1, Number(values.opponents) || 1));
+const yourDeck = values.deck?.toUpperCase() === 'UB' ? 'UB' : 'RW';
+const seed = values.seed !== undefined ? Number(values.seed) : Math.floor(Math.random() * 1_000_000);
+const botIds = Array.from({ length: opponentCount }, (_, i) => `Bot${i + 1}`);
+const makeBot = values.bot === 'random' ? randomBot : basicAi;
+const bots: Record<PlayerId, Bot> = Object.fromEntries(botIds.map((id, i) => [id, makeBot(seed + i)]));
+
+class Quit extends Error {}
+
+// Lines are queued as they arrive, so typed and piped input (used for
+// scripted smoke tests) both work, and closing input ends the game cleanly.
+const rl = createInterface({ input: process.stdin });
+const queued: string[] = [];
+let waiting: ((line: string | null) => void) | null = null;
+let inputClosed = false;
+rl.on('line', (line) => {
+  if (waiting) {
+    const resolve = waiting;
+    waiting = null;
+    resolve(line);
+  } else {
+    queued.push(line);
+  }
+});
+rl.on('close', () => {
+  inputClosed = true;
+  waiting?.(null);
+  waiting = null;
+});
+
+async function ask(question: string): Promise<string> {
+  process.stdout.write(question);
+  const next = queued.shift();
+  if (next !== undefined) {
+    if (!process.stdin.isTTY) process.stdout.write(`${next}\n`);
+    return next.trim();
+  }
+  if (inputClosed) throw new Quit();
+  const line = await new Promise<string | null>((resolve) => {
+    waiting = resolve;
+  });
+  if (line === null) throw new Quit();
+  if (!process.stdin.isTTY) process.stdout.write(`${line}\n`);
+  return line.trim();
+}
+
+let stopEverywhere = false;
+
+// ---------------------------------------------------------------------------
+// Display
+// ---------------------------------------------------------------------------
+
+const defOf = (s: GameState, c: CardInstance) => s.cardDefs[c.defId]!;
+
+function creatureText(s: GameState, c: CardInstance): string {
+  const d = defOf(s, c);
+  const kw = d.keywords?.length ? ` [${d.keywords.join(', ')}]` : '';
+  const flags = [c.tapped && 'tapped', c.summoningSick && d.types.includes('creature') && 'new', c.damage > 0 && `${c.damage} dmg`]
+    .filter(Boolean)
+    .join(', ');
+  return `${d.name} ${d.power}/${d.toughness}${kw}${flags ? ` (${flags})` : ''}`;
+}
+
+function battlefieldText(s: GameState, ids: string[]): string[] {
+  const cards = ids.map((id) => s.cards[id]!);
+  const lands = new Map<string, { total: number; tapped: number }>();
+  const others: string[] = [];
+  for (const c of cards) {
+    const d = defOf(s, c);
+    if (d.types.includes('land')) {
+      const e = lands.get(d.name) ?? { total: 0, tapped: 0 };
+      e.total += 1;
+      if (c.tapped) e.tapped += 1;
+      lands.set(d.name, e);
+    } else if (d.types.includes('creature')) {
+      others.push(creatureText(s, c));
+    } else {
+      others.push(`${d.name}${c.tapped ? ' (tapped)' : ''}`);
+    }
+  }
+  const landLine = [...lands].map(([name, e]) => `${e.total} ${name}${e.tapped ? ` (${e.tapped} tapped)` : ''}`).join(', ');
+  return [...(landLine ? [`    Lands: ${landLine}`] : []), ...others.map((o) => `    ${o}`)];
+}
+
+function render(s: GameState): void {
+  const view = viewFor(s, YOU);
+  const out: string[] = [];
+  const whose = s.activePlayer === YOU ? 'Your' : `${s.activePlayer}'s`;
+  out.push('', `---------- Turn ${s.turnNumber} | ${whose} turn | ${stepName(s.step)} ----------`);
+  const seats = [...view.turnOrder.filter((p) => p !== YOU), YOU];
+  for (const pid of seats) {
+    const p = view.players[pid]!;
+    const name = pid === YOU ? 'You' : pid;
+    if (p.eliminated) {
+      out.push(`  ${name}: out of the game`);
+      continue;
+    }
+    out.push(
+      `  ${name}: ${p.life} life | hand ${p.handCount} | library ${p.libraryCount} | graveyard ${p.graveyard.length}`,
+    );
+    out.push(...battlefieldText(s, p.battlefield));
+  }
+  if (s.stack.length > 0) {
+    out.push('  Stack (top first):');
+    for (const item of [...s.stack].reverse()) {
+      const targets = item.targets.length ? ` -> ${item.targets.map((t) => targetName(s, t, YOU)).join(', ')}` : '';
+      out.push(`    ${cardName(s, item.card)} (${item.controller === YOU ? 'yours' : item.controller})${targets}`);
+    }
+  }
+  const hand = view.players[YOU]!.hand ?? [];
+  out.push(`  Your hand: ${hand.map((id) => `${cardName(s, id)} ${defOf(s, s.cards[id]!).manaCost ?? ''}`.trim()).join(', ') || '(empty)'}`);
+  console.log(out.join('\n'));
+}
+
+/** Engine errors name cards by instance id ("c12"); show card names instead. */
+function readable(s: GameState, error: string): string {
+  return error.replace(/"([ct]\d+)"/g, (_, id: string) => (s.cards[id] ? cardName(s, id) : id));
+}
+
+function narrate(s: GameState, events: GameEvent[]): void {
+  const lines: string[] = [];
+  let draws = null as { player: string; names: string[]; hidden: number } | null;
+  // Consecutive draws by one player become one line ("Bot1 drew 7 cards.").
+  const flushDraws = () => {
+    if (!draws) return;
+    const who = draws.player === YOU ? 'You' : draws.player;
+    if (draws.names.length > 0) lines.push(`${who} drew ${draws.names.join(', ')}.`);
+    if (draws.hidden > 0) lines.push(`${who} drew ${draws.hidden === 1 ? 'a card' : `${draws.hidden} cards`}.`);
+    draws = null;
+  };
+  for (const e of filterEventsFor(events, YOU)) {
+    if (e.type === 'CardDrawn') {
+      if (draws?.player !== e.player) flushDraws();
+      draws ??= { player: e.player, names: [], hidden: 0 };
+      if (e.card) draws.names.push(cardName(s, e.card));
+      else draws.hidden += 1;
+      continue;
+    }
+    flushDraws();
+    const line = describe(s, e, YOU);
+    if (line) lines.push(line);
+  }
+  flushDraws();
+  if (lines.length > 0) console.log(lines.join('\n'));
+}
+
+// ---------------------------------------------------------------------------
+// Your decisions
+// ---------------------------------------------------------------------------
+
+interface Option {
+  label: string;
+  /** Returns the actions to apply in order, or null to go back. */
+  choose: () => Promise<Action[] | null>;
+}
+
+/** Applies a sequence of actions all-or-nothing. */
+function applyAll(s: GameState, actions: Action[]): { state: GameState; events: GameEvent[] } | { error: string } {
+  const events: GameEvent[] = [];
+  for (const a of actions) {
+    const r = applyAction(s, a);
+    if (!r.ok) return { error: r.error };
+    s = r.state;
+    events.push(...r.events);
+  }
+  return { state: s, events };
+}
+
+function priorityOptions(s: GameState): Option[] {
+  const legal = getLegalActions(s);
+  const options: Option[] = [];
+  const seenLand = new Set<string>();
+  for (const a of legal) {
+    if (a.type !== 'PlayLand') continue;
+    const name = cardName(s, a.card);
+    if (seenLand.has(name)) continue;
+    seenLand.add(name);
+    options.push({ label: `Play ${name}`, choose: async () => [a] });
+  }
+
+  const seenSpell = new Set<string>();
+  for (const id of s.players[YOU]!.hand) {
+    const d = defOf(s, s.cards[id]!);
+    if (d.types.includes('land') || seenSpell.has(d.id)) continue;
+    const taps = planTaps(s, YOU, d.manaCost);
+    if (!taps) continue;
+    const afterTaps = applyAll(s, tapActions(YOU, taps));
+    if ('error' in afterTaps) continue;
+    const casts = getLegalActions(afterTaps.state).filter(
+      (a): a is Extract<Action, { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === id,
+    );
+    if (casts.length === 0) continue;
+    seenSpell.add(d.id);
+    options.push({
+      label: `Cast ${d.name} ${d.manaCost ?? ''}  - ${rulesSummary(d)}`,
+      choose: async () => {
+        if (casts.length === 1) return [...tapActions(YOU, taps), casts[0]!];
+        console.log(`  Choose a target for ${d.name}:`);
+        casts.forEach((c, i) => console.log(`    ${i + 1}) ${c.targets!.map((t) => targetName(s, t, YOU)).join(', ')}`));
+        const pick = Number(await ask('  Target number (Enter = cancel): '));
+        const cast = casts[pick - 1];
+        return cast ? [...tapActions(YOU, taps), cast] : null;
+      },
+    });
+  }
+  return options;
+}
+
+/** Whether to stop and ask, given that you have something you could do. */
+function worthStopping(s: GameState): boolean {
+  if (stopEverywhere) return true;
+  const top = s.stack.at(-1);
+  if (top) return top.controller !== YOU;
+  if (s.activePlayer === YOU) return s.step === 'main1' || s.step === 'main2';
+  return s.step === 'declareAttackers' || s.step === 'declareBlockers' || s.step === 'end';
+}
+
+const HELP = `
+  Type an option's number and press Enter. Press Enter on its own to pass.
+  Other commands:  b = show the board   f = toggle stopping at every step
+                   q = concede          ? = this help
+  Lands tap automatically when you cast a spell. Priority passes for you when
+  you have nothing to do, unless stopping at every step is on.`;
+
+async function decidePriority(s: GameState): Promise<Action[]> {
+  const options = priorityOptions(s);
+  const pass: Action[] = [{ type: 'PassPriority', player: YOU }];
+  if (options.length === 0 || !worthStopping(s)) return pass;
+  render(s);
+  for (;;) {
+    console.log('\n  What do you want to do? (Enter = pass)');
+    options.forEach((o, i) => console.log(`    ${i + 1}) ${o.label}`));
+    const input = (await ask('> ')).toLowerCase();
+    if (input === '') return pass;
+    if (input === 'b') {
+      render(s);
+      continue;
+    }
+    if (input === '?' || input === 'h') {
+      console.log(HELP);
+      continue;
+    }
+    if (input === 'f') {
+      stopEverywhere = !stopEverywhere;
+      console.log(`  Stopping at every step: ${stopEverywhere ? 'on' : 'off'}.`);
+      continue;
+    }
+    if (input === 'q') {
+      if ((await ask('  Concede this game? (y/N) ')).toLowerCase() === 'y') return [{ type: 'Concede', player: YOU }];
+      continue;
+    }
+    const option = options[Number(input) - 1];
+    if (!option) {
+      console.log('  Not an option. Type ? for help.');
+      continue;
+    }
+    const actions = await option.choose();
+    if (actions) return actions;
+  }
+}
+
+function parseNumbers(input: string, max: number): number[] | null {
+  if (input === '') return [];
+  const nums = input.split(/[\s,]+/).map(Number);
+  return nums.every((n) => Number.isInteger(n) && n >= 1 && n <= max) ? [...new Set(nums)] : null;
+}
+
+async function decideAttacks(s: GameState): Promise<Action[]> {
+  const legal = getLegalActions(s).filter(
+    (a): a is Extract<Action, { type: 'DeclareAttackers' }> => a.type === 'DeclareAttackers',
+  );
+  const attackers = [...new Set(legal.flatMap((a) => a.attacks.map((x) => x.attacker)))];
+  const defenders = s.turnOrder.filter((p) => p !== YOU && !s.players[p]!.eliminated);
+  render(s);
+  console.log('\n  Your creatures that can attack:');
+  attackers.forEach((id, i) => console.log(`    ${i + 1}) ${creatureText(s, s.cards[id]!)}`));
+  for (;;) {
+    const input = (await ask('  Attack with (e.g. "1 2", a = all, Enter = no attack): ')).toLowerCase();
+    if (input === 'b') {
+      render(s);
+      continue;
+    }
+    const picks = input === 'a' ? attackers.map((_, i) => i + 1) : parseNumbers(input, attackers.length);
+    if (!picks) {
+      console.log('  Please type creature numbers separated by spaces.');
+      continue;
+    }
+    let defender = defenders[0]!;
+    if (picks.length > 0 && defenders.length > 1) {
+      defenders.forEach((p, i) => console.log(`    ${i + 1}) ${p} (${s.players[p]!.life} life)`));
+      const d = Number(await ask('  Attack which player? '));
+      defender = defenders[d - 1] ?? defender;
+    }
+    const action: Action = {
+      type: 'DeclareAttackers',
+      player: YOU,
+      attacks: picks.map((n) => ({ attacker: attackers[n - 1]!, defender })),
+    };
+    const check = applyAction(s, action);
+    if (check.ok) return [action];
+    console.log(`  ${readable(s, check.error)}`);
+  }
+}
+
+async function decideBlocks(s: GameState): Promise<Action[]> {
+  const attacks = (s.combat?.attacks ?? []).filter((a) => a.defender === YOU && s.cards[a.attacker]?.zone === 'battlefield');
+  const mine = s.players[YOU]!.battlefield
+    .map((id) => s.cards[id]!)
+    .filter((c) => defOf(s, c).types.includes('creature') && !c.tapped);
+  const none: Action[] = [{ type: 'DeclareBlockers', player: YOU, blocks: [] }];
+  if (mine.length === 0) return none;
+  render(s);
+  for (;;) {
+    const blocks: Block[] = [];
+    const used = new Set<string>();
+    for (const a of attacks) {
+      const attacker = s.cards[a.attacker]!;
+      // Only offer creatures that are free and able to block this attacker.
+      const able = mine.filter((b) => !used.has(b.id) && canBlock(s, b, attacker));
+      const menace = defOf(s, attacker).keywords?.includes('Menace') ? ' It has menace: block with two or more, or none.' : '';
+      console.log(`\n  ${creatureText(s, attacker)} is attacking you.${menace}`);
+      if (able.length === 0) {
+        console.log('  None of your creatures can block it.');
+        continue;
+      }
+      able.forEach((c, i) => console.log(`    ${i + 1}) ${creatureText(s, c)}`));
+      const input = await ask('  Block with (numbers, Enter = no block): ');
+      for (const n of parseNumbers(input, able.length) ?? []) {
+        const blocker = able[n - 1]!;
+        used.add(blocker.id);
+        blocks.push({ blocker: blocker.id, attacker: a.attacker });
+      }
+    }
+    const action: Action = { type: 'DeclareBlockers', player: YOU, blocks };
+    const check = applyAction(s, action);
+    if (check.ok) return [action];
+    console.log(`  ${readable(s, check.error)} Let's try that again.`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Game loop
+// ---------------------------------------------------------------------------
+
+async function playOneGame(gameSeed: number): Promise<void> {
+  const decks: Record<PlayerId, ReturnType<typeof testbedDeck>> = { [YOU]: testbedDeck(yourDeck) };
+  botIds.forEach((id, i) => {
+    decks[id] = testbedDeck((yourDeck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');
+  });
+  const created = createGame({
+    format: FREE_FOR_ALL,
+    cardDefs: CARD_DEFS,
+    seed: gameSeed,
+    players: [YOU, ...botIds].map((id) => ({ id, deck: decks[id]! })),
+  });
+  let s = created.state;
+  console.log(`\nNew game (seed ${gameSeed}). You are playing the ${yourDeck === 'RW' ? 'red-white' : 'blue-black'} deck`);
+  console.log(`against ${botIds.join(', ')}. ${s.activePlayer === YOU ? 'You go' : `${s.activePlayer} goes`} first. Type ? for help.`);
+  narrate(s, created.events);
+
+  while (s.pending.kind !== 'gameOver') {
+    const pending = s.pending;
+    let actions: Action[];
+    if (pending.player !== YOU) {
+      actions = [bots[pending.player]!(s, getLegalActions(s))];
+    } else if (pending.kind === 'declareAttackers') {
+      actions = await decideAttacks(s);
+    } else if (pending.kind === 'declareBlockers') {
+      actions = await decideBlocks(s);
+    } else {
+      actions = await decidePriority(s);
+    }
+    const result = applyAll(s, actions);
+    if ('error' in result) {
+      // Shouldn't happen: every human option is checked first and bots only pick legal moves.
+      console.log(`  That didn't work: ${readable(s, result.error)}`);
+      continue;
+    }
+    s = result.state;
+    narrate(s, result.events);
+  }
+}
+
+async function main(): Promise<void> {
+  console.log('Project Nexus - play against the AI');
+  console.log('These are placeholder testbed cards until the Final Fantasy Starter Kit cards are implemented.');
+  let gameSeed = seed;
+  try {
+    for (;;) {
+      await playOneGame(gameSeed);
+      const again = (await ask('\nPlay again? (y/N) ')).toLowerCase();
+      if (again !== 'y') break;
+      gameSeed += 1;
+    }
+  } catch (e) {
+    if (!(e instanceof Quit)) throw e;
+  } finally {
+    rl.close();
+  }
+  console.log(`\nThanks for playing. Replay this exact game with: npm run play -- --seed ${seed}`);
+}
+
+await main();

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sephiroths-intervention",
+    "name": "Sephiroth's Intervention",
+    "manaCost": "{3}{B}",
+    "types": ["instant"],
+    "effects": [
+      { "effect": "Destroy", "target": "TargetCreature" },
+      { "effect": "GainLife", "amount": 2, "target": "You" }
+    ],
+    "printing": { "set": "fin", "number": "116" }
+  }
+]
