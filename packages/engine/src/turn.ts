@@ -90,6 +90,8 @@ export function cleanupDamage(ctx: Ctx): void {
     c.damage = 0;
     c.deathtouched = false;
   }
+  // "Until end of turn" effects end at the same time (rule 514.2).
+  ctx.s.temporaryEffects = [];
   ctx.s.combat = null;
   emptyAllManaPools(ctx.s);
 }
@@ -99,6 +101,7 @@ export function startNextTurn(ctx: Ctx): void {
   s.activePlayer = nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
   s.triggeredThisTurn = [];
+  s.creaturesDiedThisTurn = 0;
   ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: s.turnNumber });
   enterStep(ctx, 'untap');
 }

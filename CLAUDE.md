@@ -9,9 +9,11 @@ this repo, not only in local memory.
 
 - **The Final Fantasy Starter Kits are the testbed.** Every game uses the
   exact Red-White and Blue-Black kit decklists. Don't add placeholder cards
-  or filler from other sets. Kit cards whose abilities aren't built yet are
-  marked `notBuilt: true`: creatures play as their real body and printed
-  keywords, and noncreature cards can't be cast yet.
+  or filler from other sets. All kit cards are built (2026-10-21); a new
+  card that isn't fully built yet can be marked `notBuilt: true` (creatures
+  play as their body and keywords, other cards can't be cast).
+- **Tokens come from Scryfall too**, matched by the exact token printing each
+  card lists (`packages/cards/data/tokens.json`; `npm run scryfall` checks).
 - **Real MTG names, rules text and card images are fine** (personal project).
   Images load from Scryfall's image servers and are never committed.
 - **Scryfall API rate limits:** never call `api.scryfall.com` from the game.

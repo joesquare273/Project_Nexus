@@ -2,11 +2,33 @@ export * from './types.ts';
 export * from './format.ts';
 export { applyAction } from './engine.ts';
 export { createGame, type GameSetup, type PlayerSetup } from './setup.ts';
-export { getLegalActions } from './legal.ts';
-export { canAttack, canBlock } from './combat.ts';
-export { canEverCast, triggerSpec, effectsOf } from './stack.ts';
-export { viewFor, filterEventsFor, type GameView, type PlayerView } from './view.ts';
-export { canPay, manaValue, parseManaCost, planPayment } from './cost.ts';
+export { abilityOptions, getLegalActions, spellOptions, type CostedOption } from './legal.ts';
+export { blockProblem, canAttack, canBlock } from './combat.ts';
+export {
+  abilitySpec,
+  activatedAbilities,
+  canEverCast,
+  canPayFromPool,
+  effectsOf,
+  playableZone,
+  spellEffects,
+  triggerSpec,
+} from './stack.ts';
+export {
+  amountOf,
+  characteristics,
+  countOf,
+  equipmentOn,
+  hasFlag,
+  hasKeyword,
+  isEquipment,
+  isEquipped,
+  powerOf,
+  toughnessOf,
+  type Characteristics,
+} from './characteristics.ts';
+export { viewFor, filterEventsFor, type GameView, type PermanentStats, type PlayerView } from './view.ts';
+export { canPay, formatManaCost, manaValue, parseManaCost, planPayment, reduceGeneric } from './cost.ts';
 export { nextRandom, seedToState } from './rng.ts';
 export {
   BASIC_LAND_TYPE_MANA,

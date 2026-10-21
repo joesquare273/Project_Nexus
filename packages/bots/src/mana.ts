@@ -1,5 +1,5 @@
-// Works out which lands to tap to pay a cost. Shared by the AI and the
-// terminal client's auto-tapper, so neither has to tap lands one by one.
+// Works out which permanents to tap to pay a cost. Shared by the AI and the
+// clients' auto-tapper, so nobody has to tap lands one by one.
 
 import {
   MANA_TYPES,
@@ -9,6 +9,7 @@ import {
   type CardInstance,
   type GameState,
   type InstanceId,
+  type ManaCost,
   type ManaType,
   type PlayerId,
 } from '@nexus/engine';
@@ -18,40 +19,58 @@ export interface ManaTap {
   mana: ManaType;
 }
 
+export interface TapOptions {
+  /** The mana is for an Equipment spell or an equip ability, so Equipment-only mana counts. */
+  forEquipment?: boolean;
+}
+
 /** Untapped permanents this player can tap for mana right now. */
-export function manaSources(s: GameState, playerId: PlayerId): CardInstance[] {
+export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions = {}): CardInstance[] {
   return s.players[playerId]!.battlefield
     .map((id) => s.cards[id]!)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
       if (manaProduced(def).length === 0 || c.tapped || c.controller !== playerId) return false;
+      if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick;
     });
 }
 
+/** How reluctant we are to use a source: lands first, then other permanents, Treasure (sacrificed) last. */
+function reluctance(s: GameState, c: CardInstance): number {
+  const def = s.cardDefs[c.defId]!;
+  if (def.manaAbility?.sacrifice) return 100;
+  return (def.types.includes('land') ? 0 : 10) + manaProduced(def).length;
+}
+
 /**
- * Picks lands to tap so that the mana pool plus those lands pays `manaCost`,
- * or returns null if it can't be paid. Lands with fewer color options are
- * used first, so dual lands are saved for when they're needed.
+ * Picks permanents to tap so that the mana pool plus those taps pays `cost`,
+ * or returns null if it can't be paid. Sources with fewer color options are
+ * used first, so dual lands and Treasure are saved for when they're needed.
  */
-export function planTaps(s: GameState, playerId: PlayerId, manaCost: string | undefined): ManaTap[] | null {
-  const cost = parseManaCost(manaCost);
-  const pool = { ...s.players[playerId]!.manaPool };
+export function planTaps(
+  s: GameState,
+  playerId: PlayerId,
+  cost: string | ManaCost | undefined,
+  opts: TapOptions = {},
+): ManaTap[] | null {
+  const need = typeof cost === 'object' ? cost : parseManaCost(cost);
+  const p = s.players[playerId]!;
+  const pool = { ...p.manaPool };
+  if (opts.forEquipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
 
   const colored: ManaType[] = [];
   for (const t of MANA_TYPES) {
-    for (let i = 0; i < (cost[t] ?? 0); i++) {
+    for (let i = 0; i < (need[t] ?? 0); i++) {
       if (pool[t] > 0) pool[t] -= 1;
       else colored.push(t);
     }
   }
   const leftoverInPool = MANA_TYPES.reduce((n, t) => n + pool[t], 0);
-  let generic = Math.max(0, cost.generic - leftoverInPool);
+  let generic = Math.max(0, need.generic - leftoverInPool);
 
-  const sources = manaSources(s, playerId).sort(
-    (a, b) => manaProduced(s.cardDefs[a.defId]!).length - manaProduced(s.cardDefs[b.defId]!).length,
-  );
+  const sources = manaSources(s, playerId, opts).sort((a, b) => reluctance(s, a) - reluctance(s, b));
   const used = new Set<InstanceId>();
   const taps: ManaTap[] = [];
 

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { triggerSpec, type Action, type GameView, type InstanceId, type PlayerId, type Target } from '@nexus/engine';
 import { planTaps, tapActions } from '@nexus/bots';
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
-import { defOf } from '../game/cards.ts';
-import { YOU, type CastAction, type GameSession, type Play } from '../game/session.ts';
+import { defOf, scryfallOf } from '../game/cards.ts';
+import { YOU, type CardPlay, type GameSession } from '../game/session.ts';
 import { CardFace } from './Card.tsx';
 import { GameLog, Inspector } from './Sidebar.tsx';
-import { Hand, OpponentZone, PlayerHeader, YourZone, type Mark, type ZoneHandlers } from './Zones.tsx';
+import { CardList, Hand, OpponentZone, PlayerHeader, YourZone, type Mark, type ZoneHandlers } from './Zones.tsx';
 
 /** Pause after each meaningful bot action so you can follow along. */
 const BOT_DELAY_MS = 550;
@@ -30,10 +30,23 @@ const STEP_SHORT: [string, string][] = [
 /** Choosing targets one at a time from a list of complete target lists. */
 interface Targeting {
   title: string;
+  /** The actions to take for each complete choice. */
   choices: Action[][];
   /** The targets of each choice, parallel to `choices`. */
   targets: Target[][];
   chosen: Target[];
+}
+
+/** A small menu in the prompt bar: which ability, or which mode. */
+interface Menu {
+  title: string;
+  options: { label: string; pick: () => void }[];
+}
+
+/** The texts of a modal spell's modes, from its Oracle text bullets when they match. */
+function modeLabels(defId: string, count: number): string[] {
+  const bullets = (scryfallOf(defId)?.oracleText ?? '').split('\n').filter((l) => l.startsWith('•'));
+  return Array.from({ length: count }, (_, i) => bullets[i]?.replace(/^•\s*/, '') ?? `Mode ${i + 1}`);
 }
 
 export function Game({ session, onQuit }: { session: GameSession; onQuit: () => void }) {
@@ -42,6 +55,8 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   const [hovered, setHovered] = useState<InstanceId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [targeting, setTargeting] = useState<Targeting | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [zoneView, setZoneView] = useState<{ player: PlayerId; zone: 'graveyard' | 'exile' } | null>(null);
   const [attackers, setAttackers] = useState<Map<InstanceId, PlayerId>>(new Map());
   const [defender, setDefender] = useState<PlayerId>(session.opponents[0]!);
   const [blocks, setBlocks] = useState<Map<InstanceId, InstanceId>>(new Map());
@@ -53,6 +68,11 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   const view: GameView = session.view();
   const pending = s.pending;
   const yourMove = pending.kind !== 'gameOver' && pending.player === YOU && !busy;
+
+  const showError = (message: string) => {
+    setError(message);
+    window.setTimeout(() => setError(null), 3500);
+  };
 
   /** Runs bots and automatic passes until the game needs you (or the game ends). */
   const run = useCallback(() => {
@@ -82,9 +102,10 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   }, [run]);
 
   // Any change of decision clears half-made selections.
-  const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}`;
+  const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}|${s.nextId}`;
   useEffect(() => {
     setTargeting(null);
+    setMenu(null);
     setAttackers(new Map());
     setBlocks(new Map());
     setPickedAttacker(null);
@@ -93,8 +114,7 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   const submit = (actions: Action[]) => {
     const err = session.submit(actions);
     if (err) {
-      setError(err);
-      window.setTimeout(() => setError(null), 3500);
+      showError(err);
       refresh();
       return;
     }
@@ -102,13 +122,12 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
     run();
   };
 
-  const plays = useMemo(() => (yourMove && pending.kind === 'priority' ? session.plays() : new Map<InstanceId, Play>()), [
-    session,
-    yourMove,
-    pending.kind,
-    decisionKey,
-    s,
-  ]);
+  const plays = useMemo(
+    () => (yourMove && pending.kind === 'priority' ? session.plays() : []),
+    // `s` changes with every action, which is when the plays change.
+    [session, yourMove, pending.kind, s],
+  );
+  const playsFor = (id: InstanceId) => plays.filter((p) => p.card === id);
   const legal = useMemo(() => (yourMove ? session.legal() : []), [session, yourMove, s]);
 
   // Trigger targets are chosen the same way as spell targets.
@@ -131,41 +150,68 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   const chosen = targeting ? targeting.chosen : triggerChosen;
 
   const remaining = activeTargeting
-    ? activeTargeting.targets
-        .map((ts, i) => ({ ts, i }))
-        .filter(({ ts }) => chosen.every((c, j) => sameTarget(c, ts[j]!)))
+    ? activeTargeting.targets.map((ts, i) => ({ ts, i })).filter(({ ts }) => chosen.every((c, j) => sameTarget(c, ts[j]!)))
     : [];
   const nextOptions: Target[] = [];
   for (const { ts } of remaining) {
     const t = ts[chosen.length];
     if (t && !nextOptions.some((o) => sameTarget(o, t))) nextOptions.push(t);
   }
+  // Targets that aren't on the battlefield (cards in graveyards) are picked from a list.
+  const offBoardOptions = nextOptions
+    .filter((t): t is Extract<Target, { kind: 'card' }> => t.kind === 'card' && s.cards[t.card]?.zone !== 'battlefield')
+    .map((t) => t.card);
 
   const pickTarget = (t: Target) => {
     if (!activeTargeting) return;
     const next = [...chosen, t];
     const done = remaining.find(({ ts }) => ts.length === next.length && ts.every((x, j) => sameTarget(x, next[j]!)));
     if (done) {
-      submit(activeTargeting.choices[done.i]!);
       setTargeting(null);
+      submit(activeTargeting.choices[done.i]!);
       return;
     }
     if (targeting) setTargeting({ ...targeting, chosen: next });
     else setTriggerChosen(next);
   };
 
-  const startCast = (play: Extract<Play, { kind: 'spell' }>) => {
-    const only = play.casts.length === 1 ? play.casts[0]! : null;
-    if (only && (only.targets?.length ?? 0) === 0) {
-      submit([...play.taps, only]);
+  /** Starts doing one play: choose a mode if it has several, then targets if needed. */
+  const startPlay = (play: CardPlay, mode?: number) => {
+    const def = defOf(s.cards[play.card]!.defId);
+    const modes = [...new Set(play.choices.map((c) => c.mode).filter((m): m is number => m !== undefined))];
+    if (mode === undefined && modes.length > 1) {
+      const labels = modeLabels(def.id, def.modes?.length ?? modes.length);
+      setMenu({
+        title: `${def.name}: choose one`,
+        options: modes.map((m) => ({ label: labels[m] ?? `Mode ${m + 1}`, pick: () => startPlay(play, m) })),
+      });
       return;
     }
-    const def = defOf(s.cards[play.card]!.defId);
+    setMenu(null);
+    const choices = play.choices.filter((c) => mode === undefined || c.mode === mode);
+    const only = choices.length === 1 ? choices[0]! : null;
+    if (only && only.targets.length === 0) {
+      submit([...only.taps, only.action]);
+      return;
+    }
     setTargeting({
-      title: `Choose a target for ${def.name}`,
-      choices: play.casts.map((c: CastAction) => [...play.taps, c]),
-      targets: play.casts.map((c) => c.targets ?? []),
+      title: `${play.kind === 'ability' ? play.label : def.name}: choose a target`,
+      choices: choices.map((c) => [...c.taps, c.action]),
+      targets: choices.map((c) => c.targets),
       chosen: [],
+    });
+  };
+
+  /** Clicking a card you can do something with. */
+  const usePlays = (id: InstanceId, cardPlays: CardPlay[]) => {
+    if (cardPlays.length === 1) return startPlay(cardPlays[0]!);
+    const def = defOf(s.cards[id]!.defId);
+    setMenu({
+      title: def.name,
+      options: cardPlays.map((p) => ({
+        label: p.kind === 'spell' ? `${p.label} ${def.name}` : p.kind === 'land' ? `Play ${def.name}` : p.label,
+        pick: () => startPlay(p),
+      })),
     });
   };
 
@@ -183,12 +229,17 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   const attacksOnYou = (view.combat?.attacks ?? []).filter((a) => a.defender === YOU).map((a) => a.attacker);
   const livingOpponents = session.opponents.filter((p) => !view.players[p]!.eliminated);
   const currentDefender = livingOpponents.includes(defender) ? defender : livingOpponents[0]!;
+  const playable = new Set(plays.map((p) => p.card));
+  const elsewhere = [...playable].filter((id) => {
+    const z = s.cards[id]!.zone;
+    return z !== 'hand' && z !== 'battlefield';
+  });
 
   const h: ZoneHandlers = {
     markCard: (id) => {
       const marks: Mark[] = [];
-      if (plays.has(id) && !activeTargeting) marks.push('playable');
-      if (nextOptions.some((t) => t.kind === 'card' && t.card === id)) marks.push('target');
+      if (playable.has(id) && !activeTargeting && !menu) marks.push('playable');
+      if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
       if (canAttackIds.has(id)) marks.push(attackers.has(id) ? 'attacking' : 'can-attack');
       if (view.combat?.attacks.some((a) => a.attacker === id)) marks.push('attacking');
       if (canBlockIds.has(id)) marks.push(blocks.has(id) ? 'blocking' : 'can-block');
@@ -212,15 +263,21 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
       if (attack) return `→ ${attack.defender === YOU ? 'You' : attack.defender}`;
       const blocking = blocks.get(id) ?? view.combat?.blocks.find((b) => b.blocker === id)?.attacker;
       if (blocking) return `Blocks ${cardName(s, blocking)}`;
+      const attachedTo = view.cards[id]?.attachedTo;
+      if (attachedTo) return `⚔ ${cardName(s, attachedTo)}`;
+      const st = view.stats[id];
+      if (st?.cantBeBlocked) return "Can't be blocked";
+      if (st?.mustBeBlocked) return 'Must be blocked';
       return null;
     },
     onCard: (id) => {
       if (!yourMove) return;
+      if (legendChoices.includes(id)) return submit([{ type: 'ChooseLegend', player: YOU, keep: id }]);
       const option = nextOptions.find((t) => t.kind === 'card' && t.card === id);
       if (option) return pickTarget(option);
-      if (activeTargeting) return;
-      const play = plays.get(id);
-      if (play) return play.kind === 'land' ? submit([play.action]) : startCast(play);
+      if (activeTargeting || menu) return;
+      const cardPlays = playsFor(id);
+      if (cardPlays.length > 0) return usePlays(id, cardPlays);
       if (pending.kind === 'declareAttackers' && canAttackIds.has(id)) {
         const next = new Map(attackers);
         if (next.has(id)) next.delete(id);
@@ -235,11 +292,7 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
           if (next.has(id)) next.delete(id);
           else if (pickedAttacker) next.set(id, pickedAttacker);
           else if (attacksOnYou.length === 1) next.set(id, attacksOnYou[0]!);
-          else {
-            setError('Click an attacking creature first, then the creature that blocks it.');
-            window.setTimeout(() => setError(null), 3000);
-            return;
-          }
+          else return showError('Click an attacking creature first, then the creature that blocks it.');
           setBlocks(next);
         }
       }
@@ -251,7 +304,11 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
       if (pending.kind === 'declareAttackers' && pid !== YOU && livingOpponents.includes(pid)) setDefender(pid);
     },
     onHover: setHovered,
+    onZone: (player, zone) => setZoneView({ player, zone }),
   };
+
+  const surveilCard = pending.kind === 'surveil' && pending.player === YOU ? pending.card : null;
+  const legendChoices = yourMove && pending.kind === 'chooseLegend' ? pending.cards : [];
 
   return (
     <div className="game">
@@ -272,9 +329,11 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
           yourMove={yourMove}
           busy={busy}
           targeting={activeTargeting}
+          menu={menu}
           chosen={chosen}
-          onCancelTargeting={() => {
+          onCancel={() => {
             setTargeting(null);
+            setMenu(null);
             setTriggerChosen([]);
           }}
           attackers={attackers}
@@ -286,12 +345,12 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
         />
         <div className="you-bar">
           <PlayerHeader view={view} pid={YOU} h={h} />
-          <Hand view={view} h={h} />
+          <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>
         {error && <div className="toast">{error}</div>}
       </main>
       <aside className="sidebar">
-        <Inspector view={view} id={hovered} />
+        <Inspector view={view} id={hovered ?? surveilCard} />
         <div className="sidebar-controls">
           <label title="Stop at every step instead of passing automatically">
             <input
@@ -311,6 +370,24 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
         </div>
         <GameLog entries={session.log} />
       </aside>
+      {offBoardOptions.length > 0 && (
+        <CardList view={view} title={activeTargeting?.title ?? 'Choose a target'} ids={offBoardOptions} h={h} />
+      )}
+      {surveilCard && view.cards[surveilCard] && (
+        <div className="surveil-card">
+          <div className="surveil-label">Top of your library</div>
+          <CardFace defId={view.cards[surveilCard]!.defId} size="normal" />
+        </div>
+      )}
+      {zoneView && (
+        <CardList
+          view={view}
+          title={`${zoneView.player === YOU ? 'Your' : `${zoneView.player}'s`} ${zoneView.zone}`}
+          ids={[...view.players[zoneView.player]![zoneView.zone]].reverse()}
+          h={h}
+          onClose={() => setZoneView(null)}
+        />
+      )}
       {pending.kind === 'gameOver' && (
         <div className="overlay">
           <div className="overlay-box">
@@ -341,11 +418,12 @@ function PhaseTrack({ view }: { view: GameView }) {
 }
 
 function StackView({ view, onHover }: { view: GameView; onHover: (id: InstanceId | null) => void }) {
-  if (view.stack.length === 0) return null;
+  const items = [...(view.resolving ? [view.resolving] : []), ...[...view.stack].reverse()];
+  if (items.length === 0) return null;
   return (
     <div className="stack">
       <div className="stack-title">Stack</div>
-      {[...view.stack].reverse().map((item, i) => {
+      {items.map((item, i) => {
         const cardId = item.kind === 'spell' ? item.card : item.source;
         const c = view.cards[cardId];
         return (
@@ -364,6 +442,7 @@ function StackView({ view, onHover }: { view: GameView; onHover: (id: InstanceId
               <div className="stack-name">
                 {c ? defOf(c.defId).name : 'A card'}
                 {item.kind === 'ability' && <em> — ability</em>}
+                {item === view.resolving && <em> (resolving)</em>}
               </div>
               <div className="stack-meta">
                 {item.controller === YOU ? 'Yours' : item.controller}
@@ -389,8 +468,9 @@ interface PromptProps {
   yourMove: boolean;
   busy: boolean;
   targeting: Targeting | null;
+  menu: Menu | null;
   chosen: Target[];
-  onCancelTargeting: () => void;
+  onCancel: () => void;
   attackers: Map<InstanceId, PlayerId>;
   canAttackIds: Set<InstanceId>;
   currentDefender: PlayerId;
@@ -409,9 +489,20 @@ function PromptBar(p: PromptProps) {
     text = 'Game over.';
   } else if (!p.yourMove) {
     text = `${pending.player} is thinking…`;
+  } else if (p.menu) {
+    text = `${p.menu.title}:`;
+    buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
   } else if (p.targeting) {
     text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card or player.`;
-    if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancelTargeting }];
+    if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
+  } else if (pending.kind === 'chooseLegend') {
+    text = `Legend rule: you control more than one ${pending.name}. Click the one to keep; the others go to your graveyard.`;
+  } else if (pending.kind === 'surveil') {
+    text = `Surveil: keep ${cardName(s, pending.card)} on top of your library, or put it into your graveyard?`;
+    buttons = [
+      { label: 'Graveyard', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: true }]) },
+      { label: 'Keep on top', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: false }]), primary: true },
+    ];
   } else if (pending.kind === 'declareAttackers') {
     const many = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated).length > 1;
     text = `Declare attackers: click your creatures to attack${many ? ` ${p.currentDefender} (click an opponent to switch)` : ''}.`;
@@ -437,7 +528,7 @@ function PromptBar(p: PromptProps) {
     ];
   } else if (pending.kind === 'decide') {
     const item = s.stack.at(-1)!;
-    const spec = item.kind === 'ability' ? triggerSpec(s, item) : null;
+    const spec = item.kind === 'ability' ? triggerSpec(s, item) : undefined;
     const source = item.kind === 'ability' ? item.source : item.card;
     text = `${cardName(s, source)}: ${spec ? triggerText(spec) : ''}`;
     const taps = planTaps(s, YOU, spec?.cost?.mana) ?? [];
@@ -459,7 +550,7 @@ function PromptBar(p: PromptProps) {
     } else {
       const yours = s.activePlayer === YOU;
       text = yours
-        ? `${stepName(s.step)}: play a land or cast a spell. Glowing cards in your hand are playable.`
+        ? `${stepName(s.step)}: play a land, cast a spell, or use an ability. Glowing cards are playable.`
         : `${s.activePlayer}'s ${stepName(s.step).toLowerCase()}. You can cast instants.`;
       const label = yours && s.step === 'main1' ? 'Go to combat' : yours && s.step === 'main2' ? 'End turn' : 'Pass';
       buttons = [{ label, onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];

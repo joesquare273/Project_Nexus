@@ -30,7 +30,7 @@ function newGame(): GameState {
   return state;
 }
 
-function put(s: GameState, owner: PlayerId, defId: string, zone: Exclude<ZoneName, 'stack' | 'library'> = 'battlefield'): InstanceId {
+function put(s: GameState, owner: PlayerId, defId: string, zone: Exclude<ZoneName, 'stack' | 'library' | 'void'> = 'battlefield'): InstanceId {
   const id = `t${s.nextId++}`;
   s.cards[id] = { id, defId, owner, controller: owner, zone, tapped: false, summoningSick: false, damage: 0, deathtouched: false };
   s.players[owner]![zone].push(id);
@@ -100,22 +100,6 @@ describe('Final Fantasy Starter Kit cards', () => {
     s = act(s, { type: 'CastSpell', player: 'P1', card: ultimecia });
     s = passAll(passAll(s));
     expect(s.cards[blocker]!.tapped).toBe(true);
-  });
-
-  it('unbuilt creatures play as their body; unbuilt noncreature cards cannot be cast', () => {
-    let s = newGame();
-    const pixie = put(s, 'P1', 'il-mheg-pixie', 'hand');
-    const katana = put(s, 'P1', 'samurais-katana', 'hand');
-    s.players.P1!.manaPool.U = 2;
-    s.players.P1!.manaPool.R = 3;
-    expect(applyAction(s, { type: 'CastSpell', player: 'P1', card: katana })).toEqual({
-      ok: false,
-      error: "Samurai's Katana isn't built yet, so it can't be cast.",
-    });
-    s = passAll(act(s, { type: 'CastSpell', player: 'P1', card: pixie }));
-    expect(s.cards[pixie]!.zone).toBe('battlefield');
-    expect(CARD_DEFS['il-mheg-pixie']!.keywords).toEqual(['Flying']);
-    expect(rulesSummary(CARD_DEFS['samurais-katana']!)).toMatch(/not built yet/i);
   });
 
   it('summaries describe the abilities', () => {

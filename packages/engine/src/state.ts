@@ -2,15 +2,16 @@
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
+import { hasFlag, hasKeyword } from './characteristics.ts';
 import {
   MANA_TYPES,
+  type CardDefId,
   type CardDefinition,
   type CardInstance,
   type CardType,
   type GameEvent,
   type GameState,
   type InstanceId,
-  type Keyword,
   type ManaPool,
   type ManaType,
   type PlayerId,
@@ -18,6 +19,8 @@ import {
   type Target,
   type ZoneName,
 } from './types.ts';
+
+export { hasKeyword } from './characteristics.ts';
 
 export interface Ctx {
   s: GameState;
@@ -51,16 +54,29 @@ export function cloneState(s: GameState): GameState {
       graveyard: [...p.graveyard],
       exile: [...p.exile],
       manaPool: { ...p.manaPool },
+      equipmentMana: { ...p.equipmentMana },
     };
   }
+  const copyItem = <T extends GameState['stack'][number]>(item: T): T => ({
+    ...item,
+    targets: item.targets.map((t) => ({ ...t })),
+  });
   return {
     ...s,
     cards,
     players,
     turnOrder: [...s.turnOrder],
-    stack: s.stack.map((item) => ({ ...item, targets: item.targets.map((t) => ({ ...t })) })),
+    stack: s.stack.map(copyItem),
+    resolving: s.resolving && {
+      ...s.resolving,
+      item: copyItem(s.resolving.item),
+      ...(s.resolving.previousTarget ? { previousTarget: { ...s.resolving.previousTarget } } : {}),
+      createdTokens: [...s.resolving.createdTokens],
+      surveilQueue: [...s.resolving.surveilQueue],
+    },
     triggerQueue: s.triggerQueue.map((t) => ({ ...t })),
     triggeredThisTurn: [...s.triggeredThisTurn],
+    temporaryEffects: s.temporaryEffects.map((e) => ({ ...e })),
     combat: s.combat && {
       attacks: s.combat.attacks.map((a) => ({ ...a })),
       blocks: s.combat.blocks.map((b) => ({ ...b })),
@@ -98,10 +114,6 @@ export function hasType(s: GameState, c: CardInstance, type: CardType): boolean 
   return defOf(s, c).types.includes(type);
 }
 
-export function hasKeyword(s: GameState, c: CardInstance, keyword: Keyword): boolean {
-  return defOf(s, c).keywords?.includes(keyword) ?? false;
-}
-
 export function isCreatureOnBattlefield(s: GameState, c: CardInstance | undefined): c is CardInstance {
   return !!c && c.zone === 'battlefield' && hasType(s, c, 'creature');
 }
@@ -137,9 +149,9 @@ export function newId(s: GameState, prefix: string): string {
   return `${prefix}${s.nextId++}`;
 }
 
-/** The list that holds a card in the given zone. The stack is shared, not per player. */
+/** The list that holds a card in the given zone. The stack and the void aren't per player. */
 function zoneList(s: GameState, owner: PlayerId, zone: ZoneName): InstanceId[] | null {
-  if (zone === 'stack') return null;
+  if (zone === 'stack' || zone === 'void') return null;
   return player(s, owner)[zone];
 }
 
@@ -149,26 +161,32 @@ function zoneList(s: GameState, owner: PlayerId, zone: ZoneName): InstanceId[] |
  * resets. Emits CardMoved unless `silent` is set (draws emit CardDrawn).
  */
 export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean } = {}): void {
-  const c = card(ctx.s, id);
+  const s = ctx.s;
+  const c = card(s, id);
   const from = c.zone;
-  const fromList = zoneList(ctx.s, c.owner, from);
+  const fromList = zoneList(s, c.owner, from);
   if (fromList) {
     const i = fromList.indexOf(id);
     if (i >= 0) fromList.splice(i, 1);
   }
-  const toList = zoneList(ctx.s, c.owner, to);
+  const toList = zoneList(s, c.owner, to);
   if (toList) toList.push(id);
   const controller = c.controller;
-  if (ctx.s.triggeredThisTurn.length > 0) {
+  if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
-    ctx.s.triggeredThisTurn = ctx.s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
+    s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
   }
+  if (from === 'battlefield' && to === 'graveyard' && hasType(s, c, 'creature')) s.creaturesDiedThisTurn += 1;
   c.zone = to;
   c.tapped = false;
   c.summoningSick = false;
   c.damage = 0;
   c.deathtouched = false;
   c.controller = c.owner;
+  delete c.counters;
+  delete c.attachedTo;
+  delete c.exiledUntilLeaves;
+  delete c.playableFromExile;
   if (!opts.silent) {
     ctx.ev.push({
       type: 'CardMoved',
@@ -179,6 +197,30 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       from,
       to,
     });
+  }
+  if (from === 'battlefield') leftBattlefield(ctx, id);
+}
+
+/** Things that happen the moment a permanent leaves the battlefield. */
+function leftBattlefield(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s;
+  if (s.temporaryEffects.length > 0) s.temporaryEffects = s.temporaryEffects.filter((e) => e.affected !== id);
+  for (const other of battlefield(s)) {
+    if (other.attachedTo !== id) continue;
+    // Equipment stays on the battlefield, unattached (rule 301.5c).
+    delete other.attachedTo;
+    ctx.ev.push({ type: 'Attached', equipment: other.id, creature: null });
+  }
+  // "Exile ... until this leaves the battlefield": the exiled card comes back (rule 610.3).
+  for (const pid of s.turnOrder) {
+    for (const exiled of [...s.players[pid]!.exile]) {
+      const e = s.cards[exiled]!;
+      if (e.exiledUntilLeaves !== id) continue;
+      if (s.players[e.owner]!.eliminated) continue;
+      moveCard(ctx, exiled, 'battlefield');
+      e.summoningSick = true;
+      if (defOf(s, e).entersTapped) e.tapped = true;
+    }
   }
 }
 
@@ -225,21 +267,82 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (hasKeyword(s, source, 'Lifelink')) changeLife(ctx, source.controller, amount);
 }
 
+/**
+ * Puts a permanent into its owner's graveyard from the battlefield ("dies"
+ * for creatures), unless something says to exile it instead (rule 614).
+ */
+export function putIntoGraveyard(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s;
+  const c = s.cards[id]!;
+  if (hasFlag(s, c, 'exileIfWouldDie')) {
+    moveCard(ctx, id, 'exile');
+    return;
+  }
+  if (hasType(s, c, 'creature')) ctx.ev.push({ type: 'CreatureDied', card: id, defId: c.defId, owner: c.owner });
+  moveCard(ctx, id, 'graveyard');
+}
+
 /** Destroys a permanent unless it is indestructible. */
 export function destroy(ctx: Ctx, id: InstanceId): void {
   const c = ctx.s.cards[id]!;
   if (c.zone !== 'battlefield' || hasKeyword(ctx.s, c, 'Indestructible')) return;
-  if (hasType(ctx.s, c, 'creature')) ctx.ev.push({ type: 'CreatureDied', card: id, defId: c.defId, owner: c.owner });
-  else ctx.ev.push({ type: 'PermanentDestroyed', card: id, defId: c.defId, owner: c.owner });
-  moveCard(ctx, id, 'graveyard');
+  if (!hasType(ctx.s, c, 'creature')) ctx.ev.push({ type: 'PermanentDestroyed', card: id, defId: c.defId, owner: c.owner });
+  putIntoGraveyard(ctx, id);
 }
 
-export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId): void {
-  player(ctx.s, playerId).manaPool[mana] += 1;
+/** Sacrifice: put it into its owner's graveyard; indestructible doesn't help (rule 701.17). */
+export function sacrifice(ctx: Ctx, id: InstanceId): void {
+  putIntoGraveyard(ctx, id);
+}
+
+export function addCounters(ctx: Ctx, id: InstanceId, amount: number): void {
+  const c = ctx.s.cards[id]!;
+  if (c.zone !== 'battlefield' || amount <= 0) return;
+  c.counters = (c.counters ?? 0) + amount;
+  ctx.ev.push({ type: 'CountersAdded', card: id, amount });
+}
+
+/** Creates a token on the battlefield under `controller`'s control (rule 111). */
+export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId): InstanceId {
+  const s = ctx.s;
+  if (!s.cardDefs[defId]) throw new Error(`Missing token definition "${defId}".`);
+  const id = newId(s, 'k');
+  s.cards[id] = {
+    id,
+    defId,
+    owner: controller,
+    controller,
+    zone: 'battlefield',
+    tapped: !!s.cardDefs[defId]!.entersTapped,
+    summoningSick: true,
+    damage: 0,
+    deathtouched: false,
+    isToken: true,
+  };
+  player(s, controller).battlefield.push(id);
+  ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
+  return id;
+}
+
+export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): void {
+  const e = ctx.s.cards[equipment]!;
+  if (e.zone !== 'battlefield' || !isCreatureOnBattlefield(ctx.s, ctx.s.cards[creature])) return;
+  if (e.attachedTo === creature) return;
+  e.attachedTo = creature;
+  ctx.ev.push({ type: 'Attached', equipment, creature });
+}
+
+export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, onlyForEquipment = false): void {
+  const p = player(ctx.s, playerId);
+  if (onlyForEquipment) p.equipmentMana[mana] += 1;
+  else p.manaPool[mana] += 1;
   ctx.ev.push({ type: 'ManaAdded', player: playerId, mana, source });
 }
 
 /** Mana empties from every pool at the end of each step and phase. */
 export function emptyAllManaPools(s: GameState): void {
-  for (const id of s.turnOrder) s.players[id]!.manaPool = emptyManaPool();
+  for (const id of s.turnOrder) {
+    s.players[id]!.manaPool = emptyManaPool();
+    s.players[id]!.equipmentMana = emptyManaPool();
+  }
 }

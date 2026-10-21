@@ -37,6 +37,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
     for (const id of p.deck) {
       const def = cardDefs[id];
       if (!def) throw new Error(`Unknown card "${id}".`);
+      if (def.token) throw new Error(`"${def.name}" is a token and can't be in a deck.`);
       parseManaCost(def.manaCost); // Throws on unsupported symbols.
     }
     if (!setup.skipDeckValidation) {
@@ -56,8 +57,11 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
     turnNumber: 1,
     step: 'untap',
     stack: [],
+    resolving: null,
     triggerQueue: [],
     triggeredThisTurn: [],
+    temporaryEffects: [],
+    creaturesDiedThisTurn: 0,
     combat: null,
     pending: { kind: 'priority', player: turnOrder[0]!, passes: 0 },
     rngState: seedToState(setup.seed),
@@ -75,6 +79,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       graveyard: [],
       exile: [],
       manaPool: emptyManaPool(),
+      equipmentMana: emptyManaPool(),
       landsPlayedThisTurn: 0,
       eliminated: false,
       drewFromEmptyLibrary: false,

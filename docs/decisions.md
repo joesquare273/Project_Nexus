@@ -66,6 +66,24 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
   decision. "You may" and optional costs are a `decide` decision when the
   ability resolves; the player can tap lands for mana while deciding.
 
+## 2026-10-21: Both Starter Kits complete (K2-K6)
+
+- One characteristics layer (`engine/src/characteristics.ts`) computes power,
+  toughness, keywords and subtypes from the card, static abilities
+  (including Equipment), "until end of turn" effects and +1/+1 counters.
+  Combat, state-based actions, the AI and the board all read it; the
+  browser gets the results in `GameView.stats`.
+- Cards are described with a small set of building blocks in JSON:
+  effects with counted amounts and filters, triggers, activated abilities,
+  statics, equip, flashback, landcycling, modes and cost reductions.
+  Every kit card is built from these; there is no per-card code.
+- Spells and abilities resolve step by step and can pause for a choice
+  (surveil), stored in `GameState.resolving`.
+- Tokens are defined in `packages/cards/data/tokens.json` using the exact
+  token printing each card lists on Scryfall. `npm run scryfall` checks
+  that every token a card makes is defined. Tokens that leave the
+  battlefield go to a `void` zone (they cease to exist).
+
 ## Known rules simplifications (to revisit)
 
 | Area | Engine today | Real rule |
@@ -81,4 +99,7 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | "One or more" batches | One batch is everything that happened in one action | One batch per simultaneous event |
 | Leaves-the-battlefield look-back | Anything that left the battlefield during the action sees every death in it | Only things that left at the same time (rule 603.10a) |
 | Triggers during cleanup | None of the supported triggers can happen then, so cleanup never gives priority | Rule 514.3a |
-| Legend rule | Not implemented; testbed decks run one copy of each legendary card | Rule 704.5j |
+| Beatrix, Loyal General | "You may attach any number of Equipment": all of them or none | Any subset |
+| Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
+| Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
+| Library search | Takes the first matching card | The player chooses which matching card |

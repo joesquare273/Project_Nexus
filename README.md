@@ -16,23 +16,21 @@ npm run dev
 ```
 
 then open http://localhost:5173 to play on the browser board. Games use the
-exact Final Fantasy Starter Kit decks; cards not fully built yet are marked
-"not built yet".
+exact Final Fantasy Starter Kit decks, with every card working as printed.
 
 ## Status
 
 - **Engine** (`packages/engine`): a pure, deterministic function
   `(state, action) -> (newState, events)`, designed for N players. It covers
   turn steps, priority around the table, the stack, lands and mana, creatures,
-  instants and sorceries, combat where each attacker picks a defending player,
-  11 combat keywords, triggered abilities (with target choices and "you may"
-  decisions), and elimination where the game continues for everyone else.
+  instants and sorceries, artifacts and Equipment, combat where each attacker
+  picks a defending player, 11 combat keywords, triggered and activated
+  abilities, tokens, counters, continuous effects, flashback, surveil,
+  modal spells, and elimination where the game continues for everyone else.
   Hidden information is filtered per player.
 - **Cards** (`packages/cards`): every card in both Final Fantasy Starter
-  Kits, as JSON validated at load time. Lands, Sephiroth's Intervention, Al
-  Bhed Salvagers, G'raha Tia, Shambling Cie'th and Ultimecia, Temporal Threat
-  are fully built; the rest are marked "not built yet" (creatures play as
-  their body and keywords, other cards can't be cast yet).
+  Kits plus the tokens they make, as JSON validated at load time. All of
+  them are fully built and tested against their Oracle text.
 - **Client** (`packages/client`): the browser game board, with real card
   images from Scryfall.
 - **Bots** (`packages/bots`): a basic AI, a random bot for fuzzing, a

@@ -32,14 +32,34 @@ export function checkInvariants(s: GameState): string[] {
     note(item.card);
     if (s.cards[item.card]?.zone !== 'stack') problems.push(`stack item ${item.id} card is not on the stack`);
   }
+  const resolving = s.resolving?.item;
+  if (resolving?.kind === 'spell') {
+    note(resolving.card);
+    if (s.cards[resolving.card]?.zone !== 'stack') problems.push(`resolving spell ${resolving.id} card is not on the stack`);
+  }
   for (const t of s.triggerQueue) {
     if (s.players[t.controller]!.eliminated) problems.push(`queued trigger from ${t.source} belongs to an eliminated player`);
   }
   if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) problems.push('priority given with triggers still queued');
   if (s.pending.kind === 'decide' && s.stack.at(-1)?.id !== s.pending.item) problems.push('deciding on an ability not on top');
+  if (s.pending.kind === 'surveil' && !s.resolving) problems.push('surveilling with nothing resolving');
+  if (s.pending.kind === 'priority' && s.resolving) problems.push('priority given while something is still resolving');
+  for (const pid of s.turnOrder) {
+    const p = s.players[pid]!;
+    for (const t of MANA_TYPES) if (p.equipmentMana[t] < 0) problems.push(`${pid} has negative Equipment-only ${t} mana`);
+  }
   for (const c of Object.values(s.cards)) {
     const n = seen.get(c.id) ?? 0;
+    // Tokens that left the battlefield ceased to exist and aren't in any zone.
+    if (c.zone === 'void') {
+      if (!c.isToken) problems.push(`card ${c.id} is in the void; only tokens cease to exist`);
+      if (n !== 0) problems.push(`${c.id} ceased to exist but is still listed`);
+      continue;
+    }
     if (n !== 1) problems.push(`${c.id} appears in ${n} zones`);
+    if (c.isToken && c.zone !== 'battlefield') problems.push(`token ${c.id} is in ${c.zone}`);
+    if (c.attachedTo && s.cards[c.attachedTo]?.zone !== 'battlefield') problems.push(`${c.id} is attached to something off the battlefield`);
+    if ((c.counters ?? 0) < 0) problems.push(`${c.id} has negative counters`);
     if (c.damage < 0) problems.push(`${c.id} has negative damage`);
     if (c.zone !== 'battlefield' && (c.tapped || c.damage > 0)) problems.push(`${c.id} carries battlefield state in ${c.zone}`);
   }

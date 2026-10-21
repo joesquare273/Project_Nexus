@@ -1,19 +1,28 @@
 // A basic AI opponent. It is deliberately simple and readable rather than
-// strong: play a land, cast the biggest thing it can afford, aim removal at
-// the biggest threat, attack when it's safe or lethal, and block to trade
-// up or to survive.
+// strong: play a land, cast or activate whatever scores best, aim removal at
+// the biggest threat and buffs at its own best creature, attack when it's
+// safe or lethal, and block to trade up or to survive.
 
 import {
   CHOSEN_TARGET_KINDS,
-  canEverCast,
+  abilityOptions,
+  activatedAbilities,
+  amountOf,
+  blockProblem,
+  hasKeyword,
+  isEquipment,
   manaValue,
-  parseManaCost,
+  powerOf,
+  spellEffects,
+  spellOptions,
+  toughnessOf,
   triggerSpec,
   type Action,
   type Attack,
   type Block,
   type CardDefinition,
   type CardInstance,
+  type CostedOption,
   type EffectSpec,
   type GameState,
   type InstanceId,
@@ -24,9 +33,9 @@ import { planTaps, tapActions } from './mana.ts';
 import type { Bot } from './index.ts';
 
 const def = (s: GameState, c: CardInstance): CardDefinition => s.cardDefs[c.defId]!;
-const power = (s: GameState, c: CardInstance) => def(s, c).power ?? 0;
-const toughness = (s: GameState, c: CardInstance) => def(s, c).toughness ?? 0;
-const has = (s: GameState, c: CardInstance, k: string) => def(s, c).keywords?.includes(k as never) ?? false;
+const power = (s: GameState, c: CardInstance) => powerOf(s, c);
+const toughness = (s: GameState, c: CardInstance) => toughnessOf(s, c);
+const has = (s: GameState, c: CardInstance, k: Parameters<typeof hasKeyword>[2]) => hasKeyword(s, c, k);
 
 function opponents(s: GameState, me: PlayerId): PlayerId[] {
   return s.turnOrder.filter((id) => id !== me && !s.players[id]!.eliminated);
@@ -43,6 +52,7 @@ function weakestOpponent(s: GameState, me: PlayerId): PlayerId {
 /** Would `blocker` be able to block `attacker`? Mirrors the engine's evasion rules. */
 function canBlock(s: GameState, blocker: CardInstance, attacker: CardInstance): boolean {
   if (blocker.tapped) return false;
+  if (s.temporaryEffects.some((e) => e.affected === attacker.id && e.flags?.includes('cantBeBlocked'))) return false;
   if (has(s, attacker, 'Flying') && !has(s, blocker, 'Flying') && !has(s, blocker, 'Reach')) return false;
   return true;
 }
@@ -55,89 +65,131 @@ function kills(s: GameState, a: CardInstance, b: CardInstance): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Targets
+// Scoring spells and abilities
 // ---------------------------------------------------------------------------
 
-/** Chooses a target for one effect, or null if there's no good one. */
-function chooseTarget(s: GameState, me: PlayerId, effect: NonNullable<CardDefinition['effects']>[number]): Target | null {
-  const enemyCreatures = opponents(s, me).flatMap((p) => creatures(s, p));
-  const amount = effect.amount ?? 0;
-  if (effect.effect === 'Destroy') {
-    const best = enemyCreatures
-      .filter((c) => !has(s, c, 'Indestructible'))
-      .sort((a, b) => power(s, b) - power(s, a))[0];
-    return best ? { kind: 'card', card: best.id } : null;
+/** Roughly how much a permanent is worth to whoever controls it. */
+function value(s: GameState, c: CardInstance): number {
+  const d = def(s, c);
+  if (d.types.includes('creature')) return 1 + power(s, c) + toughness(s, c) / 2;
+  if (d.types.includes('land')) return 1;
+  return 2;
+}
+
+/** Effects that hurt whatever they target; the rest help it. */
+const HARMFUL = new Set([
+  'DealDamage',
+  'Destroy',
+  'Exile',
+  'Tap',
+  'ExileUntilSourceLeaves',
+  'LoseLife',
+]);
+
+/** How good it is for `me` to apply `effect` to `target`. */
+function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Target): number {
+  const amount = amountOf(s, effect.amount, me);
+  const harmful =
+    HARMFUL.has(effect.effect) || (effect.effect === 'ModifyPT' && (effect.toughness ?? 0) + (effect.power ?? 0) < 0);
+  if (target.kind === 'player') {
+    const mine = target.player === me;
+    if (!harmful) return mine ? 2 : -2;
+    if (mine) return -10;
+    const life = s.players[target.player]!.life;
+    return effect.effect === 'DealDamage' && amount >= life ? 50 : amount / 2 + (20 - life) / 10;
   }
+  const c = s.cards[target.card]!;
+  const mine = (c.zone === 'battlefield' ? c.controller : c.owner) === me;
+  if (effect.effect === 'CreateTokenCopy') return value(s, c);
+  if (effect.effect === 'ReturnToBattlefield') return mine ? value(s, c) : -5;
+  if (!harmful) return mine ? value(s, c) : -value(s, c);
+  if (mine) return -2 * value(s, c);
   if (effect.effect === 'DealDamage') {
-    const victim = opponents(s, me).find((p) => s.players[p]!.life <= amount);
-    if (victim && effect.target === 'AnyTarget') return { kind: 'player', player: victim };
-    const killable = enemyCreatures
-      .filter((c) => !has(s, c, 'Indestructible') && amount + c.damage >= toughness(s, c))
-      .sort((a, b) => power(s, b) - power(s, a))[0];
-    if (killable) return { kind: 'card', card: killable.id };
-    if (effect.target === 'AnyTarget') return { kind: 'player', player: weakestOpponent(s, me) };
-    return null;
+    // Damage only matters if it kills.
+    const dies = !has(s, c, 'Indestructible') && amount + c.damage >= toughness(s, c);
+    return dies ? value(s, c) + 1 : 0;
   }
-  if (effect.target === 'TargetOpponent') return { kind: 'player', player: weakestOpponent(s, me) };
-  // Draw and life gain help the caster.
-  return effect.target === 'TargetPlayer' ? { kind: 'player', player: me } : null;
+  if (effect.effect === 'Destroy' && has(s, c, 'Indestructible')) return 0;
+  if (effect.effect === 'Tap') return c.tapped ? 0 : value(s, c) / 3;
+  if (effect.effect === 'ModifyPT') return toughness(s, c) + (effect.toughness ?? 0) <= 0 ? value(s, c) + 1 : 1;
+  return value(s, c) + 1;
 }
 
-function chooseTargets(s: GameState, me: PlayerId, effects: readonly EffectSpec[] | undefined): Target[] | null {
-  const targets: Target[] = [];
-  for (const effect of effects ?? []) {
-    if (!CHOSEN_TARGET_KINDS.includes(effect.target)) continue;
-    const t = chooseTarget(s, me, effect);
-    if (!t) return null;
-    targets.push(t);
+/** A spell or ability's score for `me`: positive means worth doing. */
+function scoreOption(s: GameState, me: PlayerId, o: CostedOption): number {
+  const a = o.action;
+  const card = s.cards[a.card]!;
+  const d = def(s, card);
+  const targets = a.targets ?? [];
+  let effects: EffectSpec[];
+  if (a.type === 'CastSpell') {
+    if (d.types.includes('creature') || d.types.includes('artifact') || d.types.includes('enchantment')) {
+      // Permanents: bigger is better; Equipment needs creatures to be worth much (Job select brings one).
+      return 2 + manaValue(o.cost) + (isEquipment(s, card) ? 1 : 0);
+    }
+    effects = spellEffects(d, a.mode);
+  } else {
+    effects = activatedAbilities(d)[a.ability]!.effects;
+    if (effects.some((e) => e.effect === 'Attach')) return scoreEquip(s, me, card, targets[0]);
+    if (effects.some((e) => e.effect === 'SearchLibraryToHand')) return needsLand(s, me) ? 3 : -1;
   }
-  return targets;
+  let score = 0;
+  let i = 0;
+  for (const e of effects) {
+    if (CHOSEN_TARGET_KINDS.includes(e.target)) {
+      score += scoreTarget(s, me, e, targets[i++]!);
+      continue;
+    }
+    const amount = amountOf(s, e.amount, me);
+    if (e.effect === 'GainLife') score += s.players[me]!.life <= 12 ? amount / 2 : 0.1;
+    if (e.effect === 'DrawCards' && e.target === 'You') score += amount * 1.5;
+    if (e.effect === 'CreateToken') score += amount * 2;
+    if (e.effect === 'AddCounters' && e.target === 'EachCreatureYouControl') score += creatures(s, me).length;
+    if (e.effect === 'Surveil' || e.effect === 'Mill') score += 0.2;
+    if (e.effect === 'ModifyPT' && e.target === 'EachOpponentCreature') score += opponents(s, me).length;
+  }
+  return score;
 }
 
-// ---------------------------------------------------------------------------
-// Decisions
-// ---------------------------------------------------------------------------
+/** Equip is worth it when it moves gear onto a better creature. */
+function scoreEquip(s: GameState, me: PlayerId, equipment: CardInstance, target: Target | undefined): number {
+  if (target?.kind !== 'card') return -1;
+  const creature = s.cards[target.card]!;
+  const current = equipment.attachedTo ? s.cards[equipment.attachedTo] : undefined;
+  if (current?.id === creature.id) return -1;
+  const gain = value(s, creature) - (current ? value(s, current) + 2 : 0);
+  return creature.controller === me ? gain : -1;
+}
 
-function isWorthCasting(s: GameState, me: PlayerId, card: CardDefinition): boolean {
-  const effects = card.effects ?? [];
-  if (effects.some((e) => e.effect === 'GainLife') && effects.every((e) => e.effect === 'GainLife')) {
-    return s.players[me]!.life <= 12;
-  }
-  const lifeCost = effects.filter((e) => e.effect === 'LoseLife' && e.target === 'You').reduce((n, e) => n + (e.amount ?? 0), 0);
-  if (lifeCost > 0 && s.players[me]!.life <= lifeCost + 3) return false;
-  if (effects.some((e) => e.target === 'EachPlayer' && e.effect === 'DealDamage')) {
-    return opponents(s, me).every((p) => s.players[p]!.life < s.players[me]!.life);
-  }
-  return true;
+function needsLand(s: GameState, me: PlayerId): boolean {
+  const hand = s.players[me]!.hand.map((id) => def(s, s.cards[id]!));
+  const lands = s.players[me]!.battlefield.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
+  return lands < 6 && !hand.some((d) => d.types.includes('land'));
 }
 
 /**
- * The next action toward casting the best spell available now: tap a land,
- * or cast once the pool can pay. Returns null if nothing is worth casting.
+ * The next action toward the best spell or ability available now: tap a
+ * mana source, or cast/activate once the pool can pay. Null if nothing is
+ * worth doing.
  */
-function castStep(s: GameState, me: PlayerId, legal: Action[]): Action | null {
-  const sorcerySpeed =
-    s.activePlayer === me && (s.step === 'main1' || s.step === 'main2') && s.stack.length === 0;
-  const hand = s.players[me]!.hand.map((id) => s.cards[id]!);
-  const candidates = hand
-    .map((c) => ({ c, d: def(s, c) }))
-    .filter(({ d }) => canEverCast(d))
-    .filter(({ d }) => sorcerySpeed || d.types.includes('instant') || d.keywords?.includes('Flash'))
-    .filter(({ d }) => isWorthCasting(s, me, d))
-    .sort((a, b) => manaValue(parseManaCost(b.d.manaCost)) - manaValue(parseManaCost(a.d.manaCost)));
-
-  for (const { c, d } of candidates) {
-    const targets = chooseTargets(s, me, d.effects);
-    if (!targets) continue;
-    const taps = planTaps(s, me, d.manaCost);
+function bestPlay(s: GameState, me: PlayerId, legal: Action[]): Action | null {
+  const options = [...spellOptions(s, me), ...abilityOptions(s, me)]
+    .map((o) => ({ o, score: scoreOption(s, me, o) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || manaValue(b.o.cost) - manaValue(a.o.cost));
+  for (const { o } of options) {
+    const taps = planTaps(s, me, o.cost, { forEquipment: o.forEquipment });
     if (!taps) continue;
     if (taps.length > 0) return tapActions(me, taps)[0]!;
-    const cast: Action = { type: 'CastSpell', player: me, card: c.id, targets };
-    // Only return casts the engine agrees are legal right now.
-    if (legal.some((a) => a.type === 'CastSpell' && a.card === c.id)) return cast;
+    // Only return actions the engine agrees are legal right now.
+    if (legal.some((a) => JSON.stringify(a) === JSON.stringify(o.action))) return o.action;
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Combat
+// ---------------------------------------------------------------------------
 
 function chooseAttacks(s: GameState, me: PlayerId): Attack[] {
   const defender = weakestOpponent(s, me);
@@ -193,30 +245,54 @@ function chooseBlocks(s: GameState, me: PlayerId): Block[] {
   return blocks;
 }
 
-/** Aims a trigger the same way as a spell, falling back to the first legal choice. */
+// ---------------------------------------------------------------------------
+// Other decisions
+// ---------------------------------------------------------------------------
+
+/** Aims a trigger by scoring each legal choice. */
 function chooseTriggerTargets(s: GameState, me: PlayerId, legal: Action[]): Action {
   const t = s.triggerQueue[0]!;
-  const effects = s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!.effects;
-  const wanted = chooseTargets(s, me, effects);
-  const same = (a: Target, b: Target) => JSON.stringify(a) === JSON.stringify(b);
-  const match = legal.find(
-    (a) => a.type === 'ChooseTargets' && wanted !== null && a.targets.every((t, i) => same(t, wanted[i]!)),
+  const effects = s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!.effects.filter((e) =>
+    CHOSEN_TARGET_KINDS.includes(e.target),
   );
-  return match ?? legal[0]!;
+  const score = (a: Action) =>
+    a.type === 'ChooseTargets' ? a.targets.reduce((n, target, i) => n + scoreTarget(s, me, effects[i]!, target), 0) : -1e9;
+  return [...legal].sort((a, b) => score(b) - score(a))[0]!;
 }
 
 /**
- * "You may" abilities in the supported cards are all upsides, so say yes when
- * the cost is affordable: tap lands for it first, and keep at least 5 life.
+ * "You may" abilities in the kits are upsides, so say yes when the cost is
+ * affordable: tap for it first, and keep at least 5 life.
  */
 function decideOptional(s: GameState, me: PlayerId, legal: Action[]): Action {
   const item = s.stack.at(-1)!;
-  const cost = item.kind === 'ability' ? triggerSpec(s, item).cost : undefined;
+  const cost = item.kind === 'ability' ? triggerSpec(s, item)?.cost : undefined;
   const no: Action = { type: 'Decide', player: me, accept: false };
   if (cost?.life !== undefined && s.players[me]!.life - cost.life < 5) return no;
   if (legal.some((a) => a.type === 'Decide' && a.accept)) return { type: 'Decide', player: me, accept: true };
   const taps = planTaps(s, me, cost?.mana);
   return taps && taps.length > 0 ? tapActions(me, taps)[0]! : no;
+}
+
+/**
+ * Legend rule: keep the copy that's worth the most right now, counting
+ * +1/+1 counters, Equipment and other buffs (they're in its current stats).
+ */
+function chooseLegendToKeep(s: GameState, me: PlayerId, cards: InstanceId[]): Action {
+  const worth = (id: InstanceId) => {
+    const c = s.cards[id]!;
+    const gear = s.players[me]!.battlefield.filter((e) => s.cards[e]!.attachedTo === id).length;
+    return value(s, c) + gear * 2 + (c.tapped ? 0 : 0.5) + (c.summoningSick ? 0 : 0.5);
+  };
+  const keep = [...cards].sort((a, b) => worth(b) - worth(a))[0]!;
+  return { type: 'ChooseLegend', player: me, keep };
+}
+
+/** Surveil: bin extra lands once there are plenty; keep everything else. */
+function chooseSurveil(s: GameState, me: PlayerId, card: InstanceId): Action {
+  const isLand = def(s, s.cards[card]!).types.includes('land');
+  const lands = s.players[me]!.battlefield.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
+  return { type: 'Surveil', player: me, toGraveyard: isLand && lands >= 5 };
 }
 
 /** The basic AI. `seed` is accepted for symmetry with other bots; this one is deterministic. */
@@ -227,10 +303,15 @@ export function basicAi(_seed = 0): Bot {
       return { type: 'DeclareAttackers', player: pending.player, attacks: chooseAttacks(s, pending.player) };
     }
     if (pending.kind === 'declareBlockers') {
-      return { type: 'DeclareBlockers', player: pending.player, blocks: chooseBlocks(s, pending.player) };
+      const blocks = chooseBlocks(s, pending.player);
+      // Fall back to a legal declaration if a "must be blocked" requirement isn't met.
+      if (!blockProblem(s, pending.player, blocks)) return { type: 'DeclareBlockers', player: pending.player, blocks };
+      return legal.at(-1)!;
     }
     if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
+    if (pending.kind === 'surveil') return chooseSurveil(s, pending.player, pending.card);
+    if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;
 
@@ -240,6 +321,6 @@ export function basicAi(_seed = 0): Bot {
       const untapped = lands.find((a) => !s.cardDefs[s.cards[a.card]!.defId]!.entersTapped);
       return untapped ?? lands[0]!;
     }
-    return castStep(s, me, legal) ?? { type: 'PassPriority', player: me };
+    return bestPlay(s, me, legal) ?? { type: 'PassPriority', player: me };
   };
 }

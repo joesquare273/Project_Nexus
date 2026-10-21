@@ -39,7 +39,9 @@ const BASIC_LAND_SET = 'fin';
 type Identifier = { set: string; collector_number: string } | { name: string; set?: string };
 
 interface ScryfallCard {
+  id: string;
   name: string;
+  all_parts?: { id: string; component: string; name: string }[];
   oracle_text?: string;
   type_line: string;
   set: string;
@@ -86,6 +88,10 @@ function toInfo(card: ScryfallCard): ScryfallInfo {
       artCrop: card.image_uris.art_crop,
     },
     scryfallUri: card.scryfall_uri,
+    scryfallId: card.id,
+    relatedTokens: (card.all_parts ?? [])
+      .filter((p) => p.component === 'token')
+      .map((p) => ({ name: p.name, scryfallId: p.id })),
   };
 }
 
@@ -144,8 +150,37 @@ for (const def of CARDS) {
   }
 }
 
+/**
+ * Every token a card makes (Scryfall's related parts) should be defined in
+ * tokens.json with that exact printing. Many tokens share a name, so this
+ * compares Scryfall ids, not names.
+ */
+function checkTokens(): void {
+  const defined = new Map<string, string>();
+  for (const def of CARDS) {
+    const id = saved[def.id]?.scryfallId;
+    if (def.token && id) defined.set(id, def.id);
+  }
+  const problems: string[] = [];
+  for (const def of CARDS) {
+    // A token's own list names other cards' tokens, so only real cards count.
+    if (def.token) continue;
+    for (const t of saved[def.id]?.relatedTokens ?? []) {
+      // The "Copy" helper card just marks a token copy of something else.
+      if (t.name === 'Copy') continue;
+      if (!defined.has(t.scryfallId)) problems.push(`${def.name} makes a ${t.name} token (Scryfall id ${t.scryfallId}) that tokens.json doesn't define.`);
+    }
+  }
+  if (problems.length > 0) {
+    console.error(`\nMissing tokens:\n  ${problems.join('\n  ')}`);
+    process.exit(1);
+  }
+  console.log('Every token the cards make is defined in tokens.json.');
+}
+
 if (wanted.length === 0) {
   console.log('Every real card is already saved. Use --refresh to fetch them all again.');
+  checkTokens();
   process.exit(0);
 }
 
@@ -173,3 +208,4 @@ if (missing.length > 0) {
   console.error(`Not found on Scryfall: ${missing.join(', ')}`);
   process.exit(1);
 }
+checkTokens();

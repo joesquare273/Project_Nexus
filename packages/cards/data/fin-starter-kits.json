@@ -9,112 +9,80 @@
           "count": 1,
           "set": "fin",
           "number": "3",
-          "implemented": false,
-          "needs": [
-            "count-based-pt"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Barret Wallace",
           "count": 1,
           "set": "fin",
           "number": "129",
-          "implemented": false,
-          "needs": [
-            "count-based-amounts"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Beatrix, Loyal General",
           "count": 1,
           "set": "fin",
           "number": "554",
-          "implemented": false,
-          "needs": [
-            "equipment"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cloud, Planet's Champion",
           "count": 1,
           "set": "fin",
           "number": "552",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "conditional-keywords",
-            "cost-modification"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cloudbound Moogle",
           "count": 2,
           "set": "fin",
           "number": "11",
-          "implemented": false,
-          "needs": [
-            "counters",
-            "landcycling"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Coeurl",
           "count": 2,
           "set": "fin",
           "number": "12",
-          "implemented": false,
-          "needs": [
-            "activated-abilities",
-            "targeted-tap"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dragoon's Lance",
           "count": 1,
           "set": "fin",
           "number": "17",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "job-select",
-            "tokens",
-            "static-buffs",
-            "conditional-keywords",
-            "type-changing"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dwarven Castle Guard",
           "count": 4,
           "set": "fin",
           "number": "18",
-          "implemented": false,
-          "needs": [
-            "tokens"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fate of the Sun-Cryst",
           "count": 2,
           "set": "fin",
           "number": "19",
-          "implemented": false,
-          "needs": [
-            "cost-modification",
-            "destroy-permanent"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Freya Crescent",
           "count": 1,
           "set": "fin",
           "number": "138",
-          "implemented": false,
-          "needs": [
-            "conditional-keywords",
-            "mana-abilities-on-creatures",
-            "mana-spend-restrictions"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "G'raha Tia",
@@ -129,141 +97,96 @@
           "count": 3,
           "set": "fin",
           "number": "142",
-          "implemented": false,
-          "needs": [
-            "until-end-of-turn-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Judgment Bolt",
           "count": 1,
           "set": "fin",
           "number": "559",
-          "implemented": false,
-          "needs": [
-            "count-based-amounts"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lightning, Security Sergeant",
           "count": 1,
           "set": "fin",
           "number": "560",
-          "implemented": false,
-          "needs": [
-            "play-from-exile"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rosa, Resolute White Mage",
           "count": 1,
           "set": "fin",
           "number": "555",
-          "implemented": false,
-          "needs": [
-            "counters",
-            "until-end-of-turn-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Samurai's Katana",
           "count": 2,
           "set": "fin",
           "number": "154",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "job-select",
-            "tokens",
-            "static-buffs",
-            "granted-keywords",
-            "type-changing"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Slash of Light",
           "count": 2,
           "set": "fin",
           "number": "32",
-          "implemented": false,
-          "needs": [
-            "count-based-amounts"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Suplex",
           "count": 1,
           "set": "fin",
           "number": "164",
-          "implemented": false,
-          "needs": [
-            "modal-spells",
-            "replacement-effects",
-            "exile-artifact"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "The Crystal's Chosen",
           "count": 1,
           "set": "fin",
           "number": "14",
-          "implemented": false,
-          "needs": [
-            "tokens",
-            "counters"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ultima Weapon",
           "count": 1,
           "set": "fin",
           "number": "563",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "static-buffs",
-            "granted-triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Warrior's Sword",
           "count": 2,
           "set": "fin",
           "number": "169",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "job-select",
-            "tokens",
-            "static-buffs",
-            "type-changing"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "White Auracite",
           "count": 2,
           "set": "fin",
           "number": "41",
-          "implemented": false,
-          "needs": [
-            "exile-until-leaves",
-            "mana-abilities-on-artifacts"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "White Mage's Staff",
           "count": 1,
           "set": "fin",
           "number": "42",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "job-select",
-            "tokens",
-            "static-buffs",
-            "granted-triggers",
-            "type-changing"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mountain",
@@ -308,122 +231,88 @@
           "count": 1,
           "set": "fin",
           "number": "557",
-          "implemented": false,
-          "needs": [
-            "destroy-permanent",
-            "turn-history-tracking"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dreams of Laguna",
           "count": 2,
           "set": "fin",
           "number": "50",
-          "implemented": false,
-          "needs": [
-            "surveil",
-            "flashback"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Evil Reawakened",
           "count": 2,
           "set": "fin",
           "number": "98",
-          "implemented": false,
-          "needs": [
-            "reanimation",
-            "counters"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Il Mheg Pixie",
           "count": 3,
           "set": "fin",
           "number": "57",
-          "implemented": false,
-          "needs": [
-            "surveil"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Magitek Scythe",
           "count": 1,
           "set": "fin",
           "number": "562",
-          "implemented": false,
-          "needs": [
-            "equipment",
-            "must-be-blocked",
-            "static-buffs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Overkill",
           "count": 2,
           "set": "fin",
           "number": "109",
-          "implemented": false,
-          "needs": [
-            "until-end-of-turn-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Relm's Sketching",
           "count": 1,
           "set": "fin",
           "number": "67",
-          "implemented": false,
-          "needs": [
-            "copy-effects",
-            "tokens"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Retrieve the Esper",
           "count": 2,
           "set": "fin",
           "number": "68",
-          "implemented": false,
-          "needs": [
-            "tokens",
-            "flashback",
-            "counters",
-            "cast-source-tracking"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sahagin",
           "count": 1,
           "set": "fin",
           "number": "71",
-          "implemented": false,
-          "needs": [
-            "mana-spent-tracking",
-            "counters",
-            "evasion-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sephiroth, Planet's Heir",
           "count": 1,
           "set": "fin",
           "number": "553",
-          "implemented": false,
-          "needs": [
-            "until-end-of-turn-effects",
-            "counters"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Seymour Flux",
           "count": 1,
           "set": "fin",
           "number": "558",
-          "implemented": false,
-          "needs": [
-            "counters"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shambling Cie'th",
@@ -438,10 +327,8 @@
           "count": 3,
           "set": "fin",
           "number": "118",
-          "implemented": false,
-          "needs": [
-            "mill"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ultimecia, Temporal Threat",
@@ -456,21 +343,16 @@
           "count": 4,
           "set": "fin",
           "number": "123",
-          "implemented": false,
-          "needs": [
-            "tokens",
-            "treasure"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Xande, Dark Mage",
           "count": 1,
           "set": "fin",
           "number": "561",
-          "implemented": false,
-          "needs": [
-            "count-based-pt"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Island",
