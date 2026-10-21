@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-21
 
+### Choices: where your commander goes, and playing a snarl tapped
+
+- When your commander goes to a graveyard, exile, your hand or your library,
+  you choose: the command zone, or leave it there (rule 903.9). The board
+  asks with two buttons; the terminal asks y/n.
+- Snarl lands (Furycalm Snarl and friends): if you have a matching land in
+  hand you can reveal it to play the snarl untapped, or play it tapped
+  anyway. Clicking one offers both. With nothing to reveal it enters tapped.
+
 ### Tutorial: "Learn to play" and a practice game with tips
 
 The menu has a **Learn to play** lesson built on the Starter Kit cards: a

@@ -114,7 +114,7 @@ describe('C1: Commander mana', () => {
     expect(s.players.P1!.life).toBe(39);
   });
 
-  it('Checklands, battle lands and snarls enter tapped unless their condition holds', () => {
+  it('Checklands, battle lands and snarls enter tapped unless their condition holds (revealing is optional)', () => {
     let s = commanderGame();
     const [check, battle, snarl] = ['clifftop-retreat', 'cinder-glade', 'furycalm-snarl'].map((id) => put(s, 'P1', id, 'hand'));
     s = act(s, { type: 'PlayLand', player: 'P1', card: check! });
@@ -140,6 +140,27 @@ describe('C1: Commander mana', () => {
     v = act(v, { type: 'PlayLand', player: 'P1', card: snarl2 });
     expect(v.cards[snarl2]!.tapped).toBe(false); // revealed the Mountain
     expect([battle, snarl]).toHaveLength(2);
+
+    // You don't have to reveal: play it tapped anyway.
+    let w = commanderGame();
+    put(w, 'P1', 'mountain', 'hand');
+    const snarl3 = put(w, 'P1', 'furycalm-snarl', 'hand');
+    const plays = getLegalActions(w).filter((a) => a.type === 'PlayLand' && a.card === snarl3);
+    expect(plays).toEqual([
+      { type: 'PlayLand', player: 'P1', card: snarl3, reveal: true },
+      { type: 'PlayLand', player: 'P1', card: snarl3, reveal: false },
+    ]);
+    w = act(w, { type: 'PlayLand', player: 'P1', card: snarl3, reveal: false });
+    expect(w.cards[snarl3]!.tapped).toBe(true);
+
+    // With nothing to reveal it enters tapped, and you can't claim a reveal.
+    const x = commanderGame();
+    const snarl4 = put(x, 'P1', 'furycalm-snarl', 'hand');
+    expect(getLegalActions(x).filter((a) => a.type === 'PlayLand' && a.card === snarl4)).toEqual([
+      { type: 'PlayLand', player: 'P1', card: snarl4 },
+    ]);
+    expect(rejected(x, { type: 'PlayLand', player: 'P1', card: snarl4, reveal: true })).toMatch(/no card to reveal/);
+    expect(act(x, { type: 'PlayLand', player: 'P1', card: snarl4 }).cards[snarl4]!.tapped).toBe(true);
   });
 
   it('Temples enter tapped and scry 1: keep the card on top or put it on the bottom', () => {

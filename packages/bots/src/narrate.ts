@@ -259,6 +259,10 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
     case 'Surveiled':
       if (e.scry) return `  ${who(e.player)} scried${e.toGraveyard ? ', putting a card on the bottom' : ', keeping the card on top'}.`;
       return `  ${who(e.player)} surveiled${e.toGraveyard ? `, putting ${cardName(s, e.card)} into the graveyard` : ', keeping the card on top'}.`;
+    case 'CommanderZoneChosen':
+      return e.toCommand
+        ? `  ${who(e.player)} put ${cardName(s, e.card)} into the command zone.`
+        : `  ${who(e.player)} left ${cardName(s, e.card)} in the ${e.from}.`;
     case 'LegendChosen':
       return `  Legend rule: ${who(e.player)} ${e.player === viewer ? 'keep' : 'keeps'} ${cardName(s, e.kept)}.`;
     case 'TokenCreated':

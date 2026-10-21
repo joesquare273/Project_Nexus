@@ -39,6 +39,7 @@ export {
   isNonpermanentCard,
   isPermanentCard,
   isSpellCard,
+  canReveal,
   entersTapped,
   manaChoices,
   manaProduced,

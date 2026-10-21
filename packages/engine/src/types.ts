@@ -399,6 +399,8 @@ export interface CardInstance {
   playableFromExile?: { player: PlayerId; source: InstanceId };
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
+  /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */
+  commanderStays?: boolean;
 }
 
 export interface PlayerState {
@@ -548,6 +550,11 @@ export type Pending =
    * due before, which continues afterwards.
    */
   | { kind: 'chooseLegend'; player: PlayerId; name: string; cards: InstanceId[]; resume: Pending }
+  /**
+   * Your commander went to `zone` (graveyard, exile, hand or library): move it to
+   * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
+   */
+  | { kind: 'commanderZone'; player: PlayerId; card: InstanceId; zone: ZoneName; resume: Pending }
   | { kind: 'gameOver' };
 
 export interface GameState {
@@ -586,7 +593,8 @@ export interface GameState {
 // ---------------------------------------------------------------------------
 
 export type Action =
-  | { type: 'PlayLand'; player: PlayerId; card: InstanceId }
+  /** `reveal`: for lands like snarls, reveal a matching card to enter untapped (default: if you can). */
+  | { type: 'PlayLand'; player: PlayerId; card: InstanceId; reveal?: boolean }
   | { type: 'CastSpell'; player: PlayerId; card: InstanceId; targets?: Target[]; mode?: number }
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType }
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[] }
@@ -597,6 +605,7 @@ export type Action =
   | { type: 'Decide'; player: PlayerId; accept: boolean }
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
   | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }
+  | { type: 'CommanderZone'; player: PlayerId; toCommand: boolean }
   | { type: 'Concede'; player: PlayerId };
 
 // ---------------------------------------------------------------------------
@@ -641,6 +650,7 @@ export type GameEvent =
   /** Surveil or scry: `toGraveyard` means "away" (the graveyard, or the bottom of the library when `scry`). */
   | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean; scry?: boolean }
   | { type: 'LegendChosen'; player: PlayerId; kept: InstanceId; others: InstanceId[] }
+  | { type: 'CommanderZoneChosen'; player: PlayerId; card: InstanceId; from: ZoneName; toCommand: boolean }
   | { type: 'CountersAdded'; card: InstanceId; amount: number }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'PriorityPassed'; player: PlayerId }

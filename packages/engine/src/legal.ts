@@ -27,7 +27,7 @@ import {
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { triggerTargetOptions } from './triggers.ts';
-import { manaChoices } from './typerules.ts';
+import { canReveal, manaChoices } from './typerules.ts';
 import type { Action, Block, CardInstance, EffectSpec, GameState, ManaCost, PlayerId, Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 32;
@@ -176,6 +176,12 @@ export function getLegalActions(s: GameState): Action[] {
       return actions;
     }
 
+    case 'commanderZone':
+      return [
+        { type: 'CommanderZone', player: pending.player, toCommand: true },
+        { type: 'CommanderZone', player: pending.player, toCommand: false },
+      ];
+
     case 'chooseLegend':
       return pending.cards.map((keep): Action => ({ type: 'ChooseLegend', player: pending.player, keep }));
 
@@ -218,7 +224,15 @@ export function getLegalActions(s: GameState): Action[] {
           const zone = playableZone(s, player, c);
           return (zone === 'hand' || zone === 'exile') && s.cardDefs[c.defId]!.types.includes('land');
         });
-        for (const card of lands) actions.push({ type: 'PlayLand', player, card });
+        for (const card of lands) {
+          // Snarls: reveal to enter untapped, or play it tapped anyway.
+          if (canReveal(s, s.cards[card]!, player)) {
+            actions.push({ type: 'PlayLand', player, card, reveal: true });
+            actions.push({ type: 'PlayLand', player, card, reveal: false });
+          } else {
+            actions.push({ type: 'PlayLand', player, card });
+          }
+        }
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
         if (canPayFromPool(s, player, o.cost, o.forEquipment)) actions.push(o.action);

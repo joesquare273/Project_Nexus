@@ -30,7 +30,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { entersTapped, isPermanentCard, isSpellCard, manaChoices } from './typerules.ts';
+import { canReveal, entersTapped, isPermanentCard, isSpellCard, manaChoices } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -280,7 +280,7 @@ export function playableZone(
   return null;
 }
 
-export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId): void {
+export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: boolean): void {
   const s = ctx.s;
   const c = card(s, id);
   const p = player(s, playerId);
@@ -289,11 +289,12 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId): void {
   if (!hasType(s, c, 'land')) reject('Only lands are played this way; cast spells with CastSpell.');
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
   if (p.landsPlayedThisTurn >= 1) reject('You have already played a land this turn.');
+  if (reveal && !canReveal(s, c, playerId)) reject('You have no card to reveal for that land.');
   p.landsPlayedThisTurn += 1;
   moveCard(ctx, id, 'battlefield');
   c.controller = playerId;
   c.summoningSick = true;
-  if (entersTapped(s, c)) c.tapped = true;
+  if (entersTapped(s, c, reveal)) c.tapped = true;
 }
 
 /** What it costs to cast a spell with these targets: its flashback cost from the graveyard, minus any reduction. */

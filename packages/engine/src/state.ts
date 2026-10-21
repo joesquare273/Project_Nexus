@@ -191,6 +191,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.attachedTo;
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;
+  delete c.commanderStays;
   if (!opts.silent) {
     ctx.ev.push({
       type: 'CardMoved',

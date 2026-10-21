@@ -240,7 +240,7 @@ export function Game({
     setMenu({
       title: def.name,
       options: cardPlays.map((p) => ({
-        label: p.kind === 'spell' ? `${p.label} ${def.name}` : p.kind === 'land' ? `Play ${def.name}` : p.label,
+        label: p.kind === 'spell' ? `${p.label} ${def.name}` : p.kind === 'land' && p.label === 'Play' ? `Play ${def.name}` : p.label,
         pick: () => startPlay(p),
       })),
     });
@@ -575,6 +575,12 @@ function PromptBar(p: PromptProps) {
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
   } else if (pending.kind === 'chooseLegend') {
     text = `Legend rule: you control more than one ${pending.name}. Click the one to keep; the others go to your graveyard.`;
+  } else if (pending.kind === 'commanderZone') {
+    text = `Your commander ${cardName(s, pending.card)} went to your ${pending.zone}. Move it to the command zone?`;
+    buttons = [
+      { label: `Leave it in your ${pending.zone}`, onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: false }]) },
+      { label: 'Command zone', onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: true }]), primary: true },
+    ];
   } else if (pending.kind === 'surveil') {
     text = `Surveil: keep ${cardName(s, pending.card)} on top of your library, or put it into your graveyard?`;
     buttons = [

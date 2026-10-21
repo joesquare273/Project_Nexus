@@ -115,6 +115,4 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
 | Library search | Takes the first matching card | The player chooses which matching card |
-| Commander in graveyard or exile | Always returns to the command zone | The owner may choose (rule 903.9a) |
-| Snarl lands | You always reveal a matching card if you have one | Revealing is optional |
 | {X} costs | X is 0 (cards with X aren't built yet) | The caster chooses X |

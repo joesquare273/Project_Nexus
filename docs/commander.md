@@ -30,8 +30,10 @@ The Starter Kit cards that also appear in the precons are shared.
 
 - Each player's commander starts in the command zone and can be cast from
   there; each cast from the command zone costs {2} more (commander tax).
-- A commander that goes to a graveyard or exile returns to the command zone.
-  Simplified: its owner always chooses to (rule 903.9a lets them decline).
+- When a commander goes to a graveyard, exile, a hand or a library, its
+  owner chooses: move it to the command zone, or leave it where the effect
+  put it (rule 903.9). If they leave it, they're asked again the next time
+  it changes zones. The AI always moves it to the command zone.
 - 21 combat damage from a single commander knocks a player out.
 - Decks are 100-card singleton, every card within the commander's color
   identity; 40 starting life.

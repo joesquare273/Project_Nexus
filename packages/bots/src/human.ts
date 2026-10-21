@@ -48,13 +48,21 @@ function withTaps(s: GameState, player: PlayerId, o: CostedOption): PlayChoice |
   };
 }
 
+/** For a snarl: the land type of a card in your hand you'd reveal ("Mountain"). */
+function revealable(s: GameState, card: InstanceId, player: PlayerId): string {
+  const subtypes = s.cardDefs[s.cards[card]!.defId]!.entersTappedUnless?.revealSubtypes ?? [];
+  const hand = s.players[player]!.hand.filter((id) => id !== card).map((id) => s.cardDefs[s.cards[id]!.defId]!);
+  return subtypes.find((t) => hand.some((d) => d.subtypes?.includes(t))) ?? 'card';
+}
+
 /** Everything the player can do while they have priority, grouped by card. */
 export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
   if (s.pending.kind !== 'priority' || s.pending.player !== player) return [];
   const plays: CardPlay[] = [];
   for (const a of getLegalActions(s)) {
     if (a.type !== 'PlayLand') continue;
-    plays.push({ card: a.card, kind: 'land', label: 'Play', choices: [{ taps: [], action: a, targets: [] }] });
+    const label = a.reveal === true ? `Play untapped (reveal a ${revealable(s, a.card, player)})` : a.reveal === false ? 'Play tapped' : 'Play';
+    plays.push({ card: a.card, kind: 'land', label, choices: [{ taps: [], action: a, targets: [] }] });
   }
   const grouped = new Map<string, CardPlay>();
   const add = (o: CostedOption) => {

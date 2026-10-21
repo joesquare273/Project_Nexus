@@ -92,6 +92,15 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
       text: 'This ability is optional. Choose Yes or No; if it has a cost, your lands tap for it automatically.',
     });
   }
+  if (p.kind === 'commanderZone' && p.player === YOU) {
+    candidates.push({
+      id: 'commander-zone',
+      title: 'Your commander left the battlefield',
+      text:
+        'When your commander would go to your graveyard, exile, hand or library, you may put it back in the ' +
+        'command zone instead and cast it again later (for {2} more each time). Usually you want to.',
+    });
+  }
   if (p.kind === 'chooseLegend' && p.player === YOU) {
     candidates.push({
       id: 'legend',

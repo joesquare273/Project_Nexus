@@ -46,7 +46,8 @@ You need Node.js 24 or newer.
       Break, Revival Trance, Counter Blitz, Scions & Spellcraft), 100 cards,
       40 life. Your commander is the card next to your name: click it to
       cast it when it glows. Each time it's cast from there it costs {2}
-      more. 21 combat damage from one commander knocks a player out. Many
+      more. When it dies or is exiled (or bounced), you choose whether it
+      goes back to the command zone. 21 combat damage from one commander knocks a player out. Many
       precon cards are still "not built yet" (see docs/commander.md).
   Then choose how many AI opponents (1-3), and press Start game.
 
@@ -78,6 +79,8 @@ You need Node.js 24 or newer.
     - Cards you can cast from your graveyard (flashback) or exile (Lightning)
       appear next to your hand with a purple "from graveyard"/"from exile" tag.
     - Click the 🪦 count by a player's name to look through their graveyard.
+    - Snarl lands (like Furycalm Snarl) ask whether to reveal a matching
+      land to play them untapped, or play them tapped.
     - Surveil shows you the top card of your library: keep it or put it into
       your graveyard.
     - Small badges on cards: green +N = +1/+1 counters, the box in the corner

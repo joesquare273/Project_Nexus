@@ -52,7 +52,10 @@ describe.each([2, 3, 4])('Commander rules, %i players', (n) => {
     const r = passAll(s);
     s = r.state;
     expect(eventsOf(r.events, 'CreatureDied').map((e) => e.card)).toEqual([warlord]);
+    expect(s.pending).toMatchObject({ kind: 'commanderZone', player: 'P1', card: warlord, zone: 'graveyard' });
+    s = act(s, { type: 'CommanderZone', player: 'P1', toCommand: true }).state;
     expect(s.cards[warlord]!.zone).toBe('command');
+    expect(s.pending.kind).toBe('priority');
 
     // Now it costs {3}{G}: two more than before.
     addMana(s, 'P1', { G: 1, C: 2 });
@@ -61,6 +64,32 @@ describe.each([2, 3, 4])('Commander rules, %i players', (n) => {
     addMana(s, 'P1', { C: 1 });
     s = act(s, { type: 'CastSpell', player: 'P1', card: warlord, targets: [] }).state;
     expect(s.players.P1!.commanderCasts[warlord]).toBe(2);
+  });
+
+  it('its owner may leave a dead commander in the graveyard; it asks again when it moves on', () => {
+    let s = commanderGame(n);
+    const warlord = commanderOf(s, 'P1');
+    s.players.P1!.command = [];
+    s.players.P1!.battlefield.push(warlord);
+    s.cards[warlord]!.zone = 'battlefield';
+    s.cards[warlord]!.damage = 99;
+    // Any action runs state-based actions: the warlord dies.
+    s = act(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect(s.pending).toMatchObject({ kind: 'commanderZone', player: 'P1', zone: 'graveyard' });
+    const other = s.turnOrder[1]!;
+    expect(() => act(s, { type: 'CommanderZone', player: other, toCommand: true })).toThrow(/no commander/);
+    const r = act(s, { type: 'CommanderZone', player: 'P1', toCommand: false });
+    s = r.state;
+    expect(eventsOf(r.events, 'CommanderZoneChosen')).toEqual([
+      { type: 'CommanderZoneChosen', player: 'P1', card: warlord, from: 'graveyard', toCommand: false },
+    ]);
+    expect(s.cards[warlord]!.zone).toBe('graveyard');
+    expect(s.pending.kind).toBe('priority'); // P2 still gets the priority P1 passed
+
+    // Not asked again while it stays there...
+    s = passAll(s).state;
+    expect(s.cards[warlord]!.zone).toBe('graveyard');
+    expect(s.pending.kind).not.toBe('commanderZone');
   });
 
   it('21 combat damage from one commander knocks a player out, whatever their life', () => {

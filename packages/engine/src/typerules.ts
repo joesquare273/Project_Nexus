@@ -97,8 +97,20 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   return MANA_TYPES.filter((m) => made.has(m));
 }
 
-/** Whether a permanent enters tapped: always, or unless its condition holds (checklands, battle lands, snarls). */
-export function entersTapped(s: GameState, c: CardInstance): boolean {
+/** For lands like snarls: whether you have a card you could reveal to have it enter untapped. */
+export function canReveal(s: GameState, c: CardInstance, controller: string = c.controller): boolean {
+  const subtypes = s.cardDefs[c.defId]!.entersTappedUnless?.revealSubtypes;
+  if (!subtypes) return false;
+  const hand = s.players[controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
+  return subtypes.some((t) => hand.some((x) => s.cardDefs[x.defId]!.subtypes?.includes(t)));
+}
+
+/**
+ * Whether a permanent enters tapped: always, or unless its condition holds
+ * (checklands, battle lands, snarls). For snarls, `reveal` is the player's
+ * choice; by default they reveal when they can.
+ */
+export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): boolean {
   const def = s.cardDefs[c.defId]!;
   if (def.entersTapped) return true;
   const unless = def.entersTappedUnless;
@@ -109,10 +121,6 @@ export function entersTapped(s: GameState, c: CardInstance): boolean {
   if (unless.basicLands !== undefined && mine.filter((x) => isBasicLand(defOf(x))).length >= unless.basicLands) {
     return false;
   }
-  if (unless.revealSubtypes) {
-    // Simplified: you always reveal a matching card if you have one.
-    const hand = s.players[c.controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
-    if (unless.revealSubtypes.some((t) => hand.some((x) => defOf(x).subtypes?.includes(t)))) return false;
-  }
+  if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
   return true;
 }
