@@ -29,6 +29,19 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 - **N players everywhere.** Per-player data lives in maps keyed by player id,
   and every rule is tested with 2, 3 and 4 players.
 
+## 2026-10-21: Triggered abilities (K1)
+
+- Cards list `triggers` in JSON: an event (`when`), an optional filter on what
+  it happened to (`what`), effects, and flags for "one or more", "only once
+  each turn", "you may" and optional costs. Absent `what` means the card itself.
+- After every action the engine scans that action's events for triggers,
+  queues them in APNAP order, and puts them on the stack when a player would
+  next receive priority, after state-based actions (rule 117.5).
+- Targets are chosen when a trigger goes on the stack. With exactly one legal
+  choice the engine picks it; otherwise the game waits on a `chooseTargets`
+  decision. "You may" and optional costs are a `decide` decision when the
+  ability resolves; the player can tap lands for mana while deciding.
+
 ## Known rules simplifications (to revisit)
 
 | Area | Engine today | Real rule |
@@ -39,4 +52,9 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Active player leaves | The rest of their turn is skipped and their spells go to graveyards | Rule 800.4 is more nuanced |
 | Elimination mid-round | Priority restarts with the active player | Priority continues from where it was |
 | Cleanup step | No priority, no discard to hand size | Rule 514 |
-| Mana | Mana abilities need priority; no X costs, hybrid or Phyrexian mana | All supported |
+| Mana | Mana abilities need priority or a pending cost decision; no X costs, hybrid or Phyrexian mana | All supported |
+| Order of simultaneous triggers | Each player's triggers go on the stack in the order they were found | The controller chooses the order (rule 603.3b) |
+| "One or more" batches | One batch is everything that happened in one action | One batch per simultaneous event |
+| Leaves-the-battlefield look-back | Anything that left the battlefield during the action sees every death in it | Only things that left at the same time (rule 603.10a) |
+| Triggers during cleanup | None of the supported triggers can happen then, so cleanup never gives priority | Rule 514.3a |
+| Legend rule | Not implemented; testbed decks run one copy of each legendary card | Rule 704.5j |

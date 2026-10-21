@@ -50,24 +50,83 @@ export type Keyword = (typeof KEYWORDS)[number];
 export const TARGET_KINDS = [
   'AnyTarget',
   'EachOpponent',
+  'EachOpponentCreature',
   'EachPlayer',
   'OpponentCreature',
   'TargetCreature',
+  'TargetOpponent',
   'TargetPlayer',
+  /** The card the ability belongs to. Abilities only. */
+  'This',
   'You',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
-/** Target kinds the caster picks when casting. The rest are computed. */
-export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = ['AnyTarget', 'OpponentCreature', 'TargetCreature', 'TargetPlayer'];
+/** Target kinds chosen when a spell is cast or an ability is put on the stack. The rest are computed. */
+export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
+  'AnyTarget',
+  'OpponentCreature',
+  'TargetCreature',
+  'TargetOpponent',
+  'TargetPlayer',
+];
 
-export const EFFECT_KINDS = ['DealDamage', 'DrawCards', 'GainLife', 'Destroy'] as const;
+export const EFFECT_KINDS = ['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'Destroy', 'Tap', 'ReturnToHand'] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
 
 export interface EffectSpec {
   effect: EffectKind;
   amount?: number;
   target: TargetKind;
+}
+
+/**
+ * What a triggered ability waits for (rule 603). "Subject" below is the
+ * object the event happened to: the creature that entered, died, attacked or
+ * dealt damage, or the spell that was cast.
+ */
+export const TRIGGER_EVENTS = [
+  'EntersBattlefield',
+  'Dies',
+  'Attacks',
+  'SpellCast',
+  'CombatDamageToPlayer',
+  'BeginCombat',
+  'Upkeep',
+] as const;
+export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
+
+/** Which subjects a trigger cares about, relative to the card that has the ability. */
+export interface ObjectFilter {
+  /** Excludes the card itself ("another creature"). */
+  other?: boolean;
+  controller?: 'You' | 'Opponent';
+  /** The subject has at least one of these types. */
+  types?: CardType[];
+  /** The subject has none of these types ("noncreature spell"). */
+  nonTypes?: CardType[];
+}
+
+export interface TriggerSpec {
+  when: TriggerEvent;
+  /**
+   * Subjects that trigger it. Absent means the card itself ("when this
+   * creature enters"). Ignored for BeginCombat and Upkeep.
+   */
+  what?: ObjectFilter;
+  /** BeginCombat and Upkeep: on your turn only (the default) or on each turn. */
+  turn?: 'Yours' | 'Each';
+  /** Where the card must be for the ability to work. Defaults to the battlefield. */
+  zone?: 'battlefield' | 'graveyard';
+  /** "Whenever one or more ...": triggers once per batch of simultaneous events. */
+  oneOrMore?: boolean;
+  /** "This ability triggers only once each turn." */
+  oncePerTurn?: boolean;
+  /** "You may ...": the controller chooses on resolution. */
+  optional?: boolean;
+  /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
+  cost?: { mana?: string; life?: number };
+  effects: EffectSpec[];
 }
 
 /** Immutable, shared definition of a card. */
@@ -87,6 +146,8 @@ export interface CardDefinition {
   entersTapped?: boolean;
   /** Effects applied, in order, when an instant or sorcery resolves. */
   effects?: EffectSpec[];
+  /** Triggered abilities. A trigger is referred to by its index in this list. */
+  triggers?: TriggerSpec[];
   /** Short rules summary for placeholder cards. Real card text comes from Scryfall at build time. */
   text?: string;
   /** Scryfall set code and collector number, for real cards. */
@@ -153,13 +214,38 @@ export type Step = (typeof STEPS)[number];
 
 export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId };
 
-export interface StackItem {
+export interface SpellItem {
   id: string;
   kind: 'spell';
   card: InstanceId;
   controller: PlayerId;
   /** One target per effect that requires a choice, in effect order. */
   targets: Target[];
+}
+
+/** A triggered ability on the stack. The source card stays where it is. */
+export interface AbilityItem {
+  id: string;
+  kind: 'ability';
+  source: InstanceId;
+  /** Index into the source definition's `triggers`. */
+  ability: number;
+  /** Where the source was when it triggered; "this card" effects need it still there. */
+  sourceZone: ZoneName;
+  controller: PlayerId;
+  targets: Target[];
+  /** The controller's answer to "you may" or an optional cost, once given. */
+  accepted?: boolean;
+}
+
+export type StackItem = SpellItem | AbilityItem;
+
+/** A triggered ability waiting to be put on the stack. */
+export interface QueuedTrigger {
+  source: InstanceId;
+  ability: number;
+  controller: PlayerId;
+  sourceZone: ZoneName;
 }
 
 export interface Attack {
@@ -185,6 +271,10 @@ export type Pending =
   | { kind: 'priority'; player: PlayerId; passes: number }
   | { kind: 'declareAttackers'; player: PlayerId }
   | { kind: 'declareBlockers'; player: PlayerId }
+  /** Choose targets for the first queued trigger; `then` gets priority once triggers are on the stack. */
+  | { kind: 'chooseTargets'; player: PlayerId; then: PlayerId }
+  /** Answer "you may" (and pay any cost) for the ability on top of the stack. */
+  | { kind: 'decide'; player: PlayerId; item: string }
   | { kind: 'gameOver' };
 
 export interface GameState {
@@ -199,6 +289,10 @@ export interface GameState {
   step: Step;
   /** Last element is the top of the stack. */
   stack: StackItem[];
+  /** Triggered abilities waiting to go on the stack, in APNAP order. */
+  triggerQueue: QueuedTrigger[];
+  /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
+  triggeredThisTurn: string[];
   combat: CombatState | null;
   pending: Pending;
   /** Set when the game ends. null means a draw (everyone left at once). */
@@ -219,6 +313,8 @@ export type Action =
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
+  | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
+  | { type: 'Decide'; player: PlayerId; accept: boolean }
   | { type: 'Concede'; player: PlayerId };
 
 // ---------------------------------------------------------------------------
@@ -236,6 +332,8 @@ export type GameEvent =
       card?: InstanceId;
       defId?: CardDefId;
       owner: PlayerId;
+      /** Who controlled it, when it leaves the battlefield. */
+      controller?: PlayerId;
       from: ZoneName;
       to: ZoneName;
     }
@@ -244,8 +342,11 @@ export type GameEvent =
   | { type: 'ManaAdded'; player: PlayerId; mana: ManaType; source: InstanceId }
   | { type: 'ManaSpent'; player: PlayerId; amounts: Partial<ManaPool> }
   | { type: 'SpellCast'; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[] }
+  | { type: 'AbilityTriggered'; item: string; card: InstanceId; ability: number; controller: PlayerId; targets: Target[] }
+  /** `card` is the spell, or the source of an ability. */
   | { type: 'StackItemAdded'; item: string; card: InstanceId }
   | { type: 'StackItemResolved'; item: string; card: InstanceId; fizzled: boolean }
+  | { type: 'Decided'; player: PlayerId; item: string; card: InstanceId; accepted: boolean }
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }

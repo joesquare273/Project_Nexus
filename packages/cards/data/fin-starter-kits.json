@@ -21,7 +21,6 @@
           "number": "129",
           "implemented": false,
           "needs": [
-            "attack-triggers",
             "count-based-amounts"
           ]
         },
@@ -32,9 +31,7 @@
           "number": "554",
           "implemented": false,
           "needs": [
-            "begin-combat-triggers",
-            "equipment",
-            "choices"
+            "equipment"
           ]
         },
         {
@@ -56,7 +53,6 @@
           "number": "11",
           "implemented": false,
           "needs": [
-            "etb-triggers",
             "counters",
             "landcycling"
           ]
@@ -94,7 +90,6 @@
           "number": "18",
           "implemented": false,
           "needs": [
-            "dies-triggers",
             "tokens"
           ]
         },
@@ -126,11 +121,8 @@
           "count": 1,
           "set": "fin",
           "number": "21",
-          "implemented": false,
-          "needs": [
-            "dies-triggers",
-            "once-per-turn-triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Item Shopkeep",
@@ -139,7 +131,6 @@
           "number": "142",
           "implemented": false,
           "needs": [
-            "attack-triggers",
             "until-end-of-turn-effects"
           ]
         },
@@ -160,7 +151,6 @@
           "number": "560",
           "implemented": false,
           "needs": [
-            "combat-damage-triggers",
             "play-from-exile"
           ]
         },
@@ -171,7 +161,6 @@
           "number": "555",
           "implemented": false,
           "needs": [
-            "begin-combat-triggers",
             "counters",
             "until-end-of-turn-effects"
           ]
@@ -257,7 +246,6 @@
           "number": "41",
           "implemented": false,
           "needs": [
-            "etb-triggers",
             "exile-until-leaves",
             "mana-abilities-on-artifacts"
           ]
@@ -312,10 +300,8 @@
           "count": 3,
           "set": "fin",
           "number": "88",
-          "implemented": false,
-          "needs": [
-            "dies-triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Deadly Embrace",
@@ -357,7 +343,6 @@
           "number": "57",
           "implemented": false,
           "needs": [
-            "attack-triggers",
             "surveil"
           ]
         },
@@ -369,8 +354,6 @@
           "implemented": false,
           "needs": [
             "equipment",
-            "etb-triggers",
-            "choices",
             "must-be-blocked",
             "static-buffs"
           ]
@@ -416,7 +399,6 @@
           "number": "71",
           "implemented": false,
           "needs": [
-            "cast-triggers",
             "mana-spent-tracking",
             "counters",
             "evasion-effects"
@@ -429,9 +411,7 @@
           "number": "553",
           "implemented": false,
           "needs": [
-            "etb-triggers",
             "until-end-of-turn-effects",
-            "dies-triggers",
             "counters"
           ]
         },
@@ -442,8 +422,6 @@
           "number": "558",
           "implemented": false,
           "needs": [
-            "upkeep-triggers",
-            "optional-costs",
             "counters"
           ]
         },
@@ -452,12 +430,8 @@
           "count": 3,
           "set": "fin",
           "number": "117",
-          "implemented": false,
-          "needs": [
-            "cast-triggers",
-            "graveyard-triggers",
-            "optional-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shinra Reinforcements",
@@ -466,7 +440,6 @@
           "number": "118",
           "implemented": false,
           "needs": [
-            "etb-triggers",
             "mill"
           ]
         },
@@ -475,11 +448,8 @@
           "count": 1,
           "set": "fin",
           "number": "556",
-          "implemented": false,
-          "needs": [
-            "etb-triggers",
-            "combat-damage-triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Undercity Dire Rat",
@@ -488,7 +458,6 @@
           "number": "123",
           "implemented": false,
           "needs": [
-            "dies-triggers",
             "tokens",
             "treasure"
           ]

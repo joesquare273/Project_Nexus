@@ -21,19 +21,21 @@ npm run play
   `(state, action) -> (newState, events)`, designed for N players. It covers
   turn steps, priority around the table, the stack, lands and mana, creatures,
   instants and sorceries, combat where each attacker picks a defending player,
-  11 combat keywords, and elimination where the game continues for everyone
-  else. Hidden information is filtered per player.
+  11 combat keywords, triggered abilities (with target choices and "you may"
+  decisions), and elimination where the game continues for everyone else.
+  Hidden information is filtered per player.
 - **Cards** (`packages/cards`): JSON card data validated at load time. Basic
-  lands, the two Starter Kit Towns, and Sephiroth's Intervention are real;
-  the rest are placeholders.
+  lands, the two Starter Kit Towns, Sephiroth's Intervention, Al Bhed
+  Salvagers, G'raha Tia, Shambling Cie'th and Ultimecia, Temporal Threat are
+  real; the rest are placeholders.
 - **Bots** (`packages/bots`): a basic AI, a random bot for fuzzing, a
   terminal game against the AI, a bot-vs-bot simulator and a fuzzer.
 - **Tests**: scenario tests for each rule run across 2, 3 and 4 players,
   plus invariant-checked fuzz games, replay determinism, and a check that
   actions never mutate their input state.
 
-Next up is the Starter Kit roadmap in [docs/starter-kits.md](docs/starter-kits.md),
-starting with triggered abilities.
+Next up is the Starter Kit roadmap in [docs/starter-kits.md](docs/starter-kits.md):
+step K1 (triggered abilities) is done, and K2 (tokens and counters) is next.
 
 ## Layout
 

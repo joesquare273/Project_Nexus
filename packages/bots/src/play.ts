@@ -14,6 +14,7 @@ import {
   createGame,
   filterEventsFor,
   getLegalActions,
+  triggerSpec,
   viewFor,
   type Action,
   type Block,
@@ -26,7 +27,7 @@ import { CARD_DEFS, testbedDeck } from '@nexus/cards';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { basicAi, planTaps, randomBot, tapActions, type Bot } from './index.ts';
-import { cardName, describe, rulesSummary, stepName, targetName } from './narrate.ts';
+import { cardName, describe, rulesSummary, stepName, targetName, triggerText } from './narrate.ts';
 
 const YOU: PlayerId = 'You';
 
@@ -145,7 +146,8 @@ function render(s: GameState): void {
     out.push('  Stack (top first):');
     for (const item of [...s.stack].reverse()) {
       const targets = item.targets.length ? ` -> ${item.targets.map((t) => targetName(s, t, YOU)).join(', ')}` : '';
-      out.push(`    ${cardName(s, item.card)} (${item.controller === YOU ? 'yours' : item.controller})${targets}`);
+      const name = item.kind === 'spell' ? cardName(s, item.card) : `${cardName(s, item.source)}'s ability`;
+      out.push(`    ${name} (${item.controller === YOU ? 'yours' : item.controller})${targets}`);
     }
   }
   const hand = view.players[YOU]!.hand ?? [];
@@ -379,6 +381,38 @@ async function decideBlocks(s: GameState): Promise<Action[]> {
   }
 }
 
+async function decideTriggerTargets(s: GameState): Promise<Action[]> {
+  const options = getLegalActions(s).filter(
+    (a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets',
+  );
+  const t = s.triggerQueue[0]!;
+  const spec = s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!;
+  console.log(`\n  ${cardName(s, t.source)} triggered: ${triggerText(spec)}`);
+  options.forEach((o, i) => console.log(`    ${i + 1}) ${o.targets.map((x) => targetName(s, x, YOU)).join(', ')}`));
+  for (;;) {
+    const pick = options[Number(await ask('  Choose a target: ')) - 1];
+    if (pick) return [pick];
+    console.log('  Please type one of the numbers.');
+  }
+}
+
+async function decideYesNo(s: GameState): Promise<Action[]> {
+  const item = s.stack.at(-1)!;
+  if (item.kind !== 'ability') throw new Error('Expected an ability to decide on.');
+  const spec = triggerSpec(s, item);
+  const no: Action[] = [{ type: 'Decide', player: YOU, accept: false }];
+  const taps = planTaps(s, YOU, spec.cost?.mana);
+  const canAfford = taps !== null && (spec.cost?.life === undefined || s.players[YOU]!.life >= spec.cost.life);
+  console.log(`\n  ${cardName(s, item.source)}: ${triggerText(spec)}`);
+  if (!canAfford) {
+    console.log("  You can't pay the cost, so the answer is no.");
+    return no;
+  }
+  const answer = (await ask(`  ${spec.cost ? 'Pay the cost' : 'Do it'}? (y/N) `)).toLowerCase();
+  if (answer !== 'y') return no;
+  return [...tapActions(YOU, taps), { type: 'Decide', player: YOU, accept: true }];
+}
+
 // ---------------------------------------------------------------------------
 // Game loop
 // ---------------------------------------------------------------------------
@@ -408,6 +442,10 @@ async function playOneGame(gameSeed: number): Promise<void> {
       actions = await decideAttacks(s);
     } else if (pending.kind === 'declareBlockers') {
       actions = await decideBlocks(s);
+    } else if (pending.kind === 'chooseTargets') {
+      actions = await decideTriggerTargets(s);
+    } else if (pending.kind === 'decide') {
+      actions = await decideYesNo(s);
     } else {
       actions = await decidePriority(s);
     }

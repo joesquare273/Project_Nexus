@@ -26,6 +26,32 @@ describe('card data', () => {
     ).toEqual([expect.stringMatching(/only affect players/)]);
   });
 
+  it('catches mistakes in triggered abilities', () => {
+    const base = { id: 'x', name: 'x', types: ['creature'], manaCost: '{1}', power: 1, toughness: 1 };
+    expect(
+      validateCardDefinition({
+        ...base,
+        triggers: [
+          { when: 'Explodes', effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }] },
+          { when: 'SpellCast', effects: [{ effect: 'ReturnToHand', target: 'TargetCreature' }] },
+          { when: 'Dies', turn: 'Yours', cost: { mana: '{Q}' }, effects: [] },
+        ],
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/unknown trigger event "Explodes"/),
+        expect.stringMatching(/say which spells/),
+        expect.stringMatching(/ReturnToHand only supports "This"/),
+        expect.stringMatching(/"turn" is only for/),
+        expect.stringMatching(/Unsupported mana symbol/),
+        expect.stringMatching(/at least one effect/),
+      ]),
+    );
+    expect(
+      validateCardDefinition({ id: 'x', name: 'x', types: ['instant'], manaCost: '{1}', effects: [{ effect: 'ReturnToHand', target: 'This' }] }),
+    ).toEqual([expect.stringMatching(/only be used in triggered abilities/)]);
+  });
+
   it('builds legal 60-card testbed decks', () => {
     for (const colors of ['RW', 'UB'] as const) {
       expect(validateDeck(testbedDeck(colors), CARD_DEFS, CONSTRUCTED_DUEL)).toEqual([]);

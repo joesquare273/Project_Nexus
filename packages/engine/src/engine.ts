@@ -3,7 +3,8 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { stabilize } from './sba.ts';
-import { activateManaAbility, castSpell, playLand } from './stack.ts';
+import { activateManaAbility, castSpell, decide, playLand } from './stack.ts';
+import { chooseTriggerTargets } from './triggers.ts';
 import { passPriority } from './turn.ts';
 import { cloneState, reject, RuleError, type Ctx } from './state.ts';
 import type { Action, ActionResult, GameState } from './types.ts';
@@ -41,9 +42,20 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'ActivateManaAbility':
+        // Mana abilities also work while deciding whether to pay a cost (rule 605.3a).
+        if (s.pending.kind === 'decide' && s.pending.player === action.player) {
+          activateManaAbility(ctx, action.player, action.card, action.mana);
+          break;
+        }
         requirePriority(s, action.player);
         activateManaAbility(ctx, action.player, action.card, action.mana);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      case 'ChooseTargets':
+        chooseTriggerTargets(ctx, action.player, action.targets);
+        break;
+      case 'Decide':
+        decide(ctx, action.player, action.accept);
         break;
       case 'DeclareAttackers':
         declareAttackers(ctx, action.player, action.attacks);

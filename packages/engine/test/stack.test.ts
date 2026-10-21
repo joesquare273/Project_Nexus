@@ -66,7 +66,7 @@ describe('casting and resolving', () => {
     s = act(s, { type: 'CastSpell', player: 'P1', card: shock, targets: [player('P2')] }).state;
     s = pass(s).state; // P1 passes; P2 responds
     s = act(s, { type: 'CastSpell', player: 'P2', card: mend, targets: [] }).state;
-    expect(s.stack.map((i) => i.card)).toEqual([shock, mend]);
+    expect(s.stack.map((i) => i.kind === 'spell' && i.card)).toEqual([shock, mend]);
 
     const first = passAll(s);
     expect(eventsOf(first.events, 'StackItemResolved').map((e) => e.card)).toEqual([mend]);

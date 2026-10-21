@@ -62,7 +62,8 @@ export function enterStep(ctx: Ctx, step: Step): void {
       givePriority(ctx, s.activePlayer);
       return;
     case 'cleanup':
-      // Damage wears off; nobody gets priority (no triggers exist yet that would grant it).
+      // Damage wears off; nobody gets priority. (Rule 514.3a gives priority if
+      // something triggers here; no supported trigger can.)
       cleanupDamage(ctx);
       startNextTurn(ctx);
       return;
@@ -97,6 +98,7 @@ export function startNextTurn(ctx: Ctx): void {
   const s = ctx.s;
   s.activePlayer = nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
+  s.triggeredThisTurn = [];
   ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: s.turnNumber });
   enterStep(ctx, 'untap');
 }
@@ -113,7 +115,6 @@ export function passPriority(ctx: Ctx, playerId: PlayerId): void {
   // Everyone passed in succession.
   if (s.stack.length > 0) {
     resolveTop(ctx);
-    givePriority(ctx, s.activePlayer);
   } else {
     advanceStep(ctx);
   }

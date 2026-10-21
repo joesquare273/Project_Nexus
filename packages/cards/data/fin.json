@@ -9,5 +9,88 @@
       { "effect": "GainLife", "amount": 2, "target": "You" }
     ],
     "printing": { "set": "fin", "number": "116" }
+  },
+  {
+    "id": "al-bhed-salvagers",
+    "name": "Al Bhed Salvagers",
+    "manaCost": "{2}{B}",
+    "types": ["creature"],
+    "subtypes": ["Human", "Artificer", "Warrior"],
+    "power": 2,
+    "toughness": 3,
+    "triggers": [
+      {
+        "when": "Dies",
+        "what": { "controller": "You", "types": ["creature", "artifact"] },
+        "effects": [
+          { "effect": "LoseLife", "amount": 1, "target": "TargetOpponent" },
+          { "effect": "GainLife", "amount": 1, "target": "You" }
+        ]
+      }
+    ],
+    "printing": { "set": "fin", "number": "88" }
+  },
+  {
+    "id": "graha-tia",
+    "name": "G'raha Tia",
+    "manaCost": "{4}{W}",
+    "types": ["creature"],
+    "supertypes": ["Legendary"],
+    "subtypes": ["Cat", "Archer"],
+    "power": 3,
+    "toughness": 5,
+    "keywords": ["Reach"],
+    "triggers": [
+      {
+        "when": "Dies",
+        "what": { "other": true, "controller": "You", "types": ["creature", "artifact"] },
+        "oneOrMore": true,
+        "oncePerTurn": true,
+        "effects": [{ "effect": "DrawCards", "amount": 1, "target": "You" }]
+      }
+    ],
+    "printing": { "set": "fin", "number": "21" }
+  },
+  {
+    "id": "shambling-cieth",
+    "name": "Shambling Cie'th",
+    "manaCost": "{2}{B}",
+    "types": ["creature"],
+    "subtypes": ["Mutant", "Horror"],
+    "power": 3,
+    "toughness": 3,
+    "entersTapped": true,
+    "triggers": [
+      {
+        "when": "SpellCast",
+        "what": { "controller": "You", "nonTypes": ["creature"] },
+        "zone": "graveyard",
+        "cost": { "mana": "{B}" },
+        "effects": [{ "effect": "ReturnToHand", "target": "This" }]
+      }
+    ],
+    "printing": { "set": "fin", "number": "117" }
+  },
+  {
+    "id": "ultimecia-temporal-threat",
+    "name": "Ultimecia, Temporal Threat",
+    "manaCost": "{4}{U}{U}",
+    "types": ["creature"],
+    "supertypes": ["Legendary"],
+    "subtypes": ["Human", "Warlock"],
+    "power": 4,
+    "toughness": 4,
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [{ "effect": "Tap", "target": "EachOpponentCreature" }]
+      },
+      {
+        "when": "CombatDamageToPlayer",
+        "what": { "controller": "You", "types": ["creature"] },
+        "effects": [{ "effect": "DrawCards", "amount": 1, "target": "You" }]
+      }
+    ],
+    "printing": { "set": "fin", "number": "556" }
   }
 ]

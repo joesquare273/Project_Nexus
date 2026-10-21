@@ -31,4 +31,15 @@ describe('applyAction', () => {
     addMana(s, 'P2', { R: 1 });
     checkPurity(s, 200);
   });
+
+  it('does not mutate its input when abilities trigger and ask for choices', () => {
+    const s = newGame(3);
+    for (const id of ['drainer', 'mourner', 'tyrant', 'scout', 'herald']) put(s, 'P1', id);
+    for (const id of ['drainer', 'bear', 'ascetic']) put(s, 'P2', id);
+    put(s, 'P1', 'revenant', 'graveyard');
+    put(s, 'P1', 'swamp');
+    for (const id of ['murder', 'pinger', 'healer', 'study']) put(s, 'P1', id, 'hand');
+    addMana(s, 'P1', { R: 2, B: 4, W: 2, U: 2 });
+    checkPurity(s, 300);
+  });
 });

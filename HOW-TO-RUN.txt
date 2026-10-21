@@ -12,9 +12,9 @@ You need Node.js 24 or newer (already installed on this PC).
   a. Open a terminal: press the Windows key, type "PowerShell", press Enter.
      (Windows Terminal or the VS Code terminal work too.)
 
-  b. Go to the project folder:
+  b. Go to the project folder (wherever you cloned it), for example:
 
-       cd "C:\Users\Joseph Kim\Desktop\Project_Nexus"
+       cd "$HOME\OneDrive\Desktop\Project_Nexus"
 
   c. Install the project's packages (only needed once, or after pulling
      changes that update package.json):
@@ -52,8 +52,13 @@ You need Node.js 24 or newer (already installed on this PC).
 
   The cards are mostly placeholders named "Testbed ..." while the Final
   Fantasy Starter Kit cards are being built. Real cards so far: the basic
-  lands, Rabanastre, Royal City, Treno, Dark City and Sephiroth's
-  Intervention (in the blue-black deck).
+  lands, Rabanastre, Royal City and G'raha Tia (red-white deck), and Treno,
+  Dark City, Sephiroth's Intervention, Al Bhed Salvagers, Shambling Cie'th
+  and Ultimecia, Temporal Threat (blue-black deck).
+
+  When a card's ability triggers and has more than one possible target, you
+  are asked to choose one. For "you may" abilities you are asked y/N; if
+  there's a mana cost, lands tap automatically when you say yes.
 
 
 3. WATCH THE BOTS PLAY

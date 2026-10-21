@@ -54,15 +54,18 @@ export function testbedDeck(colors: 'RW' | 'UB'): CardDefId[] {
     add('plains', 10);
     add('rabanastre-royal-city', 4);
     for (const id of ['tb-ember-pup', 'tb-kiln-duelist', 'tb-cinder-brute', 'tb-twin-blade']) add(id, 4);
-    for (const id of ['tb-shield-knight', 'tb-stone-warden', 'tb-bolt', 'tb-volley', 'tb-mend']) add(id, 4);
+    for (const id of ['tb-shield-knight', 'tb-bolt', 'tb-volley', 'tb-mend']) add(id, 4);
+    add('tb-stone-warden', 3);
+    add('graha-tia', 1);
   } else {
     add('island', 10);
     add('swamp', 10);
     add('treno-dark-city', 4);
-    for (const id of ['tb-sky-gull', 'tb-reef-sentry', 'tb-bog-rat', 'tb-grave-hulk']) add(id, 4);
-    for (const id of ['tb-ambusher', 'tb-tide-wall', 'tb-study', 'tb-drain']) add(id, 4);
-    add('sephiroths-intervention', 3);
+    for (const id of ['tb-sky-gull', 'tb-reef-sentry', 'tb-ambusher', 'tb-study']) add(id, 4);
+    for (const id of ['tb-grave-hulk', 'sephiroths-intervention', 'al-bhed-salvagers', 'shambling-cieth']) add(id, 3);
+    for (const id of ['tb-bog-rat', 'tb-tide-wall', 'tb-drain']) add(id, 2);
     add('tb-doom', 1);
+    add('ultimecia-temporal-threat', 1);
   }
   return deck;
 }
