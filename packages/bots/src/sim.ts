@@ -4,7 +4,7 @@
 //   npm run sim -- --players 4 --seed 7 --bot random --quiet
 
 import { FREE_FOR_ALL } from '@nexus/engine';
-import { CARD_DEFS, testbedDeck } from '@nexus/cards';
+import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { parseArgs } from 'node:util';
 import { basicAi, playGame, randomBot } from './index.ts';
 import { describe } from './narrate.ts';
@@ -28,7 +28,7 @@ const game = playGame(
     format: FREE_FOR_ALL,
     cardDefs: CARD_DEFS,
     seed,
-    players: ids.map((id, i) => ({ id, deck: testbedDeck(i % 2 === 0 ? 'RW' : 'UB') })),
+    players: ids.map((id, i) => ({ id, deck: starterKitDeck(i % 2 === 0 ? 'RW' : 'UB') })),
   },
   Object.fromEntries(ids.map((id, i) => [id, makeBot(seed * 31 + i)])),
 );

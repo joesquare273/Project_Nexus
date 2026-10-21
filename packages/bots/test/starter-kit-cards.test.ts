@@ -64,11 +64,11 @@ describe('Final Fantasy Starter Kit cards', () => {
   it("G'raha Tia draws once a turn when your other creatures die", () => {
     let s = newGame();
     put(s, 'P1', 'graha-tia');
-    const victims = [put(s, 'P1', 'al-bhed-salvagers'), put(s, 'P1', 'tb-bog-rat')];
+    const victims = [put(s, 'P1', 'al-bhed-salvagers'), put(s, 'P1', 'coeurl')];
     const hand = s.players.P1!.hand.length;
     for (const victim of victims) {
-      const kill = put(s, 'P1', 'tb-doom', 'hand');
-      s.players.P1!.manaPool.B = 3;
+      const kill = put(s, 'P1', 'sephiroths-intervention', 'hand');
+      s.players.P1!.manaPool.B = 4;
       s = act(s, { type: 'CastSpell', player: 'P1', card: kill, targets: [{ kind: 'card', card: victim }] });
       s = passAll(s);
       while (s.stack.length > 0) s = passAll(s);
@@ -81,9 +81,10 @@ describe('Final Fantasy Starter Kit cards', () => {
     let s = newGame();
     const cieth = put(s, 'P1', 'shambling-cieth', 'graveyard');
     const swamp = put(s, 'P1', 'swamp');
-    const study = put(s, 'P1', 'tb-study', 'hand');
-    s.players.P1!.manaPool.U = 2;
-    s = act(s, { type: 'CastSpell', player: 'P1', card: study });
+    const intervention = put(s, 'P1', 'sephiroths-intervention', 'hand');
+    const target = put(s, 'P2', 'coeurl');
+    s.players.P1!.manaPool.B = 4;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: intervention, targets: [{ kind: 'card', card: target }] });
     s = passAll(s);
     expect(s.pending.kind).toBe('decide');
     s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: swamp, mana: 'B' });
@@ -94,11 +95,27 @@ describe('Final Fantasy Starter Kit cards', () => {
   it('Ultimecia taps the opposing team and draws on combat damage', () => {
     let s = newGame();
     const ultimecia = put(s, 'P1', 'ultimecia-temporal-threat', 'hand');
-    const blocker = put(s, 'P2', 'tb-tide-wall');
+    const blocker = put(s, 'P2', 'sahagin');
     s.players.P1!.manaPool.U = 6;
     s = act(s, { type: 'CastSpell', player: 'P1', card: ultimecia });
     s = passAll(passAll(s));
     expect(s.cards[blocker]!.tapped).toBe(true);
+  });
+
+  it('unbuilt creatures play as their body; unbuilt noncreature cards cannot be cast', () => {
+    let s = newGame();
+    const pixie = put(s, 'P1', 'il-mheg-pixie', 'hand');
+    const katana = put(s, 'P1', 'samurais-katana', 'hand');
+    s.players.P1!.manaPool.U = 2;
+    s.players.P1!.manaPool.R = 3;
+    expect(applyAction(s, { type: 'CastSpell', player: 'P1', card: katana })).toEqual({
+      ok: false,
+      error: "Samurai's Katana isn't built yet, so it can't be cast.",
+    });
+    s = passAll(act(s, { type: 'CastSpell', player: 'P1', card: pixie }));
+    expect(s.cards[pixie]!.zone).toBe('battlefield');
+    expect(CARD_DEFS['il-mheg-pixie']!.keywords).toEqual(['Flying']);
+    expect(rulesSummary(CARD_DEFS['samurais-katana']!)).toMatch(/not built yet/i);
   });
 
   it('summaries describe the abilities', () => {

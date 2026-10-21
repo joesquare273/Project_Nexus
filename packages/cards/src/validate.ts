@@ -2,6 +2,7 @@
 // combinations before a card ever reaches the engine.
 
 import {
+  CARD_CATEGORIES,
   CARD_TYPES,
   EFFECT_KINDS,
   KEYWORDS,
@@ -11,9 +12,21 @@ import {
   TRIGGER_EVENTS,
   parseManaCost,
   type CardDefinition,
+  type CardType,
   type EffectSpec,
   type TriggerSpec,
 } from '@nexus/engine';
+import typeLists from '../data/types.json' with { type: 'json' };
+
+/** Official subtype lists for each card type (data/types.json, from Scryfall). */
+const SUBTYPES_BY_TYPE: Partial<Record<CardType, readonly string[]>> = {
+  creature: typeLists.creature,
+  artifact: typeLists.artifact,
+  enchantment: typeLists.enchantment,
+  land: typeLists.land,
+  instant: typeLists.spell,
+  sorcery: typeLists.spell,
+};
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const NO_AMOUNT_EFFECTS = new Set(['Destroy', 'Tap', 'ReturnToHand']);
@@ -41,6 +54,11 @@ export function validateCardDefinition(raw: unknown): string[] {
     return errors;
   }
   for (const st of c.supertypes ?? []) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}".`);
+  // Each subtype must belong to one of the card's types (rule 205.3d), per Scryfall's official lists.
+  const allowed = new Set(c.types.flatMap((t) => SUBTYPES_BY_TYPE[t] ?? []));
+  for (const sub of c.subtypes ?? []) {
+    if (!allowed.has(sub)) err(`"${sub}" is not a ${c.types.join(' or ')} subtype.`);
+  }
   for (const k of c.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   for (const m of c.produces ?? []) if (!MANA_TYPES.includes(m)) err(`unknown mana type "${m}".`);
 
@@ -58,7 +76,9 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (c.types.includes('creature') && (!isNonNegativeInt(c.power) || !isNonNegativeInt(c.toughness))) {
     err('creatures need non-negative integer power and toughness.');
   }
-  if (isSpell && !c.effects?.length) err('instants and sorceries need at least one effect.');
+  if (c.notBuilt !== undefined && typeof c.notBuilt !== 'boolean') err('notBuilt must be true or false.');
+  if (isSpell && !c.notBuilt && !c.effects?.length) err('instants and sorceries need at least one effect.');
+  if (c.notBuilt && (c.effects?.length || c.triggers?.length)) err('a card marked notBuilt has no effects or triggers yet.');
   if (!isSpell && c.effects?.length) err('permanents use triggers, not effects.');
 
   for (const e of c.effects ?? []) validateEffect(e, false, err);
@@ -84,6 +104,9 @@ function validateTrigger(t: TriggerSpec, err: (msg: string) => void): void {
   const label = `trigger "${t.when}"`;
   for (const type of [...(t.what?.types ?? []), ...(t.what?.nonTypes ?? [])]) {
     if (!CARD_TYPES.includes(type)) err(`${label}: unknown type "${type}".`);
+  }
+  for (const cat of t.what?.categories ?? []) {
+    if (!CARD_CATEGORIES.includes(cat)) err(`${label}: unknown category "${cat}" (use ${CARD_CATEGORIES.join(', ')}).`);
   }
   if (t.what?.controller !== undefined && t.what.controller !== 'You' && t.what.controller !== 'Opponent') {
     err(`${label}: controller must be "You" or "Opponent".`);

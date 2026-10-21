@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_FOR_ALL, applyAction, createGame, type GameSetup } from '@nexus/engine';
-import { CARD_DEFS, testbedDeck } from '@nexus/cards';
+import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { basicAi, playGame, randomBot, type Bot } from '../src/index.ts';
 import { checkInvariants } from '../src/invariants.ts';
 
@@ -13,7 +13,7 @@ function setup(players: number, seed: number): GameSetup {
     format: FREE_FOR_ALL,
     cardDefs: CARD_DEFS,
     seed,
-    players: Array.from({ length: players }, (_, i) => ({ id: `P${i + 1}`, deck: testbedDeck(i % 2 ? 'UB' : 'RW') })),
+    players: Array.from({ length: players }, (_, i) => ({ id: `P${i + 1}`, deck: starterKitDeck(i % 2 ? 'UB' : 'RW') })),
   };
 }
 

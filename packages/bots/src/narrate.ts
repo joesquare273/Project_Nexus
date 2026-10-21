@@ -43,7 +43,9 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 function subjectText(f: ObjectFilter, noun: string, plural = false): string {
   const s = plural ? 's' : '';
   const prefix = (f.nonTypes ?? []).map((t) => `non${t} `).join('');
-  const nouns = f.types?.length ? f.types.map((t) => `${prefix}${t}${s}`).join(' or ') : `${prefix}${noun}${s}`;
+  // Categories name the noun: "nonland permanent", "nonpermanent spell".
+  const base = f.categories?.length ? f.categories.join(' ') : noun;
+  const nouns = f.types?.length ? f.types.map((t) => `${prefix}${t}${s}`).join(' or ') : `${prefix}${base}${s}`;
   const owner = f.controller === 'You' ? ' you control' : f.controller === 'Opponent' ? ' an opponent controls' : '';
   return `${nouns}${owner}`;
 }
@@ -87,6 +89,13 @@ export function rulesSummary(def: CardDefinition): string {
   if (def.entersTapped) parts.push('Enters tapped');
   for (const e of def.effects ?? []) parts.push(capitalize(effectText(e)));
   for (const t of def.triggers ?? []) parts.push(triggerText(t).replace(/\.$/, ''));
+  if (def.notBuilt) {
+    parts.push(
+      def.types.includes('creature')
+        ? 'Not built yet: only its power, toughness and keywords work'
+        : "Not built yet: can't be cast",
+    );
+  }
   const body = parts.join('. ');
   const stats = def.types.includes('creature') ? `${def.power}/${def.toughness}` : '';
   return [stats, body && `${body}.`].filter(Boolean).join(' ');

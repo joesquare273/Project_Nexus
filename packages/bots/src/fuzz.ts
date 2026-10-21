@@ -6,7 +6,7 @@
 // Any failing seed is printed so it can be replayed with `npm run sim`.
 
 import { FREE_FOR_ALL } from '@nexus/engine';
-import { CARD_DEFS, testbedDeck } from '@nexus/cards';
+import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { parseArgs } from 'node:util';
 import { basicAi, playGame, randomBot } from './index.ts';
 import { checkInvariants } from './invariants.ts';
@@ -33,7 +33,7 @@ for (let i = 0; i < games; i++) {
         format: FREE_FOR_ALL,
         cardDefs: CARD_DEFS,
         seed,
-        players: Array.from({ length: players }, (_, p) => ({ id: `P${p + 1}`, deck: testbedDeck(p % 2 ? 'UB' : 'RW') })),
+        players: Array.from({ length: players }, (_, p) => ({ id: `P${p + 1}`, deck: starterKitDeck(p % 2 ? 'UB' : 'RW') })),
       },
       Object.fromEntries(Array.from({ length: players }, (_, p) => [`P${p + 1}`, make(seed * 7 + p)])),
       {

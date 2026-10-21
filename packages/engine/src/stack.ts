@@ -1,6 +1,7 @@
 // Casting spells, playing lands, mana abilities, and resolving the stack (PRD 7.2).
 
 import { parseManaCost, planPayment } from './cost.ts';
+import { isPermanentCard, isSpellCard, manaProduced } from './typerules.ts';
 import {
   addMana,
   alivePlayers,
@@ -14,7 +15,6 @@ import {
   hasKeyword,
   hasType,
   isCreatureOnBattlefield,
-  isPermanentCard,
   moveCard,
   newId,
   player,
@@ -43,6 +43,11 @@ import {
 /** Sorcery timing: your own main phase with an empty stack. */
 export function canActAtSorcerySpeed(s: GameState, playerId: PlayerId): boolean {
   return s.activePlayer === playerId && (s.step === 'main1' || s.step === 'main2') && s.stack.length === 0;
+}
+
+/** Unbuilt creatures can be cast as their body; other unbuilt cards can't be cast yet. */
+export function canEverCast(def: CardDefinition): boolean {
+  return isSpellCard(def) && (!def.notBuilt || def.types.includes('creature'));
 }
 
 export function hasInstantTiming(def: CardDefinition): boolean {
@@ -120,8 +125,9 @@ export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId
   const c = card(s, id);
   const def = defOf(s, c);
   if (c.zone !== 'battlefield' || c.controller !== playerId) reject('You do not control that permanent.');
-  if (!def.produces?.length) reject('That permanent has no mana ability.');
-  if (!def.produces.includes(mana)) reject(`That permanent can't produce {${mana}}.`);
+  const produced = manaProduced(def);
+  if (produced.length === 0) reject('That permanent has no mana ability.');
+  if (!produced.includes(mana)) reject(`That permanent can't produce {${mana}}.`);
   if (c.tapped) reject('That permanent is already tapped.');
   if (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) {
     reject('Creatures with summoning sickness can’t use tap abilities.');
@@ -145,6 +151,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const def = defOf(s, c);
   if (c.owner !== playerId || c.zone !== 'hand') reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
+  if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
   if (!hasInstantTiming(def) && !canActAtSorcerySpeed(s, playerId)) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }

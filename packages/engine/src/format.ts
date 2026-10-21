@@ -1,5 +1,6 @@
 // Formats are engine configuration, not separate code paths (PRD 4).
 
+import { isBasicLand } from './typerules.ts';
 import type { CardDefId, CardDefinition } from './types.ts';
 
 export interface FormatConfig {
@@ -57,8 +58,7 @@ export function validateDeck(
       errors.push(`Unknown card "${id}".`);
       continue;
     }
-    const basicLand = def.supertypes?.includes('Basic') && def.types.includes('land');
-    if (!basicLand && count > format.maxCopies) {
+    if (!isBasicLand(def) && count > format.maxCopies) {
       errors.push(`"${def.name}" appears ${count} times; the limit is ${format.maxCopies}.`);
     }
   }

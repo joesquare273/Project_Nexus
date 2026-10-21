@@ -102,10 +102,6 @@ export function hasKeyword(s: GameState, c: CardInstance, keyword: Keyword): boo
   return defOf(s, c).keywords?.includes(keyword) ?? false;
 }
 
-export function isPermanentCard(def: CardDefinition): boolean {
-  return !def.types.includes('instant') && !def.types.includes('sorcery');
-}
-
 export function isCreatureOnBattlefield(s: GameState, c: CardInstance | undefined): c is CardInstance {
   return !!c && c.zone === 'battlefield' && hasType(s, c, 'creature');
 }

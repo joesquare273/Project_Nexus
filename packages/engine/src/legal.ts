@@ -8,9 +8,10 @@
 
 import { canPay, parseManaCost } from './cost.ts';
 import { attackersFor, canBlock } from './combat.ts';
-import { canActAtSorcerySpeed, choosingEffects, hasInstantTiming, targetOptions, triggerSpec } from './stack.ts';
+import { canActAtSorcerySpeed, canEverCast, choosingEffects, hasInstantTiming, targetOptions, triggerSpec } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { triggerTargetOptions } from './triggers.ts';
+import { manaProduced } from './typerules.ts';
 import type { Action, Block, GameState, PlayerId, Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 32;
@@ -36,8 +37,9 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
     const c = s.cards[id]!;
     const def = s.cardDefs[c.defId]!;
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
-    if (!def.produces?.length || c.tapped || c.controller !== player || sick) continue;
-    for (const mana of def.produces) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
+    const produced = manaProduced(def);
+    if (produced.length === 0 || c.tapped || c.controller !== player || sick) continue;
+    for (const mana of produced) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
   }
   return actions;
 }
@@ -123,7 +125,7 @@ export function getLegalActions(s: GameState): Action[] {
           if (sorcerySpeed && p.landsPlayedThisTurn < 1) actions.push({ type: 'PlayLand', player, card: id });
           continue;
         }
-        if (!hasInstantTiming(def) && !sorcerySpeed) continue;
+        if (!canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
         if (!canPay(p.manaPool, parseManaCost(def.manaCost))) continue;
         for (const targets of targetCombos(s, player, id)) {
           actions.push({ type: 'CastSpell', player, card: id, targets });

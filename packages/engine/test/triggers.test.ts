@@ -270,6 +270,21 @@ describe.each([2, 3, 4])('triggered abilities, %i players', (n) => {
     expect(rejected(poor, { type: 'Decide', player: 'P1', accept: true })).toMatch(/enough life/);
   });
 
+  it('filters by category: a nonland permanent entering triggers it, a land does not', () => {
+    let s = newGame(n);
+    put(s, 'P1', 'gardener');
+    const bear = put(s, 'P1', 'bear', 'hand');
+    const island = put(s, 'P1', 'island', 'hand');
+    addMana(s, 'P1', { G: 2 });
+    s = act(s, { type: 'PlayLand', player: 'P1', card: island }).state;
+    expect(s.stack).toEqual([]);
+    s = act(s, { type: 'CastSpell', player: 'P1', card: bear }).state;
+    s = passAll(s).state;
+    expect(s.stack).toHaveLength(1);
+    s = passAll(s).state;
+    expect(s.players.P1!.life).toBe(21);
+  });
+
   it('"you may" without a cost', () => {
     for (const accept of [true, false]) {
       let s = newGame(n);

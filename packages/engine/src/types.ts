@@ -24,6 +24,15 @@ export type ManaCost = { generic: number } & Partial<Record<ManaType, number>>;
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
+/**
+ * Groupings of card types that rules and card text refer to: a permanent
+ * (land, creature, artifact, enchantment) stays on the battlefield; a
+ * nonpermanent (instant, sorcery) does its effect and goes to the graveyard;
+ * a spell is any card that's cast, which is everything but lands.
+ */
+export const CARD_CATEGORIES = ['permanent', 'nonpermanent', 'spell'] as const;
+export type CardCategory = (typeof CARD_CATEGORIES)[number];
+
 export const SUPERTYPES = ['Basic', 'Legendary'] as const;
 export type Supertype = (typeof SUPERTYPES)[number];
 
@@ -105,6 +114,8 @@ export interface ObjectFilter {
   types?: CardType[];
   /** The subject has none of these types ("noncreature spell"). */
   nonTypes?: CardType[];
+  /** The subject is in all of these categories ("nonland permanent" = permanent + nonTypes land). */
+  categories?: CardCategory[];
 }
 
 export interface TriggerSpec {
@@ -148,6 +159,12 @@ export interface CardDefinition {
   effects?: EffectSpec[];
   /** Triggered abilities. A trigger is referred to by its index in this list. */
   triggers?: TriggerSpec[];
+  /**
+   * A real card whose abilities aren't built yet. Creatures still play with
+   * their cost, power, toughness and printed keywords; other cards can't be
+   * cast until they're built.
+   */
+  notBuilt?: boolean;
   /** Short rules summary for placeholder cards. Real card text comes from Scryfall at build time. */
   text?: string;
   /** Scryfall set code and collector number, for real cards. */

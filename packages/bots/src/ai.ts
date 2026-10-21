@@ -5,6 +5,7 @@
 
 import {
   CHOSEN_TARGET_KINDS,
+  canEverCast,
   manaValue,
   parseManaCost,
   triggerSpec,
@@ -102,6 +103,8 @@ function isWorthCasting(s: GameState, me: PlayerId, card: CardDefinition): boole
   if (effects.some((e) => e.effect === 'GainLife') && effects.every((e) => e.effect === 'GainLife')) {
     return s.players[me]!.life <= 12;
   }
+  const lifeCost = effects.filter((e) => e.effect === 'LoseLife' && e.target === 'You').reduce((n, e) => n + (e.amount ?? 0), 0);
+  if (lifeCost > 0 && s.players[me]!.life <= lifeCost + 3) return false;
   if (effects.some((e) => e.target === 'EachPlayer' && e.effect === 'DealDamage')) {
     return opponents(s, me).every((p) => s.players[p]!.life < s.players[me]!.life);
   }
@@ -118,7 +121,7 @@ function castStep(s: GameState, me: PlayerId, legal: Action[]): Action | null {
   const hand = s.players[me]!.hand.map((id) => s.cards[id]!);
   const candidates = hand
     .map((c) => ({ c, d: def(s, c) }))
-    .filter(({ d }) => !d.types.includes('land'))
+    .filter(({ d }) => canEverCast(d))
     .filter(({ d }) => sorcerySpeed || d.types.includes('instant') || d.keywords?.includes('Flash'))
     .filter(({ d }) => isWorthCasting(s, me, d))
     .sort((a, b) => manaValue(parseManaCost(b.d.manaCost)) - manaValue(parseManaCost(a.d.manaCost)));

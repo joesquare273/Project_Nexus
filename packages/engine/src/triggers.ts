@@ -7,6 +7,7 @@
 import { checkTargets, choosingEffects, targetOptions } from './stack.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
 import { givePriority } from './turn.ts';
+import { categoriesOf } from './typerules.ts';
 import type {
   AbilityItem,
   CardInstance,
@@ -79,6 +80,10 @@ function matchesFilter(
   const types = defOf(s, s.cards[o.subject]!).types;
   if (filter.types && !filter.types.some((t) => types.includes(t))) return false;
   if (filter.nonTypes?.some((t) => types.includes(t))) return false;
+  if (filter.categories) {
+    const categories = categoriesOf(defOf(s, s.cards[o.subject]!));
+    if (!filter.categories.every((c) => categories.includes(c))) return false;
+  }
   return true;
 }
 

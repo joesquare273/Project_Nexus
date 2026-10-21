@@ -9,13 +9,15 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "npm run dev -w @nexus/client",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm test",
     "sim": "node packages/bots/src/sim.ts",
     "fuzz": "node packages/bots/src/fuzz.ts",
-    "play": "node packages/bots/src/play.ts"
+    "play": "node packages/bots/src/play.ts",
+    "scryfall": "node packages/cards/scripts/scryfall.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

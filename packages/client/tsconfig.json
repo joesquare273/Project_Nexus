@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx",
+    "types": [
+      "node",
+      "vite/client"
+    ]
+  },
+  "include": [
+    "src",
+    "test",
+    "vite.config.ts"
+  ],
+  "references": [
+    {
+      "path": "../engine"
+    },
+    {
+      "path": "../cards"
+    },
+    {
+      "path": "../bots"
+    }
+  ]
+}

@@ -128,6 +128,17 @@ export const DEFS: Record<string, CardDefinition> = Object.fromEntries(
         triggers: [{ when: 'Upkeep', cost: { life: 1 }, effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }] }],
       },
       {
+        // "Whenever another nonland permanent you control enters, you gain 1 life."
+        ...creature('gardener', '{1}{G}', 1, 1),
+        triggers: [
+          {
+            when: 'EntersBattlefield',
+            what: { other: true, controller: 'You', categories: ['permanent'], nonTypes: ['land'] },
+            effects: [{ effect: 'GainLife', amount: 1, target: 'You' }],
+          },
+        ],
+      },
+      {
         ...creature('healer', '{1}{W}', 1, 1),
         triggers: [{ when: 'EntersBattlefield', optional: true, effects: [{ effect: 'GainLife', amount: 2, target: 'You' }] }],
       },

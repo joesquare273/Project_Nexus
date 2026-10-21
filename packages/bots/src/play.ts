@@ -23,7 +23,7 @@ import {
   type GameState,
   type PlayerId,
 } from '@nexus/engine';
-import { CARD_DEFS, testbedDeck } from '@nexus/cards';
+import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { basicAi, planTaps, randomBot, tapActions, type Bot } from './index.ts';
@@ -418,9 +418,9 @@ async function decideYesNo(s: GameState): Promise<Action[]> {
 // ---------------------------------------------------------------------------
 
 async function playOneGame(gameSeed: number): Promise<void> {
-  const decks: Record<PlayerId, ReturnType<typeof testbedDeck>> = { [YOU]: testbedDeck(yourDeck) };
+  const decks: Record<PlayerId, ReturnType<typeof starterKitDeck>> = { [YOU]: starterKitDeck(yourDeck) };
   botIds.forEach((id, i) => {
-    decks[id] = testbedDeck((yourDeck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');
+    decks[id] = starterKitDeck((yourDeck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');
   });
   const created = createGame({
     format: FREE_FOR_ALL,
@@ -462,7 +462,7 @@ async function playOneGame(gameSeed: number): Promise<void> {
 
 async function main(): Promise<void> {
   console.log('Project Nexus - play against the AI');
-  console.log('These are placeholder testbed cards until the Final Fantasy Starter Kit cards are implemented.');
+  console.log('Final Fantasy Starter Kit cards so far, plus real cards from other sets. Try npm run dev for the graphical board.');
   let gameSeed = seed;
   try {
     for (;;) {

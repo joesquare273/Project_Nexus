@@ -4,6 +4,15 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": ["src", "test", "data/*.json"],
-  "references": [{ "path": "../engine" }]
+  "include": [
+    "src",
+    "test",
+    "scripts",
+    "data/*.json"
+  ],
+  "references": [
+    {
+      "path": "../engine"
+    }
+  ]
 }

@@ -1,0 +1,70 @@
+import { useEffect, useRef } from 'react';
+import type { GameView, InstanceId } from '@nexus/engine';
+import { defOf, isCreature, rulesText, scryfallOf, typeLine } from '../game/cards.ts';
+import type { LogEntry } from '../game/session.ts';
+import { CardFace, ManaCost } from './Card.tsx';
+
+/** A large view of the hovered card, with its rules text. */
+export function Inspector({ view, id }: { view: GameView; id: InstanceId | null }) {
+  const c = id ? view.cards[id] : undefined;
+  if (!c) {
+    return (
+      <div className="inspector empty">
+        <p>Hover over a card to see it here.</p>
+      </div>
+    );
+  }
+  const def = defOf(c.defId);
+  const info = scryfallOf(c.defId);
+  const status = [
+    c.zone === 'battlefield' && c.tapped && 'Tapped',
+    c.zone === 'battlefield' && c.damage > 0 && `${c.damage} damage`,
+    c.zone === 'battlefield' && c.summoningSick && isCreature(def) && 'Summoning sick',
+  ].filter(Boolean);
+  return (
+    <div className="inspector">
+      <div className="inspector-card">
+        <CardFace defId={c.defId} size="large" />
+      </div>
+      <div className="inspector-text">
+        <div className="inspector-title">
+          <strong>{def.name}</strong> <ManaCost cost={def.manaCost} />
+        </div>
+        <div className="inspector-type">{info?.typeLine ?? typeLine(def)}</div>
+        <p className="inspector-rules">{rulesText(def)}</p>
+        {def.notBuilt && (
+          <p className="inspector-not-built">
+            {isCreature(def)
+              ? 'Not built yet: this creature plays with its power, toughness and keywords, but its other abilities do nothing yet.'
+              : "Not built yet: this card can't be cast until its abilities are built."}
+          </p>
+        )}
+        {isCreature(def) && (
+          <div className="inspector-pt">
+            {def.power}/{def.toughness}
+          </div>
+        )}
+        {status.length > 0 && <div className="inspector-status">{status.join(' · ')}</div>}
+        {info?.artist && <div className="inspector-credit">Illustrated by {info.artist}</div>}
+      </div>
+    </div>
+  );
+}
+
+export function GameLog({ entries }: { entries: readonly LogEntry[] }) {
+  const end = useRef<HTMLDivElement>(null);
+  const last = entries.at(-1)?.id;
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [last]);
+  return (
+    <div className="log">
+      {entries.slice(-150).map((e) => (
+        <div key={e.id} className={e.heading ? 'log-heading' : 'log-line'}>
+          {e.text}
+        </div>
+      ))}
+      <div ref={end} />
+    </div>
+  );
+}

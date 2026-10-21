@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./narrate": "./src/narrate.ts"
   },
-  "dependencies": { "@nexus/engine": "*", "@nexus/cards": "*" }
+  "dependencies": {
+    "@nexus/engine": "*",
+    "@nexus/cards": "*"
+  }
 }

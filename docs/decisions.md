@@ -12,6 +12,30 @@ starting with the Final Fantasy cards, so:
 - Card rules text and images are not committed. Card definitions describe
   behavior as data, and display text is generated from that data. Fetching
   oracle text from Scryfall into a gitignored cache is an option for later.
+  (Superseded on 2026-10-21, below.)
+
+## 2026-10-21: Browser board now, Godot later; real card images and text
+
+- The graphical client is a browser app (`packages/client`) because it runs
+  the TypeScript engine directly. A Godot client may replace it much later,
+  for heavier visual effects.
+- To keep that move cheap, the client never reaches into engine internals.
+  It works from the same JSON a networked client would get: the player's
+  `GameView`, legal actions, and filtered events. Decisions go back as
+  `Action` objects. A future Godot client gets the same data from a server.
+- This is a personal, non-commercial project, so the client shows real card
+  images and Oracle text. `npm run scryfall` saves each real card's Scryfall
+  image links and Oracle text to `packages/cards/data/scryfall.json`; images
+  load from Scryfall's servers and are never stored in the repo. If an image
+  can't load, the board draws a card frame instead.
+
+## 2026-10-21: The Starter Kits are the testbed
+
+Games use the exact Final Fantasy Starter Kit decklists. Placeholder
+"Testbed" cards are gone. Kit cards that aren't fully built are defined
+with `notBuilt: true`: creatures play as their real body and printed
+keywords, and noncreature cards can't be cast yet. A card is "implemented"
+in `fin-starter-kits.json` only when it is fully built.
 
 ## 2026-10-20: First card target is the FIN Starter Kits
 
