@@ -4,6 +4,7 @@
 // would get the same view and send the same actions through a server.
 
 import {
+  COMMANDER,
   FREE_FOR_ALL,
   applyAction,
   createGame,
@@ -18,7 +19,7 @@ import {
   type InstanceId,
   type PlayerId,
 } from '@nexus/engine';
-import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
+import { CARD_DEFS, FIN_PRECONS, preconDeck, starterKitDeck } from '@nexus/cards';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
 import { cardName, describe } from '@nexus/bots/narrate';
 
@@ -27,10 +28,23 @@ export const YOU: PlayerId = 'You';
 export type DeckChoice = 'RW' | 'UB';
 
 export interface SessionOptions {
+  /** Starter Kit games (60 cards, 20 life) or Commander with the precons (100 cards, 40 life). */
+  format?: 'starter' | 'commander';
+  /** Starter Kit deck. */
   deck: DeckChoice;
+  /** Commander: your precon's name. Opponents get the others. */
+  precon?: string;
   opponents: number;
   seed: number;
   bot: 'ai' | 'random';
+  /** Show coaching tips as situations come up (the practice game). */
+  coaching?: boolean;
+}
+
+/** A game that starts from a prepared position instead of a fresh shuffle (the tutorial). */
+export interface Scenario {
+  state: GameState;
+  bots: Record<PlayerId, Bot>;
 }
 
 export type { CardPlay, PlayChoice } from '@nexus/bots';
@@ -59,11 +73,30 @@ export class GameSession {
   private readonly bots: Record<PlayerId, Bot>;
   private nextLogId = 1;
 
-  constructor(options: SessionOptions) {
+  constructor(options: SessionOptions, scenario?: Scenario) {
     this.options = options;
     this.opponents = Array.from({ length: options.opponents }, (_, i) => `Bot${i + 1}`);
+    if (scenario) {
+      this.bots = scenario.bots;
+      this.state = scenario.state;
+      return;
+    }
     const makeBot = options.bot === 'random' ? randomBot : basicAi;
     this.bots = Object.fromEntries(this.opponents.map((id, i) => [id, makeBot(options.seed + i)]));
+    if (options.format === 'commander') {
+      const mine = FIN_PRECONS.find((p) => p.name === options.precon) ?? FIN_PRECONS[0]!;
+      const others = FIN_PRECONS.filter((p) => p !== mine);
+      const decks = [mine, ...others].map((p) => preconDeck(p.name));
+      const created = createGame({
+        format: COMMANDER,
+        cardDefs: CARD_DEFS,
+        seed: options.seed,
+        players: [YOU, ...this.opponents].map((id, i) => ({ id, ...decks[i]! })),
+      });
+      this.state = created.state;
+      this.narrate(created.events);
+      return;
+    }
     const decks: Record<PlayerId, ReturnType<typeof starterKitDeck>> = { [YOU]: starterKitDeck(options.deck) };
     this.opponents.forEach((id, i) => {
       decks[id] = starterKitDeck((options.deck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');

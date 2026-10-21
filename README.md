@@ -32,7 +32,11 @@ exact Final Fantasy Starter Kit decks, with every card working as printed.
   Kits plus the tokens they make, as JSON validated at load time. All of
   them are fully built and tested against their Oracle text.
 - **Client** (`packages/client`): the browser game board, with real card
-  images from Scryfall.
+  images from Scryfall, a "Learn to play" tutorial, and a practice game
+  with tips.
+- **Commander** ([docs/commander.md](docs/commander.md)): the Commander
+  format and all four Final Fantasy Commander precons; their cards are being
+  built step by step (C1, the mana cards, is done).
 - **Bots** (`packages/bots`): a basic AI, a random bot for fuzzing, a
   terminal game against the AI, a bot-vs-bot simulator and a fuzzer.
 - **Tests**: scenario tests for each rule run across 2, 3 and 4 players,
@@ -67,6 +71,7 @@ Godot client for heavier visual effects.
 | `npm run typecheck` | Type-check every package |
 | `npm run fuzz` | 10,000 invariant-checked bot games |
 | `npm run scryfall` | Cache Scryfall card data and type lists (rate-limit safe) |
+| `node packages/cards/scripts/import-precons.ts` | Re-import the Commander precons from MTGJSON |
 
 ## Design notes
 

@@ -28,6 +28,12 @@ export interface PlayerView {
   battlefield: InstanceId[];
   graveyard: InstanceId[];
   exile: InstanceId[];
+  /** The command zone (Commander format). */
+  command: InstanceId[];
+  /** Times each commander has been cast from the command zone; the tax is {2} per cast. */
+  commanderCasts: Record<InstanceId, number>;
+  /** Combat damage taken from each commander; 21 from one commander knocks you out. */
+  commanderDamage: Record<InstanceId, number>;
   manaPool: ManaPool;
   /** Mana that can only be spent on Equipment spells and equip abilities. */
   equipmentMana: ManaPool;
@@ -79,6 +85,9 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       battlefield: [...p.battlefield],
       graveyard: [...p.graveyard],
       exile: [...p.exile],
+      command: [...p.command],
+      commanderCasts: { ...p.commanderCasts },
+      commanderDamage: { ...p.commanderDamage },
       manaPool: { ...p.manaPool },
       equipmentMana: { ...p.equipmentMana },
       eliminated: p.eliminated,

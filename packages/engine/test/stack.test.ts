@@ -22,7 +22,8 @@ describe('mana costs', () => {
     expect(parseManaCost('{2}{R}{W}')).toEqual({ generic: 2, R: 1, W: 1 });
     expect(parseManaCost('{10}')).toEqual({ generic: 10 });
     expect(manaValue(parseManaCost('{3}{U}{U}'))).toBe(5);
-    expect(() => parseManaCost('{X}{R}')).toThrow(/Unsupported/);
+    expect(parseManaCost('{X}{R}')).toEqual({ generic: 0, x: 1, R: 1 });
+    expect(() => parseManaCost('{R/W}')).toThrow(/Unsupported/);
     expect(() => parseManaCost('2R')).toThrow(/Malformed/);
   });
 

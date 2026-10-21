@@ -61,6 +61,8 @@ export const DEFS: Record<string, CardDefinition> = Object.fromEntries(
       { id: 'mend', name: 'mend', manaCost: '{W}', types: ['instant'], effects: [{ effect: 'GainLife', amount: 3, target: 'You' }] },
       { id: 'study', name: 'study', manaCost: '{1}{U}', types: ['sorcery'], effects: [{ effect: 'DrawCards', amount: 2, target: 'You' }] },
       { id: 'murder', name: 'murder', manaCost: '{1}{B}', types: ['instant'], effects: [{ effect: 'Destroy', target: 'TargetCreature' }] },
+      // A legendary creature that can be a commander (green identity).
+      { ...creature('warlord', '{1}{G}', 3, 3), supertypes: ['Legendary'], colorIdentity: ['G'] },
       // Triggered abilities. Each mirrors a real card's shape without its name.
       {
         ...creature('drainer', '{2}{B}', 2, 3),

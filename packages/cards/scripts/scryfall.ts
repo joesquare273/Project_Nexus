@@ -162,20 +162,26 @@ function checkTokens(): void {
     if (def.token && id) defined.set(id, def.id);
   }
   const problems: string[] = [];
+  const later = new Map<string, string[]>();
   for (const def of CARDS) {
     // A token's own list names other cards' tokens, so only real cards count.
     if (def.token) continue;
     for (const t of saved[def.id]?.relatedTokens ?? []) {
       // The "Copy" helper card just marks a token copy of something else.
-      if (t.name === 'Copy') continue;
-      if (!defined.has(t.scryfallId)) problems.push(`${def.name} makes a ${t.name} token (Scryfall id ${t.scryfallId}) that tokens.json doesn't define.`);
+      if (t.name === 'Copy' || defined.has(t.scryfallId)) continue;
+      if (def.notBuilt) later.set(t.name, [...(later.get(t.name) ?? []), def.name]);
+      else problems.push(`${def.name} makes a ${t.name} token (Scryfall id ${t.scryfallId}) that tokens.json doesn't define.`);
     }
+  }
+  if (later.size > 0) {
+    console.log(`\nTokens to add when these cards are built (${later.size}):`);
+    for (const [name, cards] of later) console.log(`  ${name}: ${cards.join(', ')}`);
   }
   if (problems.length > 0) {
     console.error(`\nMissing tokens:\n  ${problems.join('\n  ')}`);
     process.exit(1);
   }
-  console.log('Every token the cards make is defined in tokens.json.');
+  console.log('\nEvery token a built card makes is defined in tokens.json.');
 }
 
 if (wanted.length === 0) {

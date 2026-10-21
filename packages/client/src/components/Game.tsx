@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { triggerSpec, type Action, type GameView, type InstanceId, type PlayerId, type Target } from '@nexus/engine';
 import { planTaps, tapActions } from '@nexus/bots';
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession } from '../game/session.ts';
 import { CardFace } from './Card.tsx';
+import { Coach } from './Coach.tsx';
+import type { Lesson } from '../tutorial/lesson.ts';
+import { currentTip } from '../tutorial/tips.ts';
 import { GameLog, Inspector } from './Sidebar.tsx';
 import { CardList, Hand, OpponentZone, PlayerHeader, YourZone, type Mark, type ZoneHandlers } from './Zones.tsx';
 
@@ -49,7 +52,22 @@ function modeLabels(defId: string, count: number): string[] {
   return Array.from({ length: count }, (_, i) => bullets[i]?.replace(/^•\s*/, '') ?? `Mode ${i + 1}`);
 }
 
-export function Game({ session, onQuit }: { session: GameSession; onQuit: () => void }) {
+export function Game({
+  session,
+  onQuit,
+  lesson,
+  onLessonDone,
+}: {
+  session: GameSession;
+  onQuit: () => void;
+  /** Play this guided lesson on the board. */
+  lesson?: Lesson;
+  /** After the lesson: start the practice game. */
+  onLessonDone?: () => void;
+}) {
+  const [lessonStep, setLessonStep] = useState(0);
+  const [dismissedTips, setDismissedTips] = useState<Set<string>>(new Set());
+  const [tipsOn, setTipsOn] = useState(true);
   const [, setVersion] = useState(0);
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   const [hovered, setHovered] = useState<InstanceId | null>(null);
@@ -111,7 +129,16 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
     setPickedAttacker(null);
   }, [decisionKey]);
 
+  const step = lesson?.steps[lessonStep];
   const submit = (actions: Action[]) => {
+    if (step) {
+      // Only the move this step teaches (mana taps are always fine).
+      const main = actions.filter((a) => a.type !== 'ActivateManaAbility').at(-1);
+      if (main && !step.allows?.(main, s)) {
+        showError(step.hint ?? 'Read the coach panel, then press Next.');
+        return;
+      }
+    }
     const err = session.submit(actions);
     if (err) {
       showError(err);
@@ -121,6 +148,10 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
     setError(null);
     run();
   };
+
+  useEffect(() => {
+    if (step?.done?.(s)) setLessonStep((i) => i + 1);
+  });
 
   const plays = useMemo(
     () => (yourMove && pending.kind === 'priority' ? session.plays() : []),
@@ -230,9 +261,10 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   const livingOpponents = session.opponents.filter((p) => !view.players[p]!.eliminated);
   const currentDefender = livingOpponents.includes(defender) ? defender : livingOpponents[0]!;
   const playable = new Set(plays.map((p) => p.card));
+  // Cards castable from outside your hand appear next to it; commanders stay in the command zone by your name.
   const elsewhere = [...playable].filter((id) => {
     const z = s.cards[id]!.zone;
-    return z !== 'hand' && z !== 'battlefield';
+    return z !== 'hand' && z !== 'battlefield' && z !== 'command';
   });
 
   const h: ZoneHandlers = {
@@ -245,6 +277,7 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
       if (canBlockIds.has(id)) marks.push(blocks.has(id) ? 'blocking' : 'can-block');
       if (view.combat?.blocks.some((b) => b.blocker === id)) marks.push('blocking');
       if (pickedAttacker === id) marks.push('selected');
+      if (step?.focus(s).includes(id)) marks.push('focus');
       if (session.recent.has(id)) marks.push('recent');
       return marks;
     },
@@ -308,6 +341,50 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
   };
 
   const surveilCard = pending.kind === 'surveil' && pending.player === YOU ? pending.card : null;
+
+  // The coach panel: the lesson step, the end of the lesson, or a practice-game tip.
+  let coach: ReactNode = null;
+  if (lesson) {
+    if (step) {
+      coach = (
+        <Coach
+          title={step.title}
+          text={step.text}
+          progress={`Step ${lessonStep + 1} of ${lesson.steps.length}`}
+          actions={step.done ? [] : [{ label: 'Next', onClick: () => setLessonStep((i) => i + 1), primary: true }]}
+        />
+      );
+    } else {
+      coach = (
+        <Coach
+          title={s.winner === YOU ? 'You won!' : 'Lesson complete'}
+          text={
+            "That's the core of the game: play a land each turn, cast spells with its mana, and attack. " +
+            'Next, play a real game from the very start, with a random hand against the AI. Tips will pop up as new situations come up.'
+          }
+          actions={[
+            { label: 'Back to menu', onClick: onQuit },
+            ...(onLessonDone ? [{ label: 'Play a practice game', onClick: onLessonDone, primary: true }] : []),
+          ]}
+        />
+      );
+    }
+  } else if (session.options.coaching && tipsOn) {
+    const canPlayLand = plays.some((p) => p.kind === 'land');
+    const tip = currentTip(s, dismissedTips, canPlayLand, plays.some((p) => p.kind !== 'land'));
+    if (tip) {
+      coach = (
+        <Coach
+          title={tip.title}
+          text={tip.text}
+          actions={[
+            { label: 'Hide tips', onClick: () => setTipsOn(false) },
+            { label: 'Got it', onClick: () => setDismissedTips(new Set([...dismissedTips, tip.id])), primary: true },
+          ]}
+        />
+      );
+    }
+  }
   const legendChoices = yourMove && pending.kind === 'chooseLegend' ? pending.cards : [];
 
   return (
@@ -348,6 +425,7 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
           <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>
         {error && <div className="toast">{error}</div>}
+        {coach}
       </main>
       <aside className="sidebar">
         <Inspector view={view} id={hovered ?? surveilCard} />
@@ -388,7 +466,7 @@ export function Game({ session, onQuit }: { session: GameSession; onQuit: () => 
           onClose={() => setZoneView(null)}
         />
       )}
-      {pending.kind === 'gameOver' && (
+      {pending.kind === 'gameOver' && !lesson && (
         <div className="overlay">
           <div className="overlay-box">
             <h2>{s.winner === YOU ? 'You win!' : s.winner ? `${s.winner} wins` : 'Draw'}</h2>

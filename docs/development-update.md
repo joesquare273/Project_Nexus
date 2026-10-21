@@ -5,6 +5,27 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-21
 
+### Tutorial: "Learn to play" and a practice game with tips
+
+The menu has a **Learn to play** lesson built on the Starter Kit cards: a
+prepared position on your turn 3, with a coach panel that explains one idea
+per step (lands and mana, casting an Equipment, Job select, targeting with an
+instant, attacking) and only allows the move it's teaching. Winning leads to
+a **practice game**: a fresh game from turn 1 with a random hand against the
+AI, with tips that pop up as situations first come up (each dismissable).
+The lesson lives in `packages/client/src/tutorial/` and is tested end to end.
+
+### Started: the Final Fantasy Commander precons
+
+All four precons (Limit Break, Revival Trance, Counter Blitz, Scions &
+Spellcraft) are in the game with every card defined, and the Commander
+format works: command zone, commander tax, commander damage, color
+identity, 40 life. The first step, C1, built the mana cards Commander decks
+rely on (Command Tower, Arcane Signet, Sol Ring, pain lands, checklands,
+snarls, temples, Evolving Wilds...). 30-34 of each deck's 100 cards are
+fully built; the rest play as "not built yet" for now. The roadmap is in
+[commander.md](commander.md).
+
 ### Done: every Starter Kit card is built (K2-K6)
 
 All 120 cards in the two Final Fantasy Starter Kits now work as printed,

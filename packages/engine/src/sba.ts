@@ -86,6 +86,18 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
     for (const id of lethal) destroy(ctx, id);
     if (zeroToughness.length + lethal.length > 0) changed = true;
 
+    // A commander in a graveyard or exile goes back to the command zone (903.9a). Simplified: its
+    // owner always chooses to.
+    for (const pid of s.turnOrder) {
+      const p = s.players[pid]!;
+      if (p.eliminated) continue;
+      for (const id of [...p.graveyard, ...p.exile]) {
+        if (!s.cards[id]!.isCommander) continue;
+        moveCard(ctx, id, 'command');
+        changed = true;
+      }
+    }
+
     // Tokens that left the battlefield cease to exist (704.5d). They can only be where effects put them.
     for (const pid of s.turnOrder) {
       const p = s.players[pid]!;
@@ -96,13 +108,17 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
     for (const pid of s.turnOrder) {
       const p = s.players[pid]!;
       if (p.eliminated) continue;
+      const threshold = s.format.commanderDamageThreshold;
+      const commanderDamage = threshold !== undefined && Object.values(p.commanderDamage).some((n) => n >= threshold);
       const reason: EliminationReason | null = p.conceded
         ? 'conceded'
         : p.life <= 0
           ? 'life'
           : p.drewFromEmptyLibrary
             ? 'emptyLibrary'
-            : null;
+            : commanderDamage
+              ? 'commanderDamage'
+              : null;
       if (reason) {
         eliminatePlayer(ctx, pid, reason);
         eliminatedAny = true;

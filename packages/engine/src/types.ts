@@ -19,7 +19,8 @@ export type ManaType = (typeof MANA_TYPES)[number];
 export type ManaPool = Record<ManaType, number>;
 
 /** A parsed mana cost such as {2}{R}{W} -> { generic: 2, R: 1, W: 1 }. */
-export type ManaCost = { generic: number } & Partial<Record<ManaType, number>>;
+/** `x` counts {X} symbols. */
+export type ManaCost = { generic: number; x?: number } & Partial<Record<ManaType, number>>;
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -123,6 +124,10 @@ export const EFFECT_KINDS = [
   'Mill',
   /** Look at the top `amount` cards and put any into your graveyard (asks the player). */
   'Surveil',
+  /** Look at the top `amount` cards and put any on the bottom of your library (asks the player). */
+  'Scry',
+  /** Search your library for a card matching `filter`, put it onto the battlefield (tapped if `entersTapped`), then shuffle. */
+  'SearchLibraryToBattlefield',
   /** Return the target card from a graveyard to the battlefield, with `counters` +1/+1 counters. */
   'ReturnToBattlefield',
   /** Attach the source Equipment to the target creature. */
@@ -174,6 +179,8 @@ export interface EffectSpec {
   counters?: number;
   /** Only happens if this is true ("if this spell was cast from a graveyard"). */
   if?: 'castFromGraveyard';
+  /** SearchLibraryToBattlefield: the card enters tapped. */
+  entersTapped?: boolean;
 }
 
 /**
@@ -208,6 +215,8 @@ export interface ObjectFilter {
   categories?: CardCategory[];
   /** Has at least one of these subtypes ("a Plains card"). */
   subtypes?: string[];
+  /** Has all of these supertypes ("a basic land card"). */
+  supertypes?: Supertype[];
   tapped?: boolean;
   attacking?: boolean;
   /** Has an Equipment attached. */
@@ -245,8 +254,10 @@ export interface ActivatedSpec {
   cost: {
     mana?: string;
     tap?: boolean;
-    /** Discard this card (landcycling). */
+    /** Discard this card (cycling, landcycling). */
     discardThis?: boolean;
+    /** Sacrifice this permanent. */
+    sacrificeThis?: boolean;
   };
   /** Where the card must be. Defaults to the battlefield. */
   zone?: 'battlefield' | 'hand';
@@ -281,6 +292,8 @@ export interface CardDefinition {
   subtypes?: string[];
   /** Color indicator, for things with no mana cost (tokens). */
   colors?: Color[];
+  /** Commander color identity (rule 903.4): every mana symbol in its cost and rules text. */
+  colorIdentity?: Color[];
   power?: number;
   toughness?: number;
   keywords?: Keyword[];
@@ -292,8 +305,25 @@ export interface CardDefinition {
     sacrifice?: boolean;
     /** "Spend this mana only to cast an Equipment spell or activate an equip ability." */
     onlyForEquipment?: boolean;
+    /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
+    amount?: number;
+    /** Producing one of these deals 1 damage to you (pain lands, Talismans). */
+    painFor?: ManaType[];
+    /** "Add one mana of any color in your commander's color identity." */
+    commanderIdentity?: boolean;
+    /** "Add one mana of any color that a land an opponent controls could produce." */
+    opponentLandColors?: boolean;
   };
   entersTapped?: boolean;
+  /** Enters tapped unless one of these holds (checklands, battle lands, snarls). */
+  entersTappedUnless?: {
+    /** "unless you control a Plains or an Island". */
+    controlsSubtypes?: string[];
+    /** "unless you control two or more basic lands". */
+    basicLands?: number;
+    /** "you may reveal a Forest or Plains card from your hand. If you don't, ...". */
+    revealSubtypes?: string[];
+  };
   /** Effects applied, in order, when an instant or sorcery resolves. */
   effects?: EffectSpec[];
   /** "Choose one —": the caster picks one mode's effects instead of `effects`. */
@@ -308,8 +338,10 @@ export interface CardDefinition {
   equip?: string;
   /** "Equip abilities you activate that target this cost {N} less." */
   equipDiscount?: number;
-  /** "[Type]cycling [cost]": discard from hand to search for a card of that subtype. */
-  landcycling?: { subtype: string; cost: string };
+  /** "[Type]cycling [cost]": discard from hand to search for a card of that subtype, or a basic land. */
+  landcycling?: { subtype?: string; basic?: boolean; cost: string };
+  /** "Cycling [cost]": discard from hand to draw a card. */
+  cycling?: string;
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
   /** "This spell costs {N} less to cast if it targets a tapped creature." */
@@ -332,11 +364,14 @@ export interface CardDefinition {
 // Game state (PRD 7)
 // ---------------------------------------------------------------------------
 
-/** `void` holds tokens that left the battlefield and ceased to exist (rule 704.5d). */
-export type ZoneName = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'stack' | 'void';
+/**
+ * `void` holds tokens that left the battlefield and ceased to exist (rule
+ * 704.5d). `command` is the command zone, where commanders start (rule 903.6).
+ */
+export type ZoneName = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'stack' | 'command' | 'void';
 
 /** Zones whose contents every player may see. */
-export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'exile', 'stack'];
+export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'exile', 'stack', 'command'];
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
@@ -362,6 +397,8 @@ export interface CardInstance {
   exiledUntilLeaves?: InstanceId;
   /** In exile, and `player` may play it as long as they control `source`. */
   playableFromExile?: { player: PlayerId; source: InstanceId };
+  /** A commander (Commander format). Stays true whatever zone it's in. */
+  isCommander?: boolean;
 }
 
 export interface PlayerState {
@@ -373,6 +410,12 @@ export interface PlayerState {
   battlefield: InstanceId[];
   graveyard: InstanceId[];
   exile: InstanceId[];
+  /** The command zone (Commander format). */
+  command: InstanceId[];
+  /** Times each of this player's commanders has been cast from the command zone (commander tax, rule 903.8). */
+  commanderCasts: Record<InstanceId, number>;
+  /** Combat damage this player has taken from each commander (rule 903.10a). */
+  commanderDamage: Record<InstanceId, number>;
   manaPool: ManaPool;
   /** Mana that can only be spent on Equipment spells and equip abilities. */
   equipmentMana: ManaPool;
@@ -411,7 +454,7 @@ export interface SpellItem {
   /** For modal spells, the chosen mode. */
   mode?: number;
   /** Where it was cast from. Flashback spells are exiled afterwards. */
-  castFrom: 'hand' | 'graveyard' | 'exile';
+  castFrom: 'hand' | 'graveyard' | 'exile' | 'command';
   /** Total mana spent to cast it. */
   manaSpent: number;
 }
@@ -464,8 +507,10 @@ export interface Resolving {
   chosenUsed: number;
   previousTarget?: Target;
   createdTokens: InstanceId[];
-  /** Cards still to look at for the current surveil. */
+  /** Cards still to look at for the current surveil or scry. */
   surveilQueue: InstanceId[];
+  /** The cards being looked at are for a scry (bottom of the library) rather than a surveil (graveyard). */
+  scrying?: boolean;
 }
 
 export interface Attack {
@@ -495,8 +540,8 @@ export type Pending =
   | { kind: 'chooseTargets'; player: PlayerId; then: PlayerId }
   /** Answer "you may" (and pay any cost) for the ability on top of the stack. */
   | { kind: 'decide'; player: PlayerId; item: string }
-  /** Surveil: keep `card` on top of your library, or put it into your graveyard. */
-  | { kind: 'surveil'; player: PlayerId; card: InstanceId }
+  /** Surveil: keep `card` on top of your library, or put it into your graveyard. With `scry`, the bottom of the library instead. */
+  | { kind: 'surveil'; player: PlayerId; card: InstanceId; scry?: boolean }
   /**
    * Legend rule (704.5j): you control two or more legendary permanents named
    * `name`; choose one of `cards` to keep. `resume` is the decision that was
@@ -558,7 +603,7 @@ export type Action =
 // Events (immutable facts, PRD 9)
 // ---------------------------------------------------------------------------
 
-export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded';
+export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage';
 
 export type GameEvent =
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
@@ -593,7 +638,8 @@ export type GameEvent =
   | { type: 'StackItemAdded'; item: string; card: InstanceId }
   | { type: 'StackItemResolved'; item: string; card: InstanceId; fizzled: boolean }
   | { type: 'Decided'; player: PlayerId; item: string; card: InstanceId; accepted: boolean }
-  | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean }
+  /** Surveil or scry: `toGraveyard` means "away" (the graveyard, or the bottom of the library when `scry`). */
+  | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean; scry?: boolean }
   | { type: 'LegendChosen'; player: PlayerId; kept: InstanceId; others: InstanceId[] }
   | { type: 'CountersAdded'; card: InstanceId; amount: number }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }

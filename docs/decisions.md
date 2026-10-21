@@ -84,6 +84,18 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
   that every token a card makes is defined. Tokens that leave the
   battlefield go to a `void` zone (they cease to exist).
 
+## 2026-10-21: Commander format and the precons
+
+- Commander is a FormatConfig (`COMMANDER`), not a separate code path. The
+  command zone is a real zone; commander tax and commander damage live on
+  the player.
+- The precon card data is generated from MTGJSON by
+  `scripts/import-precons.ts`, which recognizes common card text (mana
+  abilities, conditional "enters tapped", cycling...) and marks the rest
+  `notBuilt`. Hand-written abilities for those cards go into fic.json as
+  they're built (re-running the importer would overwrite them, so after C2
+  starts, the importer should merge rather than replace).
+
 ## Known rules simplifications (to revisit)
 
 | Area | Engine today | Real rule |
@@ -103,3 +115,6 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
 | Library search | Takes the first matching card | The player chooses which matching card |
+| Commander in graveyard or exile | Always returns to the command zone | The owner may choose (rule 903.9a) |
+| Snarl lands | You always reveal a matching card if you have one | Revealing is optional |
+| {X} costs | X is 0 (cards with X aren't built yet) | The caster chooses X |

@@ -30,7 +30,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { isPermanentCard, isSpellCard, manaProduced } from './typerules.ts';
+import { entersTapped, isPermanentCard, isSpellCard, manaChoices } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -84,10 +84,24 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
     });
   }
   if (def.landcycling) {
+    const { subtype, basic, cost } = def.landcycling;
     out.push({
-      cost: { mana: def.landcycling.cost, discardThis: true },
+      cost: { mana: cost, discardThis: true },
       zone: 'hand',
-      effects: [{ effect: 'SearchLibraryToHand', target: 'You', filter: { subtypes: [def.landcycling.subtype] } }],
+      effects: [
+        {
+          effect: 'SearchLibraryToHand',
+          target: 'You',
+          filter: basic ? { types: ['land'], supertypes: ['Basic'] } : { subtypes: [subtype!] },
+        },
+      ],
+    });
+  }
+  if (def.cycling) {
+    out.push({
+      cost: { mana: def.cycling, discardThis: true },
+      zone: 'hand',
+      effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }],
     });
   }
   return out;
@@ -229,7 +243,7 @@ export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId
   const c = card(s, id);
   const def = defOf(s, c);
   if (c.zone !== 'battlefield' || c.controller !== playerId) reject('You do not control that permanent.');
-  const produced = manaProduced(def);
+  const produced = manaChoices(s, c);
   if (produced.length === 0) reject('That permanent has no mana ability.');
   if (!produced.includes(mana)) reject(`That permanent can't produce {${mana}}.`);
   if (c.tapped) reject('That permanent is already tapped.');
@@ -237,8 +251,11 @@ export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId
     reject('Creatures with summoning sickness can’t use tap abilities.');
   }
   tap(ctx, c);
-  if (def.manaAbility?.sacrifice) sacrifice(ctx, id);
-  addMana(ctx, playerId, mana, id, def.manaAbility?.onlyForEquipment ?? false);
+  const ability = def.manaAbility;
+  if (ability?.sacrifice) sacrifice(ctx, id);
+  for (let i = 0; i < (ability?.amount ?? 1); i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ?? false);
+  // Pain lands and Talismans: "This land deals 1 damage to you."
+  if (ability?.painFor?.includes(mana)) dealDamage(ctx, id, { kind: 'player', player: playerId }, 1, false);
 }
 
 // ---------------------------------------------------------------------------
@@ -246,8 +263,14 @@ export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId
 // ---------------------------------------------------------------------------
 
 /** Where a player could play or cast this card from right now, or null. */
-export function playableZone(s: GameState, playerId: PlayerId, c: CardInstance): 'hand' | 'graveyard' | 'exile' | null {
+export function playableZone(
+  s: GameState,
+  playerId: PlayerId,
+  c: CardInstance,
+): 'hand' | 'graveyard' | 'exile' | 'command' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
+  // Commanders are cast from the command zone (rule 903.8).
+  if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
   if (c.owner === playerId && c.zone === 'graveyard' && defOf(s, c).flashback) return 'graveyard';
   const p = c.playableFromExile;
   if (c.zone === 'exile' && p?.player === playerId) {
@@ -270,17 +293,22 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId): void {
   moveCard(ctx, id, 'battlefield');
   c.controller = playerId;
   c.summoningSick = true;
-  if (defOf(s, c).entersTapped) c.tapped = true;
+  if (entersTapped(s, c)) c.tapped = true;
 }
 
 /** What it costs to cast a spell with these targets: its flashback cost from the graveyard, minus any reduction. */
 export function spellCost(
   s: GameState,
   def: CardDefinition,
-  from: 'hand' | 'graveyard' | 'exile',
+  from: 'hand' | 'graveyard' | 'exile' | 'command',
   targets: Target[],
+  card?: CardInstance,
 ): ManaCost {
   let cost = parseManaCost(from === 'graveyard' ? def.flashback : def.manaCost);
+  // Commander tax: {2} more for each earlier cast from the command zone (rule 903.8).
+  if (from === 'command' && card) {
+    cost = { ...cost, generic: cost.generic + 2 * (s.players[card.owner]!.commanderCasts[card.id] ?? 0) };
+  }
   if (def.costReduction?.ifTargetsTappedCreature) {
     const tapped = targets.some((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) && s.cards[t.card]!.tapped);
     if (tapped) cost = reduceGeneric(cost, def.costReduction.generic);
@@ -301,7 +329,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
   if (def.modes && (mode === undefined || !def.modes[mode])) reject(`Choose a mode for ${def.name}.`);
   checkTargets(s, spellEffects(def, mode), targets, playerId, id);
-  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets), isEquipment(s, c));
+  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c), isEquipment(s, c));
+  if (from === 'command') {
+    const casts = player(s, c.owner).commanderCasts;
+    casts[id] = (casts[id] ?? 0) + 1;
+  }
 
   moveCard(ctx, id, 'stack');
   const item: SpellItem = {
@@ -360,6 +392,7 @@ export function activateAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId, in
   checkTargets(s, spec.effects, targets, playerId, id);
   payMana(ctx, playerId, abilityCost(s, spec, targets), spec.equip ?? false);
   if (spec.cost.tap) tap(ctx, c);
+  if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
 
   const item: AbilityItem = {
@@ -511,7 +544,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'Surveil':
+    case 'Scry':
       r.surveilQueue.push(...topOfLibrary(s, item.controller, amount));
+      r.scrying = effect.effect === 'Scry';
       return;
     case 'ReturnToBattlefield':
       for (const id of cards) {
@@ -519,7 +554,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (c.zone !== 'graveyard') continue;
         moveCard(ctx, id, 'battlefield');
         c.summoningSick = true;
-        if (defOf(s, c).entersTapped) c.tapped = true;
+        if (entersTapped(s, c)) c.tapped = true;
         addCounters(ctx, id, effect.counters ?? 0);
       }
       return;
@@ -533,6 +568,20 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
       }
       return;
+    case 'SearchLibraryToBattlefield': {
+      const p = s.players[item.controller]!;
+      const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      if (found) {
+        moveCard(ctx, found, 'battlefield');
+        const c = s.cards[found]!;
+        c.controller = item.controller;
+        c.summoningSick = true;
+        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+      }
+      shuffleInPlace(s, p.library);
+      ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
+      return;
+    }
     case 'SearchLibraryToHand': {
       const p = s.players[item.controller]!;
       const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
@@ -561,7 +610,7 @@ function continueResolving(ctx: Ctx): void {
   for (;;) {
     const next = r.surveilQueue[0];
     if (next !== undefined) {
-      s.pending = { kind: 'surveil', player: item.controller, card: next };
+      s.pending = { kind: 'surveil', player: item.controller, card: next, ...(r.scrying ? { scry: true } : {}) };
       return;
     }
     if (r.next >= effects.length) break;
@@ -606,7 +655,7 @@ export function resolveTop(ctx: Ctx): void {
       moveCard(ctx, c.id, 'battlefield');
       c.controller = item.controller;
       c.summoningSick = true;
-      if (def.entersTapped) c.tapped = true;
+      if (entersTapped(s, c)) c.tapped = true;
       givePriority(ctx, s.activePlayer);
       return;
     }
@@ -652,7 +701,15 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     reject('You are not surveilling right now.');
   }
   const id = s.resolving.surveilQueue.shift()!;
-  if (toGraveyard) moveCard(ctx, id, 'graveyard');
-  ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard });
+  const scry = !!s.resolving.scrying;
+  if (toGraveyard && scry) {
+    // Scry: to the bottom of the library (no zone change).
+    const library = player(s, playerId).library;
+    library.splice(library.indexOf(id), 1);
+    library.push(id);
+  } else if (toGraveyard) {
+    moveCard(ctx, id, 'graveyard');
+  }
+  ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
   continueResolving(ctx);
 }

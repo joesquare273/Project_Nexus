@@ -3,6 +3,7 @@
 // clones the input first, so callers never see partial mutations.
 
 import { hasFlag, hasKeyword } from './characteristics.ts';
+import { entersTapped } from './typerules.ts';
 import {
   MANA_TYPES,
   type CardDefId,
@@ -53,6 +54,9 @@ export function cloneState(s: GameState): GameState {
       battlefield: [...p.battlefield],
       graveyard: [...p.graveyard],
       exile: [...p.exile],
+      command: [...p.command],
+      commanderCasts: { ...p.commanderCasts },
+      commanderDamage: { ...p.commanderDamage },
       manaPool: { ...p.manaPool },
       equipmentMana: { ...p.equipmentMana },
     };
@@ -219,7 +223,7 @@ function leftBattlefield(ctx: Ctx, id: InstanceId): void {
       if (s.players[e.owner]!.eliminated) continue;
       moveCard(ctx, exiled, 'battlefield');
       e.summoningSick = true;
-      if (defOf(s, e).entersTapped) e.tapped = true;
+      if (entersTapped(s, e)) e.tapped = true;
     }
   }
 }
@@ -259,6 +263,11 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat });
   if (target.kind === 'player') {
     changeLife(ctx, target.player, -amount);
+    // Commander damage (rule 903.10a): combat damage from a commander is tracked per commander.
+    if (combat && source.isCommander) {
+      const taken = player(s, target.player).commanderDamage;
+      taken[sourceId] = (taken[sourceId] ?? 0) + amount;
+    }
   } else {
     const victim = s.cards[target.card]!;
     victim.damage += amount;

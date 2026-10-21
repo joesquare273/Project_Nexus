@@ -39,5 +39,7 @@ export {
   isNonpermanentCard,
   isPermanentCard,
   isSpellCard,
+  entersTapped,
+  manaChoices,
   manaProduced,
 } from './typerules.ts';

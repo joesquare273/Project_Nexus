@@ -4,7 +4,11 @@ import { MANA_TYPES, type ManaCost, type ManaPool, type ManaType } from './types
 
 const SYMBOL = /\{([^}]+)\}/g;
 
-/** Parses standard notation. Throws on symbols the engine doesn't support yet (X, hybrid, Phyrexian). */
+/**
+ * Parses standard notation. {X} is counted in `x` and paid as 0 until X
+ * spells are built. Throws on symbols the engine doesn't support yet
+ * (hybrid, Phyrexian).
+ */
 export function parseManaCost(text: string | undefined): ManaCost {
   const cost: ManaCost = { generic: 0 };
   if (!text) return cost;
@@ -12,6 +16,7 @@ export function parseManaCost(text: string | undefined): ManaCost {
   if (leftover.trim() !== '') throw new Error(`Malformed mana cost "${text}".`);
   for (const [, symbol] of text.matchAll(SYMBOL)) {
     if (/^\d+$/.test(symbol!)) cost.generic += Number(symbol);
+    else if (symbol === 'X') cost.x = (cost.x ?? 0) + 1;
     else if ((MANA_TYPES as readonly string[]).includes(symbol!)) {
       const t = symbol as ManaType;
       cost[t] = (cost[t] ?? 0) + 1;
@@ -60,6 +65,7 @@ export function canPay(pool: ManaPool, cost: ManaCost): boolean {
 /** Writes a cost back in standard notation: { generic: 2, R: 1 } -> "{2}{R}". */
 export function formatManaCost(cost: ManaCost): string {
   const parts: string[] = [];
+  for (let i = 0; i < (cost.x ?? 0); i++) parts.push('{X}');
   if (cost.generic > 0) parts.push(`{${cost.generic}}`);
   for (const t of ['W', 'U', 'B', 'R', 'G', 'C'] as const) {
     for (let i = 0; i < (cost[t] ?? 0); i++) parts.push(`{${t}}`);

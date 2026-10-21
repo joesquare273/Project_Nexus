@@ -11,7 +11,7 @@ export function checkInvariants(s: GameState): string[] {
 
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
-    for (const zone of ['library', 'hand', 'battlefield', 'graveyard', 'exile'] as const) {
+    for (const zone of ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'command'] as const) {
       for (const id of p[zone]) {
         note(id);
         const c = s.cards[id];
