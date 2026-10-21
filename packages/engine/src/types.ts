@@ -60,11 +60,24 @@ export const TARGET_KINDS = [
   'AnyTarget',
   'EachOpponent',
   'EachOpponentCreature',
+  'EachCreatureYouControl',
   'EachPlayer',
   'OpponentCreature',
   'TargetCreature',
   'TargetOpponent',
   'TargetPlayer',
+  /** A permanent matching the effect's `filter`, e.g. "target nonland permanent an opponent controls". */
+  'TargetPermanent',
+  /** A card in a graveyard matching `filter` ("target creature card from your graveyard"). */
+  'TargetCardInGraveyard',
+  /** The same object (or player) the previous chosen target picked ("it", "that creature"). */
+  'PreviousTarget',
+  /** The controller of the previous chosen target ("that creature's controller"). */
+  'PreviousTargetController',
+  /** The player the triggering creature attacked. Attack triggers only. */
+  'DefendingPlayer',
+  /** Tokens created earlier in the same spell or ability ("then attach this to it"). */
+  'CreatedTokens',
   /** The card the ability belongs to. Abilities only. */
   'This',
   'You',
@@ -78,15 +91,89 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetCreature',
   'TargetOpponent',
   'TargetPlayer',
+  'TargetPermanent',
+  'TargetCardInGraveyard',
 ];
 
-export const EFFECT_KINDS = ['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'Destroy', 'Tap', 'ReturnToHand'] as const;
+export const EFFECT_KINDS = [
+  'DealDamage',
+  'DrawCards',
+  'GainLife',
+  'LoseLife',
+  'Destroy',
+  'Exile',
+  'Tap',
+  'ReturnToHand',
+  /** Put +1/+1 counters on the target(s). */
+  'AddCounters',
+  /** Create `amount` copies of the token `token`. */
+  'CreateToken',
+  /** Create a token that's a copy of the target permanent. */
+  'CreateTokenCopy',
+  /** "+X/+Y until end of turn" (negative for -X/-Y). */
+  'ModifyPT',
+  /** "gains [keywords] until end of turn". */
+  'GrantKeywords',
+  /** Special one-turn rules: "can't be blocked this turn", "must be blocked this turn if able", and so on. */
+  'GrantFlags',
+  /** Exile the target until the source leaves the battlefield. */
+  'ExileUntilSourceLeaves',
+  /** Exile the top card of your library; you may play it while you control the source. */
+  'ExileTopCardToPlay',
+  'Mill',
+  /** Look at the top `amount` cards and put any into your graveyard (asks the player). */
+  'Surveil',
+  /** Return the target card from a graveyard to the battlefield, with `counters` +1/+1 counters. */
+  'ReturnToBattlefield',
+  /** Attach the source Equipment to the target creature. */
+  'Attach',
+  /** Attach every Equipment you control to the target creature. */
+  'AttachAllEquipment',
+  /** Search your library for a card matching `filter`, put it into your hand, then shuffle. */
+  'SearchLibraryToHand',
+] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
+
+/** Things whose number an amount can count, from the point of view of the spell or ability's controller. */
+export const COUNT_KINDS = [
+  'EquipmentYouControl',
+  'CreaturesYouControl',
+  'EquippedCreaturesYouControl',
+  'NoncreatureNonlandCardsInYourGraveyard',
+  'CreaturesDiedThisTurn',
+] as const;
+export type CountKind = (typeof COUNT_KINDS)[number];
+
+/** A fixed number, or the sum of some counts ("the number of creatures you control plus the number of Equipment you control"). */
+export type Amount = number | { count: CountKind[] };
+
+export const TEMPORARY_FLAGS = [
+  'cantBeBlocked',
+  'mustBeBlocked',
+  /** "If that creature would die this turn, exile it instead." */
+  'exileIfWouldDie',
+] as const;
+export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
   effect: EffectKind;
-  amount?: number;
+  amount?: Amount;
   target: TargetKind;
+  /** For TargetPermanent, TargetCardInGraveyard and SearchLibraryToHand: what qualifies. */
+  filter?: ObjectFilter;
+  /** CreateToken: the token's card id. */
+  token?: CardDefId;
+  /** ModifyPT. */
+  power?: number;
+  toughness?: number;
+  /** GrantKeywords. */
+  keywords?: Keyword[];
+  /** GrantFlags. */
+  flags?: TemporaryFlag[];
+  /** ReturnToBattlefield: extra +1/+1 counters. */
+  counters?: number;
+  /** Only happens if this is true ("if this spell was cast from a graveyard"). */
+  if?: 'castFromGraveyard';
 }
 
 /**
@@ -105,17 +192,28 @@ export const TRIGGER_EVENTS = [
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
-/** Which subjects a trigger cares about, relative to the card that has the ability. */
+/**
+ * Which objects qualify, relative to the card that has the ability: for a
+ * trigger's subject, a target, or a card to search for.
+ */
 export interface ObjectFilter {
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
   controller?: 'You' | 'Opponent';
-  /** The subject has at least one of these types. */
+  /** Has at least one of these types. */
   types?: CardType[];
-  /** The subject has none of these types ("noncreature spell"). */
+  /** Has none of these types ("noncreature spell"). */
   nonTypes?: CardType[];
-  /** The subject is in all of these categories ("nonland permanent" = permanent + nonTypes land). */
+  /** Is in all of these categories ("nonland permanent" = permanent + nonTypes land). */
   categories?: CardCategory[];
+  /** Has at least one of these subtypes ("a Plains card"). */
+  subtypes?: string[];
+  tapped?: boolean;
+  attacking?: boolean;
+  /** Has an Equipment attached. */
+  equipped?: boolean;
+  /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
+  equippedBySource?: boolean;
 }
 
 export interface TriggerSpec {
@@ -133,6 +231,8 @@ export interface TriggerSpec {
   oneOrMore?: boolean;
   /** "This ability triggers only once each turn." */
   oncePerTurn?: boolean;
+  /** Intervening "if" (rule 603.4): SpellCast only, "if at least N mana was spent to cast it". */
+  ifManaSpentAtLeast?: number;
   /** "You may ...": the controller chooses on resolution. */
   optional?: boolean;
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
@@ -140,25 +240,82 @@ export interface TriggerSpec {
   effects: EffectSpec[];
 }
 
+/** A non-mana activated ability: "[cost]: [effect]" (rule 602). */
+export interface ActivatedSpec {
+  cost: {
+    mana?: string;
+    tap?: boolean;
+    /** Discard this card (landcycling). */
+    discardThis?: boolean;
+  };
+  /** Where the card must be. Defaults to the battlefield. */
+  zone?: 'battlefield' | 'hand';
+  /** "Activate only as a sorcery" (equip always is). */
+  sorcerySpeed?: boolean;
+  /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
+  equip?: boolean;
+  effects: EffectSpec[];
+}
+
+/** A continuous effect from a static ability (rule 604, 611.3). */
+export interface StaticSpec {
+  /** Which creature it changes: this card, or the creature this Equipment is attached to. */
+  affects: 'Self' | 'EquippedCreature';
+  /** Only while these hold: "during your turn", "as long as it's equipped". */
+  conditions?: ('yourTurn' | 'equipped')[];
+  power?: Amount;
+  toughness?: Amount;
+  keywords?: Keyword[];
+  /** "is a Knight in addition to its other types". */
+  addSubtypes?: string[];
+}
+
 /** Immutable, shared definition of a card. */
 export interface CardDefinition {
   id: CardDefId;
   name: string;
-  /** Mana cost in standard notation, e.g. "{2}{R}{W}". Absent for lands. */
+  /** Mana cost in standard notation, e.g. "{2}{R}{W}". Absent for lands and tokens. */
   manaCost?: string;
   types: CardType[];
   supertypes?: Supertype[];
   subtypes?: string[];
+  /** Color indicator, for things with no mana cost (tokens). */
+  colors?: Color[];
   power?: number;
   toughness?: number;
   keywords?: Keyword[];
-  /** Lands: tap for one mana of any of these types. */
+  /** "{T}: Add one mana of any of these types." Lands with basic land types get theirs automatically. */
   produces?: ManaType[];
+  /** Extras for that mana ability. */
+  manaAbility?: {
+    /** "{T}, Sacrifice this: Add ..." (Treasure). */
+    sacrifice?: boolean;
+    /** "Spend this mana only to cast an Equipment spell or activate an equip ability." */
+    onlyForEquipment?: boolean;
+  };
   entersTapped?: boolean;
   /** Effects applied, in order, when an instant or sorcery resolves. */
   effects?: EffectSpec[];
+  /** "Choose one —": the caster picks one mode's effects instead of `effects`. */
+  modes?: EffectSpec[][];
   /** Triggered abilities. A trigger is referred to by its index in this list. */
   triggers?: TriggerSpec[];
+  /** Non-mana activated abilities. Equip and landcycling are added from `equip` and `landcycling`. */
+  activated?: ActivatedSpec[];
+  /** Static abilities. */
+  statics?: StaticSpec[];
+  /** Equipment: the equip cost. */
+  equip?: string;
+  /** "Equip abilities you activate that target this cost {N} less." */
+  equipDiscount?: number;
+  /** "[Type]cycling [cost]": discard from hand to search for a card of that subtype. */
+  landcycling?: { subtype: string; cost: string };
+  /** Flashback cost: cast from the graveyard, then exile it. */
+  flashback?: string;
+  /** "This spell costs {N} less to cast if it targets a tapped creature." */
+  costReduction?: { generic: number; ifTargetsTappedCreature: true };
+  /** A token's definition, created by effects rather than played from a deck. */
+  token?: boolean;
   /**
    * A real card whose abilities aren't built yet. Creatures still play with
    * their cost, power, toughness and printed keywords; other cards can't be
@@ -175,12 +332,13 @@ export interface CardDefinition {
 // Game state (PRD 7)
 // ---------------------------------------------------------------------------
 
-export type ZoneName = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'stack';
+/** `void` holds tokens that left the battlefield and ceased to exist (rule 704.5d). */
+export type ZoneName = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'stack' | 'void';
 
 /** Zones whose contents every player may see. */
 export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'exile', 'stack'];
 
-/** A unique physical card in a game. */
+/** A unique physical card, or a token, in a game. */
 export interface CardInstance {
   id: InstanceId;
   defId: CardDefId;
@@ -194,6 +352,16 @@ export interface CardInstance {
   damage: number;
   /** Was dealt damage by a source with deathtouch this turn. */
   deathtouched: boolean;
+  /** +1/+1 counters. */
+  counters?: number;
+  /** A token rather than a card. */
+  isToken?: boolean;
+  /** For Equipment: the creature it's attached to. */
+  attachedTo?: InstanceId;
+  /** Exiled "until [source] leaves the battlefield". */
+  exiledUntilLeaves?: InstanceId;
+  /** In exile, and `player` may play it as long as they control `source`. */
+  playableFromExile?: { player: PlayerId; source: InstanceId };
 }
 
 export interface PlayerState {
@@ -206,6 +374,8 @@ export interface PlayerState {
   graveyard: InstanceId[];
   exile: InstanceId[];
   manaPool: ManaPool;
+  /** Mana that can only be spent on Equipment spells and equip abilities. */
+  equipmentMana: ManaPool;
   landsPlayedThisTurn: number;
   eliminated: boolean;
   drewFromEmptyLibrary: boolean;
@@ -238,19 +408,28 @@ export interface SpellItem {
   controller: PlayerId;
   /** One target per effect that requires a choice, in effect order. */
   targets: Target[];
+  /** For modal spells, the chosen mode. */
+  mode?: number;
+  /** Where it was cast from. Flashback spells are exiled afterwards. */
+  castFrom: 'hand' | 'graveyard' | 'exile';
+  /** Total mana spent to cast it. */
+  manaSpent: number;
 }
 
-/** A triggered ability on the stack. The source card stays where it is. */
+/** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
   id: string;
   kind: 'ability';
   source: InstanceId;
-  /** Index into the source definition's `triggers`. */
+  /** Triggered abilities index `triggers`; activated ones index `activatedAbilities(def)`. */
+  from: 'trigger' | 'activated';
   ability: number;
-  /** Where the source was when it triggered; "this card" effects need it still there. */
+  /** Where the source was when it triggered or was activated; "this card" effects need it still there. */
   sourceZone: ZoneName;
   controller: PlayerId;
   targets: Target[];
+  /** Attack triggers: the player being attacked. */
+  defender?: PlayerId;
   /** The controller's answer to "you may" or an optional cost, once given. */
   accepted?: boolean;
 }
@@ -263,6 +442,30 @@ export interface QueuedTrigger {
   ability: number;
   controller: PlayerId;
   sourceZone: ZoneName;
+  defender?: PlayerId;
+}
+
+/** An "until end of turn" effect on one object (rule 611.2). */
+export interface TemporaryEffect {
+  source: InstanceId;
+  affected: InstanceId;
+  power?: number;
+  toughness?: number;
+  keywords?: Keyword[];
+  flags?: TemporaryFlag[];
+}
+
+/** A spell or ability partway through resolving, waiting on a choice (surveil). */
+export interface Resolving {
+  item: StackItem;
+  /** Index of the next effect to apply. */
+  next: number;
+  /** How many chosen targets the effects so far used. */
+  chosenUsed: number;
+  previousTarget?: Target;
+  createdTokens: InstanceId[];
+  /** Cards still to look at for the current surveil. */
+  surveilQueue: InstanceId[];
 }
 
 export interface Attack {
@@ -292,6 +495,14 @@ export type Pending =
   | { kind: 'chooseTargets'; player: PlayerId; then: PlayerId }
   /** Answer "you may" (and pay any cost) for the ability on top of the stack. */
   | { kind: 'decide'; player: PlayerId; item: string }
+  /** Surveil: keep `card` on top of your library, or put it into your graveyard. */
+  | { kind: 'surveil'; player: PlayerId; card: InstanceId }
+  /**
+   * Legend rule (704.5j): you control two or more legendary permanents named
+   * `name`; choose one of `cards` to keep. `resume` is the decision that was
+   * due before, which continues afterwards.
+   */
+  | { kind: 'chooseLegend'; player: PlayerId; name: string; cards: InstanceId[]; resume: Pending }
   | { kind: 'gameOver' };
 
 export interface GameState {
@@ -306,10 +517,16 @@ export interface GameState {
   step: Step;
   /** Last element is the top of the stack. */
   stack: StackItem[];
+  /** A spell or ability partway through resolving. */
+  resolving: Resolving | null;
   /** Triggered abilities waiting to go on the stack, in APNAP order. */
   triggerQueue: QueuedTrigger[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
   triggeredThisTurn: string[];
+  /** "Until end of turn" effects. */
+  temporaryEffects: TemporaryEffect[];
+  /** Creatures put into a graveyard from the battlefield this turn. */
+  creaturesDiedThisTurn: number;
   combat: CombatState | null;
   pending: Pending;
   /** Set when the game ends. null means a draw (everyone left at once). */
@@ -325,13 +542,16 @@ export interface GameState {
 
 export type Action =
   | { type: 'PlayLand'; player: PlayerId; card: InstanceId }
-  | { type: 'CastSpell'; player: PlayerId; card: InstanceId; targets?: Target[] }
+  | { type: 'CastSpell'; player: PlayerId; card: InstanceId; targets?: Target[]; mode?: number }
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType }
+  | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[] }
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
   | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
   | { type: 'Decide'; player: PlayerId; accept: boolean }
+  | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
+  | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }
   | { type: 'Concede'; player: PlayerId };
 
 // ---------------------------------------------------------------------------
@@ -354,16 +574,29 @@ export type GameEvent =
       from: ZoneName;
       to: ZoneName;
     }
+  | { type: 'TokenCreated'; card: InstanceId; defId: CardDefId; controller: PlayerId }
   | { type: 'CardTapped'; card: InstanceId }
   | { type: 'CardsUntapped'; player: PlayerId; cards: InstanceId[] }
   | { type: 'ManaAdded'; player: PlayerId; mana: ManaType; source: InstanceId }
   | { type: 'ManaSpent'; player: PlayerId; amounts: Partial<ManaPool> }
-  | { type: 'SpellCast'; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[] }
-  | { type: 'AbilityTriggered'; item: string; card: InstanceId; ability: number; controller: PlayerId; targets: Target[] }
+  | { type: 'SpellCast'; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number }
+  | {
+      type: 'AbilityTriggered';
+      item: string;
+      card: InstanceId;
+      ability: number;
+      controller: PlayerId;
+      targets: Target[];
+    }
+  | { type: 'AbilityActivated'; item: string; card: InstanceId; ability: number; controller: PlayerId; targets: Target[] }
   /** `card` is the spell, or the source of an ability. */
   | { type: 'StackItemAdded'; item: string; card: InstanceId }
   | { type: 'StackItemResolved'; item: string; card: InstanceId; fizzled: boolean }
   | { type: 'Decided'; player: PlayerId; item: string; card: InstanceId; accepted: boolean }
+  | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean }
+  | { type: 'LegendChosen'; player: PlayerId; kept: InstanceId; others: InstanceId[] }
+  | { type: 'CountersAdded'; card: InstanceId; amount: number }
+  | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }

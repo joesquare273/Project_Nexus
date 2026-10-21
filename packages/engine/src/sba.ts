@@ -4,7 +4,21 @@
 import { nextBlockerDecision } from './combat.ts';
 import { detectTriggers, placeTriggers } from './triggers.ts';
 import { cleanupDamage, givePriority, startNextTurn } from './turn.ts';
-import { alivePlayers, battlefield, defOf, destroy, emptyManaPool, hasKeyword, moveCard, type Ctx } from './state.ts';
+import { toughnessOf } from './characteristics.ts';
+import {
+  aliveFromActive,
+  alivePlayers,
+  battlefield,
+  defOf,
+  destroy,
+  emptyManaPool,
+  hasKeyword,
+  moveCard,
+  putIntoGraveyard,
+  reject,
+  type Ctx,
+} from './state.ts';
+import { isLegendary } from './typerules.ts';
 import type { EliminationReason, PlayerId } from './types.ts';
 
 /**
@@ -17,6 +31,12 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
   const p = s.players[playerId]!;
   p.eliminated = true;
   p.manaPool = emptyManaPool();
+  p.equipmentMana = emptyManaPool();
+  if (s.resolving?.item.controller === playerId) {
+    const item = s.resolving.item;
+    s.resolving = null;
+    if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') moveCard(ctx, item.card, 'exile');
+  }
   ctx.ev.push({ type: 'PlayerEliminated', player: playerId, reason });
 
   for (const item of [...s.stack]) {
@@ -50,18 +70,27 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
   let eliminatedAny = false;
   for (;;) {
     let changed = false;
+    // Toughness and damage are checked all at once, then the permanents leave together (rule 704.3).
+    const zeroToughness: string[] = [];
+    const lethal: string[] = [];
     for (const c of battlefield(s)) {
-      const def = defOf(s, c);
-      if (!def.types.includes('creature')) continue;
-      const toughness = def.toughness ?? 0;
-      if (toughness <= 0) {
-        // Zero toughness isn't destruction, so indestructible doesn't help.
-        ctx.ev.push({ type: 'CreatureDied', card: c.id, defId: c.defId, owner: c.owner });
-        moveCard(ctx, c.id, 'graveyard');
-        changed = true;
-      } else if ((c.damage >= toughness || (c.deathtouched && c.damage > 0)) && !hasKeyword(s, c, 'Indestructible')) {
-        destroy(ctx, c.id);
-        changed = true;
+      if (!defOf(s, c).types.includes('creature')) continue;
+      const toughness = toughnessOf(s, c);
+      if (toughness <= 0) zeroToughness.push(c.id);
+      else if ((c.damage >= toughness || (c.deathtouched && c.damage > 0)) && !hasKeyword(s, c, 'Indestructible')) {
+        lethal.push(c.id);
+      }
+    }
+    // Zero toughness isn't destruction, so indestructible doesn't help (rule 704.5f).
+    for (const id of zeroToughness) putIntoGraveyard(ctx, id);
+    for (const id of lethal) destroy(ctx, id);
+    if (zeroToughness.length + lethal.length > 0) changed = true;
+
+    // Tokens that left the battlefield cease to exist (704.5d). They can only be where effects put them.
+    for (const pid of s.turnOrder) {
+      const p = s.players[pid]!;
+      for (const id of [...p.graveyard, ...p.exile, ...p.hand, ...p.library]) {
+        if (s.cards[id]!.isToken) moveCard(ctx, id, 'void', { silent: true });
       }
     }
     for (const pid of s.turnOrder) {
@@ -99,6 +128,9 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
  */
 function abandonTurn(ctx: Ctx): void {
   const s = ctx.s;
+  const resolving = s.resolving?.item;
+  s.resolving = null;
+  if (resolving?.kind === 'spell' && s.cards[resolving.card]!.zone === 'stack') moveCard(ctx, resolving.card, 'graveyard');
   while (s.stack.length > 0) {
     const item = s.stack.pop()!;
     if (item.kind === 'spell') moveCard(ctx, item.card, 'graveyard');
@@ -127,7 +159,53 @@ function repairPending(ctx: Ctx): void {
     case 'decide':
       if (s.stack.at(-1)?.id !== pending.item) givePriority(ctx, s.activePlayer);
       break;
+    case 'surveil':
+      // The resolving spell or ability left with its controller.
+      if (!s.resolving) givePriority(ctx, s.activePlayer);
+      break;
+    case 'chooseLegend':
+      if (s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
+      break;
   }
+}
+
+/**
+ * Legend rule (704.5j): a player who controls two or more legendary
+ * permanents with the same name chooses one to keep. Asks the first such
+ * player in turn order, starting with the active player. Returns true if the
+ * game is now waiting on that choice.
+ */
+function checkLegendRule(ctx: Ctx): boolean {
+  const s = ctx.s;
+  if (s.pending.kind === 'chooseLegend' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseLegend';
+  for (const pid of aliveFromActive(s)) {
+    const byName = new Map<string, string[]>();
+    for (const id of s.players[pid]!.battlefield) {
+      const c = s.cards[id]!;
+      if (c.controller !== pid || !isLegendary(defOf(s, c))) continue;
+      const name = defOf(s, c).name;
+      byName.set(name, [...(byName.get(name) ?? []), id]);
+    }
+    for (const [name, cards] of byName) {
+      if (cards.length < 2) continue;
+      s.pending = { kind: 'chooseLegend', player: pid, name, cards, resume: s.pending };
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The ChooseLegend action: keep one, and the others go to the graveyard. */
+export function chooseLegend(ctx: Ctx, playerId: PlayerId, keep: string): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseLegend' || pending.player !== playerId) reject('You are not choosing a legend right now.');
+  if (!pending.cards.includes(keep)) reject(`Choose one of your ${pending.name} permanents to keep.`);
+  const others = pending.cards.filter((id) => id !== keep && s.cards[id]!.zone === 'battlefield');
+  ctx.ev.push({ type: 'LegendChosen', player: playerId, kept: keep, others });
+  // Not destruction, so indestructible doesn't help (rule 704.5j).
+  for (const id of others) putIntoGraveyard(ctx, id);
+  s.pending = pending.resume;
 }
 
 /**
@@ -152,6 +230,8 @@ export function stabilize(ctx: Ctx): void {
     if (eliminated) repairPending(ctx);
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
+    // The legend rule needs a choice; triggers go on the stack after it's made.
+    if (checkLegendRule(ctx)) return;
     if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) placeTriggers(ctx, s.pending.player);
     return;
   }

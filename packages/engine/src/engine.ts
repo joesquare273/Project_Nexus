@@ -2,8 +2,8 @@
 // The input state is never mutated.
 
 import { declareAttackers, declareBlockers } from './combat.ts';
-import { stabilize } from './sba.ts';
-import { activateManaAbility, castSpell, decide, playLand } from './stack.ts';
+import { chooseLegend, stabilize } from './sba.ts';
+import { activateAbility, activateManaAbility, castSpell, decide, playLand, surveil } from './stack.ts';
 import { chooseTriggerTargets } from './triggers.ts';
 import { passPriority } from './turn.ts';
 import { cloneState, reject, RuleError, type Ctx } from './state.ts';
@@ -38,7 +38,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'CastSpell':
         requirePriority(s, action.player);
-        castSpell(ctx, action.player, action.card, action.targets);
+        castSpell(ctx, action.player, action.card, action.targets, action.mode);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'ActivateManaAbility':
@@ -50,6 +50,17 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         requirePriority(s, action.player);
         activateManaAbility(ctx, action.player, action.card, action.mana);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      case 'ActivateAbility':
+        requirePriority(s, action.player);
+        activateAbility(ctx, action.player, action.card, action.ability, action.targets);
+        s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      case 'Surveil':
+        surveil(ctx, action.player, action.toGraveyard);
+        break;
+      case 'ChooseLegend':
+        chooseLegend(ctx, action.player, action.keep);
         break;
       case 'ChooseTargets':
         chooseTriggerTargets(ctx, action.player, action.targets);

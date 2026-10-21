@@ -12,7 +12,9 @@
       "large": "https://cards.scryfall.io/large/front/1/a/1a67a991-1e52-4676-a2e3-2bc7aa943ab3.jpg?1783906656",
       "artCrop": "https://cards.scryfall.io/art_crop/front/1/a/1a67a991-1e52-4676-a2e3-2bc7aa943ab3.jpg?1783906656"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/3/adelbert-steiner?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/3/adelbert-steiner?utm_source=api",
+    "scryfallId": "1a67a991-1e52-4676-a2e3-2bc7aa943ab3",
+    "relatedTokens": []
   },
   "al-bhed-salvagers": {
     "name": "Al Bhed Salvagers",
@@ -27,7 +29,9 @@
       "large": "https://cards.scryfall.io/large/front/5/8/58ccdcfc-a669-480f-bded-4273cfaf2045.jpg?1783906624",
       "artCrop": "https://cards.scryfall.io/art_crop/front/5/8/58ccdcfc-a669-480f-bded-4273cfaf2045.jpg?1783906624"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/88/al-bhed-salvagers?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/88/al-bhed-salvagers?utm_source=api",
+    "scryfallId": "58ccdcfc-a669-480f-bded-4273cfaf2045",
+    "relatedTokens": []
   },
   "barret-wallace": {
     "name": "Barret Wallace",
@@ -42,7 +46,9 @@
       "large": "https://cards.scryfall.io/large/front/1/a/1a504dff-5857-4a61-ab99-616d5df7cf5a.jpg?1783906607",
       "artCrop": "https://cards.scryfall.io/art_crop/front/1/a/1a504dff-5857-4a61-ab99-616d5df7cf5a.jpg?1783906607"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/129/barret-wallace?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/129/barret-wallace?utm_source=api",
+    "scryfallId": "1a504dff-5857-4a61-ab99-616d5df7cf5a",
+    "relatedTokens": []
   },
   "beatrix-loyal-general": {
     "name": "Beatrix, Loyal General",
@@ -57,7 +63,9 @@
       "large": "https://cards.scryfall.io/large/front/9/d/9da83b07-4978-4af7-be51-8aa8f35ec0bb.jpg?1783906435",
       "artCrop": "https://cards.scryfall.io/art_crop/front/9/d/9da83b07-4978-4af7-be51-8aa8f35ec0bb.jpg?1783906435"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/554/beatrix-loyal-general?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/554/beatrix-loyal-general?utm_source=api",
+    "scryfallId": "9da83b07-4978-4af7-be51-8aa8f35ec0bb",
+    "relatedTokens": []
   },
   "cloud-planets-champion": {
     "name": "Cloud, Planet's Champion",
@@ -72,7 +80,9 @@
       "large": "https://cards.scryfall.io/large/front/a/6/a6d58067-337d-43dc-b4a3-c6acc701d450.jpg?1783906437",
       "artCrop": "https://cards.scryfall.io/art_crop/front/a/6/a6d58067-337d-43dc-b4a3-c6acc701d450.jpg?1783906437"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/552/cloud-planets-champion?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/552/cloud-planets-champion?utm_source=api",
+    "scryfallId": "a6d58067-337d-43dc-b4a3-c6acc701d450",
+    "relatedTokens": []
   },
   "cloudbound-moogle": {
     "name": "Cloudbound Moogle",
@@ -87,7 +97,9 @@
       "large": "https://cards.scryfall.io/large/front/7/3/7387bca7-f496-45da-a0ac-6be049303a8f.jpg?1783906653",
       "artCrop": "https://cards.scryfall.io/art_crop/front/7/3/7387bca7-f496-45da-a0ac-6be049303a8f.jpg?1783906653"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/11/cloudbound-moogle?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/11/cloudbound-moogle?utm_source=api",
+    "scryfallId": "7387bca7-f496-45da-a0ac-6be049303a8f",
+    "relatedTokens": []
   },
   "coeurl": {
     "name": "Coeurl",
@@ -102,7 +114,9 @@
       "large": "https://cards.scryfall.io/large/front/7/6/7604b534-5480-42fa-bc36-bbae730f8582.jpg?1783906652",
       "artCrop": "https://cards.scryfall.io/art_crop/front/7/6/7604b534-5480-42fa-bc36-bbae730f8582.jpg?1783906652"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/12/coeurl?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/12/coeurl?utm_source=api",
+    "scryfallId": "7604b534-5480-42fa-bc36-bbae730f8582",
+    "relatedTokens": []
   },
   "deadly-embrace": {
     "name": "Deadly Embrace",
@@ -117,7 +131,9 @@
       "large": "https://cards.scryfall.io/large/front/a/1/a11cb85c-85dd-435c-8303-4d0d18bdb1e9.jpg?1783906435",
       "artCrop": "https://cards.scryfall.io/art_crop/front/a/1/a11cb85c-85dd-435c-8303-4d0d18bdb1e9.jpg?1783906435"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/557/deadly-embrace?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/557/deadly-embrace?utm_source=api",
+    "scryfallId": "a11cb85c-85dd-435c-8303-4d0d18bdb1e9",
+    "relatedTokens": []
   },
   "dragoons-lance": {
     "name": "Dragoon's Lance",
@@ -132,7 +148,14 @@
       "large": "https://cards.scryfall.io/large/front/9/6/96630531-8eb7-4e3e-8d63-60c562a5571b.jpg?1783906651",
       "artCrop": "https://cards.scryfall.io/art_crop/front/9/6/96630531-8eb7-4e3e-8d63-60c562a5571b.jpg?1783906651"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/17/dragoons-lance?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/17/dragoons-lance?utm_source=api",
+    "scryfallId": "96630531-8eb7-4e3e-8d63-60c562a5571b",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
   },
   "dreams-of-laguna": {
     "name": "Dreams of Laguna",
@@ -147,7 +170,9 @@
       "large": "https://cards.scryfall.io/large/front/b/a/ba752243-2727-4b8a-8e21-e70becfd4ff3.jpg?1783906637",
       "artCrop": "https://cards.scryfall.io/art_crop/front/b/a/ba752243-2727-4b8a-8e21-e70becfd4ff3.jpg?1783906637"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/50/dreams-of-laguna?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/50/dreams-of-laguna?utm_source=api",
+    "scryfallId": "ba752243-2727-4b8a-8e21-e70becfd4ff3",
+    "relatedTokens": []
   },
   "dwarven-castle-guard": {
     "name": "Dwarven Castle Guard",
@@ -162,7 +187,14 @@
       "large": "https://cards.scryfall.io/large/front/e/1/e17c0d27-e88d-4ba9-acbb-3f916cee3d7e.jpg?1783906650",
       "artCrop": "https://cards.scryfall.io/art_crop/front/e/1/e17c0d27-e88d-4ba9-acbb-3f916cee3d7e.jpg?1783906650"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/18/dwarven-castle-guard?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/18/dwarven-castle-guard?utm_source=api",
+    "scryfallId": "e17c0d27-e88d-4ba9-acbb-3f916cee3d7e",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
   },
   "evil-reawakened": {
     "name": "Evil Reawakened",
@@ -177,7 +209,9 @@
       "large": "https://cards.scryfall.io/large/front/e/b/eb98cbc3-749c-44f4-974c-00be1286d69e.jpg?1783906621",
       "artCrop": "https://cards.scryfall.io/art_crop/front/e/b/eb98cbc3-749c-44f4-974c-00be1286d69e.jpg?1783906621"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/98/evil-reawakened?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/98/evil-reawakened?utm_source=api",
+    "scryfallId": "eb98cbc3-749c-44f4-974c-00be1286d69e",
+    "relatedTokens": []
   },
   "fate-of-the-sun-cryst": {
     "name": "Fate of the Sun-Cryst",
@@ -192,7 +226,9 @@
       "large": "https://cards.scryfall.io/large/front/9/0/900cdf11-b42e-4dcc-97c3-2e4d8e406a70.jpg?1783906650",
       "artCrop": "https://cards.scryfall.io/art_crop/front/9/0/900cdf11-b42e-4dcc-97c3-2e4d8e406a70.jpg?1783906650"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/19/fate-of-the-sun-cryst?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/19/fate-of-the-sun-cryst?utm_source=api",
+    "scryfallId": "900cdf11-b42e-4dcc-97c3-2e4d8e406a70",
+    "relatedTokens": []
   },
   "forest": {
     "name": "Forest",
@@ -207,7 +243,9 @@
       "large": "https://cards.scryfall.io/large/front/b/e/be72862d-d71e-4b18-98a6-59019399f631.jpg?1783906539",
       "artCrop": "https://cards.scryfall.io/art_crop/front/b/e/be72862d-d71e-4b18-98a6-59019399f631.jpg?1783906539"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/306/forest?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/306/forest?utm_source=api",
+    "scryfallId": "be72862d-d71e-4b18-98a6-59019399f631",
+    "relatedTokens": []
   },
   "freya-crescent": {
     "name": "Freya Crescent",
@@ -222,7 +260,9 @@
       "large": "https://cards.scryfall.io/large/front/9/9/9921f646-e893-44db-ac89-0633c1009788.jpg?1783906604",
       "artCrop": "https://cards.scryfall.io/art_crop/front/9/9/9921f646-e893-44db-ac89-0633c1009788.jpg?1783906604"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/138/freya-crescent?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/138/freya-crescent?utm_source=api",
+    "scryfallId": "9921f646-e893-44db-ac89-0633c1009788",
+    "relatedTokens": []
   },
   "graha-tia": {
     "name": "G'raha Tia",
@@ -237,7 +277,31 @@
       "large": "https://cards.scryfall.io/large/front/0/7/076a8eca-ed73-4ee9-aab4-d9d43d394ee6.jpg?1783906648",
       "artCrop": "https://cards.scryfall.io/art_crop/front/0/7/076a8eca-ed73-4ee9-aab4-d9d43d394ee6.jpg?1783906648"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/21/graha-tia?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/21/graha-tia?utm_source=api",
+    "scryfallId": "076a8eca-ed73-4ee9-aab4-d9d43d394ee6",
+    "relatedTokens": []
+  },
+  "hero-token": {
+    "name": "Hero",
+    "typeLine": "Token Creature — Hero",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "33",
+    "artist": "Solan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/7/17fa0c1f-6737-487c-9101-0bec2e586795.jpg?1783906126",
+      "normal": "https://cards.scryfall.io/normal/front/1/7/17fa0c1f-6737-487c-9101-0bec2e586795.jpg?1783906126",
+      "large": "https://cards.scryfall.io/large/front/1/7/17fa0c1f-6737-487c-9101-0bec2e586795.jpg?1783906126",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/7/17fa0c1f-6737-487c-9101-0bec2e586795.jpg?1783906126"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/33/hero?utm_source=api",
+    "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
   },
   "il-mheg-pixie": {
     "name": "Il Mheg Pixie",
@@ -252,7 +316,9 @@
       "large": "https://cards.scryfall.io/large/front/a/e/ae612312-3a8e-495f-8730-deaaf7505ca1.jpg?1783906636",
       "artCrop": "https://cards.scryfall.io/art_crop/front/a/e/ae612312-3a8e-495f-8730-deaaf7505ca1.jpg?1783906636"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/57/il-mheg-pixie?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/57/il-mheg-pixie?utm_source=api",
+    "scryfallId": "ae612312-3a8e-495f-8730-deaaf7505ca1",
+    "relatedTokens": []
   },
   "island": {
     "name": "Island",
@@ -267,7 +333,9 @@
       "large": "https://cards.scryfall.io/large/front/b/9/b92ec9f6-a56d-40c6-aee2-7d5e1524c985.jpg?1783906542",
       "artCrop": "https://cards.scryfall.io/art_crop/front/b/9/b92ec9f6-a56d-40c6-aee2-7d5e1524c985.jpg?1783906542"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/297/island?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/297/island?utm_source=api",
+    "scryfallId": "b92ec9f6-a56d-40c6-aee2-7d5e1524c985",
+    "relatedTokens": []
   },
   "item-shopkeep": {
     "name": "Item Shopkeep",
@@ -282,7 +350,9 @@
       "large": "https://cards.scryfall.io/large/front/b/d/bd2db3f5-fd0d-4817-af90-6bea1f07e16b.jpg?1783906603",
       "artCrop": "https://cards.scryfall.io/art_crop/front/b/d/bd2db3f5-fd0d-4817-af90-6bea1f07e16b.jpg?1783906603"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/142/item-shopkeep?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/142/item-shopkeep?utm_source=api",
+    "scryfallId": "bd2db3f5-fd0d-4817-af90-6bea1f07e16b",
+    "relatedTokens": []
   },
   "judgment-bolt": {
     "name": "Judgment Bolt",
@@ -297,7 +367,9 @@
       "large": "https://cards.scryfall.io/large/front/0/5/05b04b06-9271-4a28-a60e-287df0d1a4d1.jpg?1783906432",
       "artCrop": "https://cards.scryfall.io/art_crop/front/0/5/05b04b06-9271-4a28-a60e-287df0d1a4d1.jpg?1783906432"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/559/judgment-bolt?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/559/judgment-bolt?utm_source=api",
+    "scryfallId": "05b04b06-9271-4a28-a60e-287df0d1a4d1",
+    "relatedTokens": []
   },
   "lightning-security-sergeant": {
     "name": "Lightning, Security Sergeant",
@@ -312,7 +384,9 @@
       "large": "https://cards.scryfall.io/large/front/4/a/4ad4dce3-6e43-4528-b570-85547d03164e.jpg?1783906431",
       "artCrop": "https://cards.scryfall.io/art_crop/front/4/a/4ad4dce3-6e43-4528-b570-85547d03164e.jpg?1783906431"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/560/lightning-security-sergeant?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/560/lightning-security-sergeant?utm_source=api",
+    "scryfallId": "4ad4dce3-6e43-4528-b570-85547d03164e",
+    "relatedTokens": []
   },
   "magitek-scythe": {
     "name": "Magitek Scythe",
@@ -327,7 +401,9 @@
       "large": "https://cards.scryfall.io/large/front/8/b/8b691d42-3498-4d47-9a46-f7c376df8886.jpg?1783906432",
       "artCrop": "https://cards.scryfall.io/art_crop/front/8/b/8b691d42-3498-4d47-9a46-f7c376df8886.jpg?1783906432"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/562/magitek-scythe?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/562/magitek-scythe?utm_source=api",
+    "scryfallId": "8b691d42-3498-4d47-9a46-f7c376df8886",
+    "relatedTokens": []
   },
   "mountain": {
     "name": "Mountain",
@@ -342,7 +418,9 @@
       "large": "https://cards.scryfall.io/large/front/a/1/a18ef64b-a9de-4548-b4d5-168758442db7.jpg?1783906541",
       "artCrop": "https://cards.scryfall.io/art_crop/front/a/1/a18ef64b-a9de-4548-b4d5-168758442db7.jpg?1783906541"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/303/mountain?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/303/mountain?utm_source=api",
+    "scryfallId": "a18ef64b-a9de-4548-b4d5-168758442db7",
+    "relatedTokens": []
   },
   "overkill": {
     "name": "Overkill",
@@ -357,7 +435,9 @@
       "large": "https://cards.scryfall.io/large/front/a/e/ae075e71-d33d-4d6c-b4a5-0b47dd6fd196.jpg?1783906615",
       "artCrop": "https://cards.scryfall.io/art_crop/front/a/e/ae075e71-d33d-4d6c-b4a5-0b47dd6fd196.jpg?1783906615"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/109/overkill?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/109/overkill?utm_source=api",
+    "scryfallId": "ae075e71-d33d-4d6c-b4a5-0b47dd6fd196",
+    "relatedTokens": []
   },
   "plains": {
     "name": "Plains",
@@ -372,7 +452,9 @@
       "large": "https://cards.scryfall.io/large/front/9/d/9dd2d666-7c6b-48ce-93dc-c004ebdd1fe9.jpg?1783906546",
       "artCrop": "https://cards.scryfall.io/art_crop/front/9/d/9dd2d666-7c6b-48ce-93dc-c004ebdd1fe9.jpg?1783906546"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/294/plains?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/294/plains?utm_source=api",
+    "scryfallId": "9dd2d666-7c6b-48ce-93dc-c004ebdd1fe9",
+    "relatedTokens": []
   },
   "rabanastre-royal-city": {
     "name": "Rabanastre, Royal City",
@@ -387,7 +469,9 @@
       "large": "https://cards.scryfall.io/large/front/c/4/c44c9bbe-f4c6-41cf-b3c3-b943f4011bc1.jpg?1783906547",
       "artCrop": "https://cards.scryfall.io/art_crop/front/c/4/c44c9bbe-f4c6-41cf-b3c3-b943f4011bc1.jpg?1783906547"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/287/rabanastre-royal-city?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/287/rabanastre-royal-city?utm_source=api",
+    "scryfallId": "c44c9bbe-f4c6-41cf-b3c3-b943f4011bc1",
+    "relatedTokens": []
   },
   "relms-sketching": {
     "name": "Relm's Sketching",
@@ -402,7 +486,14 @@
       "large": "https://cards.scryfall.io/large/front/6/a/6aedac12-3714-4a81-bd4d-1d2555c66f78.jpg?1783906632",
       "artCrop": "https://cards.scryfall.io/art_crop/front/6/a/6aedac12-3714-4a81-bd4d-1d2555c66f78.jpg?1783906632"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/67/relms-sketching?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/67/relms-sketching?utm_source=api",
+    "scryfallId": "6aedac12-3714-4a81-bd4d-1d2555c66f78",
+    "relatedTokens": [
+      {
+        "name": "Copy",
+        "scryfallId": "81c9d442-d7d5-4911-b0b9-c3206faeab1d"
+      }
+    ]
   },
   "retrieve-the-esper": {
     "name": "Retrieve the Esper",
@@ -417,7 +508,36 @@
       "large": "https://cards.scryfall.io/large/front/e/b/ebd733f0-8883-434a-b36c-ef76b091fe8e.jpg?1783906632",
       "artCrop": "https://cards.scryfall.io/art_crop/front/e/b/ebd733f0-8883-434a-b36c-ef76b091fe8e.jpg?1783906632"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/68/retrieve-the-esper?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/68/retrieve-the-esper?utm_source=api",
+    "scryfallId": "ebd733f0-8883-434a-b36c-ef76b091fe8e",
+    "relatedTokens": [
+      {
+        "name": "Robot Warrior",
+        "scryfallId": "c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc"
+      }
+    ]
+  },
+  "robot-warrior-token": {
+    "name": "Robot Warrior",
+    "typeLine": "Token Artifact Creature — Robot Warrior",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "12",
+    "artist": "Kevin Sidharta",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/2/c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc.jpg?1783906134",
+      "normal": "https://cards.scryfall.io/normal/front/c/2/c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc.jpg?1783906134",
+      "large": "https://cards.scryfall.io/large/front/c/2/c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc.jpg?1783906134",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/2/c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc.jpg?1783906134"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/12/robot-warrior?utm_source=api",
+    "scryfallId": "c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc",
+    "relatedTokens": [
+      {
+        "name": "Robot Warrior",
+        "scryfallId": "c2b4e93b-6b27-4dd3-a6dd-a75d6fab14dc"
+      }
+    ]
   },
   "rosa-resolute-white-mage": {
     "name": "Rosa, Resolute White Mage",
@@ -432,7 +552,9 @@
       "large": "https://cards.scryfall.io/large/front/c/4/c44e0ad6-9f44-4e4c-8c3b-3ee99409a740.jpg?1783906436",
       "artCrop": "https://cards.scryfall.io/art_crop/front/c/4/c44e0ad6-9f44-4e4c-8c3b-3ee99409a740.jpg?1783906436"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/555/rosa-resolute-white-mage?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/555/rosa-resolute-white-mage?utm_source=api",
+    "scryfallId": "c44e0ad6-9f44-4e4c-8c3b-3ee99409a740",
+    "relatedTokens": []
   },
   "sahagin": {
     "name": "Sahagin",
@@ -447,7 +569,9 @@
       "large": "https://cards.scryfall.io/large/front/5/1/516940c7-c271-4f64-af75-c7ba98548382.jpg?1783906629",
       "artCrop": "https://cards.scryfall.io/art_crop/front/5/1/516940c7-c271-4f64-af75-c7ba98548382.jpg?1783906629"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/71/sahagin?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/71/sahagin?utm_source=api",
+    "scryfallId": "516940c7-c271-4f64-af75-c7ba98548382",
+    "relatedTokens": []
   },
   "samurais-katana": {
     "name": "Samurai's Katana",
@@ -462,7 +586,14 @@
       "large": "https://cards.scryfall.io/large/front/1/1/11f1d378-c78c-402a-ac46-2d32598c23e7.jpg?1783906598",
       "artCrop": "https://cards.scryfall.io/art_crop/front/1/1/11f1d378-c78c-402a-ac46-2d32598c23e7.jpg?1783906598"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/154/samurais-katana?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/154/samurais-katana?utm_source=api",
+    "scryfallId": "11f1d378-c78c-402a-ac46-2d32598c23e7",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
   },
   "sephiroth-planets-heir": {
     "name": "Sephiroth, Planet's Heir",
@@ -477,7 +608,9 @@
       "large": "https://cards.scryfall.io/large/front/a/b/abd73e52-62f0-4e89-9dc6-90ff0bc2a9b7.jpg?1783906437",
       "artCrop": "https://cards.scryfall.io/art_crop/front/a/b/abd73e52-62f0-4e89-9dc6-90ff0bc2a9b7.jpg?1783906437"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/553/sephiroth-planets-heir?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/553/sephiroth-planets-heir?utm_source=api",
+    "scryfallId": "abd73e52-62f0-4e89-9dc6-90ff0bc2a9b7",
+    "relatedTokens": []
   },
   "sephiroths-intervention": {
     "name": "Sephiroth's Intervention",
@@ -492,7 +625,9 @@
       "large": "https://cards.scryfall.io/large/front/c/f/cf7df82f-937a-443f-813f-2bcc6944c5c0.jpg?1783906612",
       "artCrop": "https://cards.scryfall.io/art_crop/front/c/f/cf7df82f-937a-443f-813f-2bcc6944c5c0.jpg?1783906612"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/116/sephiroths-intervention?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/116/sephiroths-intervention?utm_source=api",
+    "scryfallId": "cf7df82f-937a-443f-813f-2bcc6944c5c0",
+    "relatedTokens": []
   },
   "seymour-flux": {
     "name": "Seymour Flux",
@@ -507,7 +642,9 @@
       "large": "https://cards.scryfall.io/large/front/c/5/c5fdc78e-0815-443c-8c26-35387b6f4f37.jpg?1783906434",
       "artCrop": "https://cards.scryfall.io/art_crop/front/c/5/c5fdc78e-0815-443c-8c26-35387b6f4f37.jpg?1783906434"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/558/seymour-flux?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/558/seymour-flux?utm_source=api",
+    "scryfallId": "c5fdc78e-0815-443c-8c26-35387b6f4f37",
+    "relatedTokens": []
   },
   "shambling-cieth": {
     "name": "Shambling Cie'th",
@@ -522,7 +659,9 @@
       "large": "https://cards.scryfall.io/large/front/f/0/f02ce338-4fe2-44b0-a896-3ed7e6c874a3.jpg?1783906612",
       "artCrop": "https://cards.scryfall.io/art_crop/front/f/0/f02ce338-4fe2-44b0-a896-3ed7e6c874a3.jpg?1783906612"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/117/shambling-cieth?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/117/shambling-cieth?utm_source=api",
+    "scryfallId": "f02ce338-4fe2-44b0-a896-3ed7e6c874a3",
+    "relatedTokens": []
   },
   "shinra-reinforcements": {
     "name": "Shinra Reinforcements",
@@ -537,7 +676,9 @@
       "large": "https://cards.scryfall.io/large/front/7/3/7367b257-1a8c-4593-a307-7116e36e0342.jpg?1783906612",
       "artCrop": "https://cards.scryfall.io/art_crop/front/7/3/7367b257-1a8c-4593-a307-7116e36e0342.jpg?1783906612"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/118/shinra-reinforcements?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/118/shinra-reinforcements?utm_source=api",
+    "scryfallId": "7367b257-1a8c-4593-a307-7116e36e0342",
+    "relatedTokens": []
   },
   "slash-of-light": {
     "name": "Slash of Light",
@@ -552,7 +693,9 @@
       "large": "https://cards.scryfall.io/large/front/d/a/da6d9529-3cb0-4adc-8209-b9b02db3bf54.jpg?1783906645",
       "artCrop": "https://cards.scryfall.io/art_crop/front/d/a/da6d9529-3cb0-4adc-8209-b9b02db3bf54.jpg?1783906645"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/32/slash-of-light?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/32/slash-of-light?utm_source=api",
+    "scryfallId": "da6d9529-3cb0-4adc-8209-b9b02db3bf54",
+    "relatedTokens": []
   },
   "suplex": {
     "name": "Suplex",
@@ -567,7 +710,9 @@
       "large": "https://cards.scryfall.io/large/front/f/6/f61693a2-7042-44e0-85ba-9bf12ab94e7e.jpg?1783906595",
       "artCrop": "https://cards.scryfall.io/art_crop/front/f/6/f61693a2-7042-44e0-85ba-9bf12ab94e7e.jpg?1783906595"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/164/suplex?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/164/suplex?utm_source=api",
+    "scryfallId": "f61693a2-7042-44e0-85ba-9bf12ab94e7e",
+    "relatedTokens": []
   },
   "swamp": {
     "name": "Swamp",
@@ -582,7 +727,9 @@
       "large": "https://cards.scryfall.io/large/front/f/6/f66094ef-059b-4511-aa6e-835906736de4.jpg?1783906542",
       "artCrop": "https://cards.scryfall.io/art_crop/front/f/6/f66094ef-059b-4511-aa6e-835906736de4.jpg?1783906542"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/300/swamp?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/300/swamp?utm_source=api",
+    "scryfallId": "f66094ef-059b-4511-aa6e-835906736de4",
+    "relatedTokens": []
   },
   "the-crystals-chosen": {
     "name": "The Crystal's Chosen",
@@ -597,7 +744,48 @@
       "large": "https://cards.scryfall.io/large/front/d/4/d4df4373-0ee6-44e3-81c6-0881c070014c.jpg?1783906652",
       "artCrop": "https://cards.scryfall.io/art_crop/front/d/4/d4df4373-0ee6-44e3-81c6-0881c070014c.jpg?1783906652"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/14/the-crystals-chosen?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/14/the-crystals-chosen?utm_source=api",
+    "scryfallId": "d4df4373-0ee6-44e3-81c6-0881c070014c",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
+  },
+  "treasure-token": {
+    "name": "Treasure",
+    "typeLine": "Token Artifact — Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tfin",
+    "number": "36",
+    "artist": "Leonardo Santanna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/5/e5f4f810-f95a-41ac-9c3b-47254c03e766.jpg?1783906125",
+      "normal": "https://cards.scryfall.io/normal/front/e/5/e5f4f810-f95a-41ac-9c3b-47254c03e766.jpg?1783906125",
+      "large": "https://cards.scryfall.io/large/front/e/5/e5f4f810-f95a-41ac-9c3b-47254c03e766.jpg?1783906125",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/5/e5f4f810-f95a-41ac-9c3b-47254c03e766.jpg?1783906125"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/36/treasure?utm_source=api",
+    "scryfallId": "e5f4f810-f95a-41ac-9c3b-47254c03e766",
+    "relatedTokens": [
+      {
+        "name": "Smaug",
+        "scryfallId": "bb4ac08f-f6a5-49d6-91e9-38c4f217932b"
+      },
+      {
+        "name": "Treasure",
+        "scryfallId": "e5f4f810-f95a-41ac-9c3b-47254c03e766"
+      },
+      {
+        "name": "Goblin Shaman",
+        "scryfallId": "0d9461c3-f545-4efb-926e-759961db0495"
+      },
+      {
+        "name": "Smoke Blessing",
+        "scryfallId": "5eb01bef-8989-4b38-a303-0aafab1b33e5"
+      }
+    ]
   },
   "treno-dark-city": {
     "name": "Treno, Dark City",
@@ -612,7 +800,9 @@
       "large": "https://cards.scryfall.io/large/front/f/6/f6285535-bc44-4274-a886-b14d7c7aaba8.jpg?1783906545",
       "artCrop": "https://cards.scryfall.io/art_crop/front/f/6/f6285535-bc44-4274-a886-b14d7c7aaba8.jpg?1783906545"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/290/treno-dark-city?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/290/treno-dark-city?utm_source=api",
+    "scryfallId": "f6285535-bc44-4274-a886-b14d7c7aaba8",
+    "relatedTokens": []
   },
   "ultima-weapon": {
     "name": "Ultima Weapon",
@@ -627,7 +817,9 @@
       "large": "https://cards.scryfall.io/large/front/b/9/b9162d08-a6ba-4e6e-b82c-9b092bd781dd.jpg?1783906432",
       "artCrop": "https://cards.scryfall.io/art_crop/front/b/9/b9162d08-a6ba-4e6e-b82c-9b092bd781dd.jpg?1783906432"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/563/ultima-weapon?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/563/ultima-weapon?utm_source=api",
+    "scryfallId": "b9162d08-a6ba-4e6e-b82c-9b092bd781dd",
+    "relatedTokens": []
   },
   "ultimecia-temporal-threat": {
     "name": "Ultimecia, Temporal Threat",
@@ -642,7 +834,9 @@
       "large": "https://cards.scryfall.io/large/front/b/6/b64e4475-f1c6-4d85-b42f-6d84d06855bb.jpg?1783906436",
       "artCrop": "https://cards.scryfall.io/art_crop/front/b/6/b64e4475-f1c6-4d85-b42f-6d84d06855bb.jpg?1783906436"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/556/ultimecia-temporal-threat?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/556/ultimecia-temporal-threat?utm_source=api",
+    "scryfallId": "b64e4475-f1c6-4d85-b42f-6d84d06855bb",
+    "relatedTokens": []
   },
   "undercity-dire-rat": {
     "name": "Undercity Dire Rat",
@@ -657,7 +851,14 @@
       "large": "https://cards.scryfall.io/large/front/2/7/274788f4-fbf3-4a15-bdc0-f513a2fde30d.jpg?1783906610",
       "artCrop": "https://cards.scryfall.io/art_crop/front/2/7/274788f4-fbf3-4a15-bdc0-f513a2fde30d.jpg?1783906610"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/123/undercity-dire-rat?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/123/undercity-dire-rat?utm_source=api",
+    "scryfallId": "274788f4-fbf3-4a15-bdc0-f513a2fde30d",
+    "relatedTokens": [
+      {
+        "name": "Treasure",
+        "scryfallId": "e5f4f810-f95a-41ac-9c3b-47254c03e766"
+      }
+    ]
   },
   "warriors-sword": {
     "name": "Warrior's Sword",
@@ -672,7 +873,14 @@
       "large": "https://cards.scryfall.io/large/front/c/b/cb98a7dd-542e-4448-b3bb-ff5d67a36535.jpg?1783906593",
       "artCrop": "https://cards.scryfall.io/art_crop/front/c/b/cb98a7dd-542e-4448-b3bb-ff5d67a36535.jpg?1783906593"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/169/warriors-sword?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/169/warriors-sword?utm_source=api",
+    "scryfallId": "cb98a7dd-542e-4448-b3bb-ff5d67a36535",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
   },
   "white-auracite": {
     "name": "White Auracite",
@@ -687,7 +895,9 @@
       "large": "https://cards.scryfall.io/large/front/2/d/2df6f515-9d21-4769-b1c4-c219611bccbb.jpg?1783906641",
       "artCrop": "https://cards.scryfall.io/art_crop/front/2/d/2df6f515-9d21-4769-b1c4-c219611bccbb.jpg?1783906641"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/41/white-auracite?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/41/white-auracite?utm_source=api",
+    "scryfallId": "2df6f515-9d21-4769-b1c4-c219611bccbb",
+    "relatedTokens": []
   },
   "white-mages-staff": {
     "name": "White Mage's Staff",
@@ -702,7 +912,14 @@
       "large": "https://cards.scryfall.io/large/front/3/0/30db372e-0b4c-4e16-9667-bf3fda666f72.jpg?1783906642",
       "artCrop": "https://cards.scryfall.io/art_crop/front/3/0/30db372e-0b4c-4e16-9667-bf3fda666f72.jpg?1783906642"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/42/white-mages-staff?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/42/white-mages-staff?utm_source=api",
+    "scryfallId": "30db372e-0b4c-4e16-9667-bf3fda666f72",
+    "relatedTokens": [
+      {
+        "name": "Hero",
+        "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
   },
   "xande-dark-mage": {
     "name": "Xande, Dark Mage",
@@ -717,6 +934,8 @@
       "large": "https://cards.scryfall.io/large/front/1/c/1caed9a8-b73b-470e-b9d8-8c3b7cac3eee.jpg?1783906432",
       "artCrop": "https://cards.scryfall.io/art_crop/front/1/c/1caed9a8-b73b-470e-b9d8-8c3b7cac3eee.jpg?1783906432"
     },
-    "scryfallUri": "https://scryfall.com/card/fin/561/xande-dark-mage?utm_source=api"
+    "scryfallUri": "https://scryfall.com/card/fin/561/xande-dark-mage?utm_source=api",
+    "scryfallId": "1caed9a8-b73b-470e-b9d8-8c3b7cac3eee",
+    "relatedTokens": []
   }
 }

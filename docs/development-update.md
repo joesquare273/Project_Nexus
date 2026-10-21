@@ -5,6 +5,37 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-21
 
+### Done: every Starter Kit card is built (K2-K6)
+
+All 120 cards in the two Final Fantasy Starter Kits now work as printed,
+with a test per card checking it against its Oracle text. Nothing is marked
+"not built yet" anymore. Highlights:
+
+- Tokens: Hero, Treasure (sacrifice for any color) and Robot Warrior, with
+  their real Final Fantasy token art; Relm's Sketching makes token copies.
+- Equipment: equip, Job select (a Hero token comes with each piece),
+  Beatrix, Cloud's cheaper equip and Freya's Equipment-only mana.
+- Graveyard: flashback, surveil, mill, Evil Reawakened, Plainscycling.
+- Others: Coeurl, Suplex (choose a mode), Fate of the Sun-Cryst's cost
+  reduction, White Auracite, Lightning playing cards from exile, and the
+  legend rule: you choose which copy to keep (counters and Equipment can make
+  one better than another).
+- The browser board shows current power/toughness, counters, tokens and
+  Equipment, lets you pick modes and abilities, cast from your graveyard or
+  exile, look through graveyards, and surveil.
+
+**Open issue: speed.** Every action copies the whole game state, which now
+dominates the cost of bot games. Fuzz runs take about three times longer
+than before. The board is unaffected (one action at a time). A
+copy-on-write state would fix it.
+
+### Tokens come from Scryfall too
+
+Each card lists the exact tokens it makes on Scryfall, and many kinds share
+a name, so tokens are matched by their Scryfall id, not by name.
+`npm run scryfall` warns if a card makes a token that
+`packages/cards/data/tokens.json` doesn't define.
+
 ### Card types decide which rules apply
 
 Cards are categorized by type (land, creature, artifact, enchantment,
@@ -24,8 +55,8 @@ Every game (browser board, terminal, bots, fuzz tests) uses the exact
 60-card Final Fantasy Starter Kit decklists, Red-White and Blue-Black. No
 placeholder cards and no filler cards from other sets.
 
-Cards whose abilities aren't built yet are still in the decks, marked
-"not built yet":
+(Until K2-K6 were finished later the same day, cards whose abilities
+weren't built yet were in the decks marked "not built yet":
 
 - **Creatures** can be cast and fight with their real cost, power,
   toughness and printed keywords (Flying, Reach, Vigilance, Menace and so
@@ -34,7 +65,7 @@ Cards whose abilities aren't built yet are still in the decks, marked
   Auracite) can't be cast yet and stay in hand.
 - The board shows a "not built yet" badge on these cards. As each roadmap
   step (K2–K6, see [starter-kits.md](starter-kits.md)) lands, its cards
-  lose the badge and start working, with no deck changes needed.
+  lose the badge and start working, with no deck changes needed.)
 
 ### Issue: Scryfall API rate limits
 

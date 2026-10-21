@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { CONSTRUCTED_DUEL, validateDeck } from '@nexus/engine';
-import { CARD_DEFS, CARD_IDS_BY_NAME, CARDS, FIN_STARTER_KITS, starterKitDeck, validateCardDefinition } from '../src/index.ts';
+import {
+  CARD_DEFS,
+  CARD_IDS_BY_NAME,
+  CARDS,
+  FIN_STARTER_KITS,
+  starterKitDeck,
+  validateCardDefinition,
+  validateCardList,
+} from '../src/index.ts';
 
 describe('card data', () => {
   it('loads and validates every card', () => {
@@ -38,6 +46,27 @@ describe('card data', () => {
     ]);
   });
 
+  it('checks tokens, filters and abilities', () => {
+    const base = { id: 'x', name: 'x', types: ['creature'], manaCost: '{1}', power: 1, toughness: 1 };
+    expect(
+      validateCardList([
+        { ...base, triggers: [{ when: 'Dies', effects: [{ effect: 'CreateToken', token: 'goblin-token', amount: 1, target: 'You' }] }] },
+      ]),
+    ).toEqual([expect.stringMatching(/creates "goblin-token", which isn't a token/)]);
+    expect(
+      validateCardDefinition({
+        ...base,
+        activated: [{ cost: { mana: '{1}', tap: true }, effects: [{ effect: 'Tap', target: 'TargetPermanent' }] }],
+        statics: [{ affects: 'Everyone', keywords: ['Flying'] }],
+      }),
+    ).toEqual(
+      expect.arrayContaining([expect.stringMatching(/TargetPermanent needs a filter/), expect.stringMatching(/affects must be/)]),
+    );
+    expect(validateCardDefinition({ ...base, types: ['artifact'], equip: '{2}' })).toEqual(
+      expect.arrayContaining([expect.stringMatching(/only Equipment has an equip cost/)]),
+    );
+  });
+
   it('catches mistakes in triggered abilities', () => {
     const base = { id: 'x', name: 'x', types: ['creature'], manaCost: '{1}', power: 1, toughness: 1 };
     expect(
@@ -53,7 +82,6 @@ describe('card data', () => {
       expect.arrayContaining([
         expect.stringMatching(/unknown trigger event "Explodes"/),
         expect.stringMatching(/say which spells/),
-        expect.stringMatching(/ReturnToHand only supports "This"/),
         expect.stringMatching(/"turn" is only for/),
         expect.stringMatching(/Unsupported mana symbol/),
         expect.stringMatching(/at least one effect/),
@@ -61,7 +89,7 @@ describe('card data', () => {
     );
     expect(
       validateCardDefinition({ id: 'x', name: 'x', types: ['instant'], manaCost: '{1}', effects: [{ effect: 'ReturnToHand', target: 'This' }] }),
-    ).toEqual([expect.stringMatching(/only be used in triggered abilities/)]);
+    ).toEqual([expect.stringMatching(/only be used in abilities/)]);
   });
 
   it('builds legal 60-card Starter Kit decks', () => {

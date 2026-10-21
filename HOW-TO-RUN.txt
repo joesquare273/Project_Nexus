@@ -53,16 +53,21 @@ You need Node.js 24 or newer.
       every step" on the right to stop everywhere.
 
   THE DECKS: the exact Final Fantasy Starter Kits
-    Every game uses the two real 60-card Final Fantasy Starter Kit decks.
-    Some of their cards aren't fully built yet and show a "not built yet"
-    badge:
-      - Creatures marked "not built yet" can still be cast and fight, with
-        their real power, toughness and keywords (Flying, Reach, Menace,
-        and so on). Their other abilities don't do anything yet.
-      - Noncreature cards marked "not built yet" (Equipment, some spells)
-        can't be cast yet and stay in your hand.
-    As more of the engine is built (see docs/starter-kits.md), these cards
-    start working and lose the badge.
+    Every game uses the two real 60-card Final Fantasy Starter Kit decks,
+    and every card works as printed.
+
+  More things you can do:
+    - Click a permanent to use its abilities: equip an Equipment, or tap
+      Coeurl. If a card can do several things (Cloudbound Moogle can be
+      cast or Plainscycled), buttons in the prompt bar let you choose.
+    - Modal spells (Suplex) ask you to choose a mode first.
+    - Cards you can cast from your graveyard (flashback) or exile (Lightning)
+      appear next to your hand with a purple "from graveyard"/"from exile" tag.
+    - Click the 🪦 count by a player's name to look through their graveyard.
+    - Surveil shows you the top card of your library: keep it or put it into
+      your graveyard.
+    - Small badges on cards: green +N = +1/+1 counters, the box in the corner
+      = current power/toughness (green when changed), red = damage.
 
   Card images come from Scryfall, so you need an internet connection to see
   them. Offline, cards are drawn as simple frames instead.

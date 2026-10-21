@@ -199,40 +199,1335 @@
       "number": "556"
     }
   },
-  {"id":"adelbert-steiner","name":"Adelbert Steiner","manaCost":"{1}{W}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Knight"],"power":2,"toughness":1,"keywords":["Lifelink"],"notBuilt":true,"printing":{"set":"fin","number":"3"}},
-  {"id":"barret-wallace","name":"Barret Wallace","manaCost":"{3}{R}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Rebel"],"power":4,"toughness":4,"keywords":["Reach"],"notBuilt":true,"printing":{"set":"fin","number":"129"}},
-  {"id":"beatrix-loyal-general","name":"Beatrix, Loyal General","manaCost":"{4}{W}{W}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Soldier"],"power":4,"toughness":4,"keywords":["Vigilance"],"notBuilt":true,"printing":{"set":"fin","number":"554"}},
-  {"id":"cloud-planets-champion","name":"Cloud, Planet's Champion","manaCost":"{3}{R}{W}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Soldier","Mercenary"],"power":4,"toughness":4,"notBuilt":true,"printing":{"set":"fin","number":"552"}},
-  {"id":"cloudbound-moogle","name":"Cloudbound Moogle","manaCost":"{3}{W}{W}","types":["creature"],"subtypes":["Moogle"],"power":2,"toughness":3,"keywords":["Flying"],"notBuilt":true,"printing":{"set":"fin","number":"11"}},
-  {"id":"coeurl","name":"Coeurl","manaCost":"{1}{W}","types":["creature"],"subtypes":["Cat","Beast"],"power":2,"toughness":2,"notBuilt":true,"printing":{"set":"fin","number":"12"}},
-  {"id":"dragoons-lance","name":"Dragoon's Lance","manaCost":"{1}{W}","types":["artifact"],"subtypes":["Equipment"],"notBuilt":true,"printing":{"set":"fin","number":"17"}},
-  {"id":"dwarven-castle-guard","name":"Dwarven Castle Guard","manaCost":"{1}{W}","types":["creature"],"subtypes":["Dwarf","Soldier"],"power":2,"toughness":1,"notBuilt":true,"printing":{"set":"fin","number":"18"}},
-  {"id":"fate-of-the-sun-cryst","name":"Fate of the Sun-Cryst","manaCost":"{4}{W}","types":["instant"],"notBuilt":true,"printing":{"set":"fin","number":"19"}},
-  {"id":"freya-crescent","name":"Freya Crescent","manaCost":"{R}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Rat","Knight"],"power":1,"toughness":1,"notBuilt":true,"printing":{"set":"fin","number":"138"}},
-  {"id":"item-shopkeep","name":"Item Shopkeep","manaCost":"{1}{R}","types":["creature"],"subtypes":["Human","Citizen"],"power":2,"toughness":2,"notBuilt":true,"printing":{"set":"fin","number":"142"}},
-  {"id":"judgment-bolt","name":"Judgment Bolt","manaCost":"{3}{R}","types":["instant"],"notBuilt":true,"printing":{"set":"fin","number":"559"}},
-  {"id":"lightning-security-sergeant","name":"Lightning, Security Sergeant","manaCost":"{2}{R}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Soldier"],"power":2,"toughness":3,"keywords":["Menace"],"notBuilt":true,"printing":{"set":"fin","number":"560"}},
-  {"id":"rosa-resolute-white-mage","name":"Rosa, Resolute White Mage","manaCost":"{3}{W}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Noble","Cleric"],"power":2,"toughness":3,"keywords":["Reach"],"notBuilt":true,"printing":{"set":"fin","number":"555"}},
-  {"id":"samurais-katana","name":"Samurai's Katana","manaCost":"{2}{R}","types":["artifact"],"subtypes":["Equipment"],"notBuilt":true,"printing":{"set":"fin","number":"154"}},
-  {"id":"slash-of-light","name":"Slash of Light","manaCost":"{1}{W}","types":["instant"],"notBuilt":true,"printing":{"set":"fin","number":"32"}},
-  {"id":"suplex","name":"Suplex","manaCost":"{1}{R}","types":["sorcery"],"notBuilt":true,"printing":{"set":"fin","number":"164"}},
-  {"id":"the-crystals-chosen","name":"The Crystal's Chosen","manaCost":"{5}{W}{W}","types":["sorcery"],"notBuilt":true,"printing":{"set":"fin","number":"14"}},
-  {"id":"ultima-weapon","name":"Ultima Weapon","manaCost":"{7}","types":["artifact"],"supertypes":["Legendary"],"subtypes":["Equipment"],"notBuilt":true,"printing":{"set":"fin","number":"563"}},
-  {"id":"warriors-sword","name":"Warrior's Sword","manaCost":"{3}{R}","types":["artifact"],"subtypes":["Equipment"],"notBuilt":true,"printing":{"set":"fin","number":"169"}},
-  {"id":"white-auracite","name":"White Auracite","manaCost":"{2}{W}{W}","types":["artifact"],"notBuilt":true,"printing":{"set":"fin","number":"41"}},
-  {"id":"white-mages-staff","name":"White Mage's Staff","manaCost":"{1}{W}","types":["artifact"],"subtypes":["Equipment"],"notBuilt":true,"printing":{"set":"fin","number":"42"}},
-  {"id":"deadly-embrace","name":"Deadly Embrace","manaCost":"{3}{B}{B}","types":["sorcery"],"notBuilt":true,"printing":{"set":"fin","number":"557"}},
-  {"id":"dreams-of-laguna","name":"Dreams of Laguna","manaCost":"{1}{U}","types":["instant"],"notBuilt":true,"printing":{"set":"fin","number":"50"}},
-  {"id":"evil-reawakened","name":"Evil Reawakened","manaCost":"{4}{B}","types":["sorcery"],"notBuilt":true,"printing":{"set":"fin","number":"98"}},
-  {"id":"il-mheg-pixie","name":"Il Mheg Pixie","manaCost":"{1}{U}","types":["creature"],"subtypes":["Faerie"],"power":2,"toughness":1,"keywords":["Flying"],"notBuilt":true,"printing":{"set":"fin","number":"57"}},
-  {"id":"magitek-scythe","name":"Magitek Scythe","manaCost":"{4}","types":["artifact"],"subtypes":["Equipment"],"notBuilt":true,"printing":{"set":"fin","number":"562"}},
-  {"id":"overkill","name":"Overkill","manaCost":"{2}{B}","types":["instant"],"notBuilt":true,"printing":{"set":"fin","number":"109"}},
-  {"id":"relms-sketching","name":"Relm's Sketching","manaCost":"{2}{U}{U}","types":["sorcery"],"notBuilt":true,"printing":{"set":"fin","number":"67"}},
-  {"id":"retrieve-the-esper","name":"Retrieve the Esper","manaCost":"{3}{U}","types":["sorcery"],"notBuilt":true,"printing":{"set":"fin","number":"68"}},
-  {"id":"sahagin","name":"Sahagin","manaCost":"{1}{U}","types":["creature"],"subtypes":["Merfolk","Warrior"],"power":1,"toughness":3,"notBuilt":true,"printing":{"set":"fin","number":"71"}},
-  {"id":"sephiroth-planets-heir","name":"Sephiroth, Planet's Heir","manaCost":"{4}{U}{B}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Avatar","Soldier"],"power":4,"toughness":4,"keywords":["Vigilance"],"notBuilt":true,"printing":{"set":"fin","number":"553"}},
-  {"id":"seymour-flux","name":"Seymour Flux","manaCost":"{4}{B}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Spirit","Avatar"],"power":5,"toughness":5,"notBuilt":true,"printing":{"set":"fin","number":"558"}},
-  {"id":"shinra-reinforcements","name":"Shinra Reinforcements","manaCost":"{2}{B}","types":["creature"],"subtypes":["Human","Soldier"],"power":2,"toughness":3,"notBuilt":true,"printing":{"set":"fin","number":"118"}},
-  {"id":"undercity-dire-rat","name":"Undercity Dire Rat","manaCost":"{1}{B}","types":["creature"],"subtypes":["Rat"],"power":2,"toughness":2,"notBuilt":true,"printing":{"set":"fin","number":"123"}},
-  {"id":"xande-dark-mage","name":"Xande, Dark Mage","manaCost":"{2}{U}{B}","types":["creature"],"supertypes":["Legendary"],"subtypes":["Human","Wizard"],"power":3,"toughness":3,"keywords":["Menace"],"notBuilt":true,"printing":{"set":"fin","number":"561"}}
+  {
+    "id": "adelbert-steiner",
+    "name": "Adelbert Steiner",
+    "manaCost": "{1}{W}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Knight"
+    ],
+    "power": 2,
+    "toughness": 1,
+    "keywords": [
+      "Lifelink"
+    ],
+    "statics": [
+      {
+        "affects": "Self",
+        "power": {
+          "count": [
+            "EquipmentYouControl"
+          ]
+        },
+        "toughness": {
+          "count": [
+            "EquipmentYouControl"
+          ]
+        }
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "3"
+    }
+  },
+  {
+    "id": "barret-wallace",
+    "name": "Barret Wallace",
+    "manaCost": "{3}{R}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Rebel"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "Reach"
+    ],
+    "triggers": [
+      {
+        "when": "Attacks",
+        "effects": [
+          {
+            "effect": "DealDamage",
+            "amount": {
+              "count": [
+                "EquippedCreaturesYouControl"
+              ]
+            },
+            "target": "DefendingPlayer"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "129"
+    }
+  },
+  {
+    "id": "beatrix-loyal-general",
+    "name": "Beatrix, Loyal General",
+    "manaCost": "{4}{W}{W}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Soldier"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "Vigilance"
+    ],
+    "triggers": [
+      {
+        "when": "BeginCombat",
+        "optional": true,
+        "effects": [
+          {
+            "effect": "AttachAllEquipment",
+            "target": "TargetPermanent",
+            "filter": {
+              "types": [
+                "creature"
+              ],
+              "controller": "You"
+            }
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "554"
+    }
+  },
+  {
+    "id": "cloud-planets-champion",
+    "name": "Cloud, Planet's Champion",
+    "manaCost": "{3}{R}{W}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Soldier",
+      "Mercenary"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "statics": [
+      {
+        "affects": "Self",
+        "conditions": [
+          "yourTurn",
+          "equipped"
+        ],
+        "keywords": [
+          "DoubleStrike",
+          "Indestructible"
+        ]
+      }
+    ],
+    "equipDiscount": 2,
+    "printing": {
+      "set": "fin",
+      "number": "552"
+    }
+  },
+  {
+    "id": "cloudbound-moogle",
+    "name": "Cloudbound Moogle",
+    "manaCost": "{3}{W}{W}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Moogle"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "Flying"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "AddCounters",
+            "amount": 1,
+            "target": "TargetCreature"
+          }
+        ]
+      }
+    ],
+    "landcycling": {
+      "subtype": "Plains",
+      "cost": "{2}"
+    },
+    "printing": {
+      "set": "fin",
+      "number": "11"
+    }
+  },
+  {
+    "id": "coeurl",
+    "name": "Coeurl",
+    "manaCost": "{1}{W}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Cat",
+      "Beast"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "activated": [
+      {
+        "cost": {
+          "mana": "{1}{W}",
+          "tap": true
+        },
+        "effects": [
+          {
+            "effect": "Tap",
+            "target": "TargetPermanent",
+            "filter": {
+              "types": [
+                "creature"
+              ],
+              "nonTypes": [
+                "enchantment"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "12"
+    }
+  },
+  {
+    "id": "dragoons-lance",
+    "name": "Dragoon's Lance",
+    "manaCost": "{1}{W}",
+    "types": [
+      "artifact"
+    ],
+    "subtypes": [
+      "Equipment"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "CreateToken",
+            "token": "hero-token",
+            "amount": 1,
+            "target": "You"
+          },
+          {
+            "effect": "Attach",
+            "target": "CreatedTokens"
+          }
+        ]
+      }
+    ],
+    "statics": [
+      {
+        "affects": "EquippedCreature",
+        "power": 1,
+        "addSubtypes": [
+          "Knight"
+        ]
+      },
+      {
+        "affects": "EquippedCreature",
+        "conditions": [
+          "yourTurn"
+        ],
+        "keywords": [
+          "Flying"
+        ]
+      }
+    ],
+    "equip": "{4}",
+    "printing": {
+      "set": "fin",
+      "number": "17"
+    }
+  },
+  {
+    "id": "dwarven-castle-guard",
+    "name": "Dwarven Castle Guard",
+    "manaCost": "{1}{W}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Dwarf",
+      "Soldier"
+    ],
+    "power": 2,
+    "toughness": 1,
+    "triggers": [
+      {
+        "when": "Dies",
+        "effects": [
+          {
+            "effect": "CreateToken",
+            "token": "hero-token",
+            "amount": 1,
+            "target": "You"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "18"
+    }
+  },
+  {
+    "id": "fate-of-the-sun-cryst",
+    "name": "Fate of the Sun-Cryst",
+    "manaCost": "{4}{W}",
+    "types": [
+      "instant"
+    ],
+    "effects": [
+      {
+        "effect": "Destroy",
+        "target": "TargetPermanent",
+        "filter": {
+          "categories": [
+            "permanent"
+          ],
+          "nonTypes": [
+            "land"
+          ]
+        }
+      }
+    ],
+    "costReduction": {
+      "generic": 2,
+      "ifTargetsTappedCreature": true
+    },
+    "printing": {
+      "set": "fin",
+      "number": "19"
+    }
+  },
+  {
+    "id": "freya-crescent",
+    "name": "Freya Crescent",
+    "manaCost": "{R}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Rat",
+      "Knight"
+    ],
+    "power": 1,
+    "toughness": 1,
+    "statics": [
+      {
+        "affects": "Self",
+        "conditions": [
+          "yourTurn"
+        ],
+        "keywords": [
+          "Flying"
+        ]
+      }
+    ],
+    "produces": [
+      "R"
+    ],
+    "manaAbility": {
+      "onlyForEquipment": true
+    },
+    "printing": {
+      "set": "fin",
+      "number": "138"
+    }
+  },
+  {
+    "id": "item-shopkeep",
+    "name": "Item Shopkeep",
+    "manaCost": "{1}{R}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Human",
+      "Citizen"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "triggers": [
+      {
+        "when": "Attacks",
+        "what": {
+          "controller": "You",
+          "types": [
+            "creature"
+          ]
+        },
+        "oneOrMore": true,
+        "effects": [
+          {
+            "effect": "GrantKeywords",
+            "keywords": [
+              "Menace"
+            ],
+            "target": "TargetPermanent",
+            "filter": {
+              "types": [
+                "creature"
+              ],
+              "attacking": true,
+              "equipped": true
+            }
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "142"
+    }
+  },
+  {
+    "id": "judgment-bolt",
+    "name": "Judgment Bolt",
+    "manaCost": "{3}{R}",
+    "types": [
+      "instant"
+    ],
+    "effects": [
+      {
+        "effect": "DealDamage",
+        "amount": 5,
+        "target": "TargetCreature"
+      },
+      {
+        "effect": "DealDamage",
+        "amount": {
+          "count": [
+            "EquipmentYouControl"
+          ]
+        },
+        "target": "PreviousTargetController"
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "559"
+    }
+  },
+  {
+    "id": "lightning-security-sergeant",
+    "name": "Lightning, Security Sergeant",
+    "manaCost": "{2}{R}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Soldier"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "Menace"
+    ],
+    "triggers": [
+      {
+        "when": "CombatDamageToPlayer",
+        "effects": [
+          {
+            "effect": "ExileTopCardToPlay",
+            "amount": 1,
+            "target": "You"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "560"
+    }
+  },
+  {
+    "id": "rosa-resolute-white-mage",
+    "name": "Rosa, Resolute White Mage",
+    "manaCost": "{3}{W}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Noble",
+      "Cleric"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "Reach"
+    ],
+    "triggers": [
+      {
+        "when": "BeginCombat",
+        "effects": [
+          {
+            "effect": "AddCounters",
+            "amount": 1,
+            "target": "TargetPermanent",
+            "filter": {
+              "types": [
+                "creature"
+              ],
+              "controller": "You"
+            }
+          },
+          {
+            "effect": "GrantKeywords",
+            "keywords": [
+              "Lifelink"
+            ],
+            "target": "PreviousTarget"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "555"
+    }
+  },
+  {
+    "id": "samurais-katana",
+    "name": "Samurai's Katana",
+    "manaCost": "{2}{R}",
+    "types": [
+      "artifact"
+    ],
+    "subtypes": [
+      "Equipment"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "CreateToken",
+            "token": "hero-token",
+            "amount": 1,
+            "target": "You"
+          },
+          {
+            "effect": "Attach",
+            "target": "CreatedTokens"
+          }
+        ]
+      }
+    ],
+    "statics": [
+      {
+        "affects": "EquippedCreature",
+        "power": 2,
+        "toughness": 2,
+        "keywords": [
+          "Trample",
+          "Haste"
+        ],
+        "addSubtypes": [
+          "Samurai"
+        ]
+      }
+    ],
+    "equip": "{5}",
+    "printing": {
+      "set": "fin",
+      "number": "154"
+    }
+  },
+  {
+    "id": "slash-of-light",
+    "name": "Slash of Light",
+    "manaCost": "{1}{W}",
+    "types": [
+      "instant"
+    ],
+    "effects": [
+      {
+        "effect": "DealDamage",
+        "amount": {
+          "count": [
+            "CreaturesYouControl",
+            "EquipmentYouControl"
+          ]
+        },
+        "target": "TargetCreature"
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "32"
+    }
+  },
+  {
+    "id": "suplex",
+    "name": "Suplex",
+    "manaCost": "{1}{R}",
+    "types": [
+      "sorcery"
+    ],
+    "modes": [
+      [
+        {
+          "effect": "DealDamage",
+          "amount": 3,
+          "target": "TargetCreature"
+        },
+        {
+          "effect": "GrantFlags",
+          "flags": [
+            "exileIfWouldDie"
+          ],
+          "target": "PreviousTarget"
+        }
+      ],
+      [
+        {
+          "effect": "Exile",
+          "target": "TargetPermanent",
+          "filter": {
+            "types": [
+              "artifact"
+            ]
+          }
+        }
+      ]
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "164"
+    }
+  },
+  {
+    "id": "the-crystals-chosen",
+    "name": "The Crystal's Chosen",
+    "manaCost": "{5}{W}{W}",
+    "types": [
+      "sorcery"
+    ],
+    "effects": [
+      {
+        "effect": "CreateToken",
+        "token": "hero-token",
+        "amount": 4,
+        "target": "You"
+      },
+      {
+        "effect": "AddCounters",
+        "amount": 1,
+        "target": "EachCreatureYouControl"
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "14"
+    }
+  },
+  {
+    "id": "ultima-weapon",
+    "name": "Ultima Weapon",
+    "manaCost": "{7}",
+    "types": [
+      "artifact"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Equipment"
+    ],
+    "triggers": [
+      {
+        "when": "Attacks",
+        "what": {
+          "equippedBySource": true
+        },
+        "effects": [
+          {
+            "effect": "Destroy",
+            "target": "OpponentCreature"
+          }
+        ]
+      }
+    ],
+    "statics": [
+      {
+        "affects": "EquippedCreature",
+        "power": 7,
+        "toughness": 7
+      }
+    ],
+    "equip": "{7}",
+    "printing": {
+      "set": "fin",
+      "number": "563"
+    }
+  },
+  {
+    "id": "warriors-sword",
+    "name": "Warrior's Sword",
+    "manaCost": "{3}{R}",
+    "types": [
+      "artifact"
+    ],
+    "subtypes": [
+      "Equipment"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "CreateToken",
+            "token": "hero-token",
+            "amount": 1,
+            "target": "You"
+          },
+          {
+            "effect": "Attach",
+            "target": "CreatedTokens"
+          }
+        ]
+      }
+    ],
+    "statics": [
+      {
+        "affects": "EquippedCreature",
+        "power": 3,
+        "toughness": 2,
+        "addSubtypes": [
+          "Warrior"
+        ]
+      }
+    ],
+    "equip": "{5}",
+    "printing": {
+      "set": "fin",
+      "number": "169"
+    }
+  },
+  {
+    "id": "white-auracite",
+    "name": "White Auracite",
+    "manaCost": "{2}{W}{W}",
+    "types": [
+      "artifact"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "ExileUntilSourceLeaves",
+            "target": "TargetPermanent",
+            "filter": {
+              "categories": [
+                "permanent"
+              ],
+              "nonTypes": [
+                "land"
+              ],
+              "controller": "Opponent"
+            }
+          }
+        ]
+      }
+    ],
+    "produces": [
+      "W"
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "41"
+    }
+  },
+  {
+    "id": "white-mages-staff",
+    "name": "White Mage's Staff",
+    "manaCost": "{1}{W}",
+    "types": [
+      "artifact"
+    ],
+    "subtypes": [
+      "Equipment"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "CreateToken",
+            "token": "hero-token",
+            "amount": 1,
+            "target": "You"
+          },
+          {
+            "effect": "Attach",
+            "target": "CreatedTokens"
+          }
+        ]
+      },
+      {
+        "when": "Attacks",
+        "what": {
+          "equippedBySource": true
+        },
+        "effects": [
+          {
+            "effect": "GainLife",
+            "amount": 1,
+            "target": "You"
+          }
+        ]
+      }
+    ],
+    "statics": [
+      {
+        "affects": "EquippedCreature",
+        "power": 1,
+        "toughness": 1,
+        "addSubtypes": [
+          "Cleric"
+        ]
+      }
+    ],
+    "equip": "{3}",
+    "printing": {
+      "set": "fin",
+      "number": "42"
+    }
+  },
+  {
+    "id": "deadly-embrace",
+    "name": "Deadly Embrace",
+    "manaCost": "{3}{B}{B}",
+    "types": [
+      "sorcery"
+    ],
+    "effects": [
+      {
+        "effect": "Destroy",
+        "target": "OpponentCreature"
+      },
+      {
+        "effect": "DrawCards",
+        "amount": {
+          "count": [
+            "CreaturesDiedThisTurn"
+          ]
+        },
+        "target": "You"
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "557"
+    }
+  },
+  {
+    "id": "dreams-of-laguna",
+    "name": "Dreams of Laguna",
+    "manaCost": "{1}{U}",
+    "types": [
+      "instant"
+    ],
+    "effects": [
+      {
+        "effect": "Surveil",
+        "amount": 1,
+        "target": "You"
+      },
+      {
+        "effect": "DrawCards",
+        "amount": 1,
+        "target": "You"
+      }
+    ],
+    "flashback": "{3}{U}",
+    "printing": {
+      "set": "fin",
+      "number": "50"
+    }
+  },
+  {
+    "id": "evil-reawakened",
+    "name": "Evil Reawakened",
+    "manaCost": "{4}{B}",
+    "types": [
+      "sorcery"
+    ],
+    "effects": [
+      {
+        "effect": "ReturnToBattlefield",
+        "target": "TargetCardInGraveyard",
+        "filter": {
+          "types": [
+            "creature"
+          ],
+          "controller": "You"
+        },
+        "counters": 2
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "98"
+    }
+  },
+  {
+    "id": "il-mheg-pixie",
+    "name": "Il Mheg Pixie",
+    "manaCost": "{1}{U}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Faerie"
+    ],
+    "power": 2,
+    "toughness": 1,
+    "keywords": [
+      "Flying"
+    ],
+    "triggers": [
+      {
+        "when": "Attacks",
+        "effects": [
+          {
+            "effect": "Surveil",
+            "amount": 1,
+            "target": "You"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "57"
+    }
+  },
+  {
+    "id": "magitek-scythe",
+    "name": "Magitek Scythe",
+    "manaCost": "{4}",
+    "types": [
+      "artifact"
+    ],
+    "subtypes": [
+      "Equipment"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "optional": true,
+        "effects": [
+          {
+            "effect": "Attach",
+            "target": "TargetPermanent",
+            "filter": {
+              "types": [
+                "creature"
+              ],
+              "controller": "You"
+            }
+          },
+          {
+            "effect": "GrantKeywords",
+            "keywords": [
+              "FirstStrike"
+            ],
+            "target": "PreviousTarget"
+          },
+          {
+            "effect": "GrantFlags",
+            "flags": [
+              "mustBeBlocked"
+            ],
+            "target": "PreviousTarget"
+          }
+        ]
+      }
+    ],
+    "statics": [
+      {
+        "affects": "EquippedCreature",
+        "power": 2,
+        "toughness": 1
+      }
+    ],
+    "equip": "{2}",
+    "printing": {
+      "set": "fin",
+      "number": "562"
+    }
+  },
+  {
+    "id": "overkill",
+    "name": "Overkill",
+    "manaCost": "{2}{B}",
+    "types": [
+      "instant"
+    ],
+    "effects": [
+      {
+        "effect": "ModifyPT",
+        "power": 0,
+        "toughness": -9999,
+        "target": "TargetCreature"
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "109"
+    }
+  },
+  {
+    "id": "relms-sketching",
+    "name": "Relm's Sketching",
+    "manaCost": "{2}{U}{U}",
+    "types": [
+      "sorcery"
+    ],
+    "effects": [
+      {
+        "effect": "CreateTokenCopy",
+        "target": "TargetPermanent",
+        "filter": {
+          "types": [
+            "artifact",
+            "creature",
+            "land"
+          ]
+        }
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "67"
+    }
+  },
+  {
+    "id": "retrieve-the-esper",
+    "name": "Retrieve the Esper",
+    "manaCost": "{3}{U}",
+    "types": [
+      "sorcery"
+    ],
+    "effects": [
+      {
+        "effect": "CreateToken",
+        "token": "robot-warrior-token",
+        "amount": 1,
+        "target": "You"
+      },
+      {
+        "effect": "AddCounters",
+        "amount": 2,
+        "target": "CreatedTokens",
+        "if": "castFromGraveyard"
+      }
+    ],
+    "flashback": "{5}{U}",
+    "printing": {
+      "set": "fin",
+      "number": "68"
+    }
+  },
+  {
+    "id": "sahagin",
+    "name": "Sahagin",
+    "manaCost": "{1}{U}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Merfolk",
+      "Warrior"
+    ],
+    "power": 1,
+    "toughness": 3,
+    "triggers": [
+      {
+        "when": "SpellCast",
+        "what": {
+          "controller": "You",
+          "nonTypes": [
+            "creature"
+          ]
+        },
+        "ifManaSpentAtLeast": 4,
+        "effects": [
+          {
+            "effect": "AddCounters",
+            "amount": 1,
+            "target": "This"
+          },
+          {
+            "effect": "GrantFlags",
+            "flags": [
+              "cantBeBlocked"
+            ],
+            "target": "This"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "71"
+    }
+  },
+  {
+    "id": "sephiroth-planets-heir",
+    "name": "Sephiroth, Planet's Heir",
+    "manaCost": "{4}{U}{B}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Avatar",
+      "Soldier"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "Vigilance"
+    ],
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "ModifyPT",
+            "power": -2,
+            "toughness": -2,
+            "target": "EachOpponentCreature"
+          }
+        ]
+      },
+      {
+        "when": "Dies",
+        "what": {
+          "controller": "Opponent",
+          "types": [
+            "creature"
+          ]
+        },
+        "effects": [
+          {
+            "effect": "AddCounters",
+            "amount": 1,
+            "target": "This"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "553"
+    }
+  },
+  {
+    "id": "seymour-flux",
+    "name": "Seymour Flux",
+    "manaCost": "{4}{B}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Spirit",
+      "Avatar"
+    ],
+    "power": 5,
+    "toughness": 5,
+    "triggers": [
+      {
+        "when": "Upkeep",
+        "cost": {
+          "life": 1
+        },
+        "effects": [
+          {
+            "effect": "DrawCards",
+            "amount": 1,
+            "target": "You"
+          },
+          {
+            "effect": "AddCounters",
+            "amount": 1,
+            "target": "This"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "558"
+    }
+  },
+  {
+    "id": "shinra-reinforcements",
+    "name": "Shinra Reinforcements",
+    "manaCost": "{2}{B}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Human",
+      "Soldier"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "triggers": [
+      {
+        "when": "EntersBattlefield",
+        "effects": [
+          {
+            "effect": "Mill",
+            "amount": 3,
+            "target": "You"
+          },
+          {
+            "effect": "GainLife",
+            "amount": 3,
+            "target": "You"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "118"
+    }
+  },
+  {
+    "id": "undercity-dire-rat",
+    "name": "Undercity Dire Rat",
+    "manaCost": "{1}{B}",
+    "types": [
+      "creature"
+    ],
+    "subtypes": [
+      "Rat"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "triggers": [
+      {
+        "when": "Dies",
+        "effects": [
+          {
+            "effect": "CreateToken",
+            "token": "treasure-token",
+            "amount": 1,
+            "target": "You"
+          }
+        ]
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "123"
+    }
+  },
+  {
+    "id": "xande-dark-mage",
+    "name": "Xande, Dark Mage",
+    "manaCost": "{2}{U}{B}",
+    "types": [
+      "creature"
+    ],
+    "supertypes": [
+      "Legendary"
+    ],
+    "subtypes": [
+      "Human",
+      "Wizard"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "Menace"
+    ],
+    "statics": [
+      {
+        "affects": "Self",
+        "power": {
+          "count": [
+            "NoncreatureNonlandCardsInYourGraveyard"
+          ]
+        },
+        "toughness": {
+          "count": [
+            "NoncreatureNonlandCardsInYourGraveyard"
+          ]
+        }
+      }
+    ],
+    "printing": {
+      "set": "fin",
+      "number": "561"
+    }
+  }
 ]

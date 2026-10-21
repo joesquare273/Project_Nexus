@@ -6,12 +6,16 @@ import kitsData from '../data/fin-starter-kits.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
+import tokens from '../data/tokens.json' with { type: 'json' };
 import { validateCardList } from './validate.ts';
 
 export { validateCardDefinition, validateCardList } from './validate.ts';
 
-/** Basic lands and Towns are in lands.json; every other Starter Kit card is in fin.json. */
-const all = [...lands, ...fin];
+/**
+ * Basic lands and Towns are in lands.json; every other Starter Kit card is
+ * in fin.json; tokens the cards create are in tokens.json.
+ */
+const all = [...lands, ...fin, ...tokens];
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 
@@ -46,6 +50,9 @@ export interface ScryfallInfo {
   artist?: string;
   image: { small: string; normal: string; large: string; artCrop: string };
   scryfallUri: string;
+  scryfallId?: string;
+  /** Tokens this card makes, per Scryfall's related parts. */
+  relatedTokens?: { name: string; scryfallId: string }[];
 }
 
 /** By card id. Refresh with `npm run scryfall`. Placeholder cards have no entry. */

@@ -3,11 +3,11 @@
 
 import { applyStateBasedActions } from './sba.ts';
 import { enterStep, givePriority } from './turn.ts';
+import { hasFlag, powerOf, toughnessOf } from './characteristics.ts';
 import {
   aliveFromActive,
   alivePlayers,
   dealDamage,
-  defOf,
   hasKeyword,
   isCreatureOnBattlefield,
   reject,
@@ -28,6 +28,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
 /** Whether `blocker` could block `attacker` on its own (menace is checked per whole declaration). */
 export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInstance): boolean {
   if (!isCreatureOnBattlefield(s, blocker) || blocker.tapped) return false;
+  if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
   }
@@ -87,32 +88,56 @@ export function nextBlockerDecision(ctx: Ctx): void {
   else givePriority(ctx, s.activePlayer);
 }
 
+/** Blockers needed to block this attacker at all: two for menace. */
+export function blockersNeeded(s: GameState, attacker: CardInstance): number {
+  return hasKeyword(s, attacker, 'Menace') ? 2 : 1;
+}
+
+/** Why a blocking declaration is illegal, or null if it's fine. */
+export function blockProblem(s: GameState, playerId: PlayerId, blocks: Block[]): string | null {
+  const combat = s.combat;
+  if (!combat) return 'There is no combat.';
+  const seen = new Set<InstanceId>();
+  const blockersPerAttacker = new Map<InstanceId, number>();
+  for (const b of blocks) {
+    const blocker = s.cards[b.blocker];
+    const attacker = s.cards[b.attacker];
+    if (!blocker || blocker.controller !== playerId) return `You don't control "${b.blocker}".`;
+    if (seen.has(b.blocker)) return `"${b.blocker}" can only block one creature.`;
+    seen.add(b.blocker);
+    const attack = combat.attacks.find((a) => a.attacker === b.attacker);
+    if (!attack || attack.defender !== playerId || !isCreatureOnBattlefield(s, attacker)) {
+      return `"${b.attacker}" is not attacking you.`;
+    }
+    if (!canBlock(s, blocker, attacker)) return `"${b.blocker}" can't block "${b.attacker}".`;
+    blockersPerAttacker.set(b.attacker, (blockersPerAttacker.get(b.attacker) ?? 0) + 1);
+  }
+  for (const [attackerId, count] of blockersPerAttacker) {
+    if (count === 1 && hasKeyword(s, s.cards[attackerId]!, 'Menace')) {
+      return `"${attackerId}" has menace and can't be blocked except by two or more creatures.`;
+    }
+  }
+  // "Must be blocked this turn if able" (rule 509.1c). Simplified: it's a problem only if enough of
+  // your creatures that aren't blocking anything could legally block it (two for menace).
+  const mine = s.players[playerId]!.battlefield.map((id) => s.cards[id]!);
+  for (const a of combat.attacks) {
+    const attacker = s.cards[a.attacker]!;
+    if (a.defender !== playerId || !hasFlag(s, attacker, 'mustBeBlocked')) continue;
+    if (blockersPerAttacker.has(a.attacker)) continue;
+    const free = mine.filter((b) => !seen.has(b.id) && canBlock(s, b, attacker));
+    if (free.length >= blockersNeeded(s, attacker)) return `"${a.attacker}" must be blocked if able.`;
+  }
+  return null;
+}
+
 export function declareBlockers(ctx: Ctx, playerId: PlayerId, blocks: Block[]): void {
   const s = ctx.s;
   if (s.pending.kind !== 'declareBlockers' || s.pending.player !== playerId || !s.combat) {
     reject('You are not declaring blockers right now.');
   }
   const combat = s.combat;
-  const seen = new Set<InstanceId>();
-  const blockersPerAttacker = new Map<InstanceId, number>();
-  for (const b of blocks) {
-    const blocker = s.cards[b.blocker];
-    const attacker = s.cards[b.attacker];
-    if (!blocker || blocker.controller !== playerId) reject(`You don't control "${b.blocker}".`);
-    if (seen.has(b.blocker)) reject(`"${b.blocker}" can only block one creature.`);
-    seen.add(b.blocker);
-    const attack = combat.attacks.find((a) => a.attacker === b.attacker);
-    if (!attack || attack.defender !== playerId || !isCreatureOnBattlefield(s, attacker)) {
-      reject(`"${b.attacker}" is not attacking you.`);
-    }
-    if (!canBlock(s, blocker, attacker)) reject(`"${b.blocker}" can't block "${b.attacker}".`);
-    blockersPerAttacker.set(b.attacker, (blockersPerAttacker.get(b.attacker) ?? 0) + 1);
-  }
-  for (const [attackerId, count] of blockersPerAttacker) {
-    if (count === 1 && hasKeyword(s, s.cards[attackerId]!, 'Menace')) {
-      reject(`"${attackerId}" has menace and can't be blocked except by two or more creatures.`);
-    }
-  }
+  const problem = blockProblem(s, playerId, blocks);
+  if (problem) reject(problem);
   for (const b of blocks) {
     combat.blocks.push(b);
     ctx.ev.push({ type: 'BlockDeclared', blocker: b.blocker, attacker: b.attacker });
@@ -138,7 +163,7 @@ function dealsDamageIn(s: GameState, c: CardInstance, pass: DamagePass): boolean
 
 /** Damage counted as lethal for assignment: 1 from a deathtouch source, otherwise remaining toughness. */
 function lethalDamage(s: GameState, source: CardInstance, victim: CardInstance): number {
-  const remaining = Math.max(0, (defOf(s, victim).toughness ?? 0) - victim.damage);
+  const remaining = Math.max(0, toughnessOf(s, victim) - victim.damage);
   if (hasKeyword(s, source, 'Deathtouch')) return victim.deathtouched ? 0 : Math.min(1, remaining);
   return remaining;
 }
@@ -153,7 +178,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
   const s = ctx.s;
   const combat = s.combat!;
   const participates = (c: CardInstance | undefined): c is CardInstance =>
-    isCreatureOnBattlefield(s, c) && dealsDamageIn(s, c, pass) && (defOf(s, c).power ?? 0) > 0;
+    isCreatureOnBattlefield(s, c) && dealsDamageIn(s, c, pass) && powerOf(s, c) > 0;
 
   const assignments: Assignment[] = [];
   for (const attack of combat.attacks) {
@@ -165,7 +190,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
     const toDefender: Target = { kind: 'player', player: attack.defender };
 
     if (participates(attacker)) {
-      let remaining = defOf(s, attacker).power ?? 0;
+      let remaining = powerOf(s, attacker);
       if (declared.length === 0) {
         if (defenderAlive) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
       } else {
@@ -187,7 +212,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
         assignments.push({
           source: blocker.id,
           target: { kind: 'card', card: attacker.id },
-          amount: defOf(s, blocker).power ?? 0,
+          amount: powerOf(s, blocker),
         });
       }
     }

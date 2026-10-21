@@ -202,7 +202,7 @@ export function put(
     deathtouched: false,
   };
   if (zone === 'library') s.players[owner]!.library.unshift(id);
-  else if (zone !== 'stack') s.players[owner]![zone].push(id);
+  else if (zone !== 'stack' && zone !== 'void') s.players[owner]![zone].push(id);
   return id;
 }
 

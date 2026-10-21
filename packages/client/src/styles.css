@@ -936,3 +936,116 @@ button.big {
     --hand-w: 96px;
   }
 }
+
+/* ---------- Counters, tokens, Equipment, zones ---------- */
+
+.badge.counters {
+  left: -4px;
+  bottom: 18%;
+  background: #2f8f4e;
+  color: white;
+}
+.badge.pt {
+  right: 2px;
+  bottom: 2px;
+  background: rgba(15, 15, 15, 0.85);
+  color: #f3f3f3;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  font-size: 10px;
+}
+.badge.pt.changed {
+  color: #8ff0a8;
+  border-color: #8ff0a8;
+}
+.badge.token {
+  left: 50%;
+  top: 2px;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 20, 0.8);
+  color: #cfd8d3;
+  font-size: 8px;
+  height: auto;
+  padding: 0 4px;
+}
+.badge.from-zone {
+  left: 50%;
+  top: 6%;
+  transform: translateX(-50%);
+  background: #3b2a5a;
+  color: #e2d4ff;
+  border: 1px solid #b79cff;
+  font-size: 10px;
+  height: auto;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.hand-card.elsewhere {
+  outline: 1px dashed #b79cff;
+  outline-offset: 2px;
+}
+.pool-restricted {
+  margin-left: 4px;
+  padding: 0 3px;
+  border: 1px dashed var(--gold);
+  border-radius: 6px;
+}
+button.zone-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+button.zone-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.card-list {
+  background: #13201b;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  max-width: min(900px, 92vw);
+  max-height: 80vh;
+  overflow: auto;
+}
+.card-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 16px;
+}
+.card-list-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.list-card {
+  width: 130px;
+  aspect-ratio: 1 / var(--card-ratio);
+  border-radius: var(--radius);
+  cursor: default;
+}
+.list-card.target {
+  box-shadow: 0 0 0 3px var(--target), 0 0 18px rgba(242, 201, 76, 0.6);
+  cursor: pointer;
+  animation: pulse 1.2s infinite;
+}
+.surveil-card {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  z-index: 30;
+  text-align: center;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.7));
+}
+.surveil-label {
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}

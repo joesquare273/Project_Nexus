@@ -75,8 +75,8 @@ export function App() {
       </button>
       <p className="fineprint">
 
-        Both decks are the exact Final Fantasy Starter Kits. Cards marked “not built yet” play as their body and
-        keywords only (creatures) or can’t be cast yet (other cards). Card images courtesy of Scryfall.
+        Both decks are the exact Final Fantasy Starter Kits, with every card working as printed. Card images
+        courtesy of Scryfall.
       </p>
     </div>
   );

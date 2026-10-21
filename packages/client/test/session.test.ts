@@ -14,10 +14,10 @@ function humanMove(session: GameSession, rand: () => number): Action[] {
   const pending = s.pending;
   const pick = <T>(xs: T[]) => xs[Math.floor(rand() * xs.length)]!;
   if (pending.kind === 'priority') {
-    const plays = [...session.plays().values()];
+    const plays = session.plays();
     if (plays.length === 0 || rand() < 0.3) return [{ type: 'PassPriority', player: YOU }];
-    const play = pick(plays);
-    return play.kind === 'land' ? [play.action] : [...play.taps, pick(play.casts)];
+    const choice = pick(pick(plays).choices);
+    return [...choice.taps, choice.action];
   }
   const legal = session.legal();
   if (pending.kind === 'decide') {

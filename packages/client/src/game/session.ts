@@ -19,7 +19,7 @@ import {
   type PlayerId,
 } from '@nexus/engine';
 import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
-import { basicAi, planTaps, randomBot, tapActions, type Bot } from '@nexus/bots';
+import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
 import { cardName, describe } from '@nexus/bots/narrate';
 
 export const YOU: PlayerId = 'You';
@@ -33,13 +33,7 @@ export interface SessionOptions {
   bot: 'ai' | 'random';
 }
 
-export type CastAction = Extract<Action, { type: 'CastSpell' }>;
-
-/** Something you can do with a card in your hand right now. */
-export type Play =
-  | { kind: 'land'; card: InstanceId; action: Action }
-  /** `taps` pays for it; each cast in `casts` is one legal choice of targets after tapping. */
-  | { kind: 'spell'; card: InstanceId; taps: Action[]; casts: CastAction[] };
+export type { CardPlay, PlayChoice } from '@nexus/bots';
 
 export interface LogEntry {
   id: number;
@@ -92,25 +86,13 @@ export class GameSession {
     return getLegalActions(this.state);
   }
 
-  /** Your playable hand cards while you have priority. Lands tap automatically for spells. */
-  plays(): Map<InstanceId, Play> {
-    const s = this.state;
-    const plays = new Map<InstanceId, Play>();
-    if (s.pending.kind !== 'priority' || s.pending.player !== YOU) return plays;
-    for (const a of this.legal()) {
-      if (a.type === 'PlayLand') plays.set(a.card, { kind: 'land', card: a.card, action: a });
-    }
-    for (const id of s.players[YOU]!.hand) {
-      const def = CARD_DEFS[s.cards[id]!.defId]!;
-      if (def.types.includes('land')) continue;
-      const taps = planTaps(s, YOU, def.manaCost);
-      if (!taps) continue;
-      const paid = applyAll(s, tapActions(YOU, taps));
-      if ('error' in paid) continue;
-      const casts = getLegalActions(paid.state).filter((a): a is CastAction => a.type === 'CastSpell' && a.card === id);
-      if (casts.length > 0) plays.set(id, { kind: 'spell', card: id, taps: tapActions(YOU, taps), casts });
-    }
-    return plays;
+  /**
+   * What you can do right now, grouped by card: play a land, cast a spell
+   * (from hand, graveyard or exile), or activate an ability. Mana sources tap
+   * automatically.
+   */
+  plays(): CardPlay[] {
+    return playableCards(this.state, YOU);
   }
 
   /** Applies your actions all-or-nothing. Returns an error message, or null on success. */
@@ -153,7 +135,7 @@ export class GameSession {
     const pending = s.pending;
     switch (pending.kind) {
       case 'priority':
-        if (this.plays().size === 0 || !this.worthStopping()) return { type: 'PassPriority', player: YOU };
+        if (this.plays().length === 0 || !this.worthStopping()) return { type: 'PassPriority', player: YOU };
         return null;
       case 'declareBlockers': {
         const canBlock = this.legal().some((a) => a.type === 'DeclareBlockers' && a.blocks.length > 0);
@@ -162,7 +144,7 @@ export class GameSession {
       case 'decide': {
         const item = s.stack.at(-1);
         if (item?.kind !== 'ability') return null;
-        const cost = triggerSpec(s, item).cost;
+        const cost = triggerSpec(s, item)?.cost;
         const lifeOk = cost?.life === undefined || s.players[YOU]!.life >= cost.life;
         return lifeOk && planTaps(s, YOU, cost?.mana) ? null : { type: 'Decide', player: YOU, accept: false };
       }

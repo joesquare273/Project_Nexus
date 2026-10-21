@@ -14,7 +14,8 @@ import {
 } from '@nexus/engine';
 
 export { basicAi } from './ai.ts';
-export { manaSources, planTaps, tapActions, type ManaTap } from './mana.ts';
+export { manaSources, planTaps, tapActions, type ManaTap, type TapOptions } from './mana.ts';
+export { playableCards, type CardPlay, type PlayChoice } from './human.ts';
 
 export type Bot = (state: GameState, legal: Action[]) => Action;
 
@@ -28,14 +29,19 @@ export function makeRng(seed: number): () => number {
   };
 }
 
-/** Picks uniformly among legal actions, passing about half the time it could act. Used for fuzzing. */
+/**
+ * Picks at random among legal actions, passing about half the time it could
+ * act. Mana abilities are picked less often than other actions, since there
+ * are usually many of them and the mana mostly goes unused. Used for fuzzing.
+ */
 export function randomBot(seed: number): Bot {
   const rand = makeRng(seed);
   return (_state, legal) => {
     const nonPass = legal.filter((a) => a.type !== 'PassPriority');
     const pass = legal.find((a) => a.type === 'PassPriority');
     if (pass && (nonPass.length === 0 || rand() < 0.5)) return pass;
-    const pool = nonPass.length > 0 ? nonPass : legal;
+    const others = nonPass.filter((a) => a.type !== 'ActivateManaAbility');
+    const pool = others.length > 0 && rand() < 0.8 ? others : nonPass.length > 0 ? nonPass : legal;
     return pool[Math.floor(rand() * pool.length)]!;
   };
 }

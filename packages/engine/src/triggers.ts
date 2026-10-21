@@ -5,9 +5,9 @@
 // so the last player's resolve first (rule 603.3b).
 
 import { checkTargets, choosingEffects, targetOptions } from './stack.ts';
+import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
 import { givePriority } from './turn.ts';
-import { categoriesOf } from './typerules.ts';
 import type {
   AbilityItem,
   CardInstance,
@@ -31,6 +31,10 @@ interface Occurrence {
   subjectController?: PlayerId;
   /** BeginCombat and Upkeep: whose turn it is. */
   activePlayer?: PlayerId;
+  /** Attacks: the player being attacked. */
+  defender?: PlayerId;
+  /** SpellCast: mana spent to cast it. */
+  manaSpent?: number;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -45,11 +49,16 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           out.push({ when: 'Dies', at, subject: e.card, subjectController: e.controller ?? e.owner });
         }
         break;
-      case 'AttackDeclared':
-        out.push({ when: 'Attacks', at, subject: e.attacker, subjectController: s.cards[e.attacker]!.controller });
+      case 'TokenCreated':
+        out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
         break;
+      case 'AttackDeclared': {
+        const subjectController = s.cards[e.attacker]!.controller;
+        out.push({ when: 'Attacks', at, subject: e.attacker, subjectController, defender: e.defendingPlayer });
+        break;
+      }
       case 'SpellCast':
-        out.push({ when: 'SpellCast', at, subject: e.card, subjectController: e.player });
+        out.push({ when: 'SpellCast', at, subject: e.card, subjectController: e.player, manaSpent: e.manaSpent });
         break;
       case 'DamageDealt':
         if (e.combat && e.target.kind === 'player') {
@@ -74,22 +83,14 @@ function matchesFilter(
 ): boolean {
   if (o.subject === undefined) return false;
   if (!filter) return o.subject === source;
-  if (filter.other && o.subject === source) return false;
-  if (filter.controller === 'You' && o.subjectController !== controller) return false;
-  if (filter.controller === 'Opponent' && o.subjectController === controller) return false;
-  const types = defOf(s, s.cards[o.subject]!).types;
-  if (filter.types && !filter.types.some((t) => types.includes(t))) return false;
-  if (filter.nonTypes?.some((t) => types.includes(t))) return false;
-  if (filter.categories) {
-    const categories = categoriesOf(defOf(s, s.cards[o.subject]!));
-    if (!filter.categories.every((c) => categories.includes(c))) return false;
-  }
-  return true;
+  return matchesObject(s, filter, s.cards[o.subject]!, { controller, source }, o.subjectController);
 }
 
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (o.when === 'BeginCombat' || o.when === 'Upkeep') return spec.turn === 'Each' || o.activePlayer === controller;
+  // Intervening "if" (rule 603.4).
+  if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   return matchesFilter(s, spec.what, source, controller, o);
 }
 
@@ -115,6 +116,10 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
 
   const moved = new Map<InstanceId, Movement>();
   events.forEach((e, at) => {
+    if (e.type === 'TokenCreated') {
+      moved.set(e.card, { ...moved.get(e.card), entered: at });
+      return;
+    }
     if (e.type !== 'CardMoved' || !e.card) return;
     const m = moved.get(e.card) ?? {};
     if (e.to === 'battlefield') m.entered = at;
@@ -136,6 +141,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
   const found: QueuedTrigger[] = [];
   const batched = new Set<string>();
   const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard', o: Occurrence) => {
+    if (s.players[controller]!.eliminated) return;
     defOf(s, c).triggers!.forEach((spec, ability) => {
       if ((spec.zone ?? 'battlefield') !== zone || !triggersOn(spec, o, s, c.id, controller)) return;
       const key = `${c.id}#${ability}`;
@@ -147,7 +153,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         if (s.triggeredThisTurn.includes(key)) return;
         s.triggeredThisTurn.push(key);
       }
-      found.push({ source: c.id, ability, controller, sourceZone: c.zone });
+      found.push({ source: c.id, ability, controller, sourceZone: c.zone, ...(o.defender ? { defender: o.defender } : {}) });
     });
   };
 
@@ -182,10 +188,12 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     id: newId(s, 's'),
     kind: 'ability',
     source: t.source,
+    from: 'trigger',
     ability: t.ability,
     sourceZone: t.sourceZone,
     controller: t.controller,
     targets,
+    ...(t.defender ? { defender: t.defender } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityTriggered', item: item.id, card: t.source, ability: t.ability, controller: t.controller, targets });
@@ -194,7 +202,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 
 /** Legal choices for each target of a queued trigger, in effect order. */
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
-  return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e.target, t.controller));
+  return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source));
 }
 
 /**
@@ -230,7 +238,7 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   const pending = s.pending;
   if (pending.kind !== 'chooseTargets' || pending.player !== playerId) reject('You are not choosing targets right now.');
   const t = s.triggerQueue[0]!;
-  checkTargets(s, specOf(s, t).effects, targets, playerId);
+  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source);
   s.triggerQueue.shift();
   pushAbility(ctx, t, targets);
   givePriority(ctx, pending.then);

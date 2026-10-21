@@ -24,23 +24,19 @@ export interface ZoneHandlers {
   onCard: (id: InstanceId) => void;
   onPlayer: (id: PlayerId) => void;
   onHover: (id: InstanceId | null) => void;
-}
-
-/** Marks a Starter Kit card whose abilities aren't built yet. */
-function NotBuiltBadge() {
-  return (
-    <div className="badge not-built" title="Not built yet: only its power, toughness and keywords work, or it can't be cast">
-      not built yet
-    </div>
-  );
+  /** Open a list of a player's graveyard or exile. */
+  onZone: (player: PlayerId, zone: 'graveyard' | 'exile') => void;
 }
 
 export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceId; h: ZoneHandlers }) {
   const c = view.cards[id]!;
   const def = defOf(c.defId);
+  const stats = view.stats[id];
   const marks = h.markCard(id);
   const note = h.cardNote(id);
-  const sick = c.summoningSick && isCreature(def) && !def.keywords?.includes('Haste');
+  const creature = isCreature(def);
+  const sick = c.summoningSick && creature && !stats?.keywords.includes('Haste');
+  const changed = stats && (stats.power !== def.power || stats.toughness !== def.toughness);
   return (
     <div
       className={`bf-card ${c.tapped ? 'tapped' : ''} ${def.types.includes('land') ? 'land' : ''} ${marks.join(' ')}`}
@@ -50,7 +46,13 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
     >
       <div className="bf-inner">
         <CardFace defId={c.defId} size="small" />
-        {def.notBuilt && <NotBuiltBadge />}
+        {c.isToken && <div className="badge token">token</div>}
+        {(c.counters ?? 0) > 0 && <div className="badge counters">+{c.counters}</div>}
+        {creature && stats && (
+          <div className={`badge pt ${changed ? 'changed' : ''}`}>
+            {stats.power}/{stats.toughness}
+          </div>
+        )}
         {c.damage > 0 && <div className="badge damage">{c.damage}</div>}
         {sick && (
           <div className="badge sick" title="Summoning sick: can't attack or tap this turn">
@@ -67,13 +69,20 @@ function Battlefield({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneH
   const ids = view.players[pid]!.battlefield;
   const lands = ids.filter((id) => defOf(view.cards[id]!.defId).types.includes('land'));
   const others = ids.filter((id) => !lands.includes(id));
+  // Equipment sits right after the creature it's attached to.
+  const ordered: InstanceId[] = [];
+  for (const id of others) {
+    if (view.cards[id]!.attachedTo && others.includes(view.cards[id]!.attachedTo!)) continue;
+    ordered.push(id);
+    for (const e of others) if (view.cards[e]!.attachedTo === id) ordered.push(e);
+  }
   return (
     <div className="battlefield">
       <div className="row creatures">
-        {others.map((id) => (
+        {ordered.map((id) => (
           <BattlefieldCard key={id} view={view} id={id} h={h} />
         ))}
-        {others.length === 0 && <div className="empty-row">No creatures</div>}
+        {ordered.length === 0 && <div className="empty-row">No creatures</div>}
       </div>
       <div className="row lands">
         {lands.map((id) => (
@@ -84,12 +93,19 @@ function Battlefield({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneH
   );
 }
 
-function ManaPool({ pool }: { pool: GameView['players'][string]['manaPool'] }) {
-  const symbols = Object.entries(pool).flatMap(([t, n]) => Array.from({ length: n }, () => `{${t}}`));
-  if (symbols.length === 0) return null;
+function ManaPool({ pool, equipment }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool'] }) {
+  const symbols = (p: typeof pool) => Object.entries(p).flatMap(([t, n]) => Array.from({ length: n }, () => `{${t}}`));
+  const normal = symbols(pool);
+  const restricted = symbols(equipment);
+  if (normal.length + restricted.length === 0) return null;
   return (
     <span className="pool" title="Mana pool">
-      <ManaCost cost={symbols.join('')} size={13} />
+      <ManaCost cost={normal.join('')} size={13} />
+      {restricted.length > 0 && (
+        <span className="pool-restricted" title="Only for Equipment spells and equip abilities">
+          <ManaCost cost={restricted.join('')} size={13} />
+        </span>
+      )}
     </span>
   );
 }
@@ -110,8 +126,29 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
         <div className="counts">
           <span title="Cards in hand">✋ {p.handCount}</span>
           <span title="Cards in library">📚 {p.libraryCount}</span>
-          <span title="Cards in graveyard">🪦 {p.graveyard.length}</span>
-          <ManaPool pool={p.manaPool} />
+          <button
+            className="zone-link"
+            title="Graveyard"
+            onClick={(e) => {
+              e.stopPropagation();
+              h.onZone(pid, 'graveyard');
+            }}
+          >
+            🪦 {p.graveyard.length}
+          </button>
+          {p.exile.length > 0 && (
+            <button
+              className="zone-link"
+              title="Exile"
+              onClick={(e) => {
+                e.stopPropagation();
+                h.onZone(pid, 'exile');
+              }}
+            >
+              ⊘ {p.exile.length}
+            </button>
+          )}
+          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} />
         </div>
       </div>
       <div className={`life ${p.life <= 5 ? 'low' : ''}`} title="Life">
@@ -120,7 +157,11 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
       {graveTop && (
         <div
           className="grave-top"
-          title="Top of graveyard"
+          title="Top of graveyard (click to see all)"
+          onClick={(e) => {
+            e.stopPropagation();
+            h.onZone(pid, 'graveyard');
+          }}
           onMouseEnter={() => h.onHover(graveTop)}
           onMouseLeave={() => h.onHover(null)}
         >
@@ -155,28 +196,90 @@ export function YourZone({ view, h }: { view: GameView; h: ZoneHandlers }) {
   );
 }
 
-export function Hand({ view, h }: { view: GameView; h: ZoneHandlers }) {
+function HandCard({
+  view,
+  id,
+  h,
+  tilt,
+  tag,
+}: {
+  view: GameView;
+  id: InstanceId;
+  h: ZoneHandlers;
+  tilt: number;
+  tag?: string;
+}) {
+  const marks = h.markCard(id);
+  return (
+    <div
+      className={`hand-card ${marks.join(' ')} ${tag ? 'elsewhere' : ''}`}
+      style={{ '--tilt': `${tilt}deg` } as CSSProperties}
+      onClick={() => h.onCard(id)}
+      onMouseEnter={() => h.onHover(id)}
+      onMouseLeave={() => h.onHover(null)}
+    >
+      <CardFace defId={view.cards[id]!.defId} size="normal" />
+      {tag && <div className="badge from-zone">{tag}</div>}
+    </div>
+  );
+}
+
+/** Your hand, plus cards you can cast from elsewhere right now (flashback, cards exiled to play). */
+export function Hand({ view, h, elsewhere }: { view: GameView; h: ZoneHandlers; elsewhere: InstanceId[] }) {
   const hand = view.players[YOU]!.hand ?? [];
+  const all = [...hand, ...elsewhere];
   return (
     <div className="hand">
-      {hand.map((id, i) => {
-        const marks = h.markCard(id);
-        const tilt = (i - (hand.length - 1) / 2) * 2;
-        return (
-          <div
-            key={id}
-            className={`hand-card ${marks.join(' ')}`}
-            style={{ '--tilt': `${tilt}deg` } as CSSProperties}
-            onClick={() => h.onCard(id)}
-            onMouseEnter={() => h.onHover(id)}
-            onMouseLeave={() => h.onHover(null)}
-          >
-            <CardFace defId={view.cards[id]!.defId} size="normal" />
-            {defOf(view.cards[id]!.defId).notBuilt && <NotBuiltBadge />}
-          </div>
-        );
+      {all.map((id, i) => {
+        const tilt = (i - (all.length - 1) / 2) * 2;
+        const zone = view.cards[id]!.zone;
+        return <HandCard key={id} view={view} id={id} h={h} tilt={tilt} tag={zone === 'hand' ? undefined : `from ${zone}`} />;
       })}
-      {hand.length === 0 && <div className="empty-row">Your hand is empty</div>}
+      {all.length === 0 && <div className="empty-row">Your hand is empty</div>}
+    </div>
+  );
+}
+
+/** A full list of a graveyard or exile, or of cards to choose from as targets. */
+export function CardList({
+  view,
+  title,
+  ids,
+  h,
+  onClose,
+}: {
+  view: GameView;
+  title: string;
+  ids: InstanceId[];
+  h: ZoneHandlers;
+  onClose?: () => void;
+}) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="card-list" onClick={(e) => e.stopPropagation()}>
+        <div className="card-list-head">
+          <strong>{title}</strong>
+          {onClose && (
+            <button className="ghost" onClick={onClose}>
+              Close
+            </button>
+          )}
+        </div>
+        <div className="card-list-cards">
+          {ids.map((id) => (
+            <div
+              key={id}
+              className={`list-card ${h.markCard(id).join(' ')}`}
+              onClick={() => h.onCard(id)}
+              onMouseEnter={() => h.onHover(id)}
+              onMouseLeave={() => h.onHover(null)}
+            >
+              <CardFace defId={view.cards[id]!.defId} size="normal" />
+            </div>
+          ))}
+          {ids.length === 0 && <div className="empty-row">Empty</div>}
+        </div>
+      </div>
     </div>
   );
 }

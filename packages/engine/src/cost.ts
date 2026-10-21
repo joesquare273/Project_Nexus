@@ -56,3 +56,22 @@ export function planPayment(pool: ManaPool, cost: ManaCost): Partial<ManaPool> |
 export function canPay(pool: ManaPool, cost: ManaCost): boolean {
   return planPayment(pool, cost) !== null;
 }
+
+/** Writes a cost back in standard notation: { generic: 2, R: 1 } -> "{2}{R}". */
+export function formatManaCost(cost: ManaCost): string {
+  const parts: string[] = [];
+  if (cost.generic > 0) parts.push(`{${cost.generic}}`);
+  for (const t of ['W', 'U', 'B', 'R', 'G', 'C'] as const) {
+    for (let i = 0; i < (cost[t] ?? 0); i++) parts.push(`{${t}}`);
+  }
+  return parts.join('') || '{0}';
+}
+
+/** A cost with up to `amount` less generic mana (cost reductions never reduce colored mana, rule 601.2f). */
+export function reduceGeneric(cost: ManaCost, amount: number): ManaCost {
+  return { ...cost, generic: Math.max(0, cost.generic - amount) };
+}
+
+export function totalMana(amounts: Partial<ManaPool>): number {
+  return MANA_TYPES.reduce((n, t) => n + (amounts[t] ?? 0), 0);
+}

@@ -396,10 +396,25 @@ async function decideTriggerTargets(s: GameState): Promise<Action[]> {
   }
 }
 
+async function decideLegend(s: GameState, cards: string[]): Promise<Action[]> {
+  console.log(`
+  Legend rule: you control more than one ${cardName(s, cards[0])}. Choose one to keep:`);
+  cards.forEach((id, i) => {
+    const c = s.cards[id]!;
+    const extras = [c.counters ? `+${c.counters} counters` : '', c.isToken ? 'token' : ''].filter(Boolean).join(', ');
+    console.log(`    ${i + 1}) ${creatureText(s, c)}${extras ? ` (${extras})` : ''}`);
+  });
+  for (;;) {
+    const keep = cards[Number(await ask('  Keep which? ')) - 1];
+    if (keep) return [{ type: 'ChooseLegend', player: YOU, keep }];
+    console.log('  Please type one of the numbers.');
+  }
+}
+
 async function decideYesNo(s: GameState): Promise<Action[]> {
   const item = s.stack.at(-1)!;
   if (item.kind !== 'ability') throw new Error('Expected an ability to decide on.');
-  const spec = triggerSpec(s, item);
+  const spec = triggerSpec(s, item)!;
   const no: Action[] = [{ type: 'Decide', player: YOU, accept: false }];
   const taps = planTaps(s, YOU, spec.cost?.mana);
   const canAfford = taps !== null && (spec.cost?.life === undefined || s.players[YOU]!.life >= spec.cost.life);
@@ -446,6 +461,11 @@ async function playOneGame(gameSeed: number): Promise<void> {
       actions = await decideTriggerTargets(s);
     } else if (pending.kind === 'decide') {
       actions = await decideYesNo(s);
+    } else if (pending.kind === 'chooseLegend') {
+      actions = await decideLegend(s, pending.cards);
+    } else if (pending.kind === 'surveil') {
+      const toGraveyard = (await ask(`  Surveil: put ${cardName(s, pending.card)} into your graveyard? (y/N) `)).toLowerCase() === 'y';
+      actions = [{ type: 'Surveil', player: YOU, toGraveyard }];
     } else {
       actions = await decidePriority(s);
     }

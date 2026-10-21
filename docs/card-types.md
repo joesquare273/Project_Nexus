@@ -34,7 +34,7 @@ Card abilities name these groupings directly. In a trigger's `what` filter,
 |---|---|---|---|
 | **Land** | Permanent, not a spell | Played once per turn (305.2). Mana abilities don't use the stack (605). Basic land types (Plains, Island, Swamp, Mountain, Forest) give "{T}: Add [mana]" on their own (305.6). | Built |
 | **Creature** | Permanent spell | Can attack and block. Summoning sickness: can't attack or use {T} abilities until you've controlled it since your most recent turn began (302.6). Dies from lethal damage, deathtouch damage or 0 toughness (704.5f–h). Damage wears off in the cleanup step. | Built |
-| **Artifact** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Artifact creatures are both. Equipment (an artifact subtype) has its own rules, see below. | Built (Equipment K4) |
+| **Artifact** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Artifact creatures are both. Equipment (an artifact subtype) has its own rules, see below. | Built |
 | **Enchantment** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Auras have their own rules (Later). | Built |
 | **Instant** | Nonpermanent spell | Cast any time you have priority, even on other players' turns and in response to other spells (304). | Built |
 | **Sorcery** | Nonpermanent spell | Cast only in your own main phase with an empty stack (307.1). | Built |
@@ -51,14 +51,15 @@ you have priority.
 | Supertype | Rules it brings | Status |
 |---|---|---|
 | Basic | Any number of copies in a deck (100.2a). | Built |
-| Legendary | Legend rule: control two with the same name and you keep one (704.5j). | Later (each kit has one copy of each) |
-| Token | Not a card; ceases to exist outside the battlefield (111.7–8). | K2 |
+| Legendary | Legend rule: control two or more with the same name and you choose one to keep; the rest go to the graveyard (704.5j). The AI keeps the one with the most counters, Equipment and buffs. | Built |
+| Token | Not a card; ceases to exist outside the battlefield (111.7–8). Token art comes from each card's own Scryfall token. | Built |
 
 ## Subtypes
 
 Most subtypes (creature types like Human or Moogle, land types like Town)
 carry no rules themselves; card text refers to them. A few do: Equipment
-(K4), Treasure (K2) and Aura (Later). Subtypes in card data are checked
+(equip, "equipped creature", falls off when the creature leaves; built),
+Treasure ("{T}, Sacrifice: add one mana of any color"; built) and Aura (Later). Subtypes in card data are checked
 against Scryfall's official lists (`packages/cards/data/types.json`) to
 catch typos.
 
