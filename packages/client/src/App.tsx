@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { SCRYFALL } from '@nexus/cards';
+import { CARD_IDS_BY_NAME, FIN_PRECONS, SCRYFALL } from '@nexus/cards';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
 import { Game } from './components/Game.tsx';
+import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   {
@@ -18,35 +19,128 @@ const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   },
 ];
 
+/** How much of a precon is fully built, for the menu. */
+function builtCount(p: (typeof FIN_PRECONS)[number]): number {
+  return p.cards.filter((c) => c.implemented).reduce((n, c) => n + c.count, 0) + (p.commander.implemented ? 1 : 0);
+}
+
 export function App() {
   const [session, setSession] = useState<GameSession | null>(null);
+  const [format, setFormat] = useState<'starter' | 'commander'>('starter');
+  const [precon, setPrecon] = useState(FIN_PRECONS[0]!.name);
   const [deck, setDeck] = useState<DeckChoice>('UB');
   const [opponents, setOpponents] = useState(1);
   const [bot, setBot] = useState<SessionOptions['bot']>('ai');
   const [seed, setSeed] = useState('');
+  const [tips, setTips] = useState(false);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  /** Changes for each new game so the board starts fresh. */
+  const [gameNumber, setGameNumber] = useState(0);
 
-  if (session) return <Game key={session.options.seed} session={session} onQuit={() => setSession(null)} />;
+  const quit = () => {
+    setSession(null);
+    setLesson(null);
+  };
+
+  /** A fresh game from turn 1 with a random hand against the AI, with tips. */
+  const practice = () => {
+    setLesson(null);
+    setGameNumber((n) => n + 1);
+    setSession(
+      new GameSession({ deck: 'RW', opponents: 1, bot: 'ai', seed: Math.floor(Math.random() * 1_000_000), coaching: true }),
+    );
+  };
+
+  const learn = () => {
+    const l = firstLesson();
+    setLesson(l);
+    setGameNumber((n) => n + 1);
+    setSession(new GameSession({ deck: 'RW', opponents: 1, bot: 'ai', seed: 0 }, l.scenario));
+  };
+
+  if (session) {
+    return (
+      <Game
+        key={gameNumber}
+        session={session}
+        onQuit={quit}
+        {...(lesson ? { lesson, onLessonDone: practice } : {})}
+      />
+    );
+  }
 
   const start = () => {
     const chosenSeed = seed.trim() === '' ? Math.floor(Math.random() * 1_000_000) : Number(seed);
-    setSession(new GameSession({ deck, opponents, bot, seed: Number.isFinite(chosenSeed) ? chosenSeed : 1 }));
+    setGameNumber((n) => n + 1);
+    setSession(
+      new GameSession({
+        format,
+        deck,
+        precon,
+        opponents,
+        bot,
+        seed: Number.isFinite(chosenSeed) ? chosenSeed : 1,
+        coaching: tips,
+      }),
+    );
   };
 
   return (
     <div className="menu">
       <h1>Project Nexus</h1>
-      <p className="tagline">Final Fantasy Starter Kits · play against the AI</p>
+      <p className="tagline">Final Fantasy Starter Kits and Commander precons · play against the AI</p>
+
+      <h2>New to Magic?</h2>
+      <div className="menu-learn">
+        <button className="primary big" onClick={learn}>
+          Learn to play
+        </button>
+        <button className="big" onClick={practice}>
+          Practice game with tips
+        </button>
+      </div>
+
+      <h2>Format</h2>
+      <div className="format-choices">
+        <button className={format === 'starter' ? 'chosen' : ''} onClick={() => setFormat('starter')}>
+          Starter Kits <span>60 cards · 20 life</span>
+        </button>
+        <button className={format === 'commander' ? 'chosen' : ''} onClick={() => setFormat('commander')}>
+          Commander <span>100-card precons · 40 life</span>
+        </button>
+      </div>
 
       <h2>Your deck</h2>
-      <div className="deck-choices">
-        {DECKS.map((d) => (
-          <button key={d.id} className={`deck ${deck === d.id ? 'chosen' : ''}`} onClick={() => setDeck(d.id)}>
-            <img src={SCRYFALL[d.art]?.image.artCrop} alt="" />
-            <span className="deck-name">{d.name}</span>
-            <span className="deck-blurb">{d.blurb}</span>
-          </button>
-        ))}
-      </div>
+      {format === 'starter' ? (
+        <div className="deck-choices">
+          {DECKS.map((d) => (
+            <button key={d.id} className={`deck ${deck === d.id ? 'chosen' : ''}`} onClick={() => setDeck(d.id)}>
+              <img src={SCRYFALL[d.art]?.image.artCrop} alt="" />
+              <span className="deck-name">{d.name}</span>
+              <span className="deck-blurb">{d.blurb}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="deck-choices precons">
+          {FIN_PRECONS.map((p) => (
+            <button key={p.name} className={`deck ${precon === p.name ? 'chosen' : ''}`} onClick={() => setPrecon(p.name)}>
+              <img src={SCRYFALL[CARD_IDS_BY_NAME[p.commander.name]!]?.image.artCrop} alt="" />
+              <span className="deck-name">{p.name.replace(/ \(.*\)$/, '')}</span>
+              <span className="deck-blurb">
+                {p.commander.name} · {p.name.match(/\((.*)\)/)?.[1]} · {builtCount(p)}/100 cards fully built
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {format === 'commander' && (
+        <p className="fineprint">
+          Commander rules are on: 40 life, your commander starts in the command zone (cast it from there; it costs
+          {' {2}'} more each time), and 21 combat damage from one commander knocks a player out. Cards marked “not
+          built yet” are still being built: creatures play as their body and keywords, other cards can’t be cast.
+        </p>
+      )}
 
       <div className="settings">
         <label>
@@ -64,6 +158,12 @@ export function App() {
             <option value="random">Random</option>
           </select>
         </label>
+        <label className="checkbox">
+          <span>Tips</span>
+          <span>
+            <input type="checkbox" checked={tips} onChange={(e) => setTips(e.target.checked)} /> Show tips
+          </span>
+        </label>
         <label>
           Seed (optional)
           <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="random" inputMode="numeric" />
@@ -74,9 +174,10 @@ export function App() {
         Start game
       </button>
       <p className="fineprint">
-
-        Both decks are the exact Final Fantasy Starter Kits, with every card working as printed. Card images
-        courtesy of Scryfall.
+        {format === 'starter'
+          ? 'Both decks are the exact Final Fantasy Starter Kits, with every card working as printed.'
+          : 'The four Final Fantasy Commander precons, exactly as printed; the rest of their cards are being built step by step.'}{' '}
+        Card images courtesy of Scryfall.
       </p>
     </div>
   );

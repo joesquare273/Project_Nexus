@@ -15,6 +15,7 @@ import {
   toughnessOf,
   type GameState,
 } from '@nexus/engine';
+import { FIN_STARTER_KITS } from '@nexus/cards';
 import { basicAi } from '../src/index.ts';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, player, put, rejected, settle } from './kit-helpers.ts';
 
@@ -607,10 +608,11 @@ describe('K6: the rest', () => {
   });
 });
 
-describe('every kit card', () => {
+describe('every Starter Kit card', () => {
   it('is fully built', () => {
     const s = newGame();
-    const unbuilt = Object.values(s.cardDefs).filter((d) => d.notBuilt);
+    const names = new Set(FIN_STARTER_KITS.flatMap((k) => k.cards.map((c) => c.name)));
+    const unbuilt = Object.values(s.cardDefs).filter((d) => names.has(d.name) && d.notBuilt);
     expect(unbuilt.map((d) => d.name)).toEqual([]);
   });
 });

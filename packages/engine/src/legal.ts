@@ -27,7 +27,7 @@ import {
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { triggerTargetOptions } from './triggers.ts';
-import { manaProduced } from './typerules.ts';
+import { canReveal, manaChoices } from './typerules.ts';
 import type { Action, Block, CardInstance, EffectSpec, GameState, ManaCost, PlayerId, Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 32;
@@ -59,7 +59,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const sorcerySpeed = canActAtSorcerySpeed(s, playerId);
   const candidates: CardInstance[] = [];
   const p = s.players[playerId]!;
-  for (const id of [...p.hand, ...p.graveyard]) candidates.push(s.cards[id]!);
+  for (const id of [...p.hand, ...p.graveyard, ...p.command]) candidates.push(s.cards[id]!);
   for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) candidates.push(s.cards[id]!);
   for (const c of candidates) {
     const def = s.cardDefs[c.defId]!;
@@ -70,7 +70,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
       for (const targets of targetCombos(s, spellEffects(def, mode), playerId, c.id)) {
         out.push({
           action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...(mode !== undefined ? { mode } : {}) },
-          cost: spellCost(s, def, from, targets),
+          cost: spellCost(s, def, from, targets, c),
           forEquipment: isEquipment(s, c),
         });
       }
@@ -106,7 +106,7 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
     const c = s.cards[id]!;
     const def = s.cardDefs[c.defId]!;
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
-    const produced = manaProduced(def);
+    const produced = manaChoices(s, c);
     if (produced.length === 0 || c.tapped || c.controller !== player || sick) continue;
     for (const mana of produced) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
   }
@@ -176,6 +176,12 @@ export function getLegalActions(s: GameState): Action[] {
       return actions;
     }
 
+    case 'commanderZone':
+      return [
+        { type: 'CommanderZone', player: pending.player, toCommand: true },
+        { type: 'CommanderZone', player: pending.player, toCommand: false },
+      ];
+
     case 'chooseLegend':
       return pending.cards.map((keep): Action => ({ type: 'ChooseLegend', player: pending.player, keep }));
 
@@ -218,7 +224,15 @@ export function getLegalActions(s: GameState): Action[] {
           const zone = playableZone(s, player, c);
           return (zone === 'hand' || zone === 'exile') && s.cardDefs[c.defId]!.types.includes('land');
         });
-        for (const card of lands) actions.push({ type: 'PlayLand', player, card });
+        for (const card of lands) {
+          // Snarls: reveal to enter untapped, or play it tapped anyway.
+          if (canReveal(s, s.cards[card]!, player)) {
+            actions.push({ type: 'PlayLand', player, card, reveal: true });
+            actions.push({ type: 'PlayLand', player, card, reveal: false });
+          } else {
+            actions.push({ type: 'PlayLand', player, card });
+          }
+        }
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
         if (canPayFromPool(s, player, o.cost, o.forEquipment)) actions.push(o.action);

@@ -107,6 +107,10 @@ function effectText(e: EffectSpec): string {
       return `mill ${n}`;
     case 'Surveil':
       return `surveil ${n}`;
+    case 'Scry':
+      return `scry ${n}`;
+    case 'SearchLibraryToBattlefield':
+      return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'ReturnToBattlefield':
       return `return ${who} to the battlefield${e.counters ? ` with ${e.counters} extra +1/+1 counters` : ''}`;
     case 'Attach':
@@ -253,7 +257,12 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
     case 'Decided':
       return `  ${who(e.player)} ${e.accepted ? 'chose yes' : 'chose no'} for ${cardName(s, e.card)}.`;
     case 'Surveiled':
+      if (e.scry) return `  ${who(e.player)} scried${e.toGraveyard ? ', putting a card on the bottom' : ', keeping the card on top'}.`;
       return `  ${who(e.player)} surveiled${e.toGraveyard ? `, putting ${cardName(s, e.card)} into the graveyard` : ', keeping the card on top'}.`;
+    case 'CommanderZoneChosen':
+      return e.toCommand
+        ? `  ${who(e.player)} put ${cardName(s, e.card)} into the command zone.`
+        : `  ${who(e.player)} left ${cardName(s, e.card)} in the ${e.from}.`;
     case 'LegendChosen':
       return `  Legend rule: ${who(e.player)} ${e.player === viewer ? 'keep' : 'keeps'} ${cardName(s, e.kept)}.`;
     case 'TokenCreated':
@@ -289,7 +298,12 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${who(e.player)}: ${e.from} -> ${e.to} life.`;
     case 'PlayerEliminated':
       return `*** ${who(e.player)} ${e.player === viewer ? 'lose' : 'loses'} the game (${
-        { life: 'no life left', emptyLibrary: 'drew from an empty library', conceded: 'conceded' }[e.reason]
+        {
+          life: 'no life left',
+          emptyLibrary: 'drew from an empty library',
+          conceded: 'conceded',
+          commanderDamage: '21 commander damage',
+        }[e.reason]
       }).`;
     case 'GameEnded':
       return `\n*** Game over. ${e.winner === null ? 'It is a draw.' : e.winner === viewer ? 'You win!' : `${e.winner} wins.`}`;

@@ -2,7 +2,7 @@
 // The input state is never mutated.
 
 import { declareAttackers, declareBlockers } from './combat.ts';
-import { chooseLegend, stabilize } from './sba.ts';
+import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
 import { activateAbility, activateManaAbility, castSpell, decide, playLand, surveil } from './stack.ts';
 import { chooseTriggerTargets } from './triggers.ts';
 import { passPriority } from './turn.ts';
@@ -33,7 +33,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'PlayLand':
         requirePriority(s, action.player);
-        playLand(ctx, action.player, action.card);
+        playLand(ctx, action.player, action.card, action.reveal);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'CastSpell':
@@ -61,6 +61,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ChooseLegend':
         chooseLegend(ctx, action.player, action.keep);
+        break;
+      case 'CommanderZone':
+        chooseCommanderZone(ctx, action.player, action.toCommand);
         break;
       case 'ChooseTargets':
         chooseTriggerTargets(ctx, action.player, action.targets);

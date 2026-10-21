@@ -216,9 +216,10 @@ function priorityOptions(s: GameState): Option[] {
   for (const a of legal) {
     if (a.type !== 'PlayLand') continue;
     const name = cardName(s, a.card);
-    if (seenLand.has(name)) continue;
-    seenLand.add(name);
-    options.push({ label: `Play ${name}`, choose: async () => [a] });
+    const how = a.reveal === true ? ' untapped (reveal a matching card)' : a.reveal === false ? ' tapped' : '';
+    if (seenLand.has(name + how)) continue;
+    seenLand.add(name + how);
+    options.push({ label: `Play ${name}${how}`, choose: async () => [a] });
   }
 
   const seenSpell = new Set<string>();
@@ -463,6 +464,9 @@ async function playOneGame(gameSeed: number): Promise<void> {
       actions = await decideYesNo(s);
     } else if (pending.kind === 'chooseLegend') {
       actions = await decideLegend(s, pending.cards);
+    } else if (pending.kind === 'commanderZone') {
+      const stay = (await ask(`  Your commander ${cardName(s, pending.card)} went to your ${pending.zone}. Move it to the command zone? (Y/n) `)).toLowerCase() === 'n';
+      actions = [{ type: 'CommanderZone', player: YOU, toCommand: !stay }];
     } else if (pending.kind === 'surveil') {
       const toGraveyard = (await ask(`  Surveil: put ${cardName(s, pending.card)} into your graveyard? (y/N) `)).toLowerCase() === 'y';
       actions = [{ type: 'Surveil', player: YOU, toGraveyard }];

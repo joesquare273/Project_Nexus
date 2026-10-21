@@ -46,6 +46,18 @@ export function randomBot(seed: number): Bot {
   };
 }
 
+/**
+ * Never takes the initiative: passes priority, doesn't attack or block, and
+ * says no to "you may". Used by the tutorial so the lesson stays predictable.
+ */
+export function passiveBot(): Bot {
+  return (_state, legal) =>
+    legal.find((a) => a.type === 'PassPriority') ??
+    legal.find((a) => (a.type === 'DeclareAttackers' && a.attacks.length === 0) || (a.type === 'DeclareBlockers' && a.blocks.length === 0)) ??
+    legal.find((a) => (a.type === 'Decide' && !a.accept) || (a.type === 'Surveil' && !a.toGraveyard)) ??
+    legal[0]!;
+}
+
 export interface PlayedGame {
   state: GameState;
   actions: Action[];

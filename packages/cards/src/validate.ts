@@ -37,7 +37,7 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
-const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil']);
+const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry']);
 const PLAYER_ONLY_EFFECTS = new Set(['DrawCards', 'GainLife', 'LoseLife', 'Mill']);
 const PLAYER_TARGETS = new Set([
   'You',
@@ -86,6 +86,7 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
     if (!CARD_CATEGORIES.includes(cat)) err(`unknown category "${cat}" (use ${CARD_CATEGORIES.join(', ')}).`);
   }
   for (const sub of f.subtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
+  for (const st of f.supertypes ?? []) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}" in a filter.`);
   if (f.controller !== undefined && f.controller !== 'You' && f.controller !== 'Opponent') {
     err('controller must be "You" or "Opponent".');
   }
@@ -123,7 +124,12 @@ export function validateCardDefinition(raw: unknown): string[] {
   validateCost(c.flashback, (m) => err(`flashback: ${m}`));
   validateCost(c.equip, (m) => err(`equip: ${m}`));
   if (c.equip !== undefined && !c.subtypes?.includes('Equipment')) err('only Equipment has an equip cost.');
-  if (c.landcycling) validateCost(c.landcycling.cost, (m) => err(`landcycling: ${m}`));
+  if (c.landcycling) {
+    validateCost(c.landcycling.cost, (m) => err(`landcycling: ${m}`));
+    if (!c.landcycling.basic && !c.landcycling.subtype) err('landcycling needs a subtype or basic: true.');
+  }
+  validateCost(c.cycling, (m) => err(`cycling: ${m}`));
+  for (const color of c.colorIdentity ?? []) if (!['W', 'U', 'B', 'R', 'G'].includes(color)) err(`unknown color "${color}" in colorIdentity.`);
   if (c.types.includes('creature') && (!isNonNegativeInt(c.power) || !isNonNegativeInt(c.toughness))) {
     err('creatures need non-negative integer power and toughness.');
   }
@@ -155,7 +161,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   validateAmount(e.amount, (m) => err(`${e.effect}: ${m}`));
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
-  if (e.effect === 'SearchLibraryToHand' && !e.filter) err('SearchLibraryToHand needs a filter.');
+  if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
   validateFilter(e.filter, err);
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');

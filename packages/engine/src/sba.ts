@@ -18,6 +18,7 @@ import {
   reject,
   type Ctx,
 } from './state.ts';
+import { shuffleInPlace } from './rng.ts';
 import { isLegendary } from './typerules.ts';
 import type { EliminationReason, PlayerId } from './types.ts';
 
@@ -96,13 +97,17 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
     for (const pid of s.turnOrder) {
       const p = s.players[pid]!;
       if (p.eliminated) continue;
+      const threshold = s.format.commanderDamageThreshold;
+      const commanderDamage = threshold !== undefined && Object.values(p.commanderDamage).some((n) => n >= threshold);
       const reason: EliminationReason | null = p.conceded
         ? 'conceded'
         : p.life <= 0
           ? 'life'
           : p.drewFromEmptyLibrary
             ? 'emptyLibrary'
-            : null;
+            : commanderDamage
+              ? 'commanderDamage'
+              : null;
       if (reason) {
         eliminatePlayer(ctx, pid, reason);
         eliminatedAny = true;
@@ -164,6 +169,7 @@ function repairPending(ctx: Ctx): void {
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       break;
     case 'chooseLegend':
+    case 'commanderZone':
       if (s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
       break;
   }
@@ -193,6 +199,44 @@ function checkLegendRule(ctx: Ctx): boolean {
     }
   }
   return false;
+}
+
+/**
+ * A commander that went to a graveyard, exile, a hand or a library: its
+ * owner chooses whether to move it to the command zone (rules 903.9a-b).
+ * Returns true if the game is now waiting on that choice.
+ */
+function checkCommanderZone(ctx: Ctx): boolean {
+  const s = ctx.s;
+  if (s.pending.kind === 'commanderZone') return true;
+  if (s.pending.kind === 'gameOver') return false;
+  for (const pid of aliveFromActive(s)) {
+    const p = s.players[pid]!;
+    for (const zone of ['graveyard', 'exile', 'hand', 'library'] as const) {
+      const id = p[zone].find((x) => s.cards[x]!.isCommander && !s.cards[x]!.commanderStays);
+      if (id) {
+        s.pending = { kind: 'commanderZone', player: pid, card: id, zone, resume: s.pending };
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** The CommanderZone action: to the command zone, or leave it where it went. */
+export function chooseCommanderZone(ctx: Ctx, playerId: PlayerId, toCommand: boolean): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'commanderZone' || pending.player !== playerId) reject('You have no commander to move right now.');
+  const c = s.cards[pending.card]!;
+  ctx.ev.push({ type: 'CommanderZoneChosen', player: playerId, card: c.id, from: c.zone, toCommand });
+  if (toCommand) {
+    if (c.zone === 'library') shuffleInPlace(s, s.players[c.owner]!.library);
+    moveCard(ctx, c.id, 'command');
+  } else {
+    c.commanderStays = true;
+  }
+  s.pending = pending.resume;
 }
 
 /** The ChooseLegend action: keep one, and the others go to the graveyard. */
@@ -230,7 +274,8 @@ export function stabilize(ctx: Ctx): void {
     if (eliminated) repairPending(ctx);
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
-    // The legend rule needs a choice; triggers go on the stack after it's made.
+    // These need a choice; triggers go on the stack after it's made.
+    if (checkCommanderZone(ctx)) return;
     if (checkLegendRule(ctx)) return;
     if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) placeTriggers(ctx, s.pending.player);
     return;

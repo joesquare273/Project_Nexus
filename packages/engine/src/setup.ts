@@ -1,7 +1,7 @@
 // Creating a new game from a seed, decks, and a format.
 
 import { parseManaCost } from './cost.ts';
-import { validateDeck, type FormatConfig } from './format.ts';
+import { validateCommander, validateDeck, type FormatConfig } from './format.ts';
 import { randomInt, seedToState, shuffleInPlace } from './rng.ts';
 import { stabilize } from './sba.ts';
 import { drawCards, emptyManaPool, type Ctx } from './state.ts';
@@ -10,7 +10,10 @@ import type { CardDefId, CardDefinition, GameEvent, GameState, PlayerId } from '
 
 export interface PlayerSetup {
   id: PlayerId;
+  /** The library. In Commander, everything except the commander. */
   deck: CardDefId[];
+  /** Commander format: the commander, which starts in the command zone. */
+  commander?: CardDefId;
 }
 
 export interface GameSetup {
@@ -40,8 +43,13 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       if (def.token) throw new Error(`"${def.name}" is a token and can't be in a deck.`);
       parseManaCost(def.manaCost); // Throws on unsupported symbols.
     }
+    if (format.commander && !p.commander) throw new Error(`${p.id} needs a commander.`);
     if (!setup.skipDeckValidation) {
-      const errors = validateDeck(p.deck, cardDefs, format);
+      const full = p.commander ? [...p.deck, p.commander] : p.deck;
+      const errors = [
+        ...validateDeck(full, cardDefs, format),
+        ...(format.commander && p.commander ? validateCommander(full, p.commander, cardDefs) : []),
+      ];
       if (errors.length > 0) throw new Error(`Deck for ${p.id} is not legal: ${errors.join(' ')}`);
     }
   }
@@ -78,6 +86,9 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       battlefield: [],
       graveyard: [],
       exile: [],
+      command: [],
+      commanderCasts: {},
+      commanderDamage: {},
       manaPool: emptyManaPool(),
       equipmentMana: emptyManaPool(),
       landsPlayedThisTurn: 0,
@@ -104,6 +115,22 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       s.players[p.id]!.library.push(id);
     }
     ctx.ev.push({ type: 'LibraryShuffled', player: p.id });
+    if (format.commander && p.commander) {
+      const id = `c${s.nextId++}`;
+      s.cards[id] = {
+        id,
+        defId: p.commander,
+        owner: p.id,
+        controller: p.id,
+        zone: 'command',
+        tapped: false,
+        summoningSick: false,
+        damage: 0,
+        deathtouched: false,
+        isCommander: true,
+      };
+      s.players[p.id]!.command.push(id);
+    }
   }
 
   // Mulligans come later; everyone keeps their opening seven for now.

@@ -13,7 +13,7 @@ export interface FormatConfig {
   maxCopies: number;
   startingLife: number;
   startingHandSize: number;
-  /** Commander rules (PRD 11) arrive in Milestone 6. */
+  /** Commander rules (rule 903): a command zone, commander tax, commander damage, color identity. */
   commander: boolean;
   commanderDamageThreshold?: number;
 }
@@ -36,6 +36,44 @@ export const FREE_FOR_ALL: FormatConfig = {
   name: 'freeForAll',
   maxPlayers: 4,
 };
+
+/**
+ * Commander (rule 903): 100-card singleton decks including the commander,
+ * 40 life, and 21 combat damage from one commander knocks a player out.
+ */
+export const COMMANDER: FormatConfig = {
+  name: 'commander',
+  minPlayers: 2,
+  maxPlayers: 4,
+  minDeckSize: 100,
+  maxDeckSize: 100,
+  maxCopies: 1,
+  startingLife: 40,
+  startingHandSize: 7,
+  commander: true,
+  commanderDamageThreshold: 21,
+};
+
+/** Problems with a commander and the color identity of its deck (rules 903.3-903.5). */
+export function validateCommander(
+  deck: readonly CardDefId[],
+  commander: CardDefId,
+  cardDefs: Readonly<Record<CardDefId, CardDefinition>>,
+): string[] {
+  const def = cardDefs[commander];
+  if (!def) return [`Unknown commander "${commander}".`];
+  const errors: string[] = [];
+  if (!def.supertypes?.includes('Legendary') || !def.types.includes('creature')) {
+    errors.push(`"${def.name}" isn't a legendary creature, so it can't be a commander.`);
+  }
+  const identity = new Set(def.colorIdentity ?? []);
+  for (const id of new Set(deck)) {
+    const card = cardDefs[id];
+    const outside = (card?.colorIdentity ?? []).filter((c) => !identity.has(c));
+    if (card && outside.length > 0) errors.push(`"${card.name}" is outside ${def.name}'s color identity.`);
+  }
+  return errors;
+}
 
 /** Returns a list of problems. An empty list means the deck is legal. */
 export function validateDeck(

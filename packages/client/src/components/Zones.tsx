@@ -14,7 +14,8 @@ export type Mark =
   | 'blocking'
   | 'selected'
   | 'recent'
-  | 'defender';
+  | 'defender'
+  | 'focus';
 
 export interface ZoneHandlers {
   markCard: (id: InstanceId) => Mark[];
@@ -149,8 +150,34 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
             </button>
           )}
           <ManaPool pool={p.manaPool} equipment={p.equipmentMana} />
+          {Object.entries(p.commanderDamage)
+            .filter(([, n]) => n > 0)
+            .map(([cmd, n]) => (
+              <span key={cmd} className={`cmd-damage ${n >= 15 ? 'low' : ''}`} title="Commander damage taken (21 knocks you out)">
+                ⚔ {view.cards[cmd] ? defOf(view.cards[cmd]!.defId).name.split(',')[0] : 'Commander'} {n}/21
+              </span>
+            ))}
         </div>
       </div>
+      {p.command.map((id) => {
+        const tax = 2 * (p.commanderCasts[id] ?? 0);
+        return (
+          <div
+            key={id}
+            className={`command-card ${h.markCard(id).join(' ')}`}
+            title={`Commander, in the command zone${tax ? ` (costs {${tax}} more)` : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              h.onCard(id);
+            }}
+            onMouseEnter={() => h.onHover(id)}
+            onMouseLeave={() => h.onHover(null)}
+          >
+            <CardFace defId={view.cards[id]!.defId} size="small" />
+            {tax > 0 && <div className="badge tax">+{tax}</div>}
+          </div>
+        );
+      })}
       <div className={`life ${p.life <= 5 ? 'low' : ''}`} title="Life">
         {p.life}
       </div>

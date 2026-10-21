@@ -3,7 +3,7 @@
 
 import {
   MANA_TYPES,
-  manaProduced,
+  manaChoices,
   parseManaCost,
   type Action,
   type CardInstance,
@@ -30,18 +30,26 @@ export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions =
     .map((id) => s.cards[id]!)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
-      if (manaProduced(def).length === 0 || c.tapped || c.controller !== playerId) return false;
+      if (manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
       if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick;
     });
 }
 
-/** How reluctant we are to use a source: lands first, then other permanents, Treasure (sacrificed) last. */
+/**
+ * How reluctant we are to use a source: lands first, then other permanents,
+ * then sources that hurt (pain lands), Treasure (sacrificed) last.
+ */
 function reluctance(s: GameState, c: CardInstance): number {
   const def = s.cardDefs[c.defId]!;
   if (def.manaAbility?.sacrifice) return 100;
-  return (def.types.includes('land') ? 0 : 10) + manaProduced(def).length;
+  return (def.types.includes('land') ? 0 : 10) + (def.manaAbility?.painFor ? 5 : 0) + manaChoices(s, c).length;
+}
+
+/** Mana a source makes for a symbol: colorless if it can (no pain), otherwise the wanted color. */
+function amountFrom(s: GameState, c: CardInstance): number {
+  return s.cardDefs[c.defId]!.manaAbility?.amount ?? 1;
 }
 
 /**
@@ -79,7 +87,7 @@ export function planTaps(
     if (i === colored.length) return true;
     const want = colored[i]!;
     for (const src of sources) {
-      if (used.has(src.id) || !manaProduced(s.cardDefs[src.defId]!).includes(want)) continue;
+      if (used.has(src.id) || !manaChoices(s, src).includes(want)) continue;
       used.add(src.id);
       taps.push({ card: src.id, mana: want });
       if (assign(i + 1)) return true;
@@ -91,13 +99,16 @@ export function planTaps(
   if (!assign(0)) return null;
 
   for (const src of sources) {
-    if (generic === 0) break;
+    if (generic <= 0) break;
     if (used.has(src.id)) continue;
     used.add(src.id);
-    taps.push({ card: src.id, mana: manaProduced(s.cardDefs[src.defId]!)[0]! });
-    generic -= 1;
+    // For generic mana, prefer a type that doesn't hurt (a pain land's {C}).
+    const choices = manaChoices(s, src);
+    const pain = s.cardDefs[src.defId]!.manaAbility?.painFor ?? [];
+    taps.push({ card: src.id, mana: choices.find((m) => !pain.includes(m)) ?? choices[0]! });
+    generic -= amountFrom(s, src);
   }
-  return generic === 0 ? taps : null;
+  return generic <= 0 ? taps : null;
 }
 
 export function tapActions(playerId: PlayerId, taps: ManaTap[]): Action[] {

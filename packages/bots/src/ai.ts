@@ -312,11 +312,14 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
     if (pending.kind === 'surveil') return chooseSurveil(s, pending.player, pending.card);
     if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
+    // A commander is almost always worth having back in the command zone.
+    if (pending.kind === 'commanderZone') return { type: 'CommanderZone', player: pending.player, toCommand: true };
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;
 
     // Prefer a land that enters untapped when we could use the mana this turn.
-    const lands = legal.filter((a): a is Extract<Action, { type: 'PlayLand' }> => a.type === 'PlayLand');
+    // (Snarls: reveal so they enter untapped.)
+    const lands = legal.filter((a): a is Extract<Action, { type: 'PlayLand' }> => a.type === 'PlayLand' && a.reveal !== false);
     if (lands.length > 0) {
       const untapped = lands.find((a) => !s.cardDefs[s.cards[a.card]!.defId]!.entersTapped);
       return untapped ?? lands[0]!;

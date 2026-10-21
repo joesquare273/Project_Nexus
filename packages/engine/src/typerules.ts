@@ -3,7 +3,15 @@
 // written once instead of on every card. docs/card-types.md lists every type
 // and which of its rules are built.
 
-import { MANA_TYPES, type CardCategory, type CardDefinition, type CardType, type ManaType } from './types.ts';
+import {
+  MANA_TYPES,
+  type CardCategory,
+  type CardDefinition,
+  type CardInstance,
+  type CardType,
+  type GameState,
+  type ManaType,
+} from './types.ts';
 
 /** Card types whose cards are permanents: they resolve onto the battlefield and stay (rule 110.4). */
 export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment'];
@@ -60,4 +68,59 @@ export function isLegendary(def: CardDefinition): boolean {
 /** Basic lands are exempt from the four-copy limit (rule 100.2a). */
 export function isBasicLand(def: CardDefinition): boolean {
   return (def.supertypes?.includes('Basic') ?? false) && def.types.includes('land');
+}
+
+/**
+ * The mana a permanent's mana ability can make right now: its printed mana
+ * (and basic land types), plus "any color in your commander's color
+ * identity" and "any color a land an opponent controls could produce".
+ */
+export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
+  const def = s.cardDefs[c.defId]!;
+  const made = new Set<ManaType>(manaProduced(def));
+  if (def.manaAbility?.commanderIdentity) {
+    for (const card of Object.values(s.cards)) {
+      if (card.isCommander && card.owner === c.controller) {
+        for (const color of s.cardDefs[card.defId]!.colorIdentity ?? []) made.add(color);
+      }
+    }
+  }
+  if (def.manaAbility?.opponentLandColors) {
+    for (const pid of s.turnOrder) {
+      if (pid === c.controller) continue;
+      for (const id of s.players[pid]!.battlefield) {
+        const land = s.cardDefs[s.cards[id]!.defId]!;
+        if (land.types.includes('land')) for (const m of manaProduced(land)) if (m !== 'C') made.add(m);
+      }
+    }
+  }
+  return MANA_TYPES.filter((m) => made.has(m));
+}
+
+/** For lands like snarls: whether you have a card you could reveal to have it enter untapped. */
+export function canReveal(s: GameState, c: CardInstance, controller: string = c.controller): boolean {
+  const subtypes = s.cardDefs[c.defId]!.entersTappedUnless?.revealSubtypes;
+  if (!subtypes) return false;
+  const hand = s.players[controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
+  return subtypes.some((t) => hand.some((x) => s.cardDefs[x.defId]!.subtypes?.includes(t)));
+}
+
+/**
+ * Whether a permanent enters tapped: always, or unless its condition holds
+ * (checklands, battle lands, snarls). For snarls, `reveal` is the player's
+ * choice; by default they reveal when they can.
+ */
+export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): boolean {
+  const def = s.cardDefs[c.defId]!;
+  if (def.entersTapped) return true;
+  const unless = def.entersTappedUnless;
+  if (!unless) return false;
+  const defOf = (x: CardInstance) => s.cardDefs[x.defId]!;
+  const mine = s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
+  if (unless.controlsSubtypes?.some((t) => mine.some((x) => defOf(x).subtypes?.includes(t)))) return false;
+  if (unless.basicLands !== undefined && mine.filter((x) => isBasicLand(defOf(x))).length >= unless.basicLands) {
+    return false;
+  }
+  if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
+  return true;
 }

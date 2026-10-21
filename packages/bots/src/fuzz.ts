@@ -2,11 +2,12 @@
 //
 //   npm run fuzz                    # 10,000 games across 2, 3 and 4 players
 //   npm run fuzz -- --games 500 --start 20000
+//   npm run fuzz -- --format commander --games 200   # the Commander precons
 //
 // Any failing seed is printed so it can be replayed with `npm run sim`.
 
-import { FREE_FOR_ALL } from '@nexus/engine';
-import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
+import { COMMANDER, FREE_FOR_ALL, type PlayerSetup } from '@nexus/engine';
+import { CARD_DEFS, FIN_PRECONS, preconDeck, starterKitDeck } from '@nexus/cards';
 import { parseArgs } from 'node:util';
 import { basicAi, playGame, randomBot } from './index.ts';
 import { checkInvariants } from './invariants.ts';
@@ -15,8 +16,17 @@ const { values } = parseArgs({
   options: {
     games: { type: 'string', default: '10000' },
     start: { type: 'string', default: '1' },
+    format: { type: 'string', default: 'starter' },
   },
 });
+const commander = values.format === 'commander';
+
+/** Each seat's deck: Starter Kits alternating, or a different precon per seat. */
+function seat(p: number, seed: number): PlayerSetup {
+  if (!commander) return { id: `P${p + 1}`, deck: starterKitDeck(p % 2 ? 'UB' : 'RW') };
+  const precon = FIN_PRECONS[(p + seed) % FIN_PRECONS.length]!;
+  return { id: `P${p + 1}`, ...preconDeck(precon.name) };
+}
 const games = Number(values.games);
 const start = Number(values.start);
 
@@ -30,10 +40,10 @@ for (let i = 0; i < games; i++) {
   try {
     const game = playGame(
       {
-        format: FREE_FOR_ALL,
+        format: commander ? COMMANDER : FREE_FOR_ALL,
         cardDefs: CARD_DEFS,
         seed,
-        players: Array.from({ length: players }, (_, p) => ({ id: `P${p + 1}`, deck: starterKitDeck(p % 2 ? 'UB' : 'RW') })),
+        players: Array.from({ length: players }, (_, p) => seat(p, seed)),
       },
       Object.fromEntries(Array.from({ length: players }, (_, p) => [`P${p + 1}`, make(seed * 7 + p)])),
       {
