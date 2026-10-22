@@ -774,6 +774,26 @@ button.big {
 .hand-card.playable:hover {
   transform: translateY(-4%) scale(1.25);
 }
+/* Chosen in hand (cards to put on the bottom after a mulligan): lifted, with a label. */
+.hand-card.selected {
+  position: relative;
+  transform: rotate(var(--tilt)) translateY(-6%);
+  box-shadow: 0 0 0 3px white, 0 0 20px rgba(255, 255, 255, 0.55);
+  filter: brightness(0.8);
+}
+.hand-card.selected::after {
+  content: 'Bottom';
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
 
 /* ---------- Sidebar ---------- */
 

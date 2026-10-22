@@ -44,6 +44,13 @@ export function checkInvariants(s: GameState): string[] {
   if (s.pending.kind === 'decide' && s.stack.at(-1)?.id !== s.pending.item) problems.push('deciding on an ability not on top');
   if (s.pending.kind === 'surveil' && !s.resolving) problems.push('surveilling with nothing resolving');
   if (s.pending.kind === 'priority' && s.resolving) problems.push('priority given while something is still resolving');
+  if (s.pending.kind === 'mulligan' || s.pending.kind === 'bottomCards') {
+    if (s.turnNumber !== 1 || s.step !== 'untap') problems.push('mulligans after the first turn started');
+    if (s.stack.length > 0 || s.triggerQueue.length > 0) problems.push('spells or triggers during mulligans');
+  }
+  if (s.pending.kind === 'bottomCards' && s.pending.count > s.players[s.pending.player]!.hand.length) {
+    problems.push(`asked to bottom ${s.pending.count} cards from a smaller hand`);
+  }
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     for (const t of MANA_TYPES) if (p.equipmentMana[t] < 0) problems.push(`${pid} has negative Equipment-only ${t} mana`);

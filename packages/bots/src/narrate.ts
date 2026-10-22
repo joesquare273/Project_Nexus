@@ -265,6 +265,15 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
         : `  ${who(e.player)} left ${cardName(s, e.card)} in the ${e.from}.`;
     case 'LegendChosen':
       return `  Legend rule: ${who(e.player)} ${e.player === viewer ? 'keep' : 'keeps'} ${cardName(s, e.kept)}.`;
+    case 'Mulliganed':
+      return `${who(e.player)} took a mulligan${e.taken > 1 ? ` (${e.taken} so far)` : ''} and drew a new hand.`;
+    case 'HandKept': {
+      const kept = e.player === viewer ? 'kept' : 'keeps';
+      if (e.taken === 0) return `${who(e.player)} ${kept} the opening hand.`;
+      return `${who(e.player)} ${kept} after ${e.taken} mulligan${e.taken === 1 ? '' : 's'}${e.bottom > 0 ? '' : ' (the first one is free)'}.`;
+    }
+    case 'CardsBottomed':
+      return `  ${who(e.player)} put ${e.count === 1 ? 'a card' : `${e.count} cards`} on the bottom of the library.`;
     case 'TokenCreated':
       return `  ${who(e.controller)} created a ${cardName(s, e.card)} token.`;
     case 'CountersAdded':

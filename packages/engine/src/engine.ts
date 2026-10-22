@@ -6,6 +6,7 @@ import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
 import { activateAbility, activateManaAbility, castSpell, decide, playLand, surveil } from './stack.ts';
 import { chooseTriggerTargets } from './triggers.ts';
 import { passPriority } from './turn.ts';
+import { bottomCards, mulligan } from './mulligan.ts';
 import { cloneState, reject, RuleError, type Ctx } from './state.ts';
 import type { Action, ActionResult, GameState } from './types.ts';
 
@@ -64,6 +65,12 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'CommanderZone':
         chooseCommanderZone(ctx, action.player, action.toCommand);
+        break;
+      case 'Mulligan':
+        mulligan(ctx, action.player, action.keep);
+        break;
+      case 'BottomCards':
+        bottomCards(ctx, action.player, action.cards);
         break;
       case 'ChooseTargets':
         chooseTriggerTargets(ctx, action.player, action.targets);

@@ -14,6 +14,7 @@ function setup(players: number, seed: number): GameSetup {
     cardDefs: CARD_DEFS,
     seed,
     players: Array.from({ length: players }, (_, i) => ({ id: `P${i + 1}`, deck: starterKitDeck(i % 2 ? 'UB' : 'RW') })),
+    mulligans: true,
   };
 }
 

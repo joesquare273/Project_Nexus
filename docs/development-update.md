@@ -5,6 +5,25 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-21
 
+### Mulligans
+
+Every real game (browser board, terminal, bots, fuzz tests) now starts with
+London mulligans (rule 103.5): keep your seven, or shuffle them away and draw
+a new seven; once you keep, put one card on the bottom for each mulligan. In
+games with three or more players the first mulligan is free (103.5c). Players
+decide in turn order, starting with whoever goes first.
+
+- **Board:** the prompt shows how many lands are in the hand and what another
+  mulligan costs. After keeping, click cards in your hand to choose what goes
+  on the bottom (they lift with a "Bottom" label), then press "Put on
+  bottom". The practice game has tips for both steps.
+- **AI:** keeps 2-5 lands of 7, always keeps after two mulligans, and bottoms
+  surplus lands or its most expensive spells. Across 360 test deals it kept
+  about 81% of first hands.
+- **Engine:** `createGame({ ..., mulligans: true })`. Off by default so tests
+  can start straight at turn 1. Other players never learn which cards you drew
+  or bottomed.
+
 ### Choices: where your commander goes, and playing a snarl tapped
 
 - When your commander goes to a graveyard, exile, your hand or your library,

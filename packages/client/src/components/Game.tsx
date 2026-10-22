@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { triggerSpec, type Action, type GameView, type InstanceId, type PlayerId, type Target } from '@nexus/engine';
+import { cardsToBottom, triggerSpec, type Action, type GameView, type InstanceId, type PlayerId, type Target } from '@nexus/engine';
 import { planTaps, tapActions } from '@nexus/bots';
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
@@ -121,7 +121,9 @@ export function Game({
 
   // Any change of decision clears half-made selections.
   const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}|${s.nextId}`;
+  const [bottomPicks, setBottomPicks] = useState<InstanceId[]>([]);
   useEffect(() => {
+    setBottomPicks([]);
     setTargeting(null);
     setMenu(null);
     setAttackers(new Map());
@@ -267,9 +269,11 @@ export function Game({
     return z !== 'hand' && z !== 'battlefield' && z !== 'command';
   });
 
+  const bottoming = yourMove && pending.kind === 'bottomCards' ? pending.count : 0;
   const h: ZoneHandlers = {
     markCard: (id) => {
       const marks: Mark[] = [];
+      if (bottoming && s.cards[id]?.zone === 'hand') marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
       if (playable.has(id) && !activeTargeting && !menu) marks.push('playable');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
       if (canAttackIds.has(id)) marks.push(attackers.has(id) ? 'attacking' : 'can-attack');
@@ -290,6 +294,7 @@ export function Game({
       return marks;
     },
     cardNote: (id) => {
+      if (bottomPicks.includes(id)) return `Bottom ${bottomPicks.indexOf(id) + 1}`;
       const planned = attackers.get(id);
       if (planned) return livingOpponents.length > 1 ? `→ ${planned}` : 'Attacking';
       const attack = view.combat?.attacks.find((a) => a.attacker === id);
@@ -306,6 +311,11 @@ export function Game({
     onCard: (id) => {
       if (!yourMove) return;
       if (legendChoices.includes(id)) return submit([{ type: 'ChooseLegend', player: YOU, keep: id }]);
+      if (bottoming && s.cards[id]?.zone === 'hand') {
+        if (bottomPicks.includes(id)) setBottomPicks(bottomPicks.filter((x) => x !== id));
+        else if (bottomPicks.length < bottoming) setBottomPicks([...bottomPicks, id]);
+        return;
+      }
       const option = nextOptions.find((t) => t.kind === 'card' && t.card === id);
       if (option) return pickTarget(option);
       if (activeTargeting || menu) return;
@@ -419,6 +429,8 @@ export function Game({
           blocks={blocks}
           submit={submit}
           setAttackers={setAttackers}
+          bottomPicks={bottomPicks}
+          setBottomPicks={setBottomPicks}
         />
         <div className="you-bar">
           <PlayerHeader view={view} pid={YOU} h={h} />
@@ -555,6 +567,8 @@ interface PromptProps {
   blocks: Map<InstanceId, InstanceId>;
   submit: (actions: Action[]) => void;
   setAttackers: (m: Map<InstanceId, PlayerId>) => void;
+  bottomPicks: InstanceId[];
+  setBottomPicks: (ids: InstanceId[]) => void;
 }
 
 function PromptBar(p: PromptProps) {
@@ -573,6 +587,28 @@ function PromptBar(p: PromptProps) {
   } else if (p.targeting) {
     text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card or player.`;
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
+  } else if (pending.kind === 'mulligan') {
+    const hand = s.players[YOU]!.hand;
+    const lands = hand.filter((id) => defOf(s.cards[id]!.defId).types.includes('land')).length;
+    const bottom = cardsToBottom(s, pending.taken + 1);
+    const canMulligan = bottom <= s.format.startingHandSize;
+    const after = pending.taken > 0 ? ` after ${pending.taken} mulligan${pending.taken === 1 ? '' : 's'}` : '';
+    text = `Your opening hand${after}: ${lands} land${lands === 1 ? '' : 's'}. Keep it, or mulligan for a new seven${
+      canMulligan ? (bottom === 0 ? ' (your first mulligan is free)' : ` (then put ${bottom} on the bottom)`) : ''
+    }?`;
+    buttons = [
+      ...(canMulligan ? [{ label: 'Mulligan', onClick: () => p.submit([{ type: 'Mulligan', player: YOU, keep: false }]) }] : []),
+      { label: 'Keep', onClick: () => p.submit([{ type: 'Mulligan', player: YOU, keep: true }]), primary: true },
+    ];
+  } else if (pending.kind === 'bottomCards') {
+    const n = pending.count;
+    text = `You kept. Click ${n} card${n === 1 ? '' : 's'} in your hand to put on the bottom of your library (${p.bottomPicks.length}/${n} chosen).`;
+    buttons = [
+      ...(p.bottomPicks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
+      ...(p.bottomPicks.length === n
+        ? [{ label: 'Put on bottom', onClick: () => p.submit([{ type: 'BottomCards', player: YOU, cards: p.bottomPicks }]), primary: true }]
+        : []),
+    ];
   } else if (pending.kind === 'chooseLegend') {
     text = `Legend rule: you control more than one ${pending.name}. Click the one to keep; the others go to your graveyard.`;
   } else if (pending.kind === 'commanderZone') {

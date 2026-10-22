@@ -555,6 +555,13 @@ export type Pending =
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
    */
   | { kind: 'commanderZone'; player: PlayerId; card: InstanceId; zone: ZoneName; resume: Pending }
+  /**
+   * Before the first turn (rule 103.5): keep this opening hand or mulligan.
+   * `taken` mulligans so far; `queue` players still to decide, in turn order.
+   */
+  | { kind: 'mulligan'; player: PlayerId; taken: number; queue: PlayerId[] }
+  /** London mulligan: put `count` cards from your kept hand on the bottom of your library. */
+  | { kind: 'bottomCards'; player: PlayerId; count: number; queue: PlayerId[] }
   | { kind: 'gameOver' };
 
 export interface GameState {
@@ -606,6 +613,10 @@ export type Action =
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
   | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }
   | { type: 'CommanderZone'; player: PlayerId; toCommand: boolean }
+  /** Keep your opening hand, or shuffle it away and draw a new one. */
+  | { type: 'Mulligan'; player: PlayerId; keep: boolean }
+  /** After keeping a mulliganed hand: the cards to put on the bottom, top one first. */
+  | { type: 'BottomCards'; player: PlayerId; cards: InstanceId[] }
   | { type: 'Concede'; player: PlayerId };
 
 // ---------------------------------------------------------------------------
@@ -651,6 +662,12 @@ export type GameEvent =
   | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean; scry?: boolean }
   | { type: 'LegendChosen'; player: PlayerId; kept: InstanceId; others: InstanceId[] }
   | { type: 'CommanderZoneChosen'; player: PlayerId; card: InstanceId; from: ZoneName; toCommand: boolean }
+  /** A player shuffled their hand away and drew a new one; `taken` mulligans so far. */
+  | { type: 'Mulliganed'; player: PlayerId; taken: number }
+  /** A player kept their hand after `taken` mulligans and will bottom `bottom` cards. */
+  | { type: 'HandKept'; player: PlayerId; taken: number; bottom: number }
+  /** Cards went from hand to the bottom of the library. Which cards stays hidden. */
+  | { type: 'CardsBottomed'; player: PlayerId; count: number }
   | { type: 'CountersAdded'; card: InstanceId; amount: number }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'PriorityPassed'; player: PlayerId }

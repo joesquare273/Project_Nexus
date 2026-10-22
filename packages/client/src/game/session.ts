@@ -92,6 +92,7 @@ export class GameSession {
         cardDefs: CARD_DEFS,
         seed: options.seed,
         players: [YOU, ...this.opponents].map((id, i) => ({ id, ...decks[i]! })),
+        mulligans: true,
       });
       this.state = created.state;
       this.narrate(created.events);
@@ -106,6 +107,7 @@ export class GameSession {
       cardDefs: CARD_DEFS,
       seed: options.seed,
       players: [YOU, ...this.opponents].map((id) => ({ id, deck: decks[id]! })),
+      mulligans: true,
     });
     this.state = created.state;
     this.narrate(created.events);

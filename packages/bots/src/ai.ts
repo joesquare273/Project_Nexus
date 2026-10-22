@@ -12,6 +12,7 @@ import {
   hasKeyword,
   isEquipment,
   manaValue,
+  parseManaCost,
   powerOf,
   spellEffects,
   spellOptions,
@@ -295,6 +296,42 @@ function chooseSurveil(s: GameState, me: PlayerId, card: InstanceId): Action {
   return { type: 'Surveil', player: me, toGraveyard: isLand && lands >= 5 };
 }
 
+// ---------------------------------------------------------------------------
+// Opening hands
+// ---------------------------------------------------------------------------
+
+const isLandCard = (s: GameState, id: InstanceId) => def(s, s.cards[id]!).types.includes('land');
+
+/** Keep a hand with 2-5 lands out of 7; after two mulligans, keep whatever comes. */
+function chooseMulligan(s: GameState, me: PlayerId, taken: number, legal: Action[]): Action {
+  const hand = s.players[me]!.hand;
+  const lands = hand.filter((id) => isLandCard(s, id)).length;
+  const workable = lands >= 2 && lands <= 5;
+  const canMulligan = legal.some((a) => a.type === 'Mulligan' && !a.keep);
+  return { type: 'Mulligan', player: me, keep: workable || taken >= 2 || !canMulligan };
+}
+
+/**
+ * Bottoms cards to leave about 40% lands: surplus lands first if the hand is
+ * land-heavy, otherwise the most expensive spells.
+ */
+function chooseBottom(s: GameState, me: PlayerId, count: number): Action {
+  const hand = s.players[me]!.hand;
+  const keptSize = hand.length - count;
+  const wantLands = Math.max(2, Math.round(keptSize * 0.4));
+  const lands = hand.filter((id) => isLandCard(s, id));
+  const spells = hand
+    .filter((id) => !isLandCard(s, id))
+    .sort((a, b) => manaValue(parseManaCost(def(s, s.cards[b]!).manaCost)) - manaValue(parseManaCost(def(s, s.cards[a]!).manaCost)));
+  const bottom: InstanceId[] = [];
+  const surplusLands = lands.slice(wantLands);
+  for (const id of [...surplusLands, ...spells, ...lands]) {
+    if (bottom.length === count) break;
+    if (!bottom.includes(id)) bottom.push(id);
+  }
+  return { type: 'BottomCards', player: me, cards: bottom };
+}
+
 /** The basic AI. `seed` is accepted for symmetry with other bots; this one is deterministic. */
 export function basicAi(_seed = 0): Bot {
   return (s, legal) => {
@@ -314,6 +351,8 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
     // A commander is almost always worth having back in the command zone.
     if (pending.kind === 'commanderZone') return { type: 'CommanderZone', player: pending.player, toCommand: true };
+    if (pending.kind === 'mulligan') return chooseMulligan(s, pending.player, pending.taken, legal);
+    if (pending.kind === 'bottomCards') return chooseBottom(s, pending.player, pending.count);
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;
 

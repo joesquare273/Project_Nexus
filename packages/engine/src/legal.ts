@@ -26,11 +26,13 @@ import {
   triggerSpec,
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
+import { cardsToBottom } from './mulligan.ts';
 import { triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaChoices } from './typerules.ts';
-import type { Action, Block, CardInstance, EffectSpec, GameState, ManaCost, PlayerId, Target } from './types.ts';
+import type { Action, Block, CardInstance, EffectSpec, GameState, InstanceId, ManaCost, PlayerId, Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 32;
+const MAX_BOTTOM_CHOICES = 8;
 
 /** Every combination of one choice per target, up to a limit. */
 function combine(options: Target[][]): Target[][] {
@@ -149,6 +151,16 @@ function blockActions(s: GameState, player: PlayerId): Action[] {
   return actions;
 }
 
+/** Some ways to choose `count` cards from `hand`: a sample, not every combination. */
+function bottomChoices(hand: InstanceId[], count: number): InstanceId[][] {
+  const out: InstanceId[][] = [];
+  for (let start = 0; start < hand.length && out.length < MAX_BOTTOM_CHOICES; start++) {
+    const pick = [...hand.slice(start), ...hand.slice(0, start)].slice(0, count);
+    if (pick.length === count) out.push(pick);
+  }
+  return out;
+}
+
 export function getLegalActions(s: GameState): Action[] {
   const pending = s.pending;
   switch (pending.kind) {
@@ -184,6 +196,19 @@ export function getLegalActions(s: GameState): Action[] {
 
     case 'chooseLegend':
       return pending.cards.map((keep): Action => ({ type: 'ChooseLegend', player: pending.player, keep }));
+
+    case 'mulligan': {
+      const actions: Action[] = [{ type: 'Mulligan', player: pending.player, keep: true }];
+      if (cardsToBottom(s, pending.taken + 1) <= s.format.startingHandSize) {
+        actions.push({ type: 'Mulligan', player: pending.player, keep: false });
+      }
+      return actions;
+    }
+
+    case 'bottomCards':
+      return bottomChoices(s.players[pending.player]!.hand, pending.count).map(
+        (cards): Action => ({ type: 'BottomCards', player: pending.player, cards }),
+      );
 
     case 'surveil':
       return [

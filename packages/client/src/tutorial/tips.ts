@@ -19,7 +19,25 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
   const yourTurn = s.activePlayer === YOU;
   const main = s.step === 'main1' || s.step === 'main2';
 
-  if (s.turnNumber <= 2) {
+  if (p.kind === 'mulligan' && p.player === YOU) {
+    candidates.push({
+      id: 'mulligan',
+      title: 'Keep or mulligan?',
+      text:
+        'Before the game starts you can mulligan: shuffle this hand away and draw a new 7. A good hand usually has ' +
+        '2 to 4 lands. Each mulligan costs a card (you put one on the bottom after keeping), so keep any hand you can play.',
+    });
+  }
+  if (p.kind === 'bottomCards' && p.player === YOU) {
+    candidates.push({
+      id: 'bottom',
+      title: 'Choose cards to put back',
+      text:
+        'Because you took a mulligan, click cards in your hand to put on the bottom of your library. ' +
+        'Put back what you need least: an extra land if you have plenty, or your most expensive spell.',
+    });
+  }
+  if (s.turnNumber <= 2 && p.kind !== 'mulligan' && p.kind !== 'bottomCards') {
     candidates.push({
       id: 'welcome',
       title: 'A fresh game',

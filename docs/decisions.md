@@ -102,7 +102,7 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 |---|---|---|
 | First strike | Both damage passes happen in one step, with state-based actions between them but no priority | Rule 510.4: a separate first-strike damage step |
 | Damage assignment | Attackers assign lethal damage to blockers in block-declaration order automatically | The attacking player divides damage |
-| Mulligans | Everyone keeps their opening seven | Rule 103.5 (and the PRD's free redo) |
+| Mulligans | London mulligan, first one free in multiplayer (103.5c). Players decide one at a time in turn order, each finishing before the next | Everyone decides, then all mulligans happen at once, repeating (103.5). The PRD's "one free redo" would also make the first one free in duels; the engine follows the official rule |
 | Active player leaves | The rest of their turn is skipped and their spells go to graveyards | Rule 800.4 is more nuanced |
 | Elimination mid-round | Priority restarts with the active player | Priority continues from where it was |
 | Cleanup step | No priority, no discard to hand size | Rule 514 |
