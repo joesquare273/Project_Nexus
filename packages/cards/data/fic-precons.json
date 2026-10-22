@@ -1084,11 +1084,8 @@
           "count": 1,
           "set": "fic",
           "number": "51",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Gau, Feral Youth",
@@ -1983,10 +1980,8 @@
           "count": 1,
           "set": "fic",
           "number": "12",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Gatta and Luzzu",
@@ -2128,12 +2123,8 @@
           "count": 1,
           "set": "fic",
           "number": "70",
-          "implemented": false,
-          "needs": [
-            "unlock-ability",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Magus Sisters",
@@ -2301,10 +2292,8 @@
           "count": 1,
           "set": "fic",
           "number": "255",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Together Forever",
@@ -2333,11 +2322,8 @@
           "count": 1,
           "set": "fic",
           "number": "265",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Pull from Tomorrow",
@@ -2408,10 +2394,8 @@
           "count": 1,
           "set": "fic",
           "number": "307",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Incubation Druid",
@@ -2661,11 +2645,8 @@
           "count": 1,
           "set": "fic",
           "number": "244",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Path to Exile",
@@ -2691,11 +2672,8 @@
           "count": 1,
           "set": "fic",
           "number": "301",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Farseek",
@@ -2712,10 +2690,8 @@
           "count": 1,
           "set": "fic",
           "number": "310",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Three Visits",
@@ -2732,10 +2708,8 @@
           "count": 1,
           "set": "fic",
           "number": "321",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",
@@ -3170,10 +3144,8 @@
           "count": 1,
           "set": "fic",
           "number": "77",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Emet-Selch of the Third Seat",

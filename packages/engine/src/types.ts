@@ -149,6 +149,11 @@ export const EFFECT_KINDS = [
   'Untap',
   /** Look at the top card of your library; if it's a land card, put it onto the battlefield (tapped with `entersTapped`). */
   'PutTopCardIfLand',
+  /**
+   * Proliferate (rule 701.27): another counter on each permanent that has
+   * some. The engine chooses the permanents the controller controls.
+   */
+  'Proliferate',
   /** Search your library for a card matching `filter`, put it into your hand, then shuffle. */
   'SearchLibraryToHand',
   /** Exile every card in the target players' graveyards. */
@@ -176,6 +181,9 @@ export const COUNT_KINDS = [
   /** Every creature on the battlefield, whoever controls it. */
   'CreaturesOnBattlefield',
   'EquippedAttackingCreaturesYouControl',
+  /** Creatures you control with one or more +1/+1 counters on them. */
+  'CreaturesYouControlWithCounters',
+  'CreatureCardsInYourGraveyard',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -185,7 +193,11 @@ export type CountKind = (typeof COUNT_KINDS)[number];
  * earlier in the same spell or ability: the previous target's power
  * ("life equal to its power") or how many permanents it destroyed.
  */
-export type Amount = number | { count: CountKind[] } | { of: 'previousTargetPower' | 'destroyedThisWay' };
+export type Amount =
+  | number
+  /** `times` multiplies the total ("twice the number of creature cards in your graveyard"). */
+  | { count: CountKind[]; times?: number }
+  | { of: 'previousTargetPower' | 'destroyedThisWay' };
 
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
@@ -274,6 +286,8 @@ export interface ObjectFilter {
   manaValueAtLeast?: number;
   /** Has no counters on it ("creatures with no counters on them"). */
   noCounters?: boolean;
+  /** Has one or more +1/+1 counters on it ("each creature you control with a +1/+1 counter on it"). */
+  hasCounters?: boolean;
 }
 
 export interface TriggerSpec {
@@ -321,8 +335,16 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
-  /** Which creature it changes: this card, or the creature this Equipment is attached to. */
-  affects: 'Self' | 'EquippedCreature';
+  /**
+   * Which permanents it changes: this card, the creature this Equipment is
+   * attached to, or each permanent matching `filter` ("each creature you
+   * control with a +1/+1 counter on it").
+   */
+  affects: 'Self' | 'EquippedCreature' | 'EachMatching';
+  /** For EachMatching, from the point of view of this card's controller. */
+  filter?: ObjectFilter;
+  /** Hardened Scales: that many extra +1/+1 counters whenever counters are put on an affected creature. */
+  extraCounters?: number;
   /**
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".
@@ -423,6 +445,8 @@ export interface CardDefinition {
   };
   /** "This spell can't be countered." */
   cantBeCountered?: boolean;
+  /** "This creature enters with N +1/+1 counters on it." */
+  entersWithCounters?: number;
   /** A token's definition, created by effects rather than played from a deck. */
   token?: boolean;
   /**

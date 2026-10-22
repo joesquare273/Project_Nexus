@@ -3,7 +3,86 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## Where things stand (end of 2026-10-21)
+
+Read this first when picking the work up on another computer.
+
+### Done so far
+
+| Step | Where | Status |
+|---|---|---|
+| Starter Kits: every card (K1-K6), browser board, tutorial | `main` (PRs #1-#3) | Merged |
+| Commander format and C1 mana cards | `main` (PR #3) | Merged |
+| Mulligans (London, first one free in multiplayer) | `main` (PR #4) | Merged |
+| C2 removal and board wipes: 24 cards | `main` (PR #4) | Merged |
+| C2 Equipment: 16 cards, including Cloud, Ex-SOLDIER | `main` (PR #4) | Merged |
+| C2 +1/+1 counters: 11 cards | branch `precon-counters` | Pushed, **no pull request yet** |
+
+Precons fully built: Limit Break 49/100, Counter Blitz 45/100, Scions &
+Spellcraft 43/100, Revival Trance 42/100 (111 of 320 distinct cards). Each
+group's built and remaining cards are listed in [commander.md](commander.md)
+under "C2 groups". Checks at the last commit: 305 tests pass; fuzz clean
+(150 Commander and 300 Starter Kit games).
+
+### Next steps, in order
+
+Most of the 209 unbuilt cards wait on a few shared mechanics rather than on
+card-by-card work:
+
+1. **Choose cards: sacrifice and discard** (about 48 cards). A general
+   decision where a player picks cards from their hand or permanents they
+   control, like picking cards to bottom after a mulligan. Then build the
+   cards it unlocks.
+2. **"Up to N targets" and support** (17 cards): Generous Patron, Together
+   Forever, General Leo, Angel of the Ruins, Cloud's Limit Break...
+3. **Other counter kinds** (15): stun, shield, page, vow, flying, lore.
+4. **New tokens** (14): Clue (investigate), Food, Soldier, Spirit, Bird...
+   Add each to `packages/cards/data/tokens.json` by its exact Scryfall
+   printing; `npm run scryfall` checks them.
+5. **End-step triggers** (13), with the "this turn" tracking they need
+   (life lost, a card left your graveyard, a counter was put on it).
+6. Then Sagas, graveyard-to-hand, anthems, evolve, counterspells, and the
+   remaining one-offs.
+
+### Picking up on the other computer
+
+That computer may still have an older, unpushed `precon-c2` branch from
+before this work. It was replaced by what's on GitHub, so discard it.
+
+```bash
+git fetch origin
+git checkout main
+git reset --hard origin/main
+git checkout -B precon-counters origin/precon-counters
+npm install
+npm run check
+```
+
+`git reset --hard` throws away uncommitted changes on that computer, which
+is intended here. Then either open a pull request for `precon-counters` and
+merge it before starting step 1, or start step 1 on top of
+`precon-counters`. `npm run dev` starts the browser board.
+
 ## 2026-10-21
+
+### Precon +1/+1 counters (C2, third group)
+
+11 counter cards now work as printed (`packages/bots/test/precon-counters.test.ts`):
+Hardened Scales, Duskshell Crawler, Sphere Grid, Bred for the Hunt,
+Chocobo Knights, Inspiring Call, Grateful Apparition, Inexorable Tide,
+Sunscorch Regent, Ardbert and Siegfried. New pieces:
+
+- Static abilities can cover a group: "each creature you control with a
+  +1/+1 counter on it has trample".
+- Hardened Scales' "that many plus one" (also for proliferate and
+  "enters with" counters).
+- Proliferate. The engine picks your own permanents; choosing others is
+  rarely right with only +1/+1 counters in the game.
+- "Enters with N +1/+1 counters", "creatures with counters on them",
+  "whenever you cast a white spell", and amounts like "twice the number of
+  creature cards in your graveyard".
+
+Counter Blitz (Tidus) is now 45/100 fully built.
 
 ### Precon Equipment (C2, second group)
 

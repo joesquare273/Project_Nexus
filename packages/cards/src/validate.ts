@@ -79,6 +79,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     return;
   }
   if (!Array.isArray(a.count) || a.count.length === 0) err('a counted amount needs a non-empty "count" list.');
+  if (a.times !== undefined && !(Number.isInteger(a.times) && a.times > 0)) err('times must be a positive whole number.');
   for (const k of a.count ?? []) if (!COUNT_KINDS.includes(k)) err(`unknown count "${k}".`);
 }
 
@@ -151,6 +152,9 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (!isSpell && hasEffects) err('permanents use triggers, statics and activated abilities, not effects.');
   if (c.effects && c.modes) err('a card has either effects or modes, not both.');
+  if (c.entersWithCounters !== undefined && (!isNonNegativeInt(c.entersWithCounters) || c.entersWithCounters === 0)) {
+    err('entersWithCounters must be a positive whole number.');
+  }
   if (c.chooseModes) {
     const { min, max } = c.chooseModes;
     if (!c.modes) err('chooseModes needs modes.');
@@ -232,7 +236,20 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
 
 function validateStatic(st: StaticSpec, err: Err): void {
   const e: Err = (msg) => err(`static ability: ${msg}`);
-  if (st.affects !== 'Self' && st.affects !== 'EquippedCreature') e('affects must be "Self" or "EquippedCreature".');
+  if (st.affects !== 'Self' && st.affects !== 'EquippedCreature' && st.affects !== 'EachMatching') {
+    e('affects must be "Self", "EquippedCreature" or "EachMatching".');
+  }
+  if (st.affects === 'EachMatching') {
+    if (!st.filter) e('EachMatching needs a filter.');
+    // These would ask for the very characteristics the static ability changes.
+    for (const key of ['powerAtLeast', 'toughnessAtLeast', 'subtypes', 'nonSubtypes'] as const) {
+      if (st.filter?.[key] !== undefined) e(`an EachMatching filter can't use ${key}.`);
+    }
+  }
+  validateFilter(st.filter, e);
+  if (st.extraCounters !== undefined && (!isNonNegativeInt(st.extraCounters) || st.affects !== 'EachMatching')) {
+    e('extraCounters must be a whole number on an EachMatching static ability.');
+  }
   for (const cond of st.conditions ?? []) {
     if (cond !== 'yourTurn' && cond !== 'equipped' && cond !== 'legendary') e(`unknown condition "${cond}".`);
   }

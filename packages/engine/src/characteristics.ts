@@ -7,6 +7,7 @@
 // keywords, and power/toughness changes are all additive, so the order
 // within a layer doesn't matter.
 
+import { matchesObject } from './filters.ts';
 import type {
   Amount,
   CardDefinition,
@@ -66,6 +67,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId): number
       return s.creaturesDiedThisTurn;
     case 'CreaturesOnBattlefield':
       return battlefieldCards(s).filter(creature).length;
+    case 'CreaturesYouControlWithCounters':
+      return yours().filter((c) => creature(c) && (c.counters ?? 0) > 0).length;
+    case 'CreatureCardsInYourGraveyard':
+      return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('creature')).length;
     case 'EquippedAttackingCreaturesYouControl':
       return yours().filter((c) => creature(c) && isEquipped(s, c) && (s.combat?.attacks.some((a) => a.attacker === c.id) ?? false)).length;
   }
@@ -76,7 +81,16 @@ export function amountOf(s: GameState, amount: Amount | undefined, player: Playe
   if (typeof amount === 'number') return amount;
   // Amounts that refer back to earlier in the same spell or ability are worked out while it resolves.
   if ('of' in amount) return 0;
-  return amount.count.reduce((n, kind) => n + countOf(s, kind, player), 0);
+  return amount.count.reduce((n, kind) => n + countOf(s, kind, player), 0) * (amount.times ?? 1);
+}
+
+/** Whether a static ability of `source` applies to `c`. */
+export function staticAffects(s: GameState, source: CardInstance, spec: StaticSpec, c: CardInstance): boolean {
+  if (spec.affects === 'EachMatching') {
+    // Filters here avoid power, toughness and subtypes, which would ask for these same characteristics.
+    return c.zone === 'battlefield' && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id });
+  }
+  return staticApplies(s, source, spec) === c.id;
 }
 
 function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): InstanceId | null {
@@ -104,7 +118,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   const removed: Keyword[] = [];
   for (const source of battlefieldCards(s)) {
     for (const spec of def(s, source).statics ?? []) {
-      if (staticApplies(s, source, spec) !== c.id) continue;
+      if (!staticAffects(s, source, spec, c)) continue;
       out.power += amountOf(s, spec.power, source.controller);
       out.toughness += amountOf(s, spec.toughness, source.controller);
       for (const k of spec.keywords ?? []) out.keywords.add(k);

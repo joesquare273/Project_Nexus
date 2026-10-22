@@ -694,6 +694,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Untap':
       for (const id of onBattlefield) s.cards[id]!.tapped = false;
       return;
+    case 'Proliferate':
+      for (const pid of targetPlayers(targets)) {
+        for (const c of battlefield(s)) if (c.controller === pid && (c.counters ?? 0) > 0) addCounters(ctx, c.id, 1);
+      }
+      return;
     case 'PutTopCardIfLand':
       for (const pid of targetPlayers(targets)) {
         const top = s.players[pid]!.library[0];

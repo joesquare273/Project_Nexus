@@ -2,7 +2,7 @@
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { hasFlag, hasKeyword } from './characteristics.ts';
+import { hasFlag, hasKeyword, staticAffects } from './characteristics.ts';
 import { entersTapped } from './typerules.ts';
 import {
   MANA_TYPES,
@@ -206,6 +206,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     });
   }
   if (from === 'battlefield') leftBattlefield(ctx, id);
+  // "Enters with N +1/+1 counters on it" (rule 614.1c).
+  const enters = s.cardDefs[c.defId]!.entersWithCounters;
+  if (to === 'battlefield' && enters) addCounters(ctx, id, enters);
 }
 
 /** Things that happen the moment a permanent leaves the battlefield. */
@@ -309,8 +312,15 @@ export function sacrifice(ctx: Ctx, id: InstanceId): void {
 }
 
 export function addCounters(ctx: Ctx, id: InstanceId, amount: number): void {
-  const c = ctx.s.cards[id]!;
+  const s = ctx.s;
+  const c = s.cards[id]!;
   if (c.zone !== 'battlefield' || amount <= 0) return;
+  // Hardened Scales and similar: "that many plus one" (a replacement effect, rule 614).
+  for (const source of battlefield(s)) {
+    for (const spec of defOf(s, source).statics ?? []) {
+      if (spec.extraCounters && staticAffects(s, source, spec, c)) amount += spec.extraCounters;
+    }
+  }
   c.counters = (c.counters ?? 0) + amount;
   ctx.ev.push({ type: 'CountersAdded', card: id, amount });
 }

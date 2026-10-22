@@ -6,9 +6,9 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
 | Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 49/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 41/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 36/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 42/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 42/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 45/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 43/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -43,7 +43,7 @@ The Starter Kit cards that also appear in the precons are shared.
 | Step | Engine work | Distinct cards |
 |---|---|---|
 | C1 | **Done (2026-10-21).** Commander rules and mana: command zone, commander tax, commander damage, color identity; commander-identity mana (Command Tower, Arcane Signet), Sol Ring, pain lands and Talismans, checklands, battle lands, snarls, temples (scry), Evolving Wilds, Mind Stone, cycling and landcycling, opponents' land colors (Exotic Orchard). | 60 built |
-| C2 | **Card-by-card abilities**, built group by group (see below). | In progress: removal (24) and Equipment (16) built |
+| C2 | **Card-by-card abilities**, built group by group (see below). | In progress: removal (24), Equipment (16) and counters (11) built |
 | C3 | **Equipment parsing and keyword batch:** read "Equip {N}" and Job select from card text (22 Equipment), Treasure/Clue/Food tokens, mill, proliferate, flashback, convoke, ward, evolve, metalcraft, prowess, landfall, kicker, undying, unearth, delve, connive, goad, explore, fight, intimidate, threshold, magecraft. | ~60 |
 | C4 | **New card shapes:** Sagas (7), Adventures (3), X costs (6), Vehicles and crew (1), foretell (3). | ~20 |
 | C5 | **One-of mechanics:** the named abilities unique to single cards (Limit Break style words like Omnislash, Grand Summon, Blitzball Captain...), partner. | ~30 |
@@ -60,7 +60,7 @@ needing several groups' pieces waits for the last of them.
 |---|---|
 | Removal and board wipes | **24 built (2026-10-21):** Bedevil, Mortify, Vindicate, Void Rend, Decimate, Meteor Golem, Snuff Out, Swords to Plowshares, Path to Exile, Destroy Evil, Legions to Ashes, Chaos Warp, Final Judgment, Ruinous Ultimatum, Cleansing Nova, Crux of Fate, Damning Verdict, Austere Command, Farewell, Vanquish the Horde, Crackling Doom, Vandalblast, Sun Titan, Bane of Progress. The rest of the group need other groups' mechanics: Sagas (Summon: Ixion, Kujata, Yojimbo), end-step triggers (Summoner's Sending, Wakka, Y'shtola), "up to N targets" (Angel of the Ruins, Cloud's Limit Break), counterspells (Sublime Epiphany), the monarch (Palace Jailer), X costs (Walking Ballista), foretell, convoke, escalate, rebound and similar one-offs. |
 | Equipment and auras | **16 built (2026-10-21):** Cloud, Ex-SOLDIER (Limit Break's commander), Behemoth Sledge, Darksteel Plate, Colossus Hammer, Champion's Helm, Hero's Heirloom, Hero's Blade, Lightning Greaves, Swiftfoot Boots, Trailblazer's Boots, Sword of the Animist, Explorer's Scope, Sage's Nouliths, Skullclamp, Helitrooper, Armory Automaton. Still to come: Auras (Eye of Nidhogg, Observed Stasis, Unfinished Business), granted abilities that need other groups (Astrologian's Planisphere, Blue Mage's Cane, Conformer Shuriken, Dancer's Chakrams, Reaper's Scythe, Conqueror's Flail, Wrecking Ball Arm, Mask of Memory), anthems and cost reductions (Red XIII, Puresteel Paladin, Cid), and one-offs (Barret, Avalanche Leader; Yuffie; Zack Fair). |
-| +1/+1 counters and proliferate | Next |
+| +1/+1 counters and proliferate | **11 built (2026-10-21):** Hardened Scales, Duskshell Crawler, Sphere Grid, Bred for the Hunt, Chocobo Knights, Inspiring Call, Grateful Apparition, Inexorable Tide, Sunscorch Regent, Ardbert, Siegfried. The rest mostly wait on shared mechanics: "up to N targets" and support (Generous Patron, Together Forever, Blitzball Stadium, General Leo), end-step triggers (Lord Jyscal, Gau, Mog), evolve (Fathom Mage, Gyre Sage), other counter kinds (stun, shield, page, vow, flying), and remembering a dead creature's power or counters (Rampant Rejuvenator, Chasm Skulker, Yuna, Sin). |
 | Mana: lands and mana rocks (most already make basic mana) | |
 | Tokens, sacrifice and death triggers | |
 | Graveyard and library | |
