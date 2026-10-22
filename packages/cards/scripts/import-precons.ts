@@ -1,6 +1,7 @@
 // Imports the Final Fantasy Commander precon decklists from MTGJSON and
 // writes:
 //   data/fic.json          card definitions for every card not already defined
+//                          (cards already built in fic.json are kept as they are)
 //   data/fic-precons.json  the four decklists, with each card's build status
 //
 //   node packages/cards/scripts/import-precons.ts
@@ -17,6 +18,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { KEYWORDS, type CardDefinition, type Color, type Keyword, type ManaType } from '@nexus/engine';
+import fic from '../data/fic.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
@@ -27,6 +29,12 @@ import tokens from '../data/tokens.json' with { type: 'json' };
  */
 const CARDS = [...lands, ...fin, ...tokens] as CardDefinition[];
 const CARD_IDS_BY_NAME: Record<string, string> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));
+
+/**
+ * Precon cards already built in fic.json (by hand, step by step through
+ * C2-C5) are kept as they are; only unbuilt cards are regenerated.
+ */
+const BUILT_FIC = new Map((fic as CardDefinition[]).filter((d) => !d.notBuilt).map((d) => [d.name, d]));
 
 const DECK_FILES = [
   'LimitBreakFinalFantasyVii_FIC',
@@ -228,6 +236,10 @@ function cardEntry(c: MtgjsonCard) {
     if (known) {
       const def = CARDS.find((d) => d.id === known)!;
       status.set(c.name, { implemented: !def.notBuilt, needs: def.notBuilt ? ['abilities'] : [] });
+    } else if (BUILT_FIC.has(c.name)) {
+      const def = BUILT_FIC.get(c.name)!;
+      newDefs.set(def.id, def);
+      status.set(c.name, { implemented: true, needs: [] });
     } else {
       const { def, built, needs } = define(c);
       if (existingIds.has(def.id) || newDefs.has(def.id)) def.id = `${def.id}-fic`;

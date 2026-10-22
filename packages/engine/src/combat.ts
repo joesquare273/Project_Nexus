@@ -1,6 +1,7 @@
 // Combat for pods: each attacker picks a defending player, and each
 // defending player declares their own blockers (PRD 7.4).
 
+import { isBasicLand } from './typerules.ts';
 import { applyStateBasedActions } from './sba.ts';
 import { enterStep, givePriority } from './turn.ts';
 import { hasFlag, powerOf, toughnessOf } from './characteristics.ts';
@@ -31,6 +32,11 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
+  }
+  // Landwalk (rule 702.14): unblockable while the defending player controls such a land.
+  if (hasKeyword(s, attacker, 'NonbasicLandwalk')) {
+    const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
+    if (defenderLands.some((c) => s.cardDefs[c.defId]!.types.includes('land') && !isBasicLand(s.cardDefs[c.defId]!))) return false;
   }
   return true;
 }

@@ -3,7 +3,7 @@
 // controls") and searches ("a Plains card").
 
 import { characteristics, isEquipped } from './characteristics.ts';
-import { categoriesOf } from './typerules.ts';
+import { categoriesOf, colorsOf, manaValueOf } from './typerules.ts';
 import type { CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
 /** Who is asking: the controller of the spell or ability, and its source card if any. */
@@ -47,5 +47,22 @@ export function matchesObject(
   }
   if (f.equipped !== undefined && isEquipped(s, obj) !== f.equipped) return false;
   if (f.equippedBySource && (!from.source || s.cards[from.source]?.attachedTo !== obj.id)) return false;
+  if (f.colors || f.nonColors) {
+    const colors = colorsOf(def);
+    if (f.colors && !f.colors.some((c) => colors.includes(c))) return false;
+    if (f.nonColors?.some((c) => colors.includes(c))) return false;
+  }
+  if (f.nonSubtypes) {
+    const subtypes = obj.zone === 'battlefield' ? characteristics(s, obj).subtypes : (def.subtypes ?? []);
+    if (f.nonSubtypes.some((t) => subtypes.includes(t))) return false;
+  }
+  if (f.powerAtLeast !== undefined || f.toughnessAtLeast !== undefined) {
+    const ch = characteristics(s, obj);
+    if (f.powerAtLeast !== undefined && ch.power < f.powerAtLeast) return false;
+    if (f.toughnessAtLeast !== undefined && ch.toughness < f.toughnessAtLeast) return false;
+  }
+  if (f.manaValueAtMost !== undefined && manaValueOf(def) > f.manaValueAtMost) return false;
+  if (f.manaValueAtLeast !== undefined && manaValueOf(def) < f.manaValueAtLeast) return false;
+  if (f.noCounters && (obj.counters ?? 0) > 0) return false;
   return true;
 }

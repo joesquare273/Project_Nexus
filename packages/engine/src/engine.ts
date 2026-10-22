@@ -39,7 +39,11 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'CastSpell':
         requirePriority(s, action.player);
-        castSpell(ctx, action.player, action.card, action.targets, action.mode);
+        castSpell(ctx, action.player, action.card, action.targets, {
+          ...(action.mode !== undefined ? { mode: action.mode } : {}),
+          ...(action.modes ? { modes: action.modes } : {}),
+          ...(action.alternative ? { alternative: true } : {}),
+        });
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'ActivateManaAbility':

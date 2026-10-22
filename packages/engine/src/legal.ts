@@ -14,6 +14,7 @@ import {
   abilityCost,
   activatedAbilities,
   activationProblem,
+  alternativeCostProblem,
   canActAtSorcerySpeed,
   canEverCast,
   canPayFromPool,
@@ -24,12 +25,13 @@ import {
   spellEffects,
   targetOptions,
   triggerSpec,
+  type SpellChoice,
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaChoices } from './typerules.ts';
-import type { Action, Block, CardInstance, EffectSpec, GameState, InstanceId, ManaCost, PlayerId, Target } from './types.ts';
+import type { Action, Block, CardDefinition, CardInstance, EffectSpec, GameState, InstanceId, ManaCost, PlayerId, Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 32;
 const MAX_BOTTOM_CHOICES = 8;
@@ -55,6 +57,22 @@ export interface CostedOption {
   forEquipment: boolean;
 }
 
+/**
+ * The ways to choose modes: each mode for "choose one", and every allowed
+ * combination for "choose two" or "choose one or more".
+ */
+function modeChoices(def: CardDefinition): SpellChoice[] {
+  if (!def.modes) return [{}];
+  if (!def.chooseModes) return def.modes.map((_, mode) => ({ mode }));
+  const { min, max } = def.chooseModes;
+  const out: SpellChoice[] = [];
+  for (let mask = 1; mask < 1 << def.modes.length; mask++) {
+    const modes = def.modes.map((_, i) => i).filter((i) => mask & (1 << i));
+    if (modes.length >= min && modes.length <= max) out.push({ modes });
+  }
+  return out;
+}
+
 /** Every spell the player could cast right now, ignoring mana: from hand, graveyard (flashback) or exile. */
 export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const out: CostedOption[] = [];
@@ -67,14 +85,19 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const def = s.cardDefs[c.defId]!;
     const from = playableZone(s, playerId, c);
     if (!from || !canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
-    const modes = def.modes ? def.modes.map((_, i) => i) : [undefined];
-    for (const mode of modes) {
-      for (const targets of targetCombos(s, spellEffects(def, mode), playerId, c.id)) {
-        out.push({
-          action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...(mode !== undefined ? { mode } : {}) },
-          cost: spellCost(s, def, from, targets, c),
-          forEquipment: isEquipment(s, c),
-        });
+    // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a).
+    const alternatives = [false];
+    if (def.alternativeCost && from !== 'graveyard' && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
+    for (const modes of modeChoices(def)) {
+      for (const alternative of alternatives) {
+        const choice: SpellChoice = { ...modes, ...(alternative ? { alternative: true } : {}) };
+        for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
+          out.push({
+            action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice },
+            cost: spellCost(s, def, from, targets, c, alternative),
+            forEquipment: isEquipment(s, c),
+          });
+        }
       }
     }
   }

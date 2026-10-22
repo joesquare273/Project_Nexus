@@ -3,7 +3,7 @@ import { cardsToBottom, triggerSpec, type Action, type GameView, type InstanceId
 import { planTaps, tapActions } from '@nexus/bots';
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
-import { YOU, type CardPlay, type GameSession } from '../game/session.ts';
+import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { CardFace } from './Card.tsx';
 import { Coach } from './Coach.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
@@ -208,20 +208,35 @@ export function Game({
     else setTriggerChosen(next);
   };
 
-  /** Starts doing one play: choose a mode if it has several, then targets if needed. */
-  const startPlay = (play: CardPlay, mode?: number) => {
+  /**
+   * Starts doing one play: choose its mode or modes if there's a choice, then
+   * targets if needed. `modeKey` is the chosen modes joined with "+".
+   */
+  const startPlay = (play: CardPlay, modeKey?: string) => {
     const def = defOf(s.cards[play.card]!.defId);
-    const modes = [...new Set(play.choices.map((c) => c.mode).filter((m): m is number => m !== undefined))];
-    if (mode === undefined && modes.length > 1) {
-      const labels = modeLabels(def.id, def.modes?.length ?? modes.length);
+    const keyOf = (c: PlayChoice) => c.modes?.join('+');
+    const keys = [...new Set(play.choices.map(keyOf).filter((k): k is string => k !== undefined))];
+    if (modeKey === undefined && keys.length > 1) {
+      const labels = modeLabels(def.id, def.modes?.length ?? 0);
+      const how = def.chooseModes
+        ? def.chooseModes.min === def.chooseModes.max
+          ? `choose ${def.chooseModes.min}`
+          : `choose ${def.chooseModes.min} or more`
+        : 'choose one';
       setMenu({
-        title: `${def.name}: choose one`,
-        options: modes.map((m) => ({ label: labels[m] ?? `Mode ${m + 1}`, pick: () => startPlay(play, m) })),
+        title: `${def.name}: ${how}`,
+        options: keys.map((k) => ({
+          label: k
+            .split('+')
+            .map((m) => labels[Number(m)] ?? `Mode ${Number(m) + 1}`)
+            .join(' + '),
+          pick: () => startPlay(play, k),
+        })),
       });
       return;
     }
     setMenu(null);
-    const choices = play.choices.filter((c) => mode === undefined || c.mode === mode);
+    const choices = play.choices.filter((c) => modeKey === undefined || keyOf(c) === modeKey);
     const only = choices.length === 1 ? choices[0]! : null;
     if (only && only.targets.length === 0) {
       submit([...only.taps, only.action]);

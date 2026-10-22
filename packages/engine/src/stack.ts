@@ -1,7 +1,7 @@
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { amountOf, isEquipment } from './characteristics.ts';
+import { amountOf, countOf, isEquipment, powerOf } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { shuffleInPlace } from './rng.ts';
@@ -118,16 +118,55 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
   return item.from === 'trigger' ? (abilitySpec(s, item) as TriggerSpec) : undefined;
 }
 
-/** A spell's effects, given the mode chosen for modal spells. */
-export function spellEffects(def: CardDefinition, mode: number | undefined): EffectSpec[] {
-  if (def.modes) return def.modes[mode ?? 0] ?? [];
+/** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
+export interface SpellChoice {
+  mode?: number;
+  modes?: number[];
+  alternative?: boolean;
+}
+
+/**
+ * A spell's effects for the way it's cast: an alternative cost's own effects
+ * (overload), the chosen modes in printed order (rule 700.2), or its effects.
+ */
+export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): EffectSpec[] {
+  if (choice.alternative && def.alternativeCost?.effects) return def.alternativeCost.effects;
+  if (def.modes && def.chooseModes) return [...(choice.modes ?? [])].sort((a, b) => a - b).flatMap((m) => def.modes![m] ?? []);
+  if (def.modes) return def.modes[choice.mode ?? 0] ?? [];
   return def.effects ?? [];
 }
 
 /** The effects a stack item applies when it resolves. */
 export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
   if (item.kind === 'ability') return abilitySpec(s, item).effects;
-  return spellEffects(defOf(s, s.cards[item.card]!), item.mode);
+  return spellEffects(defOf(s, s.cards[item.card]!), item);
+}
+
+/** Problems with a choice of modes, or null if it's fine. */
+export function modeProblem(def: CardDefinition, choice: SpellChoice): string | null {
+  if (!def.modes) return null;
+  if (def.chooseModes) {
+    const modes = choice.modes ?? [];
+    const { min, max } = def.chooseModes;
+    if (new Set(modes).size !== modes.length || modes.some((m) => !def.modes![m])) return `Choose different modes for ${def.name}.`;
+    if (modes.length < min || modes.length > max) {
+      return min === max ? `Choose ${min} modes for ${def.name}.` : `Choose ${min} to ${max} modes for ${def.name}.`;
+    }
+    return null;
+  }
+  return choice.mode === undefined || !def.modes[choice.mode] ? `Choose a mode for ${def.name}.` : null;
+}
+
+/** Why a player can't use a card's alternative cost right now, or null if they can. */
+export function alternativeCostProblem(s: GameState, def: CardDefinition, playerId: PlayerId): string | null {
+  const alt = def.alternativeCost;
+  if (!alt) return `${def.name} has no alternative cost.`;
+  const meets = (c: CardInstance) => c.controller === playerId && matchesObject(s, alt.ifControls, c, { controller: playerId });
+  if (alt.ifControls && !battlefield(s).some(meets)) {
+    return `You don't meet the condition for ${def.name}'s alternative cost.`;
+  }
+  if (alt.life !== undefined && s.players[playerId]!.life < alt.life) return "You don't have enough life to pay.";
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +193,9 @@ export function isLegalTarget(
   const viewpoint = { controller, ...(source ? { source } : {}) };
   if (kind === 'TargetCardInGraveyard') return c.zone === 'graveyard' && matchesObject(s, effect.filter, c, viewpoint);
   if (c.zone !== 'battlefield') return false;
+  // Shroud: nobody can target it. Hexproof: its controller's opponents can't (rules 702.11, 702.18).
+  if (hasKeyword(s, c, 'Shroud')) return false;
+  if (hasKeyword(s, c, 'Hexproof') && c.controller !== controller) return false;
   if (kind === 'TargetPermanent') return matchesObject(s, effect.filter, c, viewpoint);
   if (!isCreatureOnBattlefield(s, c)) return false;
   if (kind === 'AnyTarget' || kind === 'TargetCreature') return true;
@@ -297,15 +339,21 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   if (entersTapped(s, c, reveal)) c.tapped = true;
 }
 
-/** What it costs to cast a spell with these targets: its flashback cost from the graveyard, minus any reduction. */
+/**
+ * The mana it costs to cast a spell with these targets: its mana cost, its
+ * flashback cost from the graveyard, or its alternative cost's mana, plus
+ * commander tax, minus any reduction.
+ */
 export function spellCost(
   s: GameState,
   def: CardDefinition,
   from: 'hand' | 'graveyard' | 'exile' | 'command',
   targets: Target[],
   card?: CardInstance,
+  alternative = false,
 ): ManaCost {
-  let cost = parseManaCost(from === 'graveyard' ? def.flashback : def.manaCost);
+  const base = alternative ? def.alternativeCost?.mana : from === 'graveyard' ? def.flashback : def.manaCost;
+  let cost = parseManaCost(base);
   // Commander tax: {2} more for each earlier cast from the command zone (rule 903.8).
   if (from === 'command' && card) {
     cost = { ...cost, generic: cost.generic + 2 * (s.players[card.owner]!.commanderCasts[card.id] ?? 0) };
@@ -314,10 +362,13 @@ export function spellCost(
     const tapped = targets.some((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) && s.cards[t.card]!.tapped);
     if (tapped) cost = reduceGeneric(cost, def.costReduction.generic);
   }
+  if (def.costReduction?.perCount && card) {
+    cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, card.owner));
+  }
   return cost;
 }
 
-export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], mode?: number): void {
+export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], choice: SpellChoice = {}): void {
   const s = ctx.s;
   const c = card(s, id);
   const def = defOf(s, c);
@@ -328,9 +379,16 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!hasInstantTiming(def) && !canActAtSorcerySpeed(s, playerId)) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }
-  if (def.modes && (mode === undefined || !def.modes[mode])) reject(`Choose a mode for ${def.name}.`);
-  checkTargets(s, spellEffects(def, mode), targets, playerId, id);
-  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c), isEquipment(s, c));
+  const modes = modeProblem(def, choice);
+  if (modes) reject(modes);
+  const alternative = choice.alternative ?? false;
+  if (alternative) {
+    const problem = alternativeCostProblem(s, def, playerId);
+    if (problem) reject(problem);
+  }
+  checkTargets(s, spellEffects(def, choice), targets, playerId, id);
+  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c, alternative), isEquipment(s, c));
+  if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
     casts[id] = (casts[id] ?? 0) + 1;
@@ -343,7 +401,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     card: id,
     controller: playerId,
     targets,
-    ...(mode !== undefined ? { mode } : {}),
+    ...(choice.mode !== undefined ? { mode: choice.mode } : {}),
+    ...(choice.modes ? { modes: [...choice.modes].sort((a, b) => a - b) } : {}),
+    ...(alternative ? { alternative } : {}),
     castFrom: from,
     manaSpent,
   };
@@ -457,8 +517,18 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return item.kind === 'ability' && item.defender && !s.players[item.defender]!.eliminated
         ? toPlayers([item.defender])
         : [];
+    case 'TriggeringObject': {
+      const subject = item.kind === 'ability' ? item.subject : undefined;
+      return subject && s.cards[subject]?.zone === 'battlefield' ? [{ kind: 'card', card: subject }] : [];
+    }
     case 'CreatedTokens':
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
+    case 'AllPermanents': {
+      const viewpoint = { controller: item.controller, source: sourceOf(item) };
+      return battlefield(s)
+        .filter((c) => matchesObject(s, effect.filter, c, viewpoint))
+        .map((c) => ({ kind: 'card', card: c.id }));
+    }
     default:
       return chosen && isLegalTarget(s, effect, chosen, item.controller, sourceOf(item)) ? [chosen] : [];
   }
@@ -468,11 +538,25 @@ function topOfLibrary(s: GameState, playerId: PlayerId, n: number): InstanceId[]
   return s.players[playerId]!.library.slice(0, n);
 }
 
+/** An effect's amount, including ones that refer back to earlier in the same spell or ability. */
+function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number {
+  const a = effect.amount;
+  if (a !== undefined && typeof a === 'object' && 'of' in a) {
+    return a.of === 'previousTargetPower' ? Math.max(0, r.previousTargetPower ?? 0) : (r.destroyedCount ?? 0);
+  }
+  return amountOf(s, a, r.item.controller);
+}
+
+/** The players among an effect's targets (searches act for these players). */
+function targetPlayers(targets: Target[]): PlayerId[] {
+  return targets.flatMap((t) => (t.kind === 'player' ? [t.player] : []));
+}
+
 function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target[]): void {
   const s = ctx.s;
   const item = r.item;
   const source = sourceOf(item);
-  const amount = amountOf(s, effect.amount, item.controller);
+  const amount = resolvedAmount(s, effect, r);
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
@@ -489,10 +573,50 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, -amount);
       return;
     case 'Destroy':
-      for (const id of onBattlefield) destroy(ctx, id);
+      for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
       return;
     case 'Exile':
-      for (const id of onBattlefield) moveCard(ctx, id, 'exile');
+      for (const id of onBattlefield) {
+        const c = s.cards[id]!;
+        const { name } = defOf(s, c);
+        const controller = c.controller;
+        moveCard(ctx, id, 'exile');
+        if (!effect.sameNameTokens) continue;
+        for (const other of battlefield(s)) {
+          if (other.isToken && other.controller === controller && defOf(s, other).name === name) moveCard(ctx, other.id, 'exile');
+        }
+      }
+      return;
+    case 'ExileGraveyard':
+      for (const pid of targetPlayers(targets)) for (const id of [...s.players[pid]!.graveyard]) moveCard(ctx, id, 'exile');
+      return;
+    case 'SacrificeGreatestPower':
+      for (const pid of targetPlayers(targets)) {
+        const theirs = battlefield(s).filter((c) => c.controller === pid && hasType(s, c, 'creature'));
+        if (theirs.length === 0) continue;
+        const greatest = Math.max(...theirs.map((c) => powerOf(s, c)));
+        // On a tie the player would choose; the engine sacrifices the one that has been there longest.
+        sacrifice(ctx, theirs.find((c) => powerOf(s, c) === greatest)!.id);
+      }
+      return;
+    case 'ShuffleIntoLibraryReveal':
+      for (const id of onBattlefield) {
+        const owner = s.cards[id]!.owner;
+        const library = s.players[owner]!.library;
+        moveCard(ctx, id, 'library');
+        shuffleInPlace(s, library);
+        ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+        const top = library[0];
+        if (top === undefined) continue;
+        const revealed = s.cards[top]!;
+        ctx.ev.push({ type: 'CardRevealed', player: owner, card: top, defId: revealed.defId });
+        if (isPermanentCard(defOf(s, revealed))) {
+          moveCard(ctx, top, 'battlefield');
+          revealed.controller = owner;
+          revealed.summoningSick = true;
+          if (entersTapped(s, revealed)) revealed.tapped = true;
+        }
+      }
       return;
     case 'Tap':
       for (const id of onBattlefield) if (!s.cards[id]!.tapped) tap(ctx, s.cards[id]!);
@@ -562,6 +686,26 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Attach':
       for (const id of onBattlefield) attach(ctx, source, id);
       return;
+    case 'AttachToThis':
+      // The ability's source must still be a creature on the battlefield.
+      if (!isCreatureOnBattlefield(s, s.cards[source])) return;
+      for (const id of onBattlefield) attach(ctx, id, source);
+      return;
+    case 'Untap':
+      for (const id of onBattlefield) s.cards[id]!.tapped = false;
+      return;
+    case 'PutTopCardIfLand':
+      for (const pid of targetPlayers(targets)) {
+        const top = s.players[pid]!.library[0];
+        if (top === undefined) continue;
+        const c = s.cards[top]!;
+        ctx.ev.push({ type: 'CardRevealed', player: pid, card: top, defId: c.defId });
+        if (!defOf(s, c).types.includes('land')) continue;
+        moveCard(ctx, top, 'battlefield');
+        c.controller = pid;
+        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+      }
+      return;
     case 'AttachAllEquipment':
       for (const id of onBattlefield) {
         for (const e of battlefield(s)) {
@@ -569,20 +713,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
       }
       return;
-    case 'SearchLibraryToBattlefield': {
-      const p = s.players[item.controller]!;
-      const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
-      if (found) {
-        moveCard(ctx, found, 'battlefield');
-        const c = s.cards[found]!;
-        c.controller = item.controller;
-        c.summoningSick = true;
-        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+    case 'SearchLibraryToBattlefield':
+      // Usually "you search"; Path to Exile has the exiled creature's controller search.
+      for (const searcher of targetPlayers(targets)) {
+        const p = s.players[searcher]!;
+        const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
+        if (found) {
+          moveCard(ctx, found, 'battlefield');
+          const c = s.cards[found]!;
+          c.controller = searcher;
+          c.summoningSick = true;
+          if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        }
+        shuffleInPlace(s, p.library);
+        ctx.ev.push({ type: 'LibraryShuffled', player: searcher });
       }
-      shuffleInPlace(s, p.library);
-      ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
       return;
-    }
     case 'SearchLibraryToHand': {
       const p = s.players[item.controller]!;
       const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
@@ -617,8 +763,17 @@ function continueResolving(ctx: Ctx): void {
     if (r.next >= effects.length) break;
     const effect = effects[r.next++]!;
     const chosen = CHOSEN_TARGET_KINDS.includes(effect.target) ? item.targets[r.chosenUsed++] : undefined;
-    if (chosen) r.previousTarget = chosen;
+    if (chosen) {
+      r.previousTarget = chosen;
+      // Remember its power now: "life equal to its power" still works after it's exiled (rule 608.2h).
+      const c = chosen.kind === 'card' ? s.cards[chosen.card] : undefined;
+      if (c?.zone === 'battlefield') r.previousTargetPower = powerOf(s, c);
+    }
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
+    if (effect.ifSourcePowerAtLeast !== undefined) {
+      const src = s.cards[sourceOf(item)]!;
+      if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
+    }
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
   }
   s.resolving = null;

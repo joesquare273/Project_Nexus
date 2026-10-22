@@ -66,3 +66,38 @@ describe('GameSession', () => {
     expect(error).toMatch(/priority|not in your hand/);
   });
 });
+
+describe('what the board offers for modal spells and alternative costs', () => {
+  it('lists each mode combination, and an alternative cost as its own entry', async () => {
+    const { newGame, put, mana } = await import('../../bots/test/kit-helpers.ts');
+    const { CARD_IDS_BY_NAME } = await import('@nexus/cards');
+    const session = new GameSession({ deck: 'RW', opponents: 1, seed: 1, bot: 'ai' });
+    const s = newGame();
+    s.turnOrder = [YOU, 'P2'];
+    for (const [from, to] of [['P1', YOU]] as const) {
+      s.players[to] = { ...s.players[from]!, id: to };
+      delete s.players[from];
+      for (const c of Object.values(s.cards)) if (c.owner === from) c.owner = c.controller = to;
+    }
+    s.activePlayer = YOU;
+    s.pending = { kind: 'priority', player: YOU, passes: 0 };
+    put(s, YOU, 'swamp');
+    put(s, 'P2', 'coeurl');
+    const snuff = put(s, YOU, CARD_IDS_BY_NAME['Snuff Out']!, 'hand');
+    const austere = put(s, YOU, CARD_IDS_BY_NAME['Austere Command']!, 'hand');
+    mana(s, YOU, { W: 2, B: 1, C: 4 });
+    session.state = s;
+
+    const plays = session.plays();
+    const snuffPlays = plays.filter((p) => p.card === snuff).map((p) => p.label);
+    expect(snuffPlays.sort()).toEqual(['Cast', 'Pay 4 life for']);
+    const austerePlay = plays.find((p) => p.card === austere)!;
+    expect(austerePlay.choices.map((c) => c.modes)).toHaveLength(6);
+    expect(austerePlay.choices.every((c) => c.modes?.length === 2)).toBe(true);
+    // Paying life works through the session like a click would.
+    const lifePlay = plays.find((p) => p.card === snuff && p.label === 'Pay 4 life for')!;
+    const choice = lifePlay.choices[0]!;
+    expect(session.submit([...choice.taps, choice.action])).toBeNull();
+    expect(session.state.players[YOU]!.life).toBe(16);
+  });
+});

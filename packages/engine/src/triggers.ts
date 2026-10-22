@@ -35,6 +35,8 @@ interface Occurrence {
   defender?: PlayerId;
   /** SpellCast: mana spent to cast it. */
   manaSpent?: number;
+  /** Dies: the Equipment attached to it as it left the battlefield. */
+  equippedBy?: InstanceId[];
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -46,7 +48,13 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         if (e.to === 'battlefield') {
           out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
         } else if (e.from === 'battlefield' && e.to === 'graveyard') {
-          out.push({ when: 'Dies', at, subject: e.card, subjectController: e.controller ?? e.owner });
+          out.push({
+            when: 'Dies',
+            at,
+            subject: e.card,
+            subjectController: e.controller ?? e.owner,
+            ...(e.equippedBy ? { equippedBy: e.equippedBy } : {}),
+          });
         }
         break;
       case 'TokenCreated':
@@ -83,6 +91,12 @@ function matchesFilter(
 ): boolean {
   if (o.subject === undefined) return false;
   if (!filter) return o.subject === source;
+  if (filter.equippedBySource && o.when === 'Dies') {
+    // "Whenever equipped creature dies": look back at what was attached when it died (rule 603.10a).
+    if (!o.equippedBy?.includes(source)) return false;
+    const { equippedBySource: _, ...rest } = filter;
+    return matchesObject(s, rest, s.cards[o.subject]!, { controller, source }, o.subjectController);
+  }
   return matchesObject(s, filter, s.cards[o.subject]!, { controller, source }, o.subjectController);
 }
 
@@ -153,7 +167,14 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         if (s.triggeredThisTurn.includes(key)) return;
         s.triggeredThisTurn.push(key);
       }
-      found.push({ source: c.id, ability, controller, sourceZone: c.zone, ...(o.defender ? { defender: o.defender } : {}) });
+      found.push({
+        source: c.id,
+        ability,
+        controller,
+        sourceZone: c.zone,
+        ...(o.defender ? { defender: o.defender } : {}),
+        ...(o.subject ? { subject: o.subject } : {}),
+      });
     });
   };
 
@@ -194,6 +215,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     controller: t.controller,
     targets,
     ...(t.defender ? { defender: t.defender } : {}),
+    ...(t.subject ? { subject: t.subject } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityTriggered', item: item.id, card: t.source, ability: t.ability, controller: t.controller, targets });

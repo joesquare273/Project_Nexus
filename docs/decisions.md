@@ -113,6 +113,12 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Triggers during cleanup | None of the supported triggers can happen then, so cleanup never gives priority | Rule 514.3a |
 | Beatrix, Loyal General | "You may attach any number of Equipment": all of them or none | Any subset |
 | Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
+| Sacrifice the greatest power (Crackling Doom) | On a tie, the creature that has been on the battlefield longest is sacrificed | The player chooses among the tied creatures |
+| Path to Exile | The exiled creature's controller always searches for a basic land | Searching is optional ("may") |
+| Explorer's Scope | A land on top of the library is always put onto the battlefield | Optional ("you may") |
+| Armory Automaton | "Attach any number of target Equipment": all of your Equipment or none | Any subset, and other players' Equipment too |
+| Losing keywords | "Loses flying" applies after every grant, whatever the order | Layer 6 timestamp order (rule 613) |
+| Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
 | Library search | Takes the first matching card | The player chooses which matching card |
 | {X} costs | X is 0 (cards with X aren't built yet) | The caster chooses X |

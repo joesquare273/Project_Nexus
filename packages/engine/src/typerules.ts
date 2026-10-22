@@ -3,15 +3,30 @@
 // written once instead of on every card. docs/card-types.md lists every type
 // and which of its rules are built.
 
+import { manaValue, parseManaCost } from './cost.ts';
 import {
+  COLORS,
   MANA_TYPES,
   type CardCategory,
   type CardDefinition,
   type CardInstance,
   type CardType,
+  type Color,
   type GameState,
   type ManaType,
 } from './types.ts';
+
+/** A card's colors: the colored mana symbols in its cost, or its color indicator (rule 202.2). */
+export function colorsOf(def: CardDefinition): Color[] {
+  if (def.colors) return [...def.colors];
+  const cost = parseManaCost(def.manaCost);
+  return COLORS.filter((c) => (cost[c] ?? 0) > 0);
+}
+
+/** A card's mana value: the total mana in its cost, with X as 0 (rule 202.3). */
+export function manaValueOf(def: CardDefinition): number {
+  return manaValue(parseManaCost(def.manaCost));
+}
 
 /** Card types whose cards are permanents: they resolve onto the battlefield and stay (rule 110.4). */
 export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment'];

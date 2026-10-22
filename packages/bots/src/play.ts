@@ -27,7 +27,7 @@ import {
 import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
-import { basicAi, planTaps, randomBot, tapActions, type Bot } from './index.ts';
+import { basicAi, planTaps, playableCards, randomBot, tapActions, type Bot } from './index.ts';
 import { cardName, describe, rulesSummary, stepName, targetName, triggerText } from './narrate.ts';
 
 const YOU: PlayerId = 'You';
@@ -223,28 +223,28 @@ function priorityOptions(s: GameState): Option[] {
     options.push({ label: `Play ${name}${how}`, choose: async () => [a] });
   }
 
+  // Spells, from the same list the browser board uses: costs include reductions
+  // and alternative costs, and each mode combination and target is a choice.
   const seenSpell = new Set<string>();
-  for (const id of s.players[YOU]!.hand) {
-    const d = defOf(s, s.cards[id]!);
-    if (d.types.includes('land') || seenSpell.has(d.id)) continue;
-    const taps = planTaps(s, YOU, d.manaCost);
-    if (!taps) continue;
-    const afterTaps = applyAll(s, tapActions(YOU, taps));
-    if ('error' in afterTaps) continue;
-    const casts = getLegalActions(afterTaps.state).filter(
-      (a): a is Extract<Action, { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === id,
-    );
-    if (casts.length === 0) continue;
-    seenSpell.add(d.id);
+  for (const play of playableCards(s, YOU)) {
+    if (play.kind !== 'spell') continue;
+    const d = defOf(s, s.cards[play.card]!);
+    const key = `${d.id}|${play.label}`;
+    if (seenSpell.has(key)) continue;
+    seenSpell.add(key);
     options.push({
-      label: `Cast ${d.name} ${d.manaCost ?? ''}  - ${rulesSummary(d)}`,
+      label: `${play.label} ${d.name} ${play.label === 'Cast' ? (d.manaCost ?? '') : ''}  - ${rulesSummary(d)}`,
       choose: async () => {
-        if (casts.length === 1) return [...tapActions(YOU, taps), casts[0]!];
-        console.log(`  Choose a target for ${d.name}:`);
-        casts.forEach((c, i) => console.log(`    ${i + 1}) ${c.targets!.map((t) => targetName(s, t, YOU)).join(', ')}`));
-        const pick = Number(await ask('  Target number (Enter = cancel): '));
-        const cast = casts[pick - 1];
-        return cast ? [...tapActions(YOU, taps), cast] : null;
+        const choices = play.choices;
+        if (choices.length === 1) return [...choices[0]!.taps, choices[0]!.action];
+        console.log(`  Choose how to cast ${d.name}:`);
+        choices.forEach((c, i) => {
+          const modes = c.modes?.map((m) => `mode ${m + 1}`).join(' + ');
+          const targets = c.targets.map((t) => targetName(s, t, YOU)).join(', ');
+          console.log(`    ${i + 1}) ${[modes, targets && `targeting ${targets}`].filter(Boolean).join(', ')}`);
+        });
+        const pick = choices[Number(await ask('  Number (Enter = cancel): ')) - 1];
+        return pick ? [...pick.taps, pick.action] : null;
       },
     });
   }
