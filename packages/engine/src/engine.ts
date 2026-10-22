@@ -60,11 +60,11 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       case 'ActivateManaAbility':
         // Mana abilities also work while deciding whether to pay a cost (rule 605.3a).
         if (s.pending.kind === 'decide' && s.pending.player === action.player) {
-          activateManaAbility(ctx, action.player, action.card, action.mana);
+          activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith);
           break;
         }
         requirePriority(s, action.player);
-        activateManaAbility(ctx, action.player, action.card, action.mana);
+        activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'ActivateAbility':

@@ -4,6 +4,7 @@
 // and which of its rules are built.
 
 import { manaValue, parseManaCost } from './cost.ts';
+import { matchesObject } from './filters.ts';
 import {
   COLORS,
   MANA_TYPES,
@@ -92,7 +93,14 @@ export function isBasicLand(def: CardDefinition): boolean {
  */
 export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   const def = s.cardDefs[c.defId]!;
+  const ability = def.manaAbility;
+  const yours = () => s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === c.controller);
+  // "Activate only if you control five or more lands."
+  if (ability?.ifLandsAtLeast && yours().filter((x) => s.cardDefs[x.defId]!.types.includes('land')).length < ability.ifLandsAtLeast) return [];
   const made = new Set<ManaType>(manaProduced(def));
+  if (ability?.anyColorIfControls && yours().some((x) => matchesObject(s, ability.anyColorIfControls, x, { controller: c.controller }))) {
+    for (const m of ['W', 'U', 'B', 'R', 'G'] as const) made.add(m);
+  }
   if (def.manaAbility?.commanderIdentity) {
     for (const card of Object.values(s.cards)) {
       if (card.isCommander && card.owner === c.controller) {

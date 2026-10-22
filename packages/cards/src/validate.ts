@@ -126,7 +126,7 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
     if (!CARD_CATEGORIES.includes(cat)) err(`unknown category "${cat}" (use ${CARD_CATEGORIES.join(', ')}).`);
   }
   for (const sub of f.subtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
-  for (const st of f.supertypes ?? []) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}" in a filter.`);
+  for (const st of [...(f.supertypes ?? []), ...(f.nonSupertypes ?? [])]) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}" in a filter.`);
   if (f.controller !== undefined && !['You', 'Opponent', 'DefendingPlayer'].includes(f.controller)) {
     err('controller must be "You", "Opponent" or "DefendingPlayer".');
   }
@@ -297,6 +297,7 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
   const e: Err = (msg) => err(`activated ability: ${msg}`);
   validateCost(a.cost?.mana, e);
   if (a.zone !== undefined && a.zone !== 'battlefield' && a.zone !== 'hand') e(`unknown zone "${a.zone}".`);
+  validateFilter(a.ifYouControl, e);
   const rc = a.cost?.removeCounter;
   if (rc) {
     validateCounterKind(rc.counter, e, true);

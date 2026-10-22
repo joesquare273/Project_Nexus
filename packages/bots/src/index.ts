@@ -14,7 +14,7 @@ import {
 } from '@nexus/engine';
 
 export { basicAi } from './ai.ts';
-export { manaSources, planTaps, tapActions, type ManaTap, type TapOptions } from './mana.ts';
+export { manaSources, paidManaSources, planTaps, tapActions, type ManaTap, type TapOptions } from './mana.ts';
 export { playableCards, type CardPlay, type PlayChoice } from './human.ts';
 
 export type Bot = (state: GameState, legal: Action[]) => Action;

@@ -35,7 +35,7 @@ import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaChoices } from './typerules.ts';
-import type { Action, Block, CardDefinition, CardInstance, EffectSpec, GameState, InstanceId, ManaCost, PlayerId, Target } from './types.ts';
+import { MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
 const MAX_BOTTOM_CHOICES = 8;
@@ -154,9 +154,18 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
     const c = s.cards[id]!;
     const def = s.cardDefs[c.defId]!;
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
-    const produced = manaChoices(s, c);
-    if (produced.length === 0 || c.tapped || c.controller !== player || sick) continue;
-    for (const mana of produced) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
+    if (c.tapped || c.controller !== player || sick) continue;
+    for (const mana of manaChoices(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
+    // Paid mana abilities, for each way to pay that the pool covers.
+    const paid = def.manaAbility?.paid;
+    if (!paid) continue;
+    paid.costs.forEach((cost, payWith) => {
+      if (!canPayFromPool(s, player, parseManaCost(cost))) return;
+      paid.outputs.forEach((out, output) => {
+        const mana = MANA_TYPES.find((t) => (parseManaCost(out)[t] ?? 0) > 0)!;
+        actions.push({ type: 'ActivateManaAbility', player, card: id, mana, output, payWith });
+      });
+    });
   }
   return actions;
 }

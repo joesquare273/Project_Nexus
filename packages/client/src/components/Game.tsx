@@ -5,6 +5,7 @@ import {
   choiceProblem,
   cardsToBottom,
   formatManaCost,
+  getLegalActions,
   manaChoices,
   spellOptions,
   triggerSpec,
@@ -16,7 +17,7 @@ import {
   type PlayerId,
   type Target,
 } from '@nexus/engine';
-import { manaSources, planTaps, tapActions } from '@nexus/bots';
+import { manaSources, paidManaSources, planTaps, tapActions } from '@nexus/bots';
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
@@ -291,9 +292,9 @@ export function Game({
     session.holdPriority = false;
   };
 
-  /** Taps a mana source for one mana type; finishes paying once the pool covers the cost. */
-  const tapForMana = (id: InstanceId, mana: ManaType) => {
-    const err = session.submit([{ type: 'ActivateManaAbility', player: YOU, card: id, mana }]);
+  /** Taps a mana source for one mana type (or a paid mana ability's output); finishes paying once the pool covers the cost. */
+  const tapForMana = (id: InstanceId, mana: ManaType, paid?: { output: number; payWith: number }) => {
+    const err = session.submit([{ type: 'ActivateManaAbility', player: YOU, card: id, mana, ...(paid ?? {}) }]);
     if (err) {
       showError(err);
       refresh();
@@ -310,17 +311,41 @@ export function Game({
   /** Clicking a mana source: tap it, asking which mana if it can make more than one kind. */
   const useManaSource = (id: InstanceId) => {
     const kinds = manaChoices(s, s.cards[id]!);
-    if (kinds.length === 1) return tapForMana(id, kinds[0]!);
+    const paid = paidManaOptions(id);
+    if (kinds.length === 1 && paid.length === 0) return tapForMana(id, kinds[0]!);
+    if (kinds.length === 0 && paid.length === 1) return tapForMana(id, paid[0]!.mana, paid[0]!.choice);
     setMenu({
       title: `${cardName(s, id)}: add which mana?`,
-      options: kinds.map((m) => ({
-        label: `Add {${m}}`,
-        pick: () => {
-          setMenu(null);
-          tapForMana(id, m);
-        },
-      })),
+      options: [
+        ...kinds.map((m) => ({
+          label: `Add {${m}}`,
+          pick: () => {
+            setMenu(null);
+            tapForMana(id, m);
+          },
+        })),
+        ...paid.map((o) => ({
+          label: o.label,
+          pick: () => {
+            setMenu(null);
+            tapForMana(id, o.mana, o.choice);
+          },
+        })),
+      ],
     });
+  };
+
+  /** A paid mana ability's choices the pool can pay for right now: "Pay {1}: add {R}{G}". */
+  const paidManaOptions = (id: InstanceId) => {
+    const paid = s.cardDefs[s.cards[id]!.defId]!.manaAbility?.paid;
+    if (!paid) return [];
+    return getLegalActions(s)
+      .filter((a): a is Extract<Action, { type: 'ActivateManaAbility' }> => a.type === 'ActivateManaAbility' && a.card === id && a.output !== undefined)
+      .map((a) => ({
+        label: `Pay ${paid.costs[a.payWith ?? 0]}: add ${paid.outputs[a.output!]}`,
+        mana: a.mana,
+        choice: { output: a.output!, payWith: a.payWith ?? 0 },
+      }));
   };
 
   /** Taps whatever the planner suggests for the rest of the cost. */
@@ -420,7 +445,11 @@ export function Game({
   const currentDefender = livingOpponents.includes(defender) ? defender : livingOpponents[0]!;
   const playable = new Set(plays.map((p) => p.card));
   // Your untapped mana sources, while you could tap them.
-  const manaIds = new Set(yourMove && pending.kind === 'priority' ? manaSources(s, YOU).map((c) => c.id) : []);
+  const manaIds = new Set(
+    yourMove && pending.kind === 'priority'
+      ? [...manaSources(s, YOU), ...paidManaSources(s, YOU).filter((c) => paidManaOptions(c.id).length > 0)].map((c) => c.id)
+      : [],
+  );
   // Cards castable from outside your hand appear next to it; commanders stay in the command zone by your name.
   const elsewhere = [...playable].filter((id) => {
     const z = s.cards[id]!.zone;

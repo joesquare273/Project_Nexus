@@ -5,6 +5,26 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Mana: lands, rocks and ramp (C2, step 6)
+
+Mana abilities can now cost mana: "{1}, {T}: Add {R}{G}" and the filter
+lands' "{R/G}, {T}: Add {R}{R}, {R}{G}, or {G}{G}" (a hybrid cost is two ways
+to pay). `ActivateManaAbility` takes an optional `output` and `payWith`.
+Auto-pay (used by the AI and the board) works them in when plain taps aren't
+enough: it taps something to pay the land's cost, activates it, then pays
+the rest. On the board, clicking such a land offers "Pay {1}: add {R}{G}".
+Also new: mana abilities that need five lands, pay life for colored mana
+(Spire of Industry) or mill a card (Millikin), and "activate only if you
+control a creature with power 4 or greater".
+
+27 precon cards built (`packages/bots/test/precon-mana.test.ts`): Rampant
+Growth, Farseek, Nature's Lore, Three Visits, Wayfarer's Bauble, Solemn
+Simulacrum, Temple of the False God, Spire of Industry, Millikin, Thought
+Vessel, Bonders' Enclave, Slayers' Stronghold, Demolition Field, the eight
+"{1}, {T}: add two colors" lands and the six filter lands. 203 of 320
+distinct precon cards are now built (Counter Blitz 75/100, Revival Trance
+71, Limit Break 69, Scions & Spellcraft 65).
+
 ### End-step and upkeep triggers (C2, step 5)
 
 The engine now tracks, each turn, life gained, cards leaving your graveyard,
@@ -214,7 +234,10 @@ card-by-card work:
    waiting on their own mechanics: Estinien (combat damage by Dragons),
    Kefka and Furious Rise (casting exiled cards), Sabin (blitz), Priest of
    Fell Rites (unearth), Hraesvelgr (ward), Gogo (copies).
-6. Then Sagas, graveyard-to-hand, anthems, evolve, counterspells, and the
+6. **Mana: lands, rocks and ramp.** Done 2026-10-22 (27 cards; see above).
+   Still waiting: Path of Ancestry (its scry rider), Relic of Legends
+   (tapping a creature for mana), Everflowing Chalice (multikicker).
+7. Then Sagas, graveyard-to-hand, anthems, evolve, counterspells, and the
    remaining one-offs.
 
 ### Picking up on the other computer

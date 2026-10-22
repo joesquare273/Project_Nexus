@@ -335,12 +335,43 @@ export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost,
   return planPayment(poolFor(s, playerId, forEquipment), cost) !== null;
 }
 
+/**
+ * A paid mana ability ("{1}, {T}: Add {R}{G}"): pays `costs[payWith]` from the
+ * pool, taps, and adds `outputs[output]`.
+ */
+function activatePaidManaAbility(ctx: Ctx, playerId: PlayerId, c: CardInstance, output: number, payWith: number): void {
+  const paid = defOf(ctx.s, c).manaAbility?.paid;
+  if (!paid) reject('That permanent has no such mana ability.');
+  const out = paid.outputs[output];
+  const cost = paid.costs[payWith];
+  if (out === undefined || cost === undefined) reject('That permanent has no such mana ability.');
+  payMana(ctx, playerId, parseManaCost(cost));
+  tap(ctx, c);
+  const made = parseManaCost(out);
+  for (const t of MANA_TYPES) for (let i = 0; i < (made[t] ?? 0); i++) addMana(ctx, playerId, t, c.id);
+}
+
 /** "{T}: Add ...", plus Treasure's sacrifice and Freya's Equipment-only mana. Mana abilities don't use the stack. */
-export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId, mana: ManaType): void {
+export function activateManaAbility(
+  ctx: Ctx,
+  playerId: PlayerId,
+  id: InstanceId,
+  mana: ManaType,
+  output?: number,
+  payWith = 0,
+): void {
   const s = ctx.s;
   const c = card(s, id);
   const def = defOf(s, c);
   if (c.zone !== 'battlefield' || c.controller !== playerId) reject('You do not control that permanent.');
+  if (output !== undefined) {
+    if (c.tapped) reject('That permanent is already tapped.');
+    if (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) {
+      reject('Creatures with summoning sickness can’t use tap abilities.');
+    }
+    activatePaidManaAbility(ctx, playerId, c, output, payWith);
+    return;
+  }
   const produced = manaChoices(s, c);
   if (produced.length === 0) reject('That permanent has no mana ability.');
   if (!produced.includes(mana)) reject(`That permanent can't produce {${mana}}.`);
@@ -361,6 +392,9 @@ export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId
   }
   // Pain lands and Talismans: "This land deals 1 damage to you."
   if (ability?.painFor?.includes(mana)) dealDamage(ctx, id, { kind: 'player', player: playerId }, 1, false);
+  if (ability?.lifeFor?.includes(mana)) changeLife(ctx, playerId, -1);
+  // Millikin: "{T}, Mill a card".
+  for (const top of s.players[playerId]!.library.slice(0, ability?.mill ?? 0)) moveCard(ctx, top, 'graveyard');
 }
 
 // ---------------------------------------------------------------------------
@@ -519,6 +553,10 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
     return 'That can only be activated in your main phase with an empty stack.';
+  }
+  if (spec.ifYouControl) {
+    const meets = (x: CardInstance) => x.controller === playerId && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
+    if (!battlefield(s).some(meets)) return "You don't meet the condition to activate that.";
   }
   if (spec.cost.tap) {
     if (c.tapped) return 'That permanent is already tapped.';

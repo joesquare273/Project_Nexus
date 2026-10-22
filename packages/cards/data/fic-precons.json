@@ -447,10 +447,8 @@
           "count": 1,
           "set": "fic",
           "number": "376",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Brushland",
@@ -497,10 +495,8 @@
           "count": 1,
           "set": "fic",
           "number": "392",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fortified Village",
@@ -531,10 +527,8 @@
           "count": 1,
           "set": "fic",
           "number": "407",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rootbound Crag",
@@ -549,10 +543,8 @@
           "count": 1,
           "set": "fic",
           "number": "417",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Scavenger Grounds",
@@ -567,30 +559,24 @@
           "count": 1,
           "set": "fic",
           "number": "424",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Spire of Industry",
           "count": 1,
           "set": "fic",
           "number": "426",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sungrass Prairie",
           "count": 1,
           "set": "fic",
           "number": "428",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sunpetal Grove",
@@ -605,10 +591,8 @@
           "count": 1,
           "set": "fic",
           "number": "433",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Zack Fair",
@@ -688,20 +672,16 @@
           "count": 1,
           "set": "fic",
           "number": "311",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rampant Growth",
           "count": 1,
           "set": "fic",
           "number": "313",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Behemoth Sledge",
@@ -1324,10 +1304,8 @@
           "count": 1,
           "set": "fic",
           "number": "360",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Battlefield Forge",
@@ -1350,10 +1328,8 @@
           "count": 1,
           "set": "fic",
           "number": "386",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dragonskull Summit",
@@ -1376,10 +1352,8 @@
           "count": 1,
           "set": "fic",
           "number": "391",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Foreboding Ruins",
@@ -1402,10 +1376,8 @@
           "count": 1,
           "set": "fic",
           "number": "401",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "High Market",
@@ -1428,20 +1400,16 @@
           "count": 1,
           "set": "fic",
           "number": "417",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shadowblood Ridge",
           "count": 1,
           "set": "fic",
           "number": "421",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shineshadow Snarl",
@@ -1472,10 +1440,8 @@
           "count": 1,
           "set": "fic",
           "number": "433",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Phoenix Down",
@@ -1627,11 +1593,8 @@
           "count": 1,
           "set": "fic",
           "number": "352",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mind Stone",
@@ -1678,10 +1641,8 @@
           "count": 1,
           "set": "fic",
           "number": "372",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ash Barrens",
@@ -1696,10 +1657,8 @@
           "count": 1,
           "set": "fic",
           "number": "385",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Evolving Wilds",
@@ -2360,10 +2319,8 @@
           "count": 1,
           "set": "fic",
           "number": "393",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fortified Village",
@@ -2394,10 +2351,8 @@
           "count": 1,
           "set": "fic",
           "number": "410",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Port Town",
@@ -2420,20 +2375,16 @@
           "count": 1,
           "set": "fic",
           "number": "423",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sungrass Prairie",
           "count": 1,
           "set": "fic",
           "number": "428",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sunpetal Grove",
@@ -2523,10 +2474,8 @@
           "count": 1,
           "set": "fic",
           "number": "302",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Inspiring Call",
@@ -2541,10 +2490,8 @@
           "count": 1,
           "set": "fic",
           "number": "315",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bred for the Hunt",
@@ -2662,10 +2609,8 @@
           "count": 1,
           "set": "fic",
           "number": "438",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Command Tower",
@@ -3217,20 +3162,16 @@
           "count": 1,
           "set": "fic",
           "number": "384",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Desolate Mire",
           "count": 1,
           "set": "fic",
           "number": "386",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Drowned Catacomb",
@@ -3253,10 +3194,8 @@
           "count": 1,
           "set": "fic",
           "number": "391",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Glacial Fortress",
@@ -3311,10 +3250,8 @@
           "count": 1,
           "set": "fic",
           "number": "423",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sunken Hollow",
@@ -3329,10 +3266,8 @@
           "count": 1,
           "set": "fic",
           "number": "430",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Underground River",
@@ -3512,10 +3447,8 @@
           "count": 1,
           "set": "fic",
           "number": "368",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Sanctum",
@@ -3554,10 +3487,8 @@
           "count": 1,
           "set": "fic",
           "number": "385",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Evolving Wilds",
@@ -3599,10 +3530,8 @@
           "count": 1,
           "set": "fic",
           "number": "438",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Island",

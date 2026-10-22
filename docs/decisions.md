@@ -125,6 +125,9 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Rikku's Steal | Only offers opponents' creatures that have counters | Any creature an opponent controls is a legal target |
 | Scholar of New Horizons | Puts the Plains onto the battlefield whenever it may | Optional ("you may") |
 | Yuna, Grand Summoner's mana | "When you next cast a creature spell this turn" is applied as the spell is cast, not as a trigger | A delayed triggered ability |
+| Maximum hand size | There is none: nobody discards down to seven at cleanup (so Thought Vessel's "no maximum hand size" changes nothing) | Seven cards (rule 402.2) |
+| Demolition Field | Both players always search for a basic land | Each search is optional ("may") |
+| Auto-pay with paid mana abilities | Works in at most two of them, and only when plain taps can't pay | Any combination |
 | Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |

@@ -427,6 +427,8 @@ export interface ObjectFilter {
   subtypes?: string[];
   /** Has all of these supertypes ("a basic land card"). */
   supertypes?: Supertype[];
+  /** Has none of these supertypes ("nonbasic land"). */
+  nonSupertypes?: Supertype[];
   tapped?: boolean;
   attacking?: boolean;
   /** Is attacking the player whose ability this is ("target creature attacking you"). */
@@ -536,6 +538,8 @@ export interface ActivatedSpec {
   zone?: 'battlefield' | 'hand';
   /** "Activate only as a sorcery" (equip always is). */
   sorcerySpeed?: boolean;
+  /** "Activate only if you control a creature with power 4 or greater." */
+  ifYouControl?: ObjectFilter;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
   equip?: boolean;
   effects: EffectSpec[];
@@ -607,6 +611,20 @@ export interface CardDefinition {
     yourLandColors?: boolean;
     /** "If this creature has a +1/+1 counter on it, add three mana instead." */
     amountWithCounters?: number;
+    /** "Activate only if you control five or more lands." */
+    ifLandsAtLeast?: number;
+    /** Spire of Industry: "Add one mana of any color. Activate only if you control an artifact." */
+    anyColorIfControls?: ObjectFilter;
+    /** Producing one of these costs 1 life ("{T}, Pay 1 life: Add one mana of any color"). */
+    lifeFor?: ManaType[];
+    /** "{T}, Mill a card: Add {C}." */
+    mill?: number;
+    /**
+     * A mana ability that costs mana: "{1}, {T}: Add {R}{G}", or a filter
+     * land's "{R/G}, {T}: Add {R}{R}, {R}{G}, or {G}{G}". `costs` are the
+     * ways to pay (a hybrid symbol is two), `outputs` the mana it can add.
+     */
+    paid?: { costs: string[]; outputs: string[] };
     /** "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters." */
     nextCreatureCounters?: number;
   };
@@ -1018,7 +1036,8 @@ export type Action =
       /** Cards discarded to pay an additional cost. */
       costCards?: InstanceId[];
     }
-  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType }
+  /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
+  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number }
   /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[] }
   | { type: 'PassPriority'; player: PlayerId }
