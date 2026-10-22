@@ -29,6 +29,19 @@ export function manaValueOf(def: CardDefinition): number {
   return manaValue(parseManaCost(def.manaCost));
 }
 
+/**
+ * An object's mana value. {X} is 0 everywhere except on the stack, where it's
+ * the chosen value, once for each X symbol (rule 202.3e): {X}{X} with X = 2 is 4.
+ */
+export function objectManaValue(s: GameState, c: CardInstance): number {
+  const def = s.cardDefs[c.defId]!;
+  const base = manaValueOf(def);
+  if (c.zone !== 'stack') return base;
+  const item = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
+  const x = item?.kind === 'spell' ? (item.x ?? 0) : 0;
+  return base + x * (parseManaCost(def.manaCost).x ?? 0);
+}
+
 /** Card types whose cards are permanents: they resolve onto the battlefield and stay (rule 110.4). */
 export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment'];
 

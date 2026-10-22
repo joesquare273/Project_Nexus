@@ -105,7 +105,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     if (def.alternativeCost && from !== 'graveyard' && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
-        const choice: SpellChoice = { ...modes, ...(alternative ? { alternative: true } : {}) };
+       for (const x of xChoices(s, playerId, def, alternative)) {
+        const choice: SpellChoice = { ...modes, ...(alternative ? { alternative: true } : {}), ...(x !== undefined ? { x } : {}) };
         // "As an additional cost, discard a card": each way to pay it.
         const discards = def.additionalCost
           ? subsets(p.hand.filter((id) => id !== c.id), def.additionalCost.discard, def.additionalCost.discard)
@@ -114,15 +115,41 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
           for (const costCards of discards) {
             out.push({
               action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}) },
-              cost: spellCost(s, def, from, targets, c, alternative),
+              cost: spellCost(s, def, from, targets, c, alternative, x ?? 0),
               forEquipment: isEquipment(s, c),
             });
           }
         }
+       }
       }
     }
   }
   return out;
+}
+
+/** Most X ever offered, to keep the list of choices short. */
+const MAX_X = 12;
+
+/**
+ * The values of {X} worth offering: 1 up to what the player's pool and
+ * untapped mana sources could pay. [undefined] for spells without X.
+ */
+function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alternative: boolean): (number | undefined)[] {
+  const cost = parseManaCost(alternative ? def.alternativeCost?.mana : def.manaCost);
+  if (!cost.x) return [undefined];
+  const p = s.players[playerId]!;
+  let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
+  for (const id of p.battlefield) {
+    const c = s.cards[id]!;
+    const d = s.cardDefs[c.defId]!;
+    if (c.tapped || c.controller !== playerId) continue;
+    if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
+    if (manaChoices(s, c).length > 0) available += Math.max(d.manaAbility?.amount ?? 1, d.manaAbility?.amountWithCounters ?? 0);
+    else if (d.manaAbility?.paid) available += 1;
+  }
+  const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
+  const most = Math.min(MAX_X, Math.floor((available - base) / cost.x));
+  return Array.from({ length: Math.max(0, most) }, (_, i) => i + 1);
 }
 
 /** Every non-mana ability the player could activate right now, ignoring mana. */

@@ -907,7 +907,7 @@ button.big {
   color: var(--gold);
 }
 /* The gear button at the right of the phase track, and its panel. */
-.settings {
+.game-settings {
   position: relative;
   margin-left: auto;
   flex: none;
@@ -1310,6 +1310,61 @@ button.zone-link:hover {
 }
 .deck-choices.precons {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* Which legend leads your precon. */
+.commander-picker {
+  margin-top: 18px;
+}
+.commander-picker-title {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.commander-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.commander-choice {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  border: 2px solid transparent;
+  background: #17231e;
+}
+.commander-choice img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+.commander-choice.chosen {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(242, 201, 76, 0.25);
+}
+.commander-name {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 8px 2px;
+}
+.commander-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.commander-tags .tag {
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
 }
 
 .format-choices {

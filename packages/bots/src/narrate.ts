@@ -136,6 +136,8 @@ function effectText(e: EffectSpec): string {
       return `put ${countersText(n, e.counter)} on ${who}`;
     case 'PutLastCounters':
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
+    case 'RevealUntil':
+      return `reveal cards from the top of your library until you reveal a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; put it into your hand and the rest on the bottom`;
     case 'GainControl':
       return `gain control of ${who}`;
     case 'WinGame':
@@ -271,8 +273,10 @@ function triggerCondition(t: TriggerSpec): string {
     LeavesBattlefield: 'leaves the battlefield',
     Draws: '',
     LeavesGraveyard: 'leaves your graveyard',
+    YouAttack: '',
     Sacrificed: 'is sacrificed',
   }[t.when] ?? '';
+  if (t.when === 'YouAttack') return `Whenever you attack with ${t.attackersAtLeast ?? 1} or more creatures`;
   if (t.when === 'Draws') {
     const who = t.drawer === 'Opponent' ? 'an opponent draws' : t.drawer === 'You' ? 'you draw' : 'a player draws';
     return `Whenever ${who} a card${t.notOnDrawersTurn ? ", if it isn't that player's turn" : ''}`;

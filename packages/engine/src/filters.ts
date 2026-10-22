@@ -3,7 +3,7 @@
 // controls") and searches ("a Plains card").
 
 import { characteristics, isEquipped, totalCounters } from './characteristics.ts';
-import { categoriesOf, colorsOf, manaValueOf } from './typerules.ts';
+import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
 import type { CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
 /** Who is asking: the controller of the spell or ability, and its source card if any. */
@@ -76,8 +76,8 @@ export function matchesObject(
     if (f.powerAtMost !== undefined && ch.power > f.powerAtMost) return false;
     if (f.toughnessAtLeast !== undefined && ch.toughness < f.toughnessAtLeast) return false;
   }
-  if (f.manaValueAtMost !== undefined && manaValueOf(def) > f.manaValueAtMost) return false;
-  if (f.manaValueAtLeast !== undefined && manaValueOf(def) < f.manaValueAtLeast) return false;
+  if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
+  if (f.manaValueAtLeast !== undefined && objectManaValue(s, obj) < f.manaValueAtLeast) return false;
   if (f.noCounters !== undefined || f.hasCounters !== undefined || f.hasAnyCounters !== undefined) {
     // Off the battlefield: the counters it had as it left (for "if it had counters on it").
     const here = obj.zone === 'battlefield';

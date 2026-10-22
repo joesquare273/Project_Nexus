@@ -127,6 +127,8 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
 
 /** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
 export interface SpellChoice {
+  /** The value chosen for {X}. */
+  x?: number;
   mode?: number;
   modes?: number[];
   alternative?: boolean;
@@ -450,9 +452,12 @@ export function spellCost(
   targets: Target[],
   card?: CardInstance,
   alternative = false,
+  x = 0,
 ): ManaCost {
   const base = alternative ? def.alternativeCost?.mana : from === 'graveyard' ? def.flashback : def.manaCost;
   let cost = parseManaCost(base);
+  // {X}: each X symbol costs the chosen value (rule 107.3).
+  if (cost.x) cost = { ...cost, generic: cost.generic + x * cost.x };
   // Commander tax: {2} more for each earlier cast from the command zone (rule 903.8).
   if (from === 'command' && card) {
     cost = { ...cost, generic: cost.generic + 2 * (s.players[card.owner]!.commanderCasts[card.id] ?? 0) };
@@ -507,7 +512,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   checkTargets(s, spellEffects(def, choice), targets, playerId, id);
   const costCards = choice.costCards ?? [];
   checkDiscardCost(s, playerId, def.additionalCost?.discard ?? 0, costCards, id);
-  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c, alternative), isEquipment(s, c));
+  const x = choice.x ?? 0;
+  if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
+  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c, alternative, x), isEquipment(s, c));
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   for (const discarded of costCards) discard(ctx, discarded);
   if (from === 'command') {
@@ -536,6 +543,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(alternative ? { alternative } : {}),
     castFrom: from,
     manaSpent,
+    ...(x > 0 ? { x } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'SpellCast', player: playerId, card: id, defId: c.defId, targets, manaSpent });
@@ -808,6 +816,14 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? sourcePower(s, r.item)
               : a.of === 'previousTargetManaValue'
                 ? previousManaValue(s, r)
+                : a.of === 'x'
+                  ? r.item.kind === 'spell'
+                    ? (r.item.x ?? 0)
+                    : (s.cards[r.item.source]!.xPaid ?? 0)
+                  : a.of === 'lifeLostThisWay'
+                    ? (r.lifeLostThisWay ?? 0)
+                    : a.of === 'revealedManaValue'
+                      ? (r.revealedManaValue ?? 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
                 : (r.chosenManaValue ?? 0);
@@ -947,7 +963,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, amount);
       return;
     case 'LoseLife':
-      for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, -amount);
+      for (const t of targets) {
+        if (t.kind !== 'player') continue;
+        const before = s.players[t.player]!.life;
+        changeLife(ctx, t.player, -amount);
+        r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
+      }
       return;
     case 'Destroy':
       for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
@@ -1025,6 +1046,29 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) {
         for (const [kind, n] of Object.entries(last ?? {})) addCounters(ctx, id, n, item.controller, kind as AnyCounter);
       }
+      return;
+    }
+    case 'RevealUntil': {
+      const library = s.players[item.controller]!.library;
+      const revealed: InstanceId[] = [];
+      let found: InstanceId | undefined;
+      for (const id of library) {
+        revealed.push(id);
+        ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+        if (matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })) {
+          found = id;
+          break;
+        }
+      }
+      const rest = revealed.filter((id) => id !== found);
+      if (found) {
+        r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[found]!).manaCost));
+        moveCard(ctx, found, 'hand');
+      }
+      // The rest go on the bottom in a random order.
+      for (const id of rest) library.splice(library.indexOf(id), 1);
+      shuffleInPlace(s, rest);
+      library.push(...rest);
       return;
     }
     case 'GainControl':
@@ -1335,6 +1379,8 @@ export function resolveTop(ctx: Ctx): void {
     if (permanent) {
       const extra = c.extraCountersOnEnter ?? 0;
       moveCard(ctx, c.id, 'battlefield');
+      if (item.x) c.xPaid = item.x;
+      if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
       c.summoningSick = true;

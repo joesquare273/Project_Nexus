@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { CARD_IDS_BY_NAME, FIN_PRECONS, SCRYFALL } from '@nexus/cards';
+import { CARD_IDS_BY_NAME, FIN_PRECONS, SCRYFALL, preconCommanders } from '@nexus/cards';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
+import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 
@@ -28,6 +29,8 @@ export function App() {
   const [session, setSession] = useState<GameSession | null>(null);
   const [format, setFormat] = useState<'starter' | 'commander'>('starter');
   const [precon, setPrecon] = useState(FIN_PRECONS[0]!.name);
+  /** Which legend leads your precon; undefined means its printed commander. */
+  const [commander, setCommander] = useState<string | undefined>(undefined);
   const [deck, setDeck] = useState<DeckChoice>('UB');
   const [opponents, setOpponents] = useState(1);
   const [bot, setBot] = useState<SessionOptions['bot']>('ai');
@@ -77,6 +80,7 @@ export function App() {
         format,
         deck,
         precon,
+        ...(format === 'commander' && commander ? { commander } : {}),
         opponents,
         bot,
         seed: Number.isFinite(chosenSeed) ? chosenSeed : 1,
@@ -124,7 +128,14 @@ export function App() {
       ) : (
         <div className="deck-choices precons">
           {FIN_PRECONS.map((p) => (
-            <button key={p.name} className={`deck ${precon === p.name ? 'chosen' : ''}`} onClick={() => setPrecon(p.name)}>
+            <button
+              key={p.name}
+              className={`deck ${precon === p.name ? 'chosen' : ''}`}
+              onClick={() => {
+                setPrecon(p.name);
+                setCommander(undefined);
+              }}
+            >
               <img src={SCRYFALL[CARD_IDS_BY_NAME[p.commander.name]!]?.image.artCrop} alt="" />
               <span className="deck-name">{p.name.replace(/ \(.*\)$/, '')}</span>
               <span className="deck-blurb">
@@ -134,6 +145,7 @@ export function App() {
           ))}
         </div>
       )}
+      {format === 'commander' && <CommanderPicker precon={precon} chosen={commander} onChoose={setCommander} />}
       {format === 'commander' && (
         <p className="fineprint">
           Commander rules are on: 40 life, your commander starts in the command zone (cast it from there; it costs
@@ -179,6 +191,37 @@ export function App() {
           : 'The four Final Fantasy Commander precons, exactly as printed; the rest of their cards are being built step by step.'}{' '}
         Card images courtesy of Scryfall.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Choose which card leads your precon: the printed commander or another
+ * legendary creature (or Vehicle) in all of the deck's colors.
+ */
+function CommanderPicker({ precon, chosen, onChoose }: { precon: string; chosen: string | undefined; onChoose: (name: string | undefined) => void }) {
+  const choices = preconCommanders(precon);
+  const current = chosen ?? choices.find((c) => c.printed)?.name;
+  return (
+    <div className="commander-picker">
+      <div className="commander-picker-title">Your commander</div>
+      <div className="commander-choices">
+        {choices.map((c) => (
+          <button
+            key={c.name}
+            className={`commander-choice ${current === c.name ? 'chosen' : ''}`}
+            onClick={() => onChoose(c.printed ? undefined : c.name)}
+          >
+            <img src={SCRYFALL[c.defId]?.image.artCrop} alt="" />
+            <span className="commander-name">{c.name}</span>
+            <span className="commander-tags">
+              <ManaCost cost={c.colorIdentity.map((k) => `{${k}}`).join('')} size={12} />
+              {c.printed && <span className="tag">printed commander</span>}
+              {!c.built && <span className="tag">not built yet</span>}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

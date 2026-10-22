@@ -130,6 +130,7 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Auto-pay with paid mana abilities | Works in at most two of them, and only when plain taps can't pay | Any combination |
 | Partner with (Alphinaud, Alisaie) | You may search for the partner; the "target player" is always you | Any target player may |
 | Cut a Deal | You draw one card for each opponent still in the game | One for each opponent who actually drew |
+| Yuna's Whistle | The creature to get counters is chosen when the spell is cast | It's chosen when the card is revealed (a reflexive trigger) |
 | Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
@@ -137,4 +138,4 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Library search | Takes the first matching card | The player chooses which matching card |
 | "Search for up to N cards" | Takes as many as it can (up to N) | The player may take fewer |
 | Choices in "each player" effects | Players choose one at a time in turn order from the active player, seeing earlier choices | Simultaneous, in APNAP order (rule 101.4) |
-| {X} costs | X is 0 (cards with X aren't built yet) | The caster chooses X |
+| {X} costs | The caster chooses X from 1 up to what their mana could pay, at most 12 | Any X, including 0 |

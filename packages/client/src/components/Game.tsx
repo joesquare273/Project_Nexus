@@ -709,7 +709,7 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
     };
   }, [open]);
   return (
-    <div className="settings" ref={box}>
+    <div className="game-settings" ref={box}>
       <button className={`settings-button ${open ? 'open' : ''}`} onClick={() => setOpen(!open)} title="Settings" aria-expanded={open}>
         ⚙
       </button>

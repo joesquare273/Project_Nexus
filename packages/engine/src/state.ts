@@ -197,6 +197,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.namedCounters;
   delete c.monstrous;
   delete c.extraCountersOnEnter;
+  delete c.xPaid;
   delete c.attachedTo;
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;

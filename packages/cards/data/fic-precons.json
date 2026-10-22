@@ -1969,10 +1969,8 @@
           "count": 1,
           "set": "fic",
           "number": "75",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Kimahri, Valiant Guardian",
@@ -2112,11 +2110,8 @@
           "count": 1,
           "set": "fic",
           "number": "269",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bane of Progress",
@@ -2249,12 +2244,8 @@
           "count": 1,
           "set": "fic",
           "number": "371",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Brushland",
@@ -2700,15 +2691,8 @@
           "count": 1,
           "set": "fic",
           "number": "11",
-          "implemented": false,
-          "needs": [
-            "full-party",
-            "light-party",
-            "scry",
-            "triggers",
-            "static-abilities",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dancer's Chakrams",
@@ -3317,11 +3301,8 @@
           "count": 1,
           "set": "fic",
           "number": "276",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Snuff Out",

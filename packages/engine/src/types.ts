@@ -209,6 +209,11 @@ export const EFFECT_KINDS = [
   'AttachLastEquipment',
   /** Gain control of the target permanents for the rest of the game (Hellkite Tyrant). */
   'GainControl',
+  /**
+   * Reveal cards from the top of your library until one matches `filter`; put
+   * it into your hand and the rest on the bottom in a random order (Yuna's Whistle).
+   */
+  'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
   /** Each target player puts up to `amount` cards matching `filter` from their hand onto the battlefield, their choice. */
@@ -287,7 +292,13 @@ export type Amount =
         /** The +1/+1 counters the triggering object had as it left the battlefield. */
         | 'subjectPlusOneCounters'
         /** The previous target's mana value ("you lose life equal to that card's mana value"). */
-        | 'previousTargetManaValue';
+        | 'previousTargetManaValue'
+        /** The value chosen for {X} (for a permanent's abilities, the X it was cast with). */
+        | 'x'
+        /** Life lost to earlier effects of the same spell ("you gain life equal to the life lost this way"). */
+        | 'lifeLostThisWay'
+        /** The mana value of the card found by RevealUntil. */
+        | 'revealedManaValue';
       plus?: number;
     };
 
@@ -409,6 +420,8 @@ export const TRIGGER_EVENTS = [
   'Draws',
   /** A card left a graveyard (subject: the card; its owner's graveyard). */
   'LeavesGraveyard',
+  /** You attacked with at least `attackersAtLeast` creatures ("whenever you attack with four or more creatures"). */
+  'YouAttack',
   /** A permanent was sacrificed. */
   'Sacrificed',
 ] as const;
@@ -501,6 +514,8 @@ export interface TriggerSpec {
   drawer?: 'You' | 'Opponent';
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
+  /** YouAttack: how many attacking creatures it takes. */
+  attackersAtLeast?: number;
   /** Draws: only draws on someone else's turn ("if it isn't that player's turn"). */
   notOnDrawersTurn?: boolean;
   /** Intervening "if": "if you put a counter on a creature this turn". */
@@ -709,6 +724,8 @@ export interface CardDefinition {
   additionalCost?: { discard: number };
   /** "This creature enters with N +1/+1 counters on it." */
   entersWithCounters?: number;
+  /** "This creature enters with X +1/+1 counters on it" (Walking Ballista). */
+  entersWithXCounters?: boolean;
   /** The kind of those counters, if not +1/+1 ("enters with a page counter on it"). */
   entersWithCounterKind?: CounterKind;
   /** A token's definition, created by effects rather than played from a deck. */
@@ -781,6 +798,8 @@ export interface CardInstance {
   countersTurn?: number;
   /** The turn it last entered the battlefield. */
   enteredTurn?: number;
+  /** The value of {X} it was cast with, while it's on the battlefield. */
+  xPaid?: number;
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */
@@ -864,6 +883,8 @@ export interface SpellItem {
   castFrom: 'hand' | 'graveyard' | 'exile' | 'command';
   /** Total mana spent to cast it. */
   manaSpent: number;
+  /** The value chosen for {X}. */
+  x?: number;
 }
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
@@ -928,6 +949,10 @@ export interface Resolving {
   scrying?: boolean;
   /** Card choices still to make, in order (discard, sacrifice). */
   choiceQueue?: CardChoice[];
+  /** Life players lost to this spell or ability's effects so far. */
+  lifeLostThisWay?: number;
+  /** The mana value of the card RevealUntil found. */
+  revealedManaValue?: number;
   /** What each player chose in the last choosing effect. */
   chosen?: { player: PlayerId; cards: InstanceId[] }[];
   /** Mana value of all cards chosen in the last choosing effect, measured as they were chosen. */
@@ -1061,6 +1086,8 @@ export type Action =
       alternative?: boolean;
       /** Cards discarded to pay an additional cost. */
       costCards?: InstanceId[];
+      /** The value chosen for {X} in its cost. */
+      x?: number;
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number }

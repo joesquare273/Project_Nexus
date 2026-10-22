@@ -73,7 +73,8 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const a = o.action;
     const isAbility = a.type === 'ActivateAbility';
     const alternative = a.type === 'CastSpell' && a.alternative;
-    const key = isAbility ? `${a.card}#${a.ability}` : alternative ? `${a.card}#alt` : a.card;
+    const x = a.type === 'CastSpell' ? a.x : undefined;
+    const key = isAbility ? `${a.card}#${a.ability}` : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;
@@ -89,11 +90,13 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             card: a.card,
             kind: 'spell',
             // Alternative costs get their own entry: "Pay 4 life for", "Overload".
-            label: alternative
-              ? def.alternativeCost!.label
-              : s.cards[a.card]!.zone === 'hand'
-                ? 'Cast'
-                : `Cast from ${s.cards[a.card]!.zone}`,
+            label: `${
+              alternative
+                ? def.alternativeCost!.label
+                : s.cards[a.card]!.zone === 'hand'
+                  ? 'Cast'
+                  : `Cast from ${s.cards[a.card]!.zone}`
+            }${x !== undefined ? ` with X = ${x}` : ''}`,
             choices: [],
           };
       grouped.set(key, play);

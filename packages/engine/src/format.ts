@@ -54,6 +54,11 @@ export const COMMANDER: FormatConfig = {
   commanderDamageThreshold: 21,
 };
 
+/** A legendary creature or a legendary Vehicle can be a commander (rule 903.3). */
+export function canBeCommander(def: CardDefinition): boolean {
+  return !!def.supertypes?.includes('Legendary') && (def.types.includes('creature') || !!def.subtypes?.includes('Vehicle'));
+}
+
 /** Problems with a commander and the color identity of its deck (rules 903.3-903.5). */
 export function validateCommander(
   deck: readonly CardDefId[],
@@ -63,9 +68,7 @@ export function validateCommander(
   const def = cardDefs[commander];
   if (!def) return [`Unknown commander "${commander}".`];
   const errors: string[] = [];
-  if (!def.supertypes?.includes('Legendary') || !def.types.includes('creature')) {
-    errors.push(`"${def.name}" isn't a legendary creature, so it can't be a commander.`);
-  }
+  if (!canBeCommander(def)) errors.push(`"${def.name}" isn't a legendary creature or legendary Vehicle, so it can't be a commander.`);
   const identity = new Set(def.colorIdentity ?? []);
   for (const id of new Set(deck)) {
     const card = cardDefs[id];

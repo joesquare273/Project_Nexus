@@ -1,6 +1,7 @@
 // The card database. Cards are data, not code: adding a card that uses
 // existing effects means editing JSON only.
 
+import { canBeCommander } from '@nexus/engine';
 import type { CardDefId, CardDefinition } from '@nexus/engine';
 import kitsData from '../data/fin-starter-kits.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
@@ -87,6 +88,55 @@ export function starterKitDeck(colors: 'RW' | 'UB'): CardDefId[] {
     if (!id) throw new Error(`No card definition for "${c.name}".`);
     return Array<CardDefId>(c.count).fill(id);
   });
+}
+
+/** A card in a precon that could lead it. */
+export interface CommanderChoice {
+  name: string;
+  defId: CardDefId;
+  colorIdentity: string[];
+  /** Its abilities are built (unbuilt creatures play as their body and keywords). */
+  built: boolean;
+  /** The precon's printed commander. */
+  printed: boolean;
+}
+
+/**
+ * The cards in a precon that could be its commander: legendary creatures and
+ * legendary Vehicles whose colors cover every card in the deck (rules 903.3,
+ * 903.5c). The printed commander comes first.
+ */
+export function preconCommanders(name: string): CommanderChoice[] {
+  const precon = FIN_PRECONS.find((p) => p.name === name || p.name.startsWith(name));
+  if (!precon) throw new Error(`No precon named "${name}".`);
+  const all = [precon.commander, ...precon.cards];
+  const deckColors = new Set(all.flatMap((c) => CARD_DEFS[CARD_IDS_BY_NAME[c.name]!]?.colorIdentity ?? []));
+  const choices: CommanderChoice[] = [];
+  for (const c of all) {
+    const def = CARD_DEFS[CARD_IDS_BY_NAME[c.name]!];
+    if (!def || !canBeCommander(def)) continue;
+    const colors = def.colorIdentity ?? [];
+    if (![...deckColors].every((k) => colors.includes(k as never))) continue;
+    choices.push({ name: def.name, defId: def.id, colorIdentity: colors, built: !def.notBuilt, printed: c === precon.commander });
+  }
+  return choices.sort((a, b) => Number(b.printed) - Number(a.printed));
+}
+
+/**
+ * A precon as a commander plus a 99-card library, for createGame. With
+ * `commanderName` (one of `preconCommanders`), that card leads it and the
+ * printed commander joins the 99.
+ */
+export function preconDeckWithCommander(name: string, commanderName?: string): { commander: CardDefId; deck: CardDefId[] } {
+  const base = preconDeck(name);
+  if (!commanderName) return base;
+  const choice = preconCommanders(name).find((c) => c.name === commanderName);
+  if (!choice) throw new Error(`${commanderName} can't lead ${name}: it must be a legendary creature or Vehicle in all of the deck's colors.`);
+  if (choice.printed) return base;
+  const deck = [...base.deck];
+  deck.splice(deck.indexOf(choice.defId), 1);
+  deck.push(base.commander);
+  return { commander: choice.defId, deck };
 }
 
 /** A precon as a commander plus a 99-card library, for createGame. */

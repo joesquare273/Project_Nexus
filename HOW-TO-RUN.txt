@@ -44,7 +44,10 @@ You need Node.js 24 or newer.
     - Starter Kits: Red-White or Blue-Black, 60 cards, 20 life.
     - Commander: one of the four Final Fantasy Commander precons (Limit
       Break, Revival Trance, Counter Blitz, Scions & Spellcraft), 100 cards,
-      40 life. Your commander is the card next to your name: click it to
+      40 life. Under "Your commander" pick which card leads it: the
+      printed commander or the deck's other legend in all of its colors
+      (a commander's colors must cover every card in the deck).
+      Your commander is the card next to your name: click it to
       cast it when it glows. Each time it's cast from there it costs {2}
       more. When it dies or is exiled (or bounced), you choose whether it
       goes back to the command zone. 21 combat damage from one commander knocks a player out. Many

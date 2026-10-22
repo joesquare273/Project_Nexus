@@ -5,6 +5,35 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Choose your precon's commander
+
+On the Commander setup screen, "Your commander" lists the cards in your
+precon that can lead it: legendary creatures and legendary Vehicles whose
+colors cover every card in the deck (rules 903.3, 903.5c). That's the
+printed commander and the precon's other legend in all its colors: Tifa,
+Celes, Yuna and G'raha Tia. The printed commander goes into the 99. In code: `preconCommanders(name)` and
+`preconDeckWithCommander(name, commander)` in `@nexus/cards`
+(`packages/bots/test/precon-commander-choice.test.ts`).
+
+Also fixed: on the stack, a spell's mana value counts its X, once per X
+symbol (rule 202.3e), so Exsanguinate with X = 1 is mana value 3 and
+Y'shtola sees it. And the in-game Settings gear no longer shares its CSS
+class with the setup screen's settings.
+
+### X costs (C2, step 8)
+
+Spells with {X} in their cost now work: `CastSpell` takes `x`, the legal
+actions offer X from 1 up to what your untapped mana could pay (at most 12),
+and the board lists each as "Cast with X = 3". A permanent remembers the X
+it was cast with, so "enters with X counters" and "create X tokens" work.
+Also new: "whenever you attack with four or more creatures", "you gain life
+equal to the life lost this way", and revealing cards until a creature.
+
+5 precon cards built (`packages/bots/test/precon-x.test.ts`): Walking
+Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond and Yuna's
+Whistle. 227 of 320 distinct precon cards are now built (Counter Blitz 78/100,
+Limit Break 77, Revival Trance 76, Scions & Spellcraft 73); 93 to go.
+
 ### Card draw and graveyard recursion (C2, step 7)
 
 New engine pieces: "whenever one or more cards leave your graveyard",
@@ -256,8 +285,10 @@ card-by-card work:
    (tapping a creature for mana), Everflowing Chalice (multikicker).
 7. **Card draw and graveyard recursion.** Done 2026-10-22 (19 cards; see
    above).
-8. Then Sagas, X costs, counterspells, evolve, Vehicles, ward, convoke and
-   the remaining one-offs.
+8. **X costs.** Done 2026-10-22 (5 cards; see above). Blitzball Stadium
+   (support X) and Altered Ego (copies) still wait.
+9. Then Sagas, counterspells, evolve, Vehicles, ward, convoke and the
+   remaining one-offs.
 
 ### Picking up on the other computer
 

@@ -54,6 +54,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.modes ? { modes: action.modes } : {}),
           ...(action.costCards ? { costCards: action.costCards } : {}),
           ...(action.alternative ? { alternative: true } : {}),
+          ...(action.x !== undefined ? { x: action.x } : {}),
         });
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;

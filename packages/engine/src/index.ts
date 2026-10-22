@@ -46,4 +46,5 @@ export {
   entersTapped,
   manaChoices,
   manaProduced,
+  objectManaValue,
 } from './typerules.ts';

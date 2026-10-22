@@ -109,6 +109,9 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectCounters',
       'subjectPlusOneCounters',
       'previousTargetManaValue',
+      'x',
+      'lifeLostThisWay',
+      'revealedManaValue',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
@@ -259,6 +262,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'AttachEquipmentTo' && e.from === undefined) err('AttachEquipmentTo needs "from": which target is the Equipment.');
   if (e.effect === 'MoveCounters' && e.from === undefined) err('MoveCounters needs "from": which target the counters come from.');
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
+  if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   validateCounterKind(e.counter, err);
   if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield') err('"counter" is only for AddCounters and ReturnToBattlefield.');
   if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');
@@ -288,6 +292,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.ifYouControl) validateFilter(t.ifYouControl.filter, e);
   if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
   if (t.nthSpellThisTurn !== undefined && t.when !== 'SpellCast') e('nthSpellThisTurn is only for SpellCast.');
+  if (t.attackersAtLeast !== undefined && t.when !== 'YouAttack') e('attackersAtLeast is only for YouAttack.');
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');

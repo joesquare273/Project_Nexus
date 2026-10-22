@@ -45,6 +45,8 @@ interface Occurrence {
   drawer?: PlayerId;
   /** SpellCast: how many spells its caster had cast this turn, counting it. */
   spellNumber?: number;
+  /** YouAttack: how many creatures attacked. */
+  attackers?: number;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -113,6 +115,15 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
     }
   });
+  // "Whenever you attack with N or more creatures": one occurrence per attacking player.
+  const attackers = new Map<PlayerId, { at: number; n: number }>();
+  events.forEach((e, at) => {
+    if (e.type !== 'AttackDeclared') return;
+    const pid = s.cards[e.attacker]!.controller;
+    const seen = attackers.get(pid);
+    attackers.set(pid, { at: seen?.at ?? at, n: (seen?.n ?? 0) + 1 });
+  });
+  for (const [pid, { at, n }] of attackers) out.push({ when: 'YouAttack', at, subjectController: pid, attackers: n });
   return out;
 }
 
@@ -150,6 +161,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  if (o.when === 'YouAttack') return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
     if (spec.drawer === 'You' && o.drawer !== controller) return false;

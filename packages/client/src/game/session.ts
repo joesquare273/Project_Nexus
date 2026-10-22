@@ -19,7 +19,7 @@ import {
   type InstanceId,
   type PlayerId,
 } from '@nexus/engine';
-import { CARD_DEFS, FIN_PRECONS, preconDeck, starterKitDeck } from '@nexus/cards';
+import { CARD_DEFS, FIN_PRECONS, preconDeck, preconDeckWithCommander, starterKitDeck } from '@nexus/cards';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
 import { cardName, describe } from '@nexus/bots/narrate';
 
@@ -34,6 +34,8 @@ export interface SessionOptions {
   deck: DeckChoice;
   /** Commander: your precon's name. Opponents get the others. */
   precon?: string;
+  /** Commander: which legend from your precon leads it (default: the printed commander). */
+  commander?: string;
   opponents: number;
   seed: number;
   bot: 'ai' | 'random';
@@ -98,7 +100,7 @@ export class GameSession {
     if (options.format === 'commander') {
       const mine = FIN_PRECONS.find((p) => p.name === options.precon) ?? FIN_PRECONS[0]!;
       const others = FIN_PRECONS.filter((p) => p !== mine);
-      const decks = [mine, ...others].map((p) => preconDeck(p.name));
+      const decks = [preconDeckWithCommander(mine.name, options.commander), ...others.map((p) => preconDeck(p.name))];
       const created = createGame({
         format: COMMANDER,
         cardDefs: CARD_DEFS,
