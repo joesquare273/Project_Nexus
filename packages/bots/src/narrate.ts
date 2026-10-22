@@ -30,6 +30,8 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   DefendingPlayer: 'the defending player',
   CreatedTokens: 'the token',
   This: 'this card',
+  AllPermanents: 'all permanents',
+  TriggeringObject: 'that creature',
   You: 'you',
 };
 
@@ -39,15 +41,19 @@ const COUNT_TEXT: Record<string, string> = {
   EquippedCreaturesYouControl: 'equipped creatures you control',
   NoncreatureNonlandCardsInYourGraveyard: 'noncreature, nonland cards in your graveyard',
   CreaturesDiedThisTurn: 'creatures that died this turn',
+  CreaturesOnBattlefield: 'creatures on the battlefield',
+  EquippedAttackingCreaturesYouControl: 'equipped attacking creatures you control',
 };
 
 function amountText(a: Amount | undefined): string {
   if (a === undefined) return '0';
   if (typeof a === 'number') return String(a);
+  if ('of' in a) return a.of === 'previousTargetPower' ? 'its power' : 'the number of permanents destroyed this way';
   return `X (the number of ${a.count.map((k) => COUNT_TEXT[k] ?? k).join(' plus ')})`;
 }
 
 function targetText(e: EffectSpec): string {
+  if (e.target === 'AllPermanents' && e.filter) return `all ${subjectText(e.filter, 'permanent', true)}`;
   if (e.target === 'TargetPermanent' && e.filter) return `target ${subjectText(e.filter, 'permanent')}`;
   if (e.target === 'TargetCardInGraveyard' && e.filter) {
     return `target ${subjectText({ ...e.filter, controller: undefined }, 'card')} from ${e.filter.controller === 'You' ? 'your' : 'a'} graveyard`;
@@ -66,7 +72,13 @@ function effectText(e: EffectSpec): string {
     case 'Destroy':
       return `destroy ${who}`;
     case 'Exile':
-      return `exile ${who}`;
+      return `exile ${who}${e.sameNameTokens ? ' and all tokens that player controls with the same name' : ''}`;
+    case 'ExileGraveyard':
+      return e.target === 'EachPlayer' ? 'exile all graveyards' : `exile ${who === 'you' ? 'your' : `${who}'s`} graveyard`;
+    case 'SacrificeGreatestPower':
+      return `${who} sacrifices a creature with the greatest power among creatures they control`;
+    case 'ShuffleIntoLibraryReveal':
+      return `the owner of ${who} shuffles it into their library, then reveals the top card; if it's a permanent card, they put it onto the battlefield`;
     case 'DrawCards':
       return `${you ? 'draw' : `${who} draws`} ${plural('card')}`;
     case 'GainLife':
@@ -110,6 +122,9 @@ function effectText(e: EffectSpec): string {
     case 'Scry':
       return `scry ${n}`;
     case 'SearchLibraryToBattlefield':
+      if (e.target === 'PreviousTargetController') {
+        return `its controller searches their library for a basic land card and puts it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
+      }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'ReturnToBattlefield':
       return `return ${who} to the battlefield${e.counters ? ` with ${e.counters} extra +1/+1 counters` : ''}`;
@@ -117,17 +132,24 @@ function effectText(e: EffectSpec): string {
       return `attach this to ${who}`;
     case 'AttachAllEquipment':
       return `attach any number of Equipment you control to ${who}`;
+    case 'AttachToThis':
+      return `attach ${who} to this creature`;
+    case 'Untap':
+      return `untap ${who}`;
+    case 'PutTopCardIfLand':
+      return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'SearchLibraryToHand':
       return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand`;
   }
 }
 
+/** How a keyword is written on cards: "first strike", "nonbasic landwalk". */
+export function keywordName(k: string): string {
+  return k === 'FirstStrike' ? 'first strike' : k === 'DoubleStrike' ? 'double strike' : k === 'NonbasicLandwalk' ? 'nonbasic landwalk' : k.toLowerCase();
+}
+
 function keywordText(keywords: readonly string[]): string {
-  return keywords
-    .join(', ')
-    .replace('FirstStrike', 'first strike')
-    .replace('DoubleStrike', 'double strike')
-    .toLowerCase();
+  return keywords.map(keywordName).join(', ');
 }
 
 /** A plain summary of an activated ability, e.g. "{1}{W}, {T}: tap target creature". */
@@ -139,15 +161,35 @@ export function activatedText(a: ActivatedSpec): string {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** "creature or artifact you control", "noncreature spell", "creatures or artifacts you control", ... */
+const COLOR_NAMES: Record<string, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
+
+/**
+ * "creature or artifact you control", "noncreature spell", "nonblack creature",
+ * "creatures with power 4 or greater", "non-Dragon creatures", ...
+ */
 function subjectText(f: ObjectFilter, noun: string, plural = false): string {
   const s = plural ? 's' : '';
-  const prefix = (f.nonTypes ?? []).map((t) => `non${t} `).join('');
+  const prefix = [
+    ...(f.colors ?? []).map((c) => `${COLOR_NAMES[c]} `),
+    ...(f.nonColors ?? []).map((c) => `non${COLOR_NAMES[c]} `),
+    ...(f.subtypes ?? []).map((t) => `${t} `),
+    ...(f.nonSubtypes ?? []).map((t) => `non-${t} `),
+    ...(f.nonTypes ?? []).map((t) => `non${t} `),
+    f.tapped ? 'tapped ' : '',
+  ].join('');
   // Categories name the noun: "nonland permanent", "nonpermanent spell".
   const base = f.categories?.length ? f.categories.join(' ') : noun;
   const nouns = f.types?.length ? f.types.map((t) => `${prefix}${t}${s}`).join(' or ') : `${prefix}${base}${s}`;
-  const owner = f.controller === 'You' ? ' you control' : f.controller === 'Opponent' ? ' an opponent controls' : '';
-  return `${nouns}${owner}`;
+  const owner = f.controller === 'You' ? ' you control' : f.controller === 'Opponent' ? (plural ? ' your opponents control' : ' an opponent controls') : '';
+  const qualities = [
+    f.powerAtLeast !== undefined && `power ${f.powerAtLeast} or greater`,
+    f.toughnessAtLeast !== undefined && `toughness ${f.toughnessAtLeast} or greater`,
+    f.manaValueAtMost !== undefined && `mana value ${f.manaValueAtMost} or less`,
+    f.manaValueAtLeast !== undefined && `mana value ${f.manaValueAtLeast} or greater`,
+  ].filter(Boolean);
+  const withText = qualities.length ? ` with ${qualities.join(' and ')}` : '';
+  const counters = f.noCounters ? ` with no counters on ${plural ? 'them' : 'it'}` : '';
+  return `${nouns}${owner}${withText}${counters}`;
 }
 
 function triggerCondition(t: TriggerSpec): string {
@@ -185,10 +227,24 @@ export function triggerText(t: TriggerSpec): string {
 /** A plain summary of what a card does, generated from its data. */
 export function rulesSummary(def: CardDefinition): string {
   const parts: string[] = [];
-  if (def.keywords?.length) parts.push(def.keywords.join(', ').replace('FirstStrike', 'First strike').replace('DoubleStrike', 'Double strike'));
+  if (def.keywords?.length) parts.push(capitalize(keywordText(def.keywords)));
   if (def.entersTapped) parts.push('Enters tapped');
+  if (def.costReduction?.perCount) {
+    parts.push(`Costs {${def.costReduction.generic}} less for each of the ${COUNT_TEXT[def.costReduction.perCount] ?? def.costReduction.perCount}`);
+  }
   for (const e of def.effects ?? []) parts.push(capitalize(effectText(e)));
+  if (def.modes && def.chooseModes) {
+    const { min, max } = def.chooseModes;
+    parts.push(min === max ? `Choose ${min}` : max === def.modes.length ? `Choose ${min} or more` : `Choose ${min} to ${max}`);
+  }
   for (const [i, mode] of (def.modes ?? []).entries()) parts.push(`Mode ${i + 1}: ${mode.map(effectText).join(' and ')}`);
+  if (def.alternativeCost) {
+    const alt = def.alternativeCost;
+    const pay = [alt.mana, alt.life && `${alt.life} life`].filter(Boolean).join(' and ');
+    const condition = alt.ifControls ? ` if you control a ${subjectText(alt.ifControls, 'permanent')}` : '';
+    const instead = alt.effects ? `: ${alt.effects.map(effectText).join(' and ')}` : ' instead of its mana cost';
+    parts.push(`${alt.label}: pay ${pay}${condition}${instead}`);
+  }
   for (const t of def.triggers ?? []) parts.push(triggerText(t).replace(/\.$/, ''));
   if (def.equip) parts.push(`Equip ${def.equip}`);
   if (def.flashback) parts.push(`Flashback ${def.flashback}`);
@@ -265,6 +321,15 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
         : `  ${who(e.player)} left ${cardName(s, e.card)} in the ${e.from}.`;
     case 'LegendChosen':
       return `  Legend rule: ${who(e.player)} ${e.player === viewer ? 'keep' : 'keeps'} ${cardName(s, e.kept)}.`;
+    case 'Mulliganed':
+      return `${who(e.player)} took a mulligan${e.taken > 1 ? ` (${e.taken} so far)` : ''} and drew a new hand.`;
+    case 'HandKept': {
+      const kept = e.player === viewer ? 'kept' : 'keeps';
+      if (e.taken === 0) return `${who(e.player)} ${kept} the opening hand.`;
+      return `${who(e.player)} ${kept} after ${e.taken} mulligan${e.taken === 1 ? '' : 's'}${e.bottom > 0 ? '' : ' (the first one is free)'}.`;
+    }
+    case 'CardsBottomed':
+      return `  ${who(e.player)} put ${e.count === 1 ? 'a card' : `${e.count} cards`} on the bottom of the library.`;
     case 'TokenCreated':
       return `  ${who(e.controller)} created a ${cardName(s, e.card)} token.`;
     case 'CountersAdded':

@@ -8,11 +8,8 @@
         "count": 1,
         "set": "fic",
         "number": "2",
-        "implemented": false,
-        "needs": [
-          "treasure",
-          "triggers"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "G",
@@ -83,11 +80,8 @@
           "count": 1,
           "set": "fic",
           "number": "22",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "SOLDIER Military Program",
@@ -300,10 +294,8 @@
           "count": 1,
           "set": "fic",
           "number": "231",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bastion Protector",
@@ -365,20 +357,16 @@
           "count": 1,
           "set": "fic",
           "number": "260",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Chaos Warp",
           "count": 1,
           "set": "fic",
           "number": "291",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hellkite Tyrant",
@@ -407,31 +395,24 @@
           "count": 1,
           "set": "fic",
           "number": "323",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Armory Automaton",
           "count": 1,
           "set": "fic",
           "number": "336",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Champion's Helm",
           "count": 1,
           "set": "fic",
           "number": "337",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Conqueror's Flail",
@@ -449,11 +430,8 @@
           "count": 1,
           "set": "fic",
           "number": "342",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Inspiring Statuary",
@@ -470,12 +448,8 @@
           "count": 1,
           "set": "fic",
           "number": "362",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Battlefield Forge",
@@ -710,11 +684,8 @@
           "count": 1,
           "set": "fic",
           "number": "298",
-          "implemented": false,
-          "needs": [
-            "overload",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cultivate",
@@ -761,11 +732,8 @@
           "count": 1,
           "set": "fic",
           "number": "320",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",
@@ -780,57 +748,40 @@
           "count": 1,
           "set": "fic",
           "number": "338",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Explorer's Scope",
           "count": 1,
           "set": "fic",
           "number": "344",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hero's Blade",
           "count": 1,
           "set": "fic",
           "number": "345",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hero's Heirloom",
           "count": 1,
           "set": "fic",
           "number": "346",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lightning Greaves",
           "count": 1,
           "set": "fic",
           "number": "349",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mask of Memory",
@@ -849,12 +800,8 @@
           "count": 1,
           "set": "fic",
           "number": "355",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sol Ring",
@@ -869,11 +816,8 @@
           "count": 1,
           "set": "fic",
           "number": "370",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ash Barrens",
@@ -1309,10 +1253,8 @@
           "count": 1,
           "set": "fic",
           "number": "254",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tragic Arrogance",
@@ -1408,20 +1350,16 @@
           "count": 1,
           "set": "fic",
           "number": "319",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Legions to Ashes",
           "count": 1,
           "set": "fic",
           "number": "326",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Priest of Fell Rites",
@@ -1440,10 +1378,8 @@
           "count": 1,
           "set": "fic",
           "number": "329",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Key to the City",
@@ -1741,20 +1677,16 @@
           "count": 1,
           "set": "fic",
           "number": "322",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mortify",
           "count": 1,
           "set": "fic",
           "number": "327",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",
@@ -1777,10 +1709,8 @@
           "count": 1,
           "set": "fic",
           "number": "351",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Millikin",
@@ -1814,11 +1744,8 @@
           "count": 1,
           "set": "fic",
           "number": "361",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Talisman of Conviction",
@@ -2316,20 +2243,16 @@
           "count": 1,
           "set": "fic",
           "number": "239",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Farewell",
           "count": 1,
           "set": "fic",
           "number": "242",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Luminous Broodmoth",
@@ -2432,10 +2355,8 @@
           "count": 1,
           "set": "fic",
           "number": "299",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fight Rigging",
@@ -2732,10 +2653,8 @@
           "count": 1,
           "set": "fic",
           "number": "240",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Grateful Apparition",
@@ -2753,10 +2672,8 @@
           "count": 1,
           "set": "fic",
           "number": "248",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "An Offer You Can't Refuse",
@@ -3363,20 +3280,16 @@
           "count": 1,
           "set": "fic",
           "number": "235",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Final Judgment",
           "count": 1,
           "set": "fic",
           "number": "243",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Archmage Emeritus",
@@ -3436,10 +3349,8 @@
           "count": 1,
           "set": "fic",
           "number": "275",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lethal Scheme",
@@ -3479,20 +3390,16 @@
           "count": 1,
           "set": "fic",
           "number": "330",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Void Rend",
           "count": 1,
           "set": "fic",
           "number": "331",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Coveted Jewel",
@@ -3670,13 +3577,8 @@
           "count": 1,
           "set": "fin",
           "number": "70",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "hagneia",
-            "job-select",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Circle of Power",
@@ -3714,10 +3616,8 @@
           "count": 1,
           "set": "fic",
           "number": "256",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hypnotic Sprite // Mesmeric Glare",
@@ -3775,10 +3675,8 @@
           "count": 1,
           "set": "fic",
           "number": "285",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Syphon Mind",

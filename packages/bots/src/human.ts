@@ -22,8 +22,8 @@ export interface PlayChoice {
   taps: Action[];
   action: Action;
   targets: Target[];
-  /** For modal spells. */
-  mode?: number;
+  /** For modal spells: the chosen mode, or modes for "choose two" / "one or more" (printed order). */
+  modes?: number[];
 }
 
 /** Something a card can do: be played as a land, cast, or have an ability activated. */
@@ -44,7 +44,9 @@ function withTaps(s: GameState, player: PlayerId, o: CostedOption): PlayChoice |
     taps: tapActions(player, taps),
     action: o.action,
     targets: o.action.targets ?? [],
-    ...(o.action.type === 'CastSpell' && o.action.mode !== undefined ? { mode: o.action.mode } : {}),
+    ...(o.action.type === 'CastSpell' && (o.action.modes || o.action.mode !== undefined)
+      ? { modes: o.action.modes ?? [o.action.mode!] }
+      : {}),
   };
 }
 
@@ -70,7 +72,8 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     if (!choice) return;
     const a = o.action;
     const isAbility = a.type === 'ActivateAbility';
-    const key = isAbility ? `${a.card}#${a.ability}` : a.card;
+    const alternative = a.type === 'CastSpell' && a.alternative;
+    const key = isAbility ? `${a.card}#${a.ability}` : alternative ? `${a.card}#alt` : a.card;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;
@@ -82,7 +85,17 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             label: activatedText(activatedAbilities(def)[a.ability]!),
             choices: [],
           }
-        : { card: a.card, kind: 'spell', label: s.cards[a.card]!.zone === 'hand' ? 'Cast' : `Cast from ${s.cards[a.card]!.zone}`, choices: [] };
+        : {
+            card: a.card,
+            kind: 'spell',
+            // Alternative costs get their own entry: "Pay 4 life for", "Overload".
+            label: alternative
+              ? def.alternativeCost!.label
+              : s.cards[a.card]!.zone === 'hand'
+                ? 'Cast'
+                : `Cast from ${s.cards[a.card]!.zone}`,
+            choices: [],
+          };
       grouped.set(key, play);
       plays.push(play);
     }

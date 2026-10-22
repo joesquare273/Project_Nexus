@@ -64,12 +64,18 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId): number
       }).length;
     case 'CreaturesDiedThisTurn':
       return s.creaturesDiedThisTurn;
+    case 'CreaturesOnBattlefield':
+      return battlefieldCards(s).filter(creature).length;
+    case 'EquippedAttackingCreaturesYouControl':
+      return yours().filter((c) => creature(c) && isEquipped(s, c) && (s.combat?.attacks.some((a) => a.attacker === c.id) ?? false)).length;
   }
 }
 
 export function amountOf(s: GameState, amount: Amount | undefined, player: PlayerId): number {
   if (amount === undefined) return 0;
   if (typeof amount === 'number') return amount;
+  // Amounts that refer back to earlier in the same spell or ability are worked out while it resolves.
+  if ('of' in amount) return 0;
   return amount.count.reduce((n, kind) => n + countOf(s, kind, player), 0);
 }
 
@@ -79,6 +85,7 @@ function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): In
   for (const condition of spec.conditions ?? []) {
     if (condition === 'yourTurn' && s.activePlayer !== source.controller) return null;
     if (condition === 'equipped' && !isEquipped(s, s.cards[affected]!)) return null;
+    if (condition === 'legendary' && !def(s, s.cards[affected]!).supertypes?.includes('Legendary')) return null;
   }
   return affected;
 }
@@ -94,6 +101,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   };
   if (c.zone !== 'battlefield') return out;
 
+  const removed: Keyword[] = [];
   for (const source of battlefieldCards(s)) {
     for (const spec of def(s, source).statics ?? []) {
       if (staticApplies(s, source, spec) !== c.id) continue;
@@ -101,6 +109,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       out.toughness += amountOf(s, spec.toughness, source.controller);
       for (const k of spec.keywords ?? []) out.keywords.add(k);
       for (const t of spec.addSubtypes ?? []) if (!out.subtypes.includes(t)) out.subtypes.push(t);
+      removed.push(...(spec.removeKeywords ?? []));
     }
   }
   for (const e of s.temporaryEffects) {
@@ -109,6 +118,8 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     out.toughness += e.toughness ?? 0;
     for (const k of e.keywords ?? []) out.keywords.add(k);
   }
+  // "Loses flying" wins over grants (a simplification of layer 6 timestamps).
+  for (const k of removed) out.keywords.delete(k);
   out.power += c.counters ?? 0;
   out.toughness += c.counters ?? 0;
   return out;

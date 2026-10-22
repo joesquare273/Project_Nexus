@@ -9,9 +9,12 @@ import {
   activatedAbilities,
   amountOf,
   blockProblem,
+  canBlock as engineCanBlock,
   hasKeyword,
   isEquipment,
   manaValue,
+  matchesObject,
+  parseManaCost,
   powerOf,
   spellEffects,
   spellOptions,
@@ -49,12 +52,9 @@ function weakestOpponent(s: GameState, me: PlayerId): PlayerId {
   return opponents(s, me).sort((a, b) => s.players[a]!.life - s.players[b]!.life)[0]!;
 }
 
-/** Would `blocker` be able to block `attacker`? Mirrors the engine's evasion rules. */
+/** Would `blocker` be able to block `attacker`? The engine's own evasion rules. */
 function canBlock(s: GameState, blocker: CardInstance, attacker: CardInstance): boolean {
-  if (blocker.tapped) return false;
-  if (s.temporaryEffects.some((e) => e.affected === attacker.id && e.flags?.includes('cantBeBlocked'))) return false;
-  if (has(s, attacker, 'Flying') && !has(s, blocker, 'Flying') && !has(s, blocker, 'Reach')) return false;
-  return true;
+  return engineCanBlock(s, blocker, attacker);
 }
 
 /** Does `a` deal lethal damage to `b` in a fight (ignoring first strike order)? */
@@ -81,6 +81,7 @@ const HARMFUL = new Set([
   'DealDamage',
   'Destroy',
   'Exile',
+  'ShuffleIntoLibraryReveal',
   'Tap',
   'ExileUntilSourceLeaves',
   'LoseLife',
@@ -115,6 +116,27 @@ function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Tar
   return value(s, c) + 1;
 }
 
+/**
+ * "Destroy all ..." and similar: what it takes from opponents minus what it
+ * costs `me`, with my own losses counting extra, so the AI wipes the board
+ * when it's behind rather than when it's ahead.
+ */
+function massEffectScore(s: GameState, me: PlayerId, effect: EffectSpec, source: InstanceId): number {
+  const harmful = HARMFUL.has(effect.effect);
+  let score = 0;
+  for (const pid of s.turnOrder) {
+    for (const id of s.players[pid]!.battlefield) {
+      const c = s.cards[id]!;
+      if (!matchesObject(s, effect.filter, c, { controller: me, source })) continue;
+      if (harmful && effect.effect === 'Destroy' && has(s, c, 'Indestructible')) continue;
+      const v = value(s, c);
+      if (c.controller === me) score += harmful ? -1.5 * v : v;
+      else score += harmful ? v : -v;
+    }
+  }
+  return score;
+}
+
 /** A spell or ability's score for `me`: positive means worth doing. */
 function scoreOption(s: GameState, me: PlayerId, o: CostedOption): number {
   const a = o.action;
@@ -127,7 +149,7 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption): number {
       // Permanents: bigger is better; Equipment needs creatures to be worth much (Job select brings one).
       return 2 + manaValue(o.cost) + (isEquipment(s, card) ? 1 : 0);
     }
-    effects = spellEffects(d, a.mode);
+    effects = spellEffects(d, a);
   } else {
     effects = activatedAbilities(d)[a.ability]!.effects;
     if (effects.some((e) => e.effect === 'Attach')) return scoreEquip(s, me, card, targets[0]);
@@ -140,8 +162,19 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption): number {
       score += scoreTarget(s, me, e, targets[i++]!);
       continue;
     }
+    if (e.target === 'AllPermanents') {
+      score += massEffectScore(s, me, e, card.id);
+      continue;
+    }
+    if (e.effect === 'SacrificeGreatestPower' && e.target === 'EachOpponent') {
+      for (const p of opponents(s, me)) {
+        const theirs = creatures(s, p);
+        if (theirs.length > 0) score += Math.max(...theirs.map((c) => value(s, c)));
+      }
+      continue;
+    }
     const amount = amountOf(s, e.amount, me);
-    if (e.effect === 'GainLife') score += s.players[me]!.life <= 12 ? amount / 2 : 0.1;
+    if (e.effect === 'GainLife' && e.target === 'You') score += s.players[me]!.life <= 12 ? amount / 2 : 0.1;
     if (e.effect === 'DrawCards' && e.target === 'You') score += amount * 1.5;
     if (e.effect === 'CreateToken') score += amount * 2;
     if (e.effect === 'AddCounters' && e.target === 'EachCreatureYouControl') score += creatures(s, me).length;
@@ -295,6 +328,42 @@ function chooseSurveil(s: GameState, me: PlayerId, card: InstanceId): Action {
   return { type: 'Surveil', player: me, toGraveyard: isLand && lands >= 5 };
 }
 
+// ---------------------------------------------------------------------------
+// Opening hands
+// ---------------------------------------------------------------------------
+
+const isLandCard = (s: GameState, id: InstanceId) => def(s, s.cards[id]!).types.includes('land');
+
+/** Keep a hand with 2-5 lands out of 7; after two mulligans, keep whatever comes. */
+function chooseMulligan(s: GameState, me: PlayerId, taken: number, legal: Action[]): Action {
+  const hand = s.players[me]!.hand;
+  const lands = hand.filter((id) => isLandCard(s, id)).length;
+  const workable = lands >= 2 && lands <= 5;
+  const canMulligan = legal.some((a) => a.type === 'Mulligan' && !a.keep);
+  return { type: 'Mulligan', player: me, keep: workable || taken >= 2 || !canMulligan };
+}
+
+/**
+ * Bottoms cards to leave about 40% lands: surplus lands first if the hand is
+ * land-heavy, otherwise the most expensive spells.
+ */
+function chooseBottom(s: GameState, me: PlayerId, count: number): Action {
+  const hand = s.players[me]!.hand;
+  const keptSize = hand.length - count;
+  const wantLands = Math.max(2, Math.round(keptSize * 0.4));
+  const lands = hand.filter((id) => isLandCard(s, id));
+  const spells = hand
+    .filter((id) => !isLandCard(s, id))
+    .sort((a, b) => manaValue(parseManaCost(def(s, s.cards[b]!).manaCost)) - manaValue(parseManaCost(def(s, s.cards[a]!).manaCost)));
+  const bottom: InstanceId[] = [];
+  const surplusLands = lands.slice(wantLands);
+  for (const id of [...surplusLands, ...spells, ...lands]) {
+    if (bottom.length === count) break;
+    if (!bottom.includes(id)) bottom.push(id);
+  }
+  return { type: 'BottomCards', player: me, cards: bottom };
+}
+
 /** The basic AI. `seed` is accepted for symmetry with other bots; this one is deterministic. */
 export function basicAi(_seed = 0): Bot {
   return (s, legal) => {
@@ -314,6 +383,8 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
     // A commander is almost always worth having back in the command zone.
     if (pending.kind === 'commanderZone') return { type: 'CommanderZone', player: pending.player, toCommand: true };
+    if (pending.kind === 'mulligan') return chooseMulligan(s, pending.player, pending.taken, legal);
+    if (pending.kind === 'bottomCards') return chooseBottom(s, pending.player, pending.count);
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;
 

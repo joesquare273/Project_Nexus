@@ -11,6 +11,7 @@ import {
   FREE_FOR_ALL,
   applyAction,
   canBlock,
+  cardsToBottom,
   createGame,
   filterEventsFor,
   getLegalActions,
@@ -26,7 +27,7 @@ import {
 import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
-import { basicAi, planTaps, randomBot, tapActions, type Bot } from './index.ts';
+import { basicAi, planTaps, playableCards, randomBot, tapActions, type Bot } from './index.ts';
 import { cardName, describe, rulesSummary, stepName, targetName, triggerText } from './narrate.ts';
 
 const YOU: PlayerId = 'You';
@@ -222,28 +223,28 @@ function priorityOptions(s: GameState): Option[] {
     options.push({ label: `Play ${name}${how}`, choose: async () => [a] });
   }
 
+  // Spells, from the same list the browser board uses: costs include reductions
+  // and alternative costs, and each mode combination and target is a choice.
   const seenSpell = new Set<string>();
-  for (const id of s.players[YOU]!.hand) {
-    const d = defOf(s, s.cards[id]!);
-    if (d.types.includes('land') || seenSpell.has(d.id)) continue;
-    const taps = planTaps(s, YOU, d.manaCost);
-    if (!taps) continue;
-    const afterTaps = applyAll(s, tapActions(YOU, taps));
-    if ('error' in afterTaps) continue;
-    const casts = getLegalActions(afterTaps.state).filter(
-      (a): a is Extract<Action, { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === id,
-    );
-    if (casts.length === 0) continue;
-    seenSpell.add(d.id);
+  for (const play of playableCards(s, YOU)) {
+    if (play.kind !== 'spell') continue;
+    const d = defOf(s, s.cards[play.card]!);
+    const key = `${d.id}|${play.label}`;
+    if (seenSpell.has(key)) continue;
+    seenSpell.add(key);
     options.push({
-      label: `Cast ${d.name} ${d.manaCost ?? ''}  - ${rulesSummary(d)}`,
+      label: `${play.label} ${d.name} ${play.label === 'Cast' ? (d.manaCost ?? '') : ''}  - ${rulesSummary(d)}`,
       choose: async () => {
-        if (casts.length === 1) return [...tapActions(YOU, taps), casts[0]!];
-        console.log(`  Choose a target for ${d.name}:`);
-        casts.forEach((c, i) => console.log(`    ${i + 1}) ${c.targets!.map((t) => targetName(s, t, YOU)).join(', ')}`));
-        const pick = Number(await ask('  Target number (Enter = cancel): '));
-        const cast = casts[pick - 1];
-        return cast ? [...tapActions(YOU, taps), cast] : null;
+        const choices = play.choices;
+        if (choices.length === 1) return [...choices[0]!.taps, choices[0]!.action];
+        console.log(`  Choose how to cast ${d.name}:`);
+        choices.forEach((c, i) => {
+          const modes = c.modes?.map((m) => `mode ${m + 1}`).join(' + ');
+          const targets = c.targets.map((t) => targetName(s, t, YOU)).join(', ');
+          console.log(`    ${i + 1}) ${[modes, targets && `targeting ${targets}`].filter(Boolean).join(', ')}`);
+        });
+        const pick = choices[Number(await ask('  Number (Enter = cancel): ')) - 1];
+        return pick ? [...pick.taps, pick.action] : null;
       },
     });
   }
@@ -429,6 +430,42 @@ async function decideYesNo(s: GameState): Promise<Action[]> {
   return [...tapActions(YOU, taps), { type: 'Decide', player: YOU, accept: true }];
 }
 
+function showHand(s: GameState): void {
+  s.players[YOU]!.hand.forEach((id, i) => {
+    const d = s.cardDefs[s.cards[id]!.defId]!;
+    const rules = rulesSummary(d);
+    console.log(`    ${i + 1}) ${`${d.name} ${d.manaCost ?? ''}`.trim()}${rules ? ` - ${rules}` : ''}`);
+  });
+}
+
+async function decideMulligan(s: GameState, taken: number): Promise<Action[]> {
+  const lands = s.players[YOU]!.hand.filter((id) => s.cardDefs[s.cards[id]!.defId]!.types.includes('land')).length;
+  console.log(`
+  Your opening hand${taken > 0 ? ` after ${taken} mulligan${taken === 1 ? '' : 's'}` : ''} (${lands} land${lands === 1 ? '' : 's'}):`);
+  showHand(s);
+  const canMulligan = getLegalActions(s).some((a) => a.type === 'Mulligan' && !a.keep);
+  if (!canMulligan) {
+    console.log('  You can’t mulligan any further, so you keep this hand.');
+    return [{ type: 'Mulligan', player: YOU, keep: true }];
+  }
+  const bottom = cardsToBottom(s, taken + 1);
+  const cost = bottom === 0 ? 'free' : `you'd put ${bottom} card${bottom === 1 ? '' : 's'} on the bottom`;
+  const answer = (await ask(`  Keep this hand? (Y = keep, n = mulligan for a new seven; ${cost}) `)).toLowerCase();
+  return [{ type: 'Mulligan', player: YOU, keep: answer !== 'n' }];
+}
+
+async function decideBottom(s: GameState, count: number): Promise<Action[]> {
+  const hand = s.players[YOU]!.hand;
+  console.log(`
+  You kept. Choose ${count} card${count === 1 ? '' : 's'} to put on the bottom of your library:`);
+  showHand(s);
+  for (;;) {
+    const picks = parseNumbers(await ask(`  Card number${count === 1 ? '' : 's'} (e.g. "${count === 1 ? '3' : '3 5'}"): `), hand.length);
+    if (picks && picks.length === count) return [{ type: 'BottomCards', player: YOU, cards: picks.map((n) => hand[n - 1]!) }];
+    console.log(`  Please type exactly ${count} different number${count === 1 ? '' : 's'} from the list.`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Game loop
 // ---------------------------------------------------------------------------
@@ -443,6 +480,7 @@ async function playOneGame(gameSeed: number): Promise<void> {
     cardDefs: CARD_DEFS,
     seed: gameSeed,
     players: [YOU, ...botIds].map((id) => ({ id, deck: decks[id]! })),
+    mulligans: true,
   });
   let s = created.state;
   console.log(`\nNew game (seed ${gameSeed}). You are playing the ${yourDeck === 'RW' ? 'red-white' : 'blue-black'} deck`);
@@ -467,6 +505,10 @@ async function playOneGame(gameSeed: number): Promise<void> {
     } else if (pending.kind === 'commanderZone') {
       const stay = (await ask(`  Your commander ${cardName(s, pending.card)} went to your ${pending.zone}. Move it to the command zone? (Y/n) `)).toLowerCase() === 'n';
       actions = [{ type: 'CommanderZone', player: YOU, toCommand: !stay }];
+    } else if (pending.kind === 'mulligan') {
+      actions = await decideMulligan(s, pending.taken);
+    } else if (pending.kind === 'bottomCards') {
+      actions = await decideBottom(s, pending.count);
     } else if (pending.kind === 'surveil') {
       const toGraveyard = (await ask(`  Surveil: put ${cardName(s, pending.card)} into your graveyard? (y/N) `)).toLowerCase() === 'y';
       actions = [{ type: 'Surveil', player: YOU, toGraveyard }];

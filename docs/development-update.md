@@ -5,6 +5,70 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-21
 
+### Precon Equipment (C2, second group)
+
+16 Equipment-group cards now work as printed, including Limit Break's
+commander, **Cloud, Ex-SOLDIER**: he attaches an Equipment to himself as he
+enters, draws a card for each equipped attacker, and makes two Treasures at
+power 7 or more. Tests: `packages/bots/test/precon-equipment.test.ts`.
+New pieces:
+
+- Keywords: hexproof, shroud (nobody can target it, even you) and nonbasic
+  landwalk.
+- "As long as equipped creature is legendary" (Champion's Helm, Hero's
+  Heirloom) and "loses flying" (Colossus Hammer).
+- Triggers remember what set them off ("attach this to it": Hero's Blade),
+  and "whenever equipped creature dies" looks back at what was attached as
+  it died (Skullclamp).
+- Untap, "put a land from the top of your library onto the battlefield"
+  (Explorer's Scope), and conditions like "if Cloud has power 7 or greater".
+- The AI now uses the engine's own blocking rules, so it knows about new
+  evasion like landwalk.
+
+Limit Break is now 49/100 fully built.
+
+### Precon removal (C2, first group)
+
+24 removal spells and creatures from the Commander precons now work as
+printed, each with a test against its Oracle text (`packages/bots/test/precon-removal.test.ts`).
+New building blocks they use:
+
+- "Destroy/exile all ..." with filters for color ("nonblack"), power,
+  toughness and mana value thresholds, "with no counters", and non-subtypes
+  ("non-Dragon").
+- "Choose two" and "choose one or more" spells (Austere Command, Farewell):
+  every allowed combination is a separate choice on the board.
+- Alternative costs: pay 4 life (Snuff Out, if you control a Swamp) and
+  overload (Vandalblast). They appear as their own entries: "Pay 4 life for
+  Snuff Out", "Overload Vandalblast".
+- Cost reduction per creature on the battlefield (Vanquish the Horde),
+  exiling graveyards, "each opponent sacrifices their greatest-power
+  creature" (Crackling Doom), Chaos Warp's shuffle-and-reveal, "life equal
+  to its power" (Swords to Plowshares), "for each permanent destroyed this
+  way" (Bane of Progress), and "tokens with the same name" (Legions to Ashes).
+- The AI weighs board wipes: it casts one when the opponents lose more than
+  it does, and holds it when it's ahead.
+- The precon importer now keeps hand-built cards when re-run.
+
+### Mulligans
+
+Every real game (browser board, terminal, bots, fuzz tests) now starts with
+London mulligans (rule 103.5): keep your seven, or shuffle them away and draw
+a new seven; once you keep, put one card on the bottom for each mulligan. In
+games with three or more players the first mulligan is free (103.5c). Players
+decide in turn order, starting with whoever goes first.
+
+- **Board:** the prompt shows how many lands are in the hand and what another
+  mulligan costs. After keeping, click cards in your hand to choose what goes
+  on the bottom (they lift with a "Bottom" label), then press "Put on
+  bottom". The practice game has tips for both steps.
+- **AI:** keeps 2-5 lands of 7, always keeps after two mulligans, and bottoms
+  surplus lands or its most expensive spells. Across 360 test deals it kept
+  about 81% of first hands.
+- **Engine:** `createGame({ ..., mulligans: true })`. Off by default so tests
+  can start straight at turn 1. Other players never learn which cards you drew
+  or bottomed.
+
 ### Choices: where your commander goes, and playing a snarl tapped
 
 - When your commander goes to a graveyard, exile, your hand or your library,

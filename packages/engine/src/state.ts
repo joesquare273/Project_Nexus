@@ -176,6 +176,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const toList = zoneList(s, c.owner, to);
   if (toList) toList.push(id);
   const controller = c.controller;
+  const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
   if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
     s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
@@ -199,6 +200,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       defId: c.defId,
       owner: c.owner,
       ...(from === 'battlefield' ? { controller } : {}),
+      ...(equippedBy.length > 0 ? { equippedBy } : {}),
       from,
       to,
     });
@@ -292,12 +294,13 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId): void {
   moveCard(ctx, id, 'graveyard');
 }
 
-/** Destroys a permanent unless it is indestructible. */
-export function destroy(ctx: Ctx, id: InstanceId): void {
+/** Destroys a permanent unless it is indestructible. Returns whether it was destroyed. */
+export function destroy(ctx: Ctx, id: InstanceId): boolean {
   const c = ctx.s.cards[id]!;
-  if (c.zone !== 'battlefield' || hasKeyword(ctx.s, c, 'Indestructible')) return;
+  if (c.zone !== 'battlefield' || hasKeyword(ctx.s, c, 'Indestructible')) return false;
   if (!hasType(ctx.s, c, 'creature')) ctx.ev.push({ type: 'PermanentDestroyed', card: id, defId: c.defId, owner: c.owner });
   putIntoGraveyard(ctx, id);
+  return true;
 }
 
 /** Sacrifice: put it into its owner's graveyard; indestructible doesn't help (rule 701.17). */

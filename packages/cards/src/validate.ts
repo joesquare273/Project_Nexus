@@ -4,6 +4,7 @@
 import {
   CARD_CATEGORIES,
   CARD_TYPES,
+  COLORS,
   COUNT_KINDS,
   EFFECT_KINDS,
   KEYWORDS,
@@ -38,7 +39,7 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
 const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry']);
-const PLAYER_ONLY_EFFECTS = new Set(['DrawCards', 'GainLife', 'LoseLife', 'Mill']);
+const PLAYER_ONLY_EFFECTS = new Set(['DrawCards', 'GainLife', 'LoseLife', 'Mill', 'ExileGraveyard', 'SacrificeGreatestPower', 'PutTopCardIfLand']);
 const PLAYER_TARGETS = new Set([
   'You',
   'EachOpponent',
@@ -49,8 +50,8 @@ const PLAYER_TARGETS = new Set([
   'PreviousTargetController',
 ]);
 /** Target kinds that pick from a filter. */
-const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard']);
-const ABILITY_ONLY_TARGETS = new Set(['This', 'DefendingPlayer']);
+const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents']);
+const ABILITY_ONLY_TARGETS = new Set(['This', 'DefendingPlayer', 'TriggeringObject']);
 
 type Err = (msg: string) => void;
 
@@ -73,6 +74,10 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     if (!Number.isInteger(a)) err('amounts must be whole numbers.');
     return;
   }
+  if ('of' in a) {
+    if (a.of !== 'previousTargetPower' && a.of !== 'destroyedThisWay') err(`unknown amount "${String(a.of)}".`);
+    return;
+  }
   if (!Array.isArray(a.count) || a.count.length === 0) err('a counted amount needs a non-empty "count" list.');
   for (const k of a.count ?? []) if (!COUNT_KINDS.includes(k)) err(`unknown count "${k}".`);
 }
@@ -89,6 +94,11 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
   for (const st of f.supertypes ?? []) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}" in a filter.`);
   if (f.controller !== undefined && f.controller !== 'You' && f.controller !== 'Opponent') {
     err('controller must be "You" or "Opponent".');
+  }
+  for (const color of [...(f.colors ?? []), ...(f.nonColors ?? [])]) if (!COLORS.includes(color)) err(`unknown color "${color}" in a filter.`);
+  for (const sub of f.nonSubtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
+  for (const key of ['powerAtLeast', 'toughnessAtLeast', 'manaValueAtMost', 'manaValueAtLeast'] as const) {
+    if (f[key] !== undefined && !isNonNegativeInt(f[key])) err(`${key} must be a whole number.`);
   }
 }
 
@@ -141,6 +151,27 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (!isSpell && hasEffects) err('permanents use triggers, statics and activated abilities, not effects.');
   if (c.effects && c.modes) err('a card has either effects or modes, not both.');
+  if (c.chooseModes) {
+    const { min, max } = c.chooseModes;
+    if (!c.modes) err('chooseModes needs modes.');
+    else if (!isNonNegativeInt(min) || !isNonNegativeInt(max) || min < 1 || max < min || max > c.modes.length) {
+      err('chooseModes needs 1 <= min <= max <= number of modes.');
+    }
+  }
+  if (c.alternativeCost) {
+    const alt = c.alternativeCost;
+    if (typeof alt.label !== 'string' || alt.label === '') err('alternativeCost needs a label.');
+    if (alt.mana === undefined && alt.life === undefined) err('alternativeCost needs mana or life.');
+    validateCost(alt.mana, (m) => err(`alternativeCost: ${m}`));
+    if (alt.life !== undefined && (!isNonNegativeInt(alt.life) || alt.life === 0)) err('alternativeCost life must be positive.');
+    validateFilter(alt.ifControls, (m) => err(`alternativeCost: ${m}`));
+    for (const e of alt.effects ?? []) validateEffect(e, false, (m) => err(`alternativeCost: ${m}`));
+  }
+  if (c.costReduction) {
+    if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount) err('costReduction needs a condition or perCount.');
+    if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
+  }
 
   for (const e of c.effects ?? []) validateEffect(e, false, err);
   for (const [i, mode] of (c.modes ?? []).entries()) {
@@ -161,6 +192,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   validateAmount(e.amount, (m) => err(`${e.effect}: ${m}`));
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
+  if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');
   if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
   validateFilter(e.filter, err);
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
@@ -201,7 +233,10 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
 function validateStatic(st: StaticSpec, err: Err): void {
   const e: Err = (msg) => err(`static ability: ${msg}`);
   if (st.affects !== 'Self' && st.affects !== 'EquippedCreature') e('affects must be "Self" or "EquippedCreature".');
-  for (const cond of st.conditions ?? []) if (cond !== 'yourTurn' && cond !== 'equipped') e(`unknown condition "${cond}".`);
+  for (const cond of st.conditions ?? []) {
+    if (cond !== 'yourTurn' && cond !== 'equipped' && cond !== 'legendary') e(`unknown condition "${cond}".`);
+  }
+  for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
   validateAmount(st.power, e);
   validateAmount(st.toughness, e);
   for (const k of st.keywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
@@ -225,6 +260,7 @@ export function validateCardList(cards: readonly unknown[]): string[] {
     const effects = [
       ...(c.effects ?? []),
       ...(c.modes ?? []).flat(),
+      ...(c.alternativeCost?.effects ?? []),
       ...(c.triggers ?? []).flatMap((t) => t.effects ?? []),
       ...(c.activated ?? []).flatMap((a) => a.effects ?? []),
     ];

@@ -5,7 +5,7 @@ import { validateCommander, validateDeck, type FormatConfig } from './format.ts'
 import { randomInt, seedToState, shuffleInPlace } from './rng.ts';
 import { stabilize } from './sba.ts';
 import { drawCards, emptyManaPool, type Ctx } from './state.ts';
-import { enterStep } from './turn.ts';
+import { beginFirstTurn, startMulligans } from './mulligan.ts';
 import type { CardDefId, CardDefinition, GameEvent, GameState, PlayerId } from './types.ts';
 
 export interface PlayerSetup {
@@ -24,6 +24,11 @@ export interface GameSetup {
   seed: number;
   /** For tests that use tiny decks. */
   skipDeckValidation?: boolean;
+  /**
+   * Let players mulligan before the first turn (rule 103.5). Real games turn
+   * this on; it's off by default so tests start straight at turn 1.
+   */
+  mulligans?: boolean;
 }
 
 /**
@@ -133,12 +138,11 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
     }
   }
 
-  // Mulligans come later; everyone keeps their opening seven for now.
   s.activePlayer = turnOrder[randomInt(s, turnOrder.length)]!;
   for (const id of turnOrder) drawCards(ctx, id, format.startingHandSize);
 
-  ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: 1 });
-  enterStep(ctx, 'untap');
+  if (setup.mulligans) startMulligans(ctx);
+  else beginFirstTurn(ctx);
   stabilize(ctx);
   return { state: s, events: ctx.ev };
 }

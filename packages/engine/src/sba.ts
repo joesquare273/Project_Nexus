@@ -1,6 +1,7 @@
 // State-based actions and elimination (PRD 7.1, 7.3; rule 704). Run after
 // every action and resolution, before anyone makes the next decision.
 
+import { isMulliganing, repairMulligans } from './mulligan.ts';
 import { nextBlockerDecision } from './combat.ts';
 import { detectTriggers, placeTriggers } from './triggers.ts';
 import { cleanupDamage, givePriority, startNextTurn } from './turn.ts';
@@ -265,6 +266,13 @@ export function stabilize(ctx: Ctx): void {
   for (let guard = 0; guard < 64; guard++) {
     const eliminated = applyStateBasedActions(ctx);
     if (s.pending.kind === 'gameOver') return;
+    if (isMulliganing(s)) {
+      // No turn has started yet: just skip anyone who left.
+      repairMulligans(ctx);
+      if (isMulliganing(s)) return;
+      scanned = ctx.ev.length;
+      continue;
+    }
     if (s.players[s.activePlayer]!.eliminated) {
       // Nothing from the abandoned turn triggers; the next turn's events still can.
       scanned = ctx.ev.length;

@@ -44,6 +44,7 @@ for (let i = 0; i < games; i++) {
         cardDefs: CARD_DEFS,
         seed,
         players: Array.from({ length: players }, (_, p) => seat(p, seed)),
+        mulligans: true,
       },
       Object.fromEntries(Array.from({ length: players }, (_, p) => [`P${p + 1}`, make(seed * 7 + p)])),
       {

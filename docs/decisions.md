@@ -102,7 +102,7 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 |---|---|---|
 | First strike | Both damage passes happen in one step, with state-based actions between them but no priority | Rule 510.4: a separate first-strike damage step |
 | Damage assignment | Attackers assign lethal damage to blockers in block-declaration order automatically | The attacking player divides damage |
-| Mulligans | Everyone keeps their opening seven | Rule 103.5 (and the PRD's free redo) |
+| Mulligans | London mulligan, first one free in multiplayer (103.5c). Players decide one at a time in turn order, each finishing before the next | Everyone decides, then all mulligans happen at once, repeating (103.5). The PRD's "one free redo" would also make the first one free in duels; the engine follows the official rule |
 | Active player leaves | The rest of their turn is skipped and their spells go to graveyards | Rule 800.4 is more nuanced |
 | Elimination mid-round | Priority restarts with the active player | Priority continues from where it was |
 | Cleanup step | No priority, no discard to hand size | Rule 514 |
@@ -113,6 +113,12 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Triggers during cleanup | None of the supported triggers can happen then, so cleanup never gives priority | Rule 514.3a |
 | Beatrix, Loyal General | "You may attach any number of Equipment": all of them or none | Any subset |
 | Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
+| Sacrifice the greatest power (Crackling Doom) | On a tie, the creature that has been on the battlefield longest is sacrificed | The player chooses among the tied creatures |
+| Path to Exile | The exiled creature's controller always searches for a basic land | Searching is optional ("may") |
+| Explorer's Scope | A land on top of the library is always put onto the battlefield | Optional ("you may") |
+| Armory Automaton | "Attach any number of target Equipment": all of your Equipment or none | Any subset, and other players' Equipment too |
+| Losing keywords | "Loses flying" applies after every grant, whatever the order | Layer 6 timestamp order (rule 613) |
+| Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
 | Library search | Takes the first matching card | The player chooses which matching card |
 | {X} costs | X is 0 (cards with X aren't built yet) | The caster chooses X |

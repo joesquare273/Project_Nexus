@@ -29,6 +29,7 @@ const game = playGame(
     cardDefs: CARD_DEFS,
     seed,
     players: ids.map((id, i) => ({ id, deck: starterKitDeck(i % 2 === 0 ? 'RW' : 'UB') })),
+    mulligans: true,
   },
   Object.fromEntries(ids.map((id, i) => [id, makeBot(seed * 31 + i)])),
 );

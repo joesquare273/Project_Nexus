@@ -50,6 +50,12 @@ export const KEYWORDS = [
   'Trample',
   'Deathtouch',
   'Indestructible',
+  /** Can't be the target of spells or abilities your opponents control. */
+  'Hexproof',
+  /** Can't be the target of spells or abilities. */
+  'Shroud',
+  /** Can't be blocked as long as the defending player controls a nonbasic land. */
+  'NonbasicLandwalk',
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
@@ -81,6 +87,10 @@ export const TARGET_KINDS = [
   'CreatedTokens',
   /** The card the ability belongs to. Abilities only. */
   'This',
+  /** The object the trigger event happened to ("attach this Equipment to it"). Triggered abilities only. */
+  'TriggeringObject',
+  /** Every permanent matching the effect's `filter` ("destroy all artifacts", "exile all creatures"). */
+  'AllPermanents',
   'You',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
@@ -134,8 +144,25 @@ export const EFFECT_KINDS = [
   'Attach',
   /** Attach every Equipment you control to the target creature. */
   'AttachAllEquipment',
+  /** Attach the target Equipment to the ability's source creature (Cloud, Ex-SOLDIER). */
+  'AttachToThis',
+  'Untap',
+  /** Look at the top card of your library; if it's a land card, put it onto the battlefield (tapped with `entersTapped`). */
+  'PutTopCardIfLand',
   /** Search your library for a card matching `filter`, put it into your hand, then shuffle. */
   'SearchLibraryToHand',
+  /** Exile every card in the target players' graveyards. */
+  'ExileGraveyard',
+  /**
+   * Each target player sacrifices a creature with the greatest power among
+   * creatures they control (Crackling Doom).
+   */
+  'SacrificeGreatestPower',
+  /**
+   * The target permanent's owner shuffles it into their library, then reveals
+   * the top card; a permanent card is put onto the battlefield (Chaos Warp).
+   */
+  'ShuffleIntoLibraryReveal',
 ] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
 
@@ -146,11 +173,19 @@ export const COUNT_KINDS = [
   'EquippedCreaturesYouControl',
   'NoncreatureNonlandCardsInYourGraveyard',
   'CreaturesDiedThisTurn',
+  /** Every creature on the battlefield, whoever controls it. */
+  'CreaturesOnBattlefield',
+  'EquippedAttackingCreaturesYouControl',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
-/** A fixed number, or the sum of some counts ("the number of creatures you control plus the number of Equipment you control"). */
-export type Amount = number | { count: CountKind[] };
+/**
+ * A fixed number, the sum of some counts ("the number of creatures you
+ * control plus the number of Equipment you control"), or a number from
+ * earlier in the same spell or ability: the previous target's power
+ * ("life equal to its power") or how many permanents it destroyed.
+ */
+export type Amount = number | { count: CountKind[] } | { of: 'previousTargetPower' | 'destroyedThisWay' };
 
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
@@ -179,8 +214,12 @@ export interface EffectSpec {
   counters?: number;
   /** Only happens if this is true ("if this spell was cast from a graveyard"). */
   if?: 'castFromGraveyard';
+  /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
+  ifSourcePowerAtLeast?: number;
   /** SearchLibraryToBattlefield: the card enters tapped. */
   entersTapped?: boolean;
+  /** Exile: also exile every token that player controls with the same name (Legions to Ashes). */
+  sameNameTokens?: boolean;
 }
 
 /**
@@ -223,6 +262,18 @@ export interface ObjectFilter {
   equipped?: boolean;
   /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
   equippedBySource?: boolean;
+  /** Is at least one of these colors. */
+  colors?: Color[];
+  /** Is none of these colors ("nonblack"). */
+  nonColors?: Color[];
+  /** Has none of these subtypes ("non-Dragon"). */
+  nonSubtypes?: string[];
+  powerAtLeast?: number;
+  toughnessAtLeast?: number;
+  manaValueAtMost?: number;
+  manaValueAtLeast?: number;
+  /** Has no counters on it ("creatures with no counters on them"). */
+  noCounters?: boolean;
 }
 
 export interface TriggerSpec {
@@ -272,13 +323,18 @@ export interface ActivatedSpec {
 export interface StaticSpec {
   /** Which creature it changes: this card, or the creature this Equipment is attached to. */
   affects: 'Self' | 'EquippedCreature';
-  /** Only while these hold: "during your turn", "as long as it's equipped". */
-  conditions?: ('yourTurn' | 'equipped')[];
+  /**
+   * Only while these hold: "during your turn", "as long as it's equipped",
+   * "as long as equipped creature is legendary".
+   */
+  conditions?: ('yourTurn' | 'equipped' | 'legendary')[];
   power?: Amount;
   toughness?: Amount;
   keywords?: Keyword[];
   /** "is a Knight in addition to its other types". */
   addSubtypes?: string[];
+  /** "loses flying". Applied after keywords are granted. */
+  removeKeywords?: Keyword[];
 }
 
 /** Immutable, shared definition of a card. */
@@ -344,8 +400,29 @@ export interface CardDefinition {
   cycling?: string;
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
-  /** "This spell costs {N} less to cast if it targets a tapped creature." */
-  costReduction?: { generic: number; ifTargetsTappedCreature: true };
+  /**
+   * "This spell costs {N} less to cast if it targets a tapped creature", or
+   * "costs {N} less for each [count]" (Vanquish the Horde).
+   */
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind };
+  /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
+  chooseModes?: { min: number; max: number };
+  /**
+   * Another way to cast it: pay life instead of mana (Snuff Out), or a
+   * different mana cost with different effects (overload). `label` names it
+   * in menus ("Pay 4 life for", "Overload").
+   */
+  alternativeCost?: {
+    label: string;
+    mana?: string;
+    life?: number;
+    /** Only if you control a permanent matching this ("If you control a Swamp"). */
+    ifControls?: ObjectFilter;
+    /** Replaces the spell's effects when cast this way (overload). */
+    effects?: EffectSpec[];
+  };
+  /** "This spell can't be countered." */
+  cantBeCountered?: boolean;
   /** A token's definition, created by effects rather than played from a deck. */
   token?: boolean;
   /**
@@ -455,6 +532,10 @@ export interface SpellItem {
   targets: Target[];
   /** For modal spells, the chosen mode. */
   mode?: number;
+  /** For "choose two" / "choose one or more" spells, the chosen modes in printed order. */
+  modes?: number[];
+  /** Cast for its alternative cost (which may replace its effects). */
+  alternative?: boolean;
   /** Where it was cast from. Flashback spells are exiled afterwards. */
   castFrom: 'hand' | 'graveyard' | 'exile' | 'command';
   /** Total mana spent to cast it. */
@@ -475,6 +556,8 @@ export interface AbilityItem {
   targets: Target[];
   /** Attack triggers: the player being attacked. */
   defender?: PlayerId;
+  /** Triggered abilities: the object the trigger event happened to. */
+  subject?: InstanceId;
   /** The controller's answer to "you may" or an optional cost, once given. */
   accepted?: boolean;
 }
@@ -488,6 +571,8 @@ export interface QueuedTrigger {
   controller: PlayerId;
   sourceZone: ZoneName;
   defender?: PlayerId;
+  /** The object the trigger event happened to (the creature that entered, attacked, died...). */
+  subject?: InstanceId;
 }
 
 /** An "until end of turn" effect on one object (rule 611.2). */
@@ -508,6 +593,10 @@ export interface Resolving {
   /** How many chosen targets the effects so far used. */
   chosenUsed: number;
   previousTarget?: Target;
+  /** The previous target's power when it was chosen, for "life equal to its power" after it's gone. */
+  previousTargetPower?: number;
+  /** Permanents destroyed so far by this spell or ability ("for each permanent destroyed this way"). */
+  destroyedCount?: number;
   createdTokens: InstanceId[];
   /** Cards still to look at for the current surveil or scry. */
   surveilQueue: InstanceId[];
@@ -555,6 +644,13 @@ export type Pending =
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
    */
   | { kind: 'commanderZone'; player: PlayerId; card: InstanceId; zone: ZoneName; resume: Pending }
+  /**
+   * Before the first turn (rule 103.5): keep this opening hand or mulligan.
+   * `taken` mulligans so far; `queue` players still to decide, in turn order.
+   */
+  | { kind: 'mulligan'; player: PlayerId; taken: number; queue: PlayerId[] }
+  /** London mulligan: put `count` cards from your kept hand on the bottom of your library. */
+  | { kind: 'bottomCards'; player: PlayerId; count: number; queue: PlayerId[] }
   | { kind: 'gameOver' };
 
 export interface GameState {
@@ -595,7 +691,11 @@ export interface GameState {
 export type Action =
   /** `reveal`: for lands like snarls, reveal a matching card to enter untapped (default: if you can). */
   | { type: 'PlayLand'; player: PlayerId; card: InstanceId; reveal?: boolean }
-  | { type: 'CastSpell'; player: PlayerId; card: InstanceId; targets?: Target[]; mode?: number }
+  /**
+   * `mode` for "choose one" spells; `modes` (in printed order) for "choose two"
+   * or "choose one or more". `alternative`: pay the card's alternative cost.
+   */
+  | { type: 'CastSpell'; player: PlayerId; card: InstanceId; targets?: Target[]; mode?: number; modes?: number[]; alternative?: boolean }
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType }
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[] }
   | { type: 'PassPriority'; player: PlayerId }
@@ -606,6 +706,10 @@ export type Action =
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
   | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }
   | { type: 'CommanderZone'; player: PlayerId; toCommand: boolean }
+  /** Keep your opening hand, or shuffle it away and draw a new one. */
+  | { type: 'Mulligan'; player: PlayerId; keep: boolean }
+  /** After keeping a mulliganed hand: the cards to put on the bottom, top one first. */
+  | { type: 'BottomCards'; player: PlayerId; cards: InstanceId[] }
   | { type: 'Concede'; player: PlayerId };
 
 // ---------------------------------------------------------------------------
@@ -627,6 +731,8 @@ export type GameEvent =
       controller?: PlayerId;
       from: ZoneName;
       to: ZoneName;
+          /** Leaving the battlefield: the Equipment attached to it at that moment (for look-back triggers). */
+      equippedBy?: InstanceId[];
     }
   | { type: 'TokenCreated'; card: InstanceId; defId: CardDefId; controller: PlayerId }
   | { type: 'CardTapped'; card: InstanceId }
@@ -651,6 +757,14 @@ export type GameEvent =
   | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean; scry?: boolean }
   | { type: 'LegendChosen'; player: PlayerId; kept: InstanceId; others: InstanceId[] }
   | { type: 'CommanderZoneChosen'; player: PlayerId; card: InstanceId; from: ZoneName; toCommand: boolean }
+  /** A player shuffled their hand away and drew a new one; `taken` mulligans so far. */
+  | { type: 'Mulliganed'; player: PlayerId; taken: number }
+  /** A player kept their hand after `taken` mulligans and will bottom `bottom` cards. */
+  | { type: 'HandKept'; player: PlayerId; taken: number; bottom: number }
+  /** Cards went from hand to the bottom of the library. Which cards stays hidden. */
+  | { type: 'CardsBottomed'; player: PlayerId; count: number }
+  /** A card was revealed from a library (Chaos Warp). */
+  | { type: 'CardRevealed'; player: PlayerId; card: InstanceId; defId: CardDefId }
   | { type: 'CountersAdded'; card: InstanceId; amount: number }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'PriorityPassed'; player: PlayerId }
