@@ -103,6 +103,8 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
       const commanderDamage = threshold !== undefined && Object.values(p.commanderDamage).some((n) => n >= threshold);
       const reason: EliminationReason | null = p.conceded
         ? 'conceded'
+        : p.lostToEffect
+          ? 'effect'
         : p.life <= 0
           ? 'life'
           : p.drewFromEmptyLibrary

@@ -66,6 +66,7 @@ const PLAYER_TARGETS = new Set([
   'EachPlayerWhoChose',
   'EachOpponentWhoChose',
   'EachOpponentWhoDidNotChoose',
+  'EachOpponentWhoLostLifeThisTurn',
 ]);
 /** Target kinds that pick from a filter. */
 const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents']);
@@ -280,6 +281,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard') e(`unknown zone "${t.zone}".`);
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');
   if (t.attacksYou && t.when !== 'Attacks') e('attacksYou is only for Attacks.');
+  if (t.ifYouControl) validateFilter(t.ifYouControl.filter, e);
   if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
   validateCost(t.cost?.mana, e);
@@ -319,11 +321,13 @@ function validateStatic(st: StaticSpec, err: Err): void {
     }
   }
   validateFilter(st.filter, e);
+  if (st.spellCostReduction) validateFilter(st.spellCostReduction.filter, e);
+  if (st.entersWithExtraCounters !== undefined && st.affects !== 'EachMatching') e('entersWithExtraCounters needs an EachMatching static ability.');
   if (st.extraCounters !== undefined && (!isNonNegativeInt(st.extraCounters) || st.affects !== 'EachMatching')) {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (cond !== 'yourTurn' && cond !== 'equipped' && cond !== 'legendary') e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
   validateAmount(st.power, e);

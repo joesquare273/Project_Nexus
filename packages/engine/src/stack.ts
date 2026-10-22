@@ -430,6 +430,16 @@ export function spellCost(
   if (def.costReduction?.perCount && card) {
     cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, card.owner));
   }
+  // "Noncreature spells you cast cost {1} less" (Lyse Hext).
+  if (card) {
+    for (const source of battlefield(s)) {
+      if (source.controller !== card.owner) continue;
+      for (const spec of defOf(s, source).statics ?? []) {
+        const r = spec.spellCostReduction;
+        if (r && matchesObject(s, r.filter, card, { controller: source.controller, source: source.id })) cost = reduceGeneric(cost, r.generic);
+      }
+    }
+  }
   return cost;
 }
 
@@ -464,6 +474,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
 
   moveCard(ctx, id, 'stack');
   if (from === 'graveyard') c.castFromGraveyard = true;
+  if (!def.types.includes('creature')) {
+    const p = player(s, playerId);
+    p.noncreatureSpellsThisTurn = (p.noncreatureSpellsThisTurn ?? 0) + 1;
+  }
   const next = player(s, playerId).nextCreatureCounters;
   if (next && def.types.includes('creature')) {
     if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
@@ -698,6 +712,8 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
     case 'ActivePlayer':
       return s.players[s.activePlayer]!.eliminated ? [] : toPlayers([s.activePlayer]);
+    case 'EachOpponentWhoLostLifeThisTurn':
+      return toPlayers(alivePlayers(s).filter((id) => id !== item.controller && (s.players[id]!.lifeLostThisTurn ?? 0) > 0));
     case 'EachPlayerWhoChose':
     case 'EachOpponentWhoChose':
     case 'EachOpponentWhoDidNotChoose': {
@@ -874,6 +890,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
       return;
     case 'Exile':
+      // A card in a graveyard ("exile target creature card from a graveyard").
+      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') moveCard(ctx, id, 'exile');
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
         const { name } = defOf(s, c);
@@ -946,6 +964,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'GainControl':
+      for (const id of onBattlefield) {
+        const c = s.cards[id]!;
+        if (c.controller === item.controller) continue;
+        c.controller = item.controller;
+        c.summoningSick = true;
+        if (c.attachedTo) delete c.attachedTo;
+        ctx.ev.push({ type: 'ControlChanged', card: id, controller: item.controller });
+      }
+      return;
+    case 'WinGame':
+      for (const pid of targetPlayers(targets)) {
+        for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
+      }
+      return;
     case 'AttachLastEquipment': {
       const equipment = (s.cards[source]!.lastEquippedBy ?? [])
         .map((id) => s.cards[id]!)
@@ -1068,6 +1101,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'Proliferate':
       // The engine chooses: every kind on your own permanents except stun counters, and stun counters on opponents'.
+      // "Proliferate X times": `amount` rounds.
+      for (let round = 0; round < (effect.amount === undefined ? 1 : amount); round++)
       for (const pid of targetPlayers(targets)) {
         for (const c of battlefield(s)) {
           for (const [kind] of allCounters(c)) {
@@ -1176,6 +1211,16 @@ function continueResolving(ctx: Ctx): void {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
       const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];
       if (!ok) continue;
+    }
+    if (effect.ifLifeGainedThisTurn) {
+      const gained = s.players[item.controller]!.lifeGainedThisTurn ?? 0;
+      const { atLeast, below } = effect.ifLifeGainedThisTurn;
+      if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
+    }
+    if (effect.ifPreviousTargetManaValueAtLeast !== undefined) {
+      const t = r.previousTarget;
+      const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      if (!c || manaValue(parseManaCost(defOf(s, c).manaCost)) < effect.ifPreviousTargetManaValueAtLeast) continue;
     }
     if (effect.ifSourcePowerAtLeast !== undefined) {
       const src = s.cards[sourceOf(item)]!;

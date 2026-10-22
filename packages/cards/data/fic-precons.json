@@ -179,10 +179,8 @@
           "count": 1,
           "set": "fic",
           "number": "66",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lifestream's Blessing",
@@ -223,11 +221,8 @@
           "count": 1,
           "set": "fic",
           "number": "76",
-          "implemented": false,
-          "needs": [
-            "raise",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Barret, Avalanche Leader",
@@ -367,10 +362,8 @@
           "count": 1,
           "set": "fic",
           "number": "295",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Professional Face-Breaker",
@@ -1060,12 +1053,8 @@
           "count": 1,
           "set": "fic",
           "number": "55",
-          "implemented": false,
-          "needs": [
-            "rage",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Gogo, Mysterious Mime",
@@ -1752,10 +1741,8 @@
           "count": 1,
           "set": "fic",
           "number": "415",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sacred Peaks",
@@ -1950,10 +1937,8 @@
           "count": 1,
           "set": "fic",
           "number": "29",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Blitzball Stadium",
@@ -2039,12 +2024,8 @@
           "count": 1,
           "set": "fic",
           "number": "73",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Yuna's Decision",
@@ -2622,10 +2603,8 @@
           "count": 1,
           "set": "fic",
           "number": "395",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Idyllic Beachfront",
@@ -3037,22 +3016,16 @@
           "count": 1,
           "set": "fic",
           "number": "88",
-          "implemented": false,
-          "needs": [
-            "prowess",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Papalymo Totolymo",
           "count": 1,
           "set": "fic",
           "number": "90",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Urianger Augurelt",

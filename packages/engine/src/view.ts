@@ -82,7 +82,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       handCount: p.hand.length,
       libraryCount: p.library.length,
       ...(pid === viewer ? { hand: [...p.hand] } : {}),
-      battlefield: [...p.battlefield],
+      // What they control, including permanents they took from someone else.
+      battlefield: s.turnOrder.flatMap((owner) => s.players[owner]!.battlefield).filter((id) => s.cards[id]!.controller === pid),
       graveyard: [...p.graveyard],
       exile: [...p.exile],
       command: [...p.command],

@@ -37,6 +37,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachPlayerWhoChose: 'each player who did',
   EachOpponentWhoChose: 'each opponent who did',
   EachOpponentWhoDidNotChoose: "each opponent who didn't",
+  EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
   You: 'you',
 };
 
@@ -135,6 +136,10 @@ function effectText(e: EffectSpec): string {
       return `put ${countersText(n, e.counter)} on ${who}`;
     case 'PutLastCounters':
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
+    case 'GainControl':
+      return `gain control of ${who}`;
+    case 'WinGame':
+      return `${you ? 'you win' : `${who} wins`} the game`;
     case 'AttachLastEquipment':
       return `attach an Equipment that was attached to this to ${who}`;
     case 'CreateToken':
@@ -406,6 +411,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${cardName(s, e.card)} gets ${countersText(e.amount, e.counter)}.`;
     case 'CountersRemoved':
       return `  ${cardName(s, e.card)} loses ${countersText(e.amount, e.counter)}.`;
+    case 'ControlChanged':
+      return `  ${who(e.controller)} gains control of ${cardName(s, e.card)}.`;
     case 'Attached':
       return e.creature
         ? `  ${cardName(s, e.equipment)} is attached to ${cardName(s, e.creature)}.`
@@ -440,6 +447,7 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
           emptyLibrary: 'drew from an empty library',
           conceded: 'conceded',
           commanderDamage: '21 commander damage',
+          effect: 'a card says so',
         }[e.reason]
       }).`;
     case 'GameEnded':

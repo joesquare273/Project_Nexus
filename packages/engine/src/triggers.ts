@@ -124,8 +124,22 @@ function matchesFilter(
   return matchesObject(s, filter, s.cards[o.subject]!, { controller, source }, o.subjectController);
 }
 
+/** Intervening "if" conditions about the game rather than the event (rule 603.4). */
+function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, controller: PlayerId): boolean {
+  const p = s.players[controller]!;
+  if (spec.ifYouGainedLifeThisTurn && !((p.lifeGainedThisTurn ?? 0) > 0)) return false;
+  if (spec.ifCardLeftYourGraveyardThisTurn && p.cardLeftGraveyardTurn !== s.turnNumber) return false;
+  if (spec.ifYouControl) {
+    const { filter, atLeast = 1 } = spec.ifYouControl;
+    const n = battlefield(s).filter((c) => c.controller === controller && matchesObject(s, filter, c, { controller, source })).length;
+    if (n < atLeast) return false;
+  }
+  return true;
+}
+
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
+  if (!conditionsHold(spec, s, source, controller)) return false;
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
     if (spec.drawer === 'You' && o.drawer !== controller) return false;

@@ -5,6 +5,24 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### End-step and upkeep triggers (C2, step 5)
+
+The engine now tracks, each turn, life gained, cards leaving your graveyard,
+noncreature spells cast and which permanents entered. Triggers can ask "if
+you control a creature with power 7 or greater" (or twenty artifacts). Also
+new: gaining control of permanents for good, "you win the game", exiling a
+card from a graveyard, proliferating several times, "noncreature spells you
+cast cost {1} less", "enters with an additional +1/+1 counter", and "each
+opponent who lost life this turn". The board now shows a permanent on the
+side of the player who controls it, not its owner. A player who loses has
+their side of the table turned black and white, in shadow.
+
+10 precon cards built (`packages/bots/test/precon-end-step.test.ts`):
+Bugenhagen, Aerith, Hellkite Tyrant, Gau, Rogue's Passage, Summoner's
+Sending, Papalymo Totolymo, Lyse Hext, Forge of Heroes and Tromell. 176 of
+320 distinct precon cards are now built (Counter Blitz 68/100, Revival
+Trance 61, Limit Break 59, Scions & Spellcraft 57).
+
 ### New tokens (C2, step 4)
 
 Seven new tokens, each matched to its exact Scryfall printing in
@@ -192,8 +210,10 @@ card-by-card work:
 4. **New tokens.** Done 2026-10-22 (10 cards; see above). The other token
    makers wait on Sagas, X costs, counterspells, kicker, rebound, Vehicles
    or copies.
-5. **End-step triggers** (13), with the "this turn" tracking they need
-   (life lost, a card left your graveyard, a counter was put on it).
+5. **End-step triggers.** Done 2026-10-22 (10 cards; see above). Still
+   waiting on their own mechanics: Estinien (combat damage by Dragons),
+   Kefka and Furious Rise (casting exiled cards), Sabin (blitz), Priest of
+   Fell Rites (unearth), Hraesvelgr (ward), Gogo (copies).
 6. Then Sagas, graveyard-to-hand, anthems, evolve, counterspells, and the
    remaining one-offs.
 

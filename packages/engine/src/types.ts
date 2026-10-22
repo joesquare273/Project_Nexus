@@ -115,6 +115,8 @@ export const TARGET_KINDS = [
   'EachOpponentWhoChose',
   /** Opponents who chose nothing in the last choice ("each opponent who doesn't [sacrifice]"). */
   'EachOpponentWhoDidNotChoose',
+  /** "Each opponent who lost life this turn". */
+  'EachOpponentWhoLostLifeThisTurn',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
@@ -205,6 +207,10 @@ export const EFFECT_KINDS = [
   'PutLastCounters',
   /** Attach an Equipment that was attached to the source as it left the battlefield to the target (Zack Fair). */
   'AttachLastEquipment',
+  /** Gain control of the target permanents for the rest of the game (Hellkite Tyrant). */
+  'GainControl',
+  /** The target players win the game: every other player loses. */
+  'WinGame',
   /** Each target player puts up to `amount` cards matching `filter` from their hand onto the battlefield, their choice. */
   'PutFromHand',
   /**
@@ -244,6 +250,8 @@ export const COUNT_KINDS = [
   /** Soul counters on the card with the ability (Reaper's Scythe). */
   'SoulCountersOnThis',
   'SoldiersYouControl',
+  /** Nontoken creatures you control that entered the battlefield this turn (Tromell). */
+  'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
   'OpponentsWithMoreCreatures',
 ] as const;
@@ -303,6 +311,10 @@ export interface EffectSpec {
   power?: number;
   /** ModifyPT: `amount` is added to `power` ("+X/+0, where X is the number of Soldiers you control"). */
   powerFromAmount?: boolean;
+  /** Only if you gained at least / less than this much life this turn (Aerith). */
+  ifLifeGainedThisTurn?: { atLeast?: number; below?: number };
+  /** Only if the previous target's mana value is at least this ("if the exiled card's mana value is 4 or greater"). */
+  ifPreviousTargetManaValueAtLeast?: number;
   toughness?: number;
   /** GrantKeywords. */
   keywords?: Keyword[];
@@ -419,6 +431,8 @@ export interface ObjectFilter {
   attacking?: boolean;
   /** Is attacking the player whose ability this is ("target creature attacking you"). */
   attackingYou?: boolean;
+  /** Entered the battlefield this turn ("target commander that entered this turn"). */
+  enteredThisTurn?: boolean;
   /** Has an Equipment attached. */
   equipped?: boolean;
   /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
@@ -471,6 +485,12 @@ export interface TriggerSpec {
   notOnDrawersTurn?: boolean;
   /** Intervening "if": "if you put a counter on a creature this turn". */
   ifYouPutCounterOnCreatureThisTurn?: boolean;
+  /** Intervening "if": you control at least `atLeast` (default 1) permanents matching `filter` ("if you control a creature with power 7 or greater"). */
+  ifYouControl?: { filter: ObjectFilter; atLeast?: number };
+  /** Intervening "if": "if you gained life this turn". */
+  ifYouGainedLifeThisTurn?: boolean;
+  /** Intervening "if": "if a card left your graveyard this turn". */
+  ifCardLeftYourGraveyardThisTurn?: boolean;
   /** Intervening "if": "if a counter was put on this creature this turn". */
   ifSourceGotCountersThisTurn?: boolean;
   /** Intervening "if": "if a player lost N or more life this turn". */
@@ -533,11 +553,15 @@ export interface StaticSpec {
   filter?: ObjectFilter;
   /** Hardened Scales: that many extra +1/+1 counters whenever counters are put on an affected creature. */
   extraCounters?: number;
+  /** Tromell: each affected permanent enters with this many additional +1/+1 counters. */
+  entersWithExtraCounters?: number;
+  /** "Noncreature spells you cast cost {1} less": spells you cast matching `filter` cost this much less. */
+  spellCostReduction?: { generic: number; filter: ObjectFilter };
   /**
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".
    */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary')[];
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn')[];
   power?: Amount;
   toughness?: Amount;
   keywords?: Keyword[];
@@ -713,6 +737,8 @@ export interface CardInstance {
   lastPower?: number;
   /** The turn counters were last put on it. */
   countersTurn?: number;
+  /** The turn it last entered the battlefield. */
+  enteredTurn?: number;
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */
@@ -746,6 +772,14 @@ export interface PlayerState {
   nextCreatureCounters?: { turn: number; amount: number };
   /** The last turn this player put a counter on a creature. */
   counterOnCreatureTurn?: number;
+  /** Life gained this turn. Reset as each turn begins. */
+  lifeGainedThisTurn?: number;
+  /** The last turn a card left this player's graveyard. */
+  cardLeftGraveyardTurn?: number;
+  /** Noncreature spells this player cast this turn. Reset as each turn begins. */
+  noncreatureSpellsThisTurn?: number;
+  /** An effect said this player loses the game (someone else's "you win the game"). */
+  lostToEffect?: boolean;
   conceded: boolean;
 }
 
@@ -1007,7 +1041,7 @@ export type Action =
 // Events (immutable facts, PRD 9)
 // ---------------------------------------------------------------------------
 
-export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage';
+export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
 export type GameEvent =
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
@@ -1063,6 +1097,7 @@ export type GameEvent =
   | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind }
   | { type: 'CountersRemoved'; card: InstanceId; amount: number; counter: AnyCounter }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
+  | { type: 'ControlChanged'; card: InstanceId; controller: PlayerId }
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }

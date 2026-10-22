@@ -97,6 +97,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter(creature).reduce((n, c) => n + totalCounters(c), 0);
     case 'PlayersWhoLostLifeThisTurn':
       return s.turnOrder.filter((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) > 0).length;
+    case 'NontokenCreaturesYouControlThatEnteredThisTurn':
+      return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
     case 'SoldiersYouControl':
       return yours().filter((c) => creature(c) && (def(s, c).subtypes ?? []).includes('Soldier')).length;
     case 'OpponentsWithMoreCreatures': {
@@ -135,6 +137,7 @@ function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): In
     if (condition === 'yourTurn' && s.activePlayer !== source.controller) return null;
     if (condition === 'equipped' && !isEquipped(s, s.cards[affected]!)) return null;
     if (condition === 'legendary' && !def(s, s.cards[affected]!).supertypes?.includes('Legendary')) return null;
+    if (condition === 'twoNoncreatureSpellsThisTurn' && (s.players[source.controller]!.noncreatureSpellsThisTurn ?? 0) < 2) return null;
   }
   return affected;
 }

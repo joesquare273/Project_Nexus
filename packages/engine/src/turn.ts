@@ -101,7 +101,12 @@ export function startNextTurn(ctx: Ctx): void {
   s.turnNumber += 1;
   s.triggeredThisTurn = [];
   s.creaturesDiedThisTurn = 0;
-  for (const pid of s.turnOrder) s.players[pid]!.lifeLostThisTurn = 0;
+  for (const pid of s.turnOrder) {
+    const p = s.players[pid]!;
+    p.lifeLostThisTurn = 0;
+    p.lifeGainedThisTurn = 0;
+    p.noncreatureSpellsThisTurn = 0;
+  }
   ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: s.turnNumber });
   enterStep(ctx, 'untap');
 }

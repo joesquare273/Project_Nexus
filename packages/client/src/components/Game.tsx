@@ -607,7 +607,7 @@ export function Game({
           bottomPicks={bottomPicks}
           setBottomPicks={setBottomPicks}
         />
-        <div className="you-bar">
+        <div className={`you-bar ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
           <PlayerHeader view={view} pid={YOU} h={h} />
           <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>

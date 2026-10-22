@@ -360,7 +360,7 @@ export function YourZone({
   onPlaced: () => void;
 }) {
   return (
-    <section className="zone you">
+    <section className={`zone you ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
       <div className="zone-body">
         <Battlefield view={view} pid={YOU} h={h} placement={placement} onPlaced={onPlaced} />
         <ZonePiles view={view} pid={YOU} h={h} />

@@ -50,6 +50,7 @@ export function matchesObject(
     const attacking = s.combat?.attacks.some((a) => a.attacker === obj.id) ?? false;
     if (attacking !== f.attacking) return false;
   }
+  if (f.enteredThisTurn !== undefined && (obj.zone === 'battlefield' && obj.enteredTurn === s.turnNumber) !== f.enteredThisTurn) return false;
   if (f.attackingYou && !s.combat?.attacks.some((a) => a.attacker === obj.id && a.defender === from.controller)) return false;
   if (f.equipped !== undefined && isEquipped(s, obj) !== f.equipped) return false;
   if (f.equippedBySource && (!from.source || s.cards[from.source]?.attachedTo !== obj.id)) return false;

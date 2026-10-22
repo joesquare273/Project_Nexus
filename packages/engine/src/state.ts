@@ -181,6 +181,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastPower = from === 'battlefield' && hasType(s, c, 'creature') ? powerOf(s, c) : undefined;
   const lastCounters = from === 'battlefield' ? Object.fromEntries(allCounters(c)) : undefined;
   const lastKeywords = from === 'battlefield' ? [...characteristics(s, c).keywords] : undefined;
+  if (from === 'graveyard') player(s, c.owner).cardLeftGraveyardTurn = s.turnNumber;
   if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
     s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
@@ -230,7 +231,17 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (from === 'battlefield') leftBattlefield(ctx, id);
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
   const d = s.cardDefs[c.defId]!;
+  if (to === 'battlefield') c.enteredTurn = s.turnNumber;
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
+  // Tromell: "each other nontoken creature you control enters with an additional +1/+1 counter".
+  if (to === 'battlefield') {
+    for (const source of battlefield(s)) {
+      if (source.id === id) continue;
+      for (const spec of defOf(s, source).statics ?? []) {
+        if (spec.entersWithExtraCounters && staticAffects(s, source, spec, c)) addCounters(ctx, id, spec.entersWithExtraCounters);
+      }
+    }
+  }
 }
 
 /** Things that happen the moment a permanent leaves the battlefield. */
@@ -281,6 +292,7 @@ export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   const from = p.life;
   p.life += delta;
   if (delta < 0) p.lifeLostThisTurn = (p.lifeLostThisTurn ?? 0) - delta;
+  else p.lifeGainedThisTurn = (p.lifeGainedThisTurn ?? 0) + delta;
   ctx.ev.push({ type: 'LifeChanged', player: playerId, from, to: p.life });
 }
 
@@ -431,6 +443,7 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId): I
     damage: 0,
     deathtouched: false,
     isToken: true,
+    enteredTurn: s.turnNumber,
   };
   player(s, controller).battlefield.push(id);
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
