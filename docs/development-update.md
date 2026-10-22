@@ -5,6 +5,25 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-21
 
+### Precon +1/+1 counters (C2, third group)
+
+11 counter cards now work as printed (`packages/bots/test/precon-counters.test.ts`):
+Hardened Scales, Duskshell Crawler, Sphere Grid, Bred for the Hunt,
+Chocobo Knights, Inspiring Call, Grateful Apparition, Inexorable Tide,
+Sunscorch Regent, Ardbert and Siegfried. New pieces:
+
+- Static abilities can cover a group: "each creature you control with a
+  +1/+1 counter on it has trample".
+- Hardened Scales' "that many plus one" (also for proliferate and
+  "enters with" counters).
+- Proliferate. The engine picks your own permanents; choosing others is
+  rarely right with only +1/+1 counters in the game.
+- "Enters with N +1/+1 counters", "creatures with counters on them",
+  "whenever you cast a white spell", and amounts like "twice the number of
+  creature cards in your graveyard".
+
+Counter Blitz (Tidus) is now 45/100 fully built.
+
 ### Precon Equipment (C2, second group)
 
 16 Equipment-group cards now work as printed, including Limit Break's

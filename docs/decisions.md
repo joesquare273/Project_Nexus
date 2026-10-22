@@ -118,6 +118,8 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Explorer's Scope | A land on top of the library is always put onto the battlefield | Optional ("you may") |
 | Armory Automaton | "Attach any number of target Equipment": all of your Equipment or none | Any subset, and other players' Equipment too |
 | Losing keywords | "Loses flying" applies after every grant, whatever the order | Layer 6 timestamp order (rule 613) |
+| Proliferate | Adds a counter to each permanent you control that has counters | You choose any permanents and players (rule 701.27) |
+| Counter kinds | Only +1/+1 counters exist, so "counters on it" means +1/+1 counters | Many kinds (stun, shield, lore, page...) |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
 | Library search | Takes the first matching card | The player chooses which matching card |

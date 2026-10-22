@@ -43,13 +43,16 @@ const COUNT_TEXT: Record<string, string> = {
   CreaturesDiedThisTurn: 'creatures that died this turn',
   CreaturesOnBattlefield: 'creatures on the battlefield',
   EquippedAttackingCreaturesYouControl: 'equipped attacking creatures you control',
+  CreaturesYouControlWithCounters: 'creatures you control with +1/+1 counters on them',
+  CreatureCardsInYourGraveyard: 'creature cards in your graveyard',
 };
 
 function amountText(a: Amount | undefined): string {
   if (a === undefined) return '0';
   if (typeof a === 'number') return String(a);
   if ('of' in a) return a.of === 'previousTargetPower' ? 'its power' : 'the number of permanents destroyed this way';
-  return `X (the number of ${a.count.map((k) => COUNT_TEXT[k] ?? k).join(' plus ')})`;
+  const times = a.times && a.times !== 1 ? `${a.times === 2 ? 'twice' : `${a.times} times`} ` : '';
+  return `X (${times}the number of ${a.count.map((k) => COUNT_TEXT[k] ?? k).join(' plus ')})`;
 }
 
 function targetText(e: EffectSpec): string {
@@ -136,6 +139,8 @@ function effectText(e: EffectSpec): string {
       return `attach ${who} to this creature`;
     case 'Untap':
       return `untap ${who}`;
+    case 'Proliferate':
+      return 'proliferate';
     case 'PutTopCardIfLand':
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'SearchLibraryToHand':
@@ -186,6 +191,7 @@ function subjectText(f: ObjectFilter, noun: string, plural = false): string {
     f.toughnessAtLeast !== undefined && `toughness ${f.toughnessAtLeast} or greater`,
     f.manaValueAtMost !== undefined && `mana value ${f.manaValueAtMost} or less`,
     f.manaValueAtLeast !== undefined && `mana value ${f.manaValueAtLeast} or greater`,
+    f.hasCounters && `a +1/+1 counter on ${plural ? 'them' : 'it'}`,
   ].filter(Boolean);
   const withText = qualities.length ? ` with ${qualities.join(' and ')}` : '';
   const counters = f.noCounters ? ` with no counters on ${plural ? 'them' : 'it'}` : '';
