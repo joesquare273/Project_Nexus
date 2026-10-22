@@ -104,22 +104,22 @@ card-by-card work:
 
 ### Picking up on the other computer
 
-That computer may still have an older, unpushed `precon-c2` branch from
-before this work. It was replaced by what's on GitHub, so discard it.
+Everything is on `main`; there are no other branches (2026-10-22: all work
+was merged into `main` and every other branch deleted, here and on GitHub).
+Work directly on `main` from now on.
 
 ```bash
-git fetch origin
+git fetch origin --prune
 git checkout main
 git reset --hard origin/main
-git checkout -B precon-counters origin/precon-counters
+git branch | grep -v main | xargs -r git branch -D
 npm install
 npm run check
 ```
 
-`git reset --hard` throws away uncommitted changes on that computer, which
-is intended here. Then either open a pull request for `precon-counters` and
-merge it before starting step 1, or start step 1 on top of
-`precon-counters`. `npm run dev` starts the browser board.
+`git reset --hard` throws away uncommitted changes on that computer, and
+the `git branch -D` line deletes its old local branches; everything worth
+keeping is already on `main`. `npm run dev` starts the browser board.
 
 ## 2026-10-21
 

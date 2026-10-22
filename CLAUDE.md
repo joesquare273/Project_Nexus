@@ -7,6 +7,10 @@ this repo, not only in local memory.
 
 ## Ground rules from the user
 
+- **Work directly on `main`. No branches, no pull requests.** Commit to
+  `main` and push it (when asked to commit or push). Before starting on a
+  computer, `git pull` so it has the other computer's work; push when done
+  so the other computer can pick it up. Keep `main` passing `npm run check`.
 - **The Final Fantasy Starter Kits are the testbed.** Every game uses the
   exact Red-White and Blue-Black kit decklists. Don't add placeholder cards
   or filler from other sets. All kit cards are built (2026-10-21); a new
