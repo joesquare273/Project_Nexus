@@ -67,6 +67,8 @@ export function checkInvariants(s: GameState): string[] {
     if (c.isToken && c.zone !== 'battlefield') problems.push(`token ${c.id} is in ${c.zone}`);
     if (c.attachedTo && s.cards[c.attachedTo]?.zone !== 'battlefield') problems.push(`${c.id} is attached to something off the battlefield`);
     if ((c.counters ?? 0) < 0) problems.push(`${c.id} has negative counters`);
+    for (const [kind, n] of Object.entries(c.namedCounters ?? {})) if (!(n > 0)) problems.push(`${c.id} has ${n} ${kind} counters`);
+    if (c.namedCounters && c.zone !== 'battlefield') problems.push(`${c.id} has counters off the battlefield`);
     if (c.damage < 0) problems.push(`${c.id} has negative damage`);
     if (c.zone !== 'battlefield' && (c.tapped || c.damage > 0)) problems.push(`${c.id} carries battlefield state in ${c.zone}`);
   }

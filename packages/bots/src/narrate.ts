@@ -32,6 +32,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   This: 'this card',
   AllPermanents: 'all permanents',
   TriggeringObject: 'that creature',
+  TriggeringCard: 'that card',
   ActivePlayer: 'that player',
   EachPlayerWhoChose: 'each player who did',
   EachOpponentWhoChose: 'each opponent who did',
@@ -49,12 +50,25 @@ const COUNT_TEXT: Record<string, string> = {
   EquippedAttackingCreaturesYouControl: 'equipped attacking creatures you control',
   CreaturesYouControlWithCounters: 'creatures you control with +1/+1 counters on them',
   CreatureCardsInYourGraveyard: 'creature cards in your graveyard',
+  CountersAmongCreaturesYouControl: 'counters among creatures you control',
+  PlayersWhoLostLifeThisTurn: 'players who lost life this turn',
+  SoulCountersOnThis: 'soul counters on this',
 };
+
+/** "a +1/+1 counter", "2 shield counters". */
+function countersText(n: string | number, kind: string = '+1/+1'): string {
+  return String(n) === '1' ? `a ${kind} counter` : `${n} ${kind} counters`;
+}
 
 function amountText(a: Amount | undefined): string {
   if (a === undefined) return '0';
   if (typeof a === 'number') return String(a);
-  if ('of' in a) return a.of === 'previousTargetPower' ? 'its power' : 'the number of permanents destroyed this way';
+  if ('of' in a) {
+    if (a.of === 'previousTargetPower' || a.of === 'subjectPower') return 'its power';
+    if (a.of === 'sourcePower') return "this creature's power";
+    if (a.of === 'subjectCounters') return 'that many';
+    return 'the number of permanents destroyed this way';
+  }
   const times = a.times && a.times !== 1 ? `${a.times === 2 ? 'twice' : `${a.times} times`} ` : '';
   return `X (${times}the number of ${a.count.map((k) => COUNT_TEXT[k] ?? k).join(' plus ')})`;
 }
@@ -91,6 +105,8 @@ function effectText(e: EffectSpec): string {
       const what = subjectText({ ...e.filter, controller: undefined }, 'permanent');
       return `${you ? (e.optional ? 'you may sacrifice' : 'sacrifice') : `${who} ${e.optional ? 'may sacrifice' : 'sacrifices'}`} a ${what}`;
     }
+    case 'MoveCounters':
+      return `move a counter onto ${who}`;
     case 'ChooseTarget':
       return `choose ${who}`;
     case 'AttachEquipmentTo':
@@ -114,7 +130,13 @@ function effectText(e: EffectSpec): string {
     case 'ReturnToHand':
       return `return ${who} to ${e.target === 'This' ? 'your' : "its owner's"} hand`;
     case 'AddCounters':
-      return `put ${n === '1' ? 'a +1/+1 counter' : `${n} +1/+1 counters`} on ${who}`;
+      if (e.monstrosity) return `monstrosity ${n}`;
+      if (e.ifSourceHasNoCounters) return `adapt ${n}`;
+      return `put ${countersText(n, e.counter)} on ${who}`;
+    case 'PutLastCounters':
+      return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
+    case 'AttachLastEquipment':
+      return `attach an Equipment that was attached to this to ${who}`;
     case 'CreateToken':
       return `create ${plural(`${e.token?.replace(/-token$/, '').replace(/-/g, ' ')} token`)}`;
     case 'CreateTokenCopy':
@@ -132,7 +154,11 @@ function effectText(e: EffectSpec): string {
             ? `${who} can't be blocked this turn`
             : f === 'mustBeBlocked'
               ? `${who} must be blocked this turn if able`
-              : `if ${who} would die this turn, exile it instead`,
+              : f === 'damageBecomesCounters'
+                ? `if damage would be dealt to ${who} this turn, prevent it and put that many +1/+1 counters on it`
+                : f === 'returnToHandIfDies'
+                  ? `when ${who} dies this turn, return it to its owner's hand`
+                  : `if ${who} would die this turn, exile it instead`,
         )
         .join(' and ');
     case 'ExileUntilSourceLeaves':
@@ -151,7 +177,7 @@ function effectText(e: EffectSpec): string {
       }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'ReturnToBattlefield':
-      return `return ${who} to the battlefield${e.counters ? ` with ${e.counters} extra +1/+1 counters` : ''}`;
+      return `return ${who} to the battlefield${e.counters ? ` with ${countersText(e.counters, e.counter)} on it` : ''}`;
     case 'Attach':
       return `attach this to ${who}`;
     case 'AttachAllEquipment':
@@ -165,7 +191,7 @@ function effectText(e: EffectSpec): string {
     case 'PutTopCardIfLand':
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'SearchLibraryToHand':
-      return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand`;
+      return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand${e.toBattlefieldIfBehindOnLands ? ' (onto the battlefield tapped if an opponent controls more lands)' : ''}`;
   }
 }
 
@@ -237,7 +263,8 @@ function triggerCondition(t: TriggerSpec): string {
     CombatDamageToPlayer: 'deals combat damage to a player',
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',
-  }[t.when];
+    LeavesBattlefield: 'leaves the battlefield',
+  }[t.when] ?? '';
   if (!t.what) return `When this ${verb}`;
   if (t.when === 'SpellCast') return `Whenever ${t.what.controller === 'You' ? 'you cast' : 'a player casts'} a ${subjectText({ ...t.what, controller: undefined }, 'spell')}`;
   if (t.oneOrMore) {
@@ -370,7 +397,9 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
     case 'TokenCreated':
       return `  ${who(e.controller)} created a ${cardName(s, e.card)} token.`;
     case 'CountersAdded':
-      return `  ${cardName(s, e.card)} gets ${e.amount === 1 ? 'a +1/+1 counter' : `${e.amount} +1/+1 counters`}.`;
+      return `  ${cardName(s, e.card)} gets ${countersText(e.amount, e.counter)}.`;
+    case 'CountersRemoved':
+      return `  ${cardName(s, e.card)} loses ${countersText(e.amount, e.counter)}.`;
     case 'Attached':
       return e.creature
         ? `  ${cardName(s, e.equipment)} is attached to ${cardName(s, e.creature)}.`

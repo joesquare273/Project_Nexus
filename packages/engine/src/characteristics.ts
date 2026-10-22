@@ -9,6 +9,7 @@
 
 import { matchesObject } from './filters.ts';
 import type {
+  AnyCounter,
   Amount,
   CardDefinition,
   CardInstance,
@@ -20,6 +21,22 @@ import type {
   StaticSpec,
   TemporaryFlag,
 } from './types.ts';
+
+/** How many counters of a kind are on a card. */
+export function countersOf(c: CardInstance, kind: AnyCounter): number {
+  return kind === '+1/+1' ? (c.counters ?? 0) : (c.namedCounters?.[kind] ?? 0);
+}
+
+/** Every kind of counter on a card, with how many. */
+export function allCounters(c: CardInstance): [AnyCounter, number][] {
+  const out: [AnyCounter, number][] = (c.counters ?? 0) > 0 ? [['+1/+1', c.counters!]] : [];
+  for (const [kind, n] of Object.entries(c.namedCounters ?? {})) if (n > 0) out.push([kind as AnyCounter, n]);
+  return out;
+}
+
+export function totalCounters(c: CardInstance): number {
+  return allCounters(c).reduce((n, [, k]) => n + k, 0);
+}
 
 export interface Characteristics {
   power: number;
@@ -48,7 +65,7 @@ export function isEquipped(s: GameState, c: CardInstance): boolean {
 }
 
 /** How many of something there are, from `player`'s point of view. */
-export function countOf(s: GameState, kind: CountKind, player: PlayerId): number {
+export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?: InstanceId): number {
   const yours = () => battlefieldCards(s).filter((c) => c.controller === player);
   const creature = (c: CardInstance) => def(s, c).types.includes('creature');
   switch (kind) {
@@ -76,17 +93,23 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId): number
       }).length;
     case 'CreatureCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('creature')).length;
+    case 'CountersAmongCreaturesYouControl':
+      return yours().filter(creature).reduce((n, c) => n + totalCounters(c), 0);
+    case 'PlayersWhoLostLifeThisTurn':
+      return s.turnOrder.filter((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) > 0).length;
+    case 'SoulCountersOnThis':
+      return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
     case 'EquippedAttackingCreaturesYouControl':
       return yours().filter((c) => creature(c) && isEquipped(s, c) && (s.combat?.attacks.some((a) => a.attacker === c.id) ?? false)).length;
   }
 }
 
-export function amountOf(s: GameState, amount: Amount | undefined, player: PlayerId): number {
+export function amountOf(s: GameState, amount: Amount | undefined, player: PlayerId, source?: InstanceId): number {
   if (amount === undefined) return 0;
   if (typeof amount === 'number') return amount;
   // Amounts that refer back to earlier in the same spell or ability are worked out while it resolves.
   if ('of' in amount) return 0;
-  return amount.count.reduce((n, kind) => n + countOf(s, kind, player), 0) * (amount.times ?? 1);
+  return amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0) * (amount.times ?? 1);
 }
 
 /** Whether a static ability of `source` applies to `c`. */
@@ -124,8 +147,8 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   for (const source of battlefieldCards(s)) {
     for (const spec of def(s, source).statics ?? []) {
       if (!staticAffects(s, source, spec, c)) continue;
-      out.power += amountOf(s, spec.power, source.controller);
-      out.toughness += amountOf(s, spec.toughness, source.controller);
+      out.power += amountOf(s, spec.power, source.controller, source.id);
+      out.toughness += amountOf(s, spec.toughness, source.controller, source.id);
       for (const k of spec.keywords ?? []) out.keywords.add(k);
       for (const t of spec.addSubtypes ?? []) if (!out.subtypes.includes(t)) out.subtypes.push(t);
       removed.push(...(spec.removeKeywords ?? []));
@@ -137,6 +160,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     out.toughness += e.toughness ?? 0;
     for (const k of e.keywords ?? []) out.keywords.add(k);
   }
+  if (countersOf(c, 'flying') > 0) out.keywords.add('Flying');
   // "Loses flying" wins over grants (a simplification of layer 6 timestamps).
   for (const k of removed) out.keywords.delete(k);
   out.power += c.counters ?? 0;

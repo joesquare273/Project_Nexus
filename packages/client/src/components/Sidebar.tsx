@@ -7,13 +7,8 @@ import { CardFace, ManaCost } from './Card.tsx';
 /** A large view of the hovered card, with its rules text. */
 export function Inspector({ view, id }: { view: GameView; id: InstanceId | null }) {
   const c = id ? view.cards[id] : undefined;
-  if (!c) {
-    return (
-      <div className="inspector empty">
-        <p>Hover over a card to see it here.</p>
-      </div>
-    );
-  }
+  // A pop-out on the right edge, only while a card is hovered (or triggering).
+  if (!c) return null;
   const def = defOf(c.defId);
   const info = scryfallOf(c.defId);
   const status = [
@@ -22,7 +17,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
     c.zone === 'battlefield' && c.summoningSick && isCreature(def) && 'Summoning sick',
   ].filter(Boolean);
   return (
-    <div className="inspector">
+    <div key={id} className="inspector" aria-live="polite">
       <div className="inspector-card">
         <CardFace defId={c.defId} size="large" />
       </div>

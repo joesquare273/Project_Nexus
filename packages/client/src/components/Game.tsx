@@ -577,8 +577,9 @@ export function Game({
         <div className="midline">
           <PhaseTrack view={view} />
           <StackView view={view} onHover={setHovered} />
+          <Settings session={session} onChange={refresh} onQuit={onQuit} />
         </div>
-        <YourZone view={view} h={h} />
+        <YourZone view={view} h={h} placement={session.placement} onPlaced={refresh} />
         <PromptBar
           session={session}
           view={view}
@@ -621,36 +622,8 @@ export function Game({
         )}
         {coach}
       </main>
+      <Inspector view={view} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
       <aside className="sidebar">
-        <Inspector view={view} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
-        <div className="sidebar-controls">
-          <label title="Stop at every step instead of passing automatically">
-            <input
-              type="checkbox"
-              checked={session.stopEverywhere}
-              onChange={(e) => {
-                session.stopEverywhere = e.target.checked;
-                refresh();
-              }}
-            />{' '}
-            Stop at every step
-          </label>
-          <label title="Tap your lands for you when you cast a spell, instead of choosing which to tap">
-            <input
-              type="checkbox"
-              checked={session.autoTap}
-              onChange={(e) => {
-                session.autoTap = e.target.checked;
-                refresh();
-              }}
-            />{' '}
-            Tap mana automatically
-          </label>
-          <span className="seed">Seed {session.options.seed}</span>
-          <button className="ghost" onClick={onQuit}>
-            Menu
-          </button>
-        </div>
         <GameLog entries={session.log} />
       </aside>
       {offBoardOptions.length > 0 && (
@@ -679,6 +652,68 @@ export function Game({
               Turn {s.turnNumber} · seed {session.options.seed}
             </p>
             <button onClick={onQuit}>Back to menu</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The gear button on the board and its panel: game options, the seed, and the way back to the menu. */
+function Settings({ session, onChange, onQuit }: { session: GameSession; onChange: () => void; onQuit: () => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    // Close on a click anywhere else, or Escape.
+    const away = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', key);
+    };
+  }, [open]);
+  return (
+    <div className="settings" ref={box}>
+      <button className={`settings-button ${open ? 'open' : ''}`} onClick={() => setOpen(!open)} title="Settings" aria-expanded={open}>
+        ⚙
+      </button>
+      {open && (
+        <div className="settings-panel" role="dialog" aria-label="Settings">
+          <div className="settings-title">Settings</div>
+          <label title="Stop at every step instead of passing automatically">
+            <input
+              type="checkbox"
+              checked={session.stopEverywhere}
+              onChange={(e) => {
+                session.stopEverywhere = e.target.checked;
+                onChange();
+              }}
+            />{' '}
+            Stop at every step
+          </label>
+          <label title="Tap your lands for you when you cast a spell, instead of choosing which to tap">
+            <input
+              type="checkbox"
+              checked={session.autoTap}
+              onChange={(e) => {
+                session.autoTap = e.target.checked;
+                onChange();
+              }}
+            />{' '}
+            Tap mana automatically
+          </label>
+          <div className="settings-foot">
+            <span className="seed">Seed {session.options.seed}</span>
+            <button className="ghost" onClick={onQuit}>
+              Back to menu
+            </button>
           </div>
         </div>
       )}

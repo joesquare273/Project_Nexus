@@ -100,6 +100,12 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
       }
     }
   }
+  if (def.manaAbility?.yourLandColors) {
+    for (const id of s.players[c.controller]!.battlefield) {
+      const land = s.cardDefs[s.cards[id]!.defId]!;
+      if (land.types.includes('land')) for (const m of manaProduced(land)) made.add(m);
+    }
+  }
   if (def.manaAbility?.opponentLandColors) {
     for (const pid of s.turnOrder) {
       if (pid === c.controller) continue;

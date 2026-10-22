@@ -163,8 +163,10 @@ button.big {
 
 .game {
   display: grid;
-  grid-template-columns: 1fr 330px;
+  grid-template-columns: 1fr 230px;
+  /* The visible viewport, so nothing hides behind browser or system bars. */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 .table {
@@ -207,6 +209,34 @@ button.big {
 .zone.you {
   margin: 0 8px;
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+/* Your battlefield fills the zone, so there is room to arrange permanents. */
+.zone.you .zone-body {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+.zone.you .battlefield {
+  min-height: 0;
+}
+.row.creatures.free {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: calc(var(--bf-w) * var(--card-ratio) * 1.15);
+  align-content: flex-start;
+}
+.bf-slot {
+  touch-action: none;
+  cursor: grab;
+}
+.bf-slot.dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.6));
+}
+.bf-slot.dragging .bf-card {
+  transition: none;
 }
 
 /* ---------- Player header ---------- */
@@ -743,7 +773,7 @@ button.big {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  padding: 6px 8px 8px;
+  padding: 6px 8px 16px;
 }
 .you-bar .player-header {
   flex: none;
@@ -756,7 +786,8 @@ button.big {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  min-height: calc(var(--hand-w) * var(--card-ratio) * 0.75);
+  /* Whole cards stay on screen, clear of the taskbar. */
+  min-height: calc(var(--hand-w) * var(--card-ratio));
   padding-top: 10px;
 }
 .hand-card {
@@ -764,7 +795,7 @@ button.big {
   aspect-ratio: 1 / var(--card-ratio);
   margin: 0 -10px;
   border-radius: var(--radius);
-  transform: rotate(var(--tilt)) translateY(22%);
+  transform: rotate(var(--tilt));
   transition: transform 0.15s ease, box-shadow 0.15s;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
@@ -773,7 +804,7 @@ button.big {
   z-index: 10;
 }
 .hand-card.playable {
-  transform: rotate(var(--tilt)) translateY(12%);
+  transform: rotate(var(--tilt)) translateY(-5%);
 }
 .hand-card.playable:hover {
   transform: translateY(-4%) scale(1.25);
@@ -808,22 +839,39 @@ button.big {
   border-left: 1px solid var(--line);
   min-height: 0;
 }
+/* The card viewer: pops out over the right edge while a card is hovered. */
 .inspector {
-  padding: 12px;
-  border-bottom: 1px solid var(--line);
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 60;
+  width: 300px;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 300px;
+  background: rgba(10, 17, 14, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
+  /* Never steals the hover from the board underneath. */
+  pointer-events: none;
+  animation: inspector-in 0.14s ease-out;
 }
-.inspector.empty {
-  color: var(--muted);
-  font-size: 13px;
-  justify-content: center;
-  text-align: center;
+@keyframes inspector-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .inspector-card {
-  width: 210px;
+  width: 260px;
   aspect-ratio: 1 / var(--card-ratio);
   align-self: center;
   border-radius: 9px;
@@ -854,10 +902,66 @@ button.big {
 .inspector-status {
   color: var(--gold);
 }
-.sidebar-controls {
+/* The gear button at the right of the phase track, and its panel. */
+.settings {
+  position: relative;
+  margin-left: auto;
+  flex: none;
+}
+.settings-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 17px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.settings-button:hover,
+.settings-button.open {
+  border-color: var(--gold);
+}
+.settings-panel {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 70;
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(10, 17, 14, 0.97);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+}
+.settings-title {
+  font-weight: 700;
+  color: var(--gold);
+}
+.settings-foot {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.settings-foot .seed {
+  color: var(--muted);
+  font-size: 12px;
+}
+.settings-foot button {
+  margin-left: auto;
+  padding: 4px 10px;
+}
+.sidebar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
@@ -942,10 +1046,10 @@ button.big {
     --hand-w: 76px;
   }
   .hand-card {
-    transform: rotate(var(--tilt)) translateY(35%);
+    transform: rotate(var(--tilt));
   }
   .hand-card.playable {
-    transform: rotate(var(--tilt)) translateY(25%);
+    transform: rotate(var(--tilt)) translateY(-5%);
   }
 }
 
@@ -970,6 +1074,28 @@ button.big {
   background: #2f8f4e;
   color: white;
 }
+/* Shield, stun, flying, page and soul counters, stacked on the card's left edge. */
+.named-counters {
+  position: absolute;
+  left: -4px;
+  top: 14%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+.named-counters .badge.named-counter {
+  position: static;
+  font-size: 0.6rem;
+  text-transform: capitalize;
+  color: white;
+  background: #555;
+}
+.badge.named-counter.shield { background: #3b6fb6; }
+.badge.named-counter.stun { background: #b65f1e; }
+.badge.named-counter.flying { background: #4a8fa8; }
+.badge.named-counter.page { background: #7a5b2e; }
+.badge.named-counter.soul { background: #5b3b7a; }
 .badge.pt {
   right: 2px;
   bottom: 2px;

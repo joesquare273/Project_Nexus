@@ -56,7 +56,7 @@ You need Node.js 24 or newer.
       pay for it: your lands and other mana sources glow blue; click them to
       tap them for mana (a land that makes several colors asks which). It
       is cast as soon as the mana is there. Auto-pay taps for you, and
-      "Tap mana automatically" on the right does that every time.
+      "Tap mana automatically" in Settings (the gear on the board) does that every time.
     - When a card's ability triggers, the card appears large in the middle
       of the table for 2 seconds and in the card viewer on the right.
     - If a spell or ability needs a target, the legal targets glow gold.
@@ -70,7 +70,7 @@ You need Node.js 24 or newer.
       to the next step ("Go to combat", "End turn", "Let it resolve").
     - Hover over any card to see it large, with its rules text, on the right.
     - Turns pass automatically when you have nothing to do. Tick "Stop at
-      every step" on the right to stop everywhere.
+      every step" in Settings (the gear on the board) to stop everywhere.
 
   THE DECKS: the exact Final Fantasy Starter Kits
     Every game uses the two real 60-card Final Fantasy Starter Kit decks,

@@ -59,6 +59,9 @@ export interface LogEntry {
 /** What `advance` did. */
 export type Advance = 'you' | 'over' | 'bot' | 'auto';
 
+/** A dragged permanent's top-left corner, as fractions of your battlefield area's width and height. */
+export type Placement = Map<InstanceId, { x: number; y: number }>;
+
 const QUIET_ACTIONS = new Set<Action['type']>(['PassPriority', 'ActivateManaAbility']);
 
 export class GameSession {
@@ -77,6 +80,8 @@ export class GameSession {
   private nextTriggerKey = 1;
   /** Cards the last bot action touched, for highlighting. */
   recent = new Set<InstanceId>();
+  /** Where you dragged your nonland permanents on your battlefield (board layout only; the engine never sees it). */
+  readonly placement: Placement = new Map();
   private readonly bots: Record<PlayerId, Bot>;
   private nextLogId = 1;
 

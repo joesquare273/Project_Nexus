@@ -61,6 +61,16 @@ export const KEYWORDS = [
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
+/**
+ * Counters other than +1/+1 counters, which are `counters` (rule 122). A
+ * shield counter prevents damage or destruction once; a stun counter stops
+ * the next untap; a flying counter grants flying.
+ */
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul'] as const;
+export type CounterKind = (typeof COUNTER_KINDS)[number];
+/** Any counter: '+1/+1' or a named kind. */
+export type AnyCounter = '+1/+1' | CounterKind;
+
 // ---------------------------------------------------------------------------
 // Card data (PRD 10)
 // ---------------------------------------------------------------------------
@@ -91,6 +101,8 @@ export const TARGET_KINDS = [
   'This',
   /** The object the trigger event happened to ("attach this Equipment to it"). Triggered abilities only. */
   'TriggeringObject',
+  /** The card the trigger event happened to, in the graveyard it went to ("return it to the battlefield"). */
+  'TriggeringCard',
   /** Every permanent matching the effect's `filter` ("destroy all artifacts", "exile all creatures"). */
   'AllPermanents',
   'You',
@@ -181,6 +193,16 @@ export const EFFECT_KINDS = [
   'AttachEquipmentTo',
   /** Does nothing itself: picks a target that a later effect uses (`from`). */
   'ChooseTarget',
+  /**
+   * Move counters from the permanent chosen for target `from` onto this
+   * effect's target: `amount` +1/+1 counters (Tidus), one counter of any kind
+   * (`anyKind`), or all of them (`allCounters`).
+   */
+  'MoveCounters',
+  /** Put the counters the source (or, with `countersOf`, the triggering card) had as it left the battlefield on the target (Zack Fair). */
+  'PutLastCounters',
+  /** Attach an Equipment that was attached to the source as it left the battlefield to the target (Zack Fair). */
+  'AttachLastEquipment',
   /** Each target player puts up to `amount` cards matching `filter` from their hand onto the battlefield, their choice. */
   'PutFromHand',
   /**
@@ -214,6 +236,11 @@ export const COUNT_KINDS = [
   'CreaturesYouControlWithCounters',
   'CreatureCardsInYourGraveyard',
   'InstantAndSorceryCardsInYourGraveyard',
+  /** Counters of every kind on creatures you control. */
+  'CountersAmongCreaturesYouControl',
+  'PlayersWhoLostLifeThisTurn',
+  /** Soul counters on the card with the ability (Reaper's Scythe). */
+  'SoulCountersOnThis',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -232,7 +259,11 @@ export type Amount =
    * permanents destroyed, or the cards chosen in the last choice (how many,
    * their total mana value), plus `plus` ("that many cards plus one").
    */
-  | { of: 'previousTargetPower' | 'destroyedThisWay' | 'chosenCount' | 'chosenManaValue' | 'sourcePower'; plus?: number };
+  /** `subjectPower`, `subjectCounters`: the triggering object's power, or the counters it had as it left the battlefield. */
+  | {
+      of: 'previousTargetPower' | 'destroyedThisWay' | 'chosenCount' | 'chosenManaValue' | 'sourcePower' | 'subjectPower' | 'subjectCounters';
+      plus?: number;
+    };
 
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
@@ -241,6 +272,8 @@ export const TEMPORARY_FLAGS = [
   'exileIfWouldDie',
   /** "When that creature dies this turn, return that card to its owner's hand." */
   'returnToHandIfDies',
+  /** "If damage would be dealt to that creature this turn, prevent that damage and put that many +1/+1 counters on it." */
+  'damageBecomesCounters',
 ] as const;
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
@@ -261,6 +294,22 @@ export interface EffectSpec {
   flags?: TemporaryFlag[];
   /** ReturnToBattlefield: extra +1/+1 counters. */
   counters?: number;
+  /** AddCounters, ReturnToBattlefield: a kind of counter other than +1/+1. */
+  counter?: CounterKind;
+  /** AddCounters: monstrosity (rule 701.37): only if the source isn't monstrous yet, and it becomes monstrous. */
+  monstrosity?: boolean;
+  /** Adapt (rule 701.46): only if the source has no +1/+1 counters on it. */
+  ifSourceHasNoCounters?: boolean;
+  /** MoveCounters: one counter of any kind (the engine picks which). */
+  anyKind?: boolean;
+  /** MoveCounters: every counter. */
+  allCounters?: boolean;
+  /** PutLastCounters: the triggering card's counters instead of the source's. */
+  countersOf?: 'TriggeringCard';
+  /** DealDamage: the triggering object deals the damage ("that creature deals damage equal to its power"). */
+  damageSource?: 'TriggeringObject';
+  /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
+  toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard"). */
   if?: 'castFromGraveyard';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
@@ -318,6 +367,8 @@ export const TRIGGER_EVENTS = [
   'CountersAdded',
   /** The permanent became untapped. */
   'BecomesUntapped',
+  /** A permanent left the battlefield for any zone. */
+  'LeavesBattlefield',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -328,6 +379,10 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 export interface ObjectFilter {
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
+  /** Only the card itself ("when this creature dies, if it had no +1/+1 counters on it"). */
+  self?: boolean;
+  /** Is a commander ("whenever your commander enters"). */
+  commander?: boolean;
   /** DefendingPlayer: the player an attacking creature attacked or damaged ("artifact that player controls"). */
   controller?: 'You' | 'Opponent' | 'DefendingPlayer';
   /** Has at least one of these types. */
@@ -342,6 +397,8 @@ export interface ObjectFilter {
   supertypes?: Supertype[];
   tapped?: boolean;
   attacking?: boolean;
+  /** Is attacking the player whose ability this is ("target creature attacking you"). */
+  attackingYou?: boolean;
   /** Has an Equipment attached. */
   equipped?: boolean;
   /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
@@ -353,13 +410,22 @@ export interface ObjectFilter {
   /** Has none of these subtypes ("non-Dragon"). */
   nonSubtypes?: string[];
   powerAtLeast?: number;
+  powerAtMost?: number;
   toughnessAtLeast?: number;
   manaValueAtMost?: number;
   manaValueAtLeast?: number;
   /** Has no counters on it ("creatures with no counters on them"). */
   noCounters?: boolean;
-  /** Has one or more +1/+1 counters on it ("each creature you control with a +1/+1 counter on it"). */
+  /**
+   * Has one or more +1/+1 counters on it ("each creature you control with a
+   * +1/+1 counter on it"); false: has none. Off the battlefield, the counters
+   * it had as it left.
+   */
   hasCounters?: boolean;
+  /** Has (or, with false, hasn't) counters of any kind on it, or had as it left the battlefield. */
+  hasAnyCounters?: boolean;
+  /** Has none of these keywords (as it last was, if it left the battlefield: "a creature without flying dies"). */
+  withoutKeywords?: Keyword[];
   /** Is (or, with false, isn't) a token ("nontoken creature"). */
   token?: boolean;
 }
@@ -377,8 +443,12 @@ export interface TriggerSpec {
   fromGraveyard?: boolean;
   /** CountersAdded: only counters put there by a spell or ability you control. */
   byYou?: boolean;
+  /** Attacks: only creatures attacking you ("whenever an opponent attacks you"). */
+  attacksYou?: boolean;
   /** Intervening "if": "if a counter was put on this creature this turn". */
   ifSourceGotCountersThisTurn?: boolean;
+  /** Intervening "if": "if a player lost N or more life this turn". */
+  ifPlayerLostLifeThisTurn?: number;
   /** Intervening "if": the player who controls the entering permanent controls more lands than you. */
   ifSubjectControllerHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
@@ -409,6 +479,12 @@ export interface ActivatedSpec {
     discard?: number;
     /** "Sacrifice a creature": one permanent you control matching this, chosen with the action (`costCards`). */
     sacrifice?: ObjectFilter;
+    /**
+     * "Remove a [page] counter from this": from this permanent, or with
+     * `from` from a permanent you control matching it (chosen with the action,
+     * `costCards`). Without `counter`, any kind (the engine picks which).
+     */
+    removeCounter?: { counter?: AnyCounter; from?: ObjectFilter };
   };
   /** Where the card must be. Defaults to the battlefield. */
   zone?: 'battlefield' | 'hand';
@@ -477,6 +553,12 @@ export interface CardDefinition {
     commanderIdentity?: boolean;
     /** "Add one mana of any color that a land an opponent controls could produce." */
     opponentLandColors?: boolean;
+    /** "Add one mana of any type that a land you control could produce." */
+    yourLandColors?: boolean;
+    /** "If this creature has a +1/+1 counter on it, add three mana instead." */
+    amountWithCounters?: number;
+    /** "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters." */
+    nextCreatureCounters?: number;
   };
   entersTapped?: boolean;
   /** Enters tapped unless one of these holds (checklands, battle lands, snarls). */
@@ -535,6 +617,8 @@ export interface CardDefinition {
   additionalCost?: { discard: number };
   /** "This creature enters with N +1/+1 counters on it." */
   entersWithCounters?: number;
+  /** The kind of those counters, if not +1/+1 ("enters with a page counter on it"). */
+  entersWithCounterKind?: CounterKind;
   /** A token's definition, created by effects rather than played from a deck. */
   token?: boolean;
   /**
@@ -578,6 +662,16 @@ export interface CardInstance {
   deathtouched: boolean;
   /** +1/+1 counters. */
   counters?: number;
+  /** Other kinds of counters. Replace the object rather than changing it: state clones are shallow. */
+  namedCounters?: Partial<Record<CounterKind, number>>;
+  /** Monstrosity has happened to it (rule 701.37b). */
+  monstrous?: boolean;
+  /** As it last left the battlefield (rule 608.2h): its counters, keywords, and the Equipment attached to it. Kept until it enters again. */
+  lastCounters?: Partial<Record<AnyCounter, number>>;
+  lastKeywords?: Keyword[];
+  lastEquippedBy?: InstanceId[];
+  /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
+  extraCountersOnEnter?: number;
   /** A token rather than a card. */
   isToken?: boolean;
   /** For Equipment: the creature it's attached to. */
@@ -620,6 +714,10 @@ export interface PlayerState {
   landsPlayedThisTurn: number;
   eliminated: boolean;
   drewFromEmptyLibrary: boolean;
+  /** Life lost this turn ("if a player lost 4 or more life this turn"). Reset as each turn begins. */
+  lifeLostThisTurn?: number;
+  /** The next creature spell this player casts on `turn` enters with `amount` additional +1/+1 counters. */
+  nextCreatureCounters?: { turn: number; amount: number };
   conceded: boolean;
 }
 
@@ -932,7 +1030,8 @@ export type GameEvent =
   /** A card was revealed from a library (Chaos Warp). */
   | { type: 'CardRevealed'; player: PlayerId; card: InstanceId; defId: CardDefId }
   /** `by`: the controller of the spell or ability that put them there. */
-  | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId }
+  | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind }
+  | { type: 'CountersRemoved'; card: InstanceId; amount: number; counter: AnyCounter }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }

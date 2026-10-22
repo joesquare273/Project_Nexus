@@ -1,7 +1,7 @@
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { amountOf, countOf, isEquipment, powerOf } from './characteristics.ts';
+import { allCounters, amountOf, countOf, countersOf, isEquipment, powerOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { shuffleInPlace } from './rng.ts';
@@ -27,8 +27,10 @@ import {
   newId,
   player,
   reject,
+  removeCounters,
   sacrifice,
   tap,
+  untap,
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
@@ -37,6 +39,7 @@ import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
   type AbilityItem,
+  type AnyCounter,
   type ActivatedSpec,
   type CardChoice,
   type CardDefinition,
@@ -348,7 +351,14 @@ export function activateManaAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId
   tap(ctx, c);
   const ability = def.manaAbility;
   if (ability?.sacrifice) sacrifice(ctx, id);
-  for (let i = 0; i < (ability?.amount ?? 1); i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ?? false);
+  const amount = ability?.amountWithCounters && (c.counters ?? 0) > 0 ? ability.amountWithCounters : (ability?.amount ?? 1);
+  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ?? false);
+  // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
+  if (ability?.nextCreatureCounters) {
+    const p = player(s, playerId);
+    const before = p.nextCreatureCounters?.turn === s.turnNumber ? p.nextCreatureCounters.amount : 0;
+    p.nextCreatureCounters = { turn: s.turnNumber, amount: before + ability.nextCreatureCounters };
+  }
   // Pain lands and Talismans: "This land deals 1 damage to you."
   if (ability?.painFor?.includes(mana)) dealDamage(ctx, id, { kind: 'player', player: playerId }, 1, false);
 }
@@ -454,6 +464,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
 
   moveCard(ctx, id, 'stack');
   if (from === 'graveyard') c.castFromGraveyard = true;
+  const next = player(s, playerId).nextCreatureCounters;
+  if (next && def.types.includes('creature')) {
+    if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
+    delete player(s, playerId).nextCreatureCounters;
+  }
   const item: SpellItem = {
     id: newId(s, 's'),
     kind: 'spell',
@@ -501,8 +516,29 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   return null;
 }
 
+/** Which counter a "remove a counter" cost takes when any kind will do: the least useful one first. */
+const COUNTER_COST_ORDER: AnyCounter[] = ['stun', 'page', 'soul', '+1/+1', 'flying', 'shield'];
+
+function counterToRemove(c: CardInstance, kind: AnyCounter | undefined): AnyCounter | undefined {
+  if (kind) return countersOf(c, kind) > 0 ? kind : undefined;
+  return COUNTER_COST_ORDER.find((k) => countersOf(c, k) > 0);
+}
+
+/** Permanents a player could remove a counter from for a "remove a counter from a permanent you control" cost. */
+export function counterCostCandidates(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[] {
+  const rc = spec.cost.removeCounter;
+  if (!rc?.from) return [];
+  return battlefield(s)
+    .filter((c) => c.controller === playerId && matchesObject(s, rc.from, c, { controller: playerId, source }) && counterToRemove(c, rc.counter))
+    .map((c) => c.id);
+}
+
 /** Why an ability's discard or sacrifice cost can't be paid right now, or null. */
 export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec): string | null {
+  const rc = spec.cost.removeCounter;
+  if (rc && (rc.from ? counterCostCandidates(s, playerId, spec, c.id).length === 0 : !counterToRemove(c, rc.counter))) {
+    return 'There is no counter to remove for that.';
+  }
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length === 0) return 'You have nothing to sacrifice for that.';
   const n = spec.cost.discard ?? 0;
   if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
@@ -528,7 +564,10 @@ export function sacrificeCandidates(s: GameState, playerId: PlayerId, filter: Ob
 
 /** Ways to pay an ability's "discard" or "sacrifice a ..." cost: one list of cards per way. */
 export function costCardChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[][] {
+  // No way to pay at all (no counter to remove, nothing to sacrifice, too few cards to discard).
+  if (costCardProblem(s, playerId, s.cards[source]!, spec)) return [];
   if (spec.cost.sacrifice) return sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]);
+  if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
   const n = spec.cost.discard ?? 0;
   if (n === 0) return [[]];
   return subsets(player(s, playerId).hand.filter((id) => id !== source), n, n);
@@ -562,17 +601,27 @@ export function activateAbility(
   const problem = activationProblem(s, playerId, c, spec);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
+  const rc = spec.cost.removeCounter;
   if (spec.cost.sacrifice) {
     if (costCards.length !== 1 || !sacrificeCandidates(s, playerId, spec.cost.sacrifice, id).includes(costCards[0]!)) {
       reject('Choose one permanent you control to sacrifice for that.');
     }
+  } else if (rc?.from) {
+    if (costCards.length !== 1 || !counterCostCandidates(s, playerId, spec, id).includes(costCards[0]!)) {
+      reject('Choose a permanent you control to remove a counter from.');
+    }
   } else {
     checkDiscardCost(s, playerId, spec.cost.discard ?? 0, costCards, id);
   }
+  if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
   payMana(ctx, playerId, abilityCost(s, spec, targets), spec.equip ?? false);
   if (spec.cost.tap) tap(ctx, c);
+  if (rc) {
+    const from = s.cards[rc.from ? costCards[0]! : id]!;
+    removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, 1);
+  }
   if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
-  else for (const discarded of costCards) discard(ctx, discarded);
+  else if (!rc?.from) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
 
@@ -641,6 +690,10 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'battlefield' ? [{ kind: 'card', card: subject }] : [];
     }
+    case 'TriggeringCard': {
+      const subject = item.kind === 'ability' ? item.subject : undefined;
+      return subject && s.cards[subject]?.zone === 'graveyard' ? [{ kind: 'card', card: subject }] : [];
+    }
     case 'CreatedTokens':
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
     case 'ActivePlayer':
@@ -682,10 +735,12 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
             : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
-              : (r.chosenManaValue ?? 0);
+              : a.of === 'subjectPower' || a.of === 'subjectCounters'
+                ? subjectAmount(s, r.item, a.of)
+                : (r.chosenManaValue ?? 0);
     return base + (a.plus ?? 0);
   }
-  return amountOf(s, a, r.item.controller);
+  return amountOf(s, a, r.item.controller, sourceOf(r.item));
 }
 
 /**
@@ -769,6 +824,22 @@ function sourcePower(s: GameState, item: StackItem): number {
   return Math.max(0, c.lastPower ?? defOf(s, c).power ?? 0);
 }
 
+/** The triggering object's power, or how many counters it had as it left the battlefield. */
+function subjectAmount(s: GameState, item: StackItem, of: 'subjectPower' | 'subjectCounters'): number {
+  const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+  if (!c) return 0;
+  if (of === 'subjectPower') return Math.max(0, c.zone === 'battlefield' ? powerOf(s, c) : (c.lastPower ?? defOf(s, c).power ?? 0));
+  return c.zone === 'battlefield' ? totalCounters(c) : Object.values(c.lastCounters ?? {}).reduce((n, k) => n + k, 0);
+}
+
+/**
+ * Which one counter "move a counter" takes. The engine chooses: onto an
+ * opponent's permanent, a stun counter if there is one; otherwise the most
+ * useful counter for its new controller.
+ */
+const HELPFUL_COUNTERS: AnyCounter[] = ['+1/+1', 'shield', 'flying', 'page', 'soul', 'stun'];
+const HARMFUL_COUNTERS: AnyCounter[] = ['stun', 'page', 'soul', 'flying', 'shield', '+1/+1'];
+
 /** The players among an effect's targets (searches act for these players). */
 function targetPlayers(targets: Target[]): PlayerId[] {
   return targets.flatMap((t) => (t.kind === 'player' ? [t.player] : []));
@@ -782,9 +853,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
-    case 'DealDamage':
-      for (const t of targets) dealDamage(ctx, source, t, amount, false);
+    case 'DealDamage': {
+      // "That creature deals damage equal to its power" (Flayer of the Hatebound).
+      const subject = item.kind === 'ability' ? item.subject : undefined;
+      const from = effect.damageSource === 'TriggeringObject' && subject ? subject : source;
+      for (const t of targets) dealDamage(ctx, from, t, amount, false);
       return;
+    }
     case 'DrawCards':
       for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount);
       return;
@@ -851,9 +926,32 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ReturnToHand':
       for (const id of cards) moveCard(ctx, id, 'hand');
       return;
-    case 'AddCounters':
-      for (const id of onBattlefield) addCounters(ctx, id, amount, item.controller);
+    case 'AddCounters': {
+      const src = s.cards[source]!;
+      // Adapt: only if it has no +1/+1 counters. Monstrosity: only once.
+      if (effect.ifSourceHasNoCounters && (src.counters ?? 0) > 0) return;
+      if (effect.monstrosity) {
+        if (src.zone !== 'battlefield' || src.monstrous) return;
+        src.monstrous = true;
+      }
+      for (const id of onBattlefield) addCounters(ctx, id, amount, item.controller, effect.counter);
       return;
+    }
+    case 'PutLastCounters': {
+      const from = effect.countersOf === 'TriggeringCard' && item.kind === 'ability' ? item.subject : source;
+      const last = from ? s.cards[from]?.lastCounters : undefined;
+      for (const id of onBattlefield) {
+        for (const [kind, n] of Object.entries(last ?? {})) addCounters(ctx, id, n, item.controller, kind as AnyCounter);
+      }
+      return;
+    }
+    case 'AttachLastEquipment': {
+      const equipment = (s.cards[source]!.lastEquippedBy ?? [])
+        .map((id) => s.cards[id]!)
+        .find((e) => e.zone === 'battlefield' && e.controller === item.controller && !e.attachedTo);
+      if (equipment && onBattlefield[0]) attach(ctx, equipment.id, onBattlefield[0]);
+      return;
+    }
     case 'CreateToken':
       for (let i = 0; i < Math.max(1, amount); i++) r.createdTokens.push(createToken(ctx, effect.token!, item.controller));
       return;
@@ -911,8 +1009,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         moveCard(ctx, id, 'battlefield');
         if (effect.underYourControl) c.controller = item.controller;
         c.summoningSick = true;
-        if (entersTapped(s, c)) c.tapped = true;
-        addCounters(ctx, id, effect.counters ?? 0);
+        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        addCounters(ctx, id, effect.counters ?? 0, item.controller, effect.counter);
       }
       return;
     case 'Attach':
@@ -924,13 +1022,32 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) attach(ctx, id, source);
       return;
     case 'Untap': {
-      const untapped = onBattlefield.filter((id) => s.cards[id]!.tapped);
-      for (const id of untapped) s.cards[id]!.tapped = false;
+      const untapped = onBattlefield.filter((id) => untap(ctx, s.cards[id]!));
       if (untapped.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: item.controller, cards: untapped });
       return;
     }
     case 'ChooseTarget':
       return;
+    case 'MoveCounters': {
+      const t = effect.from !== undefined ? item.targets[effect.from] : undefined;
+      const fromCard = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      if (!fromCard || fromCard.zone !== 'battlefield') return;
+      for (const id of onBattlefield) {
+        if (id === fromCard.id) continue;
+        let moves: [AnyCounter, number][];
+        if (effect.allCounters) moves = allCounters(fromCard);
+        else if (effect.anyKind) {
+          const order = s.cards[id]!.controller === item.controller ? HELPFUL_COUNTERS : HARMFUL_COUNTERS;
+          const kind = order.find((k) => countersOf(fromCard, k) > 0);
+          moves = kind ? [[kind, 1]] : [];
+        } else moves = [['+1/+1', Math.min(Math.max(1, amount), fromCard.counters ?? 0)]];
+        for (const [kind, n] of moves) {
+          const moved = removeCounters(ctx, fromCard.id, kind, n);
+          addCounters(ctx, id, moved, item.controller, kind);
+        }
+      }
+      return;
+    }
     case 'AttachEquipmentTo': {
       const t = effect.from !== undefined ? item.targets[effect.from] : undefined;
       const equipment = t?.kind === 'card' ? s.cards[t.card] : undefined;
@@ -942,8 +1059,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Proliferate':
+      // The engine chooses: every kind on your own permanents except stun counters, and stun counters on opponents'.
       for (const pid of targetPlayers(targets)) {
-        for (const c of battlefield(s)) if (c.controller === pid && (c.counters ?? 0) > 0) addCounters(ctx, c.id, 1);
+        for (const c of battlefield(s)) {
+          for (const [kind] of allCounters(c)) {
+            if (c.controller === pid ? kind !== 'stun' : kind === 'stun') addCounters(ctx, c.id, 1, pid, kind);
+          }
+        }
       }
       return;
     case 'PutTopCardIfLand':
@@ -987,7 +1109,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const p = s.players[item.controller]!;
       const howMany = effect.amount === undefined ? 1 : amount;
       const found = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })).slice(0, howMany);
-      for (const id of found) moveCard(ctx, id, 'hand');
+      const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && hasType(s, c, 'land')).length;
+      const behind = effect.toBattlefieldIfBehindOnLands && alivePlayers(s).some((pid) => lands(pid) > lands(item.controller));
+      for (const id of found) {
+        moveCard(ctx, id, behind ? 'battlefield' : 'hand');
+        if (!behind) continue;
+        const c = s.cards[id]!;
+        c.controller = item.controller;
+        c.summoningSick = true;
+        c.tapped = true;
+      }
       shuffleInPlace(s, p.library);
       ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
       return;
@@ -1076,11 +1207,13 @@ export function resolveTop(ctx: Ctx): void {
     const permanent = isPermanentCard(def);
     ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: c.id, fizzled: fizzled && !permanent });
     if (permanent) {
+      const extra = c.extraCountersOnEnter ?? 0;
       moveCard(ctx, c.id, 'battlefield');
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
       c.summoningSick = true;
       if (entersTapped(s, c)) c.tapped = true;
+      addCounters(ctx, c.id, extra, item.controller);
       givePriority(ctx, s.activePlayer);
       return;
     }

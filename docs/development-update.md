@@ -5,6 +5,55 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Board: arrange your permanents, pop-out card viewer
+
+- Drag your nonland permanents anywhere on your battlefield; they stay where
+  you drop them for the rest of the game (layout only, the engine never sees
+  it). A short press is still a click.
+- The card viewer pops out on the right edge only while you hover a card
+  (or one triggers), so the sidebar is narrower and the board wider.
+- "Stop at every step", "Tap mana automatically", the seed and the way back
+  to the menu moved into Settings (the gear at the right of the phase track);
+  the right sidebar is now just the game log.
+- The hand no longer hangs off the bottom of the screen, and the board uses
+  the visible viewport height, so the taskbar doesn't cover your cards.
+
+### Other counter kinds (C2, step 3)
+
+Permanents can now carry **shield, stun, flying, page and soul counters**
+as well as +1/+1 counters, shown as small badges on the board:
+
+- A shield counter is removed instead of the permanent being dealt damage
+  or destroyed. A stun counter is removed instead of the permanent
+  untapping. A flying counter gives flying.
+- "Remove a counter" can be part of a cost (Tome of Legends, O'aka,
+  Scholar of New Horizons), counters of any kind can be moved (Rikku,
+  Nesting Grounds, Resourceful Defense), and proliferate adds every kind.
+- Abilities can look back at a permanent as it left the battlefield: its
+  counters, keywords and Equipment (Luminous Broodmoth, Zack Fair,
+  Resourceful Defense, Yuna, undying). New "leaves the battlefield" trigger.
+- Also: monstrosity, adapt, "your commander enters or attacks", "whenever
+  an opponent attacks you", "damage becomes counters" (Gatta and Luzzu),
+  mana of a type your lands could make, and Yuna's "next creature spell
+  enters with two more counters".
+
+16 precon cards built (`packages/bots/test/precon-counter-kinds.test.ts`):
+Tome of Legends, Protection Magic, Lulu, Luminous Broodmoth, O'aka,
+Scholar of New Horizons, Rikku, Nesting Grounds, Resourceful Defense, Zack
+Fair, Maester Seymour, Incubation Druid, Reaper's Scythe, Yuna, Flayer of
+the Hatebound, Gatta and Luzzu.
+
+### Commanders: Terra, Tidus and Y'shtola
+
+Three of the four precon commanders now play their full text
+(`packages/bots/test/precon-commanders.test.ts`): Terra mills two and
+flies at each combat, and can return a creature after combat damage; Tidus
+moves a counter at combat and proliferates when creatures with counters
+connect; Y'shtola drains for 2 on big noncreature spells and draws at end
+steps after a player lost 4 or more life. 156 of 320 distinct precon cards
+are now built (Counter Blitz 62/100, Revival Trance 58, Limit Break 55,
+Scions & Spellcraft 50).
+
 ### "Up to N targets" and support (C2, step 2)
 
 Targets can now be left out when a card says "up to": the board shows a
@@ -122,7 +171,8 @@ card-by-card work:
    also need a later step (Sagas, X costs, rebound, convoke, crew...).
 2. **"Up to N targets" and support.** Done 2026-10-22 (11 cards; see above).
    The rest of that list also needs Sagas, X costs, convoke or copies.
-3. **Other counter kinds** (15): stun, shield, page, vow, flying, lore.
+3. **Other counter kinds.** Done 2026-10-22 (16 cards; see above). Still
+   waiting: lore counters (Sagas) and vow counters (Promise of Loyalty).
 4. **New tokens** (14): Clue (investigate), Food, Soldier, Spirit, Bird...
    Add each to `packages/cards/data/tokens.json` by its exact Scryfall
    printing; `npm run scryfall` checks them.

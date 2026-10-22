@@ -1,7 +1,7 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
-import { YOU } from '../game/session.ts';
+import { YOU, type Placement } from '../game/session.ts';
 import { CardBack, CardFace, ManaCost } from './Card.tsx';
 
 /** How a card or player should be highlighted right now. */
@@ -55,6 +55,16 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
             +{c.counters}
           </div>
         )}
+        {Object.keys(c.namedCounters ?? {}).length > 0 && (
+          <div className="named-counters">
+            {Object.entries(c.namedCounters ?? {}).map(([kind, n]) => (
+              <div key={`${kind}${n}`} className={`badge named-counter ${kind} pop`} title={`${n} ${kind} counter${n === 1 ? '' : 's'}`}>
+                {kind}
+                {n! > 1 ? ` ×${n}` : ''}
+              </div>
+            ))}
+          </div>
+        )}
         {creature && stats && (
           <div className={`badge pt ${changed ? 'changed' : ''}`}>
             {stats.power}/{stats.toughness}
@@ -76,7 +86,115 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
   );
 }
 
-function Battlefield({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
+/** Pixels the pointer must travel before a press becomes a drag (shorter presses are clicks). */
+const DRAG_THRESHOLD = 6;
+
+/**
+ * One of your nonland permanents, which you can drag anywhere on your
+ * battlefield. Until dragged it sits in the row; afterwards at the spot you
+ * dropped it. A press without movement is still a click.
+ */
+function DraggableCard({
+  view,
+  id,
+  h,
+  area,
+  placement,
+  onPlaced,
+}: {
+  view: GameView;
+  id: InstanceId;
+  h: ZoneHandlers;
+  area: RefObject<HTMLDivElement | null>;
+  placement: Placement;
+  onPlaced: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const press = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const swallowClick = useRef(false);
+  const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
+  const spot = placement.get(id);
+
+  const down = (e: ReactPointerEvent) => {
+    if (e.button !== 0) return;
+    press.current = { x: e.clientX, y: e.clientY, moved: false };
+    ref.current?.setPointerCapture(e.pointerId);
+  };
+  const move = (e: ReactPointerEvent) => {
+    const p = press.current;
+    if (!p) return;
+    const dx = e.clientX - p.x;
+    const dy = e.clientY - p.y;
+    if (!p.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    p.moved = true;
+    setOffset({ x: dx, y: dy });
+  };
+  const up = () => {
+    const p = press.current;
+    press.current = null;
+    if (!p?.moved || !ref.current || !area.current) return;
+    // Where the card is now, clamped inside the area, as fractions of its size.
+    const a = area.current.getBoundingClientRect();
+    const r = ref.current.getBoundingClientRect();
+    const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), Math.max(max, 0));
+    placement.set(id, {
+      x: clamp((r.left - a.left) / a.width, (a.width - r.width) / a.width),
+      y: clamp((r.top - a.top) / a.height, (a.height - r.height) / a.height),
+    });
+    swallowClick.current = true;
+    setOffset(null);
+    onPlaced();
+  };
+
+  const style: CSSProperties = {
+    ...(spot
+      ? {
+          position: 'absolute',
+          left: `min(${spot.x * 100}%, calc(100% - var(--bf-w)))`,
+          top: `min(${spot.y * 100}%, calc(100% - var(--bf-w) * var(--card-ratio)))`,
+        }
+      : {}),
+    ...(offset ? { transform: `translate(${offset.x}px, ${offset.y}px)`, zIndex: 30 } : {}),
+  };
+  return (
+    <div
+      ref={ref}
+      className={`bf-slot ${offset ? 'dragging' : ''}`}
+      style={style}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={() => {
+        press.current = null;
+        setOffset(null);
+      }}
+      onClickCapture={(e) => {
+        // The click that ends a drag isn't a click on the card.
+        if (!swallowClick.current) return;
+        swallowClick.current = false;
+        e.stopPropagation();
+      }}
+    >
+      <BattlefieldCard view={view} id={id} h={h} />
+    </div>
+  );
+}
+
+function Battlefield({
+  view,
+  pid,
+  h,
+  placement,
+  onPlaced,
+}: {
+  view: GameView;
+  pid: PlayerId;
+  h: ZoneHandlers;
+  /** Your battlefield: nonland permanents can be dragged around. */
+  placement?: Placement;
+  onPlaced?: () => void;
+}) {
+  const area = useRef<HTMLDivElement>(null);
   const ids = view.players[pid]!.battlefield;
   const lands = ids.filter((id) => defOf(view.cards[id]!.defId).types.includes('land'));
   const others = ids.filter((id) => !lands.includes(id));
@@ -87,15 +205,28 @@ function Battlefield({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneH
     ordered.push(id);
     for (const e of others) if (view.cards[e]!.attachedTo === id) ordered.push(e);
   }
+  if (placement) {
+    // A card that left keeps its id, so forget where it was; it comes back into the row.
+    for (const id of [...placement.keys()]) if (!others.includes(id)) placement.delete(id);
+  }
   return (
     <div className="battlefield" aria-label="Battlefield">
-      <div className="zone-label">Battlefield</div>
-      <div className="row creatures">
-        {ordered.map((id) => (
-          <BattlefieldCard key={id} view={view} id={id} h={h} />
-        ))}
-        {ordered.length === 0 && <div className="empty-row">No creatures</div>}
-      </div>
+      <div className="zone-label">Battlefield{placement && ordered.length > 0 ? ' · drag your permanents to arrange them' : ''}</div>
+      {placement ? (
+        <div ref={area} className="row creatures free">
+          {ordered.map((id) => (
+            <DraggableCard key={id} view={view} id={id} h={h} area={area} placement={placement} onPlaced={onPlaced ?? (() => {})} />
+          ))}
+          {ordered.length === 0 && <div className="empty-row">No creatures</div>}
+        </div>
+      ) : (
+        <div className="row creatures">
+          {ordered.map((id) => (
+            <BattlefieldCard key={id} view={view} id={id} h={h} />
+          ))}
+          {ordered.length === 0 && <div className="empty-row">No creatures</div>}
+        </div>
+      )}
       <div className="row lands">
         {lands.map((id) => (
           <BattlefieldCard key={id} view={view} id={id} h={h} />
@@ -217,11 +348,21 @@ export function OpponentZone({ view, pid, h }: { view: GameView; pid: PlayerId; 
   );
 }
 
-export function YourZone({ view, h }: { view: GameView; h: ZoneHandlers }) {
+export function YourZone({
+  view,
+  h,
+  placement,
+  onPlaced,
+}: {
+  view: GameView;
+  h: ZoneHandlers;
+  placement: Placement;
+  onPlaced: () => void;
+}) {
   return (
     <section className="zone you">
       <div className="zone-body">
-        <Battlefield view={view} pid={YOU} h={h} />
+        <Battlefield view={view} pid={YOU} h={h} placement={placement} onPlaced={onPlaced} />
         <ZonePiles view={view} pid={YOU} h={h} />
       </div>
     </section>

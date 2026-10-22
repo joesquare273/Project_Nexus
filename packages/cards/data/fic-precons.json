@@ -624,11 +624,8 @@
           "count": 1,
           "set": "fin",
           "number": "45",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Barret Wallace",
@@ -951,13 +948,8 @@
         "count": 1,
         "set": "fic",
         "number": "4",
-        "implemented": false,
-        "needs": [
-          "mill",
-          "trance",
-          "static-abilities",
-          "triggers"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "B",
@@ -1285,12 +1277,8 @@
           "count": 1,
           "set": "fic",
           "number": "293",
-          "implemented": false,
-          "needs": [
-            "undying",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ruin Grinder",
@@ -1879,13 +1867,8 @@
         "count": 1,
         "set": "fic",
         "number": "5",
-        "implemented": false,
-        "needs": [
-          "cheer",
-          "proliferate",
-          "triggers",
-          "static-abilities"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "G",
@@ -1898,12 +1881,8 @@
           "count": 1,
           "set": "fic",
           "number": "8",
-          "implemented": false,
-          "needs": [
-            "grand-summon",
-            "activated-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Auron, Venerated Guardian",
@@ -1929,10 +1908,8 @@
           "count": 1,
           "set": "fic",
           "number": "19",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lord Jyscal Guado",
@@ -1950,10 +1927,8 @@
           "count": 1,
           "set": "fic",
           "number": "24",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Ixion",
@@ -2007,34 +1982,24 @@
           "count": 1,
           "set": "fic",
           "number": "38",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "O'aka, Traveling Merchant",
           "count": 1,
           "set": "fic",
           "number": "39",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rikku, Resourceful Guardian",
           "count": 1,
           "set": "fic",
           "number": "41",
-          "implemented": false,
-          "needs": [
-            "steal",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Valefor",
@@ -2052,12 +2017,8 @@
           "count": 1,
           "set": "fic",
           "number": "68",
-          "implemented": false,
-          "needs": [
-            "monstrosity",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sphere Grid",
@@ -2187,10 +2148,8 @@
           "count": 1,
           "set": "fic",
           "number": "246",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Promise of Loyalty",
@@ -2207,22 +2166,16 @@
           "count": 1,
           "set": "fic",
           "number": "251",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Scholar of New Horizons",
           "count": 1,
           "set": "fic",
           "number": "252",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sunscorch Regent",
@@ -2332,11 +2285,8 @@
           "count": 1,
           "set": "fic",
           "number": "309",
-          "implemented": false,
-          "needs": [
-            "adapt",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Path of Discovery",
@@ -2705,10 +2655,8 @@
           "count": 1,
           "set": "fic",
           "number": "408",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Path of Ancestry",
@@ -2844,10 +2792,8 @@
         "count": 1,
         "set": "fic",
         "number": "7",
-        "implemented": false,
-        "needs": [
-          "triggers"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "B",
@@ -3043,14 +2989,8 @@
           "count": 1,
           "set": "fic",
           "number": "48",
-          "implemented": false,
-          "needs": [
-            "death-sickle",
-            "equip",
-            "job-select",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Transpose",
@@ -3311,12 +3251,8 @@
           "count": 1,
           "set": "fic",
           "number": "369",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Choked Estuary",

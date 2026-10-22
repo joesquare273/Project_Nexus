@@ -2,7 +2,7 @@
 
 import { canAnyAttack, dealCombatDamage, startBlockers } from './combat.ts';
 import { resolveTop } from './stack.ts';
-import { alivePlayers, battlefield, drawCards, emptyAllManaPools, nextAlive, player, type Ctx } from './state.ts';
+import { alivePlayers, battlefield, drawCards, emptyAllManaPools, nextAlive, player, untap, type Ctx } from './state.ts';
 import { STEPS, type PlayerId, type Step } from './types.ts';
 
 export function givePriority(ctx: Ctx, playerId: PlayerId): void {
@@ -22,8 +22,7 @@ export function enterStep(ctx: Ctx, step: Step): void {
       const untapped: string[] = [];
       for (const c of battlefield(s)) {
         if (c.controller !== s.activePlayer) continue;
-        if (c.tapped) untapped.push(c.id);
-        c.tapped = false;
+        if (untap(ctx, c)) untapped.push(c.id);
         c.summoningSick = false;
       }
       if (untapped.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: s.activePlayer, cards: untapped });
@@ -102,6 +101,7 @@ export function startNextTurn(ctx: Ctx): void {
   s.turnNumber += 1;
   s.triggeredThisTurn = [];
   s.creaturesDiedThisTurn = 0;
+  for (const pid of s.turnOrder) s.players[pid]!.lifeLostThisTurn = 0;
   ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: s.turnNumber });
   enterStep(ctx, 'untap');
 }

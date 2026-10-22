@@ -2,10 +2,11 @@
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { hasFlag, hasKeyword, staticAffects, powerOf } from './characteristics.ts';
+import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, staticAffects, powerOf } from './characteristics.ts';
 import { entersTapped } from './typerules.ts';
 import {
   MANA_TYPES,
+  type AnyCounter,
   type CardDefId,
   type CardDefinition,
   type CardInstance,
@@ -178,6 +179,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
   const lastPower = from === 'battlefield' && hasType(s, c, 'creature') ? powerOf(s, c) : undefined;
+  const lastCounters = from === 'battlefield' ? Object.fromEntries(allCounters(c)) : undefined;
+  const lastKeywords = from === 'battlefield' ? [...characteristics(s, c).keywords] : undefined;
   if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
     s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
@@ -190,6 +193,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   c.deathtouched = false;
   c.controller = c.owner;
   delete c.counters;
+  delete c.namedCounters;
+  delete c.monstrous;
+  delete c.extraCountersOnEnter;
   delete c.attachedTo;
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;
@@ -197,6 +203,16 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.countersTurn;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;
+  // What it was like as it left, for abilities that look back (rule 608.2h). Kept until it enters again.
+  if (from === 'battlefield') {
+    c.lastCounters = lastCounters;
+    c.lastKeywords = lastKeywords;
+    c.lastEquippedBy = equippedBy;
+  } else if (to === 'battlefield') {
+    delete c.lastCounters;
+    delete c.lastKeywords;
+    delete c.lastEquippedBy;
+  }
   delete c.commanderStays;
   if (!opts.silent) {
     ctx.ev.push({
@@ -212,8 +228,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   }
   if (from === 'battlefield') leftBattlefield(ctx, id);
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
-  const enters = s.cardDefs[c.defId]!.entersWithCounters;
-  if (to === 'battlefield' && enters) addCounters(ctx, id, enters);
+  const d = s.cardDefs[c.defId]!;
+  if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
 }
 
 /** Things that happen the moment a permanent leaves the battlefield. */
@@ -263,6 +279,7 @@ export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   if (delta === 0 || p.eliminated) return;
   const from = p.life;
   p.life += delta;
+  if (delta < 0) p.lifeLostThisTurn = (p.lifeLostThisTurn ?? 0) - delta;
   ctx.ev.push({ type: 'LifeChanged', player: playerId, from, to: p.life });
 }
 
@@ -271,6 +288,20 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (amount <= 0) return;
   const s = ctx.s;
   const source = s.cards[sourceId]!;
+  if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
+    const victim = s.cards[target.card]!;
+    // A shield counter is removed instead (rule 122.1c).
+    if (countersOf(victim, 'shield') > 0) {
+      removeCounters(ctx, victim.id, 'shield', 1);
+      return;
+    }
+    // Gatta and Luzzu: prevent it and put that many +1/+1 counters on it.
+    const into = s.temporaryEffects.find((e) => e.affected === victim.id && e.flags?.includes('damageBecomesCounters'));
+    if (into) {
+      addCounters(ctx, victim.id, amount, s.cards[into.source]?.controller);
+      return;
+    }
+  }
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat });
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
@@ -310,6 +341,11 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId): void {
 export function destroy(ctx: Ctx, id: InstanceId): boolean {
   const c = ctx.s.cards[id]!;
   if (c.zone !== 'battlefield' || hasKeyword(ctx.s, c, 'Indestructible')) return false;
+  // A shield counter is removed instead (rule 122.1c).
+  if (countersOf(c, 'shield') > 0) {
+    removeCounters(ctx, id, 'shield', 1);
+    return false;
+  }
   if (!hasType(ctx.s, c, 'creature')) ctx.ev.push({ type: 'PermanentDestroyed', card: id, defId: c.defId, owner: c.owner });
   putIntoGraveyard(ctx, id);
   return true;
@@ -320,10 +356,16 @@ export function sacrifice(ctx: Ctx, id: InstanceId): void {
   putIntoGraveyard(ctx, id);
 }
 
-export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: PlayerId): void {
+export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: PlayerId, kind: AnyCounter = '+1/+1'): void {
   const s = ctx.s;
   const c = s.cards[id]!;
   if (c.zone !== 'battlefield' || amount <= 0) return;
+  if (kind !== '+1/+1') {
+    setCounters(c, kind, countersOf(c, kind) + amount);
+    c.countersTurn = s.turnNumber;
+    ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}), counter: kind });
+    return;
+  }
   // Hardened Scales and similar: "that many plus one" (a replacement effect, rule 614).
   for (const source of battlefield(s)) {
     for (const spec of defOf(s, source).statics ?? []) {
@@ -333,6 +375,41 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   c.counters = (c.counters ?? 0) + amount;
   c.countersTurn = s.turnNumber;
   ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}) });
+}
+
+/** Sets how many counters of a kind a card has, replacing (never changing) its counter object. */
+export function setCounters(c: CardInstance, kind: AnyCounter, n: number): void {
+  if (kind === '+1/+1') {
+    if (n > 0) c.counters = n;
+    else delete c.counters;
+    return;
+  }
+  const next = { ...c.namedCounters };
+  if (n > 0) next[kind] = n;
+  else delete next[kind];
+  if (Object.keys(next).length > 0) c.namedCounters = next;
+  else delete c.namedCounters;
+}
+
+/** Removes up to `amount` counters of a kind. Returns how many were removed. */
+export function removeCounters(ctx: Ctx, id: InstanceId, kind: AnyCounter, amount: number): number {
+  const c = ctx.s.cards[id]!;
+  const n = Math.min(amount, countersOf(c, kind));
+  if (n <= 0) return 0;
+  setCounters(c, kind, countersOf(c, kind) - n);
+  ctx.ev.push({ type: 'CountersRemoved', card: id, amount: n, counter: kind });
+  return n;
+}
+
+/** Untaps a permanent, unless a stun counter is removed instead (rule 122.1d). Returns whether it untapped. */
+export function untap(ctx: Ctx, c: CardInstance): boolean {
+  if (!c.tapped) return false;
+  if (countersOf(c, 'stun') > 0) {
+    removeCounters(ctx, c.id, 'stun', 1);
+    return false;
+  }
+  c.tapped = false;
+  return true;
 }
 
 /** Creates a token on the battlefield under `controller`'s control (rule 111). */

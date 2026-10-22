@@ -7,6 +7,7 @@ import {
   CARD_TYPES,
   COLORS,
   COUNT_KINDS,
+  COUNTER_KINDS,
   EFFECT_KINDS,
   KEYWORDS,
   MANA_TYPES,
@@ -68,7 +69,12 @@ const PLAYER_TARGETS = new Set([
 ]);
 /** Target kinds that pick from a filter. */
 const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents']);
-const ABILITY_ONLY_TARGETS = new Set(['This', 'DefendingPlayer', 'TriggeringObject']);
+const ABILITY_ONLY_TARGETS = new Set(['This', 'DefendingPlayer', 'TriggeringObject', 'TriggeringCard']);
+
+function validateCounterKind(kind: unknown, err: Err, allowPlusOne = false): void {
+  if (kind === undefined || (allowPlusOne && kind === '+1/+1')) return;
+  if (!COUNTER_KINDS.includes(kind as never)) err(`unknown counter "${String(kind)}" (use ${COUNTER_KINDS.join(', ')}${allowPlusOne ? ' or +1/+1' : ''}).`);
+}
 
 type Err = (msg: string) => void;
 
@@ -92,7 +98,8 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     return;
   }
   if ('of' in a) {
-    if (!['previousTargetPower', 'destroyedThisWay', 'chosenCount', 'chosenManaValue', 'sourcePower'].includes(a.of)) err(`unknown amount "${String(a.of)}".`);
+    const kinds = ['previousTargetPower', 'destroyedThisWay', 'chosenCount', 'chosenManaValue', 'sourcePower', 'subjectPower', 'subjectCounters'];
+    if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
   }
   if (!Array.isArray(a.count) || a.count.length === 0) err('a counted amount needs a non-empty "count" list.');
@@ -115,7 +122,9 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
   }
   for (const color of [...(f.colors ?? []), ...(f.nonColors ?? [])]) if (!COLORS.includes(color)) err(`unknown color "${color}" in a filter.`);
   for (const sub of f.nonSubtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
-  for (const key of ['powerAtLeast', 'toughnessAtLeast', 'manaValueAtMost', 'manaValueAtLeast'] as const) {
+  for (const k of f.withoutKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}" in a filter.`);
+  if (f.self && f.other) err('a filter can\'t be both "self" and "other".');
+  for (const key of ['powerAtLeast', 'powerAtMost', 'toughnessAtLeast', 'manaValueAtMost', 'manaValueAtLeast'] as const) {
     if (f[key] !== undefined && !isNonNegativeInt(f[key])) err(`${key} must be a whole number.`);
   }
 }
@@ -171,6 +180,12 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (c.effects && c.modes) err('a card has either effects or modes, not both.');
   if (c.entersWithCounters !== undefined && (!isNonNegativeInt(c.entersWithCounters) || c.entersWithCounters === 0)) {
     err('entersWithCounters must be a positive whole number.');
+  }
+  validateCounterKind(c.entersWithCounterKind, err);
+  if (c.entersWithCounterKind && !c.entersWithCounters) err('entersWithCounterKind needs entersWithCounters.');
+  const ma = c.manaAbility;
+  for (const key of ['amount', 'amountWithCounters', 'nextCreatureCounters'] as const) {
+    if (ma?.[key] !== undefined && (!isNonNegativeInt(ma[key]) || ma[key] === 0)) err(`manaAbility ${key} must be a positive whole number.`);
   }
   if (c.chooseModes) {
     const { min, max } = c.chooseModes;
@@ -229,7 +244,17 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (ABILITY_ONLY_TARGETS.has(e.target) && !inAbility) err(`"${e.target}" can only be used in abilities.`);
   if ((e.upTo || e.group) && !CHOSEN_TARGET_KINDS.includes(e.target)) err('upTo and group are only for chosen targets.');
   if (e.effect === 'AttachEquipmentTo' && e.from === undefined) err('AttachEquipmentTo needs "from": which target is the Equipment.');
+  if (e.effect === 'MoveCounters' && e.from === undefined) err('MoveCounters needs "from": which target the counters come from.');
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
+  validateCounterKind(e.counter, err);
+  if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield') err('"counter" is only for AddCounters and ReturnToBattlefield.');
+  if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');
+  if ((e.anyKind || e.allCounters) && e.effect !== 'MoveCounters') err('anyKind and allCounters are only for MoveCounters.');
+  if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');
+  if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
+  if (e.damageSource && e.effect !== 'DealDamage') err('damageSource is only for DealDamage.');
+  if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
+  if ((e.countersOf || e.damageSource) && !inAbility) err('countersOf and damageSource are only for abilities.');
 }
 
 function validateTrigger(t: TriggerSpec, err: Err): void {
@@ -244,6 +269,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.fromGraveyard && t.when !== 'EntersBattlefield') e('"fromGraveyard" is only for EntersBattlefield.');
   if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard') e(`unknown zone "${t.zone}".`);
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');
+  if (t.attacksYou && t.when !== 'Attacks') e('attacksYou is only for Attacks.');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
   if (!Array.isArray(t.effects) || t.effects.length === 0) {
@@ -257,6 +283,13 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
   const e: Err = (msg) => err(`activated ability: ${msg}`);
   validateCost(a.cost?.mana, e);
   if (a.zone !== undefined && a.zone !== 'battlefield' && a.zone !== 'hand') e(`unknown zone "${a.zone}".`);
+  const rc = a.cost?.removeCounter;
+  if (rc) {
+    validateCounterKind(rc.counter, e, true);
+    validateFilter(rc.from, e);
+    const others = [a.cost.sacrifice, a.cost.discard].filter((x) => x !== undefined).length;
+    if (rc.from && others > 0) e('a cost removes a counter from a chosen permanent or discards or sacrifices, not more than one.');
+  }
   if (!Array.isArray(a.effects) || a.effects.length === 0) e('needs at least one effect.');
   for (const effect of a.effects ?? []) validateEffect(effect, true, e);
 }

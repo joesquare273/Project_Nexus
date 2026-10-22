@@ -60,6 +60,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
             ...(e.equippedBy ? { equippedBy: e.equippedBy } : {}),
           });
         }
+        if (e.from === 'battlefield') out.push({ when: 'LeavesBattlefield', at, subject: e.card, subjectController: e.controller ?? e.owner });
         break;
       case 'TokenCreated':
         out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
@@ -121,12 +122,20 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.when !== o.when) return false;
   if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep') {
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
+    // "If a player lost 4 or more life this turn" (an intervening "if", rule 603.4).
+    if (
+      spec.ifPlayerLostLifeThisTurn !== undefined &&
+      !s.turnOrder.some((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) >= spec.ifPlayerLostLifeThisTurn!)
+    ) {
+      return false;
+    }
     if (spec.turn === 'Each') return true;
     return spec.turn === 'Opponents' ? o.activePlayer !== controller : o.activePlayer === controller;
   }
   // "Entered from a graveyard or was cast from a graveyard".
   if (spec.fromGraveyard && o.subject && o.from !== 'graveyard' && !s.cards[o.subject]!.castFromGraveyard) return false;
   if (spec.byYou && o.by !== controller) return false;
+  if (spec.attacksYou && o.defender !== controller) return false;
   if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
   if (spec.ifSubjectControllerHasMoreLands && o.subjectController) {
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && s.cardDefs[c.defId]!.types.includes('land')).length;
@@ -216,7 +225,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     }
     for (const c of leftBattlefield) {
       const m = moved.get(c.id)!;
-      const sawIt = o.when === 'Dies' || (m.left! >= o.at && (m.entered === undefined || m.entered <= o.at));
+      const lookBack = o.when === 'Dies' || o.when === 'LeavesBattlefield';
+      const sawIt = lookBack || (m.left! >= o.at && (m.entered === undefined || m.entered <= o.at));
       if (sawIt) consider(c, m.controller ?? c.owner, 'battlefield', o);
     }
     for (const c of inGraveyards) consider(c, c.owner, 'graveyard', o);
