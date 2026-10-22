@@ -69,6 +69,11 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId): number
       return battlefieldCards(s).filter(creature).length;
     case 'CreaturesYouControlWithCounters':
       return yours().filter((c) => creature(c) && (c.counters ?? 0) > 0).length;
+    case 'InstantAndSorceryCardsInYourGraveyard':
+      return s.players[player]!.graveyard.filter((id) => {
+        const types = def(s, s.cards[id]!).types;
+        return types.includes('instant') || types.includes('sorcery');
+      }).length;
     case 'CreatureCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('creature')).length;
     case 'EquippedAttackingCreaturesYouControl':

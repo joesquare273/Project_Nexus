@@ -26,6 +26,9 @@ import {
   targetOptions,
   triggerSpec,
   type SpellChoice,
+  choiceProblem,
+  costCardChoices,
+  subsets,
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
@@ -91,12 +94,18 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
         const choice: SpellChoice = { ...modes, ...(alternative ? { alternative: true } : {}) };
+        // "As an additional cost, discard a card": each way to pay it.
+        const discards = def.additionalCost
+          ? subsets(p.hand.filter((id) => id !== c.id), def.additionalCost.discard, def.additionalCost.discard)
+          : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
-          out.push({
-            action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice },
-            cost: spellCost(s, def, from, targets, c, alternative),
-            forEquipment: isEquipment(s, c),
-          });
+          for (const costCards of discards) {
+            out.push({
+              action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}) },
+              cost: spellCost(s, def, from, targets, c, alternative),
+              forEquipment: isEquipment(s, c),
+            });
+          }
         }
       }
     }
@@ -113,11 +122,13 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
     activatedAbilities(s.cardDefs[c.defId]!).forEach((spec, ability) => {
       if (activationProblem(s, playerId, c, spec)) return;
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
-        out.push({
-          action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets },
-          cost: abilityCost(s, spec, targets),
-          forEquipment: spec.equip ?? false,
-        });
+        for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
+          out.push({
+            action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}) },
+            cost: abilityCost(s, spec, targets),
+            forEquipment: spec.equip ?? false,
+          });
+        }
       }
     });
   }
@@ -232,6 +243,11 @@ export function getLegalActions(s: GameState): Action[] {
       return bottomChoices(s.players[pending.player]!.hand, pending.count).map(
         (cards): Action => ({ type: 'BottomCards', player: pending.player, cards }),
       );
+
+    case 'chooseCards':
+      return (pending.allOrNothing ? [[], [...pending.cards]] : subsets(pending.cards, pending.min, pending.max))
+        .filter((cards) => !choiceProblem(s, pending, cards))
+        .map((cards): Action => ({ type: 'ChooseCards', player: pending.player, cards }));
 
     case 'surveil':
       return [

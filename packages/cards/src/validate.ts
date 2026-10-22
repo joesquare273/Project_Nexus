@@ -39,7 +39,18 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
 const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry']);
-const PLAYER_ONLY_EFFECTS = new Set(['DrawCards', 'GainLife', 'LoseLife', 'Mill', 'ExileGraveyard', 'SacrificeGreatestPower', 'PutTopCardIfLand']);
+const PLAYER_ONLY_EFFECTS = new Set([
+  'DrawCards',
+  'GainLife',
+  'LoseLife',
+  'Mill',
+  'ExileGraveyard',
+  'SacrificeGreatestPower',
+  'PutTopCardIfLand',
+  'Discard',
+  'Sacrifice',
+  'KeepAndSacrificeRest',
+]);
 const PLAYER_TARGETS = new Set([
   'You',
   'EachOpponent',
@@ -48,6 +59,10 @@ const PLAYER_TARGETS = new Set([
   'TargetPlayer',
   'DefendingPlayer',
   'PreviousTargetController',
+  'ActivePlayer',
+  'EachPlayerWhoChose',
+  'EachOpponentWhoChose',
+  'EachOpponentWhoDidNotChoose',
 ]);
 /** Target kinds that pick from a filter. */
 const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents']);
@@ -75,7 +90,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     return;
   }
   if ('of' in a) {
-    if (a.of !== 'previousTargetPower' && a.of !== 'destroyedThisWay') err(`unknown amount "${String(a.of)}".`);
+    if (!['previousTargetPower', 'destroyedThisWay', 'chosenCount', 'chosenManaValue'].includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
   }
   if (!Array.isArray(a.count) || a.count.length === 0) err('a counted amount needs a non-empty "count" list.');
@@ -195,6 +210,10 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined) err(`${e.effect} needs an amount.`);
   validateAmount(e.amount, (m) => err(`${e.effect}: ${m}`));
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
+  if (e.effect === 'Discard' && e.amount === undefined && !e.anyNumber && !e.wholeHand) err('Discard needs an amount (or anyNumber / wholeHand).');
+  if ((e.effect === 'Sacrifice' || e.effect === 'KeepAndSacrificeRest') && !e.filter) err(`${e.effect} needs a filter saying what qualifies.`);
+  if (e.effect === 'Sacrifice' && e.amount === undefined) err('Sacrifice needs an amount.');
+  if (e.effect === 'KeepAndSacrificeRest' && e.amount === undefined && !e.onePerType) err('KeepAndSacrificeRest needs an amount (or onePerType).');
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
   if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');
   if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
@@ -214,7 +233,10 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   const e: Err = (msg) => err(`${label}: ${msg}`);
   validateFilter(t.what, e);
   if (t.when === 'SpellCast' && !t.what) e('say which spells with "what".');
-  if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep') e('"turn" is only for BeginCombat and Upkeep.');
+  if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep' && t.when !== 'EndStep') {
+    e('"turn" is only for BeginCombat, Upkeep and EndStep.');
+  }
+  if (t.fromGraveyard && t.when !== 'EntersBattlefield') e('"fromGraveyard" is only for EntersBattlefield.');
   if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard') e(`unknown zone "${t.zone}".`);
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');
   validateCost(t.cost?.mana, e);

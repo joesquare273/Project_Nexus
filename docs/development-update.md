@@ -5,6 +5,44 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Choosing cards: discard and sacrifice (C2, step 1)
+
+Players now choose cards as spells and abilities resolve: which cards to
+discard, which permanents to sacrifice, which to keep ("keep two creatures,
+sacrifice the rest"), or whether to discard their whole hand. On the board
+the cards on offer glow; click them and press Confirm. Discard and
+sacrifice costs ("As an additional cost, discard a card", "Sacrifice a
+creature:") ask which card when you cast or activate. Also new: end-step
+triggers ("at the beginning of your end step", "each opponent's end step").
+
+15 precon cards built (`packages/bots/test/precon-choices.test.ts`): Big
+Score, Laughing Mad, Syphon Mind, Celes, Snort, Ruin Grinder, Mask of
+Memory, Mog (with its Moogle token), High Market, Scavenger Grounds,
+Professional Face-Breaker, Shadow, Archfiend of Depravity, Tragic
+Arrogance and Fandaniel. 126 of 320 distinct precon cards are now built
+(Limit Break 52/100, Revival Trance 52, Scions & Spellcraft 46, Counter
+Blitz 45).
+
+### Fix: triggers while paying for a spell
+
+Sacrificing a Treasure for mana could set off a trigger (Al Bhed Salvagers)
+that asked for a target in the middle of casting, so the cast failed.
+Abilities that trigger from a mana ability now wait: if you then cast a
+spell or activate an ability, they go on the stack after it, above it
+(paying while casting, rule 601.2i). If you do anything else instead, such
+as passing, they go on the stack first and you get priority back (rule
+117.3c).
+
+### The AI picks whom to attack
+
+The AI used to attack only the opponent with the lowest life (on a tie,
+whoever sits first, usually you) with everything. It now sizes up the
+table: each opponent's board (power, evasion, double strike), mana, cards
+in hand, life and commander damage dealt, plus a grudge against whoever has
+attacked it. It goes for a kill when it has one, sends each attacker where
+it gets through and matters most, and keeps blockers home when the biggest
+threat could kill it next turn (`packages/bots/test/ai-threat.test.ts`).
+
 ### Board: choose which lands to tap, zone piles, animations, trigger spotlight
 
 - **You choose which lands to tap.** After you pick a spell or ability (and
@@ -50,10 +88,9 @@ under "C2 groups". Checks at the last commit: 305 tests pass; fuzz clean
 Most of the 209 unbuilt cards wait on a few shared mechanics rather than on
 card-by-card work:
 
-1. **Choose cards: sacrifice and discard** (about 48 cards). A general
-   decision where a player picks cards from their hand or permanents they
-   control, like picking cards to bottom after a mulligan. Then build the
-   cards it unlocks.
+1. **Choose cards: sacrifice and discard.** Done 2026-10-22 (15 cards; see
+   above). Most of the other cards that mention discarding or sacrificing
+   also need a later step (Sagas, X costs, rebound, convoke, crew...).
 2. **"Up to N targets" and support** (17 cards): Generous Patron, Together
    Forever, General Leo, Angel of the Ruins, Cloud's Limit Break...
 3. **Other counter kinds** (15): stun, shield, page, vow, flying, lore.

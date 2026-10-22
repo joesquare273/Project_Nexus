@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   abilityOptions,
+  activatedAbilities,
+  choiceProblem,
   cardsToBottom,
   formatManaCost,
   manaChoices,
@@ -336,7 +338,7 @@ export function Game({
    * Starts doing one play: choose its mode or modes if there's a choice, then
    * targets if needed. `modeKey` is the chosen modes joined with "+".
    */
-  const startPlay = (play: CardPlay, modeKey?: string) => {
+  const startPlay = (play: CardPlay, modeKey?: string, costKey?: string) => {
     const def = defOf(s.cards[play.card]!.defId);
     const keyOf = (c: PlayChoice) => c.modes?.join('+');
     const keys = [...new Set(play.choices.map(keyOf).filter((k): k is string => k !== undefined))];
@@ -359,8 +361,24 @@ export function Game({
       });
       return;
     }
+    // A discard or sacrifice cost: choose which card pays it.
+    const costOf = (c: PlayChoice) => JSON.stringify('costCards' in c.action ? (c.action.costCards ?? []) : []);
+    const forMode = play.choices.filter((c) => modeKey === undefined || keyOf(c) === modeKey);
+    const costKeys = [...new Set(forMode.map(costOf))];
+    if (costKey === undefined && costKeys.length > 1) {
+      const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
+      const verb = ability?.cost.sacrifice ? 'sacrifice' : 'discard';
+      setMenu({
+        title: `${def.name}: ${verb} which card?`,
+        options: costKeys.map((k) => ({
+          label: (JSON.parse(k) as InstanceId[]).map((id) => cardName(s, id)).join(', '),
+          pick: () => startPlay(play, modeKey, k),
+        })),
+      });
+      return;
+    }
     setMenu(null);
-    const choices = play.choices.filter((c) => modeKey === undefined || keyOf(c) === modeKey);
+    const choices = forMode.filter((c) => costKey === undefined || costOf(c) === costKey);
     const only = choices.length === 1 ? choices[0]! : null;
     if (only && only.targets.length === 0) {
       pay(only, play.kind === 'ability' ? `${def.name}: ${play.label}` : def.name);
@@ -411,10 +429,13 @@ export function Game({
   });
 
   const bottoming = yourMove && pending.kind === 'bottomCards' ? pending.count : 0;
+  // Choosing cards to discard, sacrifice or keep: the cards on offer glow and toggle when clicked.
+  const choosing = yourMove && pending.kind === 'chooseCards' ? pending : null;
   const h: ZoneHandlers = {
     markCard: (id) => {
       const marks: Mark[] = [];
       if (bottoming && s.cards[id]?.zone === 'hand') marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
+      if (choosing?.cards.includes(id)) marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
       if (playable.has(id) && !activeTargeting && !menu && !paying) marks.push('playable');
       if (paying && !menu && manaIds.has(id)) marks.push('mana');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
@@ -453,6 +474,10 @@ export function Game({
     onCard: (id) => {
       if (!yourMove) return;
       if (legendChoices.includes(id)) return submit([{ type: 'ChooseLegend', player: YOU, keep: id }]);
+      if (choosing?.cards.includes(id)) {
+        setBottomPicks(bottomPicks.includes(id) ? bottomPicks.filter((x) => x !== id) : [...bottomPicks, id]);
+        return;
+      }
       if (bottoming && s.cards[id]?.zone === 'hand') {
         if (bottomPicks.includes(id)) setBottomPicks(bottomPicks.filter((x) => x !== id));
         else if (bottomPicks.length < bottoming) setBottomPicks([...bottomPicks, id]);
@@ -779,6 +804,32 @@ function PromptBar(p: PromptProps) {
       ...(canMulligan ? [{ label: 'Mulligan', onClick: () => p.submit([{ type: 'Mulligan', player: YOU, keep: false }]) }] : []),
       { label: 'Keep', onClick: () => p.submit([{ type: 'Mulligan', player: YOU, keep: true }]), primary: true },
     ];
+  } else if (pending.kind === 'chooseCards') {
+    const c = pending;
+    const picks = p.bottomPicks;
+    if (c.allOrNothing) {
+      text = `Discard your whole hand (${c.cards.length} card${c.cards.length === 1 ? '' : 's'})?`;
+      buttons = [
+        { label: 'Keep my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
+        { label: 'Discard my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]), primary: true },
+      ];
+    } else {
+      const how = c.min === c.max ? `${c.min}` : c.min === 0 ? `up to ${c.max}` : `${c.min} to ${c.max}`;
+      const verb =
+        c.purpose === 'discard'
+          ? 'to discard (in your hand)'
+          : c.purpose === 'sacrifice'
+            ? 'to sacrifice'
+            : 'to keep; the others are sacrificed';
+      const problem = choiceProblem(s, c, picks);
+      text = `Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
+      buttons = [
+        ...(picks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
+        ...(!problem
+          ? [{ label: picks.length ? 'Confirm' : 'Choose none', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: picks }]), primary: true }]
+          : []),
+      ];
+    }
   } else if (pending.kind === 'bottomCards') {
     const n = pending.count;
     text = `You kept. Click ${n} card${n === 1 ? '' : 's'} in your hand to put on the bottom of your library (${p.bottomPicks.length}/${n} chosen).`;

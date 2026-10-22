@@ -65,5 +65,6 @@ export function matchesObject(
   if (f.manaValueAtLeast !== undefined && manaValueOf(def) < f.manaValueAtLeast) return false;
   if (f.noCounters && (obj.counters ?? 0) > 0) return false;
   if (f.hasCounters && !((obj.counters ?? 0) > 0)) return false;
+  if (f.token !== undefined && !!obj.isToken !== f.token) return false;
   return true;
 }

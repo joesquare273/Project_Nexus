@@ -3,8 +3,8 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
-import { activateAbility, activateManaAbility, castSpell, decide, playLand, surveil } from './stack.ts';
-import { chooseTriggerTargets } from './triggers.ts';
+import { activateAbility, activateManaAbility, castSpell, decide, playLand, surveil, chooseCards } from './stack.ts';
+import { chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
 import { cloneState, reject, RuleError, type Ctx } from './state.ts';
@@ -22,6 +22,16 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     const p = s.players[action.player];
     if (!p) reject(`Unknown player "${action.player}".`);
     if (p.eliminated) reject('You have left the game.');
+
+    // Triggers held from mana abilities: anything but casting, activating or more mana puts
+    // them on the stack first, and the player gets priority back instead (rule 117.3c).
+    const continuesPaying = ['ActivateManaAbility', 'CastSpell', 'ActivateAbility', 'Concede'].includes(action.type);
+    if (s.triggersHeld && !continuesPaying && s.pending.kind === 'priority' && s.pending.player === action.player) {
+      delete s.triggersHeld;
+      placeTriggers(ctx, action.player);
+      stabilize(ctx);
+      return { ok: true, state: s, events: ctx.ev };
+    }
 
     switch (action.type) {
       case 'Concede':
@@ -42,6 +52,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         castSpell(ctx, action.player, action.card, action.targets, {
           ...(action.mode !== undefined ? { mode: action.mode } : {}),
           ...(action.modes ? { modes: action.modes } : {}),
+          ...(action.costCards ? { costCards: action.costCards } : {}),
           ...(action.alternative ? { alternative: true } : {}),
         });
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
@@ -58,7 +69,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ActivateAbility':
         requirePriority(s, action.player);
-        activateAbility(ctx, action.player, action.card, action.ability, action.targets);
+        activateAbility(ctx, action.player, action.card, action.ability, action.targets, action.costCards);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'Surveil':
@@ -72,6 +83,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'Mulligan':
         mulligan(ctx, action.player, action.keep);
+        break;
+      case 'ChooseCards':
+        chooseCards(ctx, action.player, action.cards);
         break;
       case 'BottomCards':
         bottomCards(ctx, action.player, action.cards);
@@ -91,7 +105,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       default:
         reject(`Unknown action type "${(action as { type: string }).type}".`);
     }
-    stabilize(ctx);
+    // Abilities that trigger while you pay for something (a Treasure sacrificed for mana) wait
+    // until the spell is cast, then go on the stack above it (rule 601.2i).
+    stabilize(ctx, { holdTriggers: action.type === 'ActivateManaAbility' });
     return { ok: true, state: s, events: ctx.ev };
   } catch (e) {
     if (e instanceof RuleError) return { ok: false, error: e.message };

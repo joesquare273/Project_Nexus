@@ -383,12 +383,8 @@
           "count": 1,
           "set": "fic",
           "number": "296",
-          "implemented": false,
-          "needs": [
-            "treasure",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Decimate",
@@ -576,10 +572,8 @@
           "count": 1,
           "set": "fic",
           "number": "419",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Slayers' Stronghold",
@@ -788,12 +782,8 @@
           "count": 1,
           "set": "fic",
           "number": "350",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Skullclamp",
@@ -986,10 +976,8 @@
           "count": 1,
           "set": "fic",
           "number": "1",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Coin of Fate",
@@ -1074,10 +1062,8 @@
           "count": 1,
           "set": "fic",
           "number": "50",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Siegfried, Famed Swordsman",
@@ -1125,11 +1111,8 @@
           "count": 1,
           "set": "fic",
           "number": "58",
-          "implemented": false,
-          "needs": [
-            "flashback",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Strago and Relm",
@@ -1216,11 +1199,8 @@
           "count": 1,
           "set": "fic",
           "number": "89",
-          "implemented": false,
-          "needs": [
-            "dance",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Setzer, Wandering Gambler",
@@ -1258,20 +1238,16 @@
           "count": 1,
           "set": "fic",
           "number": "258",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Archfiend of Depravity",
           "count": 1,
           "set": "fic",
           "number": "273",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Reanimate",
@@ -1333,14 +1309,8 @@
           "count": 1,
           "set": "fic",
           "number": "297",
-          "implemented": false,
-          "needs": [
-            "cycling",
-            "landcycling",
-            "mountaincycling",
-            "typecycling",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bedevil",
@@ -1482,10 +1452,8 @@
           "count": 1,
           "set": "fic",
           "number": "402",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Isolated Chapel",
@@ -1565,11 +1533,8 @@
           "count": 1,
           "set": "fin",
           "number": "143",
-          "implemented": false,
-          "needs": [
-            "flashback",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Angel of the Ruins",
@@ -1663,11 +1628,8 @@
           "count": 1,
           "set": "fic",
           "number": "290",
-          "implemented": false,
-          "needs": [
-            "treasure",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Crackling Doom",
@@ -3095,11 +3057,8 @@
           "count": 1,
           "set": "fic",
           "number": "46",
-          "implemented": false,
-          "needs": [
-            "surveil",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Astrologian's Planisphere",
@@ -3487,10 +3446,8 @@
           "count": 1,
           "set": "fic",
           "number": "419",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shineshadow Snarl",
@@ -3655,10 +3612,8 @@
           "count": 1,
           "set": "fic",
           "number": "288",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",
