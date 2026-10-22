@@ -461,6 +461,12 @@ export function spellCost(
     const tapped = targets.some((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) && s.cards[t.card]!.tapped);
     if (tapped) cost = reduceGeneric(cost, def.costReduction.generic);
   }
+  // "Costs {3} less to cast if an opponent has seven or more cards in their graveyard."
+  const opponentGraveyard = def.costReduction?.ifOpponentGraveyardAtLeast;
+  if (opponentGraveyard !== undefined && card) {
+    const opponents = s.turnOrder.filter((pid) => pid !== card.owner && !s.players[pid]!.eliminated);
+    if (opponents.some((pid) => s.players[pid]!.graveyard.length >= opponentGraveyard)) cost = reduceGeneric(cost, def.costReduction!.generic);
+  }
   if (def.costReduction?.perCount && card) {
     cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, card.owner));
   }
@@ -470,7 +476,10 @@ export function spellCost(
       if (source.controller !== card.owner) continue;
       for (const spec of defOf(s, source).statics ?? []) {
         const r = spec.spellCostReduction;
-        if (r && matchesObject(s, r.filter, card, { controller: source.controller, source: source.id })) cost = reduceGeneric(cost, r.generic);
+        if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id })) continue;
+        // "The second spell you cast each turn": this would be spell number (cast so far + 1).
+        if (r.nthSpell !== undefined && (s.players[card.owner]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
+        cost = reduceGeneric(cost, r.generic);
       }
     }
   }
@@ -508,10 +517,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
 
   moveCard(ctx, id, 'stack');
   if (from === 'graveyard') c.castFromGraveyard = true;
-  if (!def.types.includes('creature')) {
-    const p = player(s, playerId);
-    p.noncreatureSpellsThisTurn = (p.noncreatureSpellsThisTurn ?? 0) + 1;
-  }
+  const caster = player(s, playerId);
+  caster.spellsCastThisTurn = (caster.spellsCastThisTurn ?? 0) + 1;
+  if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   const next = player(s, playerId).nextCreatureCounters;
   if (next && def.types.includes('creature')) {
     if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
@@ -535,8 +543,17 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
 }
 
 /** What activating an ability costs with these targets (equip discounts depend on the target). */
-export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]): ManaCost {
+export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[], source?: CardInstance): ManaCost {
   let cost = parseManaCost(spec.cost.mana);
+  // Puresteel Paladin's metalcraft: "Equipment you control have equip {0}".
+  if (spec.equip && source) {
+    const yours = battlefield(s).filter((c) => c.controller === source.controller);
+    const artifacts = yours.filter((c) => hasType(s, c, 'artifact')).length;
+    for (const other of yours) {
+      const e = (defOf(s, other).statics ?? []).find((st) => st.equipCost)?.equipCost;
+      if (e && artifacts >= e.ifArtifactsAtLeast) cost = parseManaCost(e.mana);
+    }
+  }
   const t = targets[0];
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
@@ -666,7 +683,7 @@ export function activateAbility(
     checkDiscardCost(s, playerId, spec.cost.discard ?? 0, costCards, id);
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
-  payMana(ctx, playerId, abilityCost(s, spec, targets), spec.equip ?? false);
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c), spec.equip ?? false);
   if (spec.cost.tap) tap(ctx, c);
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
@@ -789,6 +806,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
             : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
+              : a.of === 'previousTargetManaValue'
+                ? previousManaValue(s, r)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
                 : (r.chosenManaValue ?? 0);
@@ -876,6 +895,12 @@ function sourcePower(s: GameState, item: StackItem): number {
   const c = s.cards[sourceOf(item)]!;
   if (c.zone === 'battlefield') return Math.max(0, powerOf(s, c));
   return Math.max(0, c.lastPower ?? defOf(s, c).power ?? 0);
+}
+
+function previousManaValue(s: GameState, r: Resolving): number {
+  const t = r.previousTarget;
+  const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
+  return c ? manaValue(parseManaCost(defOf(s, c).manaCost)) : 0;
 }
 
 /** The triggering object's power, or how many counters it had as it left the battlefield. */
@@ -1259,6 +1284,16 @@ function continueResolving(ctx: Ctx): void {
       const t = r.previousTarget;
       const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
       if (!c || manaValue(parseManaCost(defOf(s, c).manaCost)) < effect.ifPreviousTargetManaValueAtLeast) continue;
+    }
+    if (effect.ifYourGraveyard) {
+      const n = s.players[item.controller]!.graveyard.length;
+      const { atLeast, below } = effect.ifYourGraveyard;
+      if ((atLeast !== undefined && n < atLeast) || (below !== undefined && n >= below)) continue;
+    }
+    if (effect.ifYouControl) {
+      const { filter, atLeast = 1 } = effect.ifYouControl;
+      const viewpoint = { controller: item.controller, source: sourceOf(item) };
+      if (battlefield(s).filter((c) => c.controller === item.controller && matchesObject(s, filter, c, viewpoint)).length < atLeast) continue;
     }
     if (effect.ifSourcePowerAtLeast !== undefined) {
       const src = s.cards[sourceOf(item)]!;

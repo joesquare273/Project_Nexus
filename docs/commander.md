@@ -68,7 +68,7 @@ needing several groups' pieces waits for the last of them.
 | New tokens | **10 built (2026-10-22):** Pitiless Plunderer, Lingering Souls, Bastion of Remembrance, Hermes, Circle of Power, Tireless Tracker, Lord Jyscal Guado, Chasm Skulker, Heidegger, Tataru Taru. |
 | Other counter kinds | **16 built (2026-10-22):** Tome of Legends, Protection Magic, Lulu, Luminous Broodmoth, O'aka, Scholar of New Horizons, Rikku, Nesting Grounds, Resourceful Defense, Zack Fair, Maester Seymour, Incubation Druid, Reaper's Scythe, Yuna, Flayer of the Hatebound, Gatta and Luzzu. Still waiting: Promise of Loyalty (vow counters), Sin (needs more), and Sagas (lore counters). |
 | Tokens, sacrifice and death triggers | **Choosing cards, 15 built (2026-10-22):** Big Score, Laughing Mad, Syphon Mind, Celes, Snort, Ruin Grinder, Mask of Memory, Mog, High Market, Scavenger Grounds, Professional Face-Breaker, Shadow, Archfiend of Depravity, Tragic Arrogance, Fandaniel. |
-| Graveyard and library | |
-| Card draw, life and spells-matter | |
+| Graveyard and library | **Recursion, 6 built (2026-10-22):** Stitch Together, Reanimate, Cyan, Elena, Cid, Red XIII. |
+| Card draw, life and spells-matter | **13 built (2026-10-22):** Harmonize, Night's Whisper, Secret Rendezvous, Cut a Deal, Into the Story, Baleful Strix, Morbid Opportunist, Archmage Emeritus, Alphinaud, Alisaie, Bastion Protector, Dispatch, Puresteel Paladin. |
 | Sagas, Adventures, double-faced cards, X costs | |
 | Everything else | |

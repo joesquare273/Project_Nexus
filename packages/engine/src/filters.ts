@@ -30,6 +30,12 @@ export function matchesObject(
   const def = s.cardDefs[obj.defId]!;
   if (f.other && obj.id === from.source) return false;
   if (f.self && obj.id !== from.source) return false;
+  if (f.name !== undefined && def.name !== f.name) return false;
+  if (f.historic !== undefined) {
+    const historic = def.types.includes('artifact') || !!def.supertypes?.includes('Legendary') || !!def.subtypes?.includes('Saga');
+    if (historic !== f.historic) return false;
+  }
+  if (f.modified !== undefined && (obj.zone === 'battlefield' && (isEquipped(s, obj) || totalCounters(obj) > 0)) !== f.modified) return false;
   if (f.commander !== undefined && !!obj.isCommander !== f.commander) return false;
   if (f.controller === 'You' && objController !== from.controller) return false;
   if (f.controller === 'Opponent' && objController === from.controller) return false;

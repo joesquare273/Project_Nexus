@@ -97,6 +97,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter(creature).reduce((n, c) => n + totalCounters(c), 0);
     case 'PlayersWhoLostLifeThisTurn':
       return s.turnOrder.filter((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) > 0).length;
+    case 'Opponents':
+      return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated).length;
     case 'NontokenCreaturesYouControlThatEnteredThisTurn':
       return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
     case 'SoldiersYouControl':

@@ -43,6 +43,8 @@ interface Occurrence {
   by?: PlayerId;
   /** Draws: who drew. */
   drawer?: PlayerId;
+  /** SpellCast: how many spells its caster had cast this turn, counting it. */
+  spellNumber?: number;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -64,6 +66,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         }
         if (e.from === 'battlefield') out.push({ when: 'LeavesBattlefield', at, subject: e.card, subjectController: e.controller ?? e.owner });
         if (e.sacrificed) out.push({ when: 'Sacrificed', at, subject: e.card, subjectController: e.controller ?? e.owner });
+        if (e.from === 'graveyard') out.push({ when: 'LeavesGraveyard', at, subject: e.card, subjectController: e.owner });
         break;
       case 'TokenCreated':
         out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
@@ -83,7 +86,14 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         for (const card of e.cards) out.push({ when: 'BecomesUntapped', at, subject: card, subjectController: s.cards[card]!.controller });
         break;
       case 'SpellCast':
-        out.push({ when: 'SpellCast', at, subject: e.card, subjectController: e.player, manaSpent: e.manaSpent });
+        out.push({
+          when: 'SpellCast',
+          at,
+          subject: e.card,
+          subjectController: e.player,
+          manaSpent: e.manaSpent,
+          spellNumber: s.players[e.player]!.spellsCastThisTurn ?? 0,
+        });
         break;
       case 'DamageDealt':
         if (e.combat && e.target.kind === 'player') {
@@ -168,6 +178,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && s.cardDefs[c.defId]!.types.includes('land')).length;
     if (lands(o.subjectController) <= lands(controller)) return false;
   }
+  if (spec.nthSpellThisTurn !== undefined && o.spellNumber !== spec.nthSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   return matchesFilter(s, spec.what, source, controller, o);

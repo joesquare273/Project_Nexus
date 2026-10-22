@@ -250,6 +250,8 @@ export const COUNT_KINDS = [
   /** Soul counters on the card with the ability (Reaper's Scythe). */
   'SoulCountersOnThis',
   'SoldiersYouControl',
+  /** Opponents still in the game. */
+  'Opponents',
   /** Nontoken creatures you control that entered the battlefield this turn (Tromell). */
   'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
@@ -283,7 +285,9 @@ export type Amount =
         | 'subjectPower'
         | 'subjectCounters'
         /** The +1/+1 counters the triggering object had as it left the battlefield. */
-        | 'subjectPlusOneCounters';
+        | 'subjectPlusOneCounters'
+        /** The previous target's mana value ("you lose life equal to that card's mana value"). */
+        | 'previousTargetManaValue';
       plus?: number;
     };
 
@@ -315,6 +319,10 @@ export interface EffectSpec {
   ifLifeGainedThisTurn?: { atLeast?: number; below?: number };
   /** Only if the previous target's mana value is at least this ("if the exiled card's mana value is 4 or greater"). */
   ifPreviousTargetManaValueAtLeast?: number;
+  /** Only if your graveyard has at least / fewer than this many cards (threshold). */
+  ifYourGraveyard?: { atLeast?: number; below?: number };
+  /** Only if you control at least `atLeast` (default 1) permanents matching `filter` (metalcraft). */
+  ifYouControl?: { filter: ObjectFilter; atLeast?: number };
   toughness?: number;
   /** GrantKeywords. */
   keywords?: Keyword[];
@@ -399,6 +407,8 @@ export const TRIGGER_EVENTS = [
   'LeavesBattlefield',
   /** A player drew a card (`drawer` says who). */
   'Draws',
+  /** A card left a graveyard (subject: the card; its owner's graveyard). */
+  'LeavesGraveyard',
   /** A permanent was sacrificed. */
   'Sacrificed',
 ] as const;
@@ -435,6 +445,12 @@ export interface ObjectFilter {
   attackingYou?: boolean;
   /** Entered the battlefield this turn ("target commander that entered this turn"). */
   enteredThisTurn?: boolean;
+  /** Has exactly this name (partner with, "search for a card named ..."). */
+  name?: string;
+  /** Is modified: equipped or has counters on it (rule 700.9; there are no Auras yet). */
+  modified?: boolean;
+  /** Is historic: an artifact, legendary, or a Saga (rule 700.6). */
+  historic?: boolean;
   /** Has an Equipment attached. */
   equipped?: boolean;
   /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
@@ -483,6 +499,8 @@ export interface TriggerSpec {
   attacksYou?: boolean;
   /** Draws: whose draws count. */
   drawer?: 'You' | 'Opponent';
+  /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
+  nthSpellThisTurn?: number;
   /** Draws: only draws on someone else's turn ("if it isn't that player's turn"). */
   notOnDrawersTurn?: boolean;
   /** Intervening "if": "if you put a counter on a creature this turn". */
@@ -559,8 +577,14 @@ export interface StaticSpec {
   extraCounters?: number;
   /** Tromell: each affected permanent enters with this many additional +1/+1 counters. */
   entersWithExtraCounters?: number;
-  /** "Noncreature spells you cast cost {1} less": spells you cast matching `filter` cost this much less. */
-  spellCostReduction?: { generic: number; filter: ObjectFilter };
+  /**
+   * "Noncreature spells you cast cost {1} less": spells you cast matching
+   * `filter` cost this much less; with `nthSpell`, only your Nth spell each
+   * turn ("the second spell you cast each turn costs {2} less").
+   */
+  spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number };
+  /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
+  equipCost?: { mana: string; ifArtifactsAtLeast: number };
   /**
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".
@@ -662,7 +686,7 @@ export interface CardDefinition {
    * "This spell costs {N} less to cast if it targets a tapped creature", or
    * "costs {N} less for each [count]" (Vanquish the Horde).
    */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind };
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; ifOpponentGraveyardAtLeast?: number };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   chooseModes?: { min: number; max: number };
   /**
@@ -796,6 +820,8 @@ export interface PlayerState {
   cardLeftGraveyardTurn?: number;
   /** Noncreature spells this player cast this turn. Reset as each turn begins. */
   noncreatureSpellsThisTurn?: number;
+  /** Spells this player cast this turn. Reset as each turn begins. */
+  spellsCastThisTurn?: number;
   /** An effect said this player loses the game (someone else's "you win the game"). */
   lostToEffect?: boolean;
   conceded: boolean;

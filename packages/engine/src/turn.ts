@@ -106,6 +106,7 @@ export function startNextTurn(ctx: Ctx): void {
     p.lifeLostThisTurn = 0;
     p.lifeGainedThisTurn = 0;
     p.noncreatureSpellsThisTurn = 0;
+    p.spellsCastThisTurn = 0;
   }
   ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: s.turnNumber });
   enterStep(ctx, 'untap');

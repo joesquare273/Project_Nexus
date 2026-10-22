@@ -34,12 +34,8 @@
           "count": 1,
           "set": "fic",
           "number": "13",
-          "implemented": false,
-          "needs": [
-            "jump",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cloud's Limit Break",
@@ -60,10 +56,8 @@
           "count": 1,
           "set": "fic",
           "number": "18",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Heidegger, Shinra Executive",
@@ -237,11 +231,8 @@
           "count": 1,
           "set": "fic",
           "number": "91",
-          "implemented": false,
-          "needs": [
-            "cosmo-memory",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sephiroth, Fallen Hero",
@@ -291,10 +282,8 @@
           "count": 1,
           "set": "fic",
           "number": "233",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bronze Guardian",
@@ -324,12 +313,8 @@
           "count": 1,
           "set": "fic",
           "number": "250",
-          "implemented": false,
-          "needs": [
-            "metalcraft",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Unfinished Business",
@@ -615,21 +600,16 @@
           "count": 1,
           "set": "fic",
           "number": "241",
-          "implemented": false,
-          "needs": [
-            "metalcraft",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Secret Rendezvous",
           "count": 1,
           "set": "fic",
           "number": "253",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Furious Rise",
@@ -662,10 +642,8 @@
           "count": 1,
           "set": "fic",
           "number": "308",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Nature's Lore",
@@ -953,11 +931,8 @@
           "count": 1,
           "set": "fic",
           "number": "16",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "General Leo Cristophe",
@@ -1205,10 +1180,8 @@
           "count": 1,
           "set": "fic",
           "number": "282",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rise of the Dark Realms",
@@ -1485,20 +1458,16 @@
           "count": 1,
           "set": "fic",
           "number": "278",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Night's Whisper",
           "count": 1,
           "set": "fic",
           "number": "280",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Pitiless Plunderer",
@@ -1513,11 +1482,8 @@
           "count": 1,
           "set": "fic",
           "number": "286",
-          "implemented": false,
-          "needs": [
-            "threshold",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Stitcher's Supplier",
@@ -2726,13 +2692,8 @@
           "count": 1,
           "set": "fic",
           "number": "9",
-          "implemented": false,
-          "needs": [
-            "dualcast",
-            "partner",
-            "partner-with",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Champions from Beyond",
@@ -2798,13 +2759,8 @@
           "count": 1,
           "set": "fic",
           "number": "33",
-          "implemented": false,
-          "needs": [
-            "eukrasia",
-            "partner",
-            "partner-with",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Blue Mage's Cane",
@@ -3025,11 +2981,8 @@
           "count": 1,
           "set": "fic",
           "number": "261",
-          "implemented": false,
-          "needs": [
-            "magecraft",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dig Through Time",
@@ -3109,10 +3062,8 @@
           "count": 1,
           "set": "fic",
           "number": "318",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Vindicate",
@@ -3306,10 +3257,8 @@
           "count": 1,
           "set": "fic",
           "number": "238",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lingering Souls",
@@ -3342,10 +3291,8 @@
           "count": 1,
           "set": "fic",
           "number": "266",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Propaganda",

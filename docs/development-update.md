@@ -5,6 +5,23 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Card draw and graveyard recursion (C2, step 7)
+
+New engine pieces: "whenever one or more cards leave your graveyard",
+"whenever you cast your second spell each turn", threshold and metalcraft
+checks inside a spell, losing life equal to a card's mana value, "the second
+spell you cast each turn costs {2} less", "Equipment spells cost {1} less",
+equip {0} with metalcraft, partner-with searches by name, and the
+"modified" and "historic" filters.
+
+19 precon cards built (`packages/bots/test/precon-draw.test.ts`): Harmonize,
+Night's Whisper, Secret Rendezvous, Cut a Deal, Into the Story, Baleful
+Strix, Morbid Opportunist, Archmage Emeritus, Alphinaud and Alisaie
+Leveilleur, Stitch Together, Reanimate, Cyan, Elena, Cid, Red XIII, Bastion
+Protector, Dispatch and Puresteel Paladin. 222 of 320 distinct precon cards
+are now built (Limit Break 77/100, Revival Trance 76, Counter Blitz 75,
+Scions & Spellcraft 71); 98 to go.
+
 ### Mana: lands, rocks and ramp (C2, step 6)
 
 Mana abilities can now cost mana: "{1}, {T}: Add {R}{G}" and the filter
@@ -237,8 +254,10 @@ card-by-card work:
 6. **Mana: lands, rocks and ramp.** Done 2026-10-22 (27 cards; see above).
    Still waiting: Path of Ancestry (its scry rider), Relic of Legends
    (tapping a creature for mana), Everflowing Chalice (multikicker).
-7. Then Sagas, graveyard-to-hand, anthems, evolve, counterspells, and the
-   remaining one-offs.
+7. **Card draw and graveyard recursion.** Done 2026-10-22 (19 cards; see
+   above).
+8. Then Sagas, X costs, counterspells, evolve, Vehicles, ward, convoke and
+   the remaining one-offs.
 
 ### Picking up on the other computer
 

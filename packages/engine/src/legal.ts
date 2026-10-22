@@ -137,7 +137,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
           out.push({
             action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}) },
-            cost: abilityCost(s, spec, targets),
+            cost: abilityCost(s, spec, targets, c),
             forEquipment: spec.equip ?? false,
           });
         }

@@ -270,6 +270,7 @@ function triggerCondition(t: TriggerSpec): string {
     BecomesUntapped: 'becomes untapped',
     LeavesBattlefield: 'leaves the battlefield',
     Draws: '',
+    LeavesGraveyard: 'leaves your graveyard',
     Sacrificed: 'is sacrificed',
   }[t.when] ?? '';
   if (t.when === 'Draws') {

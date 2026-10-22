@@ -128,6 +128,8 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Maximum hand size | There is none: nobody discards down to seven at cleanup (so Thought Vessel's "no maximum hand size" changes nothing) | Seven cards (rule 402.2) |
 | Demolition Field | Both players always search for a basic land | Each search is optional ("may") |
 | Auto-pay with paid mana abilities | Works in at most two of them, and only when plain taps can't pay | Any combination |
+| Partner with (Alphinaud, Alisaie) | You may search for the partner; the "target player" is always you | Any target player may |
+| Cut a Deal | You draw one card for each opponent still in the game | One for each opponent who actually drew |
 | Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |

@@ -108,6 +108,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectPower',
       'subjectCounters',
       'subjectPlusOneCounters',
+      'previousTargetManaValue',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
@@ -215,7 +216,9 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
-    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount) err('costReduction needs a condition or perCount.');
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && c.costReduction.ifOpponentGraveyardAtLeast === undefined) {
+      err('costReduction needs a condition or perCount.');
+    }
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
   }
 
@@ -263,6 +266,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
   if (e.damageSource && e.effect !== 'DealDamage') err('damageSource is only for DealDamage.');
+  if (e.ifYouControl) validateFilter(e.ifYouControl.filter, err);
   if (e.powerFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('powerFromAmount is only for ModifyPT with an amount.');
   if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
   if ((e.countersOf || e.damageSource) && !inAbility) err('countersOf and damageSource are only for abilities.');
@@ -283,6 +287,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.attacksYou && t.when !== 'Attacks') e('attacksYou is only for Attacks.');
   if (t.ifYouControl) validateFilter(t.ifYouControl.filter, e);
   if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
+  if (t.nthSpellThisTurn !== undefined && t.when !== 'SpellCast') e('nthSpellThisTurn is only for SpellCast.');
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
@@ -323,6 +328,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
   }
   validateFilter(st.filter, e);
   if (st.spellCostReduction) validateFilter(st.spellCostReduction.filter, e);
+  if (st.equipCost) validateCost(st.equipCost.mana, e);
   if (st.entersWithExtraCounters !== undefined && st.affects !== 'EachMatching') e('entersWithExtraCounters needs an EachMatching static ability.');
   if (st.extraCounters !== undefined && (!isNonNegativeInt(st.extraCounters) || st.affects !== 'EachMatching')) {
     e('extraCounters must be a whole number on an EachMatching static ability.');
