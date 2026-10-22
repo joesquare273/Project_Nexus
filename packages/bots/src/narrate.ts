@@ -38,6 +38,8 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOpponentWhoChose: 'each opponent who did',
   EachOpponentWhoDidNotChoose: "each opponent who didn't",
   EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
+  EachOtherOpponent: 'each other opponent',
+  AllGraveyardCards: 'all cards in all graveyards',
   You: 'you',
 };
 
@@ -138,6 +140,10 @@ function effectText(e: EffectSpec): string {
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
     case 'RevealUntil':
       return `reveal cards from the top of your library until you reveal a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; put it into your hand and the rest on the bottom`;
+    case 'Explore':
+      return `${who} explores`;
+    case 'AdditionalCombat':
+      return `there is an additional combat phase after this phase${e.onlyFirstCombat ? " if it's the first combat phase of your turn" : ''}`;
     case 'GainControl':
       return `gain control of ${who}`;
     case 'WinGame':
@@ -294,7 +300,7 @@ function triggerCondition(t: TriggerSpec): string {
 export function triggerText(t: TriggerSpec): string {
   const effects = t.effects.map(effectText).join(' and ');
   const body = t.cost
-    ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`].filter(Boolean).join(' and ')}. If you do, ${effects}`
+    ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`, t.cost.lifeOf && "life equal to that spell's mana value"].filter(Boolean).join(' and ')}. If you do, ${effects}`
     : t.optional
       ? `you may ${effects}`
       : effects;

@@ -67,9 +67,10 @@ const PLAYER_TARGETS = new Set([
   'EachOpponentWhoChose',
   'EachOpponentWhoDidNotChoose',
   'EachOpponentWhoLostLifeThisTurn',
+  'EachOtherOpponent',
 ]);
 /** Target kinds that pick from a filter. */
-const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents']);
+const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents', 'AllGraveyardCards']);
 const ABILITY_ONLY_TARGETS = new Set(['This', 'DefendingPlayer', 'TriggeringObject', 'TriggeringCard']);
 
 function validateCounterKind(kind: unknown, err: Err, allowPlusOne = false): void {
@@ -112,6 +113,8 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'x',
       'lifeLostThisWay',
       'revealedManaValue',
+      'subjectManaValue',
+      'damageDealt',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
@@ -271,6 +274,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
   if (e.damageSource && e.effect !== 'DealDamage') err('damageSource is only for DealDamage.');
   if (e.ifYouControl) validateFilter(e.ifYouControl.filter, err);
+  if (e.toughnessFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT with an amount.');
   if (e.powerFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('powerFromAmount is only for ModifyPT with an amount.');
   if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
   if ((e.countersOf || e.damageSource) && !inAbility) err('countersOf and damageSource are only for abilities.');

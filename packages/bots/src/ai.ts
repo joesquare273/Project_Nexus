@@ -20,6 +20,7 @@ import {
   spellEffects,
   spellOptions,
   toughnessOf,
+  triggerLifeCost,
   triggerSpec,
   type Action,
   type Attack,
@@ -410,7 +411,8 @@ function decideOptional(s: GameState, me: PlayerId, legal: Action[]): Action {
   const item = s.stack.at(-1)!;
   const cost = item.kind === 'ability' ? triggerSpec(s, item)?.cost : undefined;
   const no: Action = { type: 'Decide', player: me, accept: false };
-  if (cost?.life !== undefined && s.players[me]!.life - cost.life < 5) return no;
+  const life = item.kind === 'ability' ? triggerLifeCost(s, item) : undefined;
+  if (life !== undefined && s.players[me]!.life - life < 5) return no;
   if (legal.some((a) => a.type === 'Decide' && a.accept)) return { type: 'Decide', player: me, accept: true };
   const taps = planTaps(s, me, cost?.mana);
   return taps && taps.length > 0 ? tapActions(me, taps)[0]! : no;

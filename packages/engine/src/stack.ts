@@ -34,7 +34,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { canReveal, entersTapped, isPermanentCard, isSpellCard, manaChoices } from './typerules.ts';
+import { canReveal, entersTapped, isPermanentCard, isSpellCard, manaChoices, objectManaValue } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -384,7 +384,11 @@ export function activateManaAbility(
   tap(ctx, c);
   const ability = def.manaAbility;
   if (ability?.sacrifice) sacrifice(ctx, id);
-  const amount = ability?.amountWithCounters && (c.counters ?? 0) > 0 ? ability.amountWithCounters : (ability?.amount ?? 1);
+  const amount = ability?.amountPerCounter
+    ? (c.counters ?? 0)
+    : ability?.amountWithCounters && (c.counters ?? 0) > 0
+      ? ability.amountWithCounters
+      : (ability?.amount ?? 1);
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ?? false);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
@@ -775,6 +779,17 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
     case 'ActivePlayer':
       return s.players[s.activePlayer]!.eliminated ? [] : toPlayers([s.activePlayer]);
+    case 'EachOtherOpponent': {
+      const defender = item.kind === 'ability' ? item.defender : undefined;
+      return toPlayers(alivePlayers(s).filter((id) => id !== item.controller && id !== defender));
+    }
+    case 'AllGraveyardCards': {
+      const viewpoint = { controller: item.controller, source: sourceOf(item) };
+      return alivePlayers(s)
+        .flatMap((pid) => s.players[pid]!.graveyard)
+        .filter((id) => matchesObject(s, effect.filter, s.cards[id]!, viewpoint))
+        .map((id) => ({ kind: 'card', card: id }));
+    }
     case 'EachOpponentWhoLostLifeThisTurn':
       return toPlayers(alivePlayers(s).filter((id) => id !== item.controller && (s.players[id]!.lifeLostThisTurn ?? 0) > 0));
     case 'EachPlayerWhoChose':
@@ -824,6 +839,10 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                     ? (r.lifeLostThisWay ?? 0)
                     : a.of === 'revealedManaValue'
                       ? (r.revealedManaValue ?? 0)
+                      : a.of === 'subjectManaValue'
+                        ? subjectManaValue(s, r.item)
+                        : a.of === 'damageDealt'
+                          ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
                 : (r.chosenManaValue ?? 0);
@@ -906,11 +925,27 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
   return null;
 }
 
+/** The life a triggered ability's optional cost asks for, if any: a fixed amount or the triggering spell's mana value. */
+export function triggerLifeCost(s: GameState, item: AbilityItem): number | undefined {
+  const cost = triggerSpec(s, item)?.cost;
+  if (cost?.life !== undefined) return cost.life;
+  if (cost?.lifeOf === 'subjectManaValue') {
+    const subject = item.subject ? s.cards[item.subject] : undefined;
+    return subject ? objectManaValue(s, subject) : 0;
+  }
+  return undefined;
+}
+
 /** "This creature's power": now, or as it last was on the battlefield if it has left (rule 608.2h). */
 function sourcePower(s: GameState, item: StackItem): number {
   const c = s.cards[sourceOf(item)]!;
   if (c.zone === 'battlefield') return Math.max(0, powerOf(s, c));
   return Math.max(0, c.lastPower ?? defOf(s, c).power ?? 0);
+}
+
+function subjectManaValue(s: GameState, item: StackItem): number {
+  const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+  return c ? objectManaValue(s, c) : 0;
 }
 
 function previousManaValue(s: GameState, r: Resolving): number {
@@ -1071,6 +1106,23 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       library.push(...rest);
       return;
     }
+    case 'Explore':
+      for (const id of onBattlefield) {
+        const explorer = s.cards[id]!;
+        const top = s.players[explorer.controller]!.library[0];
+        if (top === undefined) {
+          addCounters(ctx, id, 1, item.controller);
+          continue;
+        }
+        ctx.ev.push({ type: 'CardRevealed', player: explorer.controller, card: top, defId: s.cards[top]!.defId });
+        if (hasType(s, s.cards[top]!, 'land')) moveCard(ctx, top, 'hand');
+        else addCounters(ctx, id, 1, item.controller);
+      }
+      return;
+    case 'AdditionalCombat':
+      if (effect.onlyFirstCombat && (s.combatsThisTurn ?? 0) !== 1) return;
+      s.extraCombats = (s.extraCombats ?? 0) + 1;
+      return;
     case 'GainControl':
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
@@ -1115,7 +1167,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ...(effect.power !== undefined || effect.powerFromAmount
             ? { power: (effect.power ?? 0) + (effect.powerFromAmount ? amount : 0) }
             : {}),
-          ...(effect.toughness !== undefined ? { toughness: effect.toughness } : {}),
+          ...(effect.toughness !== undefined || effect.toughnessFromAmount
+            ? { toughness: (effect.toughness ?? 0) + (effect.toughnessFromAmount ? amount : 0) }
+            : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),
         });
@@ -1329,6 +1383,15 @@ function continueResolving(ctx: Ctx): void {
       const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
       if (!c || manaValue(parseManaCost(defOf(s, c).manaCost)) < effect.ifPreviousTargetManaValueAtLeast) continue;
     }
+    if (effect.subjectPowerVsSource) {
+      // Compared once, before any of these effects change either creature.
+      if (r.subjectWasWeaker === undefined) {
+        const subject = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+        const src = s.cards[sourceOf(item)]!;
+        r.subjectWasWeaker = !!subject && subject.zone === 'battlefield' && src.zone === 'battlefield' && powerOf(s, subject) < powerOf(s, src);
+      }
+      if ((effect.subjectPowerVsSource === 'less') !== r.subjectWasWeaker) continue;
+    }
     if (effect.ifYourGraveyard) {
       const n = s.players[item.controller]!.graveyard.length;
       const { atLeast, below } = effect.ifYourGraveyard;
@@ -1412,11 +1475,15 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
   if (item?.kind !== 'ability' || item.id !== pending.item) {
     throw new Error('The ability being decided is not on top of the stack.');
   }
-  const cost = triggerSpec(s, item)?.cost;
+  const spec = triggerSpec(s, item);
+  const cost = spec?.cost;
   if (accept && cost) {
-    if (cost.life !== undefined && player(s, playerId).life < cost.life) reject("You don't have enough life to pay.");
+    const life = triggerLifeCost(s, item);
+    if (life !== undefined && player(s, playerId).life < life) reject("You don't have enough life to pay.");
     if (cost.mana) payMana(ctx, playerId, parseManaCost(cost.mana));
-    if (cost.life) changeLife(ctx, playerId, -cost.life);
+    if (life) changeLife(ctx, playerId, -life);
+    // "Do this only once each turn" (G'raha Tia): paid, so done for this turn.
+    if (spec.oncePerTurnWhenPaid) s.triggeredThisTurn.push(`${item.source}#${item.ability}`);
   }
   item.accepted = accept;
   ctx.ev.push({ type: 'Decided', player: playerId, item: item.id, card: item.source, accepted: accept });

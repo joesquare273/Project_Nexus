@@ -97,6 +97,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter(creature).reduce((n, c) => n + totalCounters(c), 0);
     case 'PlayersWhoLostLifeThisTurn':
       return s.turnOrder.filter((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) > 0).length;
+    case 'OpponentsYouAttackedThisCombat': {
+      const attacked = (s.combat?.attacks ?? []).filter((a) => s.cards[a.attacker]?.controller === player).map((a) => a.defender);
+      return new Set(attacked).size;
+    }
     case 'Opponents':
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated).length;
     case 'NontokenCreaturesYouControlThatEnteredThisTurn':
@@ -123,8 +127,25 @@ export function amountOf(s: GameState, amount: Amount | undefined, player: Playe
   return amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0) * (amount.times ?? 1);
 }
 
+/** Cards whose static abilities may apply: permanents, and graveyard cards with abilities that work from there (Anger). */
+function staticSources(s: GameState): CardInstance[] {
+  const out = battlefieldCards(s);
+  for (const pid of s.turnOrder) {
+    for (const id of s.players[pid]!.graveyard) {
+      const c = s.cards[id]!;
+      if (def(s, c).statics?.some((st) => st.zone === 'graveyard')) out.push(c);
+    }
+  }
+  return out;
+}
+
 /** Whether a static ability of `source` applies to `c`. */
 export function staticAffects(s: GameState, source: CardInstance, spec: StaticSpec, c: CardInstance): boolean {
+  // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
+  if (spec.ifYouControlSubtype) {
+    const yours = battlefieldCards(s).filter((x) => x.controller === source.controller);
+    if (!yours.some((x) => def(s, x).subtypes?.includes(spec.ifYouControlSubtype!))) return false;
+  }
   if (spec.affects === 'EachMatching') {
     // Filters here avoid power, toughness and subtypes, which would ask for these same characteristics.
     return c.zone === 'battlefield' && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id });
@@ -156,9 +177,9 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   if (c.zone !== 'battlefield') return out;
 
   const removed: Keyword[] = [];
-  for (const source of battlefieldCards(s)) {
+  for (const source of staticSources(s)) {
     for (const spec of def(s, source).statics ?? []) {
-      if (!staticAffects(s, source, spec, c)) continue;
+      if ((spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;
       out.power += amountOf(s, spec.power, source.controller, source.id);
       out.toughness += amountOf(s, spec.toughness, source.controller, source.id);
       for (const k of spec.keywords ?? []) out.keywords.add(k);

@@ -66,9 +66,12 @@ export function enterStep(ctx: Ctx, step: Step): void {
       cleanupDamage(ctx);
       startNextTurn(ctx);
       return;
+    case 'beginCombat':
+      s.combatsThisTurn = (s.combatsThisTurn ?? 0) + 1;
+      givePriority(ctx, s.activePlayer);
+      return;
     case 'upkeep':
     case 'main1':
-    case 'beginCombat':
     case 'end':
       givePriority(ctx, s.activePlayer);
       return;
@@ -78,6 +81,13 @@ export function enterStep(ctx: Ctx, step: Step): void {
 /** Called when every living player passes in succession with an empty stack. */
 export function advanceStep(ctx: Ctx): void {
   const s = ctx.s;
+  // "An additional combat phase after this phase" (Tifa): straight into another combat.
+  if (s.step === 'endCombat' && (s.extraCombats ?? 0) > 0) {
+    s.extraCombats = s.extraCombats! - 1;
+    s.combat = null;
+    enterStep(ctx, 'beginCombat');
+    return;
+  }
   let next = STEPS[STEPS.indexOf(s.step) + 1]!;
   const hasAttacks = (s.combat?.attacks.length ?? 0) > 0;
   if ((next === 'declareBlockers' || next === 'combatDamage') && !hasAttacks) next = 'endCombat';
@@ -101,6 +111,8 @@ export function startNextTurn(ctx: Ctx): void {
   s.turnNumber += 1;
   s.triggeredThisTurn = [];
   s.creaturesDiedThisTurn = 0;
+  s.combatsThisTurn = 0;
+  s.extraCombats = 0;
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     p.lifeLostThisTurn = 0;

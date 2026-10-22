@@ -117,6 +117,10 @@ export const TARGET_KINDS = [
   'EachOpponentWhoDidNotChoose',
   /** "Each opponent who lost life this turn". */
   'EachOpponentWhoLostLifeThisTurn',
+  /** Each opponent other than the one the triggering creature attacked or damaged ("each other opponent"). */
+  'EachOtherOpponent',
+  /** Every card in every graveyard matching `filter` ("all creature cards from all graveyards"). */
+  'AllGraveyardCards',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
@@ -209,6 +213,14 @@ export const EFFECT_KINDS = [
   'AttachLastEquipment',
   /** Gain control of the target permanents for the rest of the game (Hellkite Tyrant). */
   'GainControl',
+  /** "There is an additional combat phase after this phase" (with `onlyFirstCombat`: only after the turn's first combat). */
+  'AdditionalCombat',
+  /**
+   * The target creature explores (rule 701.44): reveal the top card of your
+   * library; a land goes to your hand, otherwise the creature gets a +1/+1
+   * counter (the card stays on top).
+   */
+  'Explore',
   /**
    * Reveal cards from the top of your library until one matches `filter`; put
    * it into your hand and the rest on the bottom in a random order (Yuna's Whistle).
@@ -257,6 +269,8 @@ export const COUNT_KINDS = [
   'SoldiersYouControl',
   /** Opponents still in the game. */
   'Opponents',
+  /** Opponents you're attacking with at least one creature this combat (melee). */
+  'OpponentsYouAttackedThisCombat',
   /** Nontoken creatures you control that entered the battlefield this turn (Tromell). */
   'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
@@ -298,7 +312,11 @@ export type Amount =
         /** Life lost to earlier effects of the same spell ("you gain life equal to the life lost this way"). */
         | 'lifeLostThisWay'
         /** The mana value of the card found by RevealUntil. */
-        | 'revealedManaValue';
+        | 'revealedManaValue'
+        /** The triggering spell's mana value (counting X while it's on the stack). */
+        | 'subjectManaValue'
+        /** The damage dealt in the triggering event ("it deals that much damage"). */
+        | 'damageDealt';
       plus?: number;
     };
 
@@ -326,6 +344,12 @@ export interface EffectSpec {
   power?: number;
   /** ModifyPT: `amount` is added to `power` ("+X/+0, where X is the number of Soldiers you control"). */
   powerFromAmount?: boolean;
+  /** ModifyPT: `amount` is added to `toughness` too ("+1/+1 for each opponent you attacked"). */
+  toughnessFromAmount?: boolean;
+  /** AdditionalCombat: "if it's the first combat phase of your turn". */
+  onlyFirstCombat?: boolean;
+  /** Only if the triggering creature's power is less than (or, 'notLess', at least) the source's (Shelinda). */
+  subjectPowerVsSource?: 'less' | 'notLess';
   /** Only if you gained at least / less than this much life this turn (Aerith). */
   ifLifeGainedThisTurn?: { atLeast?: number; below?: number };
   /** Only if the previous target's mana value is at least this ("if the exiled card's mana value is 4 or greater"). */
@@ -458,6 +482,8 @@ export interface ObjectFilter {
   attackingYou?: boolean;
   /** Entered the battlefield this turn ("target commander that entered this turn"). */
   enteredThisTurn?: boolean;
+  /** Has less power than the card with the ability ("with power less than Auron's power"). */
+  powerLessThanSource?: boolean;
   /** Has exactly this name (partner with, "search for a card named ..."). */
   name?: string;
   /** Is modified: equipped or has counters on it (rule 700.9; there are no Auras yet). */
@@ -516,6 +542,10 @@ export interface TriggerSpec {
   nthSpellThisTurn?: number;
   /** YouAttack: how many attacking creatures it takes. */
   attackersAtLeast?: number;
+  /** Evolve (rule 702.100): the entering creature has greater power or toughness than this one. */
+  evolve?: boolean;
+  /** CountersAdded: only +1/+1 counters ("whenever a +1/+1 counter is put on this creature"). */
+  plusOneCountersOnly?: boolean;
   /** Draws: only draws on someone else's turn ("if it isn't that player's turn"). */
   notOnDrawersTurn?: boolean;
   /** Intervening "if": "if you put a counter on a creature this turn". */
@@ -543,7 +573,10 @@ export interface TriggerSpec {
   /** "You may ...": the controller chooses on resolution. */
   optional?: boolean;
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
-  cost?: { mana?: string; life?: number };
+  /** `lifeOf`: pay life equal to the triggering spell's mana value ("you may pay X life, where X is that spell's mana value"). */
+  cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue' };
+  /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
+  oncePerTurnWhenPaid?: boolean;
   effects: EffectSpec[];
 }
 
@@ -600,6 +633,12 @@ export interface StaticSpec {
   spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number };
   /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
   equipCost?: { mana: string; ifArtifactsAtLeast: number };
+  /** Works while the card is in this zone instead of on the battlefield (Anger, from the graveyard). */
+  zone?: 'graveyard';
+  /** Only while you control a permanent with this subtype ("and you control a Mountain"). */
+  ifYouControlSubtype?: string;
+  /** Authority of the Consuls: creatures your opponents control enter tapped. */
+  opponentCreaturesEnterTapped?: boolean;
   /**
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".
@@ -650,6 +689,8 @@ export interface CardDefinition {
     yourLandColors?: boolean;
     /** "If this creature has a +1/+1 counter on it, add three mana instead." */
     amountWithCounters?: number;
+    /** "Add {G} for each +1/+1 counter on this creature" (none when it has no counters). */
+    amountPerCounter?: boolean;
     /** "Activate only if you control five or more lands." */
     ifLandsAtLeast?: number;
     /** Spire of Industry: "Add one mana of any color. Activate only if you control an artifact." */
@@ -903,6 +944,8 @@ export interface AbilityItem {
   defender?: PlayerId;
   /** Triggered abilities: the object the trigger event happened to. */
   subject?: InstanceId;
+  /** Damage triggers: how much damage was dealt. */
+  amount?: number;
   /** The controller's answer to "you may" or an optional cost, once given. */
   accepted?: boolean;
 }
@@ -918,6 +961,8 @@ export interface QueuedTrigger {
   defender?: PlayerId;
   /** The object the trigger event happened to (the creature that entered, attacked, died...). */
   subject?: InstanceId;
+  /** Damage triggers: how much damage was dealt. */
+  amount?: number;
 }
 
 /** An "until end of turn" effect on one object (rule 611.2). */
@@ -953,6 +998,8 @@ export interface Resolving {
   lifeLostThisWay?: number;
   /** The mana value of the card RevealUntil found. */
   revealedManaValue?: number;
+  /** Whether the triggering creature had less power than the source, checked once as it starts resolving (Shelinda). */
+  subjectWasWeaker?: boolean;
   /** What each player chose in the last choosing effect. */
   chosen?: { player: PlayerId; cards: InstanceId[] }[];
   /** Mana value of all cards chosen in the last choosing effect, measured as they were chosen. */
@@ -1056,6 +1103,10 @@ export interface GameState {
   temporaryEffects: TemporaryEffect[];
   /** Creatures put into a graveyard from the battlefield this turn. */
   creaturesDiedThisTurn: number;
+  /** Combat phases begun this turn. */
+  combatsThisTurn?: number;
+  /** Additional combat phases still to come this turn (each after the current one). */
+  extraCombats?: number;
   combat: CombatState | null;
   pending: Pending;
   /** Set when the game ends. null means a draw (everyone left at once). */

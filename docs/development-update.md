@@ -5,6 +5,28 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Alternate commanders and one-offs (C2, step 9)
+
+Both alternate commanders are built. Tifa, Martial Artist: melee, and when
+creatures with power 7 or greater connect, untap your creatures and take an
+additional combat phase (only after the first combat of the turn). G'raha
+Tia: pay life equal to a noncreature spell's mana value for a Hero with that
+many counters, once each turn once paid (declining keeps it available).
+
+New engine pieces: extra combat phases, melee, triggered costs paid in life
+equal to a spell's mana value, evolve, explore, "whenever a +1/+1 counter is
+put on this", mana per counter, static abilities that work from the
+graveyard (Anger), "creatures your opponents control enter tapped", "each
+other opponent", every card in every graveyard, and "it deals that much
+damage".
+
+12 precon cards built (`precon-commanders.test.ts`,
+`precon-oneoffs.test.ts`): Tifa, G'raha Tia, Stitcher's Supplier, Authority
+of the Consuls, Rise of the Dark Realms, Shelinda, Auron, Gyre Sage, Fathom
+Mage, Path of Discovery, Anger and Vincent. 239 of 320 distinct precon cards
+are now built (Counter Blitz 83/100, Limit Break 79, Revival Trance 79,
+Scions & Spellcraft 75); 81 to go.
+
 ### Choose your precon's commander
 
 On the Commander setup screen, "Your commander" lists the cards in your

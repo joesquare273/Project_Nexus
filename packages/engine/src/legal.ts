@@ -24,6 +24,7 @@ import {
   spellCost,
   spellEffects,
   targetOptions,
+  triggerLifeCost,
   triggerSpec,
   type SpellChoice,
   choiceProblem,
@@ -261,8 +262,8 @@ export function getLegalActions(s: GameState): Action[] {
       const item = s.stack.at(-1)!;
       const cost = item.kind === 'ability' ? triggerSpec(s, item)?.cost : undefined;
       const p = s.players[player]!;
-      const affordable =
-        (cost?.life === undefined || p.life >= cost.life) && (!cost?.mana || canPay(p.manaPool, parseManaCost(cost.mana)));
+      const life = item.kind === 'ability' ? triggerLifeCost(s, item) : undefined;
+      const affordable = (life === undefined || p.life >= life) && (!cost?.mana || canPay(p.manaPool, parseManaCost(cost.mana)));
       const actions: Action[] = [{ type: 'Decide', player, accept: false }];
       if (affordable) actions.push({ type: 'Decide', player, accept: true });
       // While paying, lands can be tapped for mana.

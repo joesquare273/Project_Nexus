@@ -117,3 +117,75 @@ describe("Y'shtola, Night's Blessed (Scions & Spellcraft)", () => {
     expect(t.players.P1!.hand).toHaveLength(1);
   });
 });
+
+describe('Tifa, Martial Artist (Limit Break, alternate commander)', () => {
+  it('melee: +1/+1 for each opponent attacked this combat', () => {
+    let s = newGame(3);
+    const tifa = put(s, 'P1', id('Tifa, Martial Artist'));
+    const rat = put(s, 'P1', 'undercity-dire-rat');
+    s = goTo(s, 'declareAttackers', { accept: false });
+    s = act(s, {
+      type: 'DeclareAttackers',
+      player: 'P1',
+      attacks: [
+        { attacker: tifa, defender: 'P2' },
+        { attacker: rat, defender: 'P3' },
+      ],
+    });
+    s = settle(s).state;
+    expect(s.temporaryEffects.find((e) => e.affected === tifa)).toMatchObject({ power: 2, toughness: 2 });
+  });
+
+  it('power 7 or greater connecting untaps your creatures and adds one more combat, only after the first', () => {
+    let s = newGame();
+    const tifa = put(s, 'P1', id('Tifa, Martial Artist'), 'battlefield', { counters: 2 }); // 6/6, 7/7 with melee
+    const rat = put(s, 'P1', 'undercity-dire-rat');
+    const attack = (state: GameState) => {
+      state = goTo(state, 'declareAttackers', { accept: false });
+      state = act(state, {
+        type: 'DeclareAttackers',
+        player: 'P1',
+        attacks: [
+          { attacker: tifa, defender: 'P2' },
+          { attacker: rat, defender: 'P2' },
+        ],
+      });
+      return goTo(state, 'endCombat');
+    };
+    s = attack(s);
+    expect([s.cards[tifa]!.tapped, s.cards[rat]!.tapped, s.extraCombats]).toEqual([false, false, 1]);
+    s = attack(s); // the additional combat phase
+    expect(s.combatsThisTurn).toBe(2);
+    expect(s.extraCombats).toBe(0); // no third combat
+    s = goTo(s, 'main2');
+    expect(s.activePlayer).toBe('P1');
+  });
+});
+
+describe("G'raha Tia, Scion Reborn (Scions & Spellcraft, alternate commander)", () => {
+  it('pay X life for a noncreature spell with mana value X: a Hero with X counters, once each turn', () => {
+    let s = newGame();
+    put(s, 'P1', id("G'raha Tia, Scion Reborn"));
+    const first = put(s, 'P1', id('Protection Magic'), 'hand');
+    const second = put(s, 'P1', id('Protection Magic'), 'hand');
+    const none = { kind: 'none' } as const;
+    mana(s, 'P1', { W: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: first, targets: [none, none, none] }).state;
+    const heroes = () => s.players.P1!.battlefield.filter((c) => s.cards[c]!.defId === 'hero-token');
+    expect([s.players.P1!.life, heroes().length, s.cards[heroes()[0]!]!.counters]).toEqual([18, 1, 2]);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second, targets: [none, none, none] }).state;
+    expect(heroes()).toHaveLength(1);
+  });
+
+  it('declining keeps it available later in the turn', () => {
+    let s = newGame();
+    put(s, 'P1', id("G'raha Tia, Scion Reborn"));
+    const first = put(s, 'P1', id('Protection Magic'), 'hand');
+    const second = put(s, 'P1', id('Protection Magic'), 'hand');
+    const none = { kind: 'none' } as const;
+    mana(s, 'P1', { W: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: first, targets: [none, none, none] }, { accept: false }).state;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second, targets: [none, none, none] }).state;
+    expect(s.players.P1!.battlefield.filter((c) => s.cards[c]!.defId === 'hero-token')).toHaveLength(1);
+  });
+});

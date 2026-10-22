@@ -131,6 +131,8 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Partner with (Alphinaud, Alisaie) | You may search for the partner; the "target player" is always you | Any target player may |
 | Cut a Deal | You draw one card for each opponent still in the game | One for each opponent who actually drew |
 | Yuna's Whistle | The creature to get counters is chosen when the spell is cast | It's chosen when the card is revealed (a reflexive trigger) |
+| Explore | The revealed nonland card always stays on top of the library | The player may put it into the graveyard |
+| Reflexive "when you do" triggers (Auron) | The target is chosen with the trigger, and may be left out | Chosen when the reflexive trigger happens |
 | Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |

@@ -16,6 +16,7 @@ import {
   createGame,
   filterEventsFor,
   getLegalActions,
+  triggerLifeCost,
   triggerSpec,
   viewFor,
   type Action,
@@ -420,7 +421,8 @@ async function decideYesNo(s: GameState): Promise<Action[]> {
   const spec = triggerSpec(s, item)!;
   const no: Action[] = [{ type: 'Decide', player: YOU, accept: false }];
   const taps = planTaps(s, YOU, spec.cost?.mana);
-  const canAfford = taps !== null && (spec.cost?.life === undefined || s.players[YOU]!.life >= spec.cost.life);
+  const life = triggerLifeCost(s, item);
+  const canAfford = taps !== null && (life === undefined || s.players[YOU]!.life >= life);
   console.log(`\n  ${cardName(s, item.source)}: ${triggerText(spec)}`);
   if (!canAfford) {
     console.log("  You can't pay the cost, so the answer is no.");

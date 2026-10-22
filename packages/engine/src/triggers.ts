@@ -5,6 +5,7 @@
 // so the last player's resolve first (rule 603.3b).
 
 import { checkTargets, choosingEffects, targetOptions } from './stack.ts';
+import { characteristics } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
 import { givePriority } from './turn.ts';
@@ -47,6 +48,9 @@ interface Occurrence {
   spellNumber?: number;
   /** YouAttack: how many creatures attacked. */
   attackers?: number;
+  /** CombatDamageToPlayer: how much; CountersAdded: which kind (undefined for +1/+1). */
+  amount?: number;
+  counter?: string;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -82,7 +86,14 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       }
       case 'CountersAdded':
-        out.push({ when: 'CountersAdded', at, subject: e.card, subjectController: s.cards[e.card]!.controller, ...(e.by ? { by: e.by } : {}) });
+        out.push({
+          when: 'CountersAdded',
+          at,
+          subject: e.card,
+          subjectController: s.cards[e.card]!.controller,
+          ...(e.by ? { by: e.by } : {}),
+          ...(e.counter ? { counter: e.counter } : {}),
+        });
         break;
       case 'CardsUntapped':
         for (const card of e.cards) out.push({ when: 'BecomesUntapped', at, subject: card, subjectController: s.cards[card]!.controller });
@@ -105,6 +116,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
             subject: e.source,
             subjectController: s.cards[e.source]!.controller,
             defender: e.target.player,
+            amount: e.amount,
           });
         }
         break;
@@ -185,6 +197,16 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.fromGraveyard && o.subject && o.from !== 'graveyard' && !s.cards[o.subject]!.castFromGraveyard) return false;
   if (spec.byYou && o.by !== controller) return false;
   if (spec.attacksYou && o.defender !== controller) return false;
+  if (spec.plusOneCountersOnly && o.counter !== undefined) return false;
+  // Evolve: the entering creature has greater power or toughness than this one.
+  if (spec.evolve) {
+    const me = s.cards[source]!;
+    const them = o.subject ? s.cards[o.subject] : undefined;
+    if (!them || them.zone !== 'battlefield' || me.zone !== 'battlefield') return false;
+    const a = characteristics(s, them);
+    const b = characteristics(s, me);
+    if (!(a.power > b.power || a.toughness > b.toughness)) return false;
+  }
   if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
   if (spec.ifSubjectControllerHasMoreLands && o.subjectController) {
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && s.cardDefs[c.defId]!.types.includes('land')).length;
@@ -255,6 +277,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         if (s.triggeredThisTurn.includes(key)) return;
         s.triggeredThisTurn.push(key);
       }
+      // "Do this only once each turn": marked when the cost is paid (see decide).
+      if (spec.oncePerTurnWhenPaid && s.triggeredThisTurn.includes(key)) return;
       found.push({
         source: c.id,
         ability,
@@ -262,6 +286,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         sourceZone: c.zone,
         ...(o.defender ? { defender: o.defender } : {}),
         ...(o.subject ? { subject: o.subject } : {}),
+        ...(o.amount !== undefined ? { amount: o.amount } : {}),
       });
     });
   };
@@ -305,6 +330,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     targets,
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
+    ...(t.amount !== undefined ? { amount: t.amount } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityTriggered', item: item.id, card: t.source, ability: t.ability, controller: t.controller, targets });

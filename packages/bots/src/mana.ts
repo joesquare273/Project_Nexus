@@ -54,7 +54,10 @@ function reluctance(s: GameState, c: CardInstance): number {
 
 /** Mana a source makes for a symbol: colorless if it can (no pain), otherwise the wanted color. */
 function amountFrom(s: GameState, c: CardInstance): number {
-  return s.cardDefs[c.defId]!.manaAbility?.amount ?? 1;
+  const ability = s.cardDefs[c.defId]!.manaAbility;
+  if (ability?.amountPerCounter) return c.counters ?? 0;
+  if (ability?.amountWithCounters && (c.counters ?? 0) > 0) return ability.amountWithCounters;
+  return ability?.amount ?? 1;
 }
 
 /** Untapped permanents with a paid mana ability ("{1}, {T}: Add {R}{G}") this player can use. */

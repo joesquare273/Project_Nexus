@@ -10,6 +10,7 @@ import {
   createGame,
   filterEventsFor,
   getLegalActions,
+  triggerLifeCost,
   triggerSpec,
   viewFor,
   type Action,
@@ -201,7 +202,8 @@ export class GameSession {
         const item = s.stack.at(-1);
         if (item?.kind !== 'ability') return null;
         const cost = triggerSpec(s, item)?.cost;
-        const lifeOk = cost?.life === undefined || s.players[YOU]!.life >= cost.life;
+        const life = triggerLifeCost(s, item);
+        const lifeOk = life === undefined || s.players[YOU]!.life >= life;
         return lifeOk && planTaps(s, YOU, cost?.mana) ? null : { type: 'Decide', player: YOU, accept: false };
       }
       default:

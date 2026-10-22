@@ -22,12 +22,8 @@
           "count": 1,
           "set": "fic",
           "number": "6",
-          "implemented": false,
-          "needs": [
-            "melee",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cid, Freeflier Pilot",
@@ -149,12 +145,8 @@
           "count": 1,
           "set": "fic",
           "number": "64",
-          "implemented": false,
-          "needs": [
-            "chaos",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Yuffie, Materia Hunter",
@@ -1188,10 +1180,8 @@
           "count": 1,
           "set": "fic",
           "number": "283",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sepulchral Primordial",
@@ -1490,21 +1480,16 @@
           "count": 1,
           "set": "fic",
           "number": "287",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Anger",
           "count": 1,
           "set": "fic",
           "number": "289",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Big Score",
@@ -1796,11 +1781,8 @@
           "count": 1,
           "set": "fic",
           "number": "10",
-          "implemented": false,
-          "needs": [
-            "shooting-star",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Chocobo Knights",
@@ -1988,10 +1970,8 @@
           "count": 1,
           "set": "fic",
           "number": "94",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sin, Unending Cataclysm",
@@ -2156,12 +2136,8 @@
           "count": 1,
           "set": "fic",
           "number": "306",
-          "implemented": false,
-          "needs": [
-            "evolve",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hardened Scales",
@@ -2184,11 +2160,8 @@
           "count": 1,
           "set": "fic",
           "number": "312",
-          "implemented": false,
-          "needs": [
-            "explore",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rampant Rejuvenator",
@@ -2232,12 +2205,8 @@
           "count": 1,
           "set": "fic",
           "number": "325",
-          "implemented": false,
-          "needs": [
-            "evolve",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Walking Ballista",
@@ -2672,11 +2641,8 @@
           "count": 1,
           "set": "fic",
           "number": "3",
-          "implemented": false,
-          "needs": [
-            "throw-wide-the-gates",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Alisaie Leveilleur",
@@ -2938,11 +2904,8 @@
           "count": 1,
           "set": "fic",
           "number": "232",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cleansing Nova",

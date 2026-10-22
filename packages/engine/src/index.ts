@@ -15,6 +15,7 @@ export {
   effectsOf,
   playableZone,
   spellEffects,
+  triggerLifeCost,
   triggerSpec,
 } from './stack.ts';
 export {

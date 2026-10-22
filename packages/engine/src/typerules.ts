@@ -108,6 +108,8 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   const def = s.cardDefs[c.defId]!;
   const ability = def.manaAbility;
   const yours = () => s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === c.controller);
+  // "Add {G} for each +1/+1 counter": nothing to add without counters.
+  if (ability?.amountPerCounter && !((c.counters ?? 0) > 0)) return [];
   // "Activate only if you control five or more lands."
   if (ability?.ifLandsAtLeast && yours().filter((x) => s.cardDefs[x.defId]!.types.includes('land')).length < ability.ifLandsAtLeast) return [];
   const made = new Set<ManaType>(manaProduced(def));
@@ -153,6 +155,16 @@ export function canReveal(s: GameState, c: CardInstance, controller: string = c.
  * choice; by default they reveal when they can.
  */
 export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): boolean {
+  // Authority of the Consuls: "Creatures your opponents control enter tapped."
+  if (s.cardDefs[c.defId]!.types.includes('creature')) {
+    for (const pid of s.turnOrder) {
+      if (pid === c.controller) continue;
+      for (const id of s.players[pid]!.battlefield) {
+        const o = s.cards[id]!;
+        if (o.controller === pid && o.id !== c.id && s.cardDefs[o.defId]!.statics?.some((st) => st.opponentCreaturesEnterTapped)) return true;
+      }
+    }
+  }
   const def = s.cardDefs[c.defId]!;
   if (def.entersTapped) return true;
   const unless = def.entersTappedUnless;
