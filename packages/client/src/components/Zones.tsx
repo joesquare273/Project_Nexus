@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
 import { YOU } from '../game/session.ts';
@@ -15,7 +15,9 @@ export type Mark =
   | 'selected'
   | 'recent'
   | 'defender'
-  | 'focus';
+  | 'focus'
+  /** A mana source you can tap while paying a cost. */
+  | 'mana';
 
 export interface ZoneHandlers {
   markCard: (id: InstanceId) => Mark[];
@@ -48,13 +50,21 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
       <div className="bf-inner">
         <CardFace defId={c.defId} size="small" />
         {c.isToken && <div className="badge token">token</div>}
-        {(c.counters ?? 0) > 0 && <div className="badge counters">+{c.counters}</div>}
+        {(c.counters ?? 0) > 0 && (
+          <div key={c.counters} className="badge counters pop">
+            +{c.counters}
+          </div>
+        )}
         {creature && stats && (
           <div className={`badge pt ${changed ? 'changed' : ''}`}>
             {stats.power}/{stats.toughness}
           </div>
         )}
-        {c.damage > 0 && <div className="badge damage">{c.damage}</div>}
+        {c.damage > 0 && (
+          <div key={c.damage} className="badge damage hit">
+            {c.damage}
+          </div>
+        )}
         {sick && (
           <div className="badge sick" title="Summoning sick: can't attack or tap this turn">
             z
@@ -78,7 +88,8 @@ function Battlefield({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneH
     for (const e of others) if (view.cards[e]!.attachedTo === id) ordered.push(e);
   }
   return (
-    <div className="battlefield">
+    <div className="battlefield" aria-label="Battlefield">
+      <div className="zone-label">Battlefield</div>
       <div className="row creatures">
         {ordered.map((id) => (
           <BattlefieldCard key={id} view={view} id={id} h={h} />
@@ -111,11 +122,38 @@ function ManaPool({ pool, equipment }: { pool: GameView['players'][string]['mana
   );
 }
 
+/** A life total that flashes and shows how much it changed ("-3" floating up). */
+function Life({ life }: { life: number }) {
+  const previous = useRef(life);
+  const delta = life - previous.current;
+  // Remember the last change until the next one, so a re-render doesn't replay it.
+  const shown = useRef({ delta: 0, at: life });
+  if (delta !== 0) shown.current = { delta, at: life };
+  useEffect(() => {
+    previous.current = life;
+  }, [life]);
+  const change = shown.current.at === life ? shown.current.delta : 0;
+  return (
+    <div
+      key={life}
+      className={`life ${life <= 5 ? 'low' : ''} ${change < 0 ? 'down' : change > 0 ? 'up' : ''}`}
+      title="Life"
+    >
+      {life}
+      {change !== 0 && (
+        <span className={`life-delta ${change < 0 ? 'down' : 'up'}`}>
+          {change > 0 ? '+' : ''}
+          {change}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
   const p = view.players[pid]!;
   const marks = h.markPlayer(pid);
   const active = view.activePlayer === pid;
-  const graveTop = p.graveyard.at(-1);
   return (
     <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
       <div className="avatar">{pid === YOU ? 'You' : pid.replace('Bot', 'B')}</div>
@@ -126,29 +164,6 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
         </div>
         <div className="counts">
           <span title="Cards in hand">✋ {p.handCount}</span>
-          <span title="Cards in library">📚 {p.libraryCount}</span>
-          <button
-            className="zone-link"
-            title="Graveyard"
-            onClick={(e) => {
-              e.stopPropagation();
-              h.onZone(pid, 'graveyard');
-            }}
-          >
-            🪦 {p.graveyard.length}
-          </button>
-          {p.exile.length > 0 && (
-            <button
-              className="zone-link"
-              title="Exile"
-              onClick={(e) => {
-                e.stopPropagation();
-                h.onZone(pid, 'exile');
-              }}
-            >
-              ⊘ {p.exile.length}
-            </button>
-          )}
           <ManaPool pool={p.manaPool} equipment={p.equipmentMana} />
           {Object.entries(p.commanderDamage)
             .filter(([, n]) => n > 0)
@@ -178,23 +193,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
           </div>
         );
       })}
-      <div className={`life ${p.life <= 5 ? 'low' : ''}`} title="Life">
-        {p.life}
-      </div>
-      {graveTop && (
-        <div
-          className="grave-top"
-          title="Top of graveyard (click to see all)"
-          onClick={(e) => {
-            e.stopPropagation();
-            h.onZone(pid, 'graveyard');
-          }}
-          onMouseEnter={() => h.onHover(graveTop)}
-          onMouseLeave={() => h.onHover(null)}
-        >
-          <CardFace defId={view.cards[graveTop]!.defId} size="small" />
-        </div>
-      )}
+      <Life life={p.life} />
       {p.eliminated && <div className="out">Out of the game</div>}
     </div>
   );
@@ -210,7 +209,10 @@ export function OpponentZone({ view, pid, h }: { view: GameView; pid: PlayerId; 
           <CardBack key={i} />
         ))}
       </div>
-      <Battlefield view={view} pid={pid} h={h} />
+      <div className="zone-body">
+        <Battlefield view={view} pid={pid} h={h} />
+        <ZonePiles view={view} pid={pid} h={h} />
+      </div>
     </section>
   );
 }
@@ -218,7 +220,10 @@ export function OpponentZone({ view, pid, h }: { view: GameView; pid: PlayerId; 
 export function YourZone({ view, h }: { view: GameView; h: ZoneHandlers }) {
   return (
     <section className="zone you">
-      <Battlefield view={view} pid={YOU} h={h} />
+      <div className="zone-body">
+        <Battlefield view={view} pid={YOU} h={h} />
+        <ZonePiles view={view} pid={YOU} h={h} />
+      </div>
     </section>
   );
 }
@@ -247,6 +252,60 @@ function HandCard({
     >
       <CardFace defId={view.cards[id]!.defId} size="normal" />
       {tag && <div className="badge from-zone">{tag}</div>}
+    </div>
+  );
+}
+
+/** One pile: a library (face down) or a graveyard or exile (top card face up). Clicking opens the full list. */
+function Pile({
+  view,
+  label,
+  count,
+  top,
+  faceDown,
+  onOpen,
+  h,
+}: {
+  view: GameView;
+  label: string;
+  count: number;
+  top?: InstanceId | undefined;
+  faceDown?: boolean;
+  onOpen?: () => void;
+  h: ZoneHandlers;
+}) {
+  return (
+    <div
+      className={`pile ${onOpen ? 'openable' : ''}`}
+      title={`${label}: ${count} card${count === 1 ? '' : 's'}${onOpen && count > 0 ? ' (click to see them)' : ''}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onOpen && count > 0) onOpen();
+      }}
+      onMouseEnter={() => top && h.onHover(top)}
+      onMouseLeave={() => top && h.onHover(null)}
+    >
+      {/* Keyed by count: the pile bumps whenever a card goes in or comes out. */}
+      <div key={count} className={`pile-card ${count === 0 ? 'empty' : ''} bump`}>
+        {count > 0 && faceDown && <CardBack />}
+        {count > 0 && !faceDown && top && view.cards[top] && <CardFace defId={view.cards[top]!.defId} size="small" />}
+        {count > 1 && <div className="pile-depth" />}
+      </div>
+      <div className="pile-caption">
+        {label} <b>{count}</b>
+      </div>
+    </div>
+  );
+}
+
+/** A player's library, graveyard and exile. */
+function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
+  const p = view.players[pid]!;
+  return (
+    <div className="piles">
+      <Pile view={view} label="Library" count={p.libraryCount} faceDown h={h} />
+      <Pile view={view} label="Graveyard" count={p.graveyard.length} top={p.graveyard.at(-1)} onOpen={() => h.onZone(pid, 'graveyard')} h={h} />
+      <Pile view={view} label="Exile" count={p.exile.length} top={p.exile.at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
     </div>
   );
 }

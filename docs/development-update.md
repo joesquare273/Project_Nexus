@@ -3,6 +3,27 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-22
+
+### Board: choose which lands to tap, zone piles, animations, trigger spotlight
+
+- **You choose which lands to tap.** After you pick a spell or ability (and
+  its targets), your mana sources glow blue: click them to tap them, and a
+  land that makes several colors asks which. It is cast once the mana is
+  there. Auto-pay taps for you; "Tap mana automatically" on the right does
+  that every time. The tutorial teaches it.
+- **Library, graveyard and exile piles** beside each battlefield (click a
+  graveyard or exile pile to see it all), with simple animations: cards
+  slide in, damage and counters pop, piles bump, and life totals flash with
+  the change floating up. They switch off when the computer is set to
+  reduce motion.
+- **Trigger spotlight:** when a card's ability triggers, the card shows
+  large in the middle of the table for 2 seconds and in the card viewer.
+
+These were built on the other computer's old branch and ported onto main;
+that branch is kept locally as `backup/local-2026-10-21` and can be
+deleted.
+
 ## Where things stand (end of 2026-10-21)
 
 Read this first when picking the work up on another computer.

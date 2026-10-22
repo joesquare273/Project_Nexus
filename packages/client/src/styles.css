@@ -436,6 +436,10 @@ button.big {
   box-shadow: 0 0 0 2px var(--playable), 0 0 16px rgba(95, 211, 141, 0.55);
   cursor: pointer;
 }
+.mana .bf-inner {
+  box-shadow: 0 0 0 3px var(--mana, #6fb7ff), 0 0 16px rgba(111, 183, 255, 0.6);
+  cursor: pointer;
+}
 .target .bf-inner,
 .hand-card.target {
   box-shadow: 0 0 0 3px var(--target), 0 0 18px rgba(242, 201, 76, 0.6);
@@ -1202,4 +1206,251 @@ button.zone-link:hover {
 }
 .deck-choices.precons {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* ---------- Zones: library, graveyard, exile ---------- */
+
+.zone-body {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.zone-body .battlefield {
+  flex: 1;
+  min-width: 0;
+}
+.zone-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  opacity: 0.55;
+}
+.piles {
+  --pile-w: 40px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  max-height: 100%;
+  flex: none;
+  padding: 2px 0 2px 8px;
+  border-left: 1px solid var(--line);
+}
+.opponents .piles {
+  --pile-w: 30px;
+  flex-direction: row;
+}
+.pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: calc(var(--pile-w) + 16px);
+}
+.pile.openable {
+  cursor: pointer;
+}
+.pile-card {
+  position: relative;
+  width: var(--pile-w);
+  aspect-ratio: 1 / var(--card-ratio);
+  border-radius: var(--radius);
+}
+.pile-card > :first-child {
+  position: relative;
+  z-index: 1;
+}
+.pile-card.empty {
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+/* A second card edge behind the top card, so a pile looks like a pile. */
+.pile-depth {
+  position: absolute;
+  inset: 0;
+  transform: translate(3px, 3px);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.pile.openable:hover .pile-card {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+.pile-caption {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pile-caption b {
+  color: var(--text);
+}
+.badge.named-counter {
+  top: auto;
+  bottom: 18px;
+  left: 2px;
+  right: auto;
+  background: rgba(30, 60, 110, 0.9);
+}
+
+/* ---------- Animations ---------- */
+
+/* A permanent arriving on the battlefield, a card arriving in your hand, a spell going on the stack. */
+/* On the outer element, so highlights on .bf-inner (pulsing targets, flashes) keep their own animations. */
+.bf-card {
+  animation: arrive 0.35s ease-out;
+}
+.hand-card {
+  animation: draw-in 0.35s ease-out;
+}
+.stack-item {
+  animation: arrive 0.3s ease-out;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+@keyframes draw-in {
+  from {
+    opacity: 0;
+    translate: 0 40px;
+  }
+}
+/* Damage on a creature shakes it; counters and piles bump when their number changes. */
+.badge.damage.hit {
+  animation: hit 0.45s ease-out;
+}
+@keyframes hit {
+  0% {
+    scale: 1.8;
+    box-shadow: 0 0 14px var(--danger);
+  }
+}
+.pop {
+  animation: pop 0.35s ease-out;
+}
+@keyframes pop {
+  0% {
+    scale: 1.7;
+  }
+}
+.pile-card.bump {
+  animation: bump 0.3s ease-out;
+}
+@keyframes bump {
+  40% {
+    translate: 0 -4px;
+    filter: brightness(1.4);
+  }
+}
+/* Life totals flash red or green, with the change floating up. */
+.life {
+  position: relative;
+}
+.life.down {
+  animation: life-down 0.8s ease-out;
+}
+.life.up {
+  animation: life-up 0.8s ease-out;
+}
+@keyframes life-down {
+  0% {
+    color: white;
+    background: rgba(255, 107, 90, 0.75);
+  }
+}
+@keyframes life-up {
+  0% {
+    color: white;
+    background: rgba(95, 211, 141, 0.7);
+  }
+}
+.life-delta {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  font-size: 15px;
+  font-weight: 800;
+  pointer-events: none;
+  translate: -50% 0;
+  animation: float-up 1.4s ease-out forwards;
+}
+.life-delta.down {
+  color: var(--danger);
+}
+.life-delta.up {
+  color: var(--playable);
+}
+@keyframes float-up {
+  to {
+    opacity: 0;
+    translate: -50% -26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- A card whose ability triggered, shown large for a moment ---------- */
+
+.spotlight {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 40;
+  animation: spotlight 2s ease-in-out forwards;
+}
+.spotlight-card {
+  width: min(320px, 70vw, calc(70vh / var(--card-ratio)));
+  aspect-ratio: 1 / var(--card-ratio);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px var(--gold), 0 18px 60px rgba(0, 0, 0, 0.7), 0 0 50px rgba(242, 201, 76, 0.45);
+}
+.spotlight-card .card-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.spotlight-label {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--gold);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px 14px;
+  border-radius: 99px;
+}
+@keyframes spotlight {
+  0% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  12%,
+  85% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.04;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still shown for its 2 seconds, just without moving. */
+  .spotlight {
+    animation: none;
+  }
 }

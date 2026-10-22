@@ -109,9 +109,9 @@ export function firstLesson(): Lesson {
     {
       title: 'Cast an Equipment',
       text:
-        "Samurai's Katana costs {2}{R}: two mana of any color plus one red. Your lands tap for it automatically. " +
-        'It has Job select: when it enters, it makes a 1/1 Hero token and attaches to it. ' +
-        'Click the Katana to cast it.',
+        "Samurai's Katana costs {2}{R}: two mana of any color plus one red. Click it, then pay by tapping lands: " +
+        'click your Mountain for {R} and two Plains (or press Auto-pay to let the game pick). ' +
+        'It has Job select: when it enters, it makes a 1/1 Hero token and attaches to it.',
       focus: () => [katana],
       allows: (a) => isCast(a, katana),
       done: (st) => !!st.cards[katana]!.attachedTo,

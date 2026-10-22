@@ -58,7 +58,7 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
       id: 'cast',
       title: 'Casting spells',
       text:
-        "Glowing cards are ones you can afford right now. Click one to cast it; your lands tap automatically. " +
+        "Glowing cards are ones you can afford right now. Click one to cast it, then click your glowing lands to tap them for mana (or press Auto-pay). " +
         'Hover over a card to read what it does. When you\'re done, press "Go to combat" or "End turn".',
     });
   }

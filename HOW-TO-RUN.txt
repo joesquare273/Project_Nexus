@@ -52,8 +52,13 @@ You need Node.js 24 or newer.
   Then choose how many AI opponents (1-3), and press Start game.
 
   How to play:
-    - Glowing cards in your hand are playable. Click one to play it. Lands
-      tap automatically when you cast a spell.
+    - Glowing cards in your hand are playable. Click one to play it, then
+      pay for it: your lands and other mana sources glow blue; click them to
+      tap them for mana (a land that makes several colors asks which). It
+      is cast as soon as the mana is there. Auto-pay taps for you, and
+      "Tap mana automatically" on the right does that every time.
+    - When a card's ability triggers, the card appears large in the middle
+      of the table for 2 seconds and in the card viewer on the right.
     - If a spell or ability needs a target, the legal targets glow gold.
       Click one.
     - Attacking: click your creatures to choose attackers (with several
@@ -78,7 +83,8 @@ You need Node.js 24 or newer.
     - Modal spells (Suplex) ask you to choose a mode first.
     - Cards you can cast from your graveyard (flashback) or exile (Lightning)
       appear next to your hand with a purple "from graveyard"/"from exile" tag.
-    - Click the 🪦 count by a player's name to look through their graveyard.
+    - Next to each battlefield are that player's library, graveyard and
+      exile. Click a graveyard or exile pile to look through it.
     - Snarl lands (like Furycalm Snarl) ask whether to reveal a matching
       land to play them untapped, or play them tapped.
     - Surveil shows you the top card of your library: keep it or put it into
