@@ -5,7 +5,7 @@ export { createGame, type GameSetup, type PlayerSetup } from './setup.ts';
 export { cardsToBottom, freeMulligans, isMulliganing } from './mulligan.ts';
 export { matchesObject } from './filters.ts';
 export { abilityOptions, getLegalActions, spellOptions, type CostedOption } from './legal.ts';
-export { blockProblem, canAttack, canBlock } from './combat.ts';
+export { attackTax, attackTaxFor, blockProblem, canAttack, canBlock } from './combat.ts';
 export {
   abilitySpec,
   activatedAbilities,

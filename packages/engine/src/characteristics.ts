@@ -105,6 +105,13 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated).length;
     case 'NontokenCreaturesYouControlThatEnteredThisTurn':
       return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
+    case 'OpponentsWithPower4Creature':
+      return s.turnOrder.filter(
+        (pid) =>
+          pid !== player &&
+          !s.players[pid]!.eliminated &&
+          battlefieldCards(s).some((c) => c.controller === pid && creature(c) && characteristics(s, c).power >= 4),
+      ).length;
     case 'SoldiersYouControl':
       return yours().filter((c) => creature(c) && (def(s, c).subtypes ?? []).includes('Soldier')).length;
     case 'OpponentsWithMoreCreatures': {

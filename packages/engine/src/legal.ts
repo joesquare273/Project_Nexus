@@ -7,7 +7,7 @@
 // small in pods.
 
 import { isEquipment } from './characteristics.ts';
-import { attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
+import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
 import { canPay, parseManaCost } from './cost.ts';
 import {
@@ -309,11 +309,17 @@ export function getLegalActions(s: GameState): Action[] {
       const attackers = attackersFor(s, player);
       const defenders = alivePlayers(s).filter((id) => id !== player);
       const actions: Action[] = [{ type: 'DeclareAttackers', player, attacks: [] }];
+      const pool = MANA_TYPES.reduce((n, t) => n + s.players[player]!.manaPool[t], 0);
+      let taxed = false;
       for (const defender of defenders) {
-        for (const a of attackers) {
+        const tax = attackTaxFor(s, defender);
+        if (tax > 0) taxed = true;
+        // Attacks into Propaganda are listed once the mana for them is in the pool.
+        const affordable = tax === 0 ? attackers.length : Math.floor(pool / tax);
+        for (const a of affordable > 0 ? attackers : []) {
           actions.push({ type: 'DeclareAttackers', player, attacks: [{ attacker: a.id, defender }] });
         }
-        if (attackers.length > 1) {
+        if (attackers.length > 1 && affordable >= attackers.length) {
           actions.push({
             type: 'DeclareAttackers',
             player,
@@ -321,6 +327,7 @@ export function getLegalActions(s: GameState): Action[] {
           });
         }
       }
+      if (taxed) actions.push(...manaAbilities(s, player));
       return actions;
     }
 

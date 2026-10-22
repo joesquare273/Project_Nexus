@@ -1394,6 +1394,12 @@ button.zone-link:hover {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+/* A spell on the stack you can target ("counter target spell"). */
+.stack-item.target {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(242, 201, 76, 0.45);
+}
+
 /* ---------- Zones: library, graveyard, exile ---------- */
 
 .zone-body {

@@ -5,6 +5,26 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Counterspells and attack taxes (C2, step 11)
+
+Spells on the stack can now be targeted (`TargetSpell`) and countered
+(`Counter`): a countered spell goes to its owner's graveyard, or exile if
+it was cast with flashback, and "can't be countered" spells stay. On the
+board, click the spell in the stack panel to target it; the AI counters an
+opponent's spell when it scores well.
+
+Attack taxes: "creatures can't attack you unless their controller pays {2}
+for each" (Propaganda, and Summon: Yojimbo until your next turn). The tax is
+paid as attackers are declared, so mana abilities work while declaring. The
+board taps for it automatically and says what attacking each player costs;
+the AI taps for it or leaves out attacks it can't pay for. Also new: "any
+of" filters ("artifact, enchantment, or tapped creature") and tokens created
+for the target player ("its controller creates two Treasure tokens").
+
+3 precon cards built (`packages/bots/test/precon-interaction.test.ts`): An
+Offer You Can't Refuse, Propaganda and Summon: Yojimbo. 245 of 320 distinct
+precon cards are now built; 75 to go.
+
 ### Sagas (C2, step 10)
 
 Sagas work (rule 714): a lore counter as one enters and as each of your

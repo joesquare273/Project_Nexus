@@ -1,6 +1,7 @@
 // Combat for pods: each attacker picks a defending player, and each
 // defending player declares their own blockers (PRD 7.4).
 
+import { canPayFromPool, payMana } from './stack.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { applyStateBasedActions } from './sba.ts';
@@ -60,6 +61,21 @@ export function canAnyAttack(s: GameState, playerId: PlayerId): boolean {
   return alivePlayers(s).length > 1 && attackersFor(s, playerId).length > 0;
 }
 
+/** What attacking this player costs for each creature (Propaganda, Summon: Yojimbo). */
+export function attackTaxFor(s: GameState, defender: PlayerId): number {
+  let tax = (s.players[defender]!.attackTaxes ?? []).reduce((n, k) => n + k, 0);
+  for (const c of s.players[defender]!.battlefield.map((id) => s.cards[id]!)) {
+    if (c.controller !== defender) continue;
+    for (const st of s.cardDefs[c.defId]!.statics ?? []) tax += st.attackTax ?? 0;
+  }
+  return tax;
+}
+
+/** The total generic mana a set of attacks costs. */
+export function attackTax(s: GameState, attacks: readonly Attack[]): number {
+  return attacks.reduce((n, a) => n + (s.players[a.defender] ? attackTaxFor(s, a.defender) : 0), 0);
+}
+
 export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]): void {
   const s = ctx.s;
   if (s.pending.kind !== 'declareAttackers' || s.pending.player !== playerId) {
@@ -73,6 +89,12 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     seen.add(a.attacker);
     const d = s.players[a.defender];
     if (!d || d.eliminated || a.defender === playerId) reject(`"${a.defender}" is not a valid defending player.`);
+  }
+  // "Creatures can't attack you unless their controller pays {2} for each" (rule 508.1g).
+  const tax = attackTax(s, attacks);
+  if (tax > 0) {
+    if (!canPayFromPool(s, playerId, { generic: tax })) reject(`Attacking there costs {${tax}}. Add the mana first.`);
+    payMana(ctx, playerId, { generic: tax });
   }
   for (const a of attacks) {
     const c = s.cards[a.attacker]!;

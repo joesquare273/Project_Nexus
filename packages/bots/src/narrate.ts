@@ -39,6 +39,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOpponentWhoDidNotChoose: "each opponent who didn't",
   EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
   EachOtherOpponent: 'each other opponent',
+  TargetSpell: 'target spell',
   AllGraveyardCards: 'all cards in all graveyards',
   You: 'you',
 };
@@ -144,6 +145,10 @@ function effectText(e: EffectSpec): string {
       return `${who} explores`;
     case 'ReturnGreatestManaValue':
       return `${who} returns a creature with the greatest mana value they control to its owner's hand`;
+    case 'Counter':
+      return `counter ${who}`;
+    case 'AttackTaxUntilYourNextTurn':
+      return `until your next turn, creatures can't attack you unless their controller pays {${n}} for each`;
     case 'AdditionalCombat':
       return `there is an additional combat phase after this phase${e.onlyFirstCombat ? " if it's the first combat phase of your turn" : ''}`;
     case 'GainControl':
@@ -428,6 +433,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${cardName(s, e.card)} gets ${countersText(e.amount, e.counter)}.`;
     case 'CountersRemoved':
       return `  ${cardName(s, e.card)} loses ${countersText(e.amount, e.counter)}.`;
+    case 'SpellCountered':
+      return `  ${cardName(s, e.card)} is countered by ${cardName(s, e.by)}.`;
     case 'ControlChanged':
       return `  ${who(e.controller)} gains control of ${cardName(s, e.card)}.`;
     case 'Attached':

@@ -70,7 +70,7 @@ const PLAYER_TARGETS = new Set([
   'EachOtherOpponent',
 ]);
 /** Target kinds that pick from a filter. */
-const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents', 'AllGraveyardCards']);
+const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents', 'AllGraveyardCards', 'TargetSpell']);
 const ABILITY_ONLY_TARGETS = new Set(['This', 'DefendingPlayer', 'TriggeringObject', 'TriggeringCard']);
 
 function validateCounterKind(kind: unknown, err: Err, allowPlusOne = false): void {
@@ -140,6 +140,7 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
   for (const color of [...(f.colors ?? []), ...(f.nonColors ?? [])]) if (!COLORS.includes(color)) err(`unknown color "${color}" in a filter.`);
   for (const sub of f.nonSubtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
   for (const k of f.withoutKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}" in a filter.`);
+  for (const alt of f.anyOf ?? []) validateFilter(alt, err);
   if (f.self && f.other) err('a filter can\'t be both "self" and "other".');
   for (const key of ['powerAtLeast', 'powerAtMost', 'toughnessAtLeast', 'manaValueAtMost', 'manaValueAtLeast'] as const) {
     if (f[key] !== undefined && !isNonNegativeInt(f[key])) err(`${key} must be a whole number.`);
@@ -268,6 +269,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'MoveCounters' && e.from === undefined) err('MoveCounters needs "from": which target the counters come from.');
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
+  if (e.effect === 'Counter' && e.target !== 'TargetSpell') err('Counter needs a TargetSpell target.');
   validateCounterKind(e.counter, err);
   if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield') err('"counter" is only for AddCounters and ReturnToBattlefield.');
   if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');

@@ -1826,12 +1826,8 @@
           "count": 1,
           "set": "fic",
           "number": "28",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "treasure",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summoner's Sending",
@@ -2372,11 +2368,8 @@
           "count": 1,
           "set": "fic",
           "number": "267",
-          "implemented": false,
-          "needs": [
-            "treasure",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Duskshell Crawler",
@@ -3237,10 +3230,8 @@
           "count": 1,
           "set": "fic",
           "number": "268",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bastion of Remembrance",

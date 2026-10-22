@@ -27,6 +27,7 @@ export function matchesObject(
   objController: PlayerId = obj.zone === 'battlefield' ? obj.controller : obj.owner,
 ): boolean {
   if (!f) return true;
+  if (f.anyOf && !f.anyOf.some((alt) => matchesObject(s, alt, obj, from, objController))) return false;
   const def = s.cardDefs[obj.defId]!;
   if (f.other && obj.id === from.source) return false;
   if (f.self && obj.id !== from.source) return false;

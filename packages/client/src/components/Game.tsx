@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   abilityOptions,
   activatedAbilities,
+  attackTax,
+  attackTaxFor,
+  canAttack,
   choiceProblem,
   cardsToBottom,
   formatManaCost,
@@ -430,9 +433,10 @@ export function Game({
   };
 
   // Combat helpers.
+  // From the engine's rules rather than the legal list, which leaves out attacks you haven't added the mana for yet (Propaganda).
   const canAttackIds = new Set(
     pending.kind === 'declareAttackers' && yourMove
-      ? legal.flatMap((a) => (a.type === 'DeclareAttackers' ? a.attacks.map((x) => x.attacker) : []))
+      ? s.players[YOU]!.battlefield.filter((id) => canAttack(s, s.cards[id]!, YOU))
       : [],
   );
   const canBlockIds = new Set(
@@ -605,7 +609,7 @@ export function Game({
         </div>
         <div className="midline">
           <PhaseTrack view={view} />
-          <StackView view={view} onHover={setHovered} />
+          <StackView view={view} onHover={setHovered} h={h} />
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
         </div>
         <YourZone view={view} h={h} placement={session.placement} onPlaced={refresh} />
@@ -764,7 +768,7 @@ function PhaseTrack({ view }: { view: GameView }) {
   );
 }
 
-function StackView({ view, onHover }: { view: GameView; onHover: (id: InstanceId | null) => void }) {
+function StackView({ view, onHover, h }: { view: GameView; onHover: (id: InstanceId | null) => void; h: ZoneHandlers }) {
   const items = [...(view.resolving ? [view.resolving] : []), ...[...view.stack].reverse()];
   if (items.length === 0) return null;
   return (
@@ -776,9 +780,11 @@ function StackView({ view, onHover }: { view: GameView; onHover: (id: InstanceId
         return (
           <div
             key={item.id}
-            className={`stack-item ${i === 0 ? 'top' : ''}`}
+            className={`stack-item ${i === 0 ? 'top' : ''} ${item.kind === 'spell' ? h.markCard(cardId).join(' ') : ''}`}
             onMouseEnter={() => onHover(cardId)}
             onMouseLeave={() => onHover(null)}
+            // A spell on the stack can be a target ("counter target spell").
+            onClick={() => item.kind === 'spell' && h.onCard(cardId)}
           >
             {c && (
               <div className="stack-thumb">
@@ -929,8 +935,15 @@ function PromptBar(p: PromptProps) {
     const many = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated).length > 1;
     text = `Declare attackers: click your creatures to attack${many ? ` ${p.currentDefender} (click an opponent to switch)` : ''}.`;
     const all = new Map([...p.canAttackIds].map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
-    const declare = (m: Map<InstanceId, PlayerId>) =>
-      p.submit([{ type: 'DeclareAttackers', player: YOU, attacks: [...m].map(([attacker, defender]) => ({ attacker, defender })) }]);
+    const declare = (m: Map<InstanceId, PlayerId>) => {
+      const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender }));
+      // Propaganda and friends: tap for the tax along with the declaration.
+      const tax = attackTax(s, attacks);
+      const taps = tax > 0 ? planTaps(s, YOU, { generic: tax }) : [];
+      p.submit([...tapActions(YOU, taps ?? []), { type: 'DeclareAttackers', player: YOU, attacks }]);
+    };
+    const taxed = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated && attackTaxFor(s, o) > 0);
+    if (taxed.length > 0) text += ` Attacking ${taxed.map((o) => `${o} costs {${attackTaxFor(s, o)}}`).join(', ')} for each creature.`;
     buttons = [
       { label: 'Select all', onClick: () => p.setAttackers(all) },
       { label: 'No attack', onClick: () => declare(new Map()) },

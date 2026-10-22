@@ -119,6 +119,7 @@ export function startNextTurn(ctx: Ctx): void {
   s.creaturesDiedThisTurn = 0;
   s.combatsThisTurn = 0;
   s.extraCombats = 0;
+  delete s.players[s.activePlayer]!.attackTaxes;
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     p.lifeLostThisTurn = 0;

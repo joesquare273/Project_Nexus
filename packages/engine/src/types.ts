@@ -91,6 +91,8 @@ export const TARGET_KINDS = [
   'TargetPermanent',
   /** A card in a graveyard matching `filter` ("target creature card from your graveyard"). */
   'TargetCardInGraveyard',
+  /** A spell on the stack matching `filter` ("counter target noncreature spell"). */
+  'TargetSpell',
   /** The same object (or player) the previous chosen target picked ("it", "that creature"). */
   'PreviousTarget',
   /** The controller of the previous chosen target ("that creature's controller"). */
@@ -133,6 +135,7 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetPlayer',
   'TargetPermanent',
   'TargetCardInGraveyard',
+  'TargetSpell',
 ];
 
 export const EFFECT_KINDS = [
@@ -217,6 +220,10 @@ export const EFFECT_KINDS = [
   'AdditionalCombat',
   /** Each target player returns a creature with the greatest mana value among creatures they control to its owner's hand (Summon: Valefor). */
   'ReturnGreatestManaValue',
+  /** Counter the target spell: it goes to its owner's graveyard instead of resolving (rule 701.5). */
+  'Counter',
+  /** "Until your next turn, creatures can't attack you unless their controller pays {amount} for each of those creatures." */
+  'AttackTaxUntilYourNextTurn',
   /**
    * The target creature explores (rule 701.44): reveal the top card of your
    * library; a land goes to your hand, otherwise the creature gets a +1/+1
@@ -269,6 +276,8 @@ export const COUNT_KINDS = [
   /** Soul counters on the card with the ability (Reaper's Scythe). */
   'SoulCountersOnThis',
   'SoldiersYouControl',
+  /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
+  'OpponentsWithPower4Creature',
   /** Opponents still in the game. */
   'Opponents',
   /** Opponents you're attacking with at least one creature this combat (melee). */
@@ -462,6 +471,8 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
  * trigger's subject, a target, or a card to search for.
  */
 export interface ObjectFilter {
+  /** Matches if any of these filters does ("artifact, enchantment, or tapped creature"); the rest of this filter must hold too. */
+  anyOf?: ObjectFilter[];
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
   /** Only the card itself ("when this creature dies, if it had no +1/+1 counters on it"). */
@@ -647,6 +658,8 @@ export interface StaticSpec {
   ifYouControlSubtype?: string;
   /** Authority of the Consuls: creatures your opponents control enter tapped. */
   opponentCreaturesEnterTapped?: boolean;
+  /** Propaganda: creatures can't attack you unless their controller pays this much generic mana for each. */
+  attackTax?: number;
   /**
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".
@@ -894,6 +907,8 @@ export interface PlayerState {
   spellsCastThisTurn?: number;
   /** An effect said this player loses the game (someone else's "you win the game"). */
   lostToEffect?: boolean;
+  /** "Until your next turn, creatures can't attack you unless their controller pays {N} for each" (Summon: Yojimbo). Ends as this player's next turn begins. */
+  attackTaxes?: number[];
   conceded: boolean;
 }
 
@@ -1230,6 +1245,8 @@ export type GameEvent =
   /** `total`: how many of that kind it has afterwards (for Saga chapters). */
   | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind; total?: number }
   | { type: 'CountersRemoved'; card: InstanceId; amount: number; counter: AnyCounter }
+  /** A spell was countered: it left the stack without resolving. */
+  | { type: 'SpellCountered'; card: InstanceId; defId: CardDefId; by: InstanceId }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'ControlChanged'; card: InstanceId; controller: PlayerId }
   | { type: 'PriorityPassed'; player: PlayerId }

@@ -4,6 +4,9 @@
 // safe or lethal, and block to trade up or to survive.
 
 import {
+  attackTax,
+  attackTaxFor,
+  objectManaValue,
   choiceProblem,
   CHOSEN_TARGET_KINDS,
   abilityOptions,
@@ -161,6 +164,11 @@ function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Tar
   // Leaving out an "up to one" target: better than a bad target, worse than a good one.
   if (target.kind === 'none') return 0;
   const c = s.cards[target.card]!;
+  // A spell on the stack: counter an opponent's (the bigger the better), never your own.
+  if (c.zone === 'stack') {
+    const caster = s.stack.find((i) => i.kind === 'spell' && i.card === c.id)?.controller;
+    return caster === me ? -20 : 2 + objectManaValue(s, c);
+  }
   const mine = (c.zone === 'battlefield' ? c.controller : c.owner) === me;
   if (effect.effect === 'CreateTokenCopy') return value(s, c);
   if (effect.effect === 'ReturnToBattlefield') return mine ? value(s, c) : -5;
@@ -524,7 +532,16 @@ export function basicAi(_seed = 0): Bot {
       memory.grudge[attacker.controller] = (memory.grudge[attacker.controller] ?? 0) + hitFor(s, attacker);
     }
     if (pending.kind === 'declareAttackers') {
-      return { type: 'DeclareAttackers', player: pending.player, attacks: chooseAttacks(s, pending.player, memory) };
+      const me = pending.player;
+      let attacks = chooseAttacks(s, me, memory);
+      // Propaganda and friends: tap for the tax first, or leave out the attacks it can't pay for.
+      const tax = attackTax(s, attacks);
+      if (tax > 0) {
+        const taps = planTaps(s, me, { generic: tax });
+        if (taps && taps.length > 0) return tapActions(me, taps)[0]!;
+        if (!taps) attacks = attacks.filter((a) => attackTaxFor(s, a.defender) === 0);
+      }
+      return { type: 'DeclareAttackers', player: me, attacks };
     }
     if (pending.kind === 'declareBlockers') {
       const blocks = chooseBlocks(s, pending.player);

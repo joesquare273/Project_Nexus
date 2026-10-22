@@ -209,6 +209,11 @@ export function isLegalTarget(
   const c = s.cards[t.card];
   if (!c) return false;
   const viewpoint = { controller, ...(source ? { source } : {}), ...(context.defender ? { defender: context.defender } : {}) };
+  if (kind === 'TargetSpell') {
+    // A spell on the stack (not the spell or ability doing the targeting).
+    const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
+    return !!spell && c.id !== source && matchesObject(s, effect.filter, c, viewpoint, spell.controller);
+  }
   if (kind === 'TargetCardInGraveyard') {
     // A player who left the game took their cards with them (rule 800.4a).
     return c.zone === 'graveyard' && !s.players[c.owner]!.eliminated && matchesObject(s, effect.filter, c, viewpoint);
@@ -236,6 +241,9 @@ export function targetOptions(
   for (const c of battlefield(s)) all.push({ kind: 'card', card: c.id });
   if (effect.target === 'TargetCardInGraveyard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
+  }
+  if (effect.target === 'TargetSpell') {
+    for (const item of s.stack) if (item.kind === 'spell') all.push({ kind: 'card', card: item.card });
   }
   // "Up to one": leaving it out is a choice too.
   if (effect.upTo) all.push({ kind: 'none' });
@@ -730,6 +738,7 @@ function controllerOfTarget(s: GameState, t: Target | undefined): PlayerId | nul
   if (t.kind === 'player') return t.player;
   const c = s.cards[t.card];
   if (!c) return null;
+  if (c.zone === 'stack') return s.stack.find((i) => i.kind === 'spell' && i.card === c.id)?.controller ?? c.owner;
   return c.zone === 'battlefield' ? c.controller : c.owner;
 }
 
@@ -1154,14 +1163,34 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (equipment && onBattlefield[0]) attach(ctx, equipment.id, onBattlefield[0]);
       return;
     }
-    case 'CreateToken':
-      // "Create a number of tokens equal to ..." can be zero.
-      for (let i = 0; i < amount; i++) {
-        const id = createToken(ctx, effect.token!, item.controller);
-        if (effect.entersTapped) s.cards[id]!.tapped = true;
-        r.createdTokens.push(id);
+    case 'CreateToken': {
+      // "Create a number of tokens equal to ..." can be zero. "Its controller creates": under the target player.
+      const players = targetPlayers(targets);
+      for (const pid of players.length > 0 ? players : [item.controller]) {
+        for (let i = 0; i < amount; i++) {
+          const id = createToken(ctx, effect.token!, pid);
+          if (effect.entersTapped) s.cards[id]!.tapped = true;
+          r.createdTokens.push(id);
+        }
       }
       return;
+    }
+    case 'Counter':
+      for (const id of cards) {
+        const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === id);
+        if (index < 0 || defOf(s, s.cards[id]!).cantBeCountered) continue;
+        const countered = s.stack[index] as SpellItem;
+        s.stack.splice(index, 1);
+        ctx.ev.push({ type: 'SpellCountered', card: id, defId: s.cards[id]!.defId, by: source });
+        // A flashback spell is exiled instead (rule 702.34a).
+        moveCard(ctx, id, countered.castFrom === 'graveyard' ? 'exile' : 'graveyard');
+      }
+      return;
+    case 'AttackTaxUntilYourNextTurn': {
+      const p = player(s, item.controller);
+      p.attackTaxes = [...(p.attackTaxes ?? []), amount];
+      return;
+    }
     case 'CreateTokenCopy':
       // The copy uses the original's printed card (its copiable values, rule 707.2).
       for (const id of onBattlefield) r.createdTokens.push(createToken(ctx, s.cards[id]!.defId, item.controller));
