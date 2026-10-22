@@ -165,7 +165,7 @@ function zoneList(s: GameState, owner: PlayerId, zone: ZoneName): InstanceId[] |
  * A card that changes zones becomes a new object, so its per-object state
  * resets. Emits CardMoved unless `silent` is set (draws emit CardDrawn).
  */
-export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean } = {}): void {
+export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean; sacrificed?: boolean } = {}): void {
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
@@ -222,6 +222,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       owner: c.owner,
       ...(from === 'battlefield' ? { controller } : {}),
       ...(equippedBy.length > 0 ? { equippedBy } : {}),
+      ...(opts.sacrificed ? { sacrificed: true } : {}),
       from,
       to,
     });
@@ -323,16 +324,16 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
  * Puts a permanent into its owner's graveyard from the battlefield ("dies"
  * for creatures), unless something says to exile it instead (rule 614).
  */
-export function putIntoGraveyard(ctx: Ctx, id: InstanceId): void {
+export function putIntoGraveyard(ctx: Ctx, id: InstanceId, sacrificed = false): void {
   const s = ctx.s;
   const c = s.cards[id]!;
   const backToHand = hasFlag(s, c, 'returnToHandIfDies');
   if (hasFlag(s, c, 'exileIfWouldDie')) {
-    moveCard(ctx, id, 'exile');
+    moveCard(ctx, id, 'exile', { sacrificed });
     return;
   }
   if (hasType(s, c, 'creature')) ctx.ev.push({ type: 'CreatureDied', card: id, defId: c.defId, owner: c.owner });
-  moveCard(ctx, id, 'graveyard');
+  moveCard(ctx, id, 'graveyard', { sacrificed });
   // "When that creature dies this turn, return that card to its owner's hand."
   if (backToHand && c.zone === 'graveyard') moveCard(ctx, id, 'hand');
 }
@@ -353,7 +354,7 @@ export function destroy(ctx: Ctx, id: InstanceId): boolean {
 
 /** Sacrifice: put it into its owner's graveyard; indestructible doesn't help (rule 701.17). */
 export function sacrifice(ctx: Ctx, id: InstanceId): void {
-  putIntoGraveyard(ctx, id);
+  putIntoGraveyard(ctx, id, true);
 }
 
 export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: PlayerId, kind: AnyCounter = '+1/+1'): void {
@@ -363,6 +364,7 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   if (kind !== '+1/+1') {
     setCounters(c, kind, countersOf(c, kind) + amount);
     c.countersTurn = s.turnNumber;
+    if (by && hasType(s, c, 'creature')) player(s, by).counterOnCreatureTurn = s.turnNumber;
     ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}), counter: kind });
     return;
   }
@@ -374,6 +376,7 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   }
   c.counters = (c.counters ?? 0) + amount;
   c.countersTurn = s.turnNumber;
+  if (by && hasType(s, c, 'creature')) player(s, by).counterOnCreatureTurn = s.turnNumber;
   ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}) });
 }
 

@@ -5,6 +5,22 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### New tokens (C2, step 4)
+
+Seven new tokens, each matched to its exact Scryfall printing in
+`tokens.json`: Clue, Spirit, Squid, Bird, Wizard, Soldier and Human Soldier
+(`npm run scryfall` cached them). New engine pieces: islandwalk,
+"whenever you draw a card" / "whenever an opponent draws a card", "whenever
+you sacrifice a Clue", "if you put a counter on a creature this turn",
++X/+0 from a count, tapped tokens, and "create a number of tokens equal to
+..." that can be zero.
+
+10 precon cards built (`packages/bots/test/precon-tokens.test.ts`): Pitiless
+Plunderer, Lingering Souls, Bastion of Remembrance, Hermes, Circle of Power,
+Tireless Tracker, Lord Jyscal Guado, Chasm Skulker, Heidegger and Tataru
+Taru. 166 of 320 distinct precon cards are now built (Counter Blitz 65/100,
+Revival Trance 59, Limit Break 56, Scions & Spellcraft 55).
+
 ### Board: arrange your permanents, pop-out card viewer
 
 - Drag your nonland permanents anywhere on your battlefield; they stay where
@@ -173,9 +189,9 @@ card-by-card work:
    The rest of that list also needs Sagas, X costs, convoke or copies.
 3. **Other counter kinds.** Done 2026-10-22 (16 cards; see above). Still
    waiting: lore counters (Sagas) and vow counters (Promise of Loyalty).
-4. **New tokens** (14): Clue (investigate), Food, Soldier, Spirit, Bird...
-   Add each to `packages/cards/data/tokens.json` by its exact Scryfall
-   printing; `npm run scryfall` checks them.
+4. **New tokens.** Done 2026-10-22 (10 cards; see above). The other token
+   makers wait on Sagas, X costs, counterspells, kicker, rebound, Vehicles
+   or copies.
 5. **End-step triggers** (13), with the "this turn" tracking they need
    (life lost, a card left your graveyard, a counter was put on it).
 6. Then Sagas, graveyard-to-hand, anthems, evolve, counterspells, and the

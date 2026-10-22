@@ -98,7 +98,16 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     return;
   }
   if ('of' in a) {
-    const kinds = ['previousTargetPower', 'destroyedThisWay', 'chosenCount', 'chosenManaValue', 'sourcePower', 'subjectPower', 'subjectCounters'];
+    const kinds = [
+      'previousTargetPower',
+      'destroyedThisWay',
+      'chosenCount',
+      'chosenManaValue',
+      'sourcePower',
+      'subjectPower',
+      'subjectCounters',
+      'subjectPlusOneCounters',
+    ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
   }
@@ -253,6 +262,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
   if (e.damageSource && e.effect !== 'DealDamage') err('damageSource is only for DealDamage.');
+  if (e.powerFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('powerFromAmount is only for ModifyPT with an amount.');
   if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
   if ((e.countersOf || e.damageSource) && !inAbility) err('countersOf and damageSource are only for abilities.');
 }
@@ -270,6 +280,8 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard') e(`unknown zone "${t.zone}".`);
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');
   if (t.attacksYou && t.when !== 'Attacks') e('attacksYou is only for Attacks.');
+  if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
+  if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
   if (!Array.isArray(t.effects) || t.effects.length === 0) {

@@ -735,7 +735,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
             : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
-              : a.of === 'subjectPower' || a.of === 'subjectCounters'
+              : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
                 : (r.chosenManaValue ?? 0);
     return base + (a.plus ?? 0);
@@ -825,9 +825,10 @@ function sourcePower(s: GameState, item: StackItem): number {
 }
 
 /** The triggering object's power, or how many counters it had as it left the battlefield. */
-function subjectAmount(s: GameState, item: StackItem, of: 'subjectPower' | 'subjectCounters'): number {
+function subjectAmount(s: GameState, item: StackItem, of: 'subjectPower' | 'subjectCounters' | 'subjectPlusOneCounters'): number {
   const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
   if (!c) return 0;
+  if (of === 'subjectPlusOneCounters') return c.zone === 'battlefield' ? (c.counters ?? 0) : (c.lastCounters?.['+1/+1'] ?? 0);
   if (of === 'subjectPower') return Math.max(0, c.zone === 'battlefield' ? powerOf(s, c) : (c.lastPower ?? defOf(s, c).power ?? 0));
   return c.zone === 'battlefield' ? totalCounters(c) : Object.values(c.lastCounters ?? {}).reduce((n, k) => n + k, 0);
 }
@@ -953,7 +954,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'CreateToken':
-      for (let i = 0; i < Math.max(1, amount); i++) r.createdTokens.push(createToken(ctx, effect.token!, item.controller));
+      // "Create a number of tokens equal to ..." can be zero.
+      for (let i = 0; i < amount; i++) {
+        const id = createToken(ctx, effect.token!, item.controller);
+        if (effect.entersTapped) s.cards[id]!.tapped = true;
+        r.createdTokens.push(id);
+      }
       return;
     case 'CreateTokenCopy':
       // The copy uses the original's printed card (its copiable values, rule 707.2).
@@ -966,7 +972,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.temporaryEffects.push({
           source,
           affected: id,
-          ...(effect.power !== undefined ? { power: effect.power } : {}),
+          ...(effect.power !== undefined || effect.powerFromAmount
+            ? { power: (effect.power ?? 0) + (effect.powerFromAmount ? amount : 0) }
+            : {}),
           ...(effect.toughness !== undefined ? { toughness: effect.toughness } : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),

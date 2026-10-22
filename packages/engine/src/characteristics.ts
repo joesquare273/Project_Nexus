@@ -97,6 +97,13 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter(creature).reduce((n, c) => n + totalCounters(c), 0);
     case 'PlayersWhoLostLifeThisTurn':
       return s.turnOrder.filter((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) > 0).length;
+    case 'SoldiersYouControl':
+      return yours().filter((c) => creature(c) && (def(s, c).subtypes ?? []).includes('Soldier')).length;
+    case 'OpponentsWithMoreCreatures': {
+      const creatures = (pid: PlayerId) => battlefieldCards(s).filter((c) => c.controller === pid && creature(c)).length;
+      const mine = creatures(player);
+      return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
+    }
     case 'SoulCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
     case 'EquippedAttackingCreaturesYouControl':

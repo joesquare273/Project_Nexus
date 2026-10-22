@@ -264,7 +264,13 @@ function triggerCondition(t: TriggerSpec): string {
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',
     LeavesBattlefield: 'leaves the battlefield',
+    Draws: '',
+    Sacrificed: 'is sacrificed',
   }[t.when] ?? '';
+  if (t.when === 'Draws') {
+    const who = t.drawer === 'Opponent' ? 'an opponent draws' : t.drawer === 'You' ? 'you draw' : 'a player draws';
+    return `Whenever ${who} a card${t.notOnDrawersTurn ? ", if it isn't that player's turn" : ''}`;
+  }
   if (!t.what) return `When this ${verb}`;
   if (t.when === 'SpellCast') return `Whenever ${t.what.controller === 'You' ? 'you cast' : 'a player casts'} a ${subjectText({ ...t.what, controller: undefined }, 'spell')}`;
   if (t.oneOrMore) {

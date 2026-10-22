@@ -41,6 +41,8 @@ interface Occurrence {
   from?: string;
   /** CountersAdded: who put them there. */
   by?: PlayerId;
+  /** Draws: who drew. */
+  drawer?: PlayerId;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -61,9 +63,13 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           });
         }
         if (e.from === 'battlefield') out.push({ when: 'LeavesBattlefield', at, subject: e.card, subjectController: e.controller ?? e.owner });
+        if (e.sacrificed) out.push({ when: 'Sacrificed', at, subject: e.card, subjectController: e.controller ?? e.owner });
         break;
       case 'TokenCreated':
         out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
+        break;
+      case 'CardDrawn':
+        out.push({ when: 'Draws', at, drawer: e.player });
         break;
       case 'AttackDeclared': {
         const subjectController = s.cards[e.attacker]!.controller;
@@ -120,8 +126,15 @@ function matchesFilter(
 
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
+  if (o.when === 'Draws') {
+    // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
+    if (spec.drawer === 'You' && o.drawer !== controller) return false;
+    if (spec.drawer === 'Opponent' && o.drawer === controller) return false;
+    return !spec.notOnDrawersTurn || o.drawer !== s.activePlayer;
+  }
   if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep') {
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
+    if (spec.ifYouPutCounterOnCreatureThisTurn && s.players[controller]!.counterOnCreatureTurn !== s.turnNumber) return false;
     // "If a player lost 4 or more life this turn" (an intervening "if", rule 603.4).
     if (
       spec.ifPlayerLostLifeThisTurn !== undefined &&

@@ -58,6 +58,8 @@ export const KEYWORDS = [
   'NonbasicLandwalk',
   /** Can be blocked only by artifact creatures and creatures that share a color with it (rule 702.13). */
   'Intimidate',
+  /** Can't be blocked as long as the defending player controls an Island (rule 702.14). */
+  'Islandwalk',
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
@@ -241,6 +243,9 @@ export const COUNT_KINDS = [
   'PlayersWhoLostLifeThisTurn',
   /** Soul counters on the card with the ability (Reaper's Scythe). */
   'SoulCountersOnThis',
+  'SoldiersYouControl',
+  /** Opponents who control more creatures than you. */
+  'OpponentsWithMoreCreatures',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -261,7 +266,16 @@ export type Amount =
    */
   /** `subjectPower`, `subjectCounters`: the triggering object's power, or the counters it had as it left the battlefield. */
   | {
-      of: 'previousTargetPower' | 'destroyedThisWay' | 'chosenCount' | 'chosenManaValue' | 'sourcePower' | 'subjectPower' | 'subjectCounters';
+      of:
+        | 'previousTargetPower'
+        | 'destroyedThisWay'
+        | 'chosenCount'
+        | 'chosenManaValue'
+        | 'sourcePower'
+        | 'subjectPower'
+        | 'subjectCounters'
+        /** The +1/+1 counters the triggering object had as it left the battlefield. */
+        | 'subjectPlusOneCounters';
       plus?: number;
     };
 
@@ -287,6 +301,8 @@ export interface EffectSpec {
   token?: CardDefId;
   /** ModifyPT. */
   power?: number;
+  /** ModifyPT: `amount` is added to `power` ("+X/+0, where X is the number of Soldiers you control"). */
+  powerFromAmount?: boolean;
   toughness?: number;
   /** GrantKeywords. */
   keywords?: Keyword[];
@@ -369,6 +385,10 @@ export const TRIGGER_EVENTS = [
   'BecomesUntapped',
   /** A permanent left the battlefield for any zone. */
   'LeavesBattlefield',
+  /** A player drew a card (`drawer` says who). */
+  'Draws',
+  /** A permanent was sacrificed. */
+  'Sacrificed',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -445,6 +465,12 @@ export interface TriggerSpec {
   byYou?: boolean;
   /** Attacks: only creatures attacking you ("whenever an opponent attacks you"). */
   attacksYou?: boolean;
+  /** Draws: whose draws count. */
+  drawer?: 'You' | 'Opponent';
+  /** Draws: only draws on someone else's turn ("if it isn't that player's turn"). */
+  notOnDrawersTurn?: boolean;
+  /** Intervening "if": "if you put a counter on a creature this turn". */
+  ifYouPutCounterOnCreatureThisTurn?: boolean;
   /** Intervening "if": "if a counter was put on this creature this turn". */
   ifSourceGotCountersThisTurn?: boolean;
   /** Intervening "if": "if a player lost N or more life this turn". */
@@ -718,6 +744,8 @@ export interface PlayerState {
   lifeLostThisTurn?: number;
   /** The next creature spell this player casts on `turn` enters with `amount` additional +1/+1 counters. */
   nextCreatureCounters?: { turn: number; amount: number };
+  /** The last turn this player put a counter on a creature. */
+  counterOnCreatureTurn?: number;
   conceded: boolean;
 }
 
@@ -996,6 +1024,8 @@ export type GameEvent =
       to: ZoneName;
           /** Leaving the battlefield: the Equipment attached to it at that moment (for look-back triggers). */
       equippedBy?: InstanceId[];
+      /** It was sacrificed. */
+      sacrificed?: boolean;
     }
   | { type: 'TokenCreated'; card: InstanceId; defId: CardDefId; controller: PlayerId }
   | { type: 'Discarded'; player: PlayerId; card: InstanceId }

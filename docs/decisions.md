@@ -125,6 +125,7 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Rikku's Steal | Only offers opponents' creatures that have counters | Any creature an opponent controls is a legal target |
 | Scholar of New Horizons | Puts the Plains onto the battlefield whenever it may | Optional ("you may") |
 | Yuna, Grand Summoner's mana | "When you next cast a creature spell this turn" is applied as the spell is cast, not as a trigger | A delayed triggered ability |
+| Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |

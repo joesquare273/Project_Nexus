@@ -39,6 +39,10 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
     const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
     if (defenderLands.some((c) => s.cardDefs[c.defId]!.types.includes('land') && !isBasicLand(s.cardDefs[c.defId]!))) return false;
   }
+  if (hasKeyword(s, attacker, 'Islandwalk')) {
+    const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
+    if (defenderLands.some((c) => s.cardDefs[c.defId]!.subtypes?.includes('Island'))) return false;
+  }
   // Intimidate (rule 702.13): only artifact creatures and creatures that share a color with it.
   if (hasKeyword(s, attacker, 'Intimidate') && !s.cardDefs[blocker.defId]!.types.includes('artifact')) {
     const colors = colorsOf(s.cardDefs[attacker.defId]!);

@@ -70,10 +70,8 @@
           "count": 1,
           "set": "fic",
           "number": "21",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Helitrooper",
@@ -1552,11 +1550,8 @@
           "count": 1,
           "set": "fic",
           "number": "281",
-          "implemented": false,
-          "needs": [
-            "treasure",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Stitch Together",
@@ -1916,11 +1911,8 @@
           "count": 1,
           "set": "fic",
           "number": "23",
-          "implemented": false,
-          "needs": [
-            "investigate",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Protection Magic",
@@ -2198,10 +2190,8 @@
           "count": 1,
           "set": "fic",
           "number": "262",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Inexorable Tide",
@@ -2312,13 +2302,8 @@
           "count": 1,
           "set": "fic",
           "number": "316",
-          "implemented": false,
-          "needs": [
-            "investigate",
-            "landfall",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Altered Ego",
@@ -2869,13 +2854,8 @@
           "count": 1,
           "set": "fic",
           "number": "30",
-          "implemented": false,
-          "needs": [
-            "scions-secretary",
-            "treasure",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Thancred Waters",
@@ -2920,11 +2900,8 @@
           "count": 1,
           "set": "fic",
           "number": "36",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hraesvelgr of the First Brood",
@@ -3413,10 +3390,8 @@
           "count": 1,
           "set": "fin",
           "number": "92",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cut a Deal",
@@ -3433,11 +3408,8 @@
           "count": 1,
           "set": "fic",
           "number": "245",
-          "implemented": false,
-          "needs": [
-            "flashback",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Swords to Plowshares",
@@ -3482,10 +3454,8 @@
           "count": 1,
           "set": "fic",
           "number": "274",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Exsanguinate",

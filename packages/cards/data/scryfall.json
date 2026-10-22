@@ -602,6 +602,28 @@
       }
     ]
   },
+  "bird-token": {
+    "name": "Bird",
+    "typeLine": "Token Creature — Bird",
+    "oracleText": "Flying, vigilance",
+    "set": "tfic",
+    "number": "4",
+    "artist": "Constantin Marin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/2/023cebe4-ebe4-4398-9fd7-d3507660040a.jpg?1783906141",
+      "normal": "https://cards.scryfall.io/normal/front/0/2/023cebe4-ebe4-4398-9fd7-d3507660040a.jpg?1783906141",
+      "large": "https://cards.scryfall.io/large/front/0/2/023cebe4-ebe4-4398-9fd7-d3507660040a.jpg?1783906141",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/2/023cebe4-ebe4-4398-9fd7-d3507660040a.jpg?1783906141"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/4/bird?utm_source=api",
+    "scryfallId": "023cebe4-ebe4-4398-9fd7-d3507660040a",
+    "relatedTokens": [
+      {
+        "name": "Bird",
+        "scryfallId": "023cebe4-ebe4-4398-9fd7-d3507660040a"
+      }
+    ]
+  },
   "blitzball-stadium": {
     "name": "Blitzball Stadium",
     "typeLine": "Artifact",
@@ -1068,6 +1090,28 @@
     "scryfallUri": "https://scryfall.com/card/fic/14/clouds-limit-break?utm_source=api",
     "scryfallId": "1eb10082-4f0a-41f9-9a70-0d3c7ead249f",
     "relatedTokens": []
+  },
+  "clue-token": {
+    "name": "Clue",
+    "typeLine": "Token Artifact — Clue",
+    "oracleText": "{2}, Sacrifice this token: Draw a card.",
+    "set": "tfic",
+    "number": "9",
+    "artist": "David Frasheski",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/e/6e886e0b-2ce7-4231-a47c-a39bda50e8fd.jpg?1783906140",
+      "normal": "https://cards.scryfall.io/normal/front/6/e/6e886e0b-2ce7-4231-a47c-a39bda50e8fd.jpg?1783906140",
+      "large": "https://cards.scryfall.io/large/front/6/e/6e886e0b-2ce7-4231-a47c-a39bda50e8fd.jpg?1783906140",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/e/6e886e0b-2ce7-4231-a47c-a39bda50e8fd.jpg?1783906140"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/9/clue?utm_source=api",
+    "scryfallId": "6e886e0b-2ce7-4231-a47c-a39bda50e8fd",
+    "relatedTokens": [
+      {
+        "name": "Clue",
+        "scryfallId": "6e886e0b-2ce7-4231-a47c-a39bda50e8fd"
+      }
+    ]
   },
   "coeurl": {
     "name": "Coeurl",
@@ -2661,6 +2705,32 @@
     "scryfallId": "abcfefe3-c66d-4512-bcc3-c9a39cfbb983",
     "relatedTokens": []
   },
+  "human-soldier-token": {
+    "name": "Human Soldier",
+    "typeLine": "Token Creature — Human Soldier",
+    "oracleText": "",
+    "set": "tfic",
+    "number": "1",
+    "artist": "Allen Morris",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/d/8dc05018-f1c5-4c45-bb32-9a9ccd641f48.jpg?1783906143",
+      "normal": "https://cards.scryfall.io/normal/front/8/d/8dc05018-f1c5-4c45-bb32-9a9ccd641f48.jpg?1783906143",
+      "large": "https://cards.scryfall.io/large/front/8/d/8dc05018-f1c5-4c45-bb32-9a9ccd641f48.jpg?1783906143",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/d/8dc05018-f1c5-4c45-bb32-9a9ccd641f48.jpg?1783906143"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/1/human-soldier?utm_source=api",
+    "scryfallId": "8dc05018-f1c5-4c45-bb32-9a9ccd641f48",
+    "relatedTokens": [
+      {
+        "name": "Dinosaur",
+        "scryfallId": "f918b740-1984-4090-8886-9e290a698b95"
+      },
+      {
+        "name": "Human Soldier",
+        "scryfallId": "8dc05018-f1c5-4c45-bb32-9a9ccd641f48"
+      }
+    ]
+  },
   "hypnotic-sprite-mesmeric-glare": {
     "name": "Hypnotic Sprite // Mesmeric Glare",
     "typeLine": "Creature — Faerie // Instant — Adventure",
@@ -3310,6 +3380,28 @@
       }
     ]
   },
+  "moogle-token": {
+    "name": "Moogle",
+    "typeLine": "Token Creature — Moogle",
+    "oracleText": "Lifelink",
+    "set": "tfin",
+    "number": "34",
+    "artist": "Ignatius Budi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/0/20a709d5-4be5-487b-bfba-4b1821f2ebd3.jpg?1783906125",
+      "normal": "https://cards.scryfall.io/normal/front/2/0/20a709d5-4be5-487b-bfba-4b1821f2ebd3.jpg?1783906125",
+      "large": "https://cards.scryfall.io/large/front/2/0/20a709d5-4be5-487b-bfba-4b1821f2ebd3.jpg?1783906125",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/0/20a709d5-4be5-487b-bfba-4b1821f2ebd3.jpg?1783906125"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/34/moogle?utm_source=api",
+    "scryfallId": "20a709d5-4be5-487b-bfba-4b1821f2ebd3",
+    "relatedTokens": [
+      {
+        "name": "Moogle",
+        "scryfallId": "20a709d5-4be5-487b-bfba-4b1821f2ebd3"
+      }
+    ]
+  },
   "morbid-opportunist": {
     "name": "Morbid Opportunist",
     "typeLine": "Creature — Human Rogue",
@@ -3951,6 +4043,28 @@
       {
         "name": "Hero",
         "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
+  },
+  "rebel-token": {
+    "name": "Rebel",
+    "typeLine": "Token Creature — Rebel",
+    "oracleText": "",
+    "set": "tfic",
+    "number": "7",
+    "artist": "Anthony Devine",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/a/6afbbdad-aeed-428a-b840-c33f59a18d0b.jpg?1783906141",
+      "normal": "https://cards.scryfall.io/normal/front/6/a/6afbbdad-aeed-428a-b840-c33f59a18d0b.jpg?1783906141",
+      "large": "https://cards.scryfall.io/large/front/6/a/6afbbdad-aeed-428a-b840-c33f59a18d0b.jpg?1783906141",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/a/6afbbdad-aeed-428a-b840-c33f59a18d0b.jpg?1783906141"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/7/rebel?utm_source=api",
+    "scryfallId": "6afbbdad-aeed-428a-b840-c33f59a18d0b",
+    "relatedTokens": [
+      {
+        "name": "Rebel",
+        "scryfallId": "6afbbdad-aeed-428a-b840-c33f59a18d0b"
       }
     ]
   },
@@ -4814,6 +4928,28 @@
       }
     ]
   },
+  "soldier-token": {
+    "name": "Soldier",
+    "typeLine": "Token Creature — Soldier",
+    "oracleText": "",
+    "set": "tfic",
+    "number": "2",
+    "artist": "Thanh Tuấn",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/4/c459f2ec-2aa3-44f6-999f-b1467dd4e27c.jpg?1783906142",
+      "normal": "https://cards.scryfall.io/normal/front/c/4/c459f2ec-2aa3-44f6-999f-b1467dd4e27c.jpg?1783906142",
+      "large": "https://cards.scryfall.io/large/front/c/4/c459f2ec-2aa3-44f6-999f-b1467dd4e27c.jpg?1783906142",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/4/c459f2ec-2aa3-44f6-999f-b1467dd4e27c.jpg?1783906142"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/2/soldier?utm_source=api",
+    "scryfallId": "c459f2ec-2aa3-44f6-999f-b1467dd4e27c",
+    "relatedTokens": [
+      {
+        "name": "Soldier",
+        "scryfallId": "c459f2ec-2aa3-44f6-999f-b1467dd4e27c"
+      }
+    ]
+  },
   "solemn-simulacrum": {
     "name": "Solemn Simulacrum",
     "typeLine": "Artifact Creature — Golem",
@@ -4864,6 +5000,50 @@
     "scryfallUri": "https://scryfall.com/card/fic/426/spire-of-industry?utm_source=api",
     "scryfallId": "60057719-f597-4f2e-a75c-663f98a08573",
     "relatedTokens": []
+  },
+  "spirit-token": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "Flying",
+    "set": "tfic",
+    "number": "3",
+    "artist": "Craig Elliott",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/0/004f2ea4-0477-49b2-ad06-5aac7991103d.jpg?1783906143",
+      "normal": "https://cards.scryfall.io/normal/front/0/0/004f2ea4-0477-49b2-ad06-5aac7991103d.jpg?1783906143",
+      "large": "https://cards.scryfall.io/large/front/0/0/004f2ea4-0477-49b2-ad06-5aac7991103d.jpg?1783906143",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/0/004f2ea4-0477-49b2-ad06-5aac7991103d.jpg?1783906143"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/3/spirit?utm_source=api",
+    "scryfallId": "004f2ea4-0477-49b2-ad06-5aac7991103d",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "004f2ea4-0477-49b2-ad06-5aac7991103d"
+      }
+    ]
+  },
+  "squid-token": {
+    "name": "Squid",
+    "typeLine": "Token Creature — Squid",
+    "oracleText": "Islandwalk (This creature can't be blocked as long as defending player controls an Island.)",
+    "set": "tfic",
+    "number": "5",
+    "artist": "Daniel Correia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/6/660d8e43-13e1-464b-b251-c7c2d77732ca.jpg?1783906141",
+      "normal": "https://cards.scryfall.io/normal/front/6/6/660d8e43-13e1-464b-b251-c7c2d77732ca.jpg?1783906141",
+      "large": "https://cards.scryfall.io/large/front/6/6/660d8e43-13e1-464b-b251-c7c2d77732ca.jpg?1783906141",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/6/660d8e43-13e1-464b-b251-c7c2d77732ca.jpg?1783906141"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/5/squid?utm_source=api",
+    "scryfallId": "660d8e43-13e1-464b-b251-c7c2d77732ca",
+    "relatedTokens": [
+      {
+        "name": "Squid",
+        "scryfallId": "660d8e43-13e1-464b-b251-c7c2d77732ca"
+      }
+    ]
   },
   "stitch-together": {
     "name": "Stitch Together",
@@ -6281,6 +6461,28 @@
       {
         "name": "Hero",
         "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
+      }
+    ]
+  },
+  "wizard-token": {
+    "name": "Wizard",
+    "typeLine": "Token Creature — Wizard",
+    "oracleText": "Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.",
+    "set": "tfin",
+    "number": "35",
+    "artist": "Ramza Psyru",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/4/04ae24bf-0b24-4996-afae-7bf9f9d7471c.jpg?1783906124",
+      "normal": "https://cards.scryfall.io/normal/front/0/4/04ae24bf-0b24-4996-afae-7bf9f9d7471c.jpg?1783906124",
+      "large": "https://cards.scryfall.io/large/front/0/4/04ae24bf-0b24-4996-afae-7bf9f9d7471c.jpg?1783906124",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/4/04ae24bf-0b24-4996-afae-7bf9f9d7471c.jpg?1783906124"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/35/wizard?utm_source=api",
+    "scryfallId": "04ae24bf-0b24-4996-afae-7bf9f9d7471c",
+    "relatedTokens": [
+      {
+        "name": "Wizard",
+        "scryfallId": "04ae24bf-0b24-4996-afae-7bf9f9d7471c"
       }
     ]
   },
