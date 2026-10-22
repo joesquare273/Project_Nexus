@@ -68,6 +68,13 @@ export class GameSession {
   readonly log: LogEntry[] = [];
   /** Stop at every step instead of passing automatically when nothing important is happening. */
   stopEverywhere = false;
+  /** Tap mana sources for you when you cast or activate, instead of you choosing which to tap. */
+  autoTap = false;
+  /** You're partway through paying a cost: keep priority until you finish or cancel. */
+  holdPriority = false;
+  /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
+  readonly triggered: { key: number; card: InstanceId }[] = [];
+  private nextTriggerKey = 1;
   /** Cards the last bot action touched, for highlighting. */
   recent = new Set<InstanceId>();
   private readonly bots: Record<PlayerId, Bot>;
@@ -123,11 +130,16 @@ export class GameSession {
 
   /**
    * What you can do right now, grouped by card: play a land, cast a spell
-   * (from hand, graveyard or exile), or activate an ability. Mana sources tap
-   * automatically.
+   * (from hand, graveyard or exile), or activate an ability. Each choice
+   * comes with a suggested set of mana taps that pays for it.
    */
   plays(): CardPlay[] {
     return playableCards(this.state, YOU);
+  }
+
+  /** Whether these actions would work right now (nothing changes). */
+  canSubmit(actions: Action[]): boolean {
+    return !('error' in applyAll(this.state, actions));
   }
 
   /** Applies your actions all-or-nothing. Returns an error message, or null on success. */
@@ -158,6 +170,8 @@ export class GameSession {
       this.recent = touchedCards(result.events);
       return 'bot';
     }
+    // You're tapping mana to pay for something: don't pass priority under you.
+    if (this.holdPriority && s.pending.kind === 'priority') return 'you';
     const auto = this.automaticAction();
     if (!auto) return 'you';
     this.submit([auto]);
@@ -199,6 +213,7 @@ export class GameSession {
   }
 
   private narrate(events: GameEvent[]): void {
+    for (const e of events) if (e.type === 'AbilityTriggered') this.triggered.push({ key: this.nextTriggerKey++, card: e.card });
     let draws = null as { player: PlayerId; names: string[]; hidden: number } | null;
     const flush = () => {
       if (!draws) return;

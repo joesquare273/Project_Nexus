@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { cardsToBottom, triggerSpec, type Action, type GameView, type InstanceId, type PlayerId, type Target } from '@nexus/engine';
-import { planTaps, tapActions } from '@nexus/bots';
+import {
+  abilityOptions,
+  cardsToBottom,
+  formatManaCost,
+  manaChoices,
+  spellOptions,
+  triggerSpec,
+  type Action,
+  type GameState,
+  type GameView,
+  type InstanceId,
+  type ManaType,
+  type PlayerId,
+  type Target,
+} from '@nexus/engine';
+import { manaSources, planTaps, tapActions } from '@nexus/bots';
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
@@ -10,6 +24,9 @@ import type { Lesson } from '../tutorial/lesson.ts';
 import { currentTip } from '../tutorial/tips.ts';
 import { GameLog, Inspector } from './Sidebar.tsx';
 import { CardList, Hand, OpponentZone, PlayerHeader, YourZone, type Mark, type ZoneHandlers } from './Zones.tsx';
+
+/** How long a triggering card stays in the middle of the table. */
+const SPOTLIGHT_MS = 2000;
 
 /** Pause after each meaningful bot action so you can follow along. */
 const BOT_DELAY_MS = 550;
@@ -46,6 +63,20 @@ interface Menu {
   options: { label: string; pick: () => void }[];
 }
 
+/** A spell or ability you've chosen, waiting for you to tap mana for it. */
+interface Paying {
+  title: string;
+  action: Extract<Action, { type: 'CastSpell' | 'ActivateAbility' }>;
+}
+
+/** What an action costs right now, e.g. "{3}{R}" (commander tax and discounts included), as the engine lists it. */
+function costText(s: GameState, action: Paying['action']): string {
+  const key = JSON.stringify(action);
+  const options = action.type === 'CastSpell' ? spellOptions(s, YOU) : abilityOptions(s, YOU);
+  const option = options.find((o) => JSON.stringify(o.action) === key);
+  return option ? formatManaCost(option.cost) : (defOf(s.cards[action.card]!.defId).manaCost ?? '');
+}
+
 /** The texts of a modal spell's modes, from its Oracle text bullets when they match. */
 function modeLabels(defId: string, count: number): string[] {
   const bullets = (scryfallOf(defId)?.oracleText ?? '').split('\n').filter((l) => l.startsWith('•'));
@@ -74,6 +105,10 @@ export function Game({
   const [error, setError] = useState<string | null>(null);
   const [targeting, setTargeting] = useState<Targeting | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [paying, setPaying] = useState<Paying | null>(null);
+  /** A card whose ability just triggered, shown large in the middle of the table for a moment. */
+  const [spotlight, setSpotlight] = useState<{ key: number; card: InstanceId } | null>(null);
+  const spotlighted = useRef(0);
   const [zoneView, setZoneView] = useState<{ player: PlayerId; zone: 'graveyard' | 'exile' } | null>(null);
   const [attackers, setAttackers] = useState<Map<InstanceId, PlayerId>>(new Map());
   const [defender, setDefender] = useState<PlayerId>(session.opponents[0]!);
@@ -119,6 +154,23 @@ export function Game({
     return () => window.clearTimeout(timer.current);
   }, [run]);
 
+  // Show each triggering card for 2 seconds, one after another. If many trigger at once, only
+  // the last few are shown so the spotlight doesn't fall far behind the game.
+  useEffect(() => {
+    if (spotlight) return;
+    const queue = session.triggered;
+    if (spotlighted.current < queue.length - 3) spotlighted.current = queue.length - 3;
+    const next = queue[spotlighted.current];
+    if (!next) return;
+    spotlighted.current += 1;
+    setSpotlight(next);
+  });
+  useEffect(() => {
+    if (!spotlight) return;
+    const t = window.setTimeout(() => setSpotlight(null), SPOTLIGHT_MS);
+    return () => window.clearTimeout(t);
+  }, [spotlight]);
+
   // Any change of decision clears half-made selections.
   const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}|${s.nextId}`;
   const [bottomPicks, setBottomPicks] = useState<InstanceId[]>([]);
@@ -126,6 +178,8 @@ export function Game({
     setBottomPicks([]);
     setTargeting(null);
     setMenu(null);
+    setPaying(null);
+    session.holdPriority = false;
     setAttackers(new Map());
     setBlocks(new Map());
     setPickedAttacker(null);
@@ -201,11 +255,81 @@ export function Game({
     const done = remaining.find(({ ts }) => ts.length === next.length && ts.every((x, j) => sameTarget(x, next[j]!)));
     if (done) {
       setTargeting(null);
-      submit(activeTargeting.choices[done.i]!);
+      const actions = activeTargeting.choices[done.i]!;
+      const action = actions.at(-1)!;
+      // A spell or ability you're playing still needs paying for; a trigger's targets are just submitted.
+      if (targeting && 'card' in action) pay({ taps: actions.slice(0, -1), action, targets: next }, cardName(s, action.card));
+      else submit(actions);
       return;
     }
     if (targeting) setTargeting({ ...targeting, chosen: next });
     else setTriggerChosen(next);
+  };
+
+  /**
+   * Pays for a chosen play. With "Tap mana automatically" on, the suggested
+   * taps go with it. Otherwise it's done at once if your mana pool already
+   * covers it, or the board waits while you tap mana sources yourself.
+   */
+  const pay = (choice: PlayChoice, title: string) => {
+    const { action } = choice;
+    if (session.autoTap || (action.type !== 'CastSpell' && action.type !== 'ActivateAbility')) {
+      submit([...choice.taps, action]);
+      return;
+    }
+    if (session.canSubmit([action])) {
+      submit([action]);
+      return;
+    }
+    session.holdPriority = true;
+    setPaying({ title, action });
+  };
+
+  const stopPaying = () => {
+    setPaying(null);
+    session.holdPriority = false;
+  };
+
+  /** Taps a mana source for one mana type; finishes paying once the pool covers the cost. */
+  const tapForMana = (id: InstanceId, mana: ManaType) => {
+    const err = session.submit([{ type: 'ActivateManaAbility', player: YOU, card: id, mana }]);
+    if (err) {
+      showError(err);
+      refresh();
+      return;
+    }
+    if (paying && session.canSubmit([paying.action])) {
+      stopPaying();
+      submit([paying.action]);
+      return;
+    }
+    run();
+  };
+
+  /** Clicking a mana source: tap it, asking which mana if it can make more than one kind. */
+  const useManaSource = (id: InstanceId) => {
+    const kinds = manaChoices(s, s.cards[id]!);
+    if (kinds.length === 1) return tapForMana(id, kinds[0]!);
+    setMenu({
+      title: `${cardName(s, id)}: add which mana?`,
+      options: kinds.map((m) => ({
+        label: `Add {${m}}`,
+        pick: () => {
+          setMenu(null);
+          tapForMana(id, m);
+        },
+      })),
+    });
+  };
+
+  /** Taps whatever the planner suggests for the rest of the cost. */
+  const autoPay = () => {
+    if (!paying) return;
+    const key = JSON.stringify(paying.action);
+    const choice = session.plays().flatMap((p) => p.choices).find((c) => JSON.stringify(c.action) === key);
+    if (!choice) return showError("You don't have enough untapped mana sources to pay for that.");
+    stopPaying();
+    submit([...choice.taps, paying.action]);
   };
 
   /**
@@ -239,7 +363,7 @@ export function Game({
     const choices = play.choices.filter((c) => modeKey === undefined || keyOf(c) === modeKey);
     const only = choices.length === 1 ? choices[0]! : null;
     if (only && only.targets.length === 0) {
-      submit([...only.taps, only.action]);
+      pay(only, play.kind === 'ability' ? `${def.name}: ${play.label}` : def.name);
       return;
     }
     setTargeting({
@@ -278,6 +402,8 @@ export function Game({
   const livingOpponents = session.opponents.filter((p) => !view.players[p]!.eliminated);
   const currentDefender = livingOpponents.includes(defender) ? defender : livingOpponents[0]!;
   const playable = new Set(plays.map((p) => p.card));
+  // Your untapped mana sources, while you could tap them.
+  const manaIds = new Set(yourMove && pending.kind === 'priority' ? manaSources(s, YOU).map((c) => c.id) : []);
   // Cards castable from outside your hand appear next to it; commanders stay in the command zone by your name.
   const elsewhere = [...playable].filter((id) => {
     const z = s.cards[id]!.zone;
@@ -289,7 +415,8 @@ export function Game({
     markCard: (id) => {
       const marks: Mark[] = [];
       if (bottoming && s.cards[id]?.zone === 'hand') marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
-      if (playable.has(id) && !activeTargeting && !menu) marks.push('playable');
+      if (playable.has(id) && !activeTargeting && !menu && !paying) marks.push('playable');
+      if (paying && !menu && manaIds.has(id)) marks.push('mana');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
       if (canAttackIds.has(id)) marks.push(attackers.has(id) ? 'attacking' : 'can-attack');
       if (view.combat?.attacks.some((a) => a.attacker === id)) marks.push('attacking');
@@ -334,8 +461,11 @@ export function Game({
       const option = nextOptions.find((t) => t.kind === 'card' && t.card === id);
       if (option) return pickTarget(option);
       if (activeTargeting || menu) return;
+      if (paying) return manaIds.has(id) ? useManaSource(id) : undefined;
       const cardPlays = playsFor(id);
       if (cardPlays.length > 0) return usePlays(id, cardPlays);
+      // Tapping a land (or other mana source) on its own floats the mana until the step ends.
+      if (manaIds.has(id)) return useManaSource(id);
       if (pending.kind === 'declareAttackers' && canAttackIds.has(id)) {
         const next = new Map(attackers);
         if (next.has(id)) next.delete(id);
@@ -433,7 +563,10 @@ export function Game({
           targeting={activeTargeting}
           menu={menu}
           chosen={chosen}
+          paying={paying}
+          onAutoPay={autoPay}
           onCancel={() => {
+            stopPaying();
             setTargeting(null);
             setMenu(null);
             setTriggerChosen([]);
@@ -452,10 +585,18 @@ export function Game({
           <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>
         {error && <div className="toast">{error}</div>}
+        {spotlight && view.cards[spotlight.card] && (
+          <div key={spotlight.key} className="spotlight" aria-live="polite">
+            <div className="spotlight-label">{cardName(s, spotlight.card)} triggers</div>
+            <div className="spotlight-card">
+              <CardFace defId={view.cards[spotlight.card]!.defId} size="large" />
+            </div>
+          </div>
+        )}
         {coach}
       </main>
       <aside className="sidebar">
-        <Inspector view={view} id={hovered ?? surveilCard} />
+        <Inspector view={view} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
         <div className="sidebar-controls">
           <label title="Stop at every step instead of passing automatically">
             <input
@@ -467,6 +608,17 @@ export function Game({
               }}
             />{' '}
             Stop at every step
+          </label>
+          <label title="Tap your lands for you when you cast a spell, instead of choosing which to tap">
+            <input
+              type="checkbox"
+              checked={session.autoTap}
+              onChange={(e) => {
+                session.autoTap = e.target.checked;
+                refresh();
+              }}
+            />{' '}
+            Tap mana automatically
           </label>
           <span className="seed">Seed {session.options.seed}</span>
           <button className="ghost" onClick={onQuit}>
@@ -574,6 +726,8 @@ interface PromptProps {
   busy: boolean;
   targeting: Targeting | null;
   menu: Menu | null;
+  paying: Paying | null;
+  onAutoPay: () => void;
   chosen: Target[];
   onCancel: () => void;
   attackers: Map<InstanceId, PlayerId>;
@@ -599,6 +753,16 @@ function PromptBar(p: PromptProps) {
   } else if (p.menu) {
     text = `${p.menu.title}:`;
     buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
+  } else if (p.paying) {
+    const pool = p.view.players[YOU]!.manaPool;
+    const floating = Object.entries(pool).flatMap(([m, n]) => Array.from({ length: n }, () => `{${m}}`)).join('');
+    text =
+      `${p.paying.title}: pay ${costText(s, p.paying.action)}. Click your glowing lands and other mana sources to tap them` +
+      (floating ? ` (in your mana pool: ${floating}).` : '.');
+    buttons = [
+      { label: 'Cancel', onClick: p.onCancel },
+      { label: 'Auto-pay', onClick: p.onAutoPay, primary: true },
+    ];
   } else if (p.targeting) {
     text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card or player.`;
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
