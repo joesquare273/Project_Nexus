@@ -1185,6 +1185,37 @@ button.zone-link:hover {
   border-radius: var(--radius);
   cursor: default;
 }
+/* The exile list: sections, notes under cards, cards you can cast. */
+.exile-section + .exile-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.exile-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.exile-section-head span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.list-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 130px;
+}
+.list-note {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.list-card.castable {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(242, 201, 76, 0.4);
+}
 .list-card.target {
   box-shadow: 0 0 0 3px var(--target), 0 0 18px rgba(242, 201, 76, 0.6);
   cursor: pointer;
@@ -1398,6 +1429,26 @@ button.zone-link:hover {
 .stack-item.target {
   cursor: pointer;
   box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(242, 201, 76, 0.45);
+}
+
+/* Cards flying between zones (Flights.tsx). */
+.flights {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 55;
+}
+.flight-card {
+  position: fixed;
+  transform-origin: top left;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+  --radius: 6px;
+}
+/* The real card waits, invisible, until its flying copy lands. */
+.in-flight {
+  visibility: hidden;
 }
 
 /* ---------- Zones: library, graveyard, exile ---------- */

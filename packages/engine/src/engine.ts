@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
-import { activateAbility, activateManaAbility, castSpell, decide, playLand, surveil, chooseCards } from './stack.ts';
+import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards } from './stack.ts';
 import { chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -66,6 +66,11 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         }
         requirePriority(s, action.player);
         activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith);
+        s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      case 'Foretell':
+        requirePriority(s, action.player);
+        foretell(ctx, action.player, action.card);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'ActivateAbility':

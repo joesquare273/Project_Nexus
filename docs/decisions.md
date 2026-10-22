@@ -134,6 +134,8 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Explore | The revealed nonland card always stays on top of the library | The player may put it into the graveyard |
 | Reflexive "when you do" triggers (Auron) | The target is chosen with the trigger, and may be left out | Chosen when the reflexive trigger happens |
 | Summon: Valefor | On a tie for greatest mana value, the creature that has been on the battlefield longest returns | Each opponent chooses |
+| Lifestream's Blessing | X is the greatest power among your creatures as it resolves | As it was cast |
+| Foretell and the AI | The AI never foretells; it casts foretell cards from hand | The AI could foretell to save mana later |
 | Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |

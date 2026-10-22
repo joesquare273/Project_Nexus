@@ -222,6 +222,10 @@ export const EFFECT_KINDS = [
   'ReturnGreatestManaValue',
   /** Counter the target spell: it goes to its owner's graveyard instead of resolving (rule 701.5). */
   'Counter',
+  /** "Prevent all damage that would be dealt to you this turn." */
+  'PreventDamageToYouThisTurn',
+  /** For each target player, you choose `amount` permanents matching `filter` they control, then destroy them (Ultimate Magic: Meteor). */
+  'ChooseAndDestroy',
   /** "Until your next turn, creatures can't attack you unless their controller pays {amount} for each of those creatures." */
   'AttackTaxUntilYourNextTurn',
   /**
@@ -278,6 +282,8 @@ export const COUNT_KINDS = [
   'SoldiersYouControl',
   /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
   'OpponentsWithPower4Creature',
+  /** The greatest power among creatures you control. */
+  'GreatestPowerAmongYourCreatures',
   /** Opponents still in the game. */
   'Opponents',
   /** Opponents you're attacking with at least one creature this combat (melee). */
@@ -394,8 +400,8 @@ export interface EffectSpec {
   damageSource?: 'TriggeringObject';
   /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
   toBattlefieldIfBehindOnLands?: boolean;
-  /** Only happens if this is true ("if this spell was cast from a graveyard"). */
-  if?: 'castFromGraveyard';
+  /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
+  if?: 'castFromGraveyard' | 'castFromExile';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
   /** SearchLibraryToBattlefield: the card enters tapped. */
@@ -760,6 +766,11 @@ export interface CardDefinition {
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
   /**
+   * Foretell cost (rule 702.143): during your turn, pay {2} and exile this
+   * card from your hand face down; cast it on a later turn for this cost.
+   */
+  foretell?: string;
+  /**
    * "This spell costs {N} less to cast if it targets a tapped creature", or
    * "costs {N} less for each [count]" (Vanquish the Horde).
    */
@@ -852,7 +863,7 @@ export interface CardInstance {
   /** Exiled "until [source] leaves the battlefield". */
   exiledUntilLeaves?: InstanceId;
   /** In exile, and `player` may play it as long as they control `source`. */
-  /** `untilTurn`: playable until the end of that turn instead of while `player` controls `source`. */
+  /** `untilTurn`: playable until the end of that turn ("until end of turn", "until the end of your next turn") instead of while `player` controls `source`. */
   playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
@@ -862,6 +873,8 @@ export interface CardInstance {
   countersTurn?: number;
   /** The turn it last entered the battlefield. */
   enteredTurn?: number;
+  /** Foretold: in exile face down since this turn; only its owner sees it. */
+  foretoldTurn?: number;
   /** The value of {X} it was cast with, while it's on the battlefield. */
   xPaid?: number;
   /** A commander (Commander format). Stays true whatever zone it's in. */
@@ -909,6 +922,8 @@ export interface PlayerState {
   lostToEffect?: boolean;
   /** "Until your next turn, creatures can't attack you unless their controller pays {N} for each" (Summon: Yojimbo). Ends as this player's next turn begins. */
   attackTaxes?: number[];
+  /** "Prevent all damage that would be dealt to you this turn": the turn it applies to. */
+  preventDamageTurn?: number;
   conceded: boolean;
 }
 
@@ -1037,7 +1052,7 @@ export interface Resolving {
 export interface CardChoice {
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield';
+  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1169,6 +1184,8 @@ export type Action =
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number }
   /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[] }
+  /** Foretell: pay {2} and exile a card from your hand face down (a special action during your turn). */
+  | { type: 'Foretell'; player: PlayerId; card: InstanceId }
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
@@ -1245,6 +1262,8 @@ export type GameEvent =
   /** `total`: how many of that kind it has afterwards (for Saga chapters). */
   | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind; total?: number }
   | { type: 'CountersRemoved'; card: InstanceId; amount: number; counter: AnyCounter }
+  /** A card was foretold: exiled face down. Which card stays hidden. */
+  | { type: 'Foretold'; player: PlayerId; card: InstanceId }
   /** A spell was countered: it left the stack without resolving. */
   | { type: 'SpellCountered'; card: InstanceId; defId: CardDefId; by: InstanceId }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }

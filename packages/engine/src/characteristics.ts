@@ -105,6 +105,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated).length;
     case 'NontokenCreaturesYouControlThatEnteredThisTurn':
       return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
+    case 'GreatestPowerAmongYourCreatures':
+      return Math.max(0, ...yours().filter(creature).map((c) => characteristics(s, c).power));
     case 'OpponentsWithPower4Creature':
       return s.turnOrder.filter(
         (pid) =>

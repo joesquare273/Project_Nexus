@@ -22,6 +22,7 @@ import {
 } from '@nexus/engine';
 import { CARD_DEFS, FIN_PRECONS, preconDeck, preconDeckWithCommander, starterKitDeck } from '@nexus/cards';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
+import type { CardMove } from '../components/Flights.tsx';
 import { cardName, describe } from '@nexus/bots/narrate';
 
 export const YOU: PlayerId = 'You';
@@ -80,6 +81,9 @@ export class GameSession {
   holdPriority = false;
   /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
   readonly triggered: { key: number; card: InstanceId }[] = [];
+  /** Cards that changed zones, in order, for the board to animate (only what you may see). */
+  readonly moves: CardMove[] = [];
+  private nextMoveKey = 1;
   private nextTriggerKey = 1;
   /** Cards the last bot action touched, for highlighting. */
   recent = new Set<InstanceId>();
@@ -231,6 +235,7 @@ export class GameSession {
       if (draws.hidden > 0) this.push(`${who} drew ${draws.hidden === 1 ? 'a card' : `${draws.hidden} cards`}.`);
       draws = null;
     };
+    for (const e of filterEventsFor(events, YOU)) this.recordMove(e);
     for (const e of filterEventsFor(events, YOU)) {
       if (e.type === 'CardDrawn') {
         if (draws?.player !== e.player) flush();
@@ -245,6 +250,33 @@ export class GameSession {
     }
     flush();
     if (this.log.length > 400) this.log.splice(0, this.log.length - 400);
+  }
+
+  /** A zone change for the board to animate. Tokens appearing and leaving the game aren't flights. */
+  private recordMove(e: GameEvent): void {
+    const add = (m: Omit<CardMove, 'key'>) => {
+      this.moves.push({ key: this.nextMoveKey++, ...m });
+      if (this.moves.length > 200) this.moves.splice(0, this.moves.length - 200);
+    };
+    if (e.type === 'CardDrawn') {
+      add({ ...(e.card ? { card: e.card } : {}), ...(e.defId ? { defId: e.defId } : {}), fromPlayer: e.player, toPlayer: e.player, from: 'library', to: 'hand' });
+    } else if (e.type === 'Foretold') {
+      // Face down: only its owner sees which card it is.
+      const c = this.state.cards[e.card];
+      add({ card: e.card, ...(e.player === YOU && c ? { defId: c.defId } : {}), fromPlayer: e.player, toPlayer: e.player, from: 'hand', to: 'exile' });
+    } else if (e.type === 'CardMoved' && e.from !== e.to && e.to !== 'void' && e.from !== 'void') {
+      const hidden = !e.card || !e.defId;
+      // Hidden moves between two hidden zones (an opponent's mulligan) aren't worth showing.
+      if (hidden && e.from !== 'library' && e.to !== 'library') return;
+      add({
+        ...(e.card ? { card: e.card } : {}),
+        ...(e.defId ? { defId: e.defId } : {}),
+        fromPlayer: e.from === 'battlefield' ? (e.controller ?? e.owner) : e.owner,
+        toPlayer: e.to === 'battlefield' && e.card ? (this.state.cards[e.card]?.controller ?? e.owner) : e.owner,
+        from: e.from,
+        to: e.to,
+      });
+    }
   }
 
   private push(text: string): void {

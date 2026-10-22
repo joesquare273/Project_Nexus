@@ -15,6 +15,8 @@ export {
   effectsOf,
   playableZone,
   spellEffects,
+  FORETELL_COST,
+  foretellProblem,
   triggerLifeCost,
   triggerSpec,
 } from './stack.ts';

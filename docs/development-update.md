@@ -5,6 +5,54 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Where this session stopped (2026-10-22)
+
+Committed before the last full check finished, at the user's request. Last
+results: the foretell batch passed both 300-game fuzz runs; `npm run check`
+had one timeout in `packages/bots/test/fuzz.test.ts` (random bots, 64s
+against a 60s limit) because random bots now have more choices. The limit
+is now 180s; rerun `npm run check` first on the next computer. The card
+flights and the sectioned exile list were checked in the browser only
+briefly (the pane wasn't always drawing). Next card steps: the 72 unbuilt
+precon cards are mostly copies, Vehicles, Auras, ward, convoke, delve,
+ninjutsu, blitz, unearth, casting from the graveyard, and one-offs.
+
+### Cards fly between zones
+
+When a card changes zones (cast, resolved, died, exiled, drawn, bounced,
+foretold) a copy of it flies from where it was to where it went, so players
+can follow what happened and see effects resolve; the real card appears as
+the copy lands. Hidden cards (an opponent's draws, foretold cards) fly face
+down. The board marks cards with `data-card` and zones with `data-pile`;
+`packages/client/src/components/Flights.tsx` does the rest. Respects
+"reduce motion", and a timer reveals the card even if the page isn't being
+drawn (a background tab).
+
+### Foretell, and an exile list that explains itself (C2, step 12)
+
+Foretell (rule 702.143): during your turn, pay {2} to exile a card from your
+hand face down (the `Foretell` action; on the board it's a choice on the
+card, "Foretell ({2}; cast later for ...)"). From your next turn on you can
+cast it from exile for its foretell cost. A foretold card is hidden from
+opponents (the view leaves it out; the pile shows a card back) and the log
+only says that a card was foretold. Spells can check "if this spell was cast
+from exile". Also new: "prevent all damage that would be dealt to you this
+turn", "for each opponent, choose an artifact or land they control; destroy
+it", and the greatest power among your creatures. The AI doesn't foretell yet
+(it casts these cards normally).
+
+Clicking an exile pile now sorts the cards by what they're doing there, in
+MTG terms: "Cast from exile" (cards you may cast right now, with how long:
+"until end of turn", "until the end of turn N", "while you control X"; click
+one to cast it), "Foretold", face-down cards, cards exiled until a permanent
+leaves (naming it), and "Exiled". Once a card's permission ends it is just
+exiled. Headings only appear when more than one kind is there. "You may play
+it until ..." now lasts through the end of that turn, not only that turn.
+
+3 precon cards built (`packages/bots/test/precon-foretell.test.ts`): Ultimate
+Magic: Holy, Ultimate Magic: Meteor and Lifestream's Blessing. 248 of 320
+distinct precon cards are now built; 72 to go.
+
 ### Counterspells and attack taxes (C2, step 11)
 
 Spells on the stack can now be targeted (`TargetSpell`) and countered

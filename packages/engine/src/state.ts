@@ -198,6 +198,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.monstrous;
   delete c.extraCountersOnEnter;
   delete c.xPaid;
+  delete c.foretoldTurn;
   delete c.attachedTo;
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;
@@ -304,6 +305,8 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (amount <= 0) return;
   const s = ctx.s;
   const source = s.cards[sourceId]!;
+  // "Prevent all damage that would be dealt to you this turn" (Ultimate Magic: Holy).
+  if (target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
     const victim = s.cards[target.card]!;
     // A shield counter is removed instead (rule 122.1c).

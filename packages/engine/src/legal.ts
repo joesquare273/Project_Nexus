@@ -29,6 +29,7 @@ import {
   type SpellChoice,
   choiceProblem,
   costCardChoices,
+  foretellProblem,
   subsets,
   groupProblem,
 } from './stack.ts';
@@ -356,6 +357,9 @@ export function getLegalActions(s: GameState): Action[] {
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
         if (canPayFromPool(s, player, o.cost, o.forEquipment)) actions.push(o.action);
+      }
+      for (const id of s.players[player]!.hand) {
+        if (!foretellProblem(s, player, s.cards[id]!)) actions.push({ type: 'Foretell', player, card: id });
       }
       return actions;
     }

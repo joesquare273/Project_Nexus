@@ -270,6 +270,8 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   if (e.effect === 'Counter' && e.target !== 'TargetSpell') err('Counter needs a TargetSpell target.');
+  if (e.if !== undefined && e.if !== 'castFromGraveyard' && e.if !== 'castFromExile') err(`unknown condition "${String(e.if)}".`);
+  if (e.effect === 'ChooseAndDestroy' && !e.filter) err('ChooseAndDestroy needs a filter.');
   validateCounterKind(e.counter, err);
   if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield') err('"counter" is only for AddCounters and ReturnToBattlefield.');
   if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');

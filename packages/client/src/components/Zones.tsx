@@ -42,6 +42,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
   const changed = stats && (stats.power !== def.power || stats.toughness !== def.toughness);
   return (
     <div
+      data-card={id}
       className={`bf-card ${c.tapped ? 'tapped' : ''} ${def.types.includes('land') ? 'land' : ''} ${marks.join(' ')}`}
       onClick={() => h.onCard(id)}
       onMouseEnter={() => h.onHover(id)}
@@ -210,7 +211,7 @@ function Battlefield({
     for (const id of [...placement.keys()]) if (!others.includes(id)) placement.delete(id);
   }
   return (
-    <div className="battlefield" aria-label="Battlefield">
+    <div className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
       <div className="zone-label">Battlefield{placement && ordered.length > 0 ? ' · drag your permanents to arrange them' : ''}</div>
       {placement ? (
         <div ref={area} className="row creatures free">
@@ -286,7 +287,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   const marks = h.markPlayer(pid);
   const active = view.activePlayer === pid;
   return (
-    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
+    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)} data-pile={`${pid}:command`}>
       <div className="avatar">{pid === YOU ? 'You' : pid.replace('Bot', 'B')}</div>
       <div className="who">
         <div className="name">
@@ -310,6 +311,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
         return (
           <div
             key={id}
+            data-card={id}
             className={`command-card ${h.markCard(id).join(' ')}`}
             title={`Commander, in the command zone${tax ? ` (costs {${tax}} more)` : ''}`}
             onClick={(e) => {
@@ -335,7 +337,7 @@ export function OpponentZone({ view, pid, h }: { view: GameView; pid: PlayerId; 
   return (
     <section className={`zone opponent ${p.eliminated ? 'eliminated' : ''}`}>
       <PlayerHeader view={view} pid={pid} h={h} />
-      <div className="opp-hand">
+      <div className="opp-hand" data-pile={`${pid}:hand`}>
         {Array.from({ length: Math.min(p.handCount, 10) }, (_, i) => (
           <CardBack key={i} />
         ))}
@@ -385,6 +387,7 @@ function HandCard({
   const marks = h.markCard(id);
   return (
     <div
+      data-card={id}
       className={`hand-card ${marks.join(' ')} ${tag ? 'elsewhere' : ''}`}
       style={{ '--tilt': `${tilt}deg` } as CSSProperties}
       onClick={() => h.onCard(id)}
@@ -406,8 +409,11 @@ function Pile({
   faceDown,
   onOpen,
   h,
+  pile,
 }: {
   view: GameView;
+  /** Where cards fly to and from: "P1:graveyard". */
+  pile: string;
   label: string;
   count: number;
   top?: InstanceId | undefined;
@@ -417,6 +423,7 @@ function Pile({
 }) {
   return (
     <div
+      data-pile={pile}
       className={`pile ${onOpen ? 'openable' : ''}`}
       title={`${label}: ${count} card${count === 1 ? '' : 's'}${onOpen && count > 0 ? ' (click to see them)' : ''}`}
       onClick={(e) => {
@@ -430,6 +437,8 @@ function Pile({
       <div key={count} className={`pile-card ${count === 0 ? 'empty' : ''} bump`}>
         {count > 0 && faceDown && <CardBack />}
         {count > 0 && !faceDown && top && view.cards[top] && <CardFace defId={view.cards[top]!.defId} size="small" />}
+        {/* A foretold card is face down to everyone but its owner. */}
+        {count > 0 && !faceDown && top && !view.cards[top] && <CardBack />}
         {count > 1 && <div className="pile-depth" />}
       </div>
       <div className="pile-caption">
@@ -444,9 +453,17 @@ function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHan
   const p = view.players[pid]!;
   return (
     <div className="piles">
-      <Pile view={view} label="Library" count={p.libraryCount} faceDown h={h} />
-      <Pile view={view} label="Graveyard" count={p.graveyard.length} top={p.graveyard.at(-1)} onOpen={() => h.onZone(pid, 'graveyard')} h={h} />
-      <Pile view={view} label="Exile" count={p.exile.length} top={p.exile.at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
+      <Pile view={view} pile={`${pid}:library`} label="Library" count={p.libraryCount} faceDown h={h} />
+      <Pile
+        view={view}
+        pile={`${pid}:graveyard`}
+        label="Graveyard"
+        count={p.graveyard.length}
+        top={p.graveyard.at(-1)}
+        onOpen={() => h.onZone(pid, 'graveyard')}
+        h={h}
+      />
+      <Pile view={view} pile={`${pid}:exile`} label="Exile" count={p.exile.length} top={p.exile.at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
     </div>
   );
 }
@@ -456,13 +473,137 @@ export function Hand({ view, h, elsewhere }: { view: GameView; h: ZoneHandlers; 
   const hand = view.players[YOU]!.hand ?? [];
   const all = [...hand, ...elsewhere];
   return (
-    <div className="hand">
+    <div className="hand" data-pile={`${YOU}:hand`}>
       {all.map((id, i) => {
         const tilt = (i - (all.length - 1) / 2) * 2;
         const zone = view.cards[id]!.zone;
         return <HandCard key={id} view={view} id={id} h={h} tilt={tilt} tag={zone === 'hand' ? undefined : `from ${zone}`} />;
       })}
       {all.length === 0 && <div className="empty-row">Your hand is empty</div>}
+    </div>
+  );
+}
+
+/** One group of exiled cards, with what it means for them. */
+interface ExileSection {
+  title: string;
+  hint: string;
+  cards: { id: InstanceId; note?: string }[];
+  /** Cards you can't see (an opponent's foretold cards): how many. */
+  faceDown?: number;
+  castable?: boolean;
+}
+
+/**
+ * A player's exile, sorted by what each card is doing there: ones you can
+ * cast now, foretold ones (castable on a later turn), face-down ones,
+ * ones held until a permanent leaves, and the rest. With only one kind there,
+ * it's a plain list. Clicking a card you can cast starts casting it.
+ */
+export function ExileList({
+  view,
+  pid,
+  h,
+  castable,
+  onClose,
+}: {
+  view: GameView;
+  pid: PlayerId;
+  h: ZoneHandlers;
+  /** Exiled cards the viewer may cast or play right now (by the rules, whether or not they can pay yet). */
+  castable: ReadonlySet<InstanceId>;
+  onClose: () => void;
+}) {
+  const ids = [...view.players[pid]!.exile].reverse();
+  const nameOf = (id: InstanceId) => (view.cards[id] ? defOf(view.cards[id]!.defId).name : 'a card');
+  const now: ExileSection['cards'] = [];
+  const foretold: ExileSection['cards'] = [];
+  const held: ExileSection['cards'] = [];
+  const rest: ExileSection['cards'] = [];
+  let faceDown = 0;
+  for (const id of ids) {
+    const c = view.cards[id];
+    if (!c) {
+      faceDown++;
+      continue;
+    }
+    const foretell = defOf(c.defId).foretell;
+    if (castable.has(id)) {
+      const until = c.playableFromExile?.untilTurn;
+      const note =
+        c.foretoldTurn !== undefined
+          ? `Foretold: you may cast it for ${foretell}`
+          : until !== undefined
+            ? until === view.turnNumber
+              ? 'You may cast it until end of turn'
+              : `You may cast it until the end of turn ${until}`
+            : `You may cast it while you control ${nameOf(c.playableFromExile?.source ?? '')}`;
+      now.push({ id, note });
+    } else if (c.foretoldTurn !== undefined) {
+      foretold.push({ id, note: `Foretold this turn: you may cast it from your next turn for ${foretell}` });
+    } else if (c.exiledUntilLeaves) {
+      held.push({ id, note: `Until ${nameOf(c.exiledUntilLeaves)} leaves the battlefield` });
+    } else {
+      rest.push({ id });
+    }
+  }
+  const sections: ExileSection[] = [
+    { title: 'Cast from exile', hint: 'You may cast these now. Click one to cast it.', cards: now, castable: true },
+    { title: 'Foretold', hint: 'Exiled face down; you may cast them on a later turn for their foretell cost.', cards: foretold },
+    { title: 'Face down', hint: 'Foretold cards only their owner can see.', cards: [], faceDown },
+    { title: 'Exiled until a permanent leaves', hint: 'They come back when it leaves the battlefield.', cards: held },
+    { title: 'Exiled', hint: '', cards: rest },
+  ].filter((sec) => sec.cards.length > 0 || (sec.faceDown ?? 0) > 0);
+  // Headings only help when there's more than one kind of exiled card.
+  const headed = sections.length > 1;
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="card-list" onClick={(e) => e.stopPropagation()}>
+        <div className="card-list-head">
+          <strong>{pid === YOU ? 'Your' : `${pid}'s`} exile</strong>
+          <button className="ghost" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        {sections.length === 0 && <div className="empty-row">Empty</div>}
+        {sections.map((sec) => (
+          <section key={sec.title} className="exile-section">
+            {headed && (
+              <div className="exile-section-head">
+                <strong>{sec.title}</strong>
+                {sec.hint && <span>{sec.hint}</span>}
+              </div>
+            )}
+            <div className="card-list-cards">
+              {sec.cards.map(({ id, note }) => (
+                <div key={id} className="list-entry">
+                  <div
+                    className={`list-card ${h.markCard(id).join(' ')} ${sec.castable ? 'castable' : ''}`}
+                    onClick={() => {
+                      // Close the list first so targets and payment are visible on the board.
+                      if (sec.castable) onClose();
+                      h.onCard(id);
+                    }}
+                    onMouseEnter={() => h.onHover(id)}
+                    onMouseLeave={() => h.onHover(null)}
+                  >
+                    <CardFace defId={view.cards[id]!.defId} size="normal" />
+                  </div>
+                  {note && <div className="list-note">{note}</div>}
+                </div>
+              ))}
+              {Array.from({ length: sec.faceDown ?? 0 }, (_, i) => (
+                <div key={`down${i}`} className="list-entry">
+                  <div className="list-card">
+                    <CardBack />
+                  </div>
+                  {!headed && <div className="list-note">Foretold (face down)</div>}
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
@@ -493,7 +634,8 @@ export function CardList({
           )}
         </div>
         <div className="card-list-cards">
-          {ids.map((id) => (
+          {/* Face-down cards (foretold, an opponent's) aren't shown. */}
+          {ids.filter((id) => view.cards[id]).map((id) => (
             <div
               key={id}
               className={`list-card ${h.markCard(id).join(' ')}`}
@@ -505,6 +647,7 @@ export function CardList({
             </div>
           ))}
           {ids.length === 0 && <div className="empty-row">Empty</div>}
+          {ids.some((id) => !view.cards[id]) && <div className="empty-row">{ids.filter((id) => !view.cards[id]).length} face down</div>}
         </div>
       </div>
     </div>

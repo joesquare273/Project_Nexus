@@ -504,6 +504,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   }
   const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
   if (p.purpose === 'sacrifice') return pick(byValue.slice(0, p.min));
+  // Destroying an opponent's permanent of our choice: their best.
+  if (p.purpose === 'destroy') return pick([...byValue].reverse().slice(0, p.max));
   // Putting lands onto the battlefield for free: always.
   if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".

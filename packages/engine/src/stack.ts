@@ -425,10 +425,12 @@ export function playableZone(
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
   if (c.owner === playerId && c.zone === 'graveyard' && defOf(s, c).flashback) return 'graveyard';
+  // A foretold card can be cast on a later turn than the one it was foretold on.
+  if (c.owner === playerId && c.zone === 'exile' && c.foretoldTurn !== undefined) return c.foretoldTurn < s.turnNumber ? 'exile' : null;
   const p = c.playableFromExile;
   if (c.zone === 'exile' && p?.player === playerId) {
     // "You may play that card this turn."
-    if (p.untilTurn !== undefined) return p.untilTurn === s.turnNumber ? 'exile' : null;
+    if (p.untilTurn !== undefined) return s.turnNumber <= p.untilTurn ? 'exile' : null;
     const source = s.cards[p.source];
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
@@ -466,7 +468,13 @@ export function spellCost(
   alternative = false,
   x = 0,
 ): ManaCost {
-  const base = alternative ? def.alternativeCost?.mana : from === 'graveyard' ? def.flashback : def.manaCost;
+  const base = alternative
+    ? def.alternativeCost?.mana
+    : from === 'graveyard'
+      ? def.flashback
+      : from === 'exile' && card?.foretoldTurn !== undefined
+        ? def.foretell
+        : def.manaCost;
   let cost = parseManaCost(base);
   // {X}: each X symbol costs the chosen value (rule 107.3).
   if (cost.x) cost = { ...cost, generic: cost.generic + x * cost.x };
@@ -560,6 +568,30 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   s.stack.push(item);
   ctx.ev.push({ type: 'SpellCast', player: playerId, card: id, defId: c.defId, targets, manaSpent });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
+}
+
+/** What foretelling costs (rule 702.143a). */
+export const FORETELL_COST: ManaCost = { generic: 2 };
+
+/** Why this player can't foretell this card right now, or null if they can. */
+export function foretellProblem(s: GameState, playerId: PlayerId, c: CardInstance): string | null {
+  if (c.owner !== playerId || c.zone !== 'hand') return 'That card is not in your hand.';
+  if (!defOf(s, c).foretell) return `${defOf(s, c).name} doesn't have foretell.`;
+  if (s.activePlayer !== playerId) return 'You can only foretell during your turn.';
+  if (!canPayFromPool(s, playerId, FORETELL_COST)) return 'Foretelling costs {2}. Add the mana first.';
+  return null;
+}
+
+/** Foretell: pay {2} and exile the card face down (a special action, rule 116.2h). */
+export function foretell(ctx: Ctx, playerId: PlayerId, id: InstanceId): void {
+  const s = ctx.s;
+  const c = card(s, id);
+  const problem = foretellProblem(s, playerId, c);
+  if (problem) reject(problem);
+  payMana(ctx, playerId, FORETELL_COST);
+  moveCard(ctx, id, 'exile', { silent: true });
+  c.foretoldTurn = s.turnNumber;
+  ctx.ev.push({ type: 'Foretold', player: playerId, card: id });
 }
 
 /** What activating an ability costs with these targets (equip discounts depend on the target). */
@@ -890,15 +922,16 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       }
       continue;
     }
-    // Each player picks among their own permanents, or the spell's controller picks for them (Tragic Arrogance).
-    const chooser = effect.chooser === 'You' ? r.item.controller : pid;
+    // Each player picks among their own permanents, or the spell's controller picks for them (Tragic Arrogance, Meteor).
+    const chooser = effect.chooser === 'You' || effect.effect === 'ChooseAndDestroy' ? r.item.controller : pid;
     const cards = battlefield(s)
       .filter((c) => c.controller === pid && matchesObject(s, effect.filter, c, { controller: pid, source }))
       .map((c) => c.id);
     if (cards.length === 0) continue;
-    if (effect.effect === 'Sacrifice') {
-      const max = Math.min(amount, cards.length);
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: 'sacrifice', cards, min: effect.optional ? 0 : max, max }];
+    if (effect.effect === 'Sacrifice' || effect.effect === 'ChooseAndDestroy') {
+      const max = Math.min(Math.max(1, amount), cards.length);
+      const purpose = effect.effect === 'Sacrifice' ? 'sacrifice' : 'destroy';
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional ? 0 : max, max }];
     } else {
       const max = effect.onePerType ? effect.onePerType.length : Math.min(amount, cards.length);
       r.choiceQueue = [
@@ -1186,6 +1219,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         moveCard(ctx, id, countered.castFrom === 'graveyard' ? 'exile' : 'graveyard');
       }
       return;
+    case 'PreventDamageToYouThisTurn':
+      player(s, item.controller).preventDamageTurn = s.turnNumber;
+      return;
+    case 'ChooseAndDestroy':
+      queueChoices(s, effect, r, targetPlayers(targets), amount);
+      return;
     case 'AttackTaxUntilYourNextTurn': {
       const p = player(s, item.controller);
       p.attackTaxes = [...(p.attackTaxes ?? []), amount];
@@ -1405,6 +1444,7 @@ function continueResolving(ctx: Ctx): void {
       if (c?.zone === 'battlefield') r.previousTargetPower = powerOf(s, c);
     }
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
+    if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
@@ -1554,6 +1594,9 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   }
   else if (pending.purpose === 'sacrifice') for (const id of cards) sacrifice(ctx, id);
+  else if (pending.purpose === 'destroy') {
+    for (const id of cards) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
+  }
   else for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]!.zone === 'battlefield') sacrifice(ctx, id);
   // Whose cards they were: the chooser's own, except when the spell's controller chose for everyone.
   const owner = cards.length ? s.cards[cards[0]!]!.owner : pending.player;

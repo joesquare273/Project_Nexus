@@ -97,7 +97,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   const stats: Record<InstanceId, PermanentStats> = {};
   const surveilled = s.pending.kind === 'surveil' && s.pending.player === viewer ? s.pending.card : null;
   for (const c of Object.values(s.cards)) {
-    const visible = PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled;
+    const faceDown = c.zone === 'exile' && c.foretoldTurn !== undefined && c.owner !== viewer;
+    const visible = !faceDown && (PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled);
     if (visible) cards[c.id] = { ...c };
     if (c.zone === 'battlefield') {
       const ch = characteristics(s, c);

@@ -87,11 +87,8 @@
           "count": 1,
           "set": "fic",
           "number": "32",
-          "implemented": false,
-          "needs": [
-            "foretell",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Avalanche of Sector 7",
@@ -130,12 +127,8 @@
           "count": 1,
           "set": "fic",
           "number": "62",
-          "implemented": false,
-          "needs": [
-            "foretell",
-            "activated-abilities",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Vincent, Vengeful Atoner",
@@ -170,11 +163,8 @@
           "count": 1,
           "set": "fic",
           "number": "67",
-          "implemented": false,
-          "needs": [
-            "foretell",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Professor Hojo",

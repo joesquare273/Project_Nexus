@@ -145,6 +145,10 @@ function effectText(e: EffectSpec): string {
       return `${who} explores`;
     case 'ReturnGreatestManaValue':
       return `${who} returns a creature with the greatest mana value they control to its owner's hand`;
+    case 'PreventDamageToYouThisTurn':
+      return 'prevent all damage that would be dealt to you this turn';
+    case 'ChooseAndDestroy':
+      return `for each of ${who}, destroy a ${subjectText({ ...e.filter, controller: undefined }, 'permanent')} of your choice they control`;
     case 'Counter':
       return `counter ${who}`;
     case 'AttackTaxUntilYourNextTurn':
@@ -433,6 +437,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${cardName(s, e.card)} gets ${countersText(e.amount, e.counter)}.`;
     case 'CountersRemoved':
       return `  ${cardName(s, e.card)} loses ${countersText(e.amount, e.counter)}.`;
+    case 'Foretold':
+      return `  ${who(e.player)} foretold a card.`;
     case 'SpellCountered':
       return `  ${cardName(s, e.card)} is countered by ${cardName(s, e.by)}.`;
     case 'ControlChanged':

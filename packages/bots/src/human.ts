@@ -3,6 +3,7 @@
 // offer exactly the same choices.
 
 import {
+  FORETELL_COST,
   abilityOptions,
   activatedAbilities,
   getLegalActions,
@@ -106,5 +107,15 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
   };
   for (const o of spellOptions(s, player)) add(o);
   for (const o of abilityOptions(s, player)) add(o);
+  // Foretell (a special action): pay {2}, exile it face down, cast it on a later turn.
+  for (const id of s.players[player]!.hand) {
+    const c = s.cards[id]!;
+    const def = s.cardDefs[c.defId]!;
+    if (!def.foretell || s.activePlayer !== player) continue;
+    const taps = planTaps(s, player, FORETELL_COST);
+    if (!taps) continue;
+    const action: Action = { type: 'Foretell', player, card: id };
+    plays.push({ card: id, kind: 'ability', label: `Foretell ({2}; cast later for ${def.foretell})`, choices: [{ taps: tapActions(player, taps), action, targets: [] }] });
+  }
   return plays;
 }

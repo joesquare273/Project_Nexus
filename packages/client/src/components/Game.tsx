@@ -5,6 +5,7 @@ import {
   attackTax,
   attackTaxFor,
   canAttack,
+  playableZone,
   choiceProblem,
   cardsToBottom,
   formatManaCost,
@@ -26,10 +27,11 @@ import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { CardFace } from './Card.tsx';
 import { Coach } from './Coach.tsx';
+import { CardFlights } from './Flights.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
 import { currentTip } from '../tutorial/tips.ts';
 import { GameLog, Inspector } from './Sidebar.tsx';
-import { CardList, Hand, OpponentZone, PlayerHeader, YourZone, type Mark, type ZoneHandlers } from './Zones.tsx';
+import { CardList, ExileList, Hand, OpponentZone, PlayerHeader, YourZone, type Mark, type ZoneHandlers } from './Zones.tsx';
 
 /** How long a triggering card stays in the middle of the table. */
 const SPOTLIGHT_MS = 2000;
@@ -607,7 +609,7 @@ export function Game({
             <OpponentZone key={pid} view={view} pid={pid} h={h} />
           ))}
         </div>
-        <div className="midline">
+        <div className="midline" data-pile="stack">
           <PhaseTrack view={view} />
           <StackView view={view} onHover={setHovered} h={h} />
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
@@ -655,6 +657,7 @@ export function Game({
         )}
         {coach}
       </main>
+      <CardFlights moves={session.moves} />
       <Inspector view={view} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
       <aside className="sidebar">
         <GameLog entries={session.log} />
@@ -668,7 +671,16 @@ export function Game({
           <CardFace defId={view.cards[surveilCard]!.defId} size="normal" />
         </div>
       )}
-      {zoneView && (
+      {zoneView?.zone === 'exile' && (
+        <ExileList
+          view={view}
+          pid={zoneView.player}
+          h={h}
+          castable={new Set(view.players[zoneView.player]!.exile.filter((id) => s.cards[id] && playableZone(s, YOU, s.cards[id]!) === 'exile'))}
+          onClose={() => setZoneView(null)}
+        />
+      )}
+      {zoneView?.zone === 'graveyard' && (
         <CardList
           view={view}
           title={`${zoneView.player === YOU ? 'Your' : `${zoneView.player}'s`} ${zoneView.zone}`}
@@ -780,6 +792,7 @@ function StackView({ view, onHover, h }: { view: GameView; onHover: (id: Instanc
         return (
           <div
             key={item.id}
+            {...(item.kind === 'spell' ? { 'data-card': cardId } : {})}
             className={`stack-item ${i === 0 ? 'top' : ''} ${item.kind === 'spell' ? h.markCard(cardId).join(' ') : ''}`}
             onMouseEnter={() => onHover(cardId)}
             onMouseLeave={() => onHover(null)}
