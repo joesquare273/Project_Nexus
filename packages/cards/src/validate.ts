@@ -199,6 +199,8 @@ export function validateCardDefinition(raw: unknown): string[] {
     err('entersWithCounters must be a positive whole number.');
   }
   validateCounterKind(c.entersWithCounterKind, err);
+  if (c.saga !== undefined && !c.subtypes?.includes('Saga')) err('only Sagas have "saga".');
+  if (c.subtypes?.includes('Saga') && !c.notBuilt && !c.saga) err('a Saga needs "saga": its final chapter number.');
   if (c.entersWithCounterKind && !c.entersWithCounters) err('entersWithCounterKind needs entersWithCounters.');
   const ma = c.manaAbility;
   for (const key of ['amount', 'amountWithCounters', 'nextCreatureCounters'] as const) {
@@ -297,6 +299,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
   if (t.nthSpellThisTurn !== undefined && t.when !== 'SpellCast') e('nthSpellThisTurn is only for SpellCast.');
   if (t.attackersAtLeast !== undefined && t.when !== 'YouAttack') e('attackersAtLeast is only for YouAttack.');
+  if (t.when === 'Chapter' && !t.chapters?.length) e('a chapter ability needs "chapters".');
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');

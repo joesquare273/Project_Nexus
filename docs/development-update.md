@@ -5,6 +5,22 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Sagas (C2, step 10)
+
+Sagas work (rule 714): a lore counter as one enters and as each of your
+precombat main phases begins, a chapter ability for each chapter reached
+(`when: 'Chapter'`, `chapters: [2, 3]`), and the Saga is sacrificed once its
+final chapter has resolved (`saga`: the final chapter number). Proliferate
+adds lore counters too. Lore counters show as a badge on the board. Also new:
+"can't block this turn", and returning each opponent's creature with the
+greatest mana value.
+
+3 precon cards built (`packages/bots/test/precon-sagas.test.ts`): Summon:
+Kujata, Summon: Ixion and Summon: Valefor (242 of 320 distinct precon cards
+built; 78 to go). The other four Summons need more:
+Yojimbo (an attack tax), Magus Sisters (random modes), Good King Mog XII (a
+delayed copy trigger) and Esper Valigarmanda (casting exiled cards).
+
 ### Alternate commanders and one-offs (C2, step 9)
 
 Both alternate commanders are built. Tifa, Martial Artist: melee, and when

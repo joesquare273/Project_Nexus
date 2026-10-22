@@ -234,6 +234,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const d = s.cardDefs[c.defId]!;
   if (to === 'battlefield') c.enteredTurn = s.turnNumber;
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
+  // "As this Saga enters, add a lore counter" (rule 714.3a).
+  if (to === 'battlefield' && d.saga) addCounters(ctx, id, 1, c.controller, 'lore');
   // Tromell: "each other nontoken creature you control enters with an additional +1/+1 counter".
   if (to === 'battlefield') {
     for (const source of battlefield(s)) {
@@ -378,7 +380,7 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
     setCounters(c, kind, countersOf(c, kind) + amount);
     c.countersTurn = s.turnNumber;
     if (by && hasType(s, c, 'creature')) player(s, by).counterOnCreatureTurn = s.turnNumber;
-    ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}), counter: kind });
+    ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}), counter: kind, total: countersOf(c, kind) });
     return;
   }
   // Hardened Scales and similar: "that many plus one" (a replacement effect, rule 614).

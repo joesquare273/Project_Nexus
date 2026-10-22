@@ -51,6 +51,9 @@ interface Occurrence {
   /** CombatDamageToPlayer: how much; CountersAdded: which kind (undefined for +1/+1). */
   amount?: number;
   counter?: string;
+  /** Chapter: the lore counters before and after. */
+  loreFrom?: number;
+  loreTo?: number;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -86,6 +89,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       }
       case 'CountersAdded':
+        if (e.counter === 'lore' && e.total !== undefined) {
+          out.push({ when: 'Chapter', at, subject: e.card, subjectController: s.cards[e.card]!.controller, loreFrom: e.total - e.amount, loreTo: e.total });
+        }
         out.push({
           when: 'CountersAdded',
           at,
@@ -173,6 +179,10 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).
+  if (o.when === 'Chapter') {
+    return o.subject === source && (spec.chapters ?? []).some((n) => n > (o.loreFrom ?? 0) && n <= (o.loreTo ?? 0));
+  }
   if (o.when === 'YouAttack') return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".

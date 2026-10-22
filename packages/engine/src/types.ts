@@ -68,7 +68,7 @@ export type Keyword = (typeof KEYWORDS)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -215,6 +215,8 @@ export const EFFECT_KINDS = [
   'GainControl',
   /** "There is an additional combat phase after this phase" (with `onlyFirstCombat`: only after the turn's first combat). */
   'AdditionalCombat',
+  /** Each target player returns a creature with the greatest mana value among creatures they control to its owner's hand (Summon: Valefor). */
+  'ReturnGreatestManaValue',
   /**
    * The target creature explores (rule 701.44): reveal the top card of your
    * library; a land goes to your hand, otherwise the creature gets a +1/+1
@@ -329,6 +331,8 @@ export const TEMPORARY_FLAGS = [
   'returnToHandIfDies',
   /** "If damage would be dealt to that creature this turn, prevent that damage and put that many +1/+1 counters on it." */
   'damageBecomesCounters',
+  /** "Can't block this turn." */
+  'cantBlock',
 ] as const;
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
@@ -446,6 +450,8 @@ export const TRIGGER_EVENTS = [
   'LeavesGraveyard',
   /** You attacked with at least `attackersAtLeast` creatures ("whenever you attack with four or more creatures"). */
   'YouAttack',
+  /** A Saga's chapter ability (rule 714.2): a lore counter brought it to one of `chapters`. */
+  'Chapter',
   /** A permanent was sacrificed. */
   'Sacrificed',
 ] as const;
@@ -542,6 +548,8 @@ export interface TriggerSpec {
   nthSpellThisTurn?: number;
   /** YouAttack: how many attacking creatures it takes. */
   attackersAtLeast?: number;
+  /** Chapter: the chapter numbers ("II, III" is [2, 3]). */
+  chapters?: number[];
   /** Evolve (rule 702.100): the entering creature has greater power or toughness than this one. */
   evolve?: boolean;
   /** CountersAdded: only +1/+1 counters ("whenever a +1/+1 counter is put on this creature"). */
@@ -767,6 +775,8 @@ export interface CardDefinition {
   entersWithCounters?: number;
   /** "This creature enters with X +1/+1 counters on it" (Walking Ballista). */
   entersWithXCounters?: boolean;
+  /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
+  saga?: number;
   /** The kind of those counters, if not +1/+1 ("enters with a page counter on it"). */
   entersWithCounterKind?: CounterKind;
   /** A token's definition, created by effects rather than played from a deck. */
@@ -1217,7 +1227,8 @@ export type GameEvent =
   /** A card was revealed from a library (Chaos Warp). */
   | { type: 'CardRevealed'; player: PlayerId; card: InstanceId; defId: CardDefId }
   /** `by`: the controller of the spell or ability that put them there. */
-  | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind }
+  /** `total`: how many of that kind it has afterwards (for Saga chapters). */
+  | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind; total?: number }
   | { type: 'CountersRemoved'; card: InstanceId; amount: number; counter: AnyCounter }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'ControlChanged'; card: InstanceId; controller: PlayerId }

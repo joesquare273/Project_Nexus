@@ -1119,6 +1119,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         else addCounters(ctx, id, 1, item.controller);
       }
       return;
+    case 'ReturnGreatestManaValue':
+      for (const pid of targetPlayers(targets)) {
+        const theirs = battlefield(s).filter((c) => c.controller === pid && hasType(s, c, 'creature'));
+        if (theirs.length === 0) continue;
+        const greatest = Math.max(...theirs.map((c) => objectManaValue(s, c)));
+        // On a tie the player would choose; the engine returns the one that has been there longest.
+        moveCard(ctx, theirs.find((c) => objectManaValue(s, c) === greatest)!.id, 'hand');
+      }
+      return;
     case 'AdditionalCombat':
       if (effect.onlyFirstCombat && (s.combatsThisTurn ?? 0) !== 1) return;
       s.extraCombats = (s.extraCombats ?? 0) + 1;

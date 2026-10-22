@@ -122,11 +122,8 @@
           "count": 1,
           "set": "fic",
           "number": "61",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ultimate Magic: Meteor",
@@ -1821,11 +1818,8 @@
           "count": 1,
           "set": "fic",
           "number": "27",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Yojimbo",
@@ -1890,11 +1884,8 @@
           "count": 1,
           "set": "fic",
           "number": "42",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Maester Seymour",

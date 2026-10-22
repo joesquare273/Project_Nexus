@@ -142,6 +142,8 @@ function effectText(e: EffectSpec): string {
       return `reveal cards from the top of your library until you reveal a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; put it into your hand and the rest on the bottom`;
     case 'Explore':
       return `${who} explores`;
+    case 'ReturnGreatestManaValue':
+      return `${who} returns a creature with the greatest mana value they control to its owner's hand`;
     case 'AdditionalCombat':
       return `there is an additional combat phase after this phase${e.onlyFirstCombat ? " if it's the first combat phase of your turn" : ''}`;
     case 'GainControl':
@@ -167,7 +169,9 @@ function effectText(e: EffectSpec): string {
             ? `${who} can't be blocked this turn`
             : f === 'mustBeBlocked'
               ? `${who} must be blocked this turn if able`
-              : f === 'damageBecomesCounters'
+              : f === 'cantBlock'
+                ? `${who} can't block this turn`
+                : f === 'damageBecomesCounters'
                 ? `if damage would be dealt to ${who} this turn, prevent it and put that many +1/+1 counters on it`
                 : f === 'returnToHandIfDies'
                   ? `when ${who} dies this turn, return it to its owner's hand`
@@ -280,8 +284,10 @@ function triggerCondition(t: TriggerSpec): string {
     Draws: '',
     LeavesGraveyard: 'leaves your graveyard',
     YouAttack: '',
+    Chapter: '',
     Sacrificed: 'is sacrificed',
   }[t.when] ?? '';
+  if (t.when === 'Chapter') return `Chapter ${(t.chapters ?? []).map((n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][n] ?? n).join(', ')}`;
   if (t.when === 'YouAttack') return `Whenever you attack with ${t.attackersAtLeast ?? 1} or more creatures`;
   if (t.when === 'Draws') {
     const who = t.drawer === 'Opponent' ? 'an opponent draws' : t.drawer === 'You' ? 'you draw' : 'a player draws';

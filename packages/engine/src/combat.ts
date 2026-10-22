@@ -30,6 +30,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
 /** Whether `blocker` could block `attacker` on its own (menace is checked per whole declaration). */
 export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInstance): boolean {
   if (!isCreatureOnBattlefield(s, blocker) || blocker.tapped) return false;
+  if (hasFlag(s, blocker, 'cantBlock')) return false;
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;

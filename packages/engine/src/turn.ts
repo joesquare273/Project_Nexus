@@ -2,7 +2,7 @@
 
 import { canAnyAttack, dealCombatDamage, startBlockers } from './combat.ts';
 import { resolveTop } from './stack.ts';
-import { alivePlayers, battlefield, drawCards, emptyAllManaPools, nextAlive, player, untap, type Ctx } from './state.ts';
+import { addCounters, alivePlayers, battlefield, drawCards, emptyAllManaPools, nextAlive, player, untap, type Ctx } from './state.ts';
 import { STEPS, type PlayerId, type Step } from './types.ts';
 
 export function givePriority(ctx: Ctx, playerId: PlayerId): void {
@@ -70,8 +70,14 @@ export function enterStep(ctx: Ctx, step: Step): void {
       s.combatsThisTurn = (s.combatsThisTurn ?? 0) + 1;
       givePriority(ctx, s.activePlayer);
       return;
-    case 'upkeep':
     case 'main1':
+      // Rule 714.3b: each Saga the active player controls gets a lore counter.
+      for (const c of battlefield(s)) {
+        if (c.controller === s.activePlayer && s.cardDefs[c.defId]!.saga) addCounters(ctx, c.id, 1, s.activePlayer, 'lore');
+      }
+      givePriority(ctx, s.activePlayer);
+      return;
+    case 'upkeep':
     case 'end':
       givePriority(ctx, s.activePlayer);
       return;

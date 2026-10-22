@@ -16,6 +16,7 @@ import {
   hasKeyword,
   moveCard,
   putIntoGraveyard,
+  sacrifice,
   reject,
   type Ctx,
 } from './state.ts';
@@ -88,6 +89,19 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
     for (const id of zeroToughness) putIntoGraveyard(ctx, id);
     for (const id of lethal) destroy(ctx, id);
     if (zeroToughness.length + lethal.length > 0) changed = true;
+
+    // A Saga with at least its final chapter's lore counters, and no chapter ability waiting, is sacrificed (rule 714.4).
+    for (const c of battlefield(s)) {
+      const final = defOf(s, c).saga;
+      if (!final || (c.namedCounters?.lore ?? 0) < final) continue;
+      const waiting =
+        s.stack.some((i) => i.kind === 'ability' && i.source === c.id) ||
+        s.triggerQueue.some((t) => t.source === c.id) ||
+        (s.resolving?.item.kind === 'ability' && s.resolving.item.source === c.id);
+      if (waiting) continue;
+      sacrifice(ctx, c.id);
+      changed = true;
+    }
 
     // Tokens that left the battlefield cease to exist (704.5d). They can only be where effects put them.
     for (const pid of s.turnOrder) {

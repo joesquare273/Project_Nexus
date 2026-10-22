@@ -133,6 +133,7 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Yuna's Whistle | The creature to get counters is chosen when the spell is cast | It's chosen when the card is revealed (a reflexive trigger) |
 | Explore | The revealed nonland card always stays on top of the library | The player may put it into the graveyard |
 | Reflexive "when you do" triggers (Auron) | The target is chosen with the trigger, and may be left out | Chosen when the reflexive trigger happens |
+| Summon: Valefor | On a tie for greatest mana value, the creature that has been on the battlefield longest returns | Each opponent chooses |
 | Tataru Taru | The target opponent always draws | They may choose not to |
 | "Enters from your graveyard" (Flayer of the Hatebound) | Also counts creatures cast from a graveyard | Only creatures put onto the battlefield from it |
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
