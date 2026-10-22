@@ -10,6 +10,8 @@ import type { CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from
 export interface FilterViewpoint {
   controller: PlayerId;
   source?: InstanceId;
+  /** For attack and combat damage triggers: the player attacked or dealt damage. */
+  defender?: PlayerId;
 }
 
 /**
@@ -29,6 +31,7 @@ export function matchesObject(
   if (f.other && obj.id === from.source) return false;
   if (f.controller === 'You' && objController !== from.controller) return false;
   if (f.controller === 'Opponent' && objController === from.controller) return false;
+  if (f.controller === 'DefendingPlayer' && objController !== from.defender) return false;
   if (f.types && !f.types.some((t) => def.types.includes(t))) return false;
   if (f.nonTypes?.some((t) => def.types.includes(t))) return false;
   if (f.categories) {

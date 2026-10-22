@@ -56,6 +56,8 @@ export const KEYWORDS = [
   'Shroud',
   /** Can't be blocked as long as the defending player controls a nonbasic land. */
   'NonbasicLandwalk',
+  /** Can be blocked only by artifact creatures and creatures that share a color with it (rule 702.13). */
+  'Intimidate',
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
@@ -175,6 +177,12 @@ export const EFFECT_KINDS = [
    * the top card; a permanent card is put onto the battlefield (Chaos Warp).
    */
   'ShuffleIntoLibraryReveal',
+  /** Attach the Equipment chosen for target `from` to this effect's target creature (Barret). */
+  'AttachEquipmentTo',
+  /** Does nothing itself: picks a target that a later effect uses (`from`). */
+  'ChooseTarget',
+  /** Each target player puts up to `amount` cards matching `filter` from their hand onto the battlefield, their choice. */
+  'PutFromHand',
   /**
    * Each target player discards `amount` cards of their choice (`anyNumber`:
    * as many as they like; `wholeHand`: their whole hand or nothing, their
@@ -224,13 +232,15 @@ export type Amount =
    * permanents destroyed, or the cards chosen in the last choice (how many,
    * their total mana value), plus `plus` ("that many cards plus one").
    */
-  | { of: 'previousTargetPower' | 'destroyedThisWay' | 'chosenCount' | 'chosenManaValue'; plus?: number };
+  | { of: 'previousTargetPower' | 'destroyedThisWay' | 'chosenCount' | 'chosenManaValue' | 'sourcePower'; plus?: number };
 
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
   'mustBeBlocked',
   /** "If that creature would die this turn, exile it instead." */
   'exileIfWouldDie',
+  /** "When that creature dies this turn, return that card to its owner's hand." */
+  'returnToHandIfDies',
 ] as const;
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
@@ -273,6 +283,20 @@ export interface EffectSpec {
   ifChose?: 'any' | 'creature' | 'noncreature';
   /** ExileTopCardToPlay: playable until end of turn, not while you control the source. */
   thisTurn?: boolean;
+  /** "Up to one target": the target may be left out. */
+  upTo?: boolean;
+  /**
+   * Targets of effects sharing a `group` are one "up to N target" phrase, so
+   * each must be a different object (rule 115.3). With `groupOwnersDiffer`,
+   * the objects must also belong to different players ("for each opponent,
+   * up to one target creature card from that player's graveyard").
+   */
+  group?: string;
+  groupOwnersDiffer?: boolean;
+  /** ReturnToBattlefield: under your control instead of its owner's. */
+  underYourControl?: boolean;
+  /** AttachEquipmentTo: which chosen target (by index) is the Equipment. */
+  from?: number;
 }
 
 /**
@@ -290,6 +314,10 @@ export const TRIGGER_EVENTS = [
   'Upkeep',
   /** "At the beginning of your end step". */
   'EndStep',
+  /** Counters were put on a permanent (with `byYou`: by a spell or ability you control). */
+  'CountersAdded',
+  /** The permanent became untapped. */
+  'BecomesUntapped',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -300,7 +328,8 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 export interface ObjectFilter {
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
-  controller?: 'You' | 'Opponent';
+  /** DefendingPlayer: the player an attacking creature attacked or damaged ("artifact that player controls"). */
+  controller?: 'You' | 'Opponent' | 'DefendingPlayer';
   /** Has at least one of these types. */
   types?: CardType[];
   /** Has none of these types ("noncreature spell"). */
@@ -346,6 +375,12 @@ export interface TriggerSpec {
   turn?: 'Yours' | 'Each' | 'Opponents';
   /** EntersBattlefield: only for permanents that came from a graveyard or were cast from one (Celes). */
   fromGraveyard?: boolean;
+  /** CountersAdded: only counters put there by a spell or ability you control. */
+  byYou?: boolean;
+  /** Intervening "if": "if a counter was put on this creature this turn". */
+  ifSourceGotCountersThisTurn?: boolean;
+  /** Intervening "if": the player who controls the entering permanent controls more lands than you. */
+  ifSubjectControllerHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
   zone?: 'battlefield' | 'graveyard';
   /** "Whenever one or more ...": triggers once per batch of simultaneous events. */
@@ -554,6 +589,10 @@ export interface CardInstance {
   playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
+  /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
+  lastPower?: number;
+  /** The turn counters were last put on it. */
+  countersTurn?: number;
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */
@@ -601,7 +640,8 @@ export const STEPS = [
 ] as const;
 export type Step = (typeof STEPS)[number];
 
-export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId };
+/** `none`: an "up to one target" that was left out. */
+export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId } | { kind: 'none' };
 
 export interface SpellItem {
   id: string;
@@ -695,8 +735,8 @@ export interface Resolving {
 /** One player's choice of cards while a spell or ability resolves. */
 export interface CardChoice {
   player: PlayerId;
-  /** What happens to the chosen cards: discarded, sacrificed, or kept (and the other candidates sacrificed). */
-  purpose: 'discard' | 'sacrifice' | 'keep';
+  /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
+  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -891,7 +931,8 @@ export type GameEvent =
   | { type: 'CardsBottomed'; player: PlayerId; count: number }
   /** A card was revealed from a library (Chaos Warp). */
   | { type: 'CardRevealed'; player: PlayerId; card: InstanceId; defId: CardDefId }
-  | { type: 'CountersAdded'; card: InstanceId; amount: number }
+  /** `by`: the controller of the spell or ability that put them there. */
+  | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }

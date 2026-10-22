@@ -469,7 +469,14 @@ async function decideBottom(s: GameState, count: number): Promise<Action[]> {
 
 /** Choosing cards to discard, sacrifice or keep while something resolves. */
 async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind: 'chooseCards' }>): Promise<Action[]> {
-  const verb = p.purpose === 'discard' ? 'discard' : p.purpose === 'sacrifice' ? 'sacrifice' : 'keep (the rest are sacrificed)';
+  const verb =
+    p.purpose === 'discard'
+      ? 'discard'
+      : p.purpose === 'sacrifice'
+        ? 'sacrifice'
+        : p.purpose === 'battlefield'
+          ? 'put onto the battlefield'
+          : 'keep (the rest are sacrificed)';
   if (p.allOrNothing) {
     const yes = (await ask(`\n  Discard your whole hand (${p.cards.length} cards)? (y/N) `)).toLowerCase() === 'y';
     return [{ type: 'ChooseCards', player: YOU, cards: yes ? [...p.cards] : [] }];

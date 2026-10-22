@@ -45,8 +45,17 @@ function opponents(s: GameState, me: PlayerId): PlayerId[] {
   return s.turnOrder.filter((id) => id !== me && !s.players[id]!.eliminated);
 }
 
-function creatures(s: GameState, owner: PlayerId): CardInstance[] {
-  return s.players[owner]!.battlefield.map((id) => s.cards[id]!).filter((c) => def(s, c).types.includes('creature'));
+/**
+ * Permanents a player controls. Cards stay in their owner's battlefield list,
+ * so a creature someone took control of (Sepulchral Primordial) is found by
+ * its controller, not by whose list it's in.
+ */
+function controlled(s: GameState, player: PlayerId): CardInstance[] {
+  return s.turnOrder.flatMap((pid) => s.players[pid]!.battlefield.map((id) => s.cards[id]!)).filter((c) => c.controller === player);
+}
+
+function creatures(s: GameState, player: PlayerId): CardInstance[] {
+  return controlled(s, player).filter((c) => def(s, c).types.includes('creature'));
 }
 
 /**
@@ -148,6 +157,8 @@ function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Tar
     const life = s.players[target.player]!.life;
     return effect.effect === 'DealDamage' && amount >= life ? 50 : amount / 2 + (20 - life) / 10;
   }
+  // Leaving out an "up to one" target: better than a bad target, worse than a good one.
+  if (target.kind === 'none') return 0;
   const c = s.cards[target.card]!;
   const mine = (c.zone === 'battlefield' ? c.controller : c.owner) === me;
   if (effect.effect === 'CreateTokenCopy') return value(s, c);
@@ -245,7 +256,7 @@ function scoreEquip(s: GameState, me: PlayerId, equipment: CardInstance, target:
 
 function needsLand(s: GameState, me: PlayerId): boolean {
   const hand = s.players[me]!.hand.map((id) => def(s, s.cards[id]!));
-  const lands = s.players[me]!.battlefield.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
+  const lands = controlled(s, me).filter((c) => def(s, c).types.includes('land')).length;
   return lands < 6 && !hand.some((d) => d.types.includes('land'));
 }
 
@@ -412,7 +423,7 @@ function decideOptional(s: GameState, me: PlayerId, legal: Action[]): Action {
 function chooseLegendToKeep(s: GameState, me: PlayerId, cards: InstanceId[]): Action {
   const worth = (id: InstanceId) => {
     const c = s.cards[id]!;
-    const gear = s.players[me]!.battlefield.filter((e) => s.cards[e]!.attachedTo === id).length;
+    const gear = controlled(s, me).filter((e) => e.attachedTo === id).length;
     return value(s, c) + gear * 2 + (c.tapped ? 0 : 0.5) + (c.summoningSick ? 0 : 0.5);
   };
   const keep = [...cards].sort((a, b) => worth(b) - worth(a))[0]!;
@@ -422,7 +433,7 @@ function chooseLegendToKeep(s: GameState, me: PlayerId, cards: InstanceId[]): Ac
 /** Surveil: bin extra lands once there are plenty; keep everything else. */
 function chooseSurveil(s: GameState, me: PlayerId, card: InstanceId): Action {
   const isLand = def(s, s.cards[card]!).types.includes('land');
-  const lands = s.players[me]!.battlefield.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
+  const lands = controlled(s, me).filter((c) => def(s, c).types.includes('land')).length;
   return { type: 'Surveil', player: me, toGraveyard: isLand && lands >= 5 };
 }
 
@@ -483,6 +494,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   }
   const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
   if (p.purpose === 'sacrifice') return pick(byValue.slice(0, p.min));
+  // Putting lands onto the battlefield for free: always.
+  if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
   const ours = s.cards[p.cards[0]!]!.controller === me;
   const order = ours ? byValue.reverse() : byValue;

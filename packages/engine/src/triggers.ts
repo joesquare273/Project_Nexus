@@ -39,6 +39,8 @@ interface Occurrence {
   equippedBy?: InstanceId[];
   /** EntersBattlefield: the zone it came from. */
   from?: string;
+  /** CountersAdded: who put them there. */
+  by?: PlayerId;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -67,12 +69,24 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         out.push({ when: 'Attacks', at, subject: e.attacker, subjectController, defender: e.defendingPlayer });
         break;
       }
+      case 'CountersAdded':
+        out.push({ when: 'CountersAdded', at, subject: e.card, subjectController: s.cards[e.card]!.controller, ...(e.by ? { by: e.by } : {}) });
+        break;
+      case 'CardsUntapped':
+        for (const card of e.cards) out.push({ when: 'BecomesUntapped', at, subject: card, subjectController: s.cards[card]!.controller });
+        break;
       case 'SpellCast':
         out.push({ when: 'SpellCast', at, subject: e.card, subjectController: e.player, manaSpent: e.manaSpent });
         break;
       case 'DamageDealt':
         if (e.combat && e.target.kind === 'player') {
-          out.push({ when: 'CombatDamageToPlayer', at, subject: e.source, subjectController: s.cards[e.source]!.controller });
+          out.push({
+            when: 'CombatDamageToPlayer',
+            at,
+            subject: e.source,
+            subjectController: s.cards[e.source]!.controller,
+            defender: e.target.player,
+          });
         }
         break;
       case 'StepChanged':
@@ -106,11 +120,18 @@ function matchesFilter(
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep') {
+    if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
     if (spec.turn === 'Each') return true;
     return spec.turn === 'Opponents' ? o.activePlayer !== controller : o.activePlayer === controller;
   }
   // "Entered from a graveyard or was cast from a graveyard".
   if (spec.fromGraveyard && o.subject && o.from !== 'graveyard' && !s.cards[o.subject]!.castFromGraveyard) return false;
+  if (spec.byYou && o.by !== controller) return false;
+  if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
+  if (spec.ifSubjectControllerHasMoreLands && o.subjectController) {
+    const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && s.cardDefs[c.defId]!.types.includes('land')).length;
+    if (lands(o.subjectController) <= lands(controller)) return false;
+  }
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   return matchesFilter(s, spec.what, source, controller, o);
@@ -232,7 +253,8 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 
 /** Legal choices for each target of a queued trigger, in effect order. */
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
-  return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source));
+  const context = t.defender ? { defender: t.defender } : {};
+  return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source, context));
 }
 
 /**
@@ -268,7 +290,7 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   const pending = s.pending;
   if (pending.kind !== 'chooseTargets' || pending.player !== playerId) reject('You are not choosing targets right now.');
   const t = s.triggerQueue[0]!;
-  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source);
+  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, t.defender ? { defender: t.defender } : {});
   s.triggerQueue.shift();
   pushAbility(ctx, t, targets);
   givePriority(ctx, pending.then);

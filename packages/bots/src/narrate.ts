@@ -91,6 +91,12 @@ function effectText(e: EffectSpec): string {
       const what = subjectText({ ...e.filter, controller: undefined }, 'permanent');
       return `${you ? (e.optional ? 'you may sacrifice' : 'sacrifice') : `${who} ${e.optional ? 'may sacrifice' : 'sacrifices'}`} a ${what}`;
     }
+    case 'ChooseTarget':
+      return `choose ${who}`;
+    case 'AttachEquipmentTo':
+      return `attach the Equipment to ${who}`;
+    case 'PutFromHand':
+      return `${you ? 'you may put' : `${who} may put`} a ${subjectText({ ...e.filter, controller: undefined }, 'card')} from your hand onto the battlefield`;
     case 'KeepAndSacrificeRest': {
       const kept = e.onePerType ? `one ${e.onePerType.join(', one ')}` : `${n} ${subjectText({ ...e.filter, controller: undefined }, 'permanent', true)}`;
       return `${who} keeps ${kept} and sacrifices the rest`;
@@ -229,6 +235,8 @@ function triggerCondition(t: TriggerSpec): string {
     Attacks: 'attacks',
     SpellCast: '',
     CombatDamageToPlayer: 'deals combat damage to a player',
+    CountersAdded: 'gets counters',
+    BecomesUntapped: 'becomes untapped',
   }[t.when];
   if (!t.what) return `When this ${verb}`;
   if (t.when === 'SpellCast') return `Whenever ${t.what.controller === 'You' ? 'you cast' : 'a player casts'} a ${subjectText({ ...t.what, controller: undefined }, 'spell')}`;
@@ -313,6 +321,7 @@ export function cardName(s: GameState, id: string | undefined): string {
 }
 
 export function targetName(s: GameState, t: Target, viewer?: string): string {
+  if (t.kind === 'none') return 'no target';
   if (t.kind === 'player') return t.player === viewer ? 'you' : t.player;
   return cardName(s, t.card);
 }

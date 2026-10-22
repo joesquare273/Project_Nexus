@@ -123,5 +123,6 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Planeswalkers | Not a card type yet, so "destroy target creature or planeswalker" only finds creatures | Rule 306 |
 | Copy tokens | Copy the original's printed card | Also copy other copy effects and face-down status (rule 707) |
 | Library search | Takes the first matching card | The player chooses which matching card |
+| "Search for up to N cards" | Takes as many as it can (up to N) | The player may take fewer |
 | Choices in "each player" effects | Players choose one at a time in turn order from the active player, seeing earlier choices | Simultaneous, in APNAP order (rule 101.4) |
 | {X} costs | X is 0 (cards with X aren't built yet) | The caster chooses X |

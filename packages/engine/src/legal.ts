@@ -29,6 +29,7 @@ import {
   choiceProblem,
   costCardChoices,
   subsets,
+  groupProblem,
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
@@ -36,20 +37,31 @@ import { triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaChoices } from './typerules.ts';
 import type { Action, Block, CardDefinition, CardInstance, EffectSpec, GameState, InstanceId, ManaCost, PlayerId, Target } from './types.ts';
 
-const MAX_TARGET_COMBOS = 32;
+const MAX_TARGET_COMBOS = 96;
 const MAX_BOTTOM_CHOICES = 8;
 
-/** Every combination of one choice per target, up to a limit. */
-function combine(options: Target[][]): Target[][] {
+/**
+ * Every combination of one choice per target, up to a limit. `valid` drops
+ * a partial combination as soon as it breaks a rule (the same object twice in
+ * an "up to N targets" phrase), so the limit only ever cuts legal ones.
+ */
+function combine(options: Target[][], valid: (partial: Target[]) => boolean = () => true): Target[][] {
   let combos: Target[][] = [[]];
   for (const choices of options) {
-    combos = combos.flatMap((combo) => choices.map((t) => [...combo, t])).slice(0, MAX_TARGET_COMBOS);
+    combos = combos
+      .flatMap((combo) => choices.map((t) => [...combo, t]))
+      .filter(valid)
+      .slice(0, MAX_TARGET_COMBOS);
   }
   return combos;
 }
 
 function targetCombos(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string): Target[][] {
-  return combine(choosingEffects(effects).map((e) => targetOptions(s, e, playerId, source)));
+  const needs = choosingEffects(effects);
+  return combine(
+    needs.map((e) => targetOptions(s, e, playerId, source)),
+    (ts) => !groupProblem(s, needs, ts),
+  );
 }
 
 /** A spell or ability someone could use now if they had the mana, with what it would cost. */
@@ -203,9 +215,9 @@ export function getLegalActions(s: GameState): Action[] {
 
     case 'chooseTargets': {
       const player = pending.player;
-      return combine(triggerTargetOptions(s, s.triggerQueue[0]!)).map(
-        (targets): Action => ({ type: 'ChooseTargets', player, targets }),
-      );
+      const t = s.triggerQueue[0]!;
+      const needs = choosingEffects(s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!.effects);
+      return combine(triggerTargetOptions(s, t), (ts) => !groupProblem(s, needs, ts)).map((targets): Action => ({ type: 'ChooseTargets', player, targets }));
     }
 
     case 'decide': {

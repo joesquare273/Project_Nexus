@@ -33,8 +33,7 @@ const SPOTLIGHT_MS = 2000;
 /** Pause after each meaningful bot action so you can follow along. */
 const BOT_DELAY_MS = 550;
 
-const sameTarget = (a: Target, b: Target) =>
-  a.kind === b.kind && (a.kind === 'player' ? a.player === (b as typeof a).player : a.card === (b as typeof a).card);
+const sameTarget = (a: Target, b: Target) => JSON.stringify(a) === JSON.stringify(b);
 
 const STEP_SHORT: [string, string][] = [
   ['upkeep', 'Upkeep'],
@@ -590,6 +589,8 @@ export function Game({
           chosen={chosen}
           paying={paying}
           onAutoPay={autoPay}
+          canSkipTarget={nextOptions.some((t) => t.kind === 'none')}
+          onSkipTarget={() => pickTarget({ kind: 'none' })}
           onCancel={() => {
             stopPaying();
             setTargeting(null);
@@ -739,6 +740,7 @@ function StackView({ view, onHover }: { view: GameView; onHover: (id: InstanceId
 }
 
 function targetLabel(view: GameView, t: Target): string {
+  if (t.kind === 'none') return 'no target';
   if (t.kind === 'player') return t.player === YOU ? 'you' : t.player;
   const c = view.cards[t.card];
   return c ? defOf(c.defId).name : 'a card';
@@ -753,6 +755,8 @@ interface PromptProps {
   menu: Menu | null;
   paying: Paying | null;
   onAutoPay: () => void;
+  canSkipTarget: boolean;
+  onSkipTarget: () => void;
   chosen: Target[];
   onCancel: () => void;
   attackers: Map<InstanceId, PlayerId>;
@@ -791,6 +795,8 @@ function PromptBar(p: PromptProps) {
   } else if (p.targeting) {
     text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card or player.`;
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
+    // An "up to one" target can be left out.
+    if (p.canSkipTarget) buttons = [...buttons, { label: 'No target', onClick: p.onSkipTarget }];
   } else if (pending.kind === 'mulligan') {
     const hand = s.players[YOU]!.hand;
     const lands = hand.filter((id) => defOf(s.cards[id]!.defId).types.includes('land')).length;
@@ -820,7 +826,9 @@ function PromptBar(p: PromptProps) {
           ? 'to discard (in your hand)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
-            : 'to keep; the others are sacrificed';
+            : c.purpose === 'battlefield'
+              ? 'to put onto the battlefield (in your hand)'
+              : 'to keep; the others are sacrificed';
       const problem = choiceProblem(s, c, picks);
       text = `Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
       buttons = [

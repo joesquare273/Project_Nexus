@@ -2,6 +2,7 @@
 // combinations before a card ever reaches the engine.
 
 import {
+  CHOSEN_TARGET_KINDS,
   CARD_CATEGORIES,
   CARD_TYPES,
   COLORS,
@@ -50,6 +51,7 @@ const PLAYER_ONLY_EFFECTS = new Set([
   'Discard',
   'Sacrifice',
   'KeepAndSacrificeRest',
+  'PutFromHand',
 ]);
 const PLAYER_TARGETS = new Set([
   'You',
@@ -90,7 +92,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     return;
   }
   if ('of' in a) {
-    if (!['previousTargetPower', 'destroyedThisWay', 'chosenCount', 'chosenManaValue'].includes(a.of)) err(`unknown amount "${String(a.of)}".`);
+    if (!['previousTargetPower', 'destroyedThisWay', 'chosenCount', 'chosenManaValue', 'sourcePower'].includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
   }
   if (!Array.isArray(a.count) || a.count.length === 0) err('a counted amount needs a non-empty "count" list.');
@@ -108,8 +110,8 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
   }
   for (const sub of f.subtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
   for (const st of f.supertypes ?? []) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}" in a filter.`);
-  if (f.controller !== undefined && f.controller !== 'You' && f.controller !== 'Opponent') {
-    err('controller must be "You" or "Opponent".');
+  if (f.controller !== undefined && !['You', 'Opponent', 'DefendingPlayer'].includes(f.controller)) {
+    err('controller must be "You", "Opponent" or "DefendingPlayer".');
   }
   for (const color of [...(f.colors ?? []), ...(f.nonColors ?? [])]) if (!COLORS.includes(color)) err(`unknown color "${color}" in a filter.`);
   for (const sub of f.nonSubtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
@@ -225,6 +227,9 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   for (const f of e.flags ?? []) if (!TEMPORARY_FLAGS.includes(f)) err(`unknown flag "${f}".`);
   if (e.effect === 'ModifyPT' && e.power === undefined && e.toughness === undefined) err('ModifyPT needs power or toughness.');
   if (ABILITY_ONLY_TARGETS.has(e.target) && !inAbility) err(`"${e.target}" can only be used in abilities.`);
+  if ((e.upTo || e.group) && !CHOSEN_TARGET_KINDS.includes(e.target)) err('upTo and group are only for chosen targets.');
+  if (e.effect === 'AttachEquipmentTo' && e.from === undefined) err('AttachEquipmentTo needs "from": which target is the Equipment.');
+  if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
 }
 
 function validateTrigger(t: TriggerSpec, err: Err): void {

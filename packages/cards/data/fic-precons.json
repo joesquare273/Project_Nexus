@@ -236,12 +236,8 @@
           "count": 1,
           "set": "fic",
           "number": "79",
-          "implemented": false,
-          "needs": [
-            "avalanche",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Red XIII, Proud Warrior",
@@ -686,10 +682,8 @@
           "count": 1,
           "set": "fic",
           "number": "300",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Harmonize",
@@ -1007,10 +1001,8 @@
           "count": 1,
           "set": "fic",
           "number": "20",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Espers to Magicite",
@@ -1274,12 +1266,8 @@
           "count": 1,
           "set": "fic",
           "number": "284",
-          "implemented": false,
-          "needs": [
-            "intimidate",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Combustible Gearhulk",
@@ -1353,11 +1341,8 @@
           "count": 1,
           "set": "fic",
           "number": "348",
-          "implemented": false,
-          "needs": [
-            "activated-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Solemn Simulacrum",
@@ -1541,14 +1526,8 @@
           "count": 1,
           "set": "fic",
           "number": "229",
-          "implemented": false,
-          "needs": [
-            "cycling",
-            "landcycling",
-            "plainscycling",
-            "typecycling",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Palace Jailer",
@@ -2173,12 +2152,8 @@
           "count": 1,
           "set": "fic",
           "number": "97",
-          "implemented": false,
-          "needs": [
-            "blitzball-captain",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Collective Effort",
@@ -2262,12 +2237,8 @@
           "count": 1,
           "set": "fic",
           "number": "257",
-          "implemented": false,
-          "needs": [
-            "support",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Chasm Skulker",
@@ -2333,11 +2304,8 @@
           "count": 1,
           "set": "fic",
           "number": "305",
-          "implemented": false,
-          "needs": [
-            "support",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Gyre Sage",
@@ -2386,11 +2354,8 @@
           "count": 1,
           "set": "fic",
           "number": "314",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tireless Tracker",
@@ -3190,10 +3155,8 @@
           "count": 1,
           "set": "fic",
           "number": "230",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Authority of the Consuls",

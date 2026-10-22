@@ -5,6 +5,35 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### "Up to N targets" and support (C2, step 2)
+
+Targets can now be left out when a card says "up to": the board shows a
+**No target** button, and "up to two target ..." can't pick the same thing
+twice. Also new: searching for several cards ("up to two basic land
+cards"), a dead creature's last power ("where X is this creature's power"),
+counters you put on someone else's creature, "whenever this becomes
+untapped", "return it to its owner's hand when it dies this turn",
+intimidate, and putting a land from your hand onto the battlefield.
+
+Fixes found by the Commander fuzz test along the way:
+
+- The AI now finds its creatures by who controls them, not whose
+  battlefield list they sit in, so it no longer tries to attack with a
+  creature someone took from it.
+- Cards in the graveyard of a player who has left the game can't be
+  targeted (rule 800.4a).
+- With many possible "up to" targets, the list of legal choices could come
+  out empty; invalid combinations are now dropped while it is built.
+- `node packages/bots/src/repro.ts --seed N --players P --format commander`
+  replays one fuzz game and prints how it failed.
+
+11 precon cards built (`packages/bots/test/precon-targets.test.ts`):
+General Leo Cristophe, Angel of the Ruins, Sepulchral Primordial, Key to
+the City, Generous Patron, Together Forever, Wakka, Rampant Rejuvenator,
+Cultivate, Archaeomancer's Map and Barret (with the Rebel token). 137 of
+320 distinct precon cards are now built (Revival Trance 56/100, Limit
+Break 54, Counter Blitz 49, Scions & Spellcraft 47).
+
 ### Choosing cards: discard and sacrifice (C2, step 1)
 
 Players now choose cards as spells and abilities resolve: which cards to
@@ -91,8 +120,8 @@ card-by-card work:
 1. **Choose cards: sacrifice and discard.** Done 2026-10-22 (15 cards; see
    above). Most of the other cards that mention discarding or sacrificing
    also need a later step (Sagas, X costs, rebound, convoke, crew...).
-2. **"Up to N targets" and support** (17 cards): Generous Patron, Together
-   Forever, General Leo, Angel of the Ruins, Cloud's Limit Break...
+2. **"Up to N targets" and support.** Done 2026-10-22 (11 cards; see above).
+   The rest of that list also needs Sagas, X costs, convoke or copies.
 3. **Other counter kinds** (15): stun, shield, page, vow, flying, lore.
 4. **New tokens** (14): Clue (investigate), Food, Soldier, Spirit, Bird...
    Add each to `packages/cards/data/tokens.json` by its exact Scryfall

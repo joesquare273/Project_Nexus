@@ -2,7 +2,7 @@
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { hasFlag, hasKeyword, staticAffects } from './characteristics.ts';
+import { hasFlag, hasKeyword, staticAffects, powerOf } from './characteristics.ts';
 import { entersTapped } from './typerules.ts';
 import {
   MANA_TYPES,
@@ -177,6 +177,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (toList) toList.push(id);
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
+  const lastPower = from === 'battlefield' && hasType(s, c, 'creature') ? powerOf(s, c) : undefined;
   if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
     s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
@@ -193,6 +194,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;
   delete c.castFromGraveyard;
+  delete c.countersTurn;
+  if (from === 'battlefield') c.lastPower = lastPower;
+  else delete c.lastPower;
   delete c.commanderStays;
   if (!opts.silent) {
     ctx.ev.push({
@@ -268,6 +272,7 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   const s = ctx.s;
   const source = s.cards[sourceId]!;
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat });
+  if (target.kind === 'none') return;
   if (target.kind === 'player') {
     changeLife(ctx, target.player, -amount);
     // Commander damage (rule 903.10a): combat damage from a commander is tracked per commander.
@@ -290,12 +295,15 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
 export function putIntoGraveyard(ctx: Ctx, id: InstanceId): void {
   const s = ctx.s;
   const c = s.cards[id]!;
+  const backToHand = hasFlag(s, c, 'returnToHandIfDies');
   if (hasFlag(s, c, 'exileIfWouldDie')) {
     moveCard(ctx, id, 'exile');
     return;
   }
   if (hasType(s, c, 'creature')) ctx.ev.push({ type: 'CreatureDied', card: id, defId: c.defId, owner: c.owner });
   moveCard(ctx, id, 'graveyard');
+  // "When that creature dies this turn, return that card to its owner's hand."
+  if (backToHand && c.zone === 'graveyard') moveCard(ctx, id, 'hand');
 }
 
 /** Destroys a permanent unless it is indestructible. Returns whether it was destroyed. */
@@ -312,7 +320,7 @@ export function sacrifice(ctx: Ctx, id: InstanceId): void {
   putIntoGraveyard(ctx, id);
 }
 
-export function addCounters(ctx: Ctx, id: InstanceId, amount: number): void {
+export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: PlayerId): void {
   const s = ctx.s;
   const c = s.cards[id]!;
   if (c.zone !== 'battlefield' || amount <= 0) return;
@@ -323,7 +331,8 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number): void {
     }
   }
   c.counters = (c.counters ?? 0) + amount;
-  ctx.ev.push({ type: 'CountersAdded', card: id, amount });
+  c.countersTurn = s.turnNumber;
+  ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}) });
 }
 
 /** Creates a token on the battlefield under `controller`'s control (rule 111). */

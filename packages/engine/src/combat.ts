@@ -1,6 +1,7 @@
 // Combat for pods: each attacker picks a defending player, and each
 // defending player declares their own blockers (PRD 7.4).
 
+import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { applyStateBasedActions } from './sba.ts';
 import { enterStep, givePriority } from './turn.ts';
@@ -37,6 +38,11 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (hasKeyword(s, attacker, 'NonbasicLandwalk')) {
     const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
     if (defenderLands.some((c) => s.cardDefs[c.defId]!.types.includes('land') && !isBasicLand(s.cardDefs[c.defId]!))) return false;
+  }
+  // Intimidate (rule 702.13): only artifact creatures and creatures that share a color with it.
+  if (hasKeyword(s, attacker, 'Intimidate') && !s.cardDefs[blocker.defId]!.types.includes('artifact')) {
+    const colors = colorsOf(s.cardDefs[attacker.defId]!);
+    if (!colorsOf(s.cardDefs[blocker.defId]!).some((c) => colors.includes(c))) return false;
   }
   return true;
 }

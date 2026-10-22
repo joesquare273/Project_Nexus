@@ -180,13 +180,20 @@ export function alternativeCostProblem(s: GameState, def: CardDefinition, player
 // ---------------------------------------------------------------------------
 
 /** Whether `t` is a legal choice for one chosen target of `effect`. */
+/** For triggered abilities: the player attacked or damaged ("artifact that player controls"). */
+export interface TargetContext {
+  defender?: PlayerId;
+}
+
 export function isLegalTarget(
   s: GameState,
   effect: EffectSpec,
   t: Target,
   controller: PlayerId,
   source?: InstanceId,
+  context: TargetContext = {},
 ): boolean {
+  if (t.kind === 'none') return !!effect.upTo;
   const kind = effect.target;
   if (t.kind === 'player') {
     const p = s.players[t.player];
@@ -196,8 +203,11 @@ export function isLegalTarget(
   }
   const c = s.cards[t.card];
   if (!c) return false;
-  const viewpoint = { controller, ...(source ? { source } : {}) };
-  if (kind === 'TargetCardInGraveyard') return c.zone === 'graveyard' && matchesObject(s, effect.filter, c, viewpoint);
+  const viewpoint = { controller, ...(source ? { source } : {}), ...(context.defender ? { defender: context.defender } : {}) };
+  if (kind === 'TargetCardInGraveyard') {
+    // A player who left the game took their cards with them (rule 800.4a).
+    return c.zone === 'graveyard' && !s.players[c.owner]!.eliminated && matchesObject(s, effect.filter, c, viewpoint);
+  }
   if (c.zone !== 'battlefield') return false;
   // Shroud: nobody can target it. Hexproof: its controller's opponents can't (rules 702.11, 702.18).
   if (hasKeyword(s, c, 'Shroud')) return false;
@@ -210,13 +220,21 @@ export function isLegalTarget(
 }
 
 /** Every legal choice for one chosen target: living players, then permanents, then graveyard cards. */
-export function targetOptions(s: GameState, effect: EffectSpec, controller: PlayerId, source?: InstanceId): Target[] {
+export function targetOptions(
+  s: GameState,
+  effect: EffectSpec,
+  controller: PlayerId,
+  source?: InstanceId,
+  context: TargetContext = {},
+): Target[] {
   const all: Target[] = alivePlayers(s).map((p) => ({ kind: 'player', player: p }));
   for (const c of battlefield(s)) all.push({ kind: 'card', card: c.id });
   if (effect.target === 'TargetCardInGraveyard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
   }
-  return all.filter((t) => isLegalTarget(s, effect, t, controller, source));
+  // "Up to one": leaving it out is a choice too.
+  if (effect.upTo) all.push({ kind: 'none' });
+  return all.filter((t) => isLegalTarget(s, effect, t, controller, source, context));
 }
 
 /** Checks a list of chosen targets against the effects that need them. */
@@ -226,12 +244,41 @@ export function checkTargets(
   targets: Target[],
   controller: PlayerId,
   source?: InstanceId,
+  context: TargetContext = {},
 ): void {
   const needs = choosingEffects(effects);
+  const grouped = groupProblem(s, needs, targets);
+  if (grouped) reject(grouped);
   if (targets.length !== needs.length) reject(`This needs ${needs.length} target(s).`);
   needs.forEach((effect, i) => {
-    if (!isLegalTarget(s, effect, targets[i]!, controller, source)) reject(`Target ${i + 1} is not legal.`);
+    if (!isLegalTarget(s, effect, targets[i]!, controller, source, context)) reject(`Target ${i + 1} is not legal.`);
   });
+}
+
+/**
+ * Targets from one "up to N targets" phrase (the same `group`) must be
+ * different objects, and with `groupOwnersDiffer` belong to different players.
+ */
+export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets: readonly Target[]): string | null {
+  const seen = new Map<string, { cards: Set<string>; owners: Set<string> }>();
+  for (let i = 0; i < needs.length; i++) {
+    const group = needs[i]!.group;
+    const t = targets[i];
+    if (!group || t?.kind !== 'card') continue;
+    const g = seen.get(group) ?? { cards: new Set(), owners: new Set() };
+    if (g.cards.has(t.card)) return 'Choose different targets.';
+    const owner = s.cards[t.card]?.owner ?? '';
+    if (needs[i]!.groupOwnersDiffer && g.owners.has(owner)) return 'Choose targets belonging to different players.';
+    g.cards.add(t.card);
+    g.owners.add(owner);
+    seen.set(group, g);
+  }
+  return null;
+}
+
+/** A stack item's trigger context. */
+function contextOf(item: StackItem): TargetContext {
+  return item.kind === 'ability' && item.defender ? { defender: item.defender } : {};
 }
 
 function sourceOf(item: StackItem): InstanceId {
@@ -243,7 +290,7 @@ function allTargetsIllegal(s: GameState, item: StackItem): boolean {
   const needs = choosingEffects(effectsOf(s, item));
   return (
     needs.length > 0 &&
-    needs.every((e, i) => !isLegalTarget(s, e, item.targets[i]!, item.controller, sourceOf(item)))
+    needs.every((e, i) => !isLegalTarget(s, e, item.targets[i]!, item.controller, sourceOf(item), contextOf(item)))
   );
 }
 
@@ -549,7 +596,7 @@ export function activateAbility(
 // ---------------------------------------------------------------------------
 
 function controllerOfTarget(s: GameState, t: Target | undefined): PlayerId | null {
-  if (!t) return null;
+  if (!t || t.kind === 'none') return null;
   if (t.kind === 'player') return t.player;
   const c = s.cards[t.card];
   if (!c) return null;
@@ -608,13 +655,13 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return toPlayers(effect.target === 'EachOpponentWhoChose' ? opponents.filter(chose) : opponents.filter((id) => !chose(id)));
     }
     case 'AllPermanents': {
-      const viewpoint = { controller: item.controller, source: sourceOf(item) };
+      const viewpoint = { controller: item.controller, source: sourceOf(item), ...contextOf(item) };
       return battlefield(s)
         .filter((c) => matchesObject(s, effect.filter, c, viewpoint))
         .map((c) => ({ kind: 'card', card: c.id }));
     }
     default:
-      return chosen && isLegalTarget(s, effect, chosen, item.controller, sourceOf(item)) ? [chosen] : [];
+      return chosen && isLegalTarget(s, effect, chosen, item.controller, sourceOf(item), contextOf(item)) ? [chosen] : [];
   }
 }
 
@@ -633,7 +680,9 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
           ? (r.destroyedCount ?? 0)
           : a.of === 'chosenCount'
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
-            : (r.chosenManaValue ?? 0);
+            : a.of === 'sourcePower'
+              ? sourcePower(s, r.item)
+              : (r.chosenManaValue ?? 0);
     return base + (a.plus ?? 0);
   }
   return amountOf(s, a, r.item.controller);
@@ -651,6 +700,13 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
   const order = aliveFromActive(s).filter((pid) => players.includes(pid));
   const source = sourceOf(r.item);
   for (const pid of order) {
+    if (effect.effect === 'PutFromHand') {
+      const cards = s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
+      if (cards.length === 0) continue;
+      const max = Math.min(Math.max(1, amount), cards.length);
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'battlefield', cards, min: effect.optional ? 0 : max, max }];
+      continue;
+    }
     if (effect.effect === 'Discard') {
       const hand = s.players[pid]!.hand;
       if (hand.length === 0) continue;
@@ -704,6 +760,13 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
     if (!fits(0, new Set())) return `Choose at most one ${types.join(', one ')}.`;
   }
   return null;
+}
+
+/** "This creature's power": now, or as it last was on the battlefield if it has left (rule 608.2h). */
+function sourcePower(s: GameState, item: StackItem): number {
+  const c = s.cards[sourceOf(item)]!;
+  if (c.zone === 'battlefield') return Math.max(0, powerOf(s, c));
+  return Math.max(0, c.lastPower ?? defOf(s, c).power ?? 0);
 }
 
 /** The players among an effect's targets (searches act for these players). */
@@ -789,7 +852,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) moveCard(ctx, id, 'hand');
       return;
     case 'AddCounters':
-      for (const id of onBattlefield) addCounters(ctx, id, amount);
+      for (const id of onBattlefield) addCounters(ctx, id, amount, item.controller);
       return;
     case 'CreateToken':
       for (let i = 0; i < Math.max(1, amount); i++) r.createdTokens.push(createToken(ctx, effect.token!, item.controller));
@@ -846,6 +909,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const c = s.cards[id]!;
         if (c.zone !== 'graveyard') continue;
         moveCard(ctx, id, 'battlefield');
+        if (effect.underYourControl) c.controller = item.controller;
         c.summoningSick = true;
         if (entersTapped(s, c)) c.tapped = true;
         addCounters(ctx, id, effect.counters ?? 0);
@@ -859,8 +923,23 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (!isCreatureOnBattlefield(s, s.cards[source])) return;
       for (const id of onBattlefield) attach(ctx, id, source);
       return;
-    case 'Untap':
-      for (const id of onBattlefield) s.cards[id]!.tapped = false;
+    case 'Untap': {
+      const untapped = onBattlefield.filter((id) => s.cards[id]!.tapped);
+      for (const id of untapped) s.cards[id]!.tapped = false;
+      if (untapped.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: item.controller, cards: untapped });
+      return;
+    }
+    case 'ChooseTarget':
+      return;
+    case 'AttachEquipmentTo': {
+      const t = effect.from !== undefined ? item.targets[effect.from] : undefined;
+      const equipment = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      if (!equipment || equipment.zone !== 'battlefield' || equipment.controller !== item.controller) return;
+      for (const id of onBattlefield) attach(ctx, equipment.id, id);
+      return;
+    }
+    case 'PutFromHand':
+      queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Proliferate':
       for (const pid of targetPlayers(targets)) {
@@ -890,10 +969,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // Usually "you search"; Path to Exile has the exiled creature's controller search.
       for (const searcher of targetPlayers(targets)) {
         const p = s.players[searcher]!;
-        const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
-        if (found) {
-          moveCard(ctx, found, 'battlefield');
-          const c = s.cards[found]!;
+        // One card, or up to `amount` ("up to X basic land cards"; simplified: as many as possible).
+        const howMany = effect.amount === undefined ? 1 : amount;
+        const found = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher })).slice(0, howMany);
+        for (const id of found) {
+          moveCard(ctx, id, 'battlefield');
+          const c = s.cards[id]!;
           c.controller = searcher;
           c.summoningSick = true;
           if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
@@ -904,8 +985,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'SearchLibraryToHand': {
       const p = s.players[item.controller]!;
-      const found = p.library.find((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
-      if (found) moveCard(ctx, found, 'hand');
+      const howMany = effect.amount === undefined ? 1 : amount;
+      const found = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })).slice(0, howMany);
+      for (const id of found) moveCard(ctx, id, 'hand');
       shuffleInPlace(s, p.library);
       ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
       return;
@@ -1052,6 +1134,15 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
   if (pending.purpose === 'discard') for (const id of cards) discard(ctx, id);
+  else if (pending.purpose === 'battlefield') {
+    for (const id of cards) {
+      moveCard(ctx, id, 'battlefield');
+      const c = s.cards[id]!;
+      c.controller = pending.player;
+      c.summoningSick = true;
+      if (entersTapped(s, c)) c.tapped = true;
+    }
+  }
   else if (pending.purpose === 'sacrifice') for (const id of cards) sacrifice(ctx, id);
   else for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]!.zone === 'battlefield') sacrifice(ctx, id);
   // Whose cards they were: the chooser's own, except when the spell's controller chose for everyone.
