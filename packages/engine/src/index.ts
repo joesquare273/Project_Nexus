@@ -11,6 +11,7 @@ export {
   activatedAbilities,
   canEverCast,
   canPayFromPool,
+  choiceProblem,
   effectsOf,
   playableZone,
   spellEffects,

@@ -192,6 +192,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.attachedTo;
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;
+  delete c.castFromGraveyard;
   delete c.commanderStays;
   if (!opts.silent) {
     ctx.ev.push({
@@ -368,4 +369,11 @@ export function emptyAllManaPools(s: GameState): void {
     s.players[id]!.manaPool = emptyManaPool();
     s.players[id]!.equipmentMana = emptyManaPool();
   }
+}
+
+/** Discards a card from its owner's hand (rule 701.8). */
+export function discard(ctx: Ctx, id: InstanceId): void {
+  const c = ctx.s.cards[id]!;
+  moveCard(ctx, id, 'graveyard');
+  ctx.ev.push({ type: 'Discarded', player: c.owner, card: id });
 }

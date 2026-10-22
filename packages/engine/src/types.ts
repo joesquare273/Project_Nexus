@@ -92,6 +92,13 @@ export const TARGET_KINDS = [
   /** Every permanent matching the effect's `filter` ("destroy all artifacts", "exile all creatures"). */
   'AllPermanents',
   'You',
+  /** The player whose turn it is ("at the beginning of each opponent's end step, that player ..."). */
+  'ActivePlayer',
+  /** The players who chose at least one card in the last choice ("each player who discarded a card this way"). */
+  'EachPlayerWhoChose',
+  'EachOpponentWhoChose',
+  /** Opponents who chose nothing in the last choice ("each opponent who doesn't [sacrifice]"). */
+  'EachOpponentWhoDidNotChoose',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
@@ -168,6 +175,20 @@ export const EFFECT_KINDS = [
    * the top card; a permanent card is put onto the battlefield (Chaos Warp).
    */
   'ShuffleIntoLibraryReveal',
+  /**
+   * Each target player discards `amount` cards of their choice (`anyNumber`:
+   * as many as they like; `wholeHand`: their whole hand or nothing, their
+   * choice; `optional`: up to `amount`).
+   */
+  'Discard',
+  /** Each target player sacrifices `amount` permanents matching `filter`, their choice (`optional`: up to `amount`). */
+  'Sacrifice',
+  /**
+   * Each target player keeps up to `amount` permanents matching `filter` and
+   * sacrifices the rest. The player chooses, or the spell's controller with
+   * `chooser: 'You'` (with `onePerType`: at most one of each of those types).
+   */
+  'KeepAndSacrificeRest',
 ] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
 
@@ -184,6 +205,7 @@ export const COUNT_KINDS = [
   /** Creatures you control with one or more +1/+1 counters on them. */
   'CreaturesYouControlWithCounters',
   'CreatureCardsInYourGraveyard',
+  'InstantAndSorceryCardsInYourGraveyard',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -197,7 +219,12 @@ export type Amount =
   | number
   /** `times` multiplies the total ("twice the number of creature cards in your graveyard"). */
   | { count: CountKind[]; times?: number }
-  | { of: 'previousTargetPower' | 'destroyedThisWay' };
+  /**
+   * From earlier in the same spell or ability: the previous target's power,
+   * permanents destroyed, or the cards chosen in the last choice (how many,
+   * their total mana value), plus `plus` ("that many cards plus one").
+   */
+  | { of: 'previousTargetPower' | 'destroyedThisWay' | 'chosenCount' | 'chosenManaValue'; plus?: number };
 
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
@@ -232,6 +259,20 @@ export interface EffectSpec {
   entersTapped?: boolean;
   /** Exile: also exile every token that player controls with the same name (Legions to Ashes). */
   sameNameTokens?: boolean;
+  /** Discard: as many cards as they like. */
+  anyNumber?: boolean;
+  /** Discard: "may discard their hand": all of it or none. */
+  wholeHand?: boolean;
+  /** Discard, Sacrifice: "may": up to `amount` instead of exactly. */
+  optional?: boolean;
+  /** KeepAndSacrificeRest: the spell's controller chooses for each player (Tragic Arrogance). */
+  chooser?: 'You';
+  /** KeepAndSacrificeRest: keep at most one of each of these types. */
+  onePerType?: CardType[];
+  /** Only if the last choice picked something ("If you do"), or a creature / noncreature card (Mog). */
+  ifChose?: 'any' | 'creature' | 'noncreature';
+  /** ExileTopCardToPlay: playable until end of turn, not while you control the source. */
+  thisTurn?: boolean;
 }
 
 /**
@@ -247,6 +288,8 @@ export const TRIGGER_EVENTS = [
   'CombatDamageToPlayer',
   'BeginCombat',
   'Upkeep',
+  /** "At the beginning of your end step". */
+  'EndStep',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -288,6 +331,8 @@ export interface ObjectFilter {
   noCounters?: boolean;
   /** Has one or more +1/+1 counters on it ("each creature you control with a +1/+1 counter on it"). */
   hasCounters?: boolean;
+  /** Is (or, with false, isn't) a token ("nontoken creature"). */
+  token?: boolean;
 }
 
 export interface TriggerSpec {
@@ -297,8 +342,10 @@ export interface TriggerSpec {
    * creature enters"). Ignored for BeginCombat and Upkeep.
    */
   what?: ObjectFilter;
-  /** BeginCombat and Upkeep: on your turn only (the default) or on each turn. */
-  turn?: 'Yours' | 'Each';
+  /** BeginCombat, Upkeep and EndStep: on your turn only (the default), on each turn, or on each opponent's turn. */
+  turn?: 'Yours' | 'Each' | 'Opponents';
+  /** EntersBattlefield: only for permanents that came from a graveyard or were cast from one (Celes). */
+  fromGraveyard?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
   zone?: 'battlefield' | 'graveyard';
   /** "Whenever one or more ...": triggers once per batch of simultaneous events. */
@@ -323,6 +370,10 @@ export interface ActivatedSpec {
     discardThis?: boolean;
     /** Sacrifice this permanent. */
     sacrificeThis?: boolean;
+    /** "Discard a card": the cards are chosen with the action (`costCards`). */
+    discard?: number;
+    /** "Sacrifice a creature": one permanent you control matching this, chosen with the action (`costCards`). */
+    sacrifice?: ObjectFilter;
   };
   /** Where the card must be. Defaults to the battlefield. */
   zone?: 'battlefield' | 'hand';
@@ -445,6 +496,8 @@ export interface CardDefinition {
   };
   /** "This spell can't be countered." */
   cantBeCountered?: boolean;
+  /** "As an additional cost to cast this spell, discard a card": chosen with the action (`costCards`). */
+  additionalCost?: { discard: number };
   /** "This creature enters with N +1/+1 counters on it." */
   entersWithCounters?: number;
   /** A token's definition, created by effects rather than played from a deck. */
@@ -497,7 +550,10 @@ export interface CardInstance {
   /** Exiled "until [source] leaves the battlefield". */
   exiledUntilLeaves?: InstanceId;
   /** In exile, and `player` may play it as long as they control `source`. */
-  playableFromExile?: { player: PlayerId; source: InstanceId };
+  /** `untilTurn`: playable until the end of that turn instead of while `player` controls `source`. */
+  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number };
+  /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
+  castFromGraveyard?: boolean;
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */
@@ -626,6 +682,29 @@ export interface Resolving {
   surveilQueue: InstanceId[];
   /** The cards being looked at are for a scry (bottom of the library) rather than a surveil (graveyard). */
   scrying?: boolean;
+  /** Card choices still to make, in order (discard, sacrifice). */
+  choiceQueue?: CardChoice[];
+  /** What each player chose in the last choosing effect. */
+  chosen?: { player: PlayerId; cards: InstanceId[] }[];
+  /** Mana value of all cards chosen in the last choosing effect, measured as they were chosen. */
+  chosenManaValue?: number;
+  /** Whether the cards chosen in the last choosing effect included a creature / a noncreature card. */
+  chosenTypes?: { creature: boolean; noncreature: boolean };
+}
+
+/** One player's choice of cards while a spell or ability resolves. */
+export interface CardChoice {
+  player: PlayerId;
+  /** What happens to the chosen cards: discarded, sacrificed, or kept (and the other candidates sacrificed). */
+  purpose: 'discard' | 'sacrifice' | 'keep';
+  /** The cards to choose from. */
+  cards: InstanceId[];
+  min: number;
+  max: number;
+  /** All of `cards` or none (discarding a whole hand). */
+  allOrNothing?: boolean;
+  /** At most one card of each of these types (Tragic Arrogance). */
+  onePerType?: CardType[];
 }
 
 export interface Attack {
@@ -675,6 +754,8 @@ export type Pending =
   | { kind: 'mulligan'; player: PlayerId; taken: number; queue: PlayerId[] }
   /** London mulligan: put `count` cards from your kept hand on the bottom of your library. */
   | { kind: 'bottomCards'; player: PlayerId; count: number; queue: PlayerId[] }
+  /** Choose cards while a spell or ability resolves: to discard, to sacrifice, or to keep. */
+  | ({ kind: 'chooseCards' } & CardChoice)
   | { kind: 'gameOver' };
 
 export interface GameState {
@@ -691,6 +772,13 @@ export interface GameState {
   stack: StackItem[];
   /** A spell or ability partway through resolving. */
   resolving: Resolving | null;
+  /**
+   * The queued triggers came from mana abilities and wait: if the player next
+   * casts a spell or activates an ability, they go on the stack above it
+   * (paying while casting, rule 601.2i); any other action puts them on the
+   * stack first (rule 117.3c).
+   */
+  triggersHeld?: boolean;
   /** Triggered abilities waiting to go on the stack, in APNAP order. */
   triggerQueue: QueuedTrigger[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
@@ -719,9 +807,20 @@ export type Action =
    * `mode` for "choose one" spells; `modes` (in printed order) for "choose two"
    * or "choose one or more". `alternative`: pay the card's alternative cost.
    */
-  | { type: 'CastSpell'; player: PlayerId; card: InstanceId; targets?: Target[]; mode?: number; modes?: number[]; alternative?: boolean }
+  | {
+      type: 'CastSpell';
+      player: PlayerId;
+      card: InstanceId;
+      targets?: Target[];
+      mode?: number;
+      modes?: number[];
+      alternative?: boolean;
+      /** Cards discarded to pay an additional cost. */
+      costCards?: InstanceId[];
+    }
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType }
-  | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[] }
+  /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
+  | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[] }
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
@@ -734,6 +833,8 @@ export type Action =
   | { type: 'Mulligan'; player: PlayerId; keep: boolean }
   /** After keeping a mulliganed hand: the cards to put on the bottom, top one first. */
   | { type: 'BottomCards'; player: PlayerId; cards: InstanceId[] }
+  /** The cards chosen for a pending `chooseCards`. */
+  | { type: 'ChooseCards'; player: PlayerId; cards: InstanceId[] }
   | { type: 'Concede'; player: PlayerId };
 
 // ---------------------------------------------------------------------------
@@ -759,6 +860,7 @@ export type GameEvent =
       equippedBy?: InstanceId[];
     }
   | { type: 'TokenCreated'; card: InstanceId; defId: CardDefId; controller: PlayerId }
+  | { type: 'Discarded'; player: PlayerId; card: InstanceId }
   | { type: 'CardTapped'; card: InstanceId }
   | { type: 'CardsUntapped'; player: PlayerId; cards: InstanceId[] }
   | { type: 'ManaAdded'; player: PlayerId; mana: ManaType; source: InstanceId }

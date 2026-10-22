@@ -4,6 +4,7 @@
 // safe or lethal, and block to trade up or to survive.
 
 import {
+  choiceProblem,
   CHOSEN_TARGET_KINDS,
   abilityOptions,
   activatedAbilities,
@@ -48,8 +49,56 @@ function creatures(s: GameState, owner: PlayerId): CardInstance[] {
   return s.players[owner]!.battlefield.map((id) => s.cards[id]!).filter((c) => def(s, c).types.includes('creature'));
 }
 
-function weakestOpponent(s: GameState, me: PlayerId): PlayerId {
-  return opponents(s, me).sort((a, b) => s.players[a]!.life - s.players[b]!.life)[0]!;
+/**
+ * What a bot remembers between decisions: how much damage each player has
+ * sent its way. Real players hold a grudge.
+ */
+export interface Memory {
+  grudge: Record<PlayerId, number>;
+}
+
+/** Damage a creature would deal in combat: power, twice with double strike. */
+function hitFor(s: GameState, c: CardInstance): number {
+  return Math.max(0, power(s, c)) * (has(s, c, 'DoubleStrike') ? 2 : 1);
+}
+
+/** Creatures that could attack on their controller's next turn. */
+function attackers(s: GameState, owner: PlayerId): CardInstance[] {
+  return creatures(s, owner).filter((c) => power(s, c) > 0);
+}
+
+/**
+ * How dangerous an opponent is to `me`, the way a player sizes up the table:
+ * the damage their board could deal (more for creatures that are hard to
+ * block), their mana and cards in hand (what they could do next), how
+ * healthy they are, commander damage they've already dealt us, and any grudge.
+ */
+export function threatOf(s: GameState, me: PlayerId, opp: PlayerId, memory?: Memory): number {
+  const p = s.players[opp]!;
+  let board = 0;
+  for (const c of attackers(s, opp)) {
+    const evasive = has(s, c, 'Flying') || has(s, c, 'Menace') || has(s, c, 'Trample') || has(s, c, 'NonbasicLandwalk');
+    board += hitFor(s, c) * (evasive ? 1.5 : 1);
+  }
+  const lands = p.battlefield.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
+  const others = p.battlefield.length - lands - creatures(s, opp).length;
+  const commanderDamage = Object.entries(s.players[me]!.commanderDamage)
+    .filter(([id]) => s.cards[id]?.owner === opp)
+    .reduce((n, [, d]) => n + d, 0);
+  return (
+    board * 2 +
+    lands * 0.5 +
+    others * 1 +
+    p.hand.length * 0.75 +
+    p.life * 0.15 +
+    commanderDamage * 0.5 +
+    (memory?.grudge[opp] ?? 0) * 0.5
+  );
+}
+
+/** Untapped creatures of `opp` that could block `attacker`. */
+function blockersFor(s: GameState, opp: PlayerId, attacker: CardInstance): CardInstance[] {
+  return creatures(s, opp).filter((b) => !b.tapped && canBlock(s, b, attacker));
 }
 
 /** Would `blocker` be able to block `attacker`? The engine's own evasion rules. */
@@ -224,21 +273,70 @@ function bestPlay(s: GameState, me: PlayerId, legal: Action[]): Action | null {
 // Combat
 // ---------------------------------------------------------------------------
 
-function chooseAttacks(s: GameState, me: PlayerId): Attack[] {
-  const defender = weakestOpponent(s, me);
+/**
+ * Whom to attack, with what (threat assessment). In order:
+ *  1. If attacking one opponent with everything is likely lethal, do it
+ *     (the most threatening such opponent).
+ *  2. Keep back enough blockers if an opponent could kill us next turn.
+ *  3. Send each other attacker where it does the most good: at an opponent
+ *     who can't profitably block it, weighted by how threatening they are,
+ *     how close they are to dying, and any grudge.
+ */
+function chooseAttacks(s: GameState, me: PlayerId, memory?: Memory): Attack[] {
   const ready = creatures(s, me).filter(
     (c) => !c.tapped && (!c.summoningSick || has(s, c, 'Haste')) && power(s, c) > 0,
   );
-  const blockers = creatures(s, defender).filter((c) => !c.tapped);
-  const total = ready.reduce((n, c) => n + power(s, c), 0);
-  // Swing with everything if that's likely lethal against an empty board.
-  if (blockers.length === 0 || total >= s.players[defender]!.life + blockers.length * 2) {
-    return ready.map((c) => ({ attacker: c.id, defender }));
+  const opps = opponents(s, me);
+  if (ready.length === 0 || opps.length === 0) return [];
+  const threat = new Map(opps.map((o) => [o, threatOf(s, me, o, memory)]));
+
+  // 1. Lethal: total damage beats their life plus what their blockers could soak up.
+  const lethalOn = opps
+    .filter((o) => {
+      const blockers = creatures(s, o).filter((c) => !c.tapped);
+      const total = ready.reduce((n, c) => n + hitFor(s, c), 0);
+      const soak = blockers.length * Math.max(2, ...ready.map((c) => hitFor(s, c)));
+      return blockers.length === 0 ? total >= s.players[o]!.life : total - soak >= s.players[o]!.life;
+    })
+    .sort((a, b) => threat.get(b)! - threat.get(a)!);
+  if (lethalOn.length > 0) return ready.map((c) => ({ attacker: c.id, defender: lethalOn[0]! }));
+
+  // 2. Defense: the most damage any one opponent could swing at us next turn.
+  const myLife = s.players[me]!.life;
+  const incoming = Math.max(0, ...opps.map((o) => attackers(s, o).reduce((n, c) => n + hitFor(s, c), 0)));
+  const holdBack = new Set<InstanceId>();
+  if (incoming >= myLife) {
+    // Keep the sturdiest creatures home until the expected damage is survivable.
+    let stopped = 0;
+    for (const c of [...ready].sort((a, b) => toughness(s, b) - toughness(s, a))) {
+      if (incoming - stopped < myLife) break;
+      holdBack.add(c.id);
+      stopped += Math.max(...opps.flatMap((o) => attackers(s, o).map((a) => hitFor(s, a))), 0);
+    }
   }
-  // Otherwise attack only with creatures no single blocker can kill without dying.
-  return ready
-    .filter((a) => !blockers.some((b) => canBlock(s, b, a) && kills(s, b, a) && !kills(s, a, b)))
-    .map((c) => ({ attacker: c.id, defender }));
+
+  // 3. Each remaining attacker picks its best defender.
+  const maxThreat = Math.max(1, ...threat.values());
+  const attacks: Attack[] = [];
+  for (const a of ready) {
+    if (holdBack.has(a.id)) continue;
+    let best: { defender: PlayerId; score: number } | null = null;
+    for (const o of opps) {
+      const blockers = blockersFor(s, o, a);
+      // A blocker that kills it and survives makes the attack a loss.
+      if (blockers.some((b) => kills(s, b, a) && !kills(s, a, b))) continue;
+      const getsThrough = blockers.length === 0;
+      const life = s.players[o]!.life;
+      const score =
+        (threat.get(o)! / maxThreat) * 3 + // the biggest threat
+        (getsThrough ? hitFor(s, a) / Math.max(1, life) : 0) * 4 + // damage that matters
+        (getsThrough ? 1 : 0) +
+        Math.max(0, 10 - life) * 0.15; // finishing off a player who's nearly out
+      if (!best || score > best.score) best = { defender: o, score };
+    }
+    if (best) attacks.push({ attacker: a.id, defender: best.defender });
+  }
+  return attacks;
 }
 
 function chooseBlocks(s: GameState, me: PlayerId): Block[] {
@@ -364,12 +462,54 @@ function chooseBottom(s: GameState, me: PlayerId, count: number): Action {
   return { type: 'BottomCards', player: me, cards: bottom };
 }
 
+/**
+ * Choosing cards while something resolves. Discard: like bottoming after a
+ * mulligan (surplus lands, then the most expensive spells); a whole hand only
+ * when it's small. Sacrifice: the least valuable ("may": nothing). Keep: the
+ * most valuable of our own, the least valuable of an opponent's.
+ */
+function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action {
+  const p = s.pending;
+  if (p.kind !== 'chooseCards') return legal[0]!;
+  const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
+  if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
+  if (p.purpose === 'discard') {
+    if (p.max === 0) return pick([]);
+    // "Any number": only cards we'd rather not have (surplus lands).
+    const n = p.min === 0 ? Math.min(p.max, Math.max(0, p.cards.filter((id) => isLandCard(s, id)).length - 2)) : p.min;
+    if (n === 0) return pick([]);
+    const ranked = (chooseBottom(s, me, n) as Extract<Action, { type: 'BottomCards' }>).cards;
+    return pick(ranked.filter((id) => p.cards.includes(id)).slice(0, n));
+  }
+  const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
+  if (p.purpose === 'sacrifice') return pick(byValue.slice(0, p.min));
+  // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
+  const ours = s.cards[p.cards[0]!]!.controller === me;
+  const order = ours ? byValue.reverse() : byValue;
+  const kept: InstanceId[] = [];
+  for (const id of order) {
+    if (kept.length === p.max) break;
+    if (!choiceProblem(s, p, [...kept, id])) kept.push(id);
+  }
+  return pick(kept);
+}
+
 /** The basic AI. `seed` is accepted for symmetry with other bots; this one is deterministic. */
 export function basicAi(_seed = 0): Bot {
+  const memory: Memory = { grudge: {} };
+  const remembered = new Set<string>();
   return (s, legal) => {
     const pending = s.pending;
+    // Remember who attacked us (once per attack), to pay them back later.
+    for (const a of s.combat?.attacks ?? []) {
+      const key = `${s.turnNumber}:${a.attacker}`;
+      const attacker = s.cards[a.attacker];
+      if (pending.kind === 'gameOver' || !attacker || remembered.has(key) || a.defender !== pending.player) continue;
+      remembered.add(key);
+      memory.grudge[attacker.controller] = (memory.grudge[attacker.controller] ?? 0) + hitFor(s, attacker);
+    }
     if (pending.kind === 'declareAttackers') {
-      return { type: 'DeclareAttackers', player: pending.player, attacks: chooseAttacks(s, pending.player) };
+      return { type: 'DeclareAttackers', player: pending.player, attacks: chooseAttacks(s, pending.player, memory) };
     }
     if (pending.kind === 'declareBlockers') {
       const blocks = chooseBlocks(s, pending.player);
@@ -385,6 +525,7 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'commanderZone') return { type: 'CommanderZone', player: pending.player, toCommand: true };
     if (pending.kind === 'mulligan') return chooseMulligan(s, pending.player, pending.taken, legal);
     if (pending.kind === 'bottomCards') return chooseBottom(s, pending.player, pending.count);
+    if (pending.kind === 'chooseCards') return chooseCardsToPick(s, pending.player, legal);
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;
 

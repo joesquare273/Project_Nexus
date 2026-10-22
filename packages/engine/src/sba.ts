@@ -21,6 +21,7 @@ import {
 } from './state.ts';
 import { shuffleInPlace } from './rng.ts';
 import { isLegendary } from './typerules.ts';
+import { resumeResolving } from './stack.ts';
 import type { EliminationReason, PlayerId } from './types.ts';
 
 /**
@@ -169,6 +170,11 @@ function repairPending(ctx: Ctx): void {
       // The resolving spell or ability left with its controller.
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       break;
+    case 'chooseCards':
+      // A player who left doesn't choose; the spell or ability carries on without them.
+      if (!s.resolving) givePriority(ctx, s.activePlayer);
+      else if (s.players[pending.player]!.eliminated) resumeResolving(ctx);
+      break;
     case 'chooseLegend':
     case 'commanderZone':
       if (s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
@@ -258,7 +264,7 @@ export function chooseLegend(ctx: Ctx, playerId: PlayerId, keep: string): void {
  * actions, then triggered abilities go on the stack. Also repairs whose
  * decision it is after eliminations.
  */
-export function stabilize(ctx: Ctx): void {
+export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void {
   const s = ctx.s;
   let scanned = 0;
   // Each repeat eliminates a player, so this is bounded; the guard only
@@ -285,7 +291,11 @@ export function stabilize(ctx: Ctx): void {
     // These need a choice; triggers go on the stack after it's made.
     if (checkCommanderZone(ctx)) return;
     if (checkLegendRule(ctx)) return;
-    if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) placeTriggers(ctx, s.pending.player);
+    if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) {
+      if (opts.holdTriggers) s.triggersHeld = true;
+      else placeTriggers(ctx, s.pending.player);
+    }
+    if (s.triggerQueue.length === 0) delete s.triggersHeld;
     return;
   }
   throw new Error('stabilize did not settle');

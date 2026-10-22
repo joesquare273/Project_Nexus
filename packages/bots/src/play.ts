@@ -8,6 +8,7 @@
 // only stop when a decision matters (type "f" to stop at every step).
 
 import {
+  choiceProblem,
   FREE_FOR_ALL,
   applyAction,
   canBlock,
@@ -466,6 +467,25 @@ async function decideBottom(s: GameState, count: number): Promise<Action[]> {
   }
 }
 
+/** Choosing cards to discard, sacrifice or keep while something resolves. */
+async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind: 'chooseCards' }>): Promise<Action[]> {
+  const verb = p.purpose === 'discard' ? 'discard' : p.purpose === 'sacrifice' ? 'sacrifice' : 'keep (the rest are sacrificed)';
+  if (p.allOrNothing) {
+    const yes = (await ask(`\n  Discard your whole hand (${p.cards.length} cards)? (y/N) `)).toLowerCase() === 'y';
+    return [{ type: 'ChooseCards', player: YOU, cards: yes ? [...p.cards] : [] }];
+  }
+  const how = p.min === p.max ? `${p.min}` : `${p.min} to ${p.max}`;
+  console.log(`\n  Choose ${how} card${p.max === 1 ? '' : 's'} to ${verb}:`);
+  p.cards.forEach((id, i) => console.log(`    ${i + 1}) ${cardName(s, id)}`));
+  for (;;) {
+    const answer = await ask('  Numbers separated by spaces (Enter for none): ');
+    const picks = answer.trim() === '' ? [] : parseNumbers(answer, p.cards.length);
+    const cards = picks?.map((n) => p.cards[n - 1]!);
+    if (cards && !choiceProblem(s, p, cards)) return [{ type: 'ChooseCards', player: YOU, cards }];
+    console.log(`  ${cards ? choiceProblem(s, p, cards) : 'Please type numbers from the list.'}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Game loop
 // ---------------------------------------------------------------------------
@@ -509,6 +529,8 @@ async function playOneGame(gameSeed: number): Promise<void> {
       actions = await decideMulligan(s, pending.taken);
     } else if (pending.kind === 'bottomCards') {
       actions = await decideBottom(s, pending.count);
+    } else if (pending.kind === 'chooseCards') {
+      actions = await decideCards(s, pending);
     } else if (pending.kind === 'surveil') {
       const toGraveyard = (await ask(`  Surveil: put ${cardName(s, pending.card)} into your graveyard? (y/N) `)).toLowerCase() === 'y';
       actions = [{ type: 'Surveil', player: YOU, toGraveyard }];

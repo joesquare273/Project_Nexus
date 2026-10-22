@@ -32,6 +32,10 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   This: 'this card',
   AllPermanents: 'all permanents',
   TriggeringObject: 'that creature',
+  ActivePlayer: 'that player',
+  EachPlayerWhoChose: 'each player who did',
+  EachOpponentWhoChose: 'each opponent who did',
+  EachOpponentWhoDidNotChoose: "each opponent who didn't",
   You: 'you',
 };
 
@@ -80,6 +84,17 @@ function effectText(e: EffectSpec): string {
       return e.target === 'EachPlayer' ? 'exile all graveyards' : `exile ${who === 'you' ? 'your' : `${who}'s`} graveyard`;
     case 'SacrificeGreatestPower':
       return `${who} sacrifices a creature with the greatest power among creatures they control`;
+    case 'Discard':
+      if (e.wholeHand) return `${who} may discard their hand`;
+      return `${you ? 'discard' : `${who} discards`} ${e.anyNumber ? 'any number of cards' : (e.optional ? 'up to ' : '') + plural('card')}`;
+    case 'Sacrifice': {
+      const what = subjectText({ ...e.filter, controller: undefined }, 'permanent');
+      return `${you ? (e.optional ? 'you may sacrifice' : 'sacrifice') : `${who} ${e.optional ? 'may sacrifice' : 'sacrifices'}`} a ${what}`;
+    }
+    case 'KeepAndSacrificeRest': {
+      const kept = e.onePerType ? `one ${e.onePerType.join(', one ')}` : `${n} ${subjectText({ ...e.filter, controller: undefined }, 'permanent', true)}`;
+      return `${who} keeps ${kept} and sacrifices the rest`;
+    }
     case 'ShuffleIntoLibraryReveal':
       return `the owner of ${who} shuffles it into their library, then reveals the top card; if it's a permanent card, they put it onto the battlefield`;
     case 'DrawCards':
@@ -201,6 +216,13 @@ function subjectText(f: ObjectFilter, noun: string, plural = false): string {
 function triggerCondition(t: TriggerSpec): string {
   if (t.when === 'BeginCombat') return t.turn === 'Each' ? 'At the beginning of each combat' : 'At the beginning of combat on your turn';
   if (t.when === 'Upkeep') return t.turn === 'Each' ? "At the beginning of each player's upkeep" : 'At the beginning of your upkeep';
+  if (t.when === 'EndStep') {
+    return t.turn === 'Each'
+      ? 'At the beginning of each end step'
+      : t.turn === 'Opponents'
+        ? "At the beginning of each opponent's end step"
+        : 'At the beginning of your end step';
+  }
   const verb = {
     EntersBattlefield: 'enters',
     Dies: 'dies',

@@ -2,12 +2,13 @@
 // stack (PRD 7.2).
 
 import { amountOf, countOf, isEquipment, powerOf } from './characteristics.ts';
-import { parseManaCost, planPayment, reduceGeneric, totalMana } from './cost.ts';
+import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { shuffleInPlace } from './rng.ts';
 import {
   addCounters,
   addMana,
+  aliveFromActive,
   alivePlayers,
   attach,
   battlefield,
@@ -17,6 +18,7 @@ import {
   dealDamage,
   defOf,
   destroy,
+  discard,
   drawCards,
   hasKeyword,
   hasType,
@@ -36,6 +38,7 @@ import {
   MANA_TYPES,
   type AbilityItem,
   type ActivatedSpec,
+  type CardChoice,
   type CardDefinition,
   type CardInstance,
   type EffectSpec,
@@ -43,6 +46,7 @@ import {
   type InstanceId,
   type ManaCost,
   type ManaType,
+  type ObjectFilter,
   type PlayerId,
   type Resolving,
   type SpellItem,
@@ -123,6 +127,8 @@ export interface SpellChoice {
   mode?: number;
   modes?: number[];
   alternative?: boolean;
+  /** Cards discarded to pay an additional cost. */
+  costCards?: InstanceId[];
 }
 
 /**
@@ -316,6 +322,8 @@ export function playableZone(
   if (c.owner === playerId && c.zone === 'graveyard' && defOf(s, c).flashback) return 'graveyard';
   const p = c.playableFromExile;
   if (c.zone === 'exile' && p?.player === playerId) {
+    // "You may play that card this turn."
+    if (p.untilTurn !== undefined) return p.untilTurn === s.turnNumber ? 'exile' : null;
     const source = s.cards[p.source];
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
@@ -387,14 +395,18 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (problem) reject(problem);
   }
   checkTargets(s, spellEffects(def, choice), targets, playerId, id);
+  const costCards = choice.costCards ?? [];
+  checkDiscardCost(s, playerId, def.additionalCost?.discard ?? 0, costCards, id);
   const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c, alternative), isEquipment(s, c));
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
+  for (const discarded of costCards) discard(ctx, discarded);
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
     casts[id] = (casts[id] ?? 0) + 1;
   }
 
   moveCard(ctx, id, 'stack');
+  if (from === 'graveyard') c.castFromGraveyard = true;
   const item: SpellItem = {
     id: newId(s, 's'),
     kind: 'spell',
@@ -442,8 +454,60 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   return null;
 }
 
+/** Why an ability's discard or sacrifice cost can't be paid right now, or null. */
+export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec): string | null {
+  if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length === 0) return 'You have nothing to sacrifice for that.';
+  const n = spec.cost.discard ?? 0;
+  if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
+  return null;
+}
+
 /** Activates a non-mana ability: pay its costs and put it on the stack (rule 602). */
-export function activateAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId, index: number, targets: Target[] = []): void {
+/** Checks the cards chosen to pay a "discard N cards" cost: other cards in your hand. */
+function checkDiscardCost(s: GameState, playerId: PlayerId, count: number, cards: InstanceId[], source: InstanceId): void {
+  if (cards.length !== count) reject(count ? `Choose ${count} card(s) to discard.` : 'Nothing needs to be discarded.');
+  const hand = player(s, playerId).hand;
+  if (new Set(cards).size !== cards.length || cards.some((c) => c === source || !hand.includes(c))) {
+    reject('The cards to discard must be other cards in your hand.');
+  }
+}
+
+/** Permanents a player could sacrifice for a "Sacrifice a ..." cost (the source itself counts if it matches). */
+export function sacrificeCandidates(s: GameState, playerId: PlayerId, filter: ObjectFilter, source: InstanceId): InstanceId[] {
+  return battlefield(s)
+    .filter((c) => c.controller === playerId && matchesObject(s, filter, c, { controller: playerId, source }))
+    .map((c) => c.id);
+}
+
+/** Ways to pay an ability's "discard" or "sacrifice a ..." cost: one list of cards per way. */
+export function costCardChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[][] {
+  if (spec.cost.sacrifice) return sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]);
+  const n = spec.cost.discard ?? 0;
+  if (n === 0) return [[]];
+  return subsets(player(s, playerId).hand.filter((id) => id !== source), n, n);
+}
+
+/** Every subset of `items` with between `min` and `max` elements, in order (capped for huge hands). */
+export function subsets<T>(items: readonly T[], min: number, max: number, cap = 200): T[][] {
+  const out: T[][] = [];
+  const walk = (start: number, picked: T[]) => {
+    if (out.length >= cap) return;
+    if (picked.length >= min) out.push([...picked]);
+    if (picked.length === max) return;
+    for (let i = start; i < items.length; i++) walk(i + 1, [...picked, items[i]!]);
+  };
+  walk(0, []);
+  return out;
+}
+
+export function activateAbility(
+  ctx: Ctx,
+  playerId: PlayerId,
+  id: InstanceId,
+  index: number,
+  targets: Target[] = [],
+  costCards: InstanceId[] = [],
+): void {
   const s = ctx.s;
   const c = card(s, id);
   const spec = activatedAbilities(defOf(s, c))[index];
@@ -451,8 +515,17 @@ export function activateAbility(ctx: Ctx, playerId: PlayerId, id: InstanceId, in
   const problem = activationProblem(s, playerId, c, spec);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
+  if (spec.cost.sacrifice) {
+    if (costCards.length !== 1 || !sacrificeCandidates(s, playerId, spec.cost.sacrifice, id).includes(costCards[0]!)) {
+      reject('Choose one permanent you control to sacrifice for that.');
+    }
+  } else {
+    checkDiscardCost(s, playerId, spec.cost.discard ?? 0, costCards, id);
+  }
   payMana(ctx, playerId, abilityCost(s, spec, targets), spec.equip ?? false);
   if (spec.cost.tap) tap(ctx, c);
+  if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
+  else for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
 
@@ -523,6 +596,17 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
     }
     case 'CreatedTokens':
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
+    case 'ActivePlayer':
+      return s.players[s.activePlayer]!.eliminated ? [] : toPlayers([s.activePlayer]);
+    case 'EachPlayerWhoChose':
+    case 'EachOpponentWhoChose':
+    case 'EachOpponentWhoDidNotChoose': {
+      const chose = (pid: PlayerId) => (r.chosen ?? []).some((c) => c.player === pid && c.cards.length > 0);
+      const alive = alivePlayers(s);
+      if (effect.target === 'EachPlayerWhoChose') return toPlayers(alive.filter(chose));
+      const opponents = alive.filter((id) => id !== item.controller);
+      return toPlayers(effect.target === 'EachOpponentWhoChose' ? opponents.filter(chose) : opponents.filter((id) => !chose(id)));
+    }
     case 'AllPermanents': {
       const viewpoint = { controller: item.controller, source: sourceOf(item) };
       return battlefield(s)
@@ -542,9 +626,84 @@ function topOfLibrary(s: GameState, playerId: PlayerId, n: number): InstanceId[]
 function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number {
   const a = effect.amount;
   if (a !== undefined && typeof a === 'object' && 'of' in a) {
-    return a.of === 'previousTargetPower' ? Math.max(0, r.previousTargetPower ?? 0) : (r.destroyedCount ?? 0);
+    const base =
+      a.of === 'previousTargetPower'
+        ? Math.max(0, r.previousTargetPower ?? 0)
+        : a.of === 'destroyedThisWay'
+          ? (r.destroyedCount ?? 0)
+          : a.of === 'chosenCount'
+            ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
+            : (r.chosenManaValue ?? 0);
+    return base + (a.plus ?? 0);
   }
   return amountOf(s, a, r.item.controller);
+}
+
+/**
+ * Queues each player's choice for Discard, Sacrifice and KeepAndSacrificeRest,
+ * in turn order from the active player. continueResolving asks for them
+ * before the next effect.
+ */
+function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: PlayerId[], amount: number): void {
+  r.chosen = [];
+  r.chosenManaValue = 0;
+  r.chosenTypes = { creature: false, noncreature: false };
+  const order = aliveFromActive(s).filter((pid) => players.includes(pid));
+  const source = sourceOf(r.item);
+  for (const pid of order) {
+    if (effect.effect === 'Discard') {
+      const hand = s.players[pid]!.hand;
+      if (hand.length === 0) continue;
+      if (effect.wholeHand) r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min: 0, max: hand.length, allOrNothing: true }];
+      else {
+        const max = effect.anyNumber ? hand.length : Math.min(amount, hand.length);
+        const min = effect.anyNumber || effect.optional ? 0 : max;
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max }];
+      }
+      continue;
+    }
+    // Each player picks among their own permanents, or the spell's controller picks for them (Tragic Arrogance).
+    const chooser = effect.chooser === 'You' ? r.item.controller : pid;
+    const cards = battlefield(s)
+      .filter((c) => c.controller === pid && matchesObject(s, effect.filter, c, { controller: pid, source }))
+      .map((c) => c.id);
+    if (cards.length === 0) continue;
+    if (effect.effect === 'Sacrifice') {
+      const max = Math.min(amount, cards.length);
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: 'sacrifice', cards, min: effect.optional ? 0 : max, max }];
+    } else {
+      const max = effect.onePerType ? effect.onePerType.length : Math.min(amount, cards.length);
+      r.choiceQueue = [
+        ...(r.choiceQueue ?? []),
+        {
+          player: chooser,
+          purpose: 'keep',
+          cards,
+          min: 0,
+          max,
+          ...(effect.onePerType ? { onePerType: effect.onePerType } : {}),
+        },
+      ];
+    }
+  }
+}
+
+/** Why a set of chosen cards doesn't fit a choice, or null if it does. */
+export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceId[]): string | null {
+  if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
+  if (choice.allOrNothing) return cards.length === 0 || cards.length === choice.cards.length ? null : 'Choose all of them or none.';
+  if (cards.length < choice.min || cards.length > choice.max) {
+    return choice.min === choice.max ? `Choose exactly ${choice.min}.` : `Choose between ${choice.min} and ${choice.max}.`;
+  }
+  if (choice.onePerType) {
+    // Each chosen card must stand for a different one of the types.
+    const types = choice.onePerType;
+    const fits = (i: number, used: Set<string>): boolean =>
+      i === cards.length ||
+      types.some((t) => !used.has(t) && hasType(s, s.cards[cards[i]!]!, t) && fits(i + 1, new Set([...used, t])));
+    if (!fits(0, new Set())) return `Choose at most one ${types.join(', one ')}.`;
+  }
+  return null;
 }
 
 /** The players among an effect's targets (searches act for these players). */
@@ -589,6 +748,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'ExileGraveyard':
       for (const pid of targetPlayers(targets)) for (const id of [...s.players[pid]!.graveyard]) moveCard(ctx, id, 'exile');
+      return;
+    case 'Discard':
+    case 'Sacrifice':
+    case 'KeepAndSacrificeRest':
+      queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'SacrificeGreatestPower':
       for (const pid of targetPlayers(targets)) {
@@ -659,7 +823,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ExileTopCardToPlay':
       for (const id of topOfLibrary(s, item.controller, Math.max(1, amount))) {
         moveCard(ctx, id, 'exile');
-        s.cards[id]!.playableFromExile = { player: item.controller, source };
+        s.cards[id]!.playableFromExile = {
+          player: item.controller,
+          source,
+          ...(effect.thisTurn ? { untilTurn: s.turnNumber } : {}),
+        };
       }
       return;
     case 'Mill':
@@ -760,6 +928,13 @@ function continueResolving(ctx: Ctx): void {
   const item = r.item;
   const effects = effectsOf(s, item);
   for (;;) {
+    // Players still to choose cards (discard, sacrifice) for the last effect.
+    const choice = (r.choiceQueue ?? []).find((c) => !s.players[c.player]!.eliminated);
+    r.choiceQueue = (r.choiceQueue ?? []).filter((c) => !s.players[c.player]!.eliminated);
+    if (choice) {
+      s.pending = { kind: 'chooseCards', ...choice };
+      return;
+    }
     const next = r.surveilQueue[0];
     if (next !== undefined) {
       s.pending = { kind: 'surveil', player: item.controller, card: next, ...(r.scrying ? { scry: true } : {}) };
@@ -775,6 +950,12 @@ function continueResolving(ctx: Ctx): void {
       if (c?.zone === 'battlefield') r.previousTargetPower = powerOf(s, c);
     }
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
+    // "If you do": something was chosen in the last choice (of the right kind, for Mog).
+    if (effect.ifChose) {
+      const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
+      const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];
+      if (!ok) continue;
+    }
     if (effect.ifSourcePowerAtLeast !== undefined) {
       const src = s.cards[sourceOf(item)]!;
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
@@ -814,6 +995,7 @@ export function resolveTop(ctx: Ctx): void {
     ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: c.id, fizzled: fizzled && !permanent });
     if (permanent) {
       moveCard(ctx, c.id, 'battlefield');
+      if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
       c.summoningSick = true;
       if (entersTapped(s, c)) c.tapped = true;
@@ -852,6 +1034,35 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
   item.accepted = accept;
   ctx.ev.push({ type: 'Decided', player: playerId, item: item.id, card: item.source, accepted: accept });
   resolveTop(ctx);
+}
+
+/** The ChooseCards action: the chosen cards are discarded, sacrificed, or kept (and the others sacrificed). */
+export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseCards' || pending.player !== playerId || !s.resolving) reject('You are not choosing cards right now.');
+  const problem = choiceProblem(s, pending, cards);
+  if (problem) reject(problem);
+  const r = s.resolving;
+  r.choiceQueue = (r.choiceQueue ?? []).slice(1);
+  for (const id of cards) {
+    const c = s.cards[id]!;
+    r.chosenManaValue = (r.chosenManaValue ?? 0) + manaValue(parseManaCost(defOf(s, c).manaCost));
+    const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
+    r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
+  }
+  if (pending.purpose === 'discard') for (const id of cards) discard(ctx, id);
+  else if (pending.purpose === 'sacrifice') for (const id of cards) sacrifice(ctx, id);
+  else for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]!.zone === 'battlefield') sacrifice(ctx, id);
+  // Whose cards they were: the chooser's own, except when the spell's controller chose for everyone.
+  const owner = cards.length ? s.cards[cards[0]!]!.owner : pending.player;
+  r.chosen = [...(r.chosen ?? []), { player: pending.purpose === 'keep' ? owner : pending.player, cards }];
+  continueResolving(ctx);
+}
+
+/** Carries on resolving after the player who had to choose left the game. */
+export function resumeResolving(ctx: Ctx): void {
+  continueResolving(ctx);
 }
 
 /** Answers a surveil: keep the card on top of the library, or put it into the graveyard. */

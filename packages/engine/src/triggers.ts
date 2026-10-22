@@ -37,6 +37,8 @@ interface Occurrence {
   manaSpent?: number;
   /** Dies: the Equipment attached to it as it left the battlefield. */
   equippedBy?: InstanceId[];
+  /** EntersBattlefield: the zone it came from. */
+  from?: string;
 }
 
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
@@ -46,7 +48,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'CardMoved':
         if (!e.card) break;
         if (e.to === 'battlefield') {
-          out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
+          out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: s.cards[e.card]!.controller, from: e.from });
         } else if (e.from === 'battlefield' && e.to === 'graveyard') {
           out.push({
             when: 'Dies',
@@ -76,6 +78,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'StepChanged':
         if (e.step === 'beginCombat') out.push({ when: 'BeginCombat', at, activePlayer: e.activePlayer });
         if (e.step === 'upkeep') out.push({ when: 'Upkeep', at, activePlayer: e.activePlayer });
+        if (e.step === 'end') out.push({ when: 'EndStep', at, activePlayer: e.activePlayer });
         break;
     }
   });
@@ -102,7 +105,12 @@ function matchesFilter(
 
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
-  if (o.when === 'BeginCombat' || o.when === 'Upkeep') return spec.turn === 'Each' || o.activePlayer === controller;
+  if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep') {
+    if (spec.turn === 'Each') return true;
+    return spec.turn === 'Opponents' ? o.activePlayer !== controller : o.activePlayer === controller;
+  }
+  // "Entered from a graveyard or was cast from a graveyard".
+  if (spec.fromGraveyard && o.subject && o.from !== 'graveyard' && !s.cards[o.subject]!.castFromGraveyard) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   return matchesFilter(s, spec.what, source, controller, o);

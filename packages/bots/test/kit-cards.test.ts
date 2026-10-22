@@ -50,7 +50,9 @@ describe('K2: tokens and counters', () => {
     s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: treasure!, mana: 'G' });
     expect(s.players.P1!.manaPool.G).toBe(1);
     expect(zone(s, treasure!)).toBe('void');
-    // Sacrificing it means an artifact you control died: Al Bhed Salvagers drains.
+    // Sacrificing it means an artifact you control died: Al Bhed Salvagers drains. Its
+    // trigger waits in case P1 casts something; passing puts it on the stack first.
+    s = act(s, { type: 'PassPriority', player: 'P1' });
     s = settle(s).state;
     expect(s.players.P2!.life).toBe(lifeBefore - 1);
     expect(salvagers).toBeDefined();
