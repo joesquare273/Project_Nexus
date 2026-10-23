@@ -5,6 +5,26 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Graveyard and library choices: four more precon cards
+
+- Rejoin the Fight mills three, then each opponent chooses a different creature
+  card from the caster's graveyard, starting with the next opponent in turn order.
+  The chosen cards return after every opponent has chosen; empty choices are skipped.
+- Promise of Loyalty makes each player keep one creature with a vow counter and
+  sacrifice the rest. That creature cannot attack the caster while the counter
+  remains. Removing the last vow ends the restriction; moving or adding another
+  vow does not transfer or restart it. The AI and board respect the restriction.
+- Endless Detour targets a spell, nonland permanent, or graveyard card. Its owner
+  chooses top or bottom of their library. Moving a spell this way does not counter it.
+- Combustible Gearhulk's targeted opponent chooses whether the controller draws
+  three or mills three and deals the milled cards' total mana value in damage.
+- Browser controls and bot choices cover the new decisions. Eighteen scenarios
+  cover 2, 3 and 4 players, including distinct selections, empty graveyards, vow
+  removal, AI attacks, and moving an uncounterable spell off the stack.
+
+281 of 320 distinct precon cards are built; 39 remain. Validation: type-check,
+523 tests, browser production build, and 30 Commander fuzz games passed.
+
 ### Fix: phased-out Equipment and a dying creature
 
 The Commander fuzz (seed 99, 4 players) found Equipment left attached to a

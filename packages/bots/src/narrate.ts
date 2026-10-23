@@ -14,6 +14,7 @@ import type {
 } from '@nexus/engine';
 
 const TARGET_TEXT: Record<EffectSpec['target'], string> = {
+  TargetSpellPermanentOrGraveyardCard: 'target spell, nonland permanent, or card in a graveyard',
   AnyTarget: 'any target',
   EachOpponent: 'each opponent',
   EachOpponentCreature: 'each creature your opponents control',
@@ -93,6 +94,10 @@ function targetText(e: EffectSpec): string {
 }
 
 function effectText(e: EffectSpec): string {
+  if (e.effect === 'ChooseGraveyardCards') return 'Each opponent chooses a different creature card from your graveyard';
+  if (e.effect === 'ReturnChosenToBattlefield') return 'Return the chosen cards to the battlefield under your control';
+  if (e.effect === 'PutIntoLibrary') return "Its owner puts it on the top or bottom of their library";
+  if (e.effect === 'OfferDrawOrMillDamage') return 'Target opponent may let you draw three cards; otherwise mill three and deal their total mana value in damage to that player';
   const who = targetText(e);
   const you = who === 'you';
   const n = amountText(e.amount);

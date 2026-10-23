@@ -4,6 +4,7 @@
 // safe or lethal, and block to trade up or to survive.
 
 import {
+  canAttackPlayer,
   queuedTriggerSpec,
   attackTax,
   attackTaxFor,
@@ -314,6 +315,7 @@ function chooseAttacks(s: GameState, me: PlayerId, memory?: Memory): Attack[] {
   // 1. Lethal: total damage beats their life plus what their blockers could soak up.
   const lethalOn = opps
     .filter((o) => {
+      if (!ready.every((c) => canAttackPlayer(s, c, o))) return false;
       const blockers = creatures(s, o).filter((c) => !c.tapped);
       const total = ready.reduce((n, c) => n + hitFor(s, c), 0);
       const soak = blockers.length * Math.max(2, ...ready.map((c) => hitFor(s, c)));
@@ -343,6 +345,7 @@ function chooseAttacks(s: GameState, me: PlayerId, memory?: Memory): Attack[] {
     if (holdBack.has(a.id)) continue;
     let best: { defender: PlayerId; score: number } | null = null;
     for (const o of opps) {
+      if (!canAttackPlayer(s, a, o)) continue;
       const blockers = blockersFor(s, o, a);
       // A blocker that kills it and survives makes the attack a loss.
       if (blockers.some((b) => kills(s, b, a) && !kills(s, a, b))) continue;
@@ -494,6 +497,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   const p = s.pending;
   if (p.kind !== 'chooseCards') return legal[0]!;
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
+  if (p.purpose === 'offerDraw') return pick([...p.cards]);
+  if (p.purpose === 'library') return pick([]);
   if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
   if (p.purpose === 'discard') {
     if (p.max === 0) return pick([]);
@@ -504,6 +509,7 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     return pick(ranked.filter((id) => p.cards.includes(id)).slice(0, n));
   }
   const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
+  if (p.purpose === 'reanimate') return pick(byValue.slice(0, p.min));
   if (p.purpose === 'sacrifice') return pick(byValue.slice(0, p.min));
   // Destroying an opponent's permanent of our choice: their best.
   if (p.purpose === 'destroy') return pick([...byValue].reverse().slice(0, p.max));

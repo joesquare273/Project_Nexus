@@ -6,6 +6,7 @@
 // menace attackers, and "everything at one player", which keeps the list
 // small in pods.
 
+import { canAttackPlayer } from './combat.ts';
 import { isEquipment } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
@@ -393,10 +394,10 @@ export function getLegalActions(s: GameState): Action[] {
         if (tax > 0) taxed = true;
         // Attacks into Propaganda are listed once the mana for them is in the pool.
         const affordable = tax === 0 ? attackers.length : Math.floor(pool / tax);
-        for (const a of affordable > 0 ? attackers : []) {
+        for (const a of affordable > 0 ? attackers.filter((c) => canAttackPlayer(s, c, defender)) : []) {
           actions.push({ type: 'DeclareAttackers', player, attacks: [{ attacker: a.id, defender }] });
         }
-        if (attackers.length > 1 && affordable >= attackers.length) {
+        if (attackers.length > 1 && affordable >= attackers.length && attackers.every((c) => canAttackPlayer(s, c, defender))) {
           actions.push({
             type: 'DeclareAttackers',
             player,

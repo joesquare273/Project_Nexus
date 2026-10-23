@@ -5,6 +5,7 @@ import {
   attackTax,
   attackTaxFor,
   canAttack,
+  canAttackPlayer,
   playableZone,
   choiceProblem,
   cardsToBottom,
@@ -529,7 +530,8 @@ export function Game({
       if (pending.kind === 'declareAttackers' && canAttackIds.has(id)) {
         const next = new Map(attackers);
         if (next.has(id)) next.delete(id);
-        else next.set(id, currentDefender);
+        else if (canAttackPlayer(s, s.cards[id]!, currentDefender)) next.set(id, currentDefender);
+        else return showError('A vow prevents this creature from attacking that opponent.');
         setAttackers(next);
         return;
       }
@@ -915,7 +917,14 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseCards') {
     const c = pending;
     const picks = p.bottomPicks;
-    if (c.allOrNothing) {
+    if (c.purpose === 'offerDraw' || c.purpose === 'library') {
+      text = c.purpose === 'offerDraw' ? 'Let your opponent draw three cards, or have them mill three and deal their total mana value in damage to you?'
+        : 'Put the targeted card on the top or bottom of your library?';
+      buttons = [
+        { label: c.purpose === 'offerDraw' ? 'Draw three' : 'Bottom', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]) },
+        { label: c.purpose === 'offerDraw' ? 'Mill and take damage' : 'Top', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
+      ];
+    } else if (c.allOrNothing) {
       text = `Discard your whole hand (${c.cards.length} card${c.cards.length === 1 ? '' : 's'})?`;
       buttons = [
         { label: 'Keep my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
@@ -932,7 +941,9 @@ function PromptBar(p: PromptProps) {
               ? 'to put onto the battlefield (in your hand)'
               : c.purpose === 'hand'
                 ? 'to put into your hand; the rest go on the bottom of your library'
-                : 'to keep; the others are sacrificed';
+                : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
+                  : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
+                    : 'to keep; the others are sacrificed';
       const problem = choiceProblem(s, c, picks);
       text = `Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
       buttons = [
@@ -968,7 +979,7 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'declareAttackers') {
     const many = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated).length > 1;
     text = `Declare attackers: click your creatures to attack${many ? ` ${p.currentDefender} (click an opponent to switch)` : ''}.`;
-    const all = new Map([...p.canAttackIds].map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
+    const all = new Map([...p.canAttackIds].filter((id) => canAttackPlayer(s, s.cards[id]!, p.attackers.get(id) ?? p.currentDefender)).map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
     const declare = (m: Map<InstanceId, PlayerId>) => {
       const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender }));
       // Propaganda and friends: tap for the tax along with the declaration.

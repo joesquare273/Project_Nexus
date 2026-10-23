@@ -198,6 +198,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   c.controller = c.owner;
   delete c.counters;
   delete c.namedCounters;
+  delete c.vowTo;
   delete c.monstrous;
   delete c.extraCountersOnEnter;
   delete c.xPaid;
@@ -455,6 +456,7 @@ export function setCounters(c: CardInstance, kind: AnyCounter, n: number): void 
   const next = { ...c.namedCounters };
   if (n > 0) next[kind] = n;
   else delete next[kind];
+  if (kind === 'vow' && n <= 0) delete c.vowTo;
   if (Object.keys(next).length > 0) c.namedCounters = next;
   else delete c.namedCounters;
 }

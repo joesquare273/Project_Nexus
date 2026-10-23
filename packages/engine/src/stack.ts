@@ -258,6 +258,11 @@ export function isLegalTarget(
     ...(context.defender ? { defender: context.defender } : {}),
     ...(context.subject ? { subject: context.subject } : {}),
   };
+  if (kind === 'TargetSpellPermanentOrGraveyardCard') {
+    if (c.zone === 'graveyard') return !s.players[c.owner]!.eliminated;
+    if (c.zone === 'stack') return c.id !== source && s.stack.some((i) => i.kind === 'spell' && i.card === c.id);
+    return !defOf(s, c).types.includes('land') && isLegalTarget(s, { ...effect, target: 'TargetPermanent' }, t, controller, source, context);
+  }
   if (kind === 'TargetSpell') {
     // A spell on the stack (not the spell or ability doing the targeting).
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
@@ -289,10 +294,10 @@ export function targetOptions(
 ): Target[] {
   const all: Target[] = alivePlayers(s).map((p) => ({ kind: 'player', player: p }));
   for (const c of battlefield(s)) all.push({ kind: 'card', card: c.id });
-  if (effect.target === 'TargetCardInGraveyard') {
+  if (effect.target === 'TargetCardInGraveyard' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
   }
-  if (effect.target === 'TargetSpell') {
+  if (effect.target === 'TargetSpell' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const item of s.stack) if (item.kind === 'spell') all.push({ kind: 'card', card: item.card });
   }
   // "Up to one": leaving it out is a choice too.
@@ -1169,9 +1174,9 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
         ...(r.choiceQueue ?? []),
         {
           player: chooser,
-          purpose: 'keep',
+          purpose: effect.counter === 'vow' ? 'keepVow' : 'keep',
           cards,
-          min: 0,
+          min: effect.counter === 'vow' ? 1 : 0,
           max,
           ...(effect.onePerType ? { onePerType: effect.onePerType } : {}),
         },
@@ -1248,8 +1253,8 @@ function subjectAmount(s: GameState, item: StackItem, of: 'subjectPower' | 'subj
  * opponent's permanent, a stun counter if there is one; otherwise the most
  * useful counter for its new controller.
  */
-const HELPFUL_COUNTERS: AnyCounter[] = ['+1/+1', 'shield', 'flying', 'page', 'soul', 'stun'];
-const HARMFUL_COUNTERS: AnyCounter[] = ['stun', 'page', 'soul', 'flying', 'shield', '+1/+1'];
+const HELPFUL_COUNTERS: AnyCounter[] = ['+1/+1', 'shield', 'flying', 'page', 'soul', 'stun', 'lore', 'charge', 'vow'];
+const HARMFUL_COUNTERS: AnyCounter[] = ['stun', 'page', 'soul', 'flying', 'shield', '+1/+1', 'lore', 'charge', 'vow'];
 
 /** The players among an effect's targets (searches act for these players). */
 function targetPlayers(targets: Target[]): PlayerId[] {
@@ -1264,6 +1269,30 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
+    case 'ChooseGraveyardCards': {
+      r.chosen = [];
+      const order = alivePlayers(s);
+      const start = order.indexOf(item.controller);
+      const opponents = [...order.slice(start + 1), ...order.slice(0, start)];
+      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      r.choiceQueue = opponents.map((pid) => ({ player: pid, purpose: 'reanimate', cards: [...candidates], min: 1, max: 1 }));
+      return;
+    }
+    case 'ReturnChosenToBattlefield':
+      for (const id of (r.chosen ?? []).flatMap((choice) => choice.cards)) {
+        if (s.cards[id]?.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'battlefield');
+        s.cards[id]!.controller = item.controller;
+        s.cards[id]!.summoningSick = true;
+        if (entersTapped(s, s.cards[id]!)) s.cards[id]!.tapped = true;
+      }
+      return;
+    case 'PutIntoLibrary':
+      r.choiceQueue = cards.map((id) => ({ player: s.cards[id]!.owner, purpose: 'library', cards: [id], min: 0, max: 1 }));
+      return;
+    case 'OfferDrawOrMillDamage':
+      r.choiceQueue = targetPlayers(targets).map((pid) => ({ player: pid, purpose: 'offerDraw', cards: [source], min: 0, max: 1 }));
+      return;
     case 'DealDamage': {
       // "That creature deals damage equal to its power" (Flayer of the Hatebound).
       const subject = item.kind === 'ability' ? item.subject : undefined;
@@ -1735,6 +1764,13 @@ function continueResolving(ctx: Ctx): void {
   const item = r.item;
   const effects = effectsOf(s, item);
   for (;;) {
+    // Rejoin the Fight: later opponents choose from the cards not already chosen.
+    if (r.choiceQueue?.[0]?.purpose === 'reanimate') {
+      const reserved = new Set((r.chosen ?? []).flatMap((choice) => choice.cards));
+      r.choiceQueue = r.choiceQueue.map((choice) => choice.purpose === 'reanimate'
+        ? { ...choice, cards: choice.cards.filter((id) => s.cards[id]?.zone === 'graveyard' && !reserved.has(id)) }
+        : choice).filter((choice) => choice.purpose !== 'reanimate' || choice.cards.length > 0);
+    }
     // Players still to choose cards (discard, sacrifice) for the last effect.
     const choice = (r.choiceQueue ?? []).find((c) => !s.players[c.player]!.eliminated);
     r.choiceQueue = (r.choiceQueue ?? []).filter((c) => !s.players[c.player]!.eliminated);
@@ -1906,7 +1942,27 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
-  if (pending.purpose === 'discard') {
+  if (pending.purpose === 'reanimate') {
+    // Reserve the card until all opponents have chosen; all enter together afterwards.
+  } else if (pending.purpose === 'library') {
+    const id = pending.cards[0]!;
+    const c = s.cards[id]!;
+    s.stack = s.stack.filter((entry) => !(entry.kind === 'spell' && entry.card === id));
+    moveCard(ctx, id, 'library');
+    if (cards.length === 0) {
+      const library = player(s, c.owner).library;
+      library.splice(library.indexOf(id), 1);
+      library.unshift(id);
+    }
+  } else if (pending.purpose === 'offerDraw') {
+    if (cards.length > 0) drawCards(ctx, r.item.controller, 3);
+    else {
+      const milled = topOfLibrary(s, r.item.controller, 3);
+      const damage = milled.reduce((sum, id) => sum + manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost)), 0);
+      for (const id of milled) moveCard(ctx, id, 'graveyard');
+      dealDamage(ctx, sourceOf(r.item), { kind: 'player', player: pending.player }, damage, false);
+    }
+  } else if (pending.purpose === 'discard') {
     for (const id of cards) discard(ctx, id);
     if (r.conniving) {
       const nonland = cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
@@ -1939,7 +1995,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   else if (pending.purpose === 'destroy') {
     for (const id of cards) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
   }
-  else for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]!.zone === 'battlefield') sacrifice(ctx, id);
+  else {
+    if (pending.purpose === 'keepVow') for (const id of cards) {
+      addCounters(ctx, id, 1, r.item.controller, 'vow');
+      s.cards[id]!.vowTo = [...(s.cards[id]!.vowTo ?? []), r.item.controller];
+    }
+    for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]!.zone === 'battlefield') sacrifice(ctx, id);
+  }
   // Whose cards they were: the chooser's own, except when the spell's controller chose for everyone.
   const owner = cards.length ? s.cards[cards[0]!]!.owner : pending.player;
   r.chosen = [...(r.chosen ?? []), { player: pending.purpose === 'keep' ? owner : pending.player, cards }];

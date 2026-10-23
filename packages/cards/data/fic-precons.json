@@ -928,11 +928,8 @@
           "count": 1,
           "set": "fic",
           "number": "49",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shadow, Mysterious Assassin",
@@ -1142,11 +1139,8 @@
           "count": 1,
           "set": "fic",
           "number": "292",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Flayer of the Hatebound",
@@ -1948,10 +1942,8 @@
           "count": 1,
           "set": "fic",
           "number": "249",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Resourceful Defense",
@@ -2111,10 +2103,8 @@
           "count": 1,
           "set": "fic",
           "number": "324",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fathom Mage",

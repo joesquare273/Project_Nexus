@@ -66,6 +66,11 @@ export function canAnyAttack(s: GameState, playerId: PlayerId): boolean {
   return alivePlayers(s).length > 1 && attackersFor(s, playerId).length > 0;
 }
 
+/** A surviving Promise of Loyalty creature cannot attack the spell's controller. */
+export function canAttackPlayer(s: GameState, c: CardInstance, defender: PlayerId): boolean {
+  return !c.vowTo?.includes(defender);
+}
+
 /** What attacking this player costs for each creature (Propaganda, Summon: Yojimbo). */
 export function attackTaxFor(s: GameState, defender: PlayerId): number {
   let tax = (s.players[defender]!.attackTaxes ?? []).reduce((n, k) => n + k, 0);
@@ -94,6 +99,7 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     seen.add(a.attacker);
     const d = s.players[a.defender];
     if (!d || d.eliminated || a.defender === playerId) reject(`"${a.defender}" is not a valid defending player.`);
+    if (!canAttackPlayer(s, c, a.defender)) reject('A vow prevents that creature from attacking this player.');
   }
   // "Creatures can't attack you unless their controller pays {2} for each" (rule 508.1g).
   const tax = attackTax(s, attacks);

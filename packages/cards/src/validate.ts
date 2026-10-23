@@ -299,7 +299,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'AllowCastFromGraveyard' && e.target !== 'TargetCardInGraveyard') err('AllowCastFromGraveyard needs a TargetCardInGraveyard target.');
   if (e.effect === 'ChooseAndDestroy' && !e.filter) err('ChooseAndDestroy needs a filter.');
   validateCounterKind(e.counter, err);
-  if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield') err('"counter" is only for AddCounters and ReturnToBattlefield.');
+  if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield' && !(e.effect === 'KeepAndSacrificeRest' && e.counter === 'vow')) err('"counter" needs AddCounters, ReturnToBattlefield, or a vow on KeepAndSacrificeRest.');
   if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');
   if ((e.anyKind || e.allCounters) && e.effect !== 'MoveCounters') err('anyKind and allCounters are only for MoveCounters.');
   if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');

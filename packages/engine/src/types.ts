@@ -68,7 +68,7 @@ export type Keyword = (typeof KEYWORDS)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -93,6 +93,8 @@ export const TARGET_KINDS = [
   'TargetCardInGraveyard',
   /** A spell on the stack matching `filter` ("counter target noncreature spell"). */
   'TargetSpell',
+  /** A spell, a nonland permanent, or a card in a graveyard (Endless Detour). */
+  'TargetSpellPermanentOrGraveyardCard',
   /** The same object (or player) the previous chosen target picked ("it", "that creature"). */
   'PreviousTarget',
   /** The controller of the previous chosen target ("that creature's controller"). */
@@ -144,9 +146,14 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetPermanent',
   'TargetCardInGraveyard',
   'TargetSpell',
+  'TargetSpellPermanentOrGraveyardCard',
 ];
 
 export const EFFECT_KINDS = [
+  'ChooseGraveyardCards',
+  'ReturnChosenToBattlefield',
+  'PutIntoLibrary',
+  'OfferDrawOrMillDamage',
   'DealDamage',
   'DrawCards',
   'GainLife',
@@ -421,7 +428,7 @@ export interface EffectSpec {
   flags?: TemporaryFlag[];
   /** ReturnToBattlefield: extra +1/+1 counters. */
   counters?: number;
-  /** AddCounters, ReturnToBattlefield: a kind of counter other than +1/+1. */
+  /** AddCounters, ReturnToBattlefield, or KeepAndSacrificeRest's vow: a named counter. */
   counter?: CounterKind;
   /** AddCounters: monstrosity (rule 701.37): only if the source isn't monstrous yet, and it becomes monstrous. */
   monstrosity?: boolean;
@@ -947,6 +954,8 @@ export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'e
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  /** Players this creature cannot attack while its uninterrupted vow counter remains. */
+  vowTo?: PlayerId[];
   id: InstanceId;
   defId: CardDefId;
   owner: PlayerId;
@@ -1206,7 +1215,7 @@ export interface Resolving {
 export interface CardChoice {
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand';
+  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

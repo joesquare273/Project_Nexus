@@ -36,15 +36,15 @@ exact Final Fantasy Starter Kit decks, with every card working as printed.
   with tips.
 - **Commander** ([docs/commander.md](docs/commander.md)): the Commander
   format and all four Final Fantasy Commander precons; their cards are being
-  built step by step (C1, the mana cards, is done).
+  built step by step (281 of 320 distinct cards are built).
 - **Bots** (`packages/bots`): a basic AI, a random bot for fuzzing, a
   terminal game against the AI, a bot-vs-bot simulator and a fuzzer.
 - **Tests**: scenario tests for each rule run across 2, 3 and 4 players,
   plus invariant-checked fuzz games, replay determinism, and a check that
   actions never mutate their input state.
 
-Next up is the Starter Kit roadmap in [docs/starter-kits.md](docs/starter-kits.md):
-step K1 (triggered abilities) is done, and K2 (tokens and counters) is next.
+Both Starter Kits are complete ([docs/starter-kits.md](docs/starter-kits.md)).
+Next is the remaining Commander card work in [docs/commander.md](docs/commander.md).
 
 ## Layout
 
