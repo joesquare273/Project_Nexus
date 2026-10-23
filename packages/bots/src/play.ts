@@ -558,7 +558,8 @@ async function playOneGame(gameSeed: number): Promise<void> {
     } else if (pending.kind === 'chooseCards') {
       actions = await decideCards(s, pending);
     } else if (pending.kind === 'surveil') {
-      const toGraveyard = (await ask(`  Surveil: put ${cardName(s, pending.card)} into your graveyard? (y/N) `)).toLowerCase() === 'y';
+      const scrying = !!pending.scry;
+      const toGraveyard = (await ask(`  ${scrying ? 'Scry' : 'Surveil'}: put ${cardName(s, pending.card)} ${scrying ? 'on the bottom of your library' : 'into your graveyard'}? (y/N) `)).toLowerCase() === 'y';
       actions = [{ type: 'Surveil', player: YOU, toGraveyard }];
     } else {
       actions = await decidePriority(s);

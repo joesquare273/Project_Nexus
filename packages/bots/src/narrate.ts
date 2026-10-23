@@ -399,6 +399,7 @@ export function rulesSummary(def: CardDefinition): string {
     parts.push(`${alt.label}: pay ${pay}${condition}${instead}`);
   }
   for (const t of def.triggers ?? []) parts.push(triggerText(t).replace(/\.$/, ''));
+  if (def.manaAbility?.scryOnCommanderType) parts.push('When this mana is spent on a creature sharing a type with your commander, scry 1');
   if (def.equip) parts.push(`Equip ${def.equip}`);
   if (def.flashback) parts.push(`Flashback ${def.flashback}`);
   if (def.ward) parts.push(`Ward {${def.ward}}`);

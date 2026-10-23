@@ -91,9 +91,9 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
   }
   if (p.kind === 'surveil' && p.player === YOU) {
     candidates.push({
-      id: 'surveil',
-      title: 'Surveil',
-      text: "You're looking at the top card of your library. Keep it there to draw it next, or put it into your graveyard.",
+      id: p.scry ? 'scry' : 'surveil',
+      title: p.scry ? 'Scry' : 'Surveil',
+      text: `You're looking at the top card of your library. Keep it there to draw it next, or put it ${p.scry ? 'on the bottom of your library' : 'into your graveyard'}.`,
     });
   }
   if (p.kind === 'chooseTargets' && p.player === YOU) {

@@ -849,6 +849,8 @@ export interface CardDefinition {
     painFor?: ManaType[];
     /** "Add one mana of any color in your commander's color identity." */
     commanderIdentity?: boolean;
+    /** Spending this mana on a creature sharing a type with your commander causes scry 1. */
+    scryOnCommanderType?: boolean;
     /** "Add one mana of any color that a land an opponent controls could produce." */
     opponentLandColors?: boolean;
     /** "Add one mana of any type that a land you control could produce." */
@@ -1087,6 +1089,13 @@ export interface CardInstance {
   adventureGraveyard?: { player: PlayerId; grantedTurn: number; expiresOnTurn?: number };
 }
 
+/** One floating mana carrying a delayed commander-type scry trigger. */
+export interface CreatureScryMana {
+  mana: ManaType;
+  source: InstanceId;
+  sourceObject: number;
+}
+
 export interface PlayerState {
   /** Last turn this player activated an ability targeting a creature they controlled. */
   friendlyTargetAbilityTurn?: number;
@@ -1104,6 +1113,8 @@ export interface PlayerState {
   commanderCasts: Record<InstanceId, number>;
   /** Combat damage this player has taken from each commander (rule 903.10a). */
   commanderDamage: Record<InstanceId, number>;
+  /** Floating mana whose scry rider has not yet been spent. */
+  creatureScryMana?: CreatureScryMana[];
   manaPool: ManaPool;
   /** Mana that can only be spent on Equipment spells and equip abilities. */
   equipmentMana: ManaPool;
@@ -1513,7 +1524,7 @@ export type GameEvent =
   | { type: 'CardsUntapped'; player: PlayerId; cards: InstanceId[] }
   | { type: 'ManaAdded'; player: PlayerId; mana: ManaType; source: InstanceId }
   | { type: 'ManaSpent'; player: PlayerId; amounts: Partial<ManaPool> }
-  | { type: 'SpellCast'; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number }
+  | { type: 'SpellCast'; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[] }
   | {
       type: 'AbilityTriggered';
       item: string;

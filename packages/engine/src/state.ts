@@ -60,6 +60,7 @@ export function cloneState(s: GameState): GameState {
       commanderCasts: { ...p.commanderCasts },
       commanderDamage: { ...p.commanderDamage },
       manaPool: { ...p.manaPool },
+      ...(p.creatureScryMana ? { creatureScryMana: [...p.creatureScryMana] } : {}),
       equipmentMana: { ...p.equipmentMana },
     };
   }
@@ -543,7 +544,13 @@ export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): v
 export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, onlyForEquipment = false): void {
   const p = player(ctx.s, playerId);
   if (onlyForEquipment) p.equipmentMana[mana] += 1;
-  else p.manaPool[mana] += 1;
+  else {
+    p.manaPool[mana] += 1;
+    const c = ctx.s.cards[source]!;
+    if (defOf(ctx.s, c).manaAbility?.scryOnCommanderType) {
+      p.creatureScryMana = [...(p.creatureScryMana ?? []), { mana, source, sourceObject: c.zoneChanges ?? 0 }];
+    }
+  }
   ctx.ev.push({ type: 'ManaAdded', player: playerId, mana, source });
 }
 
@@ -551,6 +558,7 @@ export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: In
 export function emptyAllManaPools(s: GameState): void {
   for (const id of s.turnOrder) {
     s.players[id]!.manaPool = emptyManaPool();
+    delete s.players[id]!.creatureScryMana;
     s.players[id]!.equipmentMana = emptyManaPool();
   }
 }

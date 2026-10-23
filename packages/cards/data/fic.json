@@ -84,7 +84,7 @@
   {"id":"ash-barrens","name":"Ash Barrens","types":["land"],"colorIdentity":[],"printing":{"set":"fic","number":"374"},"landcycling":{"basic":true,"cost":"{1}"},"produces":["C"]},
   {"id":"evolving-wilds","name":"Evolving Wilds","types":["land"],"colorIdentity":[],"printing":{"set":"fic","number":"389"},"activated":[{"cost":{"tap":true,"sacrificeThis":true},"effects":[{"effect":"SearchLibraryToBattlefield","target":"You","filter":{"types":["land"],"supertypes":["Basic"]},"entersTapped":true}]}]},
   {"id":"jungle-shrine","name":"Jungle Shrine","types":["land"],"colorIdentity":["G","R","W"],"printing":{"set":"fic","number":"406"},"entersTapped":true,"produces":["R","G","W"]},
-  {"id":"path-of-ancestry","name":"Path of Ancestry","types":["land"],"colorIdentity":[],"printing":{"set":"fic","number":"411"},"entersTapped":true,"manaAbility":{"commanderIdentity":true},"notBuilt":true},
+  {"id":"path-of-ancestry","name":"Path of Ancestry","types":["land"],"colorIdentity":[],"printing":{"set":"fic","number":"411"},"entersTapped":true,"manaAbility":{"commanderIdentity":true,"scryOnCommanderType":true}},
   {"id":"radiant-grove","name":"Radiant Grove","types":["land"],"subtypes":["Forest","Plains"],"colorIdentity":["G","W"],"printing":{"set":"fic","number":"414"},"entersTapped":true},
   {"id":"sacred-peaks","name":"Sacred Peaks","types":["land"],"subtypes":["Mountain","Plains"],"colorIdentity":["R","W"],"printing":{"set":"fic","number":"418"},"entersTapped":true},
   {"id":"wooded-ridgeline","name":"Wooded Ridgeline","types":["land"],"subtypes":["Mountain","Forest"],"colorIdentity":["G","R"],"printing":{"set":"fic","number":"441"},"entersTapped":true},

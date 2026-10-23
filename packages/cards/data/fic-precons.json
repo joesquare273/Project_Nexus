@@ -708,11 +708,8 @@
           "count": 1,
           "set": "fic",
           "number": "411",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Radiant Grove",
@@ -1549,11 +1546,8 @@
           "count": 1,
           "set": "fic",
           "number": "411",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rogue's Passage",
@@ -2367,11 +2361,8 @@
           "count": 1,
           "set": "fic",
           "number": "411",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Radiant Grove",
@@ -3210,11 +3201,8 @@
           "count": 1,
           "set": "fic",
           "number": "411",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sunlit Marsh",

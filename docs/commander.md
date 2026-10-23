@@ -5,10 +5,10 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 97/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 88/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 95/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 94/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 98/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 89/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 96/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 95/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -53,6 +53,13 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
+Path of Ancestry is built (2026-10-23). Floating mana carries its delayed
+scry rider until spent or emptied; qualifying creature casts put scry 1 on
+the stack independently of the land or creature spell.
+298 of 320 distinct precon cards are built; 22 remain.
+
+### Previous checkpoint
+
 Blitzball Stadium is built (2026-10-23): support X chooses distinct targets
 on entry, and its activated ability grants unblockability and a combat-damage
 draw trigger until cleanup. Draw counts distinct counter kinds at resolution.
@@ -77,7 +84,7 @@ needing several groups' pieces waits for the last of them.
 | Removal and board wipes | **24 built (2026-10-21):** Bedevil, Mortify, Vindicate, Void Rend, Decimate, Meteor Golem, Snuff Out, Swords to Plowshares, Path to Exile, Destroy Evil, Legions to Ashes, Chaos Warp, Final Judgment, Ruinous Ultimatum, Cleansing Nova, Crux of Fate, Damning Verdict, Austere Command, Farewell, Vanquish the Horde, Crackling Doom, Vandalblast, Sun Titan, Bane of Progress. The rest of the group need other groups' mechanics: Sagas (Summon: Ixion, Kujata, Yojimbo), end-step triggers (Summoner's Sending, Wakka, Y'shtola), "up to N targets" (Angel of the Ruins, Cloud's Limit Break), counterspells (Sublime Epiphany), the monarch (Palace Jailer), X costs (Walking Ballista), foretell, convoke, escalate, rebound and similar one-offs. |
 | Equipment and auras | **16 built (2026-10-21):** Cloud, Ex-SOLDIER (Limit Break's commander), Behemoth Sledge, Darksteel Plate, Colossus Hammer, Champion's Helm, Hero's Heirloom, Hero's Blade, Lightning Greaves, Swiftfoot Boots, Trailblazer's Boots, Sword of the Animist, Explorer's Scope, Sage's Nouliths, Skullclamp, Helitrooper, Armory Automaton. Still to come: Auras (Eye of Nidhogg, Observed Stasis, Unfinished Business), granted abilities that need other groups (Astrologian's Planisphere, Blue Mage's Cane, Conformer Shuriken, Dancer's Chakrams, Conqueror's Flail, Wrecking Ball Arm, Mask of Memory), anthems and cost reductions (Red XIII, Puresteel Paladin, Cid), and one-offs (Barret, Avalanche Leader; Yuffie). Reaper's Scythe and Zack Fair came with other counter kinds. |
 | +1/+1 counters and proliferate | **11 built (2026-10-21):** Hardened Scales, Duskshell Crawler, Sphere Grid, Bred for the Hunt, Chocobo Knights, Inspiring Call, Grateful Apparition, Inexorable Tide, Sunscorch Regent, Ardbert, Siegfried. The rest mostly wait on shared mechanics: "up to N targets" and support (Generous Patron, Together Forever, Blitzball Stadium, General Leo), end-step triggers (Lord Jyscal, Gau, Mog), evolve (Fathom Mage, Gyre Sage), other counter kinds (stun, shield, page, vow, flying), and remembering a dead creature's power or counters (Rampant Rejuvenator, Chasm Skulker, Yuna, Sin). |
-| Mana: lands and mana rocks (most already make basic mana) | **27 built (2026-10-22):** Rampant Growth, Farseek, Nature's Lore, Three Visits, Wayfarer's Bauble, Solemn Simulacrum, Temple of the False God, Spire of Industry, Millikin, Thought Vessel, Bonders' Enclave, Slayers' Stronghold, Demolition Field, Mossfire Valley, Sungrass Prairie, Sunscorched Divide, Desolate Mire, Shadowblood Ridge, Overflowing Basin, Skycloud Expanse, Darkwater Catacombs, Fire-Lit Thicket, Rugged Prairie, Fetid Heath, Graven Cairns, Flooded Grove, Sunken Ruins. Still waiting: Path of Ancestry. Relic of Legends and Everflowing Chalice were built in later groups. |
+| Mana: lands and mana rocks (most already make basic mana) | **27 built (2026-10-22):** Rampant Growth, Farseek, Nature's Lore, Three Visits, Wayfarer's Bauble, Solemn Simulacrum, Temple of the False God, Spire of Industry, Millikin, Thought Vessel, Bonders' Enclave, Slayers' Stronghold, Demolition Field, Mossfire Valley, Sungrass Prairie, Sunscorched Divide, Desolate Mire, Shadowblood Ridge, Overflowing Basin, Skycloud Expanse, Darkwater Catacombs, Fire-Lit Thicket, Rugged Prairie, Fetid Heath, Graven Cairns, Flooded Grove, Sunken Ruins. Path of Ancestry, Relic of Legends and Everflowing Chalice were built in later groups. |
 | Up to N targets and support | **11 built (2026-10-22):** General Leo Cristophe, Angel of the Ruins, Sepulchral Primordial, Key to the City, Generous Patron, Together Forever, Wakka, Rampant Rejuvenator, Cultivate, Archaeomancer's Map, Barret. |
 | Commanders | **3 built (2026-10-22):** Terra, Herald of Hope; Tidus, Yuna's Guardian; Y'shtola, Night's Blessed (Cloud, Ex-SOLDIER was built with Equipment). |
 | End-step and upkeep triggers | **10 built (2026-10-22):** Bugenhagen, Aerith, Hellkite Tyrant, Gau, Rogue's Passage, Summoner's Sending, Papalymo Totolymo, Lyse Hext, Forge of Heroes, Tromell. |

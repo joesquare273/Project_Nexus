@@ -301,6 +301,14 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
 
   const found: QueuedTrigger[] = [];
   for (const e of events) {
+    if (e.type === 'SpellCast') {
+      for (const unit of e.scryMana ?? []) {
+        found.push({ source: unit.source, sourceObject: unit.sourceObject, controller: e.player,
+          sourceZone: 'battlefield', ability: -1,
+          spec: { when: 'SpellCast', what: { controller: 'You', types: ['creature'] }, effects: [{ effect: 'Scry', target: 'You', amount: 1 }] },
+          subject: e.card });
+      }
+    }
     if (e.type !== 'DamageDealt' || !e.combat || e.target.kind !== 'player') continue;
     for (const spec of e.grantedTriggers ?? []) {
       found.push({ source: e.source, sourceObject: e.sourceObject, controller: e.sourceController!,

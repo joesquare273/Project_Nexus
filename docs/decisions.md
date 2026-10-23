@@ -165,3 +165,15 @@ choices keep opponents' hand identities hidden.
 | Multikicker | Offered up to 6 times, as far as your mana could pay | Any number of times |
 | Escalate | The legal list taps your first untapped creatures that don't make mana | The player chooses which creatures |
 | Blade Beam (Cloud's Limit Break) | Up to four tapped creatures, each with a different owner | Any number, each with a different controller |
+
+## 2026-10-23: Floating mana with delayed cast triggers
+
+Path of Ancestry mana carries a per-unit scry rider through pool payment.
+Mana clears at step boundaries, and spending a unit consumes its rider even
+when no scry is earned. Creature types are checked after casting, using the
+current visible commander and the spell on the stack.
+
+The existing automatic payment system still selects mana types. Within the
+same type, scry-bearing mana is spent first, including on noncreature spells
+and activated abilities. Choosing individual floating mana units is not yet
+a separate player control; tap sources accordingly when saving this mana.

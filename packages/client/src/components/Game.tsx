@@ -1032,9 +1032,10 @@ function PromptBar(p: PromptProps) {
       { label: 'Command zone', onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: true }]), primary: true },
     ];
   } else if (pending.kind === 'surveil') {
-    text = `Surveil: keep ${cardName(s, pending.card)} on top of your library, or put it into your graveyard?`;
+    const scrying = !!pending.scry;
+    text = `${scrying ? 'Scry' : 'Surveil'}: keep ${cardName(s, pending.card)} on top of your library, or put it ${scrying ? 'on the bottom of your library' : 'into your graveyard'}?`;
     buttons = [
-      { label: 'Graveyard', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: true }]) },
+      { label: scrying ? 'Bottom of library' : 'Graveyard', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: true }]) },
       { label: 'Keep on top', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: false }]), primary: true },
     ];
   } else if (pending.kind === 'declareAttackers') {

@@ -25,6 +25,9 @@ export function checkInvariants(s: GameState): string[] {
       if (!c?.phasedOut || c.zone !== 'battlefield' || c.owner !== pid) problems.push(`${id} listed as phased out for ${pid} but isn't`);
     }
     for (const t of MANA_TYPES) if (p.manaPool[t] < 0) problems.push(`${pid} has negative ${t} mana`);
+    for (const t of MANA_TYPES) {
+      if ((p.creatureScryMana ?? []).filter(unit => unit.mana === t).length > p.manaPool[t]) problems.push(`${pid} has more scry riders than ${t} mana`);
+    }
     if (!Number.isInteger(p.life)) problems.push(`${pid} life is ${p.life}`);
     if (p.eliminated && (p.battlefield.length > 0 || (p.phasedOut?.length ?? 0) > 0)) problems.push(`eliminated ${pid} still has permanents`);
   }

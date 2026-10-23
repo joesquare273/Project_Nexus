@@ -5,6 +5,36 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Path of Ancestry: floating mana and delayed scry
+
+- Built the missing scry rider on Path of Ancestry. It still enters tapped
+  and produces only colors in the commander's color identity; no commander
+  or a colorless commander grants no mana.
+- Each produced mana unit retains its source identity until spent or until
+  mana pools empty. A qualifying creature cast creates an independent scry 1
+  trigger above the spell. Multiple units create multiple scry 1 triggers.
+  The rider survives the land leaving or changing control, and spending it
+  on another spell or an activated cost consumes it without a scry.
+- Commander types are checked after casting, including current battlefield
+  subtype additions. A commander being cast can match itself. Hidden and
+  phased-out commanders provide no creature types; either of two visible
+  commanders can supply the shared type. Scry is a stack ability and can be
+  countered independently of the creature spell.
+- Corrected browser, terminal and practice-tip wording to distinguish scry
+  (bottom of library) from surveil (graveyard), using the pending choice's
+  existing scry indicator. Added narration for the mana rider.
+- Added 45 scenarios across two, three and four players. Type-check, all
+  1,196 tests in 57 files, and the browser production build passed. Full
+  tests ran with two workers (109 seconds). The existing large-bundle warning
+  remains. No manual browser playtest was performed.
+- The automatic payment planner uses scry-bearing mana first within a type;
+  individual floating mana-unit selection remains a documented simplification.
+
+298 of 320 distinct precon cards are built; 22 remain. Limit Break is 98/100,
+Revival Trance 89/100, Counter Blitz 96/100, Scions & Spellcraft 95/100.
+
+Rules reference: [Wizards' Commander Masters release notes](https://magic.wizards.com/en/news/feature/commander-masters-release-notes), Path of Ancestry.
+
 ### Blitzball Stadium: support X and temporary combat triggers
 
 - Built Blitzball Stadium's entry support X. Targets are chosen when the

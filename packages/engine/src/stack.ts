@@ -2,7 +2,7 @@
 // stack (PRD 7.2).
 
 import { spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, subtypesOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { shuffleInPlace } from './rng.ts';
@@ -47,6 +47,7 @@ import {
   type CardChoice,
   type CardDefinition,
   type CardInstance,
+  type CreatureScryMana,
   type EffectSpec,
   type GameState,
   type InstanceId,
@@ -398,7 +399,7 @@ function poolFor(s: GameState, playerId: PlayerId, forEquipment: boolean) {
  * can only be spent on Equipment is used first when `forEquipment` is set.
  * Returns how much mana was spent.
  */
-export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, forEquipment = false): number {
+export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, forEquipment = false, spentScryMana?: CreatureScryMana[]): number {
   const p = player(ctx.s, playerId);
   const spent = planPayment(poolFor(ctx.s, playerId, forEquipment), cost);
   if (!spent) reject('Not enough mana in your mana pool.');
@@ -408,6 +409,16 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, forEquipme
       const restricted = Math.min(n, p.equipmentMana[t]);
       p.equipmentMana[t] -= restricted;
       n -= restricted;
+    }
+    // The existing automatic payment planner chooses mana types. Within one
+    // type, use rider-bearing mana first and remove each rider exactly once.
+    if (n > 0 && p.creatureScryMana?.length) {
+      const used = p.creatureScryMana.filter(unit => unit.mana === t).slice(0, n);
+      if (used.length) {
+        spentScryMana?.push(...used);
+        const consumed = new Set(used);
+        p.creatureScryMana = p.creatureScryMana.filter(unit => !consumed.has(unit));
+      }
     }
     p.manaPool[t] -= n;
   }
@@ -801,7 +812,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (delved.length > cost.generic) reject('That is more cards than the spell needs.');
     cost = { ...cost, generic: cost.generic - delved.length };
   }
-  const manaSpent = payMana(ctx, playerId, cost, isEquipment(s, c));
+  const spentScryMana: CreatureScryMana[] = [];
+  const manaSpent = payMana(ctx, playerId, cost, isEquipment(s, c), spentScryMana);
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   for (const discarded of costCards) discard(ctx, discarded);
   for (const k of convoked) tap(ctx, k);
@@ -846,7 +858,15 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
   };
   s.stack.push(item);
-  ctx.ev.push({ type: 'SpellCast', player: playerId, card: id, defId: c.defId, targets, manaSpent });
+  // Check after the spell is on the stack: a commander cast from a hidden
+  // zone can share its own type, and current battlefield subtype additions count.
+  const sharesCommanderType = spentScryMana.length > 0 && def.types.includes('creature') && Object.values(s.cards).some(commander =>
+    commander.isCommander && commander.owner === playerId && !commander.phasedOut &&
+    !['hand', 'library'].includes(commander.zone) &&
+    subtypesOf(s, commander).some(type => def.subtypes?.includes(type)));
+  ctx.ev.push({ type: 'SpellCast', player: playerId, card: id, defId: c.defId, targets, manaSpent,
+    ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
+  });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
 }
 
