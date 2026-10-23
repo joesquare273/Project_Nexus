@@ -70,11 +70,8 @@
           "count": 1,
           "set": "fic",
           "number": "25",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ultimate Magic: Holy",

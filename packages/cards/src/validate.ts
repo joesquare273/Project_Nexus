@@ -276,6 +276,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');
   if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
   validateFilter(e.filter, err);
+  if (e.effect === 'ChooseCounterRecipients' && (e.target !== 'You' || !e.filter || typeof e.amount !== 'number' || !isNonNegativeInt(e.amount))) err('ChooseCounterRecipients needs You, a filter, and a nonnegative whole-number amount.');
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
@@ -337,9 +338,17 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.cost?.discard !== undefined && (!isNonNegativeInt(t.cost.discard) || t.cost.discard === 0)) e('discard cost must be a positive whole number.');
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
   if (t.randomModes) {
+    if (t.modes) e('a trigger cannot have both randomModes and modes.');
     if (t.effects?.length) e('a trigger with randomModes keeps "effects" empty.');
     if (t.randomModes.length < 2 || t.randomModes.some((m) => !Array.isArray(m) || m.length === 0)) e('randomModes needs two or more modes with effects.');
     for (const mode of t.randomModes) for (const effect of mode) validateEffect(effect, true, e);
+    return;
+  }
+  if (t.bothIfCommander && t.modes?.length !== 2) e('bothIfCommander needs exactly two modes.');
+  if (t.modes) {
+    if (t.effects?.length) e('a modal trigger keeps effects empty.');
+    if (t.modes.length < 2 || t.modes.some((m) => !Array.isArray(m) || m.length === 0)) e('modes needs two or more modes with effects.');
+    for (const mode of t.modes) for (const effect of mode) validateEffect(effect, true, e);
     return;
   }
   if (!Array.isArray(t.effects) || t.effects.length === 0) {
@@ -417,7 +426,7 @@ export function validateCardList(cards: readonly unknown[]): string[] {
       ...(c.effects ?? []),
       ...(c.modes ?? []).flat(),
       ...(c.alternativeCost?.effects ?? []),
-      ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat()]),
+      ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat(), ...(t.modes ?? []).flat()]),
       ...(c.activated ?? []).flatMap((a) => a.effects ?? []),
     ];
     for (const e of effects) {

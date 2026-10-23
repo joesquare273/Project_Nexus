@@ -136,17 +136,18 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
 /** What a triggered or activated ability on the stack does. */
 export function abilitySpec(s: GameState, item: AbilityItem): TriggerSpec | ActivatedSpec {
   const def = defOf(s, s.cards[item.source]!);
-  return item.from === 'trigger' ? withMode(def.triggers![item.ability]!, item.mode) : activatedAbilities(def)[item.ability]!;
+  return item.from === 'trigger' ? withMode(def.triggers![item.ability]!, item.mode, item.modes) : activatedAbilities(def)[item.ability]!;
 }
 
 /** "Choose one at random": the trigger with the mode that came up as its effects. */
-export function withMode(spec: TriggerSpec, mode: number | undefined): TriggerSpec {
+export function withMode(spec: TriggerSpec, mode: number | undefined, modes?: number[]): TriggerSpec {
+  if (spec.modes && modes) return { ...spec, effects: [...modes].sort((a, b) => a - b).flatMap((i) => spec.modes![i] ?? []) };
   return spec.randomModes && mode !== undefined ? { ...spec, effects: spec.randomModes[mode] ?? [] } : spec;
 }
 
 /** The trigger behind a queued trigger, with its random mode. */
-export function queuedTriggerSpec(s: GameState, t: { source: InstanceId; ability: number; mode?: number }): TriggerSpec {
-  return withMode(defOf(s, s.cards[t.source]!).triggers![t.ability]!, t.mode);
+export function queuedTriggerSpec(s: GameState, t: { source: InstanceId; ability: number; mode?: number; modes?: number[] }): TriggerSpec {
+  return withMode(defOf(s, s.cards[t.source]!).triggers![t.ability]!, t.mode, t.modes);
 }
 
 /** The trigger behind an ability item, if it is a triggered ability. */
@@ -1318,6 +1319,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
+    case 'ChooseCounterRecipients': {
+      const candidates = battlefield(s).filter((c) => matchesObject(s, effect.filter, c, { controller: item.controller, source })).map((c) => c.id);
+      if (candidates.length) r.choiceQueue = [{ player: item.controller, purpose: 'addCounters', cards: candidates, min: 0, max: Math.min(amount, candidates.length) }];
+      return;
+    }
     case 'DistributeCounters': {
       const from = s.cards[source]!;
       if (from.zone !== 'battlefield' || !(from.counters && from.counters > 0)) return;
@@ -2001,7 +2007,9 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
-  if (pending.purpose === 'distributeCounter') {
+  if (pending.purpose === 'addCounters') {
+    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, 1, r.item.controller);
+  } else if (pending.purpose === 'distributeCounter') {
     const distribution = r.distribution!;
     const recipient = cards[0];
     const assigned = recipient ? { ...distribution.assigned, [recipient]: (distribution.assigned[recipient] ?? 0) + 1 } : distribution.assigned;

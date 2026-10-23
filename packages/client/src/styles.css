@@ -1889,3 +1889,48 @@ button.phase.current {
   .prompt-text { flex-basis: 100%; }
   .prompt-buttons { flex-wrap: wrap; }
 }
+.prompt.modal-choice {
+  flex-direction: column;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+.prompt.modal-choice .prompt-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+.prompt.modal-choice button { text-align: left; }
+/* Damage is marked, not a toughness modifier. "left" is a visual damage-capacity hint. */
+.badge.pt { display: flex; align-items: center; justify-content: center; }
+.badge.pt.wounded { background: #321616; border: 1px solid #e2766a; color: #fff0e8; }
+.badge.pt.wounded > span { color: #ff9589; }
+.damage-view-label { margin-left: 3px; font-size: 8px; font-weight: 600; }
+.bf-card.has-damage .bf-inner { box-shadow: 0 0 0 1px rgba(234, 105, 87, 0.8); }
+.inspector-damage { color: #ffb4a8; font-size: 12px; line-height: 1.5; margin: 0; }
+.token-stack {
+  position: relative;
+  width: var(--bf-w);
+  margin: 5px 8px 0 0;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+.token-stack .bf-inner { box-shadow: 3px -3px 0 #253342, 6px -6px 0 #8d7544; }
+.token-stack-count {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 4;
+  min-width: 25px;
+  height: 25px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid #fff0b8;
+  background: #e7c579;
+  color: #211804;
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.token-stack:focus-visible { outline: 2px solid #8ed7ed; outline-offset: 6px; }
+.stack-tokens-button { align-self: flex-start; padding: 3px 8px; font-size: 11px; margin-bottom: 8px; }

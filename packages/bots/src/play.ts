@@ -481,6 +481,7 @@ async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind
           ? 'put onto the battlefield'
           : p.purpose === 'hand'
             ? 'put into your hand (the rest go on the bottom)'
+            : p.purpose === 'addCounters' ? 'receive a +1/+1 counter each'
             : 'keep (the rest are sacrificed)';
   if (p.allOrNothing) {
     const yes = (await ask(`\n  Discard your whole hand (${p.cards.length} cards)? (y/N) `)).toLowerCase() === 'y';
@@ -528,6 +529,13 @@ async function playOneGame(gameSeed: number): Promise<void> {
       actions = await decideAttacks(s);
     } else if (pending.kind === 'declareBlockers') {
       actions = await decideBlocks(s);
+    } else if (pending.kind === 'chooseModes') {
+      const options = getLegalActions(s).filter((a): a is Extract<Action, { type: 'ChooseModes' }> => a.type === 'ChooseModes');
+      const spec = queuedTriggerSpec(s, s.triggerQueue[0]!);
+      options.forEach((a, i) => console.log(`  ${i + 1}) ${a.modes.map((m) => spec.modes![m]!.map((e) => e.effect).join(', ')).join(' + ')}`));
+      const choice = options[Number(await ask('  Choose modes: ')) - 1];
+      if (!choice) continue;
+      actions = [choice];
     } else if (pending.kind === 'chooseTargets') {
       actions = await decideTriggerTargets(s);
     } else if (pending.kind === 'decide') {

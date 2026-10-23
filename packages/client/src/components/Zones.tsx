@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
 import { YOU, type Placement } from '../game/session.ts';
+import { groupTokenCards } from '../game/tokenStacks.ts';
 import { CardBack, CardFace, ManaCost } from './Card.tsx';
 
 /** How a card or player should be highlighted right now. */
@@ -20,6 +21,7 @@ export type Mark =
   | 'mana';
 
 export interface ZoneHandlers {
+  tokenStackKey: (id: InstanceId) => string | null;
   markCard: (id: InstanceId) => Mark[];
   markPlayer: (id: PlayerId) => Mark[];
   /** A short label under a card, e.g. "→ Bot1" or "blocks Bear". */
@@ -40,10 +42,16 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
   const creature = isCreature(def);
   const sick = c.summoningSick && creature && !stats?.keywords.includes('Haste');
   const changed = stats && (stats.power !== def.power || stats.toughness !== def.toughness);
+  const indestructible = stats?.keywords.includes('Indestructible');
+  const damaged = creature && c.damage > 0;
+  const remaining = stats ? Math.max(0, stats.toughness - c.damage) : 0;
+  const damageText = stats && damaged
+    ? `Actual power/toughness ${stats.power}/${stats.toughness}. ${c.damage} damage marked until cleanup. ${indestructible ? 'Indestructible prevents destruction from damage; damage remains marked.' : `${remaining} more damage would be lethal. The red number shows remaining damage capacity, not a change to toughness.`}`
+    : undefined;
   return (
     <div
       data-card={id}
-      className={`bf-card ${c.tapped ? 'tapped' : ''} ${def.types.includes('land') ? 'land' : ''} ${marks.join(' ')}`}
+      className={`bf-card ${c.tapped ? 'tapped' : ''} ${def.types.includes('land') ? 'land' : ''} ${damaged ? 'has-damage' : ''} ${marks.join(' ')}`}
       onClick={() => h.onCard(id)}
       onMouseEnter={() => h.onHover(id)}
       onMouseLeave={() => h.onHover(null)}
@@ -67,12 +75,13 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
           </div>
         )}
         {creature && stats && (
-          <div className={`badge pt ${changed ? 'changed' : ''}`}>
-            {stats.power}/{stats.toughness}
+          <div className={`badge pt ${changed ? 'changed' : ''} ${damaged && !indestructible ? 'wounded' : ''}`} title={damageText} aria-label={damageText}>
+            {stats.power}/<span>{damaged && !indestructible ? remaining : stats.toughness}</span>
+            {damaged && !indestructible && <small className="damage-view-label">left</small>}
           </div>
         )}
         {c.damage > 0 && (
-          <div key={c.damage} className="badge damage hit">
+          <div key={c.damage} className="badge damage hit" title={damageText ?? `${c.damage} damage marked`} aria-label={`${c.damage} damage marked${indestructible ? '; indestructible' : ''}`}>
             {c.damage}
           </div>
         )}
@@ -230,6 +239,7 @@ function Battlefield({
   onPlaced?: () => void;
 }) {
   const area = useRef<HTMLDivElement>(null);
+  const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
   const ids = view.players[pid]!.battlefield;
   const lands = ids.filter((id) => defOf(view.cards[id]!.defId).types.includes('land'));
   const others = ids.filter((id) => !lands.includes(id));
@@ -237,6 +247,21 @@ function Battlefield({
   const hosts = others.filter((id) => !(view.cards[id]!.attachedTo && others.includes(view.cards[id]!.attachedTo!)));
   const attachedTo = (id: InstanceId) => others.filter((e) => view.cards[e]!.attachedTo === id);
   const ordered = hosts;
+  const groups = groupTokenCards(ordered, (id) => {
+    const key = h.tokenStackKey(id);
+    // Unfold automatically for targets, combat selection, payments, or manually positioned tokens.
+    return key && !expandedStacks.has(key) && !placement?.has(id) && h.markCard(id).every((m) => m === 'recent') ? key : null;
+  });
+  const tokenStack = (group: (typeof groups)[number]) => {
+    const expand = () => setExpandedStacks(new Set([...expandedStacks, group.key!]));
+    return <div key={group.id} className="token-stack" role="button" tabIndex={0}
+      aria-label={`${group.members.length} ${defOf(view.cards[group.id]!.defId).name} tokens. Expand to choose individual tokens.`}
+      onClick={expand}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(); } }}>
+      <BattlefieldCard view={view} id={group.id} h={{ ...h, onCard: expand }} />
+      <span className="token-stack-count" aria-hidden="true">{group.members.length}</span>
+    </div>;
+  };
   if (placement) {
     // A card that left (or is now attached to something) keeps its id, so forget where it was.
     for (const id of [...placement.keys()]) if (!hosts.includes(id)) placement.delete(id);
@@ -244,14 +269,15 @@ function Battlefield({
   return (
     <div className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
       <div className="zone-label">Battlefield{placement && ordered.length > 0 ? ' · drag your permanents to arrange them' : ''}</div>
+      {expandedStacks.size > 0 && <button className="stack-tokens-button ghost" onClick={() => setExpandedStacks(new Set())}>Stack tokens</button>}
       {placement ? (
         <div ref={area} className="row creatures free">
-          {ordered.map((id) => (
+          {groups.map((group) => group.members.length > 1 ? tokenStack(group) : (
             <DraggableCard
-              key={id}
+              key={group.id}
               view={view}
-              id={id}
-              attached={attachedTo(id)}
+              id={group.id}
+              attached={attachedTo(group.id)}
               h={h}
               area={area}
               placement={placement}
@@ -262,8 +288,8 @@ function Battlefield({
         </div>
       ) : (
         <div className="row creatures">
-          {ordered.map((id) => (
-            <AttachedGroup key={id} view={view} id={id} attached={attachedTo(id)} h={h} />
+          {groups.map((group) => group.members.length > 1 ? tokenStack(group) : (
+            <AttachedGroup key={group.id} view={view} id={group.id} attached={attachedTo(group.id)} h={h} />
           ))}
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>

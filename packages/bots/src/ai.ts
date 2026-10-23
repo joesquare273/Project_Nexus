@@ -499,6 +499,7 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
   if (p.purpose === 'library') return pick([]);
+  if (p.purpose === 'addCounters') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, p.max));
   if (p.purpose === 'distributeCounter') {
     const recipients = p.cards.filter((id) => s.cards[id]!.controller === me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));
     return pick(recipients.slice(0, 1));
@@ -564,6 +565,7 @@ export function basicAi(_seed = 0): Bot {
       if (!blockProblem(s, pending.player, blocks)) return { type: 'DeclareBlockers', player: pending.player, blocks };
       return legal.at(-1)!;
     }
+    if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;
     if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
     if (pending.kind === 'surveil') return chooseSurveil(s, pending.player, pending.card);

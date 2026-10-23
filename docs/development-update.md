@@ -5,6 +5,74 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### User-requested combat damage and token displays
+
+Validation: type-check, all 699 tests, and production build passed. The existing
+Vite large-bundle warning remains. Thirty Commander fuzz games passed (139-168).
+
+- Normal creatures with marked damage show their remaining damage capacity in
+  red with a "left" label; a separate badge shows damage marked. This changes
+  the display, not actual toughness or lethal-damage calculations. The inspector
+  now shows current actual power/toughness, including counters and effects,
+  and explains marked damage. Indestructible creatures keep their actual P/T
+  display and still show marked damage; indestructible is not damage prevention.
+- The display uses damage actually recorded by the engine, so shield prevention
+  or damage converted to counters does not reduce it. The red state lasts until
+  damage is removed, normally cleanup. References checked: Comprehensive Rules
+  120.3e, 120.6, 514.2 and 702.12b (September 25, 2026).
+- Tokens: six or more identical plain tokens share a display card with a count
+  at its upper right. Five or fewer remain individual. Modified tokens, tokens
+  with keywords/abilities, counters, damage, attachments, combat roles, active
+  continuous effects, or different readiness/ownership stay separate.
+- Every token retains its engine ID. Click or keyboard-activate a stack to
+  expand its members; "Stack tokens" groups eligible members again. Stacks
+  unfold automatically for targeting, payments, and combat choices. Manually
+  positioned tokens are preserved individually.
+- Eighteen grouping scenarios cover 2, 3 and 4 players, the exact threshold,
+  modified tokens, printed keywords/abilities, ownership/readiness, and the
+  preservation of all individual engine objects and creature counts.
+- Browser playtest: a 4/4 with 2 damage displayed 4/2 left; an indestructible
+  4/4 with 7 marked retained 4/4; shield-prevented damage left a 2/2 unchanged.
+  Cleanup restored the ordinary display and removed damage badges. A stack of
+  eight Soldiers expanded, regrouped, unfolded during Program's recipient
+  choice, and regrouped the remaining six after two gained counters. The token
+  with a counter and the token granted flying stayed separate throughout.
+- Temporary QA entries were removed after testing. Saved previews are in this
+  chat's outputs. Browser logs only retained the earlier temporary QA file's
+  hot-reload teardown error, with no new application runtime errors.
+
+### Modal combat trigger: SOLDIER Military Program
+
+- Built SOLDIER Military Program: choose one mode as its beginning-of-combat
+  trigger goes on the stack, or choose both when you control a commander on
+  the battlefield. A commander in the command zone does not qualify; an
+  opponent's commander you control does. The selected modes remain fixed if
+  the source or commander leaves before resolution, and resolve in printed order.
+- Its counter mode chooses zero, one or two distinct Soldiers on resolution.
+  It does not target. The Soldier token made by the first mode can be chosen;
+  Cloud is a Soldier too. Hardened Scales applies once per recipient.
+- Added modal-trigger decisions to the engine, browser, legal-action list,
+  AI and terminal client. Selected modes are public on the stack. Illegal
+  modes with unavailable mandatory targets are omitted; if no mode is legal,
+  the trigger is removed. Concession repairs the pending decision.
+- Thirty-three scenarios cover 2, 3 and 4 players, mode validation, response
+  windows, controller/zone conditions, optional recipients, shroud, Scales,
+  extra combats, source removal, legal modes, bots and public views.
+- Checked Comprehensive Rules 603.3c and 700.2 against Wizards' September 25,
+  2026 rules: modes are announced on placement and duplicates are not allowed.
+- Browser playtest used a temporary prepared Commander position and the real
+  board/session/engine. Selected both modes, then selected the new Soldier and
+  Cloud: the board showed 2/2 and 5/5 respectively, each with one counter.
+  No browser errors were reported. The QA entry files were removed afterwards.
+  A screenshot is saved with this chat's outputs. Ordinary viewport capture
+  timed out; full-page capture succeeded.
+
+287 of 320 distinct precon cards are built; 33 remain. Limit Break is 95/100;
+Revival Trance 87/100, Counter Blitz 94/100, Scions & Spellcraft 88/100.
+Thirty Commander fuzz games (seeds 139-168) finished with zero invariant failures
+or action-limit timeouts. The Starter Kit and tutorial remain in the full checks.
+Continue with the remaining cards after the user's push/proceed checkpoint.
+
 ### Priority controls and the next card checkpoint
 
 - Full control now pauses whenever you receive priority, even with no playable

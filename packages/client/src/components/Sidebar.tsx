@@ -11,6 +11,8 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
   if (!c) return null;
   const def = defOf(c.defId);
   const info = scryfallOf(c.defId);
+  const stats = c.zone === 'battlefield' ? view.stats[c.id] : undefined;
+  const indestructible = stats?.keywords.includes('Indestructible');
   const status = [
     c.zone === 'battlefield' && c.tapped && 'Tapped',
     c.zone === 'battlefield' && c.damage > 0 && `${c.damage} damage`,
@@ -36,10 +38,14 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
         )}
         {isCreature(def) && (
           <div className="inspector-pt">
-            {def.power}/{def.toughness}
+            {stats?.power ?? def.power}/{stats?.toughness ?? def.toughness}
           </div>
         )}
         {status.length > 0 && <div className="inspector-status">{status.join(' · ')}</div>}
+        {stats && c.damage > 0 && <p className="inspector-damage">
+          Actual toughness: {stats.toughness}. {c.damage} damage marked until cleanup.
+          {' '}{indestructible ? 'Indestructible prevents destruction from damage.' : `${Math.max(0, stats.toughness - c.damage)} more damage would be lethal.`}
+        </p>}
         {info?.artist && <div className="inspector-credit">Illustrated by {info.artist}</div>}
       </div>
     </div>

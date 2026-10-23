@@ -28,6 +28,7 @@ import { manaSources, paidManaSources, planTaps, tapActions } from '@nexus/bots'
 import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
+import { tokenStackKey } from '../game/tokenStacks.ts';
 import { CardFace } from './Card.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
@@ -469,6 +470,7 @@ export function Game({
   // Choosing cards to discard, sacrifice or keep: the cards on offer glow and toggle when clicked.
   const choosing = yourMove && pending.kind === 'chooseCards' ? pending : null;
   const h: ZoneHandlers = {
+    tokenStackKey: (id) => tokenStackKey(s, id),
     markCard: (id) => {
       const marks: Mark[] = [];
       if (bottoming && s.cards[id]?.zone === 'hand') marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
@@ -849,6 +851,7 @@ function StackView({ view, onHover, h }: { view: GameView; onHover: (id: Instanc
               <div className="stack-name">
                 {c ? defOf(c.defId).name : 'A card'}
                 {item.kind === 'ability' && <em> — ability</em>}
+                {item.kind === 'ability' && item.modes && <em> (mode{item.modes.length > 1 ? 's' : ''} {item.modes.map((i) => i + 1).join(' + ')})</em>}
                 {item === view.resolving && <em> (resolving)</em>}
               </div>
               <div className="stack-meta">
@@ -962,6 +965,7 @@ function PromptBar(p: PromptProps) {
               : c.purpose === 'hand'
                 ? 'to put into your hand; the rest go on the bottom of your library'
                 : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
+                  : c.purpose === 'addCounters' ? 'to receive a +1/+1 counter each'
                   : c.purpose === 'distributeCounter' ? `to receive one +1/+1 counter (${c.counterCount} remain to assign); choose none to finish`
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
                     : 'to keep; the others are sacrificed';
@@ -974,6 +978,14 @@ function PromptBar(p: PromptProps) {
           : []),
       ];
     }
+  } else if (pending.kind === 'chooseModes') {
+    const t = s.triggerQueue[0]!;
+    const spec = queuedTriggerSpec(s, t);
+    const labels = modeLabels(s.cards[t.source]!.defId, spec.modes?.length ?? 0);
+    text = `${cardName(s, t.source)}: choose its modes before it goes on the stack.`;
+    buttons = getLegalActions(s).flatMap((action) => action.type === 'ChooseModes'
+      ? [{ label: action.modes.length > 1 ? 'Both modes' : labels[action.modes[0]!] ?? `Mode ${action.modes[0]! + 1}`, onClick: () => p.submit([action]), primary: action.modes.length > 1 }]
+      : []);
   } else if (pending.kind === 'bottomCards') {
     const n = pending.count;
     text = `You kept. Click ${n} card${n === 1 ? '' : 's'} in your hand to put on the bottom of your library (${p.bottomPicks.length}/${n} chosen).`;
@@ -1060,7 +1072,7 @@ function PromptBar(p: PromptProps) {
   }
 
   return (
-    <div className={`prompt ${p.yourMove ? 'yours' : ''} ${p.busy ? 'busy' : ''}`}>
+    <div className={`prompt ${p.yourMove ? 'yours' : ''} ${p.busy ? 'busy' : ''} ${pending.kind === 'chooseModes' ? 'modal-choice' : ''}`}>
       <div className="prompt-text">{text}</div>
       <div className="prompt-buttons">
         {buttons.map((b) => (

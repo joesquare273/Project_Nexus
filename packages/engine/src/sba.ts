@@ -182,6 +182,7 @@ function repairPending(ctx: Ctx): void {
     case 'declareBlockers':
       nextBlockerDecision(ctx);
       break;
+    case 'chooseModes':
     case 'chooseTargets':
       // The trigger left the queue with its controller; carry on placing the rest.
       if (s.players[pending.player]!.eliminated) givePriority(ctx, pending.then);

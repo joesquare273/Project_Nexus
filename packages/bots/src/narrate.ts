@@ -96,6 +96,7 @@ function targetText(e: EffectSpec): string {
 
 function effectText(e: EffectSpec): string {
   if (e.effect === 'DistributeCounters') return 'Move any number of +1/+1 counters from this creature onto other creatures';
+  if (e.effect === 'ChooseCounterRecipients') return `Put a +1/+1 counter on each of up to ${typeof e.amount === 'number' ? e.amount : 'the chosen number of'} matching permanents you choose`;
   if (e.effect === 'ChooseGraveyardCards') return 'Each opponent chooses a different creature card from your graveyard';
   if (e.effect === 'ReturnChosenToBattlefield') return 'Return the chosen cards to the battlefield under your control';
   if (e.effect === 'PutIntoLibrary') return "Its owner puts it on the top or bottom of their library";
@@ -351,6 +352,7 @@ function triggerCondition(t: TriggerSpec): string {
 export function triggerText(t: TriggerSpec): string {
   const effects = t.randomModes
     ? `choose one at random: ${t.randomModes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
+    : t.modes ? `choose one${t.bothIfCommander ? ' or both if you control a commander' : ''}: ${t.modes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
     : t.effects.map(effectText).join(' and ');
   const body = t.cost
     ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`, t.cost.lifeOf && "life equal to that spell's mana value", t.cost.discard && `discard ${t.cost.discard} card${t.cost.discard === 1 ? '' : 's'}`].filter(Boolean).join(' and ')}. If you do, ${effects}`

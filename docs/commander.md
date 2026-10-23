@@ -5,7 +5,7 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 94/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 95/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 87/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 94/100 |
 | Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 88/100 |
@@ -81,5 +81,6 @@ needing several groups' pieces waits for the last of them.
 | Graveyard and library choices | **4 built (2026-10-23):** Rejoin the Fight, Promise of Loyalty, Endless Detour, Combustible Gearhulk. |
 | Counter distribution and ability targets | **3 built (2026-10-23):** Forgotten Ancient, Estinien Varlineau, Professor Hojo. |
 | Casting support | **2 built (2026-10-23):** Banon, the Returners' Leader; Inspiring Statuary. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (34 cards left in all). |
+| Modal combat triggers | **1 built (2026-10-23):** SOLDIER Military Program. Modes are chosen on stack placement; its Soldier recipients are chosen on resolution, without targeting. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (33 cards left in all). |
 | Everything else | |

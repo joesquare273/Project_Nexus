@@ -44,7 +44,7 @@ import {
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
-import { triggerTargetOptions } from './triggers.ts';
+import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaAbilityAmount, manaChoices } from './typerules.ts';
 import { MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
@@ -352,6 +352,8 @@ export function getLegalActions(s: GameState): Action[] {
     case 'gameOver':
       return [];
 
+    case 'chooseModes':
+      return triggerModeOptions(s, s.triggerQueue[0]!).map((modes): Action => ({ type: 'ChooseModes', player: pending.player, modes }));
     case 'chooseTargets': {
       const player = pending.player;
       const t = s.triggerQueue[0]!;

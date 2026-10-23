@@ -150,6 +150,8 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /** Choose up to amount matching permanents on resolution; put a +1/+1 counter on each. */
+  'ChooseCounterRecipients',
   'DistributeCounters',
   'ChooseGraveyardCards',
   'ReturnChosenToBattlefield',
@@ -681,6 +683,9 @@ export interface TriggerSpec {
    * effects are used instead of `effects` (which stays empty).
    */
   randomModes?: EffectSpec[][];
+  /** Modal trigger: choose one as it goes on the stack; choose both if you control a commander. */
+  modes?: EffectSpec[][];
+  bothIfCommander?: boolean;
   effects: EffectSpec[];
 }
 
@@ -1140,6 +1145,7 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  modes?: number[];
   id: string;
   kind: 'ability';
   source: InstanceId;
@@ -1166,6 +1172,7 @@ export type StackItem = SpellItem | AbilityItem;
 
 /** A triggered ability waiting to be put on the stack. */
 export interface QueuedTrigger {
+  modes?: number[];
   source: InstanceId;
   ability: number;
   controller: PlayerId;
@@ -1236,7 +1243,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter';
+  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1267,6 +1274,7 @@ export interface CombatState {
 
 /** Whose decision the game is waiting on. */
 export type Pending =
+  | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
   | { kind: 'priority'; player: PlayerId; passes: number }
   | { kind: 'declareAttackers'; player: PlayerId }
   | { kind: 'declareBlockers'; player: PlayerId }
@@ -1386,6 +1394,7 @@ export type Action =
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
   | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
+  | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'Decide'; player: PlayerId; accept: boolean }
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
   | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }

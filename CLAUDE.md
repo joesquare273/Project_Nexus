@@ -11,8 +11,8 @@ this repo, not only in local memory.
   `main`. **Stop after each commit and report the hash. The user pushes and
   says "proceed" before the next group or implementation step.**
   Before reporting each commit, refresh account usage and include purchased credits,
-  remaining allowance, and available reset credits. After the focused priority
-  controls commit, return to building the remaining 34 precon cards in groups.
+  remaining allowance, and available reset credits. Continue building the
+  remaining precon cards in groups; see docs/commander.md for current progress.
   Frontend work does not replace the card-completion roadmap.
   Before starting on a computer, sync so it has the other computer's work. Keep
   `main` passing `npm run check`.
@@ -42,6 +42,9 @@ this repo, not only in local memory.
   Improve layout, controls and animations while following MTG rules. See
   `docs/frontend-roadmap.md`; audit the known rules simplifications rather than
   claiming the engine already implements every rule exactly.
+
+- **Token display:** group six or more identical, unmodified tokens with an upper-right count; tokens with keywords, counters, damage, attachments or individual effects remain separate. Keep individual engine IDs and choices.
+- **Damage display:** show remaining damage capacity in red until cleanup, while preserving actual MTG toughness and prevention/indestructible behavior.
 
 ## Where things are
 

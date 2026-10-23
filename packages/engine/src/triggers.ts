@@ -363,6 +363,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     sourceZone: t.sourceZone,
     controller: t.controller,
     targets,
+    ...(t.modes ? { modes: [...t.modes] } : {}),
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
     ...(t.amount !== undefined ? { amount: t.amount } : {}),
@@ -390,6 +391,14 @@ export function placeTriggers(ctx: Ctx, then: PlayerId): void {
   let placed = false;
   while (s.triggerQueue.length > 0) {
     const t = s.triggerQueue[0]!;
+    if (specOf(s, t).modes && !t.modes) {
+      if (triggerModeOptions(s, t).length === 0) {
+        s.triggerQueue.shift();
+        continue;
+      }
+      s.pending = { kind: 'chooseModes', player: t.controller, then };
+      return;
+    }
     const options = triggerTargetOptions(s, t);
     if (options.some((o) => o.length === 0)) {
       s.triggerQueue.shift();
@@ -406,7 +415,29 @@ export function placeTriggers(ctx: Ctx, then: PlayerId): void {
   if (placed) givePriority(ctx, then);
 }
 
-/** The ChooseTargets action: targets for the first queued trigger. Placement continues afterwards. */
+/** The legal single modes and, when allowed, both modes of a queued trigger. */
+export function triggerModeOptions(s: GameState, t: QueuedTrigger): number[][] {
+  const spec = specOf(s, t);
+  if (!spec.modes) return [];
+  const choices = spec.modes.map((_, i) => [i]);
+  if (spec.bothIfCommander && battlefield(s).some((c) => c.controller === t.controller && c.isCommander)) choices.push(spec.modes.map((_, i) => i));
+  return choices.filter((modes) => triggerTargetOptions(s, { ...t, modes }).every((targets) => targets.length > 0));
+}
+
+/** Modes are chosen on placement, before targets (603.3c). */
+export function chooseTriggerModes(ctx: Ctx, playerId: PlayerId, modes: number[]): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseModes' || pending.player !== playerId) reject('You are not choosing modes right now.');
+  const t = s.triggerQueue[0]!;
+  const sorted = [...modes].sort((a, b) => a - b);
+  if (!triggerModeOptions(s, t).some((option) => JSON.stringify(option) === JSON.stringify(sorted))) reject('Choose a legal set of modes.');
+  t.modes = sorted;
+  givePriority(ctx, pending.then);
+  placeTriggers(ctx, pending.then);
+}
+
+/** Targets for the first queued trigger. Placement continues afterwards. */
 export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Target[]): void {
   const s = ctx.s;
   const pending = s.pending;

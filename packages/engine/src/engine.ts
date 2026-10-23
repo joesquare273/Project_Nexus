@@ -4,7 +4,7 @@
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
 import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards } from './stack.ts';
-import { chooseTriggerTargets, placeTriggers } from './triggers.ts';
+import { chooseTriggerModes, chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
 import { cloneState, reject, RuleError, type Ctx } from './state.ts';
@@ -104,6 +104,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ChooseTargets':
         chooseTriggerTargets(ctx, action.player, action.targets);
+        break;
+      case 'ChooseModes':
+        chooseTriggerModes(ctx, action.player, action.modes);
         break;
       case 'Decide':
         decide(ctx, action.player, action.accept);

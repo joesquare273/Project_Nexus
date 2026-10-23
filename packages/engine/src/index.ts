@@ -24,6 +24,7 @@ export {
 export {
   amountOf,
   characteristics,
+  staticAffects,
   countOf,
   equipmentOn,
   hasFlag,
