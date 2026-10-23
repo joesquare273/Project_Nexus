@@ -2,6 +2,7 @@
 // player only what they are allowed to know. Nothing here assumes a single
 // opponent: the filter takes a viewer and treats everyone else the same.
 
+import { visibleLibraryTop } from './typerules.ts';
 import { maximumHandSize } from './turn.ts';
 import { characteristics, hasFlag } from './characteristics.ts';
 import {
@@ -26,6 +27,8 @@ export interface PlayerView {
   /** null means an effect removes the maximum. Checked during this player's cleanup. */
   maximumHandSize: number | null;
   libraryCount: number;
+  /** Only shown to this player while an ability lets them look at their library top. */
+  libraryTop?: InstanceId;
   /** Only present for the viewer's own hand. */
   hand?: InstanceId[];
   battlefield: InstanceId[];
@@ -87,6 +90,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       handCount: p.hand.length,
       maximumHandSize: maximumHandSize(s, pid),
       libraryCount: p.library.length,
+      ...(pid === viewer && visibleLibraryTop(s, viewer) ? { libraryTop: visibleLibraryTop(s, viewer) } : {}),
       ...(pid === viewer ? { hand: [...p.hand] } : {}),
       // What they control, including permanents they took from someone else.
       battlefield: s.turnOrder.flatMap((owner) => s.players[owner]!.battlefield).filter((id) => s.cards[id]!.controller === pid),
@@ -107,7 +111,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer && s.pending.purpose === 'hand' ? s.pending.cards : [];
   for (const c of Object.values(s.cards)) {
     const faceDown = c.zone === 'exile' && c.foretoldTurn !== undefined && c.owner !== viewer;
-    const visible = !faceDown && (PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled || lookingAt.includes(c.id));
+    const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled || lookingAt.includes(c.id));
     if (visible) cards[c.id] = { ...c };
     if (c.zone === 'battlefield') {
       const ch = characteristics(s, c);

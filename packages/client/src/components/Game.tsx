@@ -303,7 +303,7 @@ export function Game({
   };
 
   /** Taps a mana source for one mana type (or a paid mana ability's output); finishes paying once the pool covers the cost. */
-  const tapForMana = (id: InstanceId, mana: ManaType, paid?: { output?: number; payWith?: number; tapCreature?: InstanceId }) => {
+  const tapForMana = (id: InstanceId, mana: ManaType, paid?: { output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId }) => {
     const err = session.submit([{ type: 'ActivateManaAbility', player: YOU, card: id, mana, ...(paid ?? {}) }]);
     if (err) {
       showError(err);
@@ -323,7 +323,7 @@ export function Game({
     const actions = getLegalActions(s).filter((a): a is Extract<Action, { type: 'ActivateManaAbility' }> => a.type === 'ActivateManaAbility' && a.card === id);
     const choose = (a: Extract<Action, { type: 'ActivateManaAbility' }>) => {
       setMenu(null);
-      tapForMana(id, a.mana, { output: a.output, payWith: a.payWith, tapCreature: a.tapCreature });
+      tapForMana(id, a.mana, { output: a.output, payWith: a.payWith, tapCreature: a.tapCreature, grantedBy: a.grantedBy });
     };
     if (actions.length === 1) return choose(actions[0]!);
     const def = defOf(s.cards[id]!.defId);
@@ -332,7 +332,7 @@ export function Game({
       options: [
         ...actions.filter((a) => !a.tapCreature).map((a) => ({
           label: a.output !== undefined ? `Pay ${def.manaAbility!.paid!.costs[a.payWith ?? 0]}: add ${def.manaAbility!.paid!.outputs[a.output]}`
-            : `Add ${`{${a.mana}}`.repeat(manaAbilityAmount(s.cards[id]!, def))}`,
+            : `Add ${`{${a.mana}}`.repeat(a.grantedBy ? 1 : manaAbilityAmount(s.cards[id]!, def))}${a.grantedBy ? ` via ${cardName(s, a.grantedBy)}` : ''}`,
           pick: () => choose(a),
         })),
         ...[...new Set(actions.flatMap((a) => a.tapCreature ? [a.tapCreature] : []))].map((creature) => ({
@@ -452,7 +452,8 @@ export function Game({
       : [],
   );
   // Cards castable from outside your hand appear next to it; commanders stay in the command zone by your name.
-  const elsewhere = [...playable].filter((id) => {
+  const libraryTop = view.players[YOU]!.libraryTop;
+  const elsewhere = [...new Set([...playable, ...(libraryTop ? [libraryTop] : [])])].filter((id) => {
     const z = s.cards[id]!.zone;
     return z !== 'hand' && z !== 'battlefield' && z !== 'command';
   });

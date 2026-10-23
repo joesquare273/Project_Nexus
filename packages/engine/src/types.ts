@@ -732,6 +732,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
+  grantsMana?: ManaType[];
   /** The source's controller has no maximum hand size (Thought Vessel). */
   noMaximumHandSize?: boolean;
   /** Spells matching this filter have improvise. */
@@ -796,6 +798,10 @@ export interface StaticSpec {
 
 /** Immutable, shared definition of a card. */
 export interface CardDefinition {
+  /** Its controller may privately look at the top card of their library. */
+  lookAtLibraryTop?: boolean;
+  /** While attached to a creature, its controller may cast creature spells from their library's top. */
+  castCreaturesFromLibraryTopWhileAttached?: boolean;
   id: CardDefId;
   name: string;
   /** Mana cost in standard notation, e.g. "{2}{R}{W}". Absent for lands and tokens. */
@@ -1138,7 +1144,7 @@ export interface SpellItem {
   /** Cast for its alternative cost (which may replace its effects). */
   alternative?: boolean;
   /** Where it was cast from. Flashback spells are exiled afterwards. */
-  castFrom: 'hand' | 'graveyard' | 'exile' | 'command';
+  castFrom: 'hand' | 'graveyard' | 'exile' | 'command' | 'library';
   /** Total mana spent to cast it. */
   manaSpent: number;
   /** The value chosen for {X}. */
@@ -1402,7 +1408,7 @@ export type Action =
       tapCreatures?: InstanceId[];
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
-  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId }
+  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId }
   /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[] }
   /** Foretell: pay {2} and exile a card from your hand face down (a special action during your turn). */

@@ -196,3 +196,25 @@ export function legendaryManaCreatures(s: GameState, source: CardInstance): Card
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === source.controller && !c.tapped &&
     s.cardDefs[c.defId]!.types.includes('creature') && isLegendary(s.cardDefs[c.defId]!));
 }
+
+/** Active permanents whose abilities apply to their controller. */
+function librarySources(s: GameState, player: string): CardInstance[] {
+  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player);
+}
+export function visibleLibraryTop(s: GameState, player: string): string | undefined {
+  return librarySources(s, player).some((c) => s.cardDefs[c.defId]!.lookAtLibraryTop) ? s.players[player]?.library[0] : undefined;
+}
+export function canCastLibraryTop(s: GameState, player: string, c: CardInstance): boolean {
+  if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id || !s.cardDefs[c.defId]!.types.includes('creature')) return false;
+  return librarySources(s, player).some((source) => {
+    const host = source.attachedTo ? s.cards[source.attachedTo] : undefined;
+    return s.cardDefs[source.defId]!.castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && s.cardDefs[host.defId]!.types.includes('creature');
+  });
+}
+/** Each entry is an ability of the equipped creature, distinct from its printed mana abilities. */
+export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[] }[] {
+  if (c.zone !== 'battlefield' || c.phasedOut || !s.cardDefs[c.defId]!.types.includes('creature')) return [];
+  return Object.values(s.cards).filter((equipment) => equipment.zone === 'battlefield' && !equipment.phasedOut && equipment.attachedTo === c.id)
+    .flatMap((equipment) => (s.cardDefs[equipment.defId]!.statics ?? []).filter((spec) => spec.affects === 'EquippedCreature' && spec.grantsMana)
+      .map((spec) => ({ source: equipment.id, mana: spec.grantsMana! })));
+}

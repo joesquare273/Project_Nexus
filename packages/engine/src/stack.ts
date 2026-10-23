@@ -35,7 +35,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
+import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -437,11 +437,19 @@ export function activateManaAbility(
   output?: number,
   payWith = 0,
   tapCreature?: InstanceId,
+  grantedBy?: InstanceId,
 ): void {
   const s = ctx.s;
   const c = card(s, id);
   const def = defOf(s, c);
   if (c.zone !== 'battlefield' || c.phasedOut || c.controller !== playerId) reject('You do not control that permanent.');
+  if (grantedBy !== undefined) {
+    if (tapCreature !== undefined || output !== undefined || !grantedManaAbilities(s, c).some((ability) => ability.source === grantedBy && ability.mana.includes(mana))) reject('That granted mana ability is not available.');
+    if (c.tapped || (c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That creature cannot tap for mana right now.');
+    tap(ctx, c);
+    addMana(ctx, playerId, mana, id);
+    return;
+  }
   if (tapCreature !== undefined) {
     if (output !== undefined || !legendaryManaCreatures(s, c).some((candidate) => candidate.id === tapCreature)) reject('Tap an untapped legendary creature you control.');
     if (!['W', 'U', 'B', 'R', 'G'].includes(mana)) reject('Choose a color of mana.');
@@ -491,8 +499,9 @@ export function playableZone(
   s: GameState,
   playerId: PlayerId,
   c: CardInstance,
-): 'hand' | 'graveyard' | 'exile' | 'command' | null {
+): 'hand' | 'graveyard' | 'exile' | 'command' | 'library' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
+  if (canCastLibraryTop(s, playerId, c)) return 'library';
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
   if (graveyardWay(s, playerId, c)) return 'graveyard';
@@ -629,7 +638,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
 export function spellCost(
   s: GameState,
   def: CardDefinition,
-  from: 'hand' | 'graveyard' | 'exile' | 'command',
+  from: 'hand' | 'graveyard' | 'exile' | 'command' | 'library',
   targets: Target[],
   card?: CardInstance,
   alternative = false,

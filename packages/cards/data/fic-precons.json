@@ -162,12 +162,8 @@
           "count": 1,
           "set": "fic",
           "number": "72",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Aerith, Last Ancient",

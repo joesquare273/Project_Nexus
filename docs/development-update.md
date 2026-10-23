@@ -5,6 +5,45 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Summoning Materia: library casting and granted mana
+
+- Built Summoning Materia: equip {2}, +2/+2 and vigilance for the equipped
+  creature, and its separate tap ability for one green mana. The granted
+  ability belongs to the creature and respects summoning sickness/haste. It
+  does not inherit the creature's printed mana amount, delayed counter effect,
+  or other mana extras. Mana menus distinguish a granted ability by its source.
+- Its controller can privately look at the top card of their library at any
+  time, including while unattached or without priority. While attached to a
+  creature, it also permits casting creature spells from that top position.
+  Normal costs and timing remain; artifact creatures, flash and X costs work.
+  Noncreatures, lands, lower library cards and hand-only abilities are excluded.
+- Added library casting to spell enumeration and spell provenance, and granted
+  mana choices to the engine, shared auto-tapper/AI and browser payment flow.
+  The same creature cannot be counted twice through multiple Equipment or its
+  own mana abilities. Control, source removal, detachment and phasing are checked.
+- Views expose only the owner's current permitted top card; opponents and
+  spectators receive neither that card nor a top-card identity. The browser
+  labels the preview Top of library, even when it cannot be cast. It is not
+  counted as part of the hand. The next top appears after the atomic action
+  finishes; casting/payment does not expose an intermediate top card.
+- Forty-five scenarios cover 2, 3 and 4 players, equip and vigilance, visibility,
+  costs/timing, mana, source/control changes, haste, phasing, bots, and library
+  creature casting. Type-check, all 867 tests in 50 files, and production build
+  passed. Existing Vite large-bundle warning remains. Thirty Commander fuzz games
+  (289-318) finished with no invariant failures or action-limit timeouts.
+- Browser playtest: saw Bugenhagen on top, selected it, tapped the equipped 3/3
+  Soldier for green to finish payment, passed priority and resolved Bugenhagen.
+  The next Island appeared in the library preview; hand remained empty. No
+  browser console errors. Temporary QA sources were removed and a preview saved
+  with this chat's outputs.
+- Rules checked against [Wizards' FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes),
+  Summoning Materia: private access without priority, normal costs/timing, and
+  waiting until a cast or activation finishes before inspecting a changed top.
+
+290 of 320 distinct precon cards are built; 30 remain. Limit Break is 96/100,
+Revival Trance 87/100, Counter Blitz 94/100, Scions & Spellcraft 90/100.
+Continue after the user's push/proceed checkpoint.
+
 ### Reported hand-size bug: discard during cleanup
 
 - Fixed the missing maximum-hand-size rule. A player may draw above seven

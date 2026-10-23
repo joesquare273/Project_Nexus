@@ -5,7 +5,7 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 95/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 96/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 87/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 94/100 |
 | Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 90/100 |
@@ -53,9 +53,9 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
-Relic of Legends is built (2026-10-23), including its separate legendary-creature
-mana ability, manual browser controls, and shared AI/auto-tapper payments.
-289 of 320 distinct precon cards are built; 31 remain.
+Summoning Materia is built (2026-10-23): private top-card preview, creature
+casting from the library while attached, equip, and its granted mana ability.
+290 of 320 distinct precon cards are built; 30 remain.
 
 ## C2 groups
 
@@ -89,5 +89,6 @@ needing several groups' pieces waits for the last of them.
 | Casting support | **2 built (2026-10-23):** Banon, the Returners' Leader; Inspiring Statuary. |
 | Modal combat triggers | **1 built (2026-10-23):** SOLDIER Military Program. Modes are chosen on stack placement; its Soldier recipients are chosen on resolution, without targeting. |
 | Mana choices | **2 built (2026-10-23):** Coveted Jewel and Relic of Legends. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (31 cards left in all). |
+| Library casting and granted mana | **1 built (2026-10-23):** Summoning Materia. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (30 cards left in all). |
 | Everything else | |

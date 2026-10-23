@@ -404,6 +404,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
   for (const cond of st.conditions ?? []) {
     if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'attached'].includes(cond)) e(`unknown condition "${cond}".`);
   }
+  if (st.grantsMana && (st.affects !== 'EquippedCreature' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types on EquippedCreature.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
   validateAmount(st.power, e);
   validateAmount(st.toughness, e);

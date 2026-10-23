@@ -548,7 +548,7 @@ export function Hand({ view, h, elsewhere }: { view: GameView; h: ZoneHandlers; 
       {all.map((id, i) => {
         const tilt = (i - (all.length - 1) / 2) * 2;
         const zone = view.cards[id]!.zone;
-        return <HandCard key={id} view={view} id={id} h={h} tilt={tilt} tag={zone === 'hand' ? undefined : `from ${zone}`} />;
+        return <HandCard key={id} view={view} id={id} h={h} tilt={tilt} tag={zone === 'hand' ? undefined : zone === 'library' ? 'Top of library' : `from ${zone}`} />;
       })}
       {all.length === 0 && <div className="empty-row">Your hand is empty</div>}
     </div>

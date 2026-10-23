@@ -45,7 +45,7 @@ import {
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
-import { canReveal, manaAbilityAmount, legendaryManaCreatures, manaChoices } from './typerules.ts';
+import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices } from './typerules.ts';
 import { MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
@@ -108,6 +108,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   if (castingForbidden(s, playerId)) return out;
   for (const id of [...p.hand, ...p.graveyard, ...p.command]) candidates.push(s.cards[id]!);
   for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) candidates.push(s.cards[id]!);
+  const top = p.library[0];
+  if (top) candidates.push(s.cards[top]!);
   for (const c of candidates) {
     const def = s.cardDefs[c.defId]!;
     const from = playableZone(s, playerId, c);
@@ -221,13 +223,12 @@ function helpedPayments(
 function availableMana(s: GameState, playerId: PlayerId, improvisedSpell?: CardInstance): number {
   const p = s.players[playerId]!;
   let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
-  for (const id of p.battlefield) {
-    const c = s.cards[id]!;
+  for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === playerId)) {
     const d = s.cardDefs[c.defId]!;
     if (c.tapped || c.controller !== playerId) continue;
     if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
     if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d);
-    else if (d.manaAbility?.paid) available += 1;
+    else if (d.manaAbility?.paid || grantedManaAbilities(s, c).length > 0) available += 1;
   }
   if (improvisedSpell && hasImprovise(s, playerId, improvisedSpell)) available += improviseCandidates(s, playerId)
     .filter((a) => {
@@ -288,6 +289,7 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
       for (const mana of ['W', 'U', 'B', 'R', 'G'] as const) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, tapCreature: creature.id });
     }
     if (c.tapped || c.controller !== player || sick) continue;
+    for (const ability of grantedManaAbilities(s, c)) for (const mana of ability.mana) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, grantedBy: ability.source });
     for (const mana of manaChoices(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
     // Paid mana abilities, for each way to pay that the pool covers.
     const paid = def.manaAbility?.paid;
