@@ -268,4 +268,15 @@ describe('Cloud, Ex-SOLDIER', () => {
     const r2 = fight(big, [{ attacker: cloud2, defender: 'P2' }]);
     expect(r2.state.players.P1!.battlefield.filter((c) => r2.state.cards[c]!.defId === 'treasure-token')).toHaveLength(2);
   });
+
+  it('with Wrecking Ball Arm (base 7/7) he draws for himself and makes two Treasures when he attacks', () => {
+    const s = newGame(3);
+    const cloud = put(s, 'P1', id('Cloud, Ex-SOLDIER'));
+    put(s, 'P1', id('Wrecking Ball Arm'), 'battlefield', { attachedTo: cloud });
+    const hand = s.players.P1!.hand.length;
+    const r = fight(s, [{ attacker: cloud, defender: 'P3' }]);
+    expect(r.state.players.P1!.hand.length).toBe(hand + 1);
+    expect(r.state.players.P1!.battlefield.filter((c) => r.state.cards[c]!.defId === 'treasure-token')).toHaveLength(2);
+    expect(r.state.players.P3!.life).toBe(20 - 7);
+  });
 });
