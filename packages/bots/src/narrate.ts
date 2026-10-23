@@ -244,6 +244,10 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${n} cards of your library; put ${e.keep ?? 1} of them into your hand and the rest on the bottom`;
     case 'Fight':
       return `this creature fights ${who}`;
+    case 'PutOnLibraryBottom':
+      return `put ${who} on the bottom of its owner's library`;
+    case 'AllowAdventureFromGraveyard':
+      return `you may cast this card from your graveyard as an Adventure until the end of your next turn`;
     case 'AllowCastFromGraveyard':
       return `you may cast ${who} this turn${e.free ? ' without paying its mana cost' : ''}; if it would be put into your graveyard, exile it instead`;
   }
@@ -435,7 +439,8 @@ export function stepName(step: string): string {
 
 export function cardName(s: GameState, id: string | undefined): string {
   if (!id) return 'a card';
-  return s.cardDefs[s.cards[id]?.defId ?? '']?.name ?? id;
+  const c = s.cards[id], def = s.cardDefs[c?.defId ?? ''];
+  return (c?.zone === 'stack' && c.adventureSpell ? def?.adventure?.name : def?.name.split(' // ')[0]) ?? id;
 }
 
 export function targetName(s: GameState, t: Target, viewer?: string): string {

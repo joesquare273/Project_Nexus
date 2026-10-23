@@ -53,9 +53,12 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
-Sephiroth, Fallen Hero is built (2026-10-23): optional cell counters,
-temporary 7/5 base stats for modified creatures, and his graveyard return.
-293 of 320 distinct precon cards are built; 27 remain.
+The Adventure batch is built (2026-10-23): Hypnotic Sprite // Mesmeric Glare,
+Murderous Rider // Swift End, and Hildibrand Manderville // Gentleman's Rise.
+Creature and Adventure casts use distinct characteristics, costs, timing, and
+targets. A resolving Adventure grants its controller a creature cast from exile;
+countered spells and illegal targets do not grant that permission.
+296 of 320 distinct precon cards are built; 24 remain.
 
 ## C2 groups
 
@@ -93,5 +96,6 @@ needing several groups' pieces waits for the last of them.
 | Entering attacking | **1 built (2026-10-23):** Interceptor, Shadow's Hound. Defender chosen during resolution; no attack-declaration triggers. |
 | Multimode stack interaction | **1 built (2026-10-23):** Sublime Epiphany. All 31 nonempty mode combinations; spells and individual abilities are distinct targets. |
 | Modified creatures and base stats | **1 built (2026-10-23):** Sephiroth, Fallen Hero. Optional cell counters and base-setting timestamps, including Equipment interactions. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (27 cards left in all). |
+| Adventures | **3 built (2026-10-23):** Hypnotic Sprite, Murderous Rider, Hildibrand Manderville. Full Adventure casting, exile follow-up, Rider death trigger, and Hildibrand token anthem and graveyard permission. |
+| Double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (24 cards left in all). |
 | Everything else | |

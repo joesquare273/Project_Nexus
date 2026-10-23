@@ -54,6 +54,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.modes ? { modes: action.modes } : {}),
           ...(action.costCards ? { costCards: action.costCards } : {}),
           ...(action.alternative ? { alternative: true } : {}),
+          ...(action.adventure ? { adventure: true } : {}),
           ...(action.x !== undefined ? { x: action.x } : {}),
           ...(action.convoke ? { convoke: action.convoke } : {}),
           ...(action.improvise ? { improvise: action.improvise } : {}),

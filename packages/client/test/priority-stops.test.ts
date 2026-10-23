@@ -58,7 +58,8 @@ describe.each([2, 3, 4])('priority controls with %i players', (players) => {
     expect(session.submit([{ type: 'PassPriority', player: YOU }])).toBeNull();
     for (let i = 1; i < players; i++) {
       expect(session.state.pending).toMatchObject({ kind: 'priority', player: `Bot${i}` });
-      expect(session.advance()).toBe('auto');
+      // The final pass draws a visible card before returning priority.
+      expect(session.advance()).toBe(i === players - 1 ? 'bot' : 'auto');
     }
     expect(session.state.step).toBe('draw');
     expect(session.state.players[YOU]!.hand).toHaveLength(1);

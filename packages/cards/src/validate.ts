@@ -178,6 +178,11 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (!isLand && !c.token && c.manaCost === undefined) err('nonland cards need a manaCost (use "{0}" for free).');
   if (c.token && c.manaCost !== undefined) err('tokens have no mana cost.');
   validateCost(c.manaCost, err);
+  if (c.adventure) {
+    if (!c.types.includes('creature')) err('Adventure needs a creature card.');
+    if (!Array.isArray(c.adventure.types) || c.adventure.types.length !== 1 || !['instant', 'sorcery'].includes(c.adventure.types[0]!)) err('Adventure must be an instant or sorcery.');
+    for (const error of validateCardDefinition({ id: c.id, ...c.adventure, subtypes: ['Adventure'] })) err(`adventure: ${error}`);
+  }
   validateCost(c.flashback, (m) => err(`flashback: ${m}`));
   validateCost(c.equip, (m) => err(`equip: ${m}`));
   if (c.equip !== undefined && !c.subtypes?.includes('Equipment')) err('only Equipment has an equip cost.');
@@ -432,6 +437,7 @@ export function validateCardList(cards: readonly unknown[]): string[] {
     const c = raw as Partial<CardDefinition>;
     const effects = [
       ...(c.effects ?? []),
+      ...(c.adventure?.effects ?? []),
       ...(c.modes ?? []).flat(),
       ...(c.alternativeCost?.effects ?? []),
       ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat(), ...(t.modes ?? []).flat()]),

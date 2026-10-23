@@ -3,6 +3,7 @@
 // and sends your choices back with `submit()`. A networked or Godot client
 // would get the same view and send the same actions through a server.
 
+import { actionDelay, type AiPace } from './pacing.ts';
 import {
   COMMANDER,
   FREE_FOR_ALL,
@@ -67,7 +68,7 @@ export type Advance = 'you' | 'over' | 'bot' | 'auto';
 /** A dragged permanent's top-left corner, as fractions of your battlefield area's width and height. */
 export type Placement = Map<InstanceId, { x: number; y: number }>;
 
-const QUIET_ACTIONS = new Set<Action['type']>(['PassPriority', 'ActivateManaAbility']);
+
 
 export class GameSession {
   state: GameState;
@@ -76,6 +77,9 @@ export class GameSession {
   readonly log: LogEntry[] = [];
   /** Pause whenever you receive priority, even without playable cards. */
   stopEverywhere = false;
+  /** Visible actions and automatic resolutions pause before the next advance. */
+  aiPace: AiPace = 'normal';
+  presentationDelayMs = 0;
   /** Priority stops on these steps, on any player's turn. Never skips turn-based actions. */
   readonly phaseStops = new Set<Step>();
   /** Tap mana sources for you when you cast or activate, instead of you choosing which to tap. */
@@ -175,21 +179,20 @@ export class GameSession {
   advance(): Advance {
     const s = this.state;
     if (s.pending.kind === 'gameOver') return 'over';
-    if (s.pending.player !== YOU) {
-      const action = this.bots[s.pending.player]!(s, this.legal());
-      const result = applyAll(s, [action]);
-      if ('error' in result) throw new Error(`Bot chose an illegal action: ${result.error}`);
-      this.state = result.state;
-      this.narrate(result.events);
-      if (QUIET_ACTIONS.has(action.type)) return 'auto';
+    const bot = s.pending.player !== YOU;
+    // You're tapping mana to pay for something: don't pass priority under you.
+    if (!bot && this.holdPriority && s.pending.kind === 'priority') return 'you';
+    const action = bot ? this.bots[s.pending.player]!(s, this.legal()) : this.automaticAction();
+    if (!action) return 'you';
+    const result = applyAll(s, [action]);
+    if ('error' in result) throw new Error(`Automatic action was illegal: ${result.error}`);
+    this.state = result.state;
+    this.narrate(result.events);
+    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace);
+    if (this.presentationDelayMs > 0) {
       this.recent = touchedCards(result.events);
       return 'bot';
     }
-    // You're tapping mana to pay for something: don't pass priority under you.
-    if (this.holdPriority && s.pending.kind === 'priority') return 'you';
-    const auto = this.automaticAction();
-    if (!auto) return 'you';
-    this.submit([auto]);
     return 'auto';
   }
 

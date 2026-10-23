@@ -7,6 +7,7 @@
 // keywords; base power/toughness setters use timestamps, then additive
 // modifiers and counters apply in their own layers.
 
+import { currentDefinition } from './cardface.ts';
 import { matchesObject } from './filters.ts';
 import { colorsOf } from './typerules.ts';
 import { objectManaValue } from './typerules.ts';
@@ -50,7 +51,7 @@ export interface Characteristics {
   ward: number;
 }
 
-const def = (s: GameState, c: CardInstance): CardDefinition => s.cardDefs[c.defId]!;
+const def = currentDefinition;
 
 function battlefieldCards(s: GameState): CardInstance[] {
   return s.turnOrder.flatMap((pid) => s.players[pid]!.battlefield.map((id) => s.cards[id]!));

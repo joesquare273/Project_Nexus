@@ -13,7 +13,7 @@
   --block: #5aa9ff;
   --danger: #ff6b5a;
   --card-ratio: 1.396;
-  --bf-w: 74px;
+  --bf-w: 112px;
   --hand-w: 116px;
   --radius: 5px;
   color-scheme: dark;
@@ -182,7 +182,7 @@ button.big {
   display: grid;
   gap: 8px;
   padding: 8px 8px 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
 }
 .opponents.n1 {
@@ -190,11 +190,11 @@ button.big {
 }
 .opponents.n2 {
   grid-template-columns: 1fr 1fr;
-  --bf-w: 62px;
+  --bf-w: 92px;
 }
 .opponents.n3 {
   grid-template-columns: 1fr 1fr 1fr;
-  --bf-w: 54px;
+  --bf-w: 80px;
 }
 .zone {
   border-radius: 12px;
@@ -213,7 +213,7 @@ button.big {
 }
 .zone.you {
   margin: 0 8px;
-  flex: 1 1 auto;
+  flex: 1.15 1 0;
   display: flex;
   flex-direction: column;
 }
@@ -228,7 +228,7 @@ button.big {
 }
 .row.creatures.free {
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-height: calc(var(--bf-w) * var(--card-ratio) * 1.15);
   align-content: flex-start;
 }
@@ -367,6 +367,8 @@ button.big {
   padding-top: 4px;
 }
 .row {
+  /* Preserve wrapped rows; the player zone scrolls instead of overlapping lands. */
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -374,13 +376,13 @@ button.big {
   min-height: calc(var(--bf-w) * var(--card-ratio) * 0.5);
 }
 .row.lands {
-  --bf-w: calc(var(--hand-w) * 0.45);
+  --bf-w: 68px;
 }
 .opponents .row.lands {
-  --bf-w: 44px;
+  --bf-w: 56px;
 }
 .opponents.n3 .row.lands {
-  --bf-w: 36px;
+  --bf-w: 48px;
 }
 .empty-row {
   color: var(--muted);
@@ -1051,7 +1053,7 @@ button.big {
 
 @media (max-height: 820px) {
   :root {
-    --bf-w: 60px;
+    --bf-w: 94px;
     --hand-w: 92px;
   }
   .player-header .life {
@@ -1065,7 +1067,7 @@ button.big {
 
 @media (max-height: 620px) {
   :root {
-    --bf-w: 50px;
+    --bf-w: 72px;
     --hand-w: 76px;
   }
   .hand-card {
@@ -1084,7 +1086,7 @@ button.big {
     display: none;
   }
   :root {
-    --bf-w: 62px;
+    --bf-w: 82px;
     --hand-w: 96px;
   }
 }
@@ -1502,7 +1504,8 @@ button.zone-link:hover {
 }
 .opponents .piles {
   --pile-w: 30px;
-  flex-direction: row;
+  flex-direction: column;
+  flex-wrap: nowrap;
 }
 .pile {
   display: flex;

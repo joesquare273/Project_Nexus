@@ -43,6 +43,7 @@ interface ScryfallCard {
   name: string;
   all_parts?: { id: string; component: string; name: string }[];
   oracle_text?: string;
+  card_faces?: { name: string; oracle_text?: string }[];
   type_line: string;
   set: string;
   collector_number: string;
@@ -77,7 +78,7 @@ function toInfo(card: ScryfallCard): ScryfallInfo {
   return {
     name: card.name,
     typeLine: card.type_line,
-    oracleText: card.oracle_text ?? '',
+    oracleText: card.oracle_text ?? card.card_faces?.map((face) => `${face.name}\n${face.oracle_text ?? ''}`).join('\n\n//\n\n') ?? '',
     set: card.set,
     number: card.collector_number,
     ...(card.artist ? { artist: card.artist } : {}),

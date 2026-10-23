@@ -2691,12 +2691,8 @@
           "count": 1,
           "set": "fic",
           "number": "83",
-          "implemented": false,
-          "needs": [
-            "adventure",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Krile Baldesion",
@@ -2828,11 +2824,8 @@
           "count": 1,
           "set": "fic",
           "number": "279",
-          "implemented": false,
-          "needs": [
-            "adventure",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Baleful Strix",
@@ -3055,10 +3048,8 @@
           "count": 1,
           "set": "fic",
           "number": "264",
-          "implemented": false,
-          "needs": [
-            "adventure"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Into the Story",

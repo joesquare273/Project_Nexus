@@ -1,6 +1,7 @@
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
+import { spellDefinition } from './cardface.ts';
 import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
@@ -158,6 +159,7 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
 
 /** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
 export interface SpellChoice {
+  adventure?: boolean;
   improvise?: InstanceId[];
   graveyardSource?: InstanceId;
   /** The value chosen for {X}. */
@@ -182,6 +184,7 @@ export interface SpellChoice {
  * (overload), the chosen modes in printed order (rule 700.2), or its effects.
  */
 export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): EffectSpec[] {
+  def = spellDefinition(def, choice.adventure);
   if (choice.alternative && def.alternativeCost?.effects) return def.alternativeCost.effects;
   if (def.modes && def.chooseModes) return [...(choice.modes ?? [])].sort((a, b) => a - b).flatMap((m) => def.modes![m] ?? []);
   if (def.modes) return def.modes[choice.mode ?? 0] ?? [];
@@ -504,12 +507,14 @@ export function playableZone(
   s: GameState,
   playerId: PlayerId,
   c: CardInstance,
+  adventure = false,
 ): 'hand' | 'graveyard' | 'exile' | 'command' | 'library' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
-  if (canCastLibraryTop(s, playerId, c)) return 'library';
+  if (canCastLibraryTop(s, playerId, c, spellDefinition(defOf(s, c), adventure))) return 'library';
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
-  if (graveyardWay(s, playerId, c)) return 'graveyard';
+  if (graveyardWay(s, playerId, c, adventure)) return 'graveyard';
+  if (c.zone === 'exile' && c.adventurer === playerId && !adventure) return 'exile';
   // Rebound, or another permission to cast it this turn.
   if (c.zone === 'exile' && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'exile';
   // A foretold card can be cast on a later turn than the one it was foretold on.
@@ -533,39 +538,40 @@ function addCosts(a: ManaCost, b: ManaCost): ManaCost {
 }
 
 /** How a card in a graveyard can be cast: flashback, blitz (Sabin), a permission (Gearhulk, Emet-Selch), or Edgar's static. */
-export type GraveyardWay = 'flashback' | 'blitz' | 'permission' | 'static';
+export type GraveyardWay = 'flashback' | 'blitz' | 'permission' | 'static' | 'adventure';
 
-export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance): GraveyardWay | null {
+export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, adventure = false): GraveyardWay | null {
   if (c.zone !== 'graveyard') return null;
+  if (adventure && c.adventureGraveyard?.player === playerId && (c.adventureGraveyard.expiresOnTurn === undefined || s.turnNumber <= c.adventureGraveyard.expiresOnTurn)) return 'adventure';
   if (c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'permission';
   if (c.owner !== playerId) return null;
-  const def = defOf(s, c);
+  const def = spellDefinition(defOf(s, c), adventure);
   if (def.flashback) return 'flashback';
   if (def.alternativeCost?.fromGraveyard) return 'blitz';
-  if (graveyardCastStatic(s, playerId, c)) return 'static';
+  if (graveyardCastStatic(s, playerId, c, undefined, adventure)) return 'static';
   return null;
 }
 
 /** Each independent permanent granting a once-per-turn graveyard permission. */
-export function graveyardCastSources(s: GameState, playerId: PlayerId, c: CardInstance): InstanceId[] {
+export function graveyardCastSources(s: GameState, playerId: PlayerId, c: CardInstance, adventure = false): InstanceId[] {
   if (s.activePlayer !== playerId || !isSpellCard(defOf(s, c))) return [];
   const out: InstanceId[] = [];
   for (const source of battlefield(s)) {
     if (source.controller !== playerId || source.graveyardCastTurn === s.turnNumber) continue;
     for (const spec of defOf(s, source).statics ?? []) {
       const allow = spec.castFromGraveyard;
-      if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id })) { out.push(source.id); break; }
+      if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id }, c.owner, spellDefinition(defOf(s, c), adventure))) { out.push(source.id); break; }
     }
   }
   return out;
 }
 
-function graveyardCastStatic(s: GameState, playerId: PlayerId, c: CardInstance, selected?: InstanceId): (NonNullable<StaticSpec['castFromGraveyard']> & { source: InstanceId }) | undefined {
-  const sources = graveyardCastSources(s, playerId, c);
+function graveyardCastStatic(s: GameState, playerId: PlayerId, c: CardInstance, selected?: InstanceId, adventure = false): (NonNullable<StaticSpec['castFromGraveyard']> & { source: InstanceId }) | undefined {
+  const sources = graveyardCastSources(s, playerId, c, adventure);
   const source = selected ?? sources[0];
   if (!source || !sources.includes(source)) return undefined;
   const allow = defOf(s, s.cards[source]!).statics!.map((spec) => spec.castFromGraveyard)
-    .find((permission) => permission && matchesObject(s, permission.filter, c, { controller: playerId, source }));
+    .find((permission) => permission && matchesObject(s, permission.filter, c, { controller: playerId, source }, c.owner, spellDefinition(defOf(s, c), adventure)));
   return allow ? { ...allow, source } : undefined;
 }
 
@@ -696,7 +702,7 @@ export function spellCost(
       if (source.controller !== card.owner) continue;
       for (const spec of defOf(s, source).statics ?? []) {
         const r = spec.spellCostReduction;
-        if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id })) continue;
+        if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id }, card.owner, def)) continue;
         // "Spells you cast from your graveyard cost {2} less" (Emet-Selch).
         if (r.fromGraveyard && from !== 'graveyard') continue;
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
@@ -722,9 +728,11 @@ export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
 export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], choice: SpellChoice = {}): void {
   const s = ctx.s;
   const c = card(s, id);
-  const def = defOf(s, c);
+  const printed = defOf(s, c);
+  if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
+  const def = spellDefinition(printed, choice.adventure);
   if (castingForbidden(s, playerId)) reject("You can't cast spells during this player's turn (Conqueror's Flail).");
-  const from = playableZone(s, playerId, c);
+  const from = playableZone(s, playerId, c, choice.adventure);
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
@@ -739,8 +747,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (problem) reject(problem);
   }
   // From a graveyard, blitz is the only alternative cost that works, and the only way for Sabin (rule 118.9a).
-  const way = from === 'graveyard' ? (choice.graveyardSource ? 'static' : graveyardWay(s, playerId, c)) : null;
-  if (choice.graveyardSource && (from !== 'graveyard' || c.owner !== playerId || !graveyardCastStatic(s, playerId, c, choice.graveyardSource))) reject('That graveyard-casting permission is not available.');
+  const way = from === 'graveyard' ? (choice.graveyardSource ? 'static' : graveyardWay(s, playerId, c, choice.adventure)) : null;
+  if (choice.graveyardSource && (from !== 'graveyard' || c.owner !== playerId || !graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure))) reject('That graveyard-casting permission is not available.');
   if (way === 'blitz' && !alternative) reject(`${def.name} can only be cast from your graveyard for its blitz cost.`);
   if (from === 'graveyard' && alternative && way !== 'blitz') reject("That alternative cost can't be used from the graveyard.");
   const permission = (from === 'graveyard' || from === 'exile') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
@@ -801,7 +809,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   for (const a of improvised) tap(ctx, a);
   for (const g of delved) moveCard(ctx, g, 'exile');
   // Edgar's permission is used up for this turn.
-  const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource) : undefined;
+  const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure) : undefined;
   if (edgar) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
@@ -809,6 +817,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
 
   moveCard(ctx, id, 'stack');
+  if (choice.adventure) c.adventureSpell = true;
   if (from === 'graveyard') c.castFromGraveyard = true;
   const caster = player(s, playerId);
   caster.spellsCastThisTurn = (caster.spellsCastThisTurn ?? 0) + 1;
@@ -821,6 +830,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const item: SpellItem = {
     id: newId(s, 's'),
     kind: 'spell',
+    ...(choice.adventure ? { adventure: true } : {}),
     card: id,
     controller: playerId,
     targets,
@@ -1378,6 +1388,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (entersTapped(s, s.cards[id]!)) s.cards[id]!.tapped = true;
       }
       return;
+    case 'PutOnLibraryBottom':
+      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') moveCard(ctx, id, 'library');
+      return;
+    case 'AllowAdventureFromGraveyard':
+      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') s.cards[id]!.adventureGraveyard = { player: item.controller, grantedTurn: s.turnNumber };
+      return;
     case 'PutIntoLibrary':
       r.choiceQueue = cards.map((id) => ({ player: s.cards[id]!.owner, purpose: 'library', cards: [id], min: 0, max: 1 }));
       return;
@@ -1865,11 +1881,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
 }
 
 /** After the effects: instants and sorceries go to the graveyard, or exile if cast with flashback. */
-function finishResolving(ctx: Ctx, item: StackItem): void {
+function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
   const s = ctx.s;
   if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') {
     const c = s.cards[item.card]!;
-    if (item.castFrom === 'graveyard' || item.exileAfter) moveCard(ctx, item.card, 'exile');
+    if (item.adventure && resolved) {
+      moveCard(ctx, item.card, 'exile');
+      c.adventurer = item.controller;
+    } else if ((item.castFrom === 'graveyard' && !!defOf(s, c).flashback) || item.exileAfter) moveCard(ctx, item.card, 'exile');
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.
       moveCard(ctx, item.card, 'exile');
@@ -1968,7 +1987,7 @@ function continueResolving(ctx: Ctx): void {
 
 function startResolving(ctx: Ctx, item: StackItem, applyEffects: boolean): void {
   if (!applyEffects) {
-    finishResolving(ctx, item);
+    finishResolving(ctx, item, false);
     return;
   }
   ctx.s.resolving = { item, next: 0, chosenUsed: 0, createdTokens: [], surveilQueue: [] };

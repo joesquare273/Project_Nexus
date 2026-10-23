@@ -12,7 +12,11 @@ this repo, not only in local memory.
   says "proceed" before the next group or implementation step.**
   Before reporting each commit, refresh account usage and include purchased credits,
   remaining allowance, and available reset credits. Continue building the
-  remaining precon cards in groups; see docs/commander.md for current progress.
+  remaining precon cards in groups; prefer shared-mechanic batches when possible.
+  Keep hand card sizes unchanged; battlefield cards may be larger. AI turns
+  should unfold visibly, including automatic resolutions.
+  See docs/commander.md for progress.
+  Continue with the remaining precon cards.
   Frontend work does not replace the card-completion roadmap.
   Before starting on a computer, sync so it has the other computer's work. Keep
   `main` passing `npm run check`.

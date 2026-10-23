@@ -2,9 +2,10 @@
 // creature you control"), targets ("target nonland permanent an opponent
 // controls") and searches ("a Plains card").
 
+import { currentDefinition } from './cardface.ts';
 import { characteristics, subtypesOf, isEquipped, isModified, totalCounters } from './characteristics.ts';
 import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
-import type { CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
+import type { CardDefinition, CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
 /** Who is asking: the controller of the spell or ability, and its source card if any. */
 export interface FilterViewpoint {
@@ -27,11 +28,12 @@ export function matchesObject(
   obj: CardInstance,
   from: FilterViewpoint,
   objController: PlayerId = obj.zone === 'battlefield' ? obj.controller : obj.owner,
+  definition?: CardDefinition,
 ): boolean {
   if (!f) return true;
   if (f.newGraveyardCardNotFromBattlefield && (obj.zone !== 'graveyard' || obj.graveyardArrival?.turn !== s.turnNumber || obj.graveyardArrival.from === 'battlefield')) return false;
-  if (f.anyOf && !f.anyOf.some((alt) => matchesObject(s, alt, obj, from, objController))) return false;
-  const def = s.cardDefs[obj.defId]!;
+  if (f.anyOf && !f.anyOf.some((alt) => matchesObject(s, alt, obj, from, objController, definition))) return false;
+  const def = definition ?? currentDefinition(s, obj);
   if (f.other && obj.id === from.source) return false;
   if (f.self && obj.id !== from.source) return false;
   if (f.name !== undefined && def.name !== f.name) return false;

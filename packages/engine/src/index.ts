@@ -1,4 +1,5 @@
 export * from './types.ts';
+export { spellDefinition, currentDefinition } from './cardface.ts';
 export * from './format.ts';
 export { applyAction } from './engine.ts';
 export { createGame, type GameSetup, type PlayerSetup } from './setup.ts';

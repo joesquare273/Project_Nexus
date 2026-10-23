@@ -5,6 +5,7 @@
 
 import {
   canAttackPlayer,
+  spellDefinition,
   queuedTriggerSpec,
   attackTax,
   attackTaxFor,
@@ -216,7 +217,7 @@ function massEffectScore(s: GameState, me: PlayerId, effect: EffectSpec, source:
 function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: Map<EffectSpec, Map<string, number>>): number {
   const a = o.action;
   const card = s.cards[a.card]!;
-  const d = def(s, card);
+  const d = spellDefinition(def(s, card), a.type === 'CastSpell' && a.adventure);
   const targets = a.targets ?? [];
   let effects: EffectSpec[];
   if (a.type === 'CastSpell') {

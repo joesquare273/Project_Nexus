@@ -2652,7 +2652,7 @@
   "hildibrand-manderville-gentlemans-rise": {
     "name": "Hildibrand Manderville // Gentleman's Rise",
     "typeLine": "Legendary Creature — Human Detective // Instant — Adventure",
-    "oracleText": "",
+    "oracleText": "Hildibrand Manderville\nCreature tokens you control get +1/+1.\nWhen Hildibrand Manderville dies, you may cast it from your graveyard as an Adventure until the end of your next turn.\n\n//\n\nGentleman's Rise\nCreate a 2/2 black Zombie creature token. (Then exile this card. You may cast the creature later from exile.)",
     "set": "fic",
     "number": "83",
     "artist": "AKAGI",
@@ -2734,7 +2734,7 @@
   "hypnotic-sprite-mesmeric-glare": {
     "name": "Hypnotic Sprite // Mesmeric Glare",
     "typeLine": "Creature — Faerie // Instant — Adventure",
-    "oracleText": "",
+    "oracleText": "Hypnotic Sprite\nFlying\n\n//\n\nMesmeric Glare\nCounter target spell with mana value 3 or less. (Then exile this card. You may cast the creature later from exile.)",
     "set": "fic",
     "number": "264",
     "artist": "Mizutametori",
@@ -3473,7 +3473,7 @@
   "murderous-rider-swift-end": {
     "name": "Murderous Rider // Swift End",
     "typeLine": "Creature — Zombie Knight // Instant — Adventure",
-    "oracleText": "",
+    "oracleText": "Murderous Rider\nLifelink\nWhen this creature dies, put it on the bottom of its owner's library.\n\n//\n\nSwift End\nDestroy target creature or planeswalker. You lose 2 life. (Then exile this card. You may cast the creature later from exile.)",
     "set": "fic",
     "number": "279",
     "artist": "David Astruga",
@@ -6638,5 +6638,27 @@
     "scryfallUri": "https://scryfall.com/card/fin/45/zack-fair?utm_source=api",
     "scryfallId": "f21f9161-5945-40da-8da0-446f6a4a1c23",
     "relatedTokens": []
+  },
+  "zombie-token": {
+    "name": "Zombie",
+    "typeLine": "Token Creature — Zombie",
+    "oracleText": "",
+    "set": "tfic",
+    "number": "6",
+    "artist": "Anton Solovianchyk",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/c/4cecd5c6-d6c8-4cd5-97a3-cddaf051af15.jpg?1783906142",
+      "normal": "https://cards.scryfall.io/normal/front/4/c/4cecd5c6-d6c8-4cd5-97a3-cddaf051af15.jpg?1783906142",
+      "large": "https://cards.scryfall.io/large/front/4/c/4cecd5c6-d6c8-4cd5-97a3-cddaf051af15.jpg?1783906142",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/c/4cecd5c6-d6c8-4cd5-97a3-cddaf051af15.jpg?1783906142"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/6/zombie?utm_source=api",
+    "scryfallId": "4cecd5c6-d6c8-4cd5-97a3-cddaf051af15",
+    "relatedTokens": [
+      {
+        "name": "Zombie",
+        "scryfallId": "4cecd5c6-d6c8-4cd5-97a3-cddaf051af15"
+      }
+    ]
   }
 }

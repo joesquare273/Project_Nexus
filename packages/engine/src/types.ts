@@ -299,6 +299,8 @@ export const EFFECT_KINDS = [
    * exiled instead (Torrential Gearhulk, Emet-Selch).
    */
   'AllowCastFromGraveyard',
+  'AllowAdventureFromGraveyard',
+  'PutOnLibraryBottom',
   /** The source creature and the target creature each deal damage equal to their power to the other (rule 701.14). */
   'Fight',
 ] as const;
@@ -896,6 +898,8 @@ export interface CardDefinition {
   cycling?: string;
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
+  /** Alternative characteristics used only when casting/resolving the Adventure (rule 715). */
+  adventure?: { name: string; manaCost: string; types: ('instant' | 'sorcery')[]; effects: EffectSpec[] };
   /**
    * Foretell cost (rule 702.143): during your turn, pay {2} and exile this
    * card from your hand face down; cast it on a later turn for this cost.
@@ -1067,6 +1071,12 @@ export interface CardInstance {
   unearthed?: boolean;
   /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */
   rebounding?: boolean;
+  /** Only on the stack: use the Adventure's characteristics instead of the creature's. */
+  adventureSpell?: boolean;
+  /** The controller of a resolved Adventure may cast its creature while it stays in exile. */
+  adventurer?: PlayerId;
+  /** Hildibrand's dies permission; expires during cleanup of that player's next turn. */
+  adventureGraveyard?: { player: PlayerId; grantedTurn: number; expiresOnTurn?: number };
 }
 
 export interface PlayerState {
@@ -1140,6 +1150,7 @@ export type Step = (typeof STEPS)[number];
 export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId } | { kind: 'ability'; ability: string } | { kind: 'none' };
 
 export interface SpellItem {
+  adventure?: boolean;
   id: string;
   kind: 'spell';
   card: InstanceId;
@@ -1403,6 +1414,8 @@ export type Action =
    */
   | {
       type: 'CastSpell';
+      /** Cast the Adventure rather than the creature. */
+      adventure?: boolean;
       player: PlayerId;
       card: InstanceId;
       /** Which permanent's graveyard-casting permission is being used. */

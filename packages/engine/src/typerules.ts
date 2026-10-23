@@ -3,6 +3,7 @@
 // written once instead of on every card. docs/card-types.md lists every type
 // and which of its rules are built.
 
+import { currentDefinition } from './cardface.ts';
 import { manaValue, parseManaCost } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import {
@@ -34,7 +35,7 @@ export function manaValueOf(def: CardDefinition): number {
  * the chosen value, once for each X symbol (rule 202.3e): {X}{X} with X = 2 is 4.
  */
 export function objectManaValue(s: GameState, c: CardInstance): number {
-  const def = s.cardDefs[c.defId]!;
+  const def = currentDefinition(s, c);
   const base = manaValueOf(def);
   if (c.zone !== 'stack') return base;
   const item = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
@@ -204,8 +205,8 @@ function librarySources(s: GameState, player: string): CardInstance[] {
 export function visibleLibraryTop(s: GameState, player: string): string | undefined {
   return librarySources(s, player).some((c) => s.cardDefs[c.defId]!.lookAtLibraryTop) ? s.players[player]?.library[0] : undefined;
 }
-export function canCastLibraryTop(s: GameState, player: string, c: CardInstance): boolean {
-  if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id || !s.cardDefs[c.defId]!.types.includes('creature')) return false;
+export function canCastLibraryTop(s: GameState, player: string, c: CardInstance, definition = s.cardDefs[c.defId]!): boolean {
+  if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id || !definition.types.includes('creature')) return false;
   return librarySources(s, player).some((source) => {
     const host = source.attachedTo ? s.cards[source.attachedTo] : undefined;
     return s.cardDefs[source.defId]!.castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && s.cardDefs[host.defId]!.types.includes('creature');

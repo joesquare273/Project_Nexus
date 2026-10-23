@@ -80,3 +80,7 @@ Pass priority labels, and full control that pauses even without playable cards.
 This is client automation and interaction work; the engine-rules backlog above
 remains open. After the user pushes this commit and says proceed, resume building
 the remaining 34 precon cards in groups. Report usage/credits after each commit.
+
+## 2026-10-23: battlefield scale and visible AI turns
+
+Battlefield cards are larger, while hand sizes remain unchanged. Creature and land rows wrap without overlapping, player zones share vertical space, and crowded zones scroll. Opponent piles use a compact column. AI casts, abilities, combat, and automatic resolutions now pause visibly; Settings offers Normal, Slow, and Fast. Adventure choices name the selected half, and the stack identifies Adventure spells.

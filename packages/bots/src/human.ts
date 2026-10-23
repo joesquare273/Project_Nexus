@@ -78,6 +78,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     if (!choice) return;
     const a = o.action;
     const isAbility = a.type === 'ActivateAbility';
+    const adventure = a.type === 'CastSpell' && !!a.adventure;
     const alternative = a.type === 'CastSpell' && a.alternative;
     const x = a.type === 'CastSpell' ? a.x : undefined;
     // Convoke and delve: one entry per number of creatures tapped or cards exiled.
@@ -91,7 +92,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name})` : ''}`;
     const key = isAbility
       ? `${a.card}#${a.ability}`
-      : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${kicks ? `#k${kicks}` : ''}`;
+      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${kicks ? `#k${kicks}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;
@@ -108,7 +109,9 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             kind: 'spell',
             // Alternative costs get their own entry: "Pay 4 life for", "Overload".
             label: `${
-              alternative
+              adventure
+                ? `Cast Adventure: ${def.adventure!.name} (${def.adventure!.manaCost})`
+                : alternative
                 ? def.alternativeCost!.label
                 : s.cards[a.card]!.zone === 'hand'
                   ? 'Cast'

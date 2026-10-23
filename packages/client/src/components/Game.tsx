@@ -14,6 +14,7 @@ import {
   manaChoices,
   manaAbilityAmount,
   spellOptions,
+  spellDefinition,
   triggerSpec,
   queuedTriggerSpec,
   type Action,
@@ -40,9 +41,6 @@ import { CardList, ExileList, Hand, OpponentZone, PlayerHeader, YourZone, type M
 
 /** How long a triggering card stays in the middle of the table. */
 const SPOTLIGHT_MS = 2000;
-
-/** Pause after each meaningful bot action so you can follow along. */
-const BOT_DELAY_MS = 550;
 
 const sameTarget = (a: Target, b: Target) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -153,7 +151,7 @@ export function Game({
       if (step === 'bot') {
         setBusy(true);
         refresh();
-        timer.current = window.setTimeout(run, BOT_DELAY_MS);
+        timer.current = window.setTimeout(run, session.presentationDelayMs);
         return;
       }
     }
@@ -364,7 +362,8 @@ export function Game({
    * targets if needed. `modeKey` is the chosen modes joined with "+".
    */
   const startPlay = (play: CardPlay, modeKey?: string, costKey?: string) => {
-    const def = defOf(s.cards[play.card]!.defId);
+    const first = play.choices[0]?.action;
+    const def = spellDefinition(defOf(s.cards[play.card]!.defId), first?.type === 'CastSpell' && first.adventure);
     const keyOf = (c: PlayChoice) => c.modes?.join('+');
     const keys = [...new Set(play.choices.map(keyOf).filter((k): k is string => k !== undefined))];
     if (modeKey === undefined && keys.length > 1) {
@@ -425,7 +424,7 @@ export function Game({
     setMenu({
       title: def.name,
       options: cardPlays.map((p) => ({
-        label: p.kind === 'spell' ? `${p.label} ${def.name}${p.detail ?? ''}` : p.kind === 'land' && p.label === 'Play' ? `Play ${def.name}` : p.label,
+        label: p.kind === 'spell' ? (p.choices[0]?.action.type === 'CastSpell' && p.choices[0].action.adventure ? `${p.label}${p.detail ?? ''}` : `${p.label} ${def.name.split(' // ')[0]}${p.detail ?? ''}`) : p.kind === 'land' && p.label === 'Play' ? `Play ${def.name}` : p.label,
         pick: () => startPlay(p),
       })),
     });
@@ -773,6 +772,14 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
             />{' '}
             Tap mana automatically
           </label>
+          <label>
+            AI action speed
+            <select aria-label="AI action speed" value={session.aiPace} onChange={(e) => { session.aiPace = e.target.value as typeof session.aiPace; onChange(); }}>
+              <option value="normal">Normal — watch each action</option>
+              <option value="slow">Slow — extra reading time</option>
+              <option value="fast">Fast</option>
+            </select>
+          </label>
           <div className="settings-foot">
             <span className="seed">Seed {session.options.seed}</span>
             <button className="ghost" onClick={onQuit}>
@@ -846,7 +853,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: Game
             )}
             <div>
               <div className="stack-name">
-                {c ? defOf(c.defId).name : 'A card'}
+                {c ? (item.kind === 'spell' && item.adventure ? `${defOf(c.defId).adventure!.name} — Adventure` : defOf(c.defId).name.split(' // ')[0]) : 'A card'}
                 {item.kind === 'ability' && <em> — ability</em>}
                 {item.kind === 'ability' && item.modes && <em> (mode{item.modes.length > 1 ? 's' : ''} {item.modes.map((i) => i + 1).join(' + ')})</em>}
                 {item === view.resolving && <em> (resolving)</em>}

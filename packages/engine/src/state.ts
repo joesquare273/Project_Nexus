@@ -2,6 +2,7 @@
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
+import { currentDefinition as defOf } from './cardface.ts';
 import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, staticAffects, powerOf } from './characteristics.ts';
 import { entersTapped } from './typerules.ts';
 import {
@@ -115,11 +116,7 @@ export function card(s: GameState, id: InstanceId): CardInstance {
   return c;
 }
 
-export function defOf(s: GameState, c: CardInstance): CardDefinition {
-  const d = s.cardDefs[c.defId];
-  if (!d) throw new Error(`Missing card definition "${c.defId}".`);
-  return d;
-}
+export { currentDefinition as defOf } from './cardface.ts';
 
 export function hasType(s: GameState, c: CardInstance, type: CardType): boolean {
   return defOf(s, c).types.includes(type);
@@ -222,6 +219,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.castPermission;
   delete c.unearthed;
   delete c.rebounding;
+  delete c.adventureSpell;
+  delete c.adventurer;
+  delete c.adventureGraveyard;
   if (to === 'battlefield') delete c.blitzed;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;

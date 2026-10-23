@@ -159,6 +159,7 @@ export function discardToHandSize(ctx: Ctx, playerId: PlayerId, cards: InstanceI
 }
 
 export function cleanupDamage(ctx: Ctx): void {
+  for (const c of Object.values(ctx.s.cards)) if (c.adventureGraveyard?.expiresOnTurn === ctx.s.turnNumber) delete c.adventureGraveyard;
   for (const c of Object.values(ctx.s.cards).filter((card) => card.zone === 'battlefield')) {
     c.damage = 0;
     c.deathtouched = false;
@@ -175,6 +176,10 @@ export function startNextTurn(ctx: Ctx): void {
   delete s.cleanupNeedsPriority;
   s.activePlayer = nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
+  for (const c of Object.values(s.cards)) {
+    const permission = c.adventureGraveyard;
+    if (permission?.player === s.activePlayer && permission.expiresOnTurn === undefined && s.turnNumber > permission.grantedTurn) permission.expiresOnTurn = s.turnNumber;
+  }
   s.triggeredThisTurn = [];
   s.creaturesDiedThisTurn = 0;
   s.combatDamageHistory = [];

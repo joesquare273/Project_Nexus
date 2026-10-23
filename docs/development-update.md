@@ -5,6 +5,44 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Adventure batch, larger battlefield cards, and readable AI turns
+
+- Completed Hypnotic Sprite // Mesmeric Glare, Murderous Rider // Swift End,
+  and Hildibrand Manderville // Gentleman's Rise together using a shared
+  Adventure system. Each half has its own cost, timing, effects, and stack
+  characteristics. Outside the stack, these remain creature cards.
+- A successfully resolving Adventure exiles itself and permits its controller
+  to cast the creature later. Countered or entirely illegal-target Adventures
+  grant no such permission. Exile casts still require normal creature timing.
+- Murderous Rider retains lifelink and returns to its owner's library bottom
+  on death. Hildibrand buffs creature tokens and grants an Adventure-only
+  graveyard cast through its controller's next turn, with object identity and
+  cleanup expiration checks. Added its exact tfic/6 Zombie token.
+- Cached Oracle text now includes both Adventure halves; the Scryfall refresh
+  preserves this text. Mesmeric Glare respects stack mana value, including X.
+  Swift End handles indestructible and illegal targets. Planeswalkers remain
+  outside the engine's supported card types; no precon contains one.
+- Enlarged battlefield cards to 112px on taller desktops, 94px on shorter
+  desktops, with 80–92px opponent cards in pods. Hand card sizes are unchanged.
+  Enlarged lands as well. Player zones share vertical space, wrap, and scroll;
+  creature rows cannot shrink over lands. Opponent piles stay in a compact column.
+- AI presentation now pauses about 1.8 seconds for spells, abilities, and
+  resolutions, 1.6 seconds for combat, with shorter mana/land/draw pauses.
+  Automatic passes that resolve spells or deal damage also render before
+  continuing. Settings offers Normal, Slow, and Fast. Rules and priority
+  decisions stay in the engine; presentation timers stay in the browser.
+- Added 76 Adventure scenarios across 2/3/4 players, plus 10 pacing regressions.
+  The full engine/data/client suite passed 1,105 tests before the pacing change;
+  final client, card-data, and Adventure checks and production build were rerun.
+  Browser playtested Adventure-to-creature casts, token buffs, four-player
+  crowding, and the AI speed selector with no console errors.
+
+296 of 320 distinct precon cards are built; 24 remain. Limit Break is 97/100,
+Revival Trance 88/100, Counter Blitz 94/100, and Scions & Spellcraft 94/100.
+
+Rules references: [Adventure and Eldraine release notes](https://magic.wizards.com/en/news/feature/throne-eldraine-release-notes-2019-09-20),
+[Final Fantasy release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes).
+
 ### Sephiroth, Fallen Hero: cell counters and temporary base stats
 
 - Built Jenova Cells: choose its creature target as the attack trigger goes on

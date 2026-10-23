@@ -6,6 +6,7 @@
 // menace attackers, and "everything at one player", which keeps the list
 // small in pods.
 
+import { spellDefinition } from './cardface.ts';
 import { canAttackPlayer } from './combat.ts';
 import { isEquipment } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
@@ -111,14 +112,16 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const top = p.library[0];
   if (top) candidates.push(s.cards[top]!);
   for (const c of candidates) {
-    const def = s.cardDefs[c.defId]!;
-    const from = playableZone(s, playerId, c);
+    const printed = s.cardDefs[c.defId]!;
+    for (const adventure of printed.adventure ? [false, true] : [false]) {
+    const def = spellDefinition(printed, adventure);
+    const from = playableZone(s, playerId, c, adventure);
     if (!from || !canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
     const payments = new Map<string, ReturnType<typeof helpedPayments>>();
     // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);
     // Sabin can only be cast from the graveyard for its blitz cost.
-    const way = from === 'graveyard' ? graveyardWay(s, playerId, c) : null;
-    const permissions = way === 'static' ? graveyardCastSources(s, playerId, c).map((graveyardSource) => ({ graveyardSource })) : [{}];
+    const way = from === 'graveyard' ? graveyardWay(s, playerId, c, adventure) : null;
+    const permissions = way === 'static' ? graveyardCastSources(s, playerId, c, adventure).map((graveyardSource) => ({ graveyardSource })) : [{}];
     for (const permission of permissions) {
     const alternatives = way === 'blitz' ? [true] : [false];
     if (def.alternativeCost && from !== 'graveyard' && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
@@ -135,6 +138,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         const tapCreatures = tappable.slice(0, extraModes).map((k) => k.id);
         const choice: SpellChoice = {
           ...permission,
+          ...(adventure ? { adventure: true } : {}),
           ...modes,
           ...(alternative ? { alternative: true } : {}),
           ...(x !== undefined ? { x } : {}),
@@ -162,6 +166,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
        }
       }
     }
+  }
   }
   }
   return out;
