@@ -71,6 +71,7 @@ interface Targeting {
 
 /** A small menu in the prompt bar: which ability, or which mode. */
 interface Menu {
+  modes?: { labels: string[]; keys: string[]; choose: (key: string) => void };
   title: string;
   options: { label: string; pick: () => void }[];
 }
@@ -375,7 +376,8 @@ export function Game({
         : 'choose one';
       setMenu({
         title: `${def.name}: ${how}`,
-        options: keys.map((k) => ({
+        ...(def.chooseModes ? { modes: { labels, keys, choose: (key: string) => startPlay(play, key) } } : {}),
+        options: def.chooseModes ? [] : keys.map((k) => ({
           label: k
             .split('+')
             .map((m) => labels[Number(m)] ?? `Mode ${Number(m) + 1}`)
@@ -609,7 +611,7 @@ export function Game({
         </div>
         <div className="midline" data-pile="stack">
           <PhaseTrack view={view} session={session} onChange={refresh} />
-          <StackView view={view} onHover={setHovered} h={h} />
+          <StackView view={view} onHover={setHovered} h={h} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
         </div>
         <YourZone view={view} h={h} placement={session.placement} onPlaced={refresh} />
@@ -815,7 +817,7 @@ function PhaseTrack({ view, session, onChange }: { view: GameView; session: Game
   );
 }
 
-function StackView({ view, onHover, h }: { view: GameView; onHover: (id: InstanceId | null) => void; h: ZoneHandlers }) {
+function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: GameView; onHover: (id: InstanceId | null) => void; h: ZoneHandlers; abilityTargets: string[]; onAbility: (id: string) => void }) {
   const items = [...(view.resolving ? [view.resolving] : []), ...[...view.stack].reverse()];
   if (items.length === 0) return null;
   return (
@@ -828,11 +830,14 @@ function StackView({ view, onHover, h }: { view: GameView; onHover: (id: Instanc
           <div
             key={item.id}
             {...(item.kind === 'spell' ? { 'data-card': cardId } : {})}
-            className={`stack-item ${i === 0 ? 'top' : ''} ${item.kind === 'spell' ? h.markCard(cardId).join(' ') : ''}`}
+            className={`stack-item ${i === 0 ? 'top' : ''} ${item.kind === 'spell' ? h.markCard(cardId).join(' ') : abilityTargets.includes(item.id) ? 'target' : ''}`}
             onMouseEnter={() => onHover(cardId)}
             onMouseLeave={() => onHover(null)}
-            // A spell on the stack can be a target ("counter target spell").
-            onClick={() => item.kind === 'spell' && h.onCard(cardId)}
+            // Abilities are targeted by stack-item identity, independently of their source.
+            onClick={() => item.kind === 'spell' ? h.onCard(cardId) : onAbility(item.id)}
+            role={item.kind === 'ability' && abilityTargets.includes(item.id) ? 'button' : undefined}
+            tabIndex={item.kind === 'ability' && abilityTargets.includes(item.id) ? 0 : undefined}
+            onKeyDown={e => { if (item.kind === 'ability' && abilityTargets.includes(item.id) && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAbility(item.id); } }}
           >
             {c && (
               <div className="stack-thumb">
@@ -850,6 +855,9 @@ function StackView({ view, onHover, h }: { view: GameView; onHover: (id: Instanc
                 {item.controller === YOU ? 'Yours' : item.controller}
                 {item.targets.length > 0 && ` → ${item.targets.map((t) => targetLabel(view, t)).join(', ')}`}
               </div>
+              {item.kind === 'spell' && c && (item.modes || item.mode !== undefined) && <div className="stack-modes">
+                {(item.modes ?? [item.mode!]).map(mode => <div key={mode}>• {modeLabels(c.defId, defOf(c.defId).modes?.length ?? 0)[mode]}</div>)}
+              </div>}
             </div>
           </div>
         );
@@ -861,6 +869,10 @@ function StackView({ view, onHover, h }: { view: GameView; onHover: (id: Instanc
 function targetLabel(view: GameView, t: Target): string {
   if (t.kind === 'none') return 'no target';
   if (t.kind === 'player') return t.player === YOU ? 'you' : t.player;
+  if (t.kind === 'ability') {
+    const item = view.stack.find(item => item.id === t.ability);
+    return item?.kind === 'ability' ? (view.cards[item.source] ? defOf(view.cards[item.source]!.defId).name : 'A card') + ' ability' : 'an ability';
+  }
   const c = view.cards[t.card];
   return c ? defOf(c.defId).name : 'a card';
 }
@@ -889,6 +901,8 @@ interface PromptProps {
 }
 
 function PromptBar(p: PromptProps) {
+  const [modePicks, setModePicks] = useState<number[]>([]);
+  useEffect(() => setModePicks([]), [p.menu]);
   const s = p.session.state;
   const pending = s.pending;
   let text: string;
@@ -900,7 +914,15 @@ function PromptBar(p: PromptProps) {
     text = pending.player === YOU ? 'Preparing your next decision…' : `${pending.player} is thinking…`;
   } else if (p.menu) {
     text = `${p.menu.title}:`;
-    buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
+    const modeMenu = p.menu.modes;
+    if (modeMenu) {
+      const key = [...modePicks].sort((a,b) => a-b).join('+');
+      text += ` ${modePicks.length} selected.`;
+      buttons = [
+        ...(modeMenu.keys.includes(key) ? [{ label: 'Confirm modes', onClick: () => modeMenu.choose(key), primary: true }] : []),
+        { label: 'Cancel', onClick: p.onCancel },
+      ];
+    } else buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
   } else if (p.paying) {
     const pool = p.view.players[YOU]!.manaPool;
     const floating = Object.entries(pool).flatMap(([m, n]) => Array.from({ length: n }, () => `{${m}}`)).join('');
@@ -912,7 +934,7 @@ function PromptBar(p: PromptProps) {
       { label: 'Auto-pay', onClick: p.onAutoPay, primary: true },
     ];
   } else if (p.targeting) {
-    text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card or player.`;
+    text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card, player, or stack ability.`;
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
     // An "up to one" target can be left out.
     if (p.canSkipTarget) buttons = [...buttons, { label: 'No target', onClick: p.onSkipTarget }];
@@ -1073,6 +1095,13 @@ function PromptBar(p: PromptProps) {
   return (
     <div className={`prompt ${p.yourMove ? 'yours' : ''} ${p.busy ? 'busy' : ''} ${p.menu ? 'modal-choice ability-menu' : pending.kind === 'chooseModes' ? 'modal-choice' : ''}`}>
       <div className="prompt-text">{text}</div>
+      {p.yourMove && p.menu?.modes && <fieldset className="mode-options">
+        <legend>Choose modes</legend>
+        {p.menu.modes.labels.map((label, index) => <label key={index}>
+          <input type="checkbox" checked={modePicks.includes(index)} disabled={!p.menu!.modes!.keys.some(key => key.split('+').includes(String(index)))} onChange={e => setModePicks(picks => e.target.checked ? [...picks, index] : picks.filter(i => i !== index))} />
+          <span>{label}</span>
+        </label>)}
+      </fieldset>}
       <div className="prompt-buttons">
         {buttons.map((b) => (
           <button key={b.label} className={b.primary ? 'primary' : ''} onClick={b.onClick}>

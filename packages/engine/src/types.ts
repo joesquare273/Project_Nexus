@@ -93,6 +93,8 @@ export const TARGET_KINDS = [
   'TargetCardInGraveyard',
   /** A spell on the stack matching `filter` ("counter target noncreature spell"). */
   'TargetSpell',
+  /** An activated or triggered ability on the stack, identified separately from its source. */
+  'TargetAbility',
   /** A spell, a nonland permanent, or a card in a graveyard (Endless Detour). */
   'TargetSpellPermanentOrGraveyardCard',
   /** The same object (or player) the previous chosen target picked ("it", "that creature"). */
@@ -145,6 +147,7 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetPlayer',
   'TargetPermanent',
   'TargetCardInGraveyard',
+  'TargetAbility',
   'TargetSpell',
   'TargetSpellPermanentOrGraveyardCard',
 ];
@@ -238,7 +241,7 @@ export const EFFECT_KINDS = [
   'AdditionalCombat',
   /** Each target player returns a creature with the greatest mana value among creatures they control to its owner's hand (Summon: Valefor). */
   'ReturnGreatestManaValue',
-  /** Counter the target spell: it goes to its owner's graveyard instead of resolving (rule 701.5). */
+  /** Counter a spell or stack ability instead of letting it resolve (rule 701.5). */
   'Counter',
   /** "Prevent all damage that would be dealt to you this turn." */
   'PreventDamageToYouThisTurn',
@@ -1130,7 +1133,7 @@ export const STEPS = [
 export type Step = (typeof STEPS)[number];
 
 /** `none`: an "up to one target" that was left out. */
-export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId } | { kind: 'none' };
+export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId } | { kind: 'ability'; ability: string } | { kind: 'none' };
 
 export interface SpellItem {
   id: string;
@@ -1443,6 +1446,7 @@ export type Action =
 export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
 export type GameEvent =
+  | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }
   | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }
   | { type: 'AbilityTargeted'; card: InstanceId; controller: PlayerId; source: InstanceId }
   | { type: 'GameStarted'; turnOrder: PlayerId[] }

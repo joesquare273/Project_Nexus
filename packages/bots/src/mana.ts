@@ -10,6 +10,7 @@ import {
   manaChoices,
   parseManaCost,
   planPayment,
+  type CostedOption,
   type ManaPool,
   type Action,
   type CardInstance,
@@ -19,6 +20,17 @@ import {
   type ManaType,
   type PlayerId,
 } from '@nexus/engine';
+
+/** Reuse payment plans only within one decision on this unchanged state. */
+export function optionTapPlanner(s: GameState, playerId: PlayerId): (option: CostedOption) => ManaTap[] | null {
+  const plans = new Map<string, ManaTap[] | null>();
+  return (o) => {
+    const exclude = o.action.type === 'CastSpell' ? [...(o.action.improvise ?? []), ...(o.action.convoke ?? []), ...(o.action.tapCreatures ?? [])].sort() : [];
+    const key = JSON.stringify([o.cost, o.forEquipment, exclude]);
+    if (!plans.has(key)) plans.set(key, planTaps(s, playerId, o.cost, { forEquipment: o.forEquipment, exclude }));
+    return plans.get(key)!;
+  };
+}
 
 export interface ManaTap {
   card: InstanceId;

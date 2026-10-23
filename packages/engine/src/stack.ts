@@ -257,6 +257,7 @@ export function isLegalTarget(
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
+  if (t.kind === 'ability') return kind === 'TargetAbility' && s.stack.some((item) => item.kind === 'ability' && item.id === t.ability);
   const c = s.cards[t.card];
   if (!c) return false;
   const viewpoint = {
@@ -306,6 +307,9 @@ export function targetOptions(
   }
   if (effect.target === 'TargetSpell' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const item of s.stack) if (item.kind === 'spell') all.push({ kind: 'card', card: item.card });
+  }
+  if (effect.target === 'TargetAbility') {
+    for (const item of s.stack) if (item.kind === 'ability') all.push({ kind: 'ability', ability: item.id });
   }
   // "Up to one": leaving it out is a choice too.
   if (effect.upTo) all.push({ kind: 'none' });
@@ -1049,6 +1053,7 @@ export function activateAbility(
 
 function controllerOfTarget(s: GameState, t: Target | undefined): PlayerId | null {
   if (!t || t.kind === 'none') return null;
+  if (t.kind === 'ability') return s.stack.find((item) => item.kind === 'ability' && item.id === t.ability)?.controller ?? null;
   if (t.kind === 'player') return t.player;
   const c = s.cards[t.card];
   if (!c) return null;
@@ -1582,6 +1587,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'Counter':
+      for (const target of targets) {
+        if (target.kind !== 'ability') continue;
+        const index = s.stack.findIndex((item) => item.kind === 'ability' && item.id === target.ability);
+        if (index < 0) continue;
+        const countered = s.stack[index] as AbilityItem;
+        s.stack.splice(index, 1);
+        ctx.ev.push({ type: 'AbilityCountered', ability: countered.id, source: countered.source, by: source });
+      }
       for (const id of cards) {
         const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === id);
         if (index < 0 || defOf(s, s.cards[id]!).cantBeCountered) continue;

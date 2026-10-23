@@ -5,6 +5,54 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Sublime Epiphany: five modes and individual ability targets
+
+- Built all five modes: counter a spell, counter an activated/triggered ability,
+  return a nonland permanent, copy your creature, and have a target player draw.
+  Choose any nonempty subset once each for {4}{U}{U}. Effects run in printed
+  order. Losing one target does not cancel the remaining legal modes; losing
+  every target prevents resolution. Uncounterable spells remain on the stack.
+- Added ability targets identified by their stack item, independently of the
+  source permanent or its zone. Countering one removes only that ability:
+  costs remain paid, its source remains where it is, and another ability from
+  the same source still resolves. Mana abilities are unavailable as targets
+  because they do not use the stack. Legal actions, AI scoring, narration and
+  the browser target picker understand the new target kind.
+- Stack abilities highlight as legal targets and can be selected by mouse,
+  Enter or Space. Multimode spells now offer individual checkboxes and a
+  confirmation button instead of listing every combination. Modes without
+  available targets are disabled; confirmation requires a legal combination.
+  Chosen spell modes remain visible on the scrollable stack during responses.
+- Shared mana planning now caches equal costs, Equipment restrictions and
+  excluded payment creatures within a single unchanged decision. Target scores
+  and equivalent convoke/improvise payment choices are reused across mode/target
+  combinations. Escalate-only creature scans are skipped for ordinary casts.
+  Caches are recreated for each new decision.
+- Forty-two scenarios cover 2, 3 and 4 players, all 31 mode combinations in
+  each player count through both engine and human play enumeration, exact costs,
+  target restrictions, printed order, copied creature entry triggers, partial/all invalidation, uncounterable spells,
+  activated and triggered abilities, same-source ability identity, and AI.
+- Full-game regression cases report each bot/player-count combination separately,
+  preserving the two-minute budget per game, 30,000-action bound and invariant
+  checks. The seeded four-player AI and random games finish without rule errors.
+- Validation passed: type-check, all 963 tests in 52 files, and production
+  build. The existing Vite large-bundle warning remains. Thirty Commander fuzz
+  games (seeds 349-378) completed with no invariant failures or action-limit
+  timeouts.
+- Browser playtest: selected counter-spell, counter-ability and draw modes;
+  targeted Ultimate Magic: Holy, Mind Stone's draw ability and yourself.
+  Passing priority countered both stack objects and drew Island. Mind Stone's
+  sacrifice cost stayed paid. The real board showed an empty stack and the
+  drawn card. No browser warnings/errors. Mode picker and resolution screenshots
+  are in this chat's outputs; temporary QA sources removed before the build.
+- Rules checked against [Wizards' release notes for Sublime Epiphany](https://magic.wizards.com/en/news/feature/reality-fracture-release-notes):
+  distinct modes, printed order, independent remaining targets and only
+  activated/triggered abilities already on the stack (excluding mana abilities).
+
+292 of 320 distinct precon cards are built; 28 remain. Limit Break is 96/100,
+Revival Trance 88/100, Counter Blitz 94/100, Scions & Spellcraft 91/100.
+Continue after the user's push/proceed checkpoint.
+
 ### Interceptor, Shadow's Hound: returning tapped and attacking
 
 - Built Interceptor's printed menace, its menace grant to Assassins you control,

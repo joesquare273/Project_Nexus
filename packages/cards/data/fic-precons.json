@@ -2801,10 +2801,8 @@
           "count": 1,
           "set": "fic",
           "number": "271",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Torrential Gearhulk",

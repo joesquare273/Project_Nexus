@@ -53,9 +53,9 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
-Interceptor, Shadow's Hound is built (2026-10-23): Assassin menace and its
-graveyard return, including a defending-player choice in multiplayer games.
-291 of 320 distinct precon cards are built; 29 remain.
+Sublime Epiphany is built (2026-10-23): all five modes, including countering
+an individual stack ability, with a checkbox-based mode picker in the browser.
+292 of 320 distinct precon cards are built; 28 remain.
 
 ## C2 groups
 
@@ -91,5 +91,6 @@ needing several groups' pieces waits for the last of them.
 | Mana choices | **2 built (2026-10-23):** Coveted Jewel and Relic of Legends. |
 | Library casting and granted mana | **1 built (2026-10-23):** Summoning Materia. |
 | Entering attacking | **1 built (2026-10-23):** Interceptor, Shadow's Hound. Defender chosen during resolution; no attack-declaration triggers. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (29 cards left in all). |
+| Multimode stack interaction | **1 built (2026-10-23):** Sublime Epiphany. All 31 nonempty mode combinations; spells and individual abilities are distinct targets. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (28 cards left in all). |
 | Everything else | |

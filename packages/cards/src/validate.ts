@@ -293,7 +293,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'MoveCounters' && e.from === undefined) err('MoveCounters needs "from": which target the counters come from.');
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
-  if (e.effect === 'Counter' && e.target !== 'TargetSpell') err('Counter needs a TargetSpell target.');
+  if (e.effect === 'Counter' && e.target !== 'TargetSpell' && e.target !== 'TargetAbility') err('Counter needs a TargetSpell or TargetAbility target.');
   if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
   if (e.whileYouControlSource && e.effect !== 'GrantKeywords') err('whileYouControlSource is only for GrantKeywords.');

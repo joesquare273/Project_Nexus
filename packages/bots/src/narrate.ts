@@ -40,6 +40,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOpponentWhoDidNotChoose: "each opponent who didn't",
   EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
   EachOtherOpponent: 'each other opponent',
+  TargetAbility: 'target activated or triggered ability',
   TargetSpell: 'target spell',
   EquippedCreature: 'equipped creature',
   SubjectController: 'that player',
@@ -438,6 +439,10 @@ export function cardName(s: GameState, id: string | undefined): string {
 export function targetName(s: GameState, t: Target, viewer?: string): string {
   if (t.kind === 'none') return 'no target';
   if (t.kind === 'player') return t.player === viewer ? 'you' : t.player;
+  if (t.kind === 'ability') {
+    const item = s.stack.find((item) => item.kind === 'ability' && item.id === t.ability);
+    return item?.kind === 'ability' ? cardName(s, item.source) + ' ability' : 'an ability';
+  }
   return cardName(s, t.card);
 }
 
@@ -494,6 +499,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${cardName(s, e.card)} phased out.`;
     case 'PhasedIn':
       return `  ${cardName(s, e.card)} phased in.`;
+    case 'AbilityCountered':
+      return `  ${cardName(s, e.source)} ability is countered.`;
     case 'SpellCountered':
       return `  ${cardName(s, e.card)} is countered by ${cardName(s, e.by)}.`;
     case 'ControlChanged':

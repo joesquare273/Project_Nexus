@@ -39,7 +39,7 @@ import {
   type PlayerId,
   type Target,
 } from '@nexus/engine';
-import { planTaps, tapActions } from './mana.ts';
+import { planTaps, tapActions, optionTapPlanner } from './mana.ts';
 import type { Bot } from './index.ts';
 
 const def = (s: GameState, c: CardInstance): CardDefinition => s.cardDefs[c.defId]!;
@@ -165,6 +165,10 @@ function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Tar
   }
   // Leaving out an "up to one" target: better than a bad target, worse than a good one.
   if (target.kind === 'none') return 0;
+  if (target.kind === 'ability') {
+    const item = s.stack.find((item) => item.id === target.ability);
+    return !item ? 0 : item.controller === me ? -20 : 4;
+  }
   const c = s.cards[target.card]!;
   // A spell on the stack: counter an opponent's (the bigger the better), never your own.
   if (c.zone === 'stack') {
@@ -209,7 +213,7 @@ function massEffectScore(s: GameState, me: PlayerId, effect: EffectSpec, source:
 }
 
 /** A spell or ability's score for `me`: positive means worth doing. */
-function scoreOption(s: GameState, me: PlayerId, o: CostedOption): number {
+function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: Map<EffectSpec, Map<string, number>>): number {
   const a = o.action;
   const card = s.cards[a.card]!;
   const d = def(s, card);
@@ -230,7 +234,12 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption): number {
   let i = 0;
   for (const e of effects) {
     if (CHOSEN_TARGET_KINDS.includes(e.target)) {
-      score += scoreTarget(s, me, e, targets[i++]!);
+      const target = targets[i++]!;
+      let scores = targetScores.get(e);
+      if (!scores) { scores = new Map(); targetScores.set(e, scores); }
+      const key = JSON.stringify(target);
+      if (!scores.has(key)) scores.set(key, scoreTarget(s, me, e, target));
+      score += scores.get(key)!;
       continue;
     }
     if (e.target === 'AllPermanents') {
@@ -277,12 +286,14 @@ function needsLand(s: GameState, me: PlayerId): boolean {
  * worth doing.
  */
 function bestPlay(s: GameState, me: PlayerId, legal: Action[]): Action | null {
+  const plan = optionTapPlanner(s, me);
+  const targetScores = new Map<EffectSpec, Map<string, number>>();
   const options = [...spellOptions(s, me), ...abilityOptions(s, me)]
-    .map((o) => ({ o, score: scoreOption(s, me, o) }))
+    .map((o) => ({ o, score: scoreOption(s, me, o, targetScores) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || manaValue(b.o.cost) - manaValue(a.o.cost));
   for (const { o } of options) {
-    const taps = planTaps(s, me, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? [...(o.action.improvise ?? []), ...(o.action.convoke ?? []), ...(o.action.tapCreatures ?? [])] : [] });
+    const taps = plan(o);
     if (!taps) continue;
     if (taps.length > 0) return tapActions(me, taps)[0]!;
     // Only return actions the engine agrees are legal right now.

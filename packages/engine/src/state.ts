@@ -354,7 +354,7 @@ export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
 
 /** Deals damage from a source, applying deathtouch and lifelink. */
 export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amount: number, combat: boolean): void {
-  if (amount <= 0) return;
+  if (amount <= 0 || target.kind === 'ability') return;
   const s = ctx.s;
   const source = s.cards[sourceId]!;
   // "Prevent all damage that would be dealt to you this turn" (Ultimate Magic: Holy).

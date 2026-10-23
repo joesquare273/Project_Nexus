@@ -36,7 +36,7 @@ exact Final Fantasy Starter Kit decks, with every card working as printed.
   with tips.
 - **Commander** ([docs/commander.md](docs/commander.md)): the Commander
   format and all four Final Fantasy Commander precons; their cards are being
-  built step by step (291 of 320 distinct cards are built).
+  built step by step (292 of 320 distinct cards are built).
 - **Bots** (`packages/bots`): a basic AI, a random bot for fuzzing, a
   terminal game against the AI, a bot-vs-bot simulator and a fuzzer.
 - **Tests**: scenario tests for each rule run across 2, 3 and 4 players,

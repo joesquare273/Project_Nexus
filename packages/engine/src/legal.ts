@@ -114,6 +114,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const def = s.cardDefs[c.defId]!;
     const from = playableZone(s, playerId, c);
     if (!from || !canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
+    const payments = new Map<string, ReturnType<typeof helpedPayments>>();
     // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);
     // Sabin can only be cast from the graveyard for its blitz cost.
     const way = from === 'graveyard' ? graveyardWay(s, playerId, c) : null;
@@ -129,7 +130,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         for (const kicks of kickChoices(s, playerId, def, c)) {
         // Escalate: the first untapped creatures that don't make mana, one per extra mode.
         const extraModes = def.escalateTapCreature ? Math.max(0, (modes.modes?.length ?? 1) - 1) : 0;
-        const tappable = convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0);
+        const tappable = extraModes > 0 ? convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0) : [];
         if (tappable.length < extraModes) continue;
         const tapCreatures = tappable.slice(0, extraModes).map((k) => k.id);
         const choice: SpellChoice = {
@@ -145,8 +146,10 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         const discards = discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
           const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
+          const paymentKey = JSON.stringify([cost, tapCreatures]);
+          if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
           for (const costCards of discards) {
-            for (const pay of helpedPayments(s, playerId, def, c, cost, tapCreatures)) {
+            for (const pay of payments.get(paymentKey)!) {
               out.push({
                 action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra },
                 cost: pay.cost,

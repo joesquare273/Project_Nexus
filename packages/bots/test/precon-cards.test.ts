@@ -67,22 +67,20 @@ describe('Final Fantasy Commander precons', () => {
     }
   });
 
-  it.each([2, 3, 4])('play %i-player Commander games to the end without breaking rules', (players) => {
-    for (const make of [basicAi, randomBot]) {
-      const decks = FIN_PRECONS.slice(0, players).map((p) => preconDeck(p.name));
-      const game = playGame(
-        { format: COMMANDER, cardDefs: CARD_DEFS, seed: players * 11, players: decks.map((d, i) => ({ id: `P${i + 1}`, ...d })) },
-        Object.fromEntries(decks.map((_, i) => [`P${i + 1}`, make(players * 7 + i)])),
-        {
-          maxActions: 30_000,
-          onAction: (s) => {
-            const problems = checkInvariants(s);
-            if (problems.length) throw new Error(problems.join('; '));
-          },
+  it.each([2, 3, 4].flatMap(players => [basicAi, randomBot].map(make => ({ players, make, bot: make.name }))))('play $players-player Commander games with $bot to the end without breaking rules', ({ players, make }) => {
+    const decks = FIN_PRECONS.slice(0, players).map((p) => preconDeck(p.name));
+    const game = playGame(
+      { format: COMMANDER, cardDefs: CARD_DEFS, seed: players * 11, players: decks.map((d, i) => ({ id: `P${i + 1}`, ...d })) },
+      Object.fromEntries(decks.map((_, i) => [`P${i + 1}`, make(players * 7 + i)])),
+      {
+        maxActions: 30_000,
+        onAction: (s) => {
+          const problems = checkInvariants(s);
+          if (problems.length) throw new Error(problems.join('; '));
         },
-      );
-      expect(game.finished).toBe(true);
-    }
+      },
+    );
+    expect(game.finished).toBe(true);
   }, 120_000);
 });
 

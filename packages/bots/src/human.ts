@@ -15,7 +15,7 @@ import {
   type PlayerId,
   type Target,
 } from '@nexus/engine';
-import { planTaps, tapActions } from './mana.ts';
+import { planTaps, tapActions, optionTapPlanner } from './mana.ts';
 import { activatedText } from './narrate.ts';
 
 /** One complete way to do something: tap these, then take this action. */
@@ -40,8 +40,8 @@ export interface CardPlay {
   choices: PlayChoice[];
 }
 
-function withTaps(s: GameState, player: PlayerId, o: CostedOption): PlayChoice | null {
-  const taps = planTaps(s, player, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? [...(o.action.improvise ?? []), ...(o.action.convoke ?? []), ...(o.action.tapCreatures ?? [])] : [] });
+function withTaps(player: PlayerId, o: CostedOption, plan: ReturnType<typeof optionTapPlanner>): PlayChoice | null {
+  const taps = plan(o);
   if (!taps) return null;
   return {
     taps: tapActions(player, taps),
@@ -72,8 +72,9 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     plays.push({ card: a.card, kind: 'land', label, choices: [{ taps: [], action: a, targets: [] }] });
   }
   const grouped = new Map<string, CardPlay>();
+  const plan = optionTapPlanner(s, player);
   const add = (o: CostedOption) => {
-    const choice = withTaps(s, player, o);
+    const choice = withTaps(player, o, plan);
     if (!choice) return;
     const a = o.action;
     const isAbility = a.type === 'ActivateAbility';
