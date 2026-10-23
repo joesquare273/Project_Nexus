@@ -55,6 +55,7 @@ const PLAYER_ONLY_EFFECTS = new Set([
   'PutFromHand',
 ]);
 const PLAYER_TARGETS = new Set([
+  'SubjectController',
   'You',
   'EachOpponent',
   'EachPlayer',
@@ -263,6 +264,8 @@ export function validateCardDefinition(raw: unknown): string[] {
 }
 
 function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
+  if (e.giveTo && (e.effect !== 'GainControl' || e.giveTo !== 'SubjectController')) err('giveTo is only for GainControl to SubjectController.');
+  if (e.sameObject && (!inAbility || e.target !== 'This')) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
   if (!TARGET_KINDS.includes(e.target)) err(`unknown target "${e.target}".`);
   if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined) err(`${e.effect} needs an amount.`);

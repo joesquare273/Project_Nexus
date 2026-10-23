@@ -62,6 +62,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
   const out: Occurrence[] = [];
   events.forEach((e, at) => {
     switch (e.type) {
+      case 'AttackersUnblocked':
+        out.push({ when: 'AttackersUnblocked', at, subject: e.attackers[0], subjectController: e.player, defender: e.defender });
+        break;
       case 'AbilityTargeted':
         out.push({ when: 'AbilityTargetsCreature', at, subject: e.card, subjectController: e.controller });
         break;
@@ -197,6 +200,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).
   if (o.when === 'Chapter') {
     return o.subject === source && (spec.chapters ?? []).some((n) => n > (o.loreFrom ?? 0) && n <= (o.loreTo ?? 0));
@@ -314,6 +318,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       if (spec.oncePerTurnWhenPaid && s.triggeredThisTurn.includes(key)) return;
       found.push({
         source: c.id,
+        sourceObject: c.zoneChanges ?? 0,
+        ...(o.subjectController ? { subjectController: o.subjectController } : {}),
         ability,
         controller,
         sourceZone: c.zone,
@@ -358,6 +364,8 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     id: newId(s, 's'),
     kind: 'ability',
     source: t.source,
+    sourceObject: t.sourceObject,
+    ...(t.subjectController ? { subjectController: t.subjectController } : {}),
     from: 'trigger',
     ability: t.ability,
     sourceZone: t.sourceZone,

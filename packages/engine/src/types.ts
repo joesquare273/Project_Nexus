@@ -400,6 +400,10 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** GainControl: give the permanent to the player captured by the trigger. */
+  giveTo?: 'SubjectController';
+  /** Affect the source only if it is still the same object as when it triggered. */
+  sameObject?: boolean;
   effect: EffectKind;
   amount?: Amount;
   target: TargetKind;
@@ -506,6 +510,8 @@ export interface EffectSpec {
  * dealt damage, or the spell that was cast.
  */
 export const TRIGGER_EVENTS = [
+  /** Grouped by attacker controller after a defending player declares blockers. */
+  'AttackersUnblocked',
   'SecondMain',
   'AbilityTargetsCreature',
   'EntersBattlefield',
@@ -1145,6 +1151,8 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  sourceObject?: number;
+  subjectController?: PlayerId;
   modes?: number[];
   id: string;
   kind: 'ability';
@@ -1172,6 +1180,8 @@ export type StackItem = SpellItem | AbilityItem;
 
 /** A triggered ability waiting to be put on the stack. */
 export interface QueuedTrigger {
+  sourceObject?: number;
+  subjectController?: PlayerId;
   modes?: number[];
   source: InstanceId;
   ability: number;
@@ -1481,6 +1491,7 @@ export type GameEvent =
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }
+  | { type: 'AttackersUnblocked'; player: PlayerId; defender: PlayerId; attackers: InstanceId[] }
   | { type: 'DamageDealt'; source: InstanceId; target: Target; amount: number; combat: boolean }
   | { type: 'CreatureDied'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'PermanentDestroyed'; card: InstanceId; defId: CardDefId; owner: PlayerId }

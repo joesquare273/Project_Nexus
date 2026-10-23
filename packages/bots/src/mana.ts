@@ -34,11 +34,10 @@ export interface TapOptions {
 
 /** Untapped permanents this player can tap for mana right now. */
 export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions = {}): CardInstance[] {
-  return s.players[playerId]!.battlefield
-    .map((id) => s.cards[id]!)
+  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === playerId)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
-        if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
+      if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
       if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick;
@@ -62,8 +61,7 @@ function amountFrom(s: GameState, c: CardInstance): number {
 
 /** Untapped permanents with a paid mana ability ("{1}, {T}: Add {R}{G}") this player can use. */
 export function paidManaSources(s: GameState, playerId: PlayerId): CardInstance[] {
-  return s.players[playerId]!.battlefield
-    .map((id) => s.cards[id]!)
+  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === playerId)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');

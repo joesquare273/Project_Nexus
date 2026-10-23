@@ -192,6 +192,14 @@ export function declareBlockers(ctx: Ctx, playerId: PlayerId, blocks: Block[]): 
     combat.blocks.push(b);
     ctx.ev.push({ type: 'BlockDeclared', blocker: b.blocker, attacker: b.attacker });
   }
+  // "Attacks you and isn't blocked" is checked after blockers are declared, before damage.
+  const unblocked = new Map<PlayerId, InstanceId[]>();
+  for (const a of combat.attacks) {
+    const attacker = s.cards[a.attacker];
+    if (a.defender !== playerId || !isCreatureOnBattlefield(s, attacker) || combat.blocks.some((b) => b.attacker === a.attacker)) continue;
+    unblocked.set(attacker.controller, [...(unblocked.get(attacker.controller) ?? []), a.attacker]);
+  }
+  for (const [attacker, attackers] of unblocked) ctx.ev.push({ type: 'AttackersUnblocked', player: attacker, defender: playerId, attackers });
   combat.blockersPending = combat.blockersPending.filter((pid) => pid !== playerId);
   nextBlockerDecision(ctx);
 }

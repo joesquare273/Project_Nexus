@@ -2877,11 +2877,8 @@
           "count": 1,
           "set": "fic",
           "number": "341",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tome of Legends",

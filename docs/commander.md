@@ -8,7 +8,7 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 | Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 95/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 87/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 94/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 88/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 89/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -50,6 +50,12 @@ The Starter Kit cards that also appear in the precons are shared.
 
 Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
+
+## Latest card checkpoint
+
+Coveted Jewel is built (2026-10-23): entry draw, three mana of any one color,
+and transfer to an unblocked attacker after declaring blockers. 288 of 320
+distinct precon cards are built; 32 remain.
 
 ## C2 groups
 

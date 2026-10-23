@@ -1098,6 +1098,7 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return attached && s.cards[attached]?.zone === 'battlefield' ? [{ kind: 'card', card: attached }] : [];
     }
     case 'SubjectController': {
+      if (item.kind === 'ability' && item.subjectController) return s.players[item.subjectController]!.eliminated ? [] : toPlayers([item.subjectController]);
       const subject = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
       if (!subject) return [];
       const who = subject.zone === 'battlefield' ? subject.controller : subject.owner;
@@ -1315,6 +1316,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const s = ctx.s;
   const item = r.item;
   const source = sourceOf(item);
+  if (effect.sameObject && item.kind === 'ability' && (s.cards[source]?.zoneChanges ?? 0) !== item.sourceObject) return;
   const amount = resolvedAmount(s, effect, r);
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
@@ -1525,16 +1527,19 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (effect.onlyFirstCombat && (s.combatsThisTurn ?? 0) !== 1) return;
       s.extraCombats = (s.extraCombats ?? 0) + 1;
       return;
-    case 'GainControl':
+    case 'GainControl': {
+      const receiver = effect.giveTo === 'SubjectController' ? (item.kind === 'ability' ? item.subjectController : undefined) : item.controller;
+      if (!receiver || s.players[receiver]!.eliminated) return;
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
-        if (c.controller === item.controller) continue;
-        c.controller = item.controller;
+        if (c.controller === receiver) continue;
+        c.controller = receiver;
         c.summoningSick = true;
         if (c.attachedTo) delete c.attachedTo;
-        ctx.ev.push({ type: 'ControlChanged', card: id, controller: item.controller });
+        ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver });
       }
       return;
+    }
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;

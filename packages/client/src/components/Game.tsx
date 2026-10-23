@@ -12,6 +12,7 @@ import {
   formatManaCost,
   getLegalActions,
   manaChoices,
+  manaAbilityAmount,
   spellOptions,
   triggerSpec,
   queuedTriggerSpec,
@@ -327,7 +328,7 @@ export function Game({
       title: `${cardName(s, id)}: add which mana?`,
       options: [
         ...kinds.map((m) => ({
-          label: `Add {${m}}`,
+          label: `Add ${`{${m}}`.repeat(manaAbilityAmount(s.cards[id]!, defOf(s.cards[id]!.defId)))}`,
           pick: () => {
             setMenu(null);
             tapForMana(id, m);

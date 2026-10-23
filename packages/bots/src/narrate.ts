@@ -171,7 +171,7 @@ function effectText(e: EffectSpec): string {
     case 'AdditionalCombat':
       return `there is an additional combat phase after this phase${e.onlyFirstCombat ? " if it's the first combat phase of your turn" : ''}`;
     case 'GainControl':
-      return `gain control of ${who}`;
+      return e.giveTo === 'SubjectController' ? `that player gains control of ${who}` : `gain control of ${who}`;
     case 'WinGame':
       return `${you ? 'you win' : `${who} wins`} the game`;
     case 'AttachLastEquipment':
@@ -316,6 +316,7 @@ function triggerCondition(t: TriggerSpec): string {
         : 'At the beginning of your end step';
   }
   const verb = {
+    AttackersUnblocked: '',
     EntersBattlefield: 'enters',
     Dies: 'dies',
     Attacks: 'attacks',
@@ -333,6 +334,7 @@ function triggerCondition(t: TriggerSpec): string {
     OpponentLosesLife: '',
   }[t.when] ?? '';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
+  if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";
   if (t.when === 'Chapter') return `Chapter ${(t.chapters ?? []).map((n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][n] ?? n).join(', ')}`;
   if (t.when === 'YouAttack') return `Whenever you attack with ${t.attackersAtLeast ?? 1} or more creatures`;
   if (t.when === 'Draws') {
@@ -495,7 +497,7 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
     case 'SpellCountered':
       return `  ${cardName(s, e.card)} is countered by ${cardName(s, e.by)}.`;
     case 'ControlChanged':
-      return `  ${who(e.controller)} gains control of ${cardName(s, e.card)}.`;
+      return `  ${who(e.controller)} ${e.controller === viewer ? 'gain' : 'gains'} control of ${cardName(s, e.card)}.`;
     case 'Attached':
       return e.creature
         ? `  ${cardName(s, e.equipment)} is attached to ${cardName(s, e.creature)}.`

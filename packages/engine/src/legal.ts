@@ -280,8 +280,8 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
 /** Mana abilities the player could activate right now. */
 function manaAbilities(s: GameState, player: PlayerId): Action[] {
   const actions: Action[] = [];
-  for (const id of s.players[player]!.battlefield) {
-    const c = s.cards[id]!;
+  for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && card.controller === player)) {
+    const id = c.id;
     const def = s.cardDefs[c.defId]!;
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
     if (c.tapped || c.controller !== player || sick) continue;

@@ -5,6 +5,37 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Coveted Jewel: unblocked attackers and control changes
+
+- Built Coveted Jewel's entry draw, tap for three mana of one chosen color,
+  and unblocked-attacker trigger. The trigger waits until blockers have been
+  declared, uses the stack before damage, and fires once for the attacking
+  player even if several creatures are unblocked. Blocked attackers do not
+  qualify, including ones that can trample through later.
+- Resolution draws three for the captured attacking player, gives that player
+  control of the Jewel, and untaps it. Changing control does not cause another
+  entry trigger. Source removal does not stop the draw; a Jewel that leaves
+  and returns is a new object and is neither stolen nor untapped by the old
+  trigger. The attacking player's identity survives its creature leaving.
+- Fixed mana-action enumeration and the shared auto-tapper to find controlled
+  permanents across all owners' battlefield lists. The new controller can use
+  acquired mana rocks immediately; their former controller cannot. Mana menus
+  show the actual amount, such as {U}{U}{U} for the Jewel.
+- Thirty-nine focused scenarios cover 2, 3 and 4 players. Full validation:
+  type-check, all 738 tests in 47 files, and thirty Commander fuzz games
+  (169-198) passed with no invariant failures or action-limit timeouts.
+  Production build passed; the existing Vite large-bundle warning remains.
+- Browser playtest: passed priority to resolve the trigger, saw three cards
+  drawn and the Jewel change sides, then tapped it for three blue mana before
+  damage. No browser console errors. Temporary QA sources were removed.
+- Rules reference: [Wizards' Commander 2018 release notes](https://magic.wizards.com/en/news/feature/commander-2018-edition-release-notes-2018-07-27),
+  Coveted Jewel rulings; Comprehensive Rules 509.3g (September 25, 2026).
+  Current games are free-for-all with one active attacker controller;
+  simultaneous-trigger ordering remains in the general rules backlog.
+
+288 of 320 distinct precon cards are built; 32 remain. Limit Break is 95/100,
+Revival Trance 87/100, Counter Blitz 94/100, Scions & Spellcraft 89/100.
+
 ### User-requested combat damage and token displays
 
 Validation: type-check, all 699 tests, and production build passed. The existing
