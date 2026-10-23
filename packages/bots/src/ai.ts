@@ -505,7 +505,7 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     return pick(recipients.slice(0, 1));
   }
   if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
-  if (p.purpose === 'discard') {
+  if (p.purpose === 'discard' || p.purpose === 'handSize') {
     if (p.max === 0) return pick([]);
     // "Any number": only cards we'd rather not have (surplus lands).
     const n = p.min === 0 ? Math.min(p.max, Math.max(0, p.cards.filter((id) => isLandCard(s, id)).length - 2)) : p.min;

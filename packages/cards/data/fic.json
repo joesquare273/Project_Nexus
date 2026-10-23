@@ -309,7 +309,7 @@
   {"id":"talisman-of-dominance","name":"Talisman of Dominance","types":["artifact"],"manaCost":"{2}","colorIdentity":["B","U"],"printing":{"set":"fic","number":"364"},"produces":["C","U","B"],"manaAbility":{"painFor":["U","B"]}},
   {"id":"talisman-of-hierarchy","name":"Talisman of Hierarchy","types":["artifact"],"manaCost":"{2}","colorIdentity":["B","W"],"printing":{"set":"fic","number":"365"},"produces":["C","W","B"],"manaAbility":{"painFor":["W","B"]}},
   {"id":"talisman-of-progress","name":"Talisman of Progress","types":["artifact"],"manaCost":"{2}","colorIdentity":["U","W"],"printing":{"set":"fic","number":"367"},"produces":["C","W","U"],"manaAbility":{"painFor":["W","U"]}},
-  {"id":"thought-vessel","name":"Thought Vessel","types":["artifact"],"manaCost":"{2}","colorIdentity":[],"printing":{"set":"fic","number":"368"},"produces":["C"]},
+  {"id":"thought-vessel","name":"Thought Vessel","types":["artifact"],"manaCost":"{2}","colorIdentity":[],"printing":{"set":"fic","number":"368"},"produces":["C"],"statics":[{"affects":"Self","noMaximumHandSize":true}]},
   {"id":"arcane-sanctum","name":"Arcane Sanctum","types":["land"],"colorIdentity":["B","U","W"],"printing":{"set":"fic","number":"373"},"entersTapped":true,"produces":["W","U","B"]},
   {"id":"contaminated-aquifer","name":"Contaminated Aquifer","types":["land"],"subtypes":["Island","Swamp"],"colorIdentity":["B","U"],"printing":{"set":"fic","number":"383"},"entersTapped":true}
 ]

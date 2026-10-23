@@ -361,7 +361,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
           {active && <span className="turn-pill">Turn</span>}
         </div>
         <div className="counts">
-          <span title="Cards in hand">✋ {p.handCount}</span>
+          <span title={p.maximumHandSize === null ? "Cards in hand: no maximum hand size" : `Cards in hand: discard down to ${p.maximumHandSize} during your cleanup step`}>✋ {p.handCount}/{p.maximumHandSize ?? "∞"}</span>
           <ManaPool pool={p.manaPool} equipment={p.equipmentMana} />
           {Object.entries(p.commanderDamage)
             .filter(([, n]) => n > 0)
@@ -455,6 +455,7 @@ function HandCard({
     <div
       data-card={id}
       className={`hand-card ${marks.join(' ')} ${tag ? 'elsewhere' : ''}`}
+      data-choice-label={view.pending.kind === 'chooseCards' ? (['discard', 'handSize'].includes(view.pending.purpose) ? 'Discard' : 'Chosen') : 'Bottom'}
       style={{ '--tilt': `${tilt}deg` } as CSSProperties}
       onClick={() => h.onCard(id)}
       onMouseEnter={() => h.onHover(id)}

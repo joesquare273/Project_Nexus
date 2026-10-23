@@ -5,6 +5,39 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Reported hand-size bug: discard during cleanup
+
+- Fixed the missing maximum-hand-size rule. A player may draw above seven
+  during a turn, then must choose exactly the excess cards to discard during
+  their own cleanup. No automatic truncation or opponent-turn discard. Thought
+  Vessel now removes its controller's maximum while it is on the battlefield;
+  tapping it does not disable the ability, but phasing out or leaving does.
+- Cleanup discards are a turn-based action, with no response window. Damage
+  removal and end-of-turn effects then finish together, including damage on
+  phased-out permanents. State-based actions/triggers can give cleanup priority;
+  another cleanup begins after everyone passes with an empty stack. Tested a
+  Walking Ballista dying as its temporary toughness ends, Morbid Opportunist
+  drawing an eighth card, and a second cleanup requiring one more discard.
+- Reused the card-selection controls for explicit player choices and AI/terminal
+  discards. Opponents see the count to discard without candidate hand identities.
+  The hand counter shows count/limit (or infinity), with a cleanup tooltip.
+  Selected hand cards say Discard, Chosen or Bottom according to the decision.
+- Narrow screens now place the player header above a horizontal hand strip.
+  Selecting from eleven cards no longer scrolls the entire table sideways.
+- Thirty-six focused scenarios passed across 2, 3 and 4 players. Full check:
+  type-check, all 822 tests in 49 files, and production build passed. The
+  existing Vite large-bundle warning remains. Thirty Commander fuzz games
+  (259-288) finished with no invariant failures or action-limit timeouts.
+- Browser playtest: eleven cards prompted four discards; selecting four and
+  confirming left seven in hand and four in the graveyard, then advanced the
+  turn. Correct Discard badges and 7/7 display verified. No console errors.
+  Temporary QA sources were removed; a result preview is in this chat's outputs.
+- Rules checked against [Wizards' September 25, 2026 Comprehensive Rules](https://media.wizards.com/2026/downloads/MagicCompRules%2020260925.txt),
+  402.2 and 514.1-514.3a. Removed the obsolete cleanup/hand-size backlog entries.
+
+This checkpoint prioritizes the reported playtest bug. Card progress remains
+289/320 complete, with 31 still to build after the next push/proceed checkpoint.
+
 ### Relic of Legends: mana costs that tap another creature
 
 - Built both Relic of Legends abilities. Its ordinary tap ability makes one

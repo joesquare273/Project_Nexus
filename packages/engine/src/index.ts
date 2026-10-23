@@ -55,3 +55,5 @@ export {
   manaAbilityAmount,
   objectManaValue,
 } from './typerules.ts';
+
+export { maximumHandSize } from './turn.ts';

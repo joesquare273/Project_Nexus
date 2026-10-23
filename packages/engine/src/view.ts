@@ -2,6 +2,7 @@
 // player only what they are allowed to know. Nothing here assumes a single
 // opponent: the filter takes a viewer and treats everyone else the same.
 
+import { maximumHandSize } from './turn.ts';
 import { characteristics, hasFlag } from './characteristics.ts';
 import {
   PUBLIC_ZONES,
@@ -22,6 +23,8 @@ export interface PlayerView {
   id: PlayerId;
   life: number;
   handCount: number;
+  /** null means an effect removes the maximum. Checked during this player's cleanup. */
+  maximumHandSize: number | null;
   libraryCount: number;
   /** Only present for the viewer's own hand. */
   hand?: InstanceId[];
@@ -82,6 +85,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       id: pid,
       life: p.life,
       handCount: p.hand.length,
+      maximumHandSize: maximumHandSize(s, pid),
       libraryCount: p.library.length,
       ...(pid === viewer ? { hand: [...p.hand] } : {}),
       // What they control, including permanents they took from someone else.
@@ -125,7 +129,9 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
     turnNumber: s.turnNumber,
     step: s.step,
     pending:
-      s.pending.kind === 'surveil' && s.pending.player !== viewer
+      s.pending.kind === 'chooseCards' && s.pending.purpose === 'handSize' && s.pending.player !== viewer
+        ? { ...s.pending, cards: [] }
+        : s.pending.kind === 'surveil' && s.pending.player !== viewer
         ? { ...s.pending, card: '' }
         : structuredClone(s.pending),
     stack: structuredClone(s.stack),

@@ -832,7 +832,7 @@ button.big {
 .hand-card.playable:hover {
   transform: translateY(-4%) scale(1.25);
 }
-/* Chosen in hand (cards to put on the bottom after a mulligan): lifted, with a label. */
+/* Cards selected in hand: lifted, with the current choice label. */
 .hand-card.selected {
   position: relative;
   transform: rotate(var(--tilt)) translateY(-6%);
@@ -840,7 +840,7 @@ button.big {
   filter: brightness(0.8);
 }
 .hand-card.selected::after {
-  content: 'Bottom';
+  content: attr(data-choice-label);
   position: absolute;
   top: 8%;
   left: 50%;
@@ -1938,3 +1938,17 @@ button.phase.current {
 }
 .token-stack:focus-visible { outline: 2px solid #8ed7ed; outline-offset: 6px; }
 .stack-tokens-button { align-self: flex-start; padding: 3px 8px; font-size: 11px; margin-bottom: 8px; }
+@media (max-width: 600px) {
+  .you-bar { flex-direction: column; align-items: stretch; gap: 0; min-width: 0; }
+  .you-bar .player-header { width: auto; margin-bottom: 0; }
+  .hand {
+    flex: none;
+    min-width: 0;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding: 14px 6px 8px;
+  }
+  .hand-card { flex: 0 0 var(--hand-w); margin: 0; --tilt: 0deg !important; }
+}

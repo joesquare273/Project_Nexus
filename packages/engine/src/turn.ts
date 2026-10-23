@@ -8,6 +8,8 @@ import {
   alivePlayers,
   battlefield,
   drawCards,
+  discard,
+  reject,
   emptyAllManaPools,
   moveCard,
   nextAlive,
@@ -17,7 +19,7 @@ import {
   untap,
   type Ctx,
 } from './state.ts';
-import { STEPS, type PlayerId, type Step } from './types.ts';
+import { STEPS, type GameState, type InstanceId, type PlayerId, type Step } from './types.ts';
 
 export function givePriority(ctx: Ctx, playerId: PlayerId): void {
   if (ctx.s.pending.kind === 'gameOver') return;
@@ -76,12 +78,14 @@ export function enterStep(ctx: Ctx, step: Step): void {
       s.combat = null;
       givePriority(ctx, s.activePlayer);
       return;
-    case 'cleanup':
-      // Damage wears off; nobody gets priority. (Rule 514.3a gives priority if
-      // something triggers here; no supported trigger can.)
-      cleanupDamage(ctx);
-      startNextTurn(ctx);
+    case 'cleanup': {
+      const p = player(s, s.activePlayer);
+      const limit = maximumHandSize(s, s.activePlayer);
+      const excess = limit === null ? 0 : Math.max(0, p.hand.length - limit);
+      if (excess > 0) s.pending = { kind: 'chooseCards', purpose: 'handSize', player: s.activePlayer, cards: [...p.hand], min: excess, max: excess };
+      else completeCleanup(ctx);
       return;
+    }
     case 'beginCombat':
       s.combatsThisTurn = (s.combatsThisTurn ?? 0) + 1;
       givePriority(ctx, s.activePlayer);
@@ -125,14 +129,37 @@ export function advanceStep(ctx: Ctx): void {
     enterStep(ctx, 'beginCombat');
     return;
   }
+  // Rule 514.3a: after exceptional cleanup priority, another cleanup begins.
+  if (s.step === 'cleanup') { enterStep(ctx, 'cleanup'); return; }
   let next = STEPS[STEPS.indexOf(s.step) + 1]!;
   const hasAttacks = (s.combat?.attacks.length ?? 0) > 0;
   if ((next === 'declareBlockers' || next === 'combatDamage') && !hasAttacks) next = 'endCombat';
   enterStep(ctx, next);
 }
 
+/** The default is seven; "no maximum" is an active continuous ability. */
+export function maximumHandSize(s: GameState, playerId: PlayerId): number | null {
+  return battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && s.cardDefs[c.defId]!.statics?.some((spec) => spec.noMaximumHandSize)) ? null : 7;
+}
+
+/** Rule 514.2, followed by the state-based-action/trigger check in stabilize. */
+function completeCleanup(ctx: Ctx): void {
+  cleanupDamage(ctx);
+  ctx.s.cleanupCheck = true;
+  givePriority(ctx, ctx.s.activePlayer);
+}
+
+export function discardToHandSize(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s, pending = s.pending;
+  if (s.step !== 'cleanup' || pending.kind !== 'chooseCards' || pending.purpose !== 'handSize' || pending.player !== playerId) reject('You are not discarding to your maximum hand size.');
+  if (new Set(cards).size !== cards.length || cards.some((id) => !pending.cards.includes(id) || !s.players[playerId]!.hand.includes(id))) reject('Choose cards from your hand.');
+  if (cards.length !== pending.min) reject('Choose exactly ' + pending.min + ' cards to discard.');
+  for (const id of cards) discard(ctx, id);
+  completeCleanup(ctx);
+}
+
 export function cleanupDamage(ctx: Ctx): void {
-  for (const c of battlefield(ctx.s)) {
+  for (const c of Object.values(ctx.s.cards).filter((card) => card.zone === 'battlefield')) {
     c.damage = 0;
     c.deathtouched = false;
   }
@@ -144,6 +171,8 @@ export function cleanupDamage(ctx: Ctx): void {
 
 export function startNextTurn(ctx: Ctx): void {
   const s = ctx.s;
+  delete s.cleanupCheck;
+  delete s.cleanupNeedsPriority;
   s.activePlayer = nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
   s.triggeredThisTurn = [];

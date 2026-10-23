@@ -52,7 +52,7 @@ The repository's decisions document explicitly records simplifications. The most
 | Area | Current documented limitation | Rules reference |
 |---|---|---|
 | First strike/double strike | Both damage passes occur in one step without the intervening priority window. | 510.3–510.4 |
-| Cleanup | Discarding to maximum hand size is absent. Cleanup can also require priority and another cleanup step in specific cases. | 514 |
+| Cleanup | Fixed 2026-10-23: choose discards down to seven, respect Thought Vessel, and grant priority/repeat cleanup when state-based actions or triggers require it. | 514 |
 | Ward | It is implemented as an increased targeting cost rather than a counter-unless-paid trigger. | 702.21 |
 | Proliferate | The engine chooses permanents/counters rather than offering the player's full legal selection. | 701, Proliferate |
 | Simultaneous triggers | Each controller's ordering choices are simplified. | 603.3b |

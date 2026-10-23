@@ -732,6 +732,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** The source's controller has no maximum hand size (Thought Vessel). */
+  noMaximumHandSize?: boolean;
   /** Spells matching this filter have improvise. */
   grantImprovise?: ObjectFilter;
   /** Professor Hojo: your first activated ability targeting your creature on your turn costs less. */
@@ -1249,13 +1251,13 @@ export interface Resolving {
   conniving?: InstanceId[];
 }
 
-/** One player's choice of cards while a spell or ability resolves. */
+/** One player's card choice during resolution or cleanup. */
 export interface CardChoice {
   /** Counter-distribution progress for the board. */
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1314,11 +1316,14 @@ export type Pending =
   | { kind: 'mulligan'; player: PlayerId; taken: number; queue: PlayerId[] }
   /** London mulligan: put `count` cards from your kept hand on the bottom of your library. */
   | { kind: 'bottomCards'; player: PlayerId; count: number; queue: PlayerId[] }
-  /** Choose cards while a spell or ability resolves: to discard, to sacrifice, or to keep. */
+  /** Choose cards during resolution, or discard to maximum hand size during cleanup. */
   | ({ kind: 'chooseCards' } & CardChoice)
   | { kind: 'gameOver' };
 
 export interface GameState {
+  /** Cleanup actions have finished; state-based actions/triggers must be checked before ending the turn. */
+  cleanupCheck?: boolean;
+  cleanupNeedsPriority?: boolean;
   combatDamageHistory?: { source: InstanceId; sourceObject: number; player: PlayerId; dragon: boolean }[];
   format: FormatConfig;
   cardDefs: Record<CardDefId, CardDefinition>;

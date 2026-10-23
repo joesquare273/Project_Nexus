@@ -196,6 +196,7 @@ function repairPending(ctx: Ctx): void {
       break;
     case 'chooseCards':
       // A player who left doesn't choose; the spell or ability carries on without them.
+      if (pending.purpose === 'handSize') break;
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else if (s.players[pending.player]!.eliminated) resumeResolving(ctx);
       break;
@@ -291,10 +292,12 @@ export function chooseLegend(ctx: Ctx, playerId: PlayerId, keep: string): void {
 export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void {
   const s = ctx.s;
   let scanned = 0;
-  // Each repeat eliminates a player, so this is bounded; the guard only
-  // protects against engine bugs.
+  // Repeats also cover the next turn after an uneventful cleanup.
+  // The guard protects against a failure to settle.
   for (let guard = 0; guard < 64; guard++) {
+    const beforeSba = ctx.ev.length;
     const eliminated = applyStateBasedActions(ctx);
+    if (s.cleanupCheck && ctx.ev.length > beforeSba) s.cleanupNeedsPriority = true;
     if (s.pending.kind === 'gameOver') return;
     if (isMulliganing(s)) {
       // No turn has started yet: just skip anyone who left.
@@ -313,13 +316,24 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
     // These need a choice; triggers go on the stack after it's made.
-    if (checkCommanderZone(ctx)) return;
-    if (checkLegendRule(ctx)) return;
+    if (checkCommanderZone(ctx) || checkLegendRule(ctx)) {
+      if (s.cleanupCheck) s.cleanupNeedsPriority = true;
+      return;
+    }
     if (s.pending.kind === 'priority' && s.triggerQueue.length > 0) {
       if (opts.holdTriggers) s.triggersHeld = true;
       else placeTriggers(ctx, s.pending.player);
     }
     if (s.triggerQueue.length === 0) delete s.triggersHeld;
+    if (s.cleanupCheck) {
+      if (s.cleanupNeedsPriority || s.stack.length > 0 || s.triggerQueue.length > 0 || s.pending.kind !== 'priority') {
+        delete s.cleanupCheck;
+        delete s.cleanupNeedsPriority;
+      } else {
+        startNextTurn(ctx);
+        continue;
+      }
+    }
     return;
   }
   throw new Error('stabilize did not settle');

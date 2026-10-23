@@ -96,6 +96,18 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
   they're built (re-running the importer would overwrite them, so after C2
   starts, the importer should merge rather than replace).
 
+## Cleanup and maximum hand size (2026-10-23)
+
+The active player chooses discards down to seven during cleanup (514.1), with
+no discard required while controlling Thought Vessel. Having more than seven
+cards during the turn is legal. The choice does not use the stack. Damage
+removal and end-of-turn effects finish together afterwards (514.2), including
+damage on phased-out permanents. If cleanup produces state-based actions or
+triggers, players receive priority and another cleanup follows once the stack
+is empty and everyone passes (514.3a). A death-trigger draw during cleanup can
+therefore require another discard. Hand counts show the current limit; cleanup
+choices keep opponents' hand identities hidden.
+
 ## Known rules simplifications (to revisit)
 
 | Area | Engine today | Real rule |
@@ -105,12 +117,10 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Mulligans | London mulligan, first one free in multiplayer (103.5c). Players decide one at a time in turn order, each finishing before the next | Everyone decides, then all mulligans happen at once, repeating (103.5). The PRD's "one free redo" would also make the first one free in duels; the engine follows the official rule |
 | Active player leaves | The rest of their turn is skipped and their spells go to graveyards | Rule 800.4 is more nuanced |
 | Elimination mid-round | Priority restarts with the active player | Priority continues from where it was |
-| Cleanup step | No priority, no discard to hand size | Rule 514 |
 | Mana | Mana abilities need priority or a pending cost decision; no X costs, hybrid or Phyrexian mana | All supported |
 | Order of simultaneous triggers | Each player's triggers go on the stack in the order they were found | The controller chooses the order (rule 603.3b) |
 | "One or more" batches | One batch is everything that happened in one action | One batch per simultaneous event |
 | Leaves-the-battlefield look-back | Anything that left the battlefield during the action sees every death in it | Only things that left at the same time (rule 603.10a) |
-| Triggers during cleanup | None of the supported triggers can happen then, so cleanup never gives priority | Rule 514.3a |
 | Beatrix, Loyal General | "You may attach any number of Equipment": all of them or none | Any subset |
 | Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
 | Sacrifice the greatest power (Crackling Doom) | On a tie, the creature that has been on the battlefield longest is sacrificed | The player chooses among the tied creatures |
@@ -125,7 +135,6 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | Rikku's Steal | Only offers opponents' creatures that have counters | Any creature an opponent controls is a legal target |
 | Scholar of New Horizons | Puts the Plains onto the battlefield whenever it may | Optional ("you may") |
 | Yuna, Grand Summoner's mana | "When you next cast a creature spell this turn" is applied as the spell is cast, not as a trigger | A delayed triggered ability |
-| Maximum hand size | There is none: nobody discards down to seven at cleanup (so Thought Vessel's "no maximum hand size" changes nothing) | Seven cards (rule 402.2) |
 | Demolition Field | Both players always search for a basic land | Each search is optional ("may") |
 | Auto-pay with paid mana abilities | Works in at most two of them, and only when plain taps can't pay | Any combination |
 | Partner with (Alphinaud, Alisaie) | You may search for the partner; the "target player" is always you | Any target player may |

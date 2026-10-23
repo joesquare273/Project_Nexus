@@ -947,8 +947,8 @@ function PromptBar(p: PromptProps) {
     } else {
       const how = c.min === c.max ? `${c.min}` : c.min === 0 ? `up to ${c.max}` : `${c.min} to ${c.max}`;
       const verb =
-        c.purpose === 'discard'
-          ? 'to discard (in your hand)'
+        c.purpose === 'discard' || c.purpose === 'handSize'
+          ? (c.purpose === 'handSize' ? 'to discard down to your maximum hand size' : 'to discard (in your hand)')
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
             : c.purpose === 'battlefield'
@@ -961,7 +961,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
                     : 'to keep; the others are sacrificed';
       const problem = choiceProblem(s, c, picks);
-      text = `Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
+      text = `${c.purpose === 'handSize' ? 'Cleanup: ' : ''}Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
       buttons = [
         ...(picks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
         ...(!problem
