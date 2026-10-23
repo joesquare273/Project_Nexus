@@ -8,6 +8,7 @@
 // only stop when a decision matters (type "f" to stop at every step).
 
 import {
+  queuedTriggerSpec,
   choiceProblem,
   FREE_FOR_ALL,
   applyAction,
@@ -390,7 +391,7 @@ async function decideTriggerTargets(s: GameState): Promise<Action[]> {
     (a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets',
   );
   const t = s.triggerQueue[0]!;
-  const spec = s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!;
+  const spec = queuedTriggerSpec(s, t);
   console.log(`\n  ${cardName(s, t.source)} triggered: ${triggerText(spec)}`);
   options.forEach((o, i) => console.log(`    ${i + 1}) ${o.targets.map((x) => targetName(s, x, YOU)).join(', ')}`));
   for (;;) {

@@ -38,14 +38,8 @@
           "count": 1,
           "set": "fic",
           "number": "14",
-          "implemented": false,
-          "needs": [
-            "blade-beam",
-            "cross-slash",
-            "omnislash",
-            "tiered",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Elena, Turk Recruit",
@@ -1036,11 +1030,8 @@
           "count": 1,
           "set": "fic",
           "number": "63",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Banon, the Returners' Leader",
@@ -1877,14 +1868,8 @@
           "count": 1,
           "set": "fic",
           "number": "71",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "combine-powers",
-            "defense",
-            "fight",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tromell, Seymour's Butler",
@@ -1957,11 +1942,8 @@
           "count": 1,
           "set": "fic",
           "number": "237",
-          "implemented": false,
-          "needs": [
-            "escalate",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Damning Verdict",
@@ -2397,12 +2379,8 @@
           "count": 1,
           "set": "fic",
           "number": "343",
-          "implemented": false,
-          "needs": [
-            "multikicker",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sol Ring",
@@ -2654,12 +2632,8 @@
           "count": 1,
           "set": "fic",
           "number": "31",
-          "implemented": false,
-          "needs": [
-            "royal-guard",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Alphinaud Leveilleur",
@@ -2803,11 +2777,8 @@
           "count": 1,
           "set": "fic",
           "number": "86",
-          "implemented": false,
-          "needs": [
-            "trace-aether",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lyse Hext",
@@ -2891,11 +2862,8 @@
           "count": 1,
           "set": "fic",
           "number": "270",
-          "implemented": false,
-          "needs": [
-            "kicker",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sublime Epiphany",

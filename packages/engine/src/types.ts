@@ -68,7 +68,7 @@ export type Keyword = (typeof KEYWORDS)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -121,6 +121,8 @@ export const TARGET_KINDS = [
   'EachOpponentWhoLostLifeThisTurn',
   /** Each opponent other than the one the triggering creature attacked or damaged ("each other opponent"). */
   'EachOtherOpponent',
+  /** Each creature controlled by the player the previous chosen target picked ("each creature target player controls"). */
+  'CreaturesPreviousTargetControls',
   /** Every card in every graveyard matching `filter` ("all creature cards from all graveyards"). */
   'AllGraveyardCards',
   /** The creatures that convoked the spell (Lethal Scheme). */
@@ -278,6 +280,8 @@ export const EFFECT_KINDS = [
    * exiled instead (Torrential Gearhulk, Emet-Selch).
    */
   'AllowCastFromGraveyard',
+  /** The source creature and the target creature each deal damage equal to their power to the other (rule 701.14). */
+  'Fight',
 ] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
 
@@ -425,7 +429,7 @@ export interface EffectSpec {
   /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
   toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
-  if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand';
+  if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
   /** SearchLibraryToBattlefield: the card enters tapped. */
@@ -464,6 +468,10 @@ export interface EffectSpec {
   keep?: number;
   /** AllowCastFromGraveyard: without paying its mana cost. */
   free?: boolean;
+  /** Discard: the whole hand, no choice ("discard your hand"). */
+  entireHand?: boolean;
+  /** GrantKeywords: for as long as you control the source, not until end of turn (Thancred Waters). */
+  whileYouControlSource?: boolean;
   /** AttachEquipmentTo: which chosen target (by index) is the Equipment. */
   from?: number;
 }
@@ -572,6 +580,8 @@ export interface ObjectFilter {
   hasAnyCounters?: boolean;
   /** Has none of these keywords (as it last was, if it left the battlefield: "a creature without flying dies"). */
   withoutKeywords?: Keyword[];
+  /** Has the same mana value as the triggering spell (Krile: "with mana value equal to that spell's mana value"). */
+  manaValueEqualsSubject?: boolean;
   /** Is (or, with false, isn't) a token ("nontoken creature"). */
   token?: boolean;
 }
@@ -636,6 +646,11 @@ export interface TriggerSpec {
   oncePerTurnWhenPaid?: boolean;
   /** Dies: only if it was cast for its blitz cost (rule 702.152). */
   ifBlitzed?: boolean;
+  /**
+   * "Choose one at random": one of these is picked as it triggers, and its
+   * effects are used instead of `effects` (which stays empty).
+   */
+  randomModes?: EffectSpec[][];
   effects: EffectSpec[];
 }
 
@@ -760,7 +775,7 @@ export interface CardDefinition {
     /** "If this creature has a +1/+1 counter on it, add three mana instead." */
     amountWithCounters?: number;
     /** "Add {G} for each +1/+1 counter on this creature" (none when it has no counters). */
-    amountPerCounter?: boolean;
+    amountPerCounter?: boolean | CounterKind;
     /** "Activate only if you control five or more lands." */
     ifLandsAtLeast?: number;
     /** Spire of Industry: "Add one mana of any color. Activate only if you control an artifact." */
@@ -849,6 +864,16 @@ export interface CardDefinition {
   additionalCost?: { discard: number };
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
+  kicker?: string;
+  /** Multikicker cost: may be paid any number of times. */
+  multikicker?: string;
+  /** "This artifact enters with a [charge] counter on it for each time it was kicked." */
+  entersWithCountersPerKick?: CounterKind;
+  /** Escalate (rule 702.120): "tap an untapped creature you control" for each mode chosen beyond the first. */
+  escalateTapCreature?: boolean;
+  /** Tiered (Cloud's Limit Break): the additional mana cost of each mode. */
+  modeCosts?: string[];
   /** Convoke (rule 702.51): creatures you tap while casting it each pay for {1} or one mana of their color. */
   convoke?: boolean;
   /** Delve (rule 702.66): each card exiled from your graveyard while casting it pays for {1}. */
@@ -1048,6 +1073,8 @@ export interface SpellItem {
   x?: number;
   /** The creatures that convoked it. */
   convoked?: InstanceId[];
+  /** How many times its kicker or multikicker was paid. */
+  kicks?: number;
   /** Exiled instead of going to the graveyard (cast with a permission that says so). */
   exileAfter?: boolean;
   /** The permanent enters tapped (Edgar). */
@@ -1072,6 +1099,8 @@ export interface AbilityItem {
   subject?: InstanceId;
   /** Damage triggers: how much damage was dealt. */
   amount?: number;
+  /** "Choose one at random": which of `randomModes` came up. */
+  mode?: number;
   /** The controller's answer to "you may" or an optional cost, once given. */
   accepted?: boolean;
 }
@@ -1089,6 +1118,8 @@ export interface QueuedTrigger {
   subject?: InstanceId;
   /** Damage triggers: how much damage was dealt. */
   amount?: number;
+  /** "Choose one at random": which of `randomModes` came up. */
+  mode?: number;
 }
 
 /** An "until end of turn" effect on one object (rule 611.2). */
@@ -1099,6 +1130,8 @@ export interface TemporaryEffect {
   toughness?: number;
   keywords?: Keyword[];
   flags?: TemporaryFlag[];
+  /** Lasts for as long as this player controls the source instead of until end of turn. */
+  whileControlledBy?: PlayerId;
 }
 
 /** A spell or ability partway through resolving, waiting on a choice (surveil). */
@@ -1271,6 +1304,10 @@ export type Action =
       convoke?: InstanceId[];
       /** Delve: cards in your graveyard to exile as part of the payment. */
       delve?: InstanceId[];
+      /** Times kicker (or multikicker) is paid. */
+      kicks?: number;
+      /** Escalate: untapped creatures you control to tap, one per mode beyond the first. */
+      tapCreatures?: InstanceId[];
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number }

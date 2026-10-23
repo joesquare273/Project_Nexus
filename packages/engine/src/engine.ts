@@ -57,6 +57,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.x !== undefined ? { x: action.x } : {}),
           ...(action.convoke ? { convoke: action.convoke } : {}),
           ...(action.delve ? { delve: action.delve } : {}),
+          ...(action.kicks ? { kicks: action.kicks } : {}),
+          ...(action.tapCreatures ? { tapCreatures: action.tapCreatures } : {}),
         });
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;

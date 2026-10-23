@@ -4,6 +4,7 @@
 // safe or lethal, and block to trade up or to survive.
 
 import {
+  queuedTriggerSpec,
   attackTax,
   attackTaxFor,
   objectManaValue,
@@ -403,7 +404,7 @@ function chooseBlocks(s: GameState, me: PlayerId): Block[] {
 /** Aims a trigger by scoring each legal choice. */
 function chooseTriggerTargets(s: GameState, me: PlayerId, legal: Action[]): Action {
   const t = s.triggerQueue[0]!;
-  const effects = s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!.effects.filter((e) =>
+  const effects = queuedTriggerSpec(s, t).effects.filter((e) =>
     CHOSEN_TARGET_KINDS.includes(e.target),
   );
   const score = (a: Action) =>

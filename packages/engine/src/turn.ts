@@ -1,6 +1,7 @@
 // Turn structure, steps, and priority (PRD 7.2, 7.4).
 
 import { canAnyAttack, dealCombatDamage, startBlockers } from './combat.ts';
+import { effectLasts } from './characteristics.ts';
 import { resolveTop } from './stack.ts';
 import {
   addCounters,
@@ -135,8 +136,8 @@ export function cleanupDamage(ctx: Ctx): void {
     c.damage = 0;
     c.deathtouched = false;
   }
-  // "Until end of turn" effects end at the same time (rule 514.2).
-  ctx.s.temporaryEffects = [];
+  // "Until end of turn" effects end at the same time (rule 514.2); "for as long as" effects go on.
+  ctx.s.temporaryEffects = ctx.s.temporaryEffects.filter((e) => e.whileControlledBy && effectLasts(ctx.s, e));
   ctx.s.combat = null;
   emptyAllManaPools(ctx.s);
 }

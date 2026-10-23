@@ -4,7 +4,8 @@
 // receive priority: the active player's first, then the others' in turn order,
 // so the last player's resolve first (rule 603.3b).
 
-import { checkTargets, choosingEffects, targetOptions } from './stack.ts';
+import { checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
+import { randomInt } from './rng.ts';
 import { characteristics } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
@@ -304,6 +305,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         ...(o.defender ? { defender: o.defender } : {}),
         ...(o.subject ? { subject: o.subject } : {}),
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
+        // "Choose one at random" is decided as it triggers.
+        ...(spec.randomModes ? { mode: randomInt(s, spec.randomModes.length) } : {}),
       });
     });
   };
@@ -331,7 +334,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
 }
 
 function specOf(s: GameState, t: QueuedTrigger): TriggerSpec {
-  return defOf(s, s.cards[t.source]!).triggers![t.ability]!;
+  return queuedTriggerSpec(s, t);
 }
 
 function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
@@ -348,6 +351,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
     ...(t.amount !== undefined ? { amount: t.amount } : {}),
+    ...(t.mode !== undefined ? { mode: t.mode } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityTriggered', item: item.id, card: t.source, ability: t.ability, controller: t.controller, targets });
@@ -356,7 +360,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 
 /** Legal choices for each target of a queued trigger, in effect order. */
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
-  const context = { ...(t.defender ? { defender: t.defender } : {}), triggered: true };
+  const context = { ...(t.defender ? { defender: t.defender } : {}), ...(t.subject ? { subject: t.subject } : {}), triggered: true };
   return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source, context));
 }
 
@@ -393,7 +397,11 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   const pending = s.pending;
   if (pending.kind !== 'chooseTargets' || pending.player !== playerId) reject('You are not choosing targets right now.');
   const t = s.triggerQueue[0]!;
-  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, { ...(t.defender ? { defender: t.defender } : {}), triggered: true });
+  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, {
+    ...(t.defender ? { defender: t.defender } : {}),
+    ...(t.subject ? { subject: t.subject } : {}),
+    triggered: true,
+  });
   s.triggerQueue.shift();
   pushAbility(ctx, t, targets);
   givePriority(ctx, pending.then);

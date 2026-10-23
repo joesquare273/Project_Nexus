@@ -189,6 +189,16 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (c.ward !== undefined && (!isNonNegativeInt(c.ward) || c.ward === 0)) err('ward must be a positive whole number.');
   if ((c.convoke || c.delve) && (isLand || c.token)) err('convoke and delve are for spells.');
   if (c.rebound && !isSpell) err('only instants and sorceries have rebound.');
+  validateCost(c.kicker, (m) => err(`kicker: ${m}`));
+  validateCost(c.multikicker, (m) => err(`multikicker: ${m}`));
+  if (c.kicker && c.multikicker) err('a card has kicker or multikicker, not both.');
+  validateCounterKind(c.entersWithCountersPerKick, err);
+  if (c.entersWithCountersPerKick && !c.kicker && !c.multikicker) err('entersWithCountersPerKick needs kicker or multikicker.');
+  if (c.escalateTapCreature && !c.chooseModes) err('escalate needs chooseModes.');
+  for (const cost of c.modeCosts ?? []) validateCost(cost, (m) => err(`modeCosts: ${m}`));
+  if (c.modeCosts && c.modeCosts.length !== (c.modes?.length ?? 0)) err('modeCosts needs one cost per mode.');
+  const perCounter = c.manaAbility?.amountPerCounter;
+  if (perCounter !== undefined && perCounter !== true) validateCounterKind(perCounter, err);
   for (const color of c.colorIdentity ?? []) if (!['W', 'U', 'B', 'R', 'G'].includes(color)) err(`unknown color "${color}" in colorIdentity.`);
   if (c.types.includes('creature') && (!isNonNegativeInt(c.power) || !isNonNegativeInt(c.toughness))) {
     err('creatures need non-negative integer power and toughness.');
@@ -257,7 +267,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined) err(`${e.effect} needs an amount.`);
   validateAmount(e.amount, (m) => err(`${e.effect}: ${m}`));
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
-  if (e.effect === 'Discard' && e.amount === undefined && !e.anyNumber && !e.wholeHand) err('Discard needs an amount (or anyNumber / wholeHand).');
+  if (e.effect === 'Discard' && e.amount === undefined && !e.anyNumber && !e.wholeHand && !e.entireHand) err('Discard needs an amount (or anyNumber, wholeHand or entireHand).');
   if ((e.effect === 'Sacrifice' || e.effect === 'KeepAndSacrificeRest') && !e.filter) err(`${e.effect} needs a filter saying what qualifies.`);
   if (e.effect === 'Sacrifice' && e.amount === undefined) err('Sacrifice needs an amount.');
   if (e.effect === 'KeepAndSacrificeRest' && e.amount === undefined && !e.onePerType) err('KeepAndSacrificeRest needs an amount (or onePerType).');
@@ -278,7 +288,10 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   if (e.effect === 'Counter' && e.target !== 'TargetSpell') err('Counter needs a TargetSpell target.');
-  if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
+  if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
+  if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
+  if (e.whileYouControlSource && e.effect !== 'GrantKeywords') err('whileYouControlSource is only for GrantKeywords.');
+  if (e.effect === 'Fight' && !inAbility) err('Fight is only for abilities (the source creature fights).');
   if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');
   if (e.keep !== undefined && (e.effect !== 'LookAtTopPutInHand' || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
   if (e.free && e.effect !== 'AllowCastFromGraveyard') err('free is only for AllowCastFromGraveyard.');
@@ -320,6 +333,12 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.ifBlitzed && t.when !== 'Dies') e('ifBlitzed is only for Dies.');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
+  if (t.randomModes) {
+    if (t.effects?.length) e('a trigger with randomModes keeps "effects" empty.');
+    if (t.randomModes.length < 2 || t.randomModes.some((m) => !Array.isArray(m) || m.length === 0)) e('randomModes needs two or more modes with effects.');
+    for (const mode of t.randomModes) for (const effect of mode) validateEffect(effect, true, e);
+    return;
+  }
   if (!Array.isArray(t.effects) || t.effects.length === 0) {
     e('needs at least one effect.');
     return;
@@ -393,7 +412,7 @@ export function validateCardList(cards: readonly unknown[]): string[] {
       ...(c.effects ?? []),
       ...(c.modes ?? []).flat(),
       ...(c.alternativeCost?.effects ?? []),
-      ...(c.triggers ?? []).flatMap((t) => t.effects ?? []),
+      ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat()]),
       ...(c.activated ?? []).flatMap((a) => a.effects ?? []),
     ];
     for (const e of effects) {

@@ -35,7 +35,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaChoices, objectManaValue } from './typerules.ts';
+import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, manaChoices, objectManaValue } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -127,7 +127,17 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
 /** What a triggered or activated ability on the stack does. */
 export function abilitySpec(s: GameState, item: AbilityItem): TriggerSpec | ActivatedSpec {
   const def = defOf(s, s.cards[item.source]!);
-  return item.from === 'trigger' ? def.triggers![item.ability]! : activatedAbilities(def)[item.ability]!;
+  return item.from === 'trigger' ? withMode(def.triggers![item.ability]!, item.mode) : activatedAbilities(def)[item.ability]!;
+}
+
+/** "Choose one at random": the trigger with the mode that came up as its effects. */
+export function withMode(spec: TriggerSpec, mode: number | undefined): TriggerSpec {
+  return spec.randomModes && mode !== undefined ? { ...spec, effects: spec.randomModes[mode] ?? [] } : spec;
+}
+
+/** The trigger behind a queued trigger, with its random mode. */
+export function queuedTriggerSpec(s: GameState, t: { source: InstanceId; ability: number; mode?: number }): TriggerSpec {
+  return withMode(defOf(s, s.cards[t.source]!).triggers![t.ability]!, t.mode);
 }
 
 /** The trigger behind an ability item, if it is a triggered ability. */
@@ -148,6 +158,10 @@ export interface SpellChoice {
   convoke?: InstanceId[];
   /** Delve: graveyard cards exiled to help pay. */
   delve?: InstanceId[];
+  /** Times kicker or multikicker is paid. */
+  kicks?: number;
+  /** Escalate: creatures tapped, one per mode beyond the first. */
+  tapCreatures?: InstanceId[];
 }
 
 /**
@@ -207,6 +221,8 @@ export interface TargetContext {
    * ability can't target a permanent with ward (as if its ward cost went unpaid).
    */
   triggered?: boolean;
+  /** For a triggered ability: the object the event happened to (the spell that was cast). */
+  subject?: InstanceId;
 }
 
 export function isLegalTarget(
@@ -227,7 +243,12 @@ export function isLegalTarget(
   }
   const c = s.cards[t.card];
   if (!c) return false;
-  const viewpoint = { controller, ...(source ? { source } : {}), ...(context.defender ? { defender: context.defender } : {}) };
+  const viewpoint = {
+    controller,
+    ...(source ? { source } : {}),
+    ...(context.defender ? { defender: context.defender } : {}),
+    ...(context.subject ? { subject: context.subject } : {}),
+  };
   if (kind === 'TargetSpell') {
     // A spell on the stack (not the spell or ability doing the targeting).
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
@@ -312,7 +333,11 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
 /** A stack item's trigger context. */
 function contextOf(item: StackItem): TargetContext {
   if (item.kind !== 'ability') return {};
-  return { ...(item.defender ? { defender: item.defender } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
+  return {
+    ...(item.defender ? { defender: item.defender } : {}),
+    ...(item.from === 'trigger' ? { triggered: true } : {}),
+    ...(item.subject ? { subject: item.subject } : {}),
+  };
 }
 
 function sourceOf(item: StackItem): InstanceId {
@@ -413,11 +438,7 @@ export function activateManaAbility(
   tap(ctx, c);
   const ability = def.manaAbility;
   if (ability?.sacrifice) sacrifice(ctx, id);
-  const amount = ability?.amountPerCounter
-    ? (c.counters ?? 0)
-    : ability?.amountWithCounters && (c.counters ?? 0) > 0
-      ? ability.amountWithCounters
-      : (ability?.amount ?? 1);
+  const amount = manaAbilityAmount(c, def);
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ?? false);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
@@ -458,6 +479,12 @@ export function playableZone(
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
   return null;
+}
+
+function addCosts(a: ManaCost, b: ManaCost): ManaCost {
+  const out: ManaCost = { ...a, generic: a.generic + b.generic };
+  for (const t of MANA_TYPES) if (b[t]) out[t] = (out[t] ?? 0) + b[t]!;
+  return out;
 }
 
 /** How a card in a graveyard can be cast: flashback, blitz (Sabin), a permission (Gearhulk, Emet-Selch), or Edgar's static. */
@@ -556,6 +583,7 @@ export function spellCost(
   card?: CardInstance,
   alternative = false,
   x = 0,
+  extra: { kicks?: number; mode?: number } = {},
 ): ManaCost {
   const permission = card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile')
     ? card.castPermission
@@ -575,6 +603,11 @@ export function spellCost(
   if (card) cost = { ...cost, generic: cost.generic + wardCost(s, targets, card.owner) };
   // {X}: each X symbol costs the chosen value (rule 107.3).
   if (cost.x) cost = { ...cost, generic: cost.generic + x * cost.x };
+  // Kicker, multikicker and tiered modes add to the cost (rules 601.2f, 702.33).
+  const kicker = def.kicker ?? def.multikicker;
+  for (let i = 0; i < (extra.kicks ?? 0) && kicker; i++) cost = addCosts(cost, parseManaCost(kicker));
+  const tier = extra.mode !== undefined ? def.modeCosts?.[extra.mode] : undefined;
+  if (tier) cost = addCosts(cost, parseManaCost(tier));
   // Commander tax: {2} more for each earlier cast from the command zone (rule 903.8).
   if (from === 'command' && card) {
     cost = { ...cost, generic: cost.generic + 2 * (s.players[card.owner]!.commanderCasts[card.id] ?? 0) };
@@ -642,7 +675,18 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const x = choice.x ?? 0;
   if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
   if (x > 0 && permission?.free) reject('X is 0 when a spell is cast without paying its mana cost.');
-  let cost = spellCost(s, def, from, targets, c, alternative, x);
+  const kicks = choice.kicks ?? 0;
+  if (!Number.isInteger(kicks) || kicks < 0) reject('Kick a whole number of times.');
+  if (kicks > 0 && !def.kicker && !def.multikicker) reject(`${def.name} has no kicker.`);
+  if (kicks > 1 && !def.multikicker) reject('Kicker can be paid only once.');
+  // Escalate: tap an untapped creature you control for each mode beyond the first.
+  const escalated = (choice.tapCreatures ?? []).map((cid) => card(s, cid));
+  const extraModes = def.escalateTapCreature ? Math.max(0, (choice.modes?.length ?? 1) - 1) : 0;
+  if (escalated.length !== extraModes) reject(extraModes ? `Tap ${extraModes} untapped creature(s) you control to escalate.` : 'Nothing needs to be tapped.');
+  if (new Set(escalated).size !== escalated.length || escalated.some((k) => !convokeCandidates(s, playerId).includes(k))) {
+    reject('Escalate with different untapped creatures you control.');
+  }
+  let cost = spellCost(s, def, from, targets, c, alternative, x, { kicks, ...(choice.mode !== undefined ? { mode: choice.mode } : {}) });
   // Convoke and delve pay part of the cost with creatures and graveyard cards.
   const convoked = (choice.convoke ?? []).map((cid) => card(s, cid));
   if (convoked.length > 0) {
@@ -667,6 +711,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   for (const discarded of costCards) discard(ctx, discarded);
   for (const k of convoked) tap(ctx, k);
+  for (const k of escalated) tap(ctx, k);
   for (const g of delved) moveCard(ctx, g, 'exile');
   // Edgar's permission is used up for this turn.
   const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c) : undefined;
@@ -699,6 +744,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     manaSpent,
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
+    ...(kicks > 0 ? { kicks } : {}),
     ...(permission?.exileAfter ? { exileAfter: true } : {}),
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
   };
@@ -965,6 +1011,10 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
     case 'ActivePlayer':
       return s.players[s.activePlayer]!.eliminated ? [] : toPlayers([s.activePlayer]);
+    case 'CreaturesPreviousTargetControls': {
+      const who = controllerOfTarget(s, r.previousTarget);
+      return who ? creatures((c) => c.controller === who) : [];
+    }
     case 'EachOtherOpponent': {
       const defender = item.kind === 'ability' ? item.defender : undefined;
       return toPlayers(alivePlayers(s).filter((id) => id !== item.controller && id !== defender));
@@ -1213,10 +1263,30 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const pid of targetPlayers(targets)) for (const id of [...s.players[pid]!.graveyard]) moveCard(ctx, id, 'exile');
       return;
     case 'Discard':
+      // "Discard your hand": no choice to make.
+      if (effect.entireHand) {
+        for (const pid of targetPlayers(targets)) for (const id of [...s.players[pid]!.hand]) discard(ctx, id);
+        return;
+      }
+      queueChoices(s, effect, r, targetPlayers(targets), amount);
+      return;
     case 'Sacrifice':
     case 'KeepAndSacrificeRest':
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
+    case 'Fight': {
+      // Both must still be creatures on the battlefield (rule 701.14b).
+      const src = s.cards[source];
+      if (!isCreatureOnBattlefield(s, src)) return;
+      for (const id of onBattlefield) {
+        const other = s.cards[id]!;
+        if (!isCreatureOnBattlefield(s, other) || other.id === src.id) continue;
+        const theirs = powerOf(s, other);
+        dealDamage(ctx, src.id, { kind: 'card', card: id }, powerOf(s, src), false);
+        dealDamage(ctx, id, { kind: 'card', card: src.id }, theirs, false);
+      }
+      return;
+    }
     case 'SacrificeGreatestPower':
       for (const pid of targetPlayers(targets)) {
         const theirs = battlefield(s).filter((c) => c.controller === pid && hasType(s, c, 'creature'));
@@ -1409,7 +1479,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateTokenCopy':
       // The copy uses the original's printed card (its copiable values, rule 707.2).
-      for (const id of onBattlefield) r.createdTokens.push(createToken(ctx, s.cards[id]!.defId, item.controller));
+      for (const id of onBattlefield) {
+        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createToken(ctx, s.cards[id]!.defId, item.controller));
+      }
       return;
     case 'ModifyPT':
     case 'GrantKeywords':
@@ -1426,6 +1498,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),
+          ...(effect.whileYouControlSource ? { whileControlledBy: item.controller } : {}),
         });
       }
       return;
@@ -1634,6 +1707,8 @@ function continueResolving(ctx: Ctx): void {
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
     if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
     if (effect.if === 'castFromHand' && !(item.kind === 'spell' && item.castFrom === 'hand')) continue;
+    const kicked = item.kind === 'spell' && (item.kicks ?? 0) > 0;
+    if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
@@ -1711,6 +1786,7 @@ export function resolveTop(ctx: Ctx): void {
       moveCard(ctx, c.id, 'battlefield');
       if (item.x) c.xPaid = item.x;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
+      if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
       c.summoningSick = true;

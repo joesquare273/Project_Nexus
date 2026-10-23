@@ -42,6 +42,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   TargetSpell: 'target spell',
   AllGraveyardCards: 'all cards in all graveyards',
   ConvokedCreatures: 'each creature that convoked this spell',
+  CreaturesPreviousTargetControls: 'each creature that player controls',
   You: 'you',
 };
 
@@ -107,6 +108,7 @@ function effectText(e: EffectSpec): string {
       return `${who} sacrifices a creature with the greatest power among creatures they control`;
     case 'Discard':
       if (e.wholeHand) return `${who} may discard their hand`;
+      if (e.entireHand) return `${you ? 'discard your' : `${who} discards their`} hand`;
       return `${you ? 'discard' : `${who} discards`} ${e.anyNumber ? 'any number of cards' : (e.optional ? 'up to ' : '') + plural('card')}`;
     case 'Sacrifice': {
       const what = subjectText({ ...e.filter, controller: undefined }, 'permanent');
@@ -173,7 +175,7 @@ function effectText(e: EffectSpec): string {
       return `${who} ${who.startsWith('each') ? 'gets' : 'gets'} ${sign(e.power)}/${sign(e.toughness)} until end of turn`;
     }
     case 'GrantKeywords':
-      return `${who} gains ${keywordText(e.keywords ?? [])} until end of turn`;
+      return `${who} gains ${keywordText(e.keywords ?? [])} ${e.whileYouControlSource ? 'for as long as you control this' : 'until end of turn'}`;
     case 'GrantFlags':
       return (e.flags ?? [])
         .map((f) =>
@@ -227,6 +229,8 @@ function effectText(e: EffectSpec): string {
       return `${who} connives`;
     case 'LookAtTopPutInHand':
       return `look at the top ${n} cards of your library; put ${e.keep ?? 1} of them into your hand and the rest on the bottom`;
+    case 'Fight':
+      return `this creature fights ${who}`;
     case 'AllowCastFromGraveyard':
       return `you may cast ${who} this turn${e.free ? ' without paying its mana cost' : ''}; if it would be put into your graveyard, exile it instead`;
   }
@@ -333,7 +337,9 @@ function triggerCondition(t: TriggerSpec): string {
 
 /** A plain summary of one triggered ability. */
 export function triggerText(t: TriggerSpec): string {
-  const effects = t.effects.map(effectText).join(' and ');
+  const effects = t.randomModes
+    ? `choose one at random: ${t.randomModes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
+    : t.effects.map(effectText).join(' and ');
   const body = t.cost
     ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`, t.cost.lifeOf && "life equal to that spell's mana value"].filter(Boolean).join(' and ')}. If you do, ${effects}`
     : t.optional
@@ -369,6 +375,10 @@ export function rulesSummary(def: CardDefinition): string {
   if (def.equip) parts.push(`Equip ${def.equip}`);
   if (def.flashback) parts.push(`Flashback ${def.flashback}`);
   if (def.ward) parts.push(`Ward {${def.ward}}`);
+  if (def.kicker) parts.push(`Kicker ${def.kicker}`);
+  if (def.multikicker) parts.push(`Multikicker ${def.multikicker}`);
+  if (def.escalateTapCreature) parts.push('Escalate: tap an untapped creature you control for each mode beyond the first');
+  if (def.modeCosts) parts.push(`Tiered: each mode costs ${def.modeCosts.join(', ')} more`);
   if (def.convoke) parts.push('Convoke');
   if (def.delve) parts.push('Delve');
   if (def.rebound) parts.push('Rebound');

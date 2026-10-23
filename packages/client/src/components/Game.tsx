@@ -13,6 +13,7 @@ import {
   manaChoices,
   spellOptions,
   triggerSpec,
+  queuedTriggerSpec,
   type Action,
   type GameState,
   type GameView,
@@ -230,7 +231,7 @@ export function Game({
     const choices = legal.filter((a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets');
     const t = s.triggerQueue[0]!;
     return {
-      title: `${cardName(s, t.source)}: ${triggerText(defOf(s.cards[t.source]!.defId).triggers![t.ability]!)}`,
+      title: `${cardName(s, t.source)}: ${triggerText(queuedTriggerSpec(s, t))}`,
       choices: choices.map((a) => [a]),
       targets: choices.map((a) => a.targets),
       chosen: [],

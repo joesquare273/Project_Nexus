@@ -14,6 +14,7 @@ export {
   choiceProblem,
   effectsOf,
   playableZone,
+  queuedTriggerSpec,
   spellEffects,
   FORETELL_COST,
   foretellProblem,
@@ -49,5 +50,6 @@ export {
   entersTapped,
   manaChoices,
   manaProduced,
+  manaAbilityAmount,
   objectManaValue,
 } from './typerules.ts';

@@ -99,6 +99,17 @@ export function isBasicLand(def: CardDefinition): boolean {
   return (def.supertypes?.includes('Basic') ?? false) && def.types.includes('land');
 }
 
+/** How much one activation of a permanent's mana ability adds: one, a fixed amount, or one per counter. */
+export function manaAbilityAmount(c: CardInstance, def: CardDefinition): number {
+  const ability = def.manaAbility;
+  if (ability?.amountPerCounter) {
+    const kind = ability.amountPerCounter === true ? undefined : ability.amountPerCounter;
+    return kind ? (c.namedCounters?.[kind] ?? 0) : (c.counters ?? 0);
+  }
+  if (ability?.amountWithCounters && (c.counters ?? 0) > 0) return ability.amountWithCounters;
+  return ability?.amount ?? 1;
+}
+
 /**
  * The mana a permanent's mana ability can make right now: its printed mana
  * (and basic land types), plus "any color in your commander's color
@@ -109,7 +120,7 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   const ability = def.manaAbility;
   const yours = () => s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === c.controller);
   // "Add {G} for each +1/+1 counter": nothing to add without counters.
-  if (ability?.amountPerCounter && !((c.counters ?? 0) > 0)) return [];
+  if (ability?.amountPerCounter && manaAbilityAmount(c, def) === 0) return [];
   // "Activate only if you control five or more lands."
   if (ability?.ifLandsAtLeast && yours().filter((x) => s.cardDefs[x.defId]!.types.includes('land')).length < ability.ifLandsAtLeast) return [];
   const made = new Set<ManaType>(manaProduced(def));

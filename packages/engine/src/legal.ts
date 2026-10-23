@@ -33,13 +33,14 @@ import {
   convokeCost,
   foretellProblem,
   graveyardWay,
+  queuedTriggerSpec,
   subsets,
   groupProblem,
 } from './stack.ts';
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerTargetOptions } from './triggers.ts';
-import { canReveal, manaChoices } from './typerules.ts';
+import { canReveal, manaAbilityAmount, manaChoices } from './typerules.ts';
 import { MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
@@ -115,12 +116,24 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
        for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative)) {
-        const choice: SpellChoice = { ...modes, ...(alternative ? { alternative: true } : {}), ...(x !== undefined ? { x } : {}) };
+        for (const kicks of kickChoices(s, playerId, def)) {
+        // Escalate: the first untapped creatures that don't make mana, one per extra mode.
+        const extraModes = def.escalateTapCreature ? Math.max(0, (modes.modes?.length ?? 1) - 1) : 0;
+        const tappable = convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0);
+        if (tappable.length < extraModes) continue;
+        const tapCreatures = tappable.slice(0, extraModes).map((k) => k.id);
+        const choice: SpellChoice = {
+          ...modes,
+          ...(alternative ? { alternative: true } : {}),
+          ...(x !== undefined ? { x } : {}),
+          ...(kicks > 0 ? { kicks } : {}),
+          ...(extraModes > 0 ? { tapCreatures } : {}),
+        };
         // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
         const discards = discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
-          const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0);
+          const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
             for (const pay of helpedPayments(s, playerId, def, c, cost)) {
               out.push({
@@ -131,11 +144,25 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
             }
           }
         }
+        }
        }
       }
     }
   }
   return out;
+}
+
+/** Most times multikicker is ever offered. */
+const MAX_KICKS = 6;
+
+/** How many times kicker could be paid: 0 or 1, or for multikicker up to what the player's mana could pay. */
+function kickChoices(s: GameState, playerId: PlayerId, def: CardDefinition): number[] {
+  if (def.kicker) return [0, 1];
+  if (!def.multikicker) return [0];
+  const each = manaValue(parseManaCost(def.multikicker));
+  const spare = availableMana(s, playerId) - manaValue(parseManaCost(def.manaCost));
+  const most = Math.min(MAX_KICKS, each > 0 ? Math.floor(spare / each) : MAX_KICKS);
+  return Array.from({ length: Math.max(0, most) + 1 }, (_, i) => i);
 }
 
 /**
@@ -169,6 +196,21 @@ function helpedPayments(
   return out;
 }
 
+/** Mana the player has in their pool plus what their untapped mana sources could make. */
+function availableMana(s: GameState, playerId: PlayerId): number {
+  const p = s.players[playerId]!;
+  let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
+  for (const id of p.battlefield) {
+    const c = s.cards[id]!;
+    const d = s.cardDefs[c.defId]!;
+    if (c.tapped || c.controller !== playerId) continue;
+    if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
+    if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d);
+    else if (d.manaAbility?.paid) available += 1;
+  }
+  return available;
+}
+
 /** Most X ever offered, to keep the list of choices short. */
 const MAX_X = 12;
 
@@ -179,16 +221,7 @@ const MAX_X = 12;
 function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alternative: boolean): (number | undefined)[] {
   const cost = parseManaCost(alternative ? def.alternativeCost?.mana : def.manaCost);
   if (!cost.x) return [undefined];
-  const p = s.players[playerId]!;
-  let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
-  for (const id of p.battlefield) {
-    const c = s.cards[id]!;
-    const d = s.cardDefs[c.defId]!;
-    if (c.tapped || c.controller !== playerId) continue;
-    if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
-    if (manaChoices(s, c).length > 0) available += Math.max(d.manaAbility?.amount ?? 1, d.manaAbility?.amountWithCounters ?? 0);
-    else if (d.manaAbility?.paid) available += 1;
-  }
+  const available = availableMana(s, playerId);
   const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
   const most = Math.min(MAX_X, Math.floor((available - base) / cost.x));
   return Array.from({ length: Math.max(0, most) }, (_, i) => i + 1);
@@ -295,7 +328,7 @@ export function getLegalActions(s: GameState): Action[] {
     case 'chooseTargets': {
       const player = pending.player;
       const t = s.triggerQueue[0]!;
-      const needs = choosingEffects(s.cardDefs[s.cards[t.source]!.defId]!.triggers![t.ability]!.effects);
+      const needs = choosingEffects(queuedTriggerSpec(s, t).effects);
       return combine(triggerTargetOptions(s, t), (ts) => !groupProblem(s, needs, ts)).map((targets): Action => ({ type: 'ChooseTargets', player, targets }));
     }
 

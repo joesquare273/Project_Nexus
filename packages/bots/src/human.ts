@@ -83,10 +83,12 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const convoked = a.type === 'CastSpell' ? (a.convoke?.length ?? 0) : 0;
     const delved = a.type === 'CastSpell' ? (a.delve?.length ?? 0) : 0;
     const helped = convoked ? `, tapping ${convoked} creature${plural(convoked)} (convoke)` : delved ? `, exiling ${delved} card${plural(delved)} from your graveyard (delve)` : '';
-    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${helped}`;
+    const kicks = a.type === 'CastSpell' ? (a.kicks ?? 0) : 0;
+    const kicked = kicks === 0 ? '' : kicks === 1 ? ', kicked' : `, kicked ${kicks} times`;
+    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}`;
     const key = isAbility
       ? `${a.card}#${a.ability}`
-      : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}`;
+      : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${kicks ? `#k${kicks}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;

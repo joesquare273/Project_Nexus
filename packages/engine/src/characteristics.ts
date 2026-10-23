@@ -20,6 +20,7 @@ import type {
   Keyword,
   PlayerId,
   StaticSpec,
+  TemporaryEffect,
   TemporaryFlag,
 } from './types.ts';
 
@@ -206,7 +207,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     }
   }
   for (const e of s.temporaryEffects) {
-    if (e.affected !== c.id) continue;
+    if (e.affected !== c.id || !effectLasts(s, e)) continue;
     out.power += e.power ?? 0;
     out.toughness += e.toughness ?? 0;
     for (const k of e.keywords ?? []) out.keywords.add(k);
@@ -234,5 +235,12 @@ export function hasKeyword(s: GameState, c: CardInstance, keyword: Keyword): boo
 
 /** Whether an "until end of turn" flag such as "can't be blocked" applies to this object. */
 export function hasFlag(s: GameState, c: CardInstance, flag: TemporaryFlag): boolean {
-  return s.temporaryEffects.some((e) => e.affected === c.id && e.flags?.includes(flag));
+  return s.temporaryEffects.some((e) => e.affected === c.id && e.flags?.includes(flag) && effectLasts(s, e));
+}
+
+/** "For as long as you control [source]": over once the source leaves or changes control. */
+export function effectLasts(s: GameState, e: TemporaryEffect): boolean {
+  if (!e.whileControlledBy) return true;
+  const source = s.cards[e.source];
+  return source?.zone === 'battlefield' && !source.phasedOut && source.controller === e.whileControlledBy;
 }

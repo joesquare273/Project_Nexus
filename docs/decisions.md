@@ -154,3 +154,6 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | "You may cast target card from your graveyard" (Torrential Gearhulk, Emet-Selch) | Castable later that turn, with normal timing rules, instead of during the ability's resolution | Cast while the ability resolves, ignoring timing (rule 608.2g) |
 | Dig Through Time | The cards not taken go on the bottom in the order they were on top | Any order |
 | Emet-Selch's "once each turn" | Counts only when you say yes | Counts whenever you cast a spell this way |
+| Multikicker | Offered up to 6 times, as far as your mana could pay | Any number of times |
+| Escalate | The legal list taps your first untapped creatures that don't make mana | The player chooses which creatures |
+| Blade Beam (Cloud's Limit Break) | Up to four tapped creatures, each with a different owner | Any number, each with a different controller |

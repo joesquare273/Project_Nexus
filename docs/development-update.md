@@ -5,6 +5,30 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
+### Extra costs and random choices (C2, step 14)
+
+- **Kicker** and **multikicker**: `kicks` on the `CastSpell` action. Kicker
+  is paid once ("Cast Rite of Replication, kicked"); multikicker is offered
+  as many times as your mana could pay (at most 6). Spells check
+  `if: 'kicked'` / `'notKicked'`, and a permanent can enter with a counter per
+  kick (Everflowing Chalice's charge counters; its mana ability adds one {C}
+  per counter).
+- **Escalate** (Collective Effort): `tapCreatures` on the action, one
+  untapped creature you control per mode beyond the first.
+- **Tiered** (Cloud's Limit Break): each mode has its own extra mana cost
+  (`modeCosts`).
+- **"Choose one at random"** triggers (`randomModes`): the mode is picked
+  with the game's seeded random numbers as the ability triggers, and only
+  that mode's targets are chosen.
+- **Fight**, "discard your hand", "each creature target player controls",
+  effects that last "for as long as you control" the source, and a target
+  filter for "mana value equal to that spell's mana value".
+
+8 precon cards built (`packages/bots/test/precon-kicker.test.ts`): Rite of
+Replication, Everflowing Chalice, Collective Effort, Cloud's Limit Break,
+Umaro, Summon: Magus Sisters, Thancred Waters and Krile Baldesion. 267 of 320
+distinct precon cards are now built; 53 to go.
+
 ### Keywords and casting from the graveyard (C2, step 13)
 
 `npm run check` passed on this computer before starting (463 tests). New

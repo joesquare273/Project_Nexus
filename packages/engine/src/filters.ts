@@ -12,6 +12,8 @@ export interface FilterViewpoint {
   source?: InstanceId;
   /** For attack and combat damage triggers: the player attacked or dealt damage. */
   defender?: PlayerId;
+  /** For triggered abilities: the object the event happened to (the spell that was cast). */
+  subject?: InstanceId;
 }
 
 /**
@@ -82,6 +84,10 @@ export function matchesObject(
     if (f.toughnessAtLeast !== undefined && ch.toughness < f.toughnessAtLeast) return false;
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
+  if (f.manaValueEqualsSubject) {
+    const subject = from.subject ? s.cards[from.subject] : undefined;
+    if (!subject || objectManaValue(s, obj) !== objectManaValue(s, subject)) return false;
+  }
   if (f.manaValueAtLeast !== undefined && objectManaValue(s, obj) < f.manaValueAtLeast) return false;
   if (f.noCounters !== undefined || f.hasCounters !== undefined || f.hasAnyCounters !== undefined) {
     // Off the battlefield: the counters it had as it left (for "if it had counters on it").
