@@ -5,6 +5,24 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Commander regression checks after the graveyard/library group
+
+- Expanded Terra, Tidus, Y'shtola, Tifa and G'raha Tia's ability scenarios
+  across 2, 3 and 4 players.
+- Added 24 integration scenarios using the exact precon decklists: every
+  printed and alternate commander is cast from the command zone, destroyed,
+  returned to the command zone, checked for the additional {2} tax, and recast.
+  Each checkpoint checks game-state invariants; all eight choices are built.
+- The Detour scenario explicitly supplies Altered Ego's printed uncounterability
+  as a fixture; Altered Ego's copy ability remains unbuilt.
+- Validation: type-check and all 567 tests passed. Commander fuzz seeds 1-78
+  completed with zero invariant failures and zero action-limit timeouts. The
+  browser production build also passed after the engine and UI changes.
+
+These checks cover the implemented commander paths, not every possible rules
+interaction. The 39 remaining precon cards and the known simplifications in
+`decisions.md` still need work before all four decks can be called complete.
+
 ### Graveyard and library choices: four more precon cards
 
 - Rejoin the Fight mills three, then each opponent chooses a different creature

@@ -105,6 +105,9 @@ describe.each([2, 3, 4])('%i-player graveyard and library choices', (players) =>
 
   it('Detour removes an uncounterable spell from the stack without countering it', () => {
     let s = newGame(players);
+    // Altered Ego's copy mechanic is still unbuilt. Supply its printed
+    // uncounterability here to test Detour independently of that future work.
+    s.cardDefs = { ...s.cardDefs, 'altered-ego': { ...s.cardDefs['altered-ego']!, cantBeCountered: true } };
     const victim = put(s, 'P1', 'altered-ego', 'hand');
     const detour = put(s, 'P2', 'endless-detour', 'hand');
     mana(s, 'P1', { G: 1, U: 1, C: 2 });

@@ -32,9 +32,9 @@ function attackUntilDecision(s: GameState, attacker: string): GameState {
   return s;
 }
 
-describe('Terra, Herald of Hope (Revival Trance)', () => {
+describe.each([2, 3, 4])('Terra, Herald of Hope (Revival Trance)' + ", %i players", (players) => {
   it('Trance: at the beginning of combat, mill two and gain flying until end of turn', () => {
-    let s = newGame();
+    let s = newGame(players);
     const terra = put(s, 'P1', id('Terra, Herald of Hope'));
     s = goTo(s, 'beginCombat');
     s = settle(s).state;
@@ -45,7 +45,7 @@ describe('Terra, Herald of Hope (Revival Trance)', () => {
   });
 
   it('on combat damage, pay {2} to return a creature card with power 3 or less, tapped', () => {
-    let s = newGame();
+    let s = newGame(players);
     const terra = put(s, 'P1', id('Terra, Herald of Hope'));
     const rat = put(s, 'P1', 'undercity-dire-rat', 'graveyard');
     put(s, 'P1', id('Sun Titan'), 'graveyard'); // power 6: not a choice
@@ -58,9 +58,9 @@ describe('Terra, Herald of Hope (Revival Trance)', () => {
   });
 });
 
-describe("Tidus, Yuna's Guardian (Counter Blitz)", () => {
+describe.each([2, 3, 4])("Tidus, Yuna's Guardian (Counter Blitz)" + ", %i players", (players) => {
   it('may move a counter from one of your creatures to another at the beginning of combat', () => {
-    let s = newGame();
+    let s = newGame(players);
     put(s, 'P1', id("Tidus, Yuna's Guardian"));
     const from = put(s, 'P1', 'undercity-dire-rat', 'battlefield', { counters: 2 });
     const to = put(s, 'P1', 'undercity-dire-rat');
@@ -70,7 +70,7 @@ describe("Tidus, Yuna's Guardian (Counter Blitz)", () => {
   });
 
   it('Cheer: when creatures with counters deal combat damage, draw a card and proliferate (once each turn)', () => {
-    let s = newGame();
+    let s = newGame(players);
     const tidus = put(s, 'P1', id("Tidus, Yuna's Guardian"));
     const rat = put(s, 'P1', 'undercity-dire-rat', 'battlefield', { counters: 1 });
     s = goTo(s, 'declareAttackers', { accept: false });
@@ -88,27 +88,28 @@ describe("Tidus, Yuna's Guardian (Counter Blitz)", () => {
   });
 });
 
-describe("Y'shtola, Night's Blessed (Scions & Spellcraft)", () => {
+describe.each([2, 3, 4])("Y'shtola, Night's Blessed (Scions & Spellcraft)" + ", %i players", (players) => {
   it('noncreature spells with mana value 3 or more drain each opponent for 2', () => {
-    let s = newGame(3);
+    let s = newGame(players);
     put(s, 'P1', id("Y'shtola, Night's Blessed"));
     const spell = put(s, 'P1', id('Syphon Mind'), 'hand');
     put(s, 'P2', 'island', 'hand');
-    put(s, 'P3', 'island', 'hand');
+    for (let i = 3; i <= players; i++) put(s, `P${i}`, 'island', 'hand');
     mana(s, 'P1', { B: 1, C: 3 });
     s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [] } satisfies Action).state;
-    expect([s.players.P2!.life, s.players.P3!.life, s.players.P1!.life]).toEqual([18, 18, 22]); // 2 to each opponent; you gain 2 once
+    expect(s.turnOrder.slice(1).map((p) => s.players[p]!.life)).toEqual(Array(players - 1).fill(18));
+    expect(s.players.P1!.life).toBe(22); // 2 to each opponent; you gain 2 once
   });
 
   it('draws at each end step if a player lost 4 or more life this turn', () => {
-    let s = newGame();
+    let s = newGame(players);
     put(s, 'P1', id("Y'shtola, Night's Blessed"));
     s.players.P2!.lifeLostThisTurn = 3;
     s = goTo(s, 'end');
     s = settle(s).state;
     expect(s.players.P1!.hand).toHaveLength(0);
 
-    let t = newGame();
+    let t = newGame(players);
     put(t, 'P1', id("Y'shtola, Night's Blessed"));
     t.players.P2!.life = 16;
     t.players.P2!.lifeLostThisTurn = 4;
@@ -118,9 +119,9 @@ describe("Y'shtola, Night's Blessed (Scions & Spellcraft)", () => {
   });
 });
 
-describe('Tifa, Martial Artist (Limit Break, alternate commander)', () => {
+describe.each([2, 3, 4])('Tifa, Martial Artist (Limit Break, alternate commander)' + ", %i players", (players) => {
   it('melee: +1/+1 for each opponent attacked this combat', () => {
-    let s = newGame(3);
+    let s = newGame(players);
     const tifa = put(s, 'P1', id('Tifa, Martial Artist'));
     const rat = put(s, 'P1', 'undercity-dire-rat');
     s = goTo(s, 'declareAttackers', { accept: false });
@@ -129,15 +130,15 @@ describe('Tifa, Martial Artist (Limit Break, alternate commander)', () => {
       player: 'P1',
       attacks: [
         { attacker: tifa, defender: 'P2' },
-        { attacker: rat, defender: 'P3' },
+        { attacker: rat, defender: players > 2 ? 'P3' : 'P2' },
       ],
     });
     s = settle(s).state;
-    expect(s.temporaryEffects.find((e) => e.affected === tifa)).toMatchObject({ power: 2, toughness: 2 });
+    expect(s.temporaryEffects.find((e) => e.affected === tifa)).toMatchObject({ power: players > 2 ? 2 : 1, toughness: players > 2 ? 2 : 1 });
   });
 
   it('power 7 or greater connecting untaps your creatures and adds one more combat, only after the first', () => {
-    let s = newGame();
+    let s = newGame(players);
     const tifa = put(s, 'P1', id('Tifa, Martial Artist'), 'battlefield', { counters: 2 }); // 6/6, 7/7 with melee
     const rat = put(s, 'P1', 'undercity-dire-rat');
     const attack = (state: GameState) => {
@@ -162,9 +163,9 @@ describe('Tifa, Martial Artist (Limit Break, alternate commander)', () => {
   });
 });
 
-describe("G'raha Tia, Scion Reborn (Scions & Spellcraft, alternate commander)", () => {
+describe.each([2, 3, 4])("G'raha Tia, Scion Reborn (Scions & Spellcraft, alternate commander)" + ", %i players", (players) => {
   it('pay X life for a noncreature spell with mana value X: a Hero with X counters, once each turn', () => {
-    let s = newGame();
+    let s = newGame(players);
     put(s, 'P1', id("G'raha Tia, Scion Reborn"));
     const first = put(s, 'P1', id('Protection Magic'), 'hand');
     const second = put(s, 'P1', id('Protection Magic'), 'hand');
@@ -178,7 +179,7 @@ describe("G'raha Tia, Scion Reborn (Scions & Spellcraft, alternate commander)", 
   });
 
   it('declining keeps it available later in the turn', () => {
-    let s = newGame();
+    let s = newGame(players);
     put(s, 'P1', id("G'raha Tia, Scion Reborn"));
     const first = put(s, 'P1', id('Protection Magic'), 'hand');
     const second = put(s, 'P1', id('Protection Magic'), 'hand');
