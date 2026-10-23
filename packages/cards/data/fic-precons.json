@@ -89,24 +89,16 @@
           "count": 1,
           "set": "fic",
           "number": "53",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers",
-            "count-based-pt"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cait Sith, Fortune Teller",
           "count": 1,
           "set": "fic",
           "number": "54",
-          "implemented": false,
-          "needs": [
-            "lucky-slots",
-            "scry",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Kujata",
@@ -225,22 +217,16 @@
           "count": 1,
           "set": "fic",
           "number": "98",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Wrecking Ball Arm",
           "count": 1,
           "set": "fic",
           "number": "100",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Austere Command",
@@ -353,11 +339,8 @@
           "count": 1,
           "set": "fic",
           "number": "340",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Darksteel Plate",
@@ -582,10 +565,8 @@
           "count": 1,
           "set": "fic",
           "number": "294",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Vandalblast",
@@ -1372,11 +1353,8 @@
           "count": 1,
           "set": "fin",
           "number": "29",
-          "implemented": false,
-          "needs": [
-            "activated-abilities",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Laughing Mad",
@@ -1884,12 +1862,8 @@
           "count": 1,
           "set": "fic",
           "number": "74",
-          "implemented": false,
-          "needs": [
-            "continue-the-pilgrimage",
-            "find-another-way",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Yuna's Whistle",
@@ -2600,13 +2574,8 @@
           "count": 1,
           "set": "fic",
           "number": "17",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "job-select",
-            "krishna",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Good King Mog XII",
@@ -2710,13 +2679,8 @@
           "count": 1,
           "set": "fin",
           "number": "46",
-          "implemented": false,
-          "needs": [
-            "diana",
-            "equip",
-            "job-select",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Reaper's Scythe",

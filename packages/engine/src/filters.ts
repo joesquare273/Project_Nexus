@@ -68,6 +68,7 @@ export function matchesObject(
   if (f.attackingYou && !s.combat?.attacks.some((a) => a.attacker === obj.id && a.defender === from.controller)) return false;
   if (f.equipped !== undefined && isEquipped(s, obj) !== f.equipped) return false;
   if (f.equippedBySource && (!from.source || s.cards[from.source]?.attachedTo !== obj.id)) return false;
+  if (f.equippedBySource === false && from.source && s.cards[from.source]?.attachedTo === obj.id) return false;
   if (f.colors || f.nonColors) {
     const colors = colorsOf(def);
     if (f.colors && !f.colors.some((c) => colors.includes(c))) return false;

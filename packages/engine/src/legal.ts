@@ -29,6 +29,7 @@ import {
   type SpellChoice,
   choiceProblem,
   costCardChoices,
+  castingForbidden,
   convokeCandidates,
   convokeCost,
   foretellProblem,
@@ -100,6 +101,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const sorcerySpeed = canActAtSorcerySpeed(s, playerId);
   const candidates: CardInstance[] = [];
   const p = s.players[playerId]!;
+  if (castingForbidden(s, playerId)) return out;
   for (const id of [...p.hand, ...p.graveyard, ...p.command]) candidates.push(s.cards[id]!);
   for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) candidates.push(s.cards[id]!);
   for (const c of candidates) {

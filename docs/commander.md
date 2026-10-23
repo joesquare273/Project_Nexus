@@ -1,14 +1,14 @@
-# Final Fantasy Commander precons: roadmap
+87/100 |91/100 |84/100 |92/100 |# Final Fantasy Commander precons: roadmap
 
 The four Final Fantasy Commander precons, exactly as printed, playable in the
 Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 49/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 42/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 45/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 43/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 92/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 84/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 91/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 87/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -72,5 +72,11 @@ needing several groups' pieces waits for the last of them.
 | Card draw, life and spells-matter | **13 built (2026-10-22):** Harmonize, Night's Whisper, Secret Rendezvous, Cut a Deal, Into the Story, Baleful Strix, Morbid Opportunist, Archmage Emeritus, Alphinaud, Alisaie, Bastion Protector, Dispatch, Puresteel Paladin. |
 | Keywords and casting from the graveyard | **11 built (2026-10-22):** Bronze Guardian (ward), Hraesvelgr of the First Brood (ward), Clever Concealment (convoke, phasing), Lethal Scheme (convoke, connive), Dig Through Time (delve), Priest of Fell Rites (unearth), Sabin (blitz from the graveyard), Transpose (rebound), Edgar, Emet-Selch of the Third Seat, Torrential Gearhulk. |
 | Extra costs and random choices | **8 built (2026-10-22):** Rite of Replication (kicker), Everflowing Chalice (multikicker), Collective Effort (escalate), Cloud's Limit Break (tiered), Umaro and Summon: Magus Sisters (choose one at random), Thancred Waters, Krile Baldesion. |
-| Sagas, Adventures, double-faced cards, X costs | |
+| X costs | **5 built (2026-10-22):** Walking Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond, Yuna's Whistle. Blitzball Stadium and Altered Ego still wait. |
+| Alternate commanders and one-offs | **12 built (2026-10-22):** Tifa, Martial Artist; G'raha Tia, Scion Reborn; Stitcher's Supplier, Authority of the Consuls, Rise of the Dark Realms, Shelinda, Auron, Gyre Sage, Fathom Mage, Path of Discovery, Anger, Vincent. |
+| Sagas | **3 built (2026-10-22):** Summon: Kujata, Summon: Ixion, Summon: Valefor (Yojimbo and Magus Sisters came with later steps). Good King Mog XII and Esper Valigarmanda still wait. |
+| Counterspells and attack taxes | **3 built (2026-10-22):** An Offer You Can't Refuse, Propaganda, Summon: Yojimbo. |
+| Foretell | **3 built (2026-10-22):** Ultimate Magic: Holy, Ultimate Magic: Meteor, Lifestream's Blessing. |
+| Equipment and one-offs, part 2 | **10 built (2026-10-23):** Wrecking Ball Arm, Conformer Shuriken, Conqueror's Flail, Dancer's Chakrams, Astrologian's Planisphere, Phoenix Down, Yuna's Decision, Cait Sith, Furious Rise, Avalanche of Sector 7. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (43 cards left in all). |
 | Everything else | |

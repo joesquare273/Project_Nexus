@@ -87,6 +87,27 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
   );
 }
 
+/**
+ * A permanent with the Equipment (or Auras) attached to it, drawn as one unit:
+ * each attachment tucked behind it, peeking out to the right so it can still
+ * be clicked and hovered. The group follows whatever is attached right now.
+ */
+function AttachedGroup({ view, id, attached, h }: { view: GameView; id: InstanceId; attached: InstanceId[]; h: ZoneHandlers }) {
+  if (attached.length === 0) return <BattlefieldCard view={view} id={id} h={h} />;
+  return (
+    <div className="bf-group" style={{ '--attached': attached.length } as CSSProperties}>
+      <div className="bf-group-host">
+        <BattlefieldCard view={view} id={id} h={h} />
+      </div>
+      {attached.map((a, i) => (
+        <div key={a} className="bf-attachment" style={{ '--i': i + 1 } as CSSProperties}>
+          <BattlefieldCard view={view} id={a} h={h} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Pixels the pointer must travel before a press becomes a drag (shorter presses are clicks). */
 const DRAG_THRESHOLD = 6;
 
@@ -98,6 +119,7 @@ const DRAG_THRESHOLD = 6;
 function DraggableCard({
   view,
   id,
+  attached,
   h,
   area,
   placement,
@@ -105,6 +127,8 @@ function DraggableCard({
 }: {
   view: GameView;
   id: InstanceId;
+  /** What's attached to it: moves with it. */
+  attached: InstanceId[];
   h: ZoneHandlers;
   area: RefObject<HTMLDivElement | null>;
   placement: Placement;
@@ -112,16 +136,28 @@ function DraggableCard({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const press = useRef<{ x: number; y: number; moved: boolean } | null>(null);
-  const swallowClick = useRef(false);
+  /** When a drag ended: the click that ends a drag (only right after it) isn't a click on the card. */
+  const draggedAt = useRef(0);
   const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
   const spot = placement.get(id);
 
+  // The pointer is followed with window listeners, not pointer capture: capture would send the
+  // click to this wrapper instead of the card, so clicks (targets, attackers, abilities) would be lost.
   const down = (e: ReactPointerEvent) => {
     if (e.button !== 0) return;
     press.current = { x: e.clientX, y: e.clientY, moved: false };
-    ref.current?.setPointerCapture(e.pointerId);
+    const onMove = (ev: PointerEvent) => move(ev);
+    const onEnd = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      up();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
   };
-  const move = (e: ReactPointerEvent) => {
+  const move = (e: { clientX: number; clientY: number }) => {
     const p = press.current;
     if (!p) return;
     const dx = e.clientX - p.x;
@@ -133,7 +169,11 @@ function DraggableCard({
   const up = () => {
     const p = press.current;
     press.current = null;
-    if (!p?.moved || !ref.current || !area.current) return;
+    if (!p?.moved) return;
+    if (!ref.current || !area.current) {
+      setOffset(null);
+      return;
+    }
     // Where the card is now, clamped inside the area, as fractions of its size.
     const a = area.current.getBoundingClientRect();
     const r = ref.current.getBoundingClientRect();
@@ -142,7 +182,7 @@ function DraggableCard({
       x: clamp((r.left - a.left) / a.width, (a.width - r.width) / a.width),
       y: clamp((r.top - a.top) / a.height, (a.height - r.height) / a.height),
     });
-    swallowClick.current = true;
+    draggedAt.current = Date.now();
     setOffset(null);
     onPlaced();
   };
@@ -163,20 +203,14 @@ function DraggableCard({
       className={`bf-slot ${offset ? 'dragging' : ''}`}
       style={style}
       onPointerDown={down}
-      onPointerMove={move}
-      onPointerUp={up}
-      onPointerCancel={() => {
-        press.current = null;
-        setOffset(null);
-      }}
       onClickCapture={(e) => {
         // The click that ends a drag isn't a click on the card.
-        if (!swallowClick.current) return;
-        swallowClick.current = false;
+        if (Date.now() - draggedAt.current > 300) return;
+        draggedAt.current = 0;
         e.stopPropagation();
       }}
     >
-      <BattlefieldCard view={view} id={id} h={h} />
+      <AttachedGroup view={view} id={id} attached={attached} h={h} />
     </div>
   );
 }
@@ -199,16 +233,13 @@ function Battlefield({
   const ids = view.players[pid]!.battlefield;
   const lands = ids.filter((id) => defOf(view.cards[id]!.defId).types.includes('land'));
   const others = ids.filter((id) => !lands.includes(id));
-  // Equipment sits right after the creature it's attached to.
-  const ordered: InstanceId[] = [];
-  for (const id of others) {
-    if (view.cards[id]!.attachedTo && others.includes(view.cards[id]!.attachedTo!)) continue;
-    ordered.push(id);
-    for (const e of others) if (view.cards[e]!.attachedTo === id) ordered.push(e);
-  }
+  // Each permanent with what's attached to it right now: one unit, until something is unattached or moved.
+  const hosts = others.filter((id) => !(view.cards[id]!.attachedTo && others.includes(view.cards[id]!.attachedTo!)));
+  const attachedTo = (id: InstanceId) => others.filter((e) => view.cards[e]!.attachedTo === id);
+  const ordered = hosts;
   if (placement) {
-    // A card that left keeps its id, so forget where it was; it comes back into the row.
-    for (const id of [...placement.keys()]) if (!others.includes(id)) placement.delete(id);
+    // A card that left (or is now attached to something) keeps its id, so forget where it was.
+    for (const id of [...placement.keys()]) if (!hosts.includes(id)) placement.delete(id);
   }
   return (
     <div className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
@@ -216,14 +247,23 @@ function Battlefield({
       {placement ? (
         <div ref={area} className="row creatures free">
           {ordered.map((id) => (
-            <DraggableCard key={id} view={view} id={id} h={h} area={area} placement={placement} onPlaced={onPlaced ?? (() => {})} />
+            <DraggableCard
+              key={id}
+              view={view}
+              id={id}
+              attached={attachedTo(id)}
+              h={h}
+              area={area}
+              placement={placement}
+              onPlaced={onPlaced ?? (() => {})}
+            />
           ))}
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>
       ) : (
         <div className="row creatures">
           {ordered.map((id) => (
-            <BattlefieldCard key={id} view={view} id={id} h={h} />
+            <AttachedGroup key={id} view={view} id={id} attached={attachedTo(id)} h={h} />
           ))}
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>

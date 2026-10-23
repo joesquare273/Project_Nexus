@@ -8,6 +8,7 @@
 // within a layer doesn't matter.
 
 import { matchesObject } from './filters.ts';
+import { colorsOf } from './typerules.ts';
 import { objectManaValue } from './typerules.ts';
 import type {
   AnyCounter,
@@ -111,6 +112,13 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
     case 'GreatestPowerAmongYourCreatures':
       return Math.max(0, ...yours().filter(creature).map((c) => characteristics(s, c).power));
+    case 'ColorsAmongYourPermanents': {
+      const colors = new Set<string>();
+      for (const c of yours()) for (const k of colorsOf(def(s, c))) colors.add(k);
+      return colors.size;
+    }
+    case 'ArtifactsOpponentsControl':
+      return battlefieldCards(s).filter((c) => c.controller !== player && def(s, c).types.includes('artifact')).length;
     case 'OpponentsWithPower4Creature':
       return s.turnOrder.filter(
         (pid) =>
@@ -164,6 +172,8 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
     if (!yours.some((x) => def(s, x).subtypes?.includes(spec.ifYouControlSubtype!))) return false;
   }
   if (spec.affects === 'EachMatching') {
+    // An ability an Equipment grants to others while attached (Dancer's Chakrams).
+    if (spec.conditions?.includes('attached') && !source.attachedTo) return false;
     // Filters here avoid power, toughness and subtypes, which would ask for these same characteristics.
     return c.zone === 'battlefield' && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id });
   }
@@ -195,6 +205,13 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   if (c.zone !== 'battlefield') return out;
 
   const removed: Keyword[] = [];
+  // "Has base power and toughness 7/7" (rule 613.4b) replaces the printed numbers before anything is added.
+  for (const source of staticSources(s)) {
+    for (const spec of def(s, source).statics ?? []) {
+      if (!spec.basePowerToughness || (spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;
+      [out.power, out.toughness] = spec.basePowerToughness;
+    }
+  }
   for (const source of staticSources(s)) {
     for (const spec of def(s, source).statics ?? []) {
       if ((spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;

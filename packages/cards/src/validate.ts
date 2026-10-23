@@ -114,6 +114,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'lifeLostThisWay',
       'revealedManaValue',
       'subjectManaValue',
+      'previousTargetPowerOverSubject',
       'damageDealt',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
@@ -327,6 +328,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.ifYouControl) validateFilter(t.ifYouControl.filter, e);
   if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
   if (t.nthSpellThisTurn !== undefined && t.when !== 'SpellCast') e('nthSpellThisTurn is only for SpellCast.');
+  if (t.nthDrawThisTurn !== undefined && t.when !== 'Draws') e('nthDrawThisTurn is only for Draws.');
   if (t.attackersAtLeast !== undefined && t.when !== 'YouAttack') e('attackersAtLeast is only for YouAttack.');
   if (t.when === 'Chapter' && !t.chapters?.length) e('a chapter ability needs "chapters".');
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
@@ -385,7 +387,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn'].includes(cond)) e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'attached'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
   validateAmount(st.power, e);

@@ -235,6 +235,24 @@ button.big {
   touch-action: none;
   cursor: grab;
 }
+/* A permanent and what's attached to it: attachments tucked behind, peeking out to the right. */
+.bf-group {
+  position: relative;
+  margin-right: calc(var(--bf-w) * 0.34 * var(--attached));
+}
+.bf-group-host {
+  position: relative;
+  z-index: 2;
+}
+.bf-attachment {
+  position: absolute;
+  top: calc(var(--bf-w) * -0.12 * var(--i));
+  left: calc(var(--bf-w) * 0.34 * var(--i));
+  z-index: calc(2 - var(--i));
+}
+.bf-attachment:hover {
+  z-index: 3;
+}
 .bf-slot.dragging {
   cursor: grabbing;
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.6));

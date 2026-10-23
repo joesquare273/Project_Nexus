@@ -119,6 +119,10 @@ export const TARGET_KINDS = [
   'EachOpponentWhoDidNotChoose',
   /** "Each opponent who lost life this turn". */
   'EachOpponentWhoLostLifeThisTurn',
+  /** The creature the source Equipment is attached to ("put a +1/+1 counter on this creature" in a granted ability). */
+  'EquippedCreature',
+  /** The controller of the triggering object ("deals 1 damage to that player"). */
+  'SubjectController',
   /** Each opponent other than the one the triggering creature attacked or damaged ("each other opponent"). */
   'EachOtherOpponent',
   /** Each creature controlled by the player the previous chosen target picked ("each creature target player controls"). */
@@ -307,6 +311,9 @@ export const COUNT_KINDS = [
   'SoldiersYouControl',
   /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
   'OpponentsWithPower4Creature',
+  /** Colors among permanents you control (Conqueror's Flail). */
+  'ColorsAmongYourPermanents',
+  'ArtifactsOpponentsControl',
   /** The greatest power among creatures you control. */
   'GreatestPowerAmongYourCreatures',
   /** Opponents still in the game. */
@@ -360,6 +367,8 @@ export type Amount =
         | 'revealedManaValue'
         /** The triggering spell's mana value (counting X while it's on the stack). */
         | 'subjectManaValue'
+        /** How much more power the previous target has than the triggering creature (none if less). */
+        | 'previousTargetPowerOverSubject'
         /** The damage dealt in the triggering event ("it deals that much damage"). */
         | 'damageDealt';
       plus?: number;
@@ -450,6 +459,10 @@ export interface EffectSpec {
   ifChose?: 'any' | 'creature' | 'noncreature';
   /** ExileTopCardToPlay: playable until end of turn, not while you control the source. */
   thisTurn?: boolean;
+  /** ExileTopCardToPlay: playable until another card is exiled with the same source (Furious Rise). */
+  untilNextFromSource?: boolean;
+  /** Only if a permanent was sacrificed earlier in this spell ("Sacrifice a creature. If you do, ..."). */
+  ifSacrificed?: boolean;
   /** "Up to one target": the target may be left out. */
   upTo?: boolean;
   /**
@@ -507,6 +520,8 @@ export const TRIGGER_EVENTS = [
   'Chapter',
   /** A permanent was sacrificed. */
   'Sacrificed',
+  /** A player activated an ability of a permanent (mana abilities included). Subject: that permanent. */
+  'AbilityActivated',
   /** One or more opponents lost life (use with `oneOrMore`). */
   'OpponentLosesLife',
 ] as const;
@@ -579,7 +594,7 @@ export interface ObjectFilter {
   /** Has (or, with false, hasn't) counters of any kind on it, or had as it left the battlefield. */
   hasAnyCounters?: boolean;
   /** Has none of these keywords (as it last was, if it left the battlefield: "a creature without flying dies"). */
-  withoutKeywords?: Keyword[];
+  withoutKeywords?: Keyword[];
   /** Has the same mana value as the triggering spell (Krile: "with mana value equal to that spell's mana value"). */
   manaValueEqualsSubject?: boolean;
   /** Is (or, with false, isn't) a token ("nontoken creature"). */
@@ -607,6 +622,8 @@ export interface TriggerSpec {
   nthSpellThisTurn?: number;
   /** YouAttack: how many attacking creatures it takes. */
   attackersAtLeast?: number;
+  /** Draws: only the Nth card the drawer draws this turn ("whenever you draw your third card each turn"). */
+  nthDrawThisTurn?: number;
   /** Chapter: the chapter numbers ("II, III" is [2, 3]). */
   chapters?: number[];
   /** Evolve (rule 702.100): the entering creature has greater power or toughness than this one. */
@@ -661,6 +678,8 @@ export interface ActivatedSpec {
     tap?: boolean;
     /** Discard this card (cycling, landcycling). */
     discardThis?: boolean;
+    /** Exile this permanent (Phoenix Down). */
+    exileThis?: boolean;
     /** Sacrifice this permanent. */
     sacrificeThis?: boolean;
     /** "Discard a card": the cards are chosen with the action (`costCards`). */
@@ -709,6 +728,12 @@ export interface StaticSpec {
   spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean };
   /** Ward (rule 702.21): each affected permanent has ward with this cost (Bronze Guardian). */
   ward?: number;
+  /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
+  basePowerToughness?: [number, number];
+  /** "Can't be blocked by creatures with power 2 or less." */
+  cantBeBlockedByPowerAtMost?: number;
+  /** Conqueror's Flail: while it applies, its controller's opponents can't cast spells during that player's turn. */
+  opponentsCantCastDuringYourTurn?: boolean;
   /**
    * Edgar: "Once during each of your turns, you may cast an artifact spell
    * from your graveyard. If you cast a spell this way, that artifact enters tapped."
@@ -728,7 +753,8 @@ export interface StaticSpec {
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".
    */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn')[];
+  /** `attached`: only while this Equipment is attached to a creature (for EachMatching abilities it grants). */
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'attached')[];
   power?: Amount;
   toughness?: Amount;
   keywords?: Keyword[];
@@ -815,6 +841,8 @@ export interface CardDefinition {
   statics?: StaticSpec[];
   /** Equipment: the equip cost. */
   equip?: string;
+  /** "Equip legendary creature {3}": a second, cheaper equip ability for legendary creatures. */
+  equipLegendary?: string;
   /** "Equip abilities you activate that target this cost {N} less." */
   equipDiscount?: number;
   /** "[Type]cycling [cost]": discard from hand to search for a card of that subtype, or a basic land. */
@@ -951,7 +979,8 @@ export interface CardInstance {
   exiledUntilLeaves?: InstanceId;
   /** In exile, and `player` may play it as long as they control `source`. */
   /** `untilTurn`: playable until the end of that turn ("until end of turn", "until the end of your next turn") instead of while `player` controls `source`. */
-  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number };
+  /** `untilReplaced`: playable until `source` exiles another card this way, whether or not `player` still controls it (Furious Rise). */
+  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -1025,6 +1054,8 @@ export interface PlayerState {
   attackTaxes?: number[];
   /** "Prevent all damage that would be dealt to you this turn": the turn it applies to. */
   preventDamageTurn?: number;
+  /** Cards drawn this turn. Reset as each turn begins. */
+  cardsDrawnThisTurn?: number;
   conceded: boolean;
   /** Phased-out permanents this player owns (they're `zone: 'battlefield'` with `phasedOut`). */
   phasedOut?: InstanceId[];
@@ -1153,6 +1184,8 @@ export interface Resolving {
   scrying?: boolean;
   /** Card choices still to make, in order (discard, sacrifice). */
   choiceQueue?: CardChoice[];
+  /** A permanent was sacrificed by an earlier effect of this spell ("If you do"). */
+  sacrificedAny?: boolean;
   /** Life players lost to this spell or ability's effects so far. */
   lifeLostThisWay?: number;
   /** The mana value of the card RevealUntil found. */
@@ -1340,7 +1373,8 @@ export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commande
 export type GameEvent =
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
   | { type: 'LibraryShuffled'; player: PlayerId }
-  | { type: 'CardDrawn'; player: PlayerId; card?: InstanceId; defId?: CardDefId }
+  /** `n`: how many cards that player has drawn this turn, counting this one. */
+  | { type: 'CardDrawn'; player: PlayerId; card?: InstanceId; defId?: CardDefId; n?: number }
   | {
       type: 'CardMoved';
       card?: InstanceId;

@@ -330,7 +330,8 @@ export function drawCards(ctx: Ctx, playerId: PlayerId, count: number): void {
       return;
     }
     moveCard(ctx, top, 'hand', { silent: true });
-    ctx.ev.push({ type: 'CardDrawn', player: playerId, card: top, defId: ctx.s.cards[top]!.defId });
+    p.cardsDrawnThisTurn = (p.cardsDrawnThisTurn ?? 0) + 1;
+    ctx.ev.push({ type: 'CardDrawn', player: playerId, card: top, defId: ctx.s.cards[top]!.defId, n: p.cardsDrawnThisTurn });
   }
 }
 

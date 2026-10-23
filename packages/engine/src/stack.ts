@@ -92,6 +92,15 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
       effects: [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'], controller: 'You' } }],
     });
   }
+  // "Equip legendary creature {3}" (Wrecking Ball Arm).
+  if (def.equipLegendary) {
+    out.push({
+      cost: { mana: def.equipLegendary },
+      sorcerySpeed: true,
+      equip: true,
+      effects: [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'], controller: 'You', supertypes: ['Legendary'] } }],
+    });
+  }
   if (def.landcycling) {
     const { subtype, basic, cost } = def.landcycling;
     out.push({
@@ -475,6 +484,8 @@ export function playableZone(
   if (c.zone === 'exile' && p?.player === playerId) {
     // "You may play that card this turn."
     if (p.untilTurn !== undefined) return s.turnNumber <= p.untilTurn ? 'exile' : null;
+    // "Until you exile another card with this enchantment" (Furious Rise).
+    if (p.untilReplaced) return 'exile';
     const source = s.cards[p.source];
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
@@ -643,10 +654,22 @@ export function spellCost(
   return cost;
 }
 
+/** Conqueror's Flail: whether an opponent's attached Flail stops this player casting spells right now. */
+export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
+  if (s.activePlayer === playerId) return false;
+  return battlefield(s).some(
+    (source) =>
+      source.controller === s.activePlayer &&
+      source.attachedTo !== undefined &&
+      (defOf(s, source).statics ?? []).some((st) => st.opponentsCantCastDuringYourTurn),
+  );
+}
+
 export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], choice: SpellChoice = {}): void {
   const s = ctx.s;
   const c = card(s, id);
   const def = defOf(s, c);
+  if (castingForbidden(s, playerId)) reject("You can't cast spells during this player's turn (Conqueror's Flail).");
   const from = playableZone(s, playerId, c);
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
@@ -932,6 +955,7 @@ export function activateAbility(
   else if (!rc?.from) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
+  if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
 
   const item: AbilityItem = {
     id: newId(s, 's'),
@@ -1015,6 +1039,16 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       const who = controllerOfTarget(s, r.previousTarget);
       return who ? creatures((c) => c.controller === who) : [];
     }
+    case 'EquippedCreature': {
+      const attached = s.cards[sourceOf(item)]?.attachedTo;
+      return attached && s.cards[attached]?.zone === 'battlefield' ? [{ kind: 'card', card: attached }] : [];
+    }
+    case 'SubjectController': {
+      const subject = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+      if (!subject) return [];
+      const who = subject.zone === 'battlefield' ? subject.controller : subject.owner;
+      return s.players[who]!.eliminated ? [] : toPlayers([who]);
+    }
     case 'EachOtherOpponent': {
       const defender = item.kind === 'ability' ? item.defender : undefined;
       return toPlayers(alivePlayers(s).filter((id) => id !== item.controller && id !== defender));
@@ -1077,6 +1111,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                       ? (r.revealedManaValue ?? 0)
                       : a.of === 'subjectManaValue'
                         ? subjectManaValue(s, r.item)
+                        : a.of === 'previousTargetPowerOverSubject'
+                          ? powerOver(s, r)
                         : a.of === 'damageDealt'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
@@ -1178,6 +1214,13 @@ function sourcePower(s: GameState, item: StackItem): number {
   const c = s.cards[sourceOf(item)]!;
   if (c.zone === 'battlefield') return Math.max(0, powerOf(s, c));
   return Math.max(0, c.lastPower ?? defOf(s, c).power ?? 0);
+}
+
+/** How much more power the previous target had than the triggering creature (Conformer Shuriken). */
+function powerOver(s: GameState, r: Resolving): number {
+  const subject = r.item.kind === 'ability' && r.item.subject ? s.cards[r.item.subject] : undefined;
+  if (!subject || subject.zone !== 'battlefield') return 0;
+  return Math.max(0, (r.previousTargetPower ?? 0) - powerOf(s, subject));
 }
 
 function subjectManaValue(s: GameState, item: StackItem): number {
@@ -1510,16 +1553,25 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.cards[id]!.exiledUntilLeaves = source;
       }
       return;
-    case 'ExileTopCardToPlay':
+    case 'ExileTopCardToPlay': {
+      // "Until you exile another card with this": the earlier card can't be played any more.
+      if (effect.untilNextFromSource) {
+        for (const c of Object.values(s.cards)) {
+          if (c.zone === 'exile' && c.playableFromExile?.source === source && c.playableFromExile.untilReplaced) delete c.playableFromExile;
+        }
+      }
       for (const id of topOfLibrary(s, item.controller, Math.max(1, amount))) {
         moveCard(ctx, id, 'exile');
+        r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost));
         s.cards[id]!.playableFromExile = {
           player: item.controller,
           source,
           ...(effect.thisTurn ? { untilTurn: s.turnNumber } : {}),
+          ...(effect.untilNextFromSource ? { untilReplaced: true } : {}),
         };
       }
       return;
+    }
     case 'Mill':
       for (const t of targets) {
         if (t.kind !== 'player') continue;
@@ -1710,6 +1762,7 @@ function continueResolving(ctx: Ctx): void {
     const kicked = item.kind === 'spell' && (item.kicks ?? 0) > 0;
     if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
+    if (effect.ifSacrificed && !r.sacrificedAny) continue;
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
       const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];
@@ -1879,7 +1932,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       if (entersTapped(s, c)) c.tapped = true;
     }
   }
-  else if (pending.purpose === 'sacrifice') for (const id of cards) sacrifice(ctx, id);
+  else if (pending.purpose === 'sacrifice') {
+    for (const id of cards) sacrifice(ctx, id);
+    if (cards.length > 0) r.sacrificedAny = true;
+  }
   else if (pending.purpose === 'destroy') {
     for (const id of cards) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
   }

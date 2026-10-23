@@ -6,9 +6,8 @@ import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { applyStateBasedActions } from './sba.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { hasFlag, powerOf, toughnessOf } from './characteristics.ts';
-import {
-  aliveFromActive,
+import { hasFlag, powerOf, staticAffects, toughnessOf } from './characteristics.ts';
+import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
   hasKeyword,
@@ -33,6 +32,12 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (!isCreatureOnBattlefield(s, blocker) || blocker.tapped) return false;
   if (hasFlag(s, blocker, 'cantBlock')) return false;
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
+  for (const source of battlefield(s)) {
+    for (const spec of s.cardDefs[source.defId]!.statics ?? []) {
+      const most = spec.cantBeBlockedByPowerAtMost;
+      if (most !== undefined && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) <= most) return false;
+    }
+  }
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
   }

@@ -3,6 +3,52 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-23
+
+### Board: clicking your own permanents fixed; attachments move with their creature
+
+- **Fixed:** clicking your own nonland permanents did nothing (choosing
+  them as targets, e.g. for Rosa's trigger, picking attackers, using their
+  abilities). Drag-and-drop captured the pointer as soon as you pressed, so
+  the click went to the drag wrapper instead of the card. A drag now follows
+  the pointer with window listeners, so clicks reach the card and fast drags
+  still work. Checked with real mouse clicks in the browser.
+- Equipment (and later Auras) attached to a creature are drawn with it as
+  one unit, tucked behind and peeking out to the right, and move with it
+  when you drag it. The grouping follows what's attached right now: re-equip
+  it or have an effect move it and it joins the new creature; unattach it
+  and it's its own card again.
+
+### Equipment and one-offs (C2, step 15)
+
+`npm run check` passed after pulling (492 tests). New engine pieces:
+
+- **Base power and toughness** ("has base power and toughness 7/7", rule
+  613.4b), applied before other changes; "can't be blocked by creatures with
+  power 2 or less"; a second, cheaper equip ability for legendary creatures
+  (`equipLegendary`).
+- Abilities an Equipment grants: triggers on the Equipment can now target
+  the equipped creature (`EquippedCreature`), and an EachMatching static
+  ability can work only while it's attached (`conditions: ['attached']`)
+  and leave out the equipped creature (`equippedBySource: false`, "other
+  commanders you control").
+- "Opponents can't cast spells during your turn" (Conqueror's Flail),
+  colors among your permanents, artifacts your opponents control.
+- "Whenever you draw your third card each turn" (`nthDrawThisTurn`). The
+  engine now counts draws per turn, and opening hands no longer count toward
+  the first turn.
+- "Whenever an opponent activates an ability of an artifact they control"
+  (`AbilityActivated`, mana abilities included) and "that player".
+- "Exile this" as a cost, "Sacrifice a creature. If you do, ..."
+  (`ifSacrificed`), an exiled card's mana value, and "until you exile another
+  card with this" (Furious Rise).
+
+10 precon cards built (`packages/bots/test/precon-equipment-2.test.ts`):
+Wrecking Ball Arm, Conformer Shuriken, Conqueror's Flail, Dancer's Chakrams,
+Astrologian's Planisphere, Phoenix Down, Yuna's Decision, Cait Sith,
+Furious Rise and Avalanche of Sector 7. 277 of 320 distinct precon cards are
+now built; 43 to go.
+
 ## 2026-10-22
 
 ### Extra costs and random choices (C2, step 14)

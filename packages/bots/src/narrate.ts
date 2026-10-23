@@ -40,6 +40,8 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
   EachOtherOpponent: 'each other opponent',
   TargetSpell: 'target spell',
+  EquippedCreature: 'equipped creature',
+  SubjectController: 'that player',
   AllGraveyardCards: 'all cards in all graveyards',
   ConvokedCreatures: 'each creature that convoked this spell',
   CreaturesPreviousTargetControls: 'each creature that player controls',
@@ -316,6 +318,7 @@ function triggerCondition(t: TriggerSpec): string {
     LeavesGraveyard: 'leaves your graveyard',
     YouAttack: '',
     Chapter: '',
+    AbilityActivated: 'has an ability activated',
     Sacrificed: 'is sacrificed',
     OpponentLosesLife: '',
   }[t.when] ?? '';

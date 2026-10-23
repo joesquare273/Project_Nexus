@@ -43,8 +43,9 @@ interface Occurrence {
   from?: string;
   /** CountersAdded: who put them there. */
   by?: PlayerId;
-  /** Draws: who drew. */
+  /** Draws: who drew, and how many cards they've drawn this turn counting this one. */
   drawer?: PlayerId;
+  drawNumber?: number;
   /** SpellCast: how many spells its caster had cast this turn, counting it. */
   spellNumber?: number;
   /** YouAttack: how many creatures attacked. */
@@ -82,7 +83,16 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
         break;
       case 'CardDrawn':
-        out.push({ when: 'Draws', at, drawer: e.player });
+        out.push({ when: 'Draws', at, drawer: e.player, ...(e.n !== undefined ? { drawNumber: e.n } : {}) });
+        break;
+      case 'AbilityActivated':
+        out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller });
+        break;
+      case 'ManaAdded':
+        // A mana ability was activated (one occurrence per source in a batch).
+        if (!out.some((o) => o.when === 'AbilityActivated' && o.subject === e.source)) {
+          out.push({ when: 'AbilityActivated', at, subject: e.source, subjectController: e.player });
+        }
         break;
       case 'LifeChanged':
         if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player });
@@ -196,6 +206,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
     if (spec.drawer === 'You' && o.drawer !== controller) return false;
     if (spec.drawer === 'Opponent' && o.drawer === controller) return false;
+    if (spec.nthDrawThisTurn !== undefined && o.drawNumber !== spec.nthDrawThisTurn) return false;
     return !spec.notOnDrawersTurn || o.drawer !== s.activePlayer;
   }
   if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep') {
