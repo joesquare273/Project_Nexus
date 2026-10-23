@@ -543,6 +543,8 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
  * trigger's subject, a target, or a card to search for.
  */
 export interface ObjectFilter {
+  /** A graveyard card that arrived this turn from somewhere other than the battlefield. */
+  newGraveyardCardNotFromBattlefield?: boolean;
   /** Matches if any of these filters does ("artifact, enchantment, or tapped creature"); the rest of this filter must hold too. */
   anyOf?: ObjectFilter[];
   /** Excludes the card itself ("another creature"). */
@@ -669,7 +671,7 @@ export interface TriggerSpec {
   optional?: boolean;
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
   /** `lifeOf`: pay life equal to the triggering spell's mana value ("you may pay X life, where X is that spell's mana value"). */
-  cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue' };
+  cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue'; discard?: number };
   /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
   oncePerTurnWhenPaid?: boolean;
   /** Dies: only if it was cast for its blitz cost (rule 702.152). */
@@ -719,6 +721,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** Spells matching this filter have improvise. */
+  grantImprovise?: ObjectFilter;
   /** Professor Hojo: your first activated ability targeting your creature on your turn costs less. */
   firstFriendlyTargetActivationDiscount?: number;
   /**
@@ -917,6 +921,8 @@ export interface CardDefinition {
   modeCosts?: string[];
   /** Convoke (rule 702.51): creatures you tap while casting it each pay for {1} or one mana of their color. */
   convoke?: boolean;
+  /** Artifacts you tap pay for generic mana (rule 702.126). */
+  improvise?: boolean;
   /** Delve (rule 702.66): each card exiled from your graveyard while casting it pays for {1}. */
   delve?: boolean;
   /** Rebound (rule 702.88): cast from your hand, it's exiled as it resolves and can be cast free during your next turn. */
@@ -960,6 +966,9 @@ export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'e
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  graveyardArrival?: { turn: number; from: ZoneName };
+  /** This object's once-per-turn permission to cast from the graveyard was used. */
+  graveyardCastTurn?: number;
   /** Distinguishes successive objects represented by this physical card. */
   zoneChanges?: number;
   /** Players this creature cannot attack while its uninterrupted vow counter remains. */
@@ -1078,8 +1087,6 @@ export interface PlayerState {
   conceded: boolean;
   /** Phased-out permanents this player owns (they're `zone: 'battlefield'` with `phasedOut`). */
   phasedOut?: InstanceId[];
-  /** The last turn this player cast a spell from their graveyard with Edgar's permission. */
-  graveyardCastTurn?: number;
 }
 
 /** Steps and phases in turn order. */
@@ -1349,6 +1356,8 @@ export type Action =
       type: 'CastSpell';
       player: PlayerId;
       card: InstanceId;
+      /** Which permanent's graveyard-casting permission is being used. */
+      graveyardSource?: InstanceId;
       targets?: Target[];
       mode?: number;
       modes?: number[];
@@ -1359,6 +1368,7 @@ export type Action =
       x?: number;
       /** Convoke: untapped creatures you control to tap as part of the payment. */
       convoke?: InstanceId[];
+      improvise?: InstanceId[];
       /** Delve: cards in your graveyard to exile as part of the payment. */
       delve?: InstanceId[];
       /** Times kicker (or multikicker) is paid. */

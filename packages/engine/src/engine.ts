@@ -56,7 +56,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.alternative ? { alternative: true } : {}),
           ...(action.x !== undefined ? { x: action.x } : {}),
           ...(action.convoke ? { convoke: action.convoke } : {}),
+          ...(action.improvise ? { improvise: action.improvise } : {}),
           ...(action.delve ? { delve: action.delve } : {}),
+          ...(action.graveyardSource ? { graveyardSource: action.graveyardSource } : {}),
           ...(action.kicks ? { kicks: action.kicks } : {}),
           ...(action.tapCreatures ? { tapCreatures: action.tapCreatures } : {}),
         });

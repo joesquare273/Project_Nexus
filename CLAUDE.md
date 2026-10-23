@@ -8,9 +8,10 @@ this repo, not only in local memory.
 ## Ground rules from the user
 
 - **Work directly on `main`. No branches, no pull requests.** Commit to
-  `main` and push it (when asked to commit or push). Before starting on a
-  computer, `git pull` so it has the other computer's work; push when done
-  so the other computer can pick it up. Keep `main` passing `npm run check`.
+  `main`. **Stop after each commit and report the hash. The user pushes and
+  says "proceed" before the next group or implementation step.** Before
+  starting on a computer, sync so it has the other computer's work. Keep
+  `main` passing `npm run check`.
 - **The Final Fantasy Starter Kits are the testbed.** Every game uses the
   exact Red-White and Blue-Black kit decklists. Don't add placeholder cards
   or filler from other sets. All kit cards are built (2026-10-21); a new
@@ -32,6 +33,11 @@ this repo, not only in local memory.
   `npm run dev`) is the main way to play; the terminal client is secondary.
   A Godot client may come much later, so the client talks to the engine only
   through JSON (`GameView`, legal actions, events, `Action`).
+- **Frontend direction (2026-10-23):** an arcane fantasy table, with inspiration
+  from Hearthstone, MTG Arena and Dueling Nexus while keeping its own identity.
+  Improve layout, controls and animations while following MTG rules. See
+  `docs/frontend-roadmap.md`; audit the known rules simplifications rather than
+  claiming the engine already implements every rule exactly.
 
 ## Where things are
 

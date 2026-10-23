@@ -169,6 +169,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
+  delete c.graveyardCastTurn;
   c.zoneChanges = (c.zoneChanges ?? 0) + 1;
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';
@@ -192,6 +193,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   }
   if (from === 'battlefield' && to === 'graveyard' && hasType(s, c, 'creature')) s.creaturesDiedThisTurn += 1;
   c.zone = to;
+  if (to === 'graveyard') c.graveyardArrival = { turn: s.turnNumber, from };
+  else delete c.graveyardArrival;
   c.tapped = false;
   c.summoningSick = false;
   c.damage = 0;

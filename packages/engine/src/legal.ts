@@ -33,8 +33,11 @@ import {
   castingForbidden,
   convokeCandidates,
   convokeCost,
+  hasImprovise,
+  improviseCandidates,
   foretellProblem,
   graveyardWay,
+  graveyardCastSources,
   queuedTriggerSpec,
   subsets,
   groupProblem,
@@ -112,20 +115,23 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);
     // Sabin can only be cast from the graveyard for its blitz cost.
     const way = from === 'graveyard' ? graveyardWay(s, playerId, c) : null;
+    const permissions = way === 'static' ? graveyardCastSources(s, playerId, c).map((graveyardSource) => ({ graveyardSource })) : [{}];
+    for (const permission of permissions) {
     const alternatives = way === 'blitz' ? [true] : [false];
     if (def.alternativeCost && from !== 'graveyard' && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
     // Cast without paying its mana cost: X is 0.
     const free = (from === 'graveyard' || from === 'exile') && c.castPermission?.turn === s.turnNumber && !!c.castPermission.free;
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
-       for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative)) {
-        for (const kicks of kickChoices(s, playerId, def)) {
+       for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative, c)) {
+        for (const kicks of kickChoices(s, playerId, def, c)) {
         // Escalate: the first untapped creatures that don't make mana, one per extra mode.
         const extraModes = def.escalateTapCreature ? Math.max(0, (modes.modes?.length ?? 1) - 1) : 0;
         const tappable = convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0);
         if (tappable.length < extraModes) continue;
         const tapCreatures = tappable.slice(0, extraModes).map((k) => k.id);
         const choice: SpellChoice = {
+          ...permission,
           ...modes,
           ...(alternative ? { alternative: true } : {}),
           ...(x !== undefined ? { x } : {}),
@@ -138,7 +144,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
           const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
-            for (const pay of helpedPayments(s, playerId, def, c, cost)) {
+            for (const pay of helpedPayments(s, playerId, def, c, cost, tapCreatures)) {
               out.push({
                 action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra },
                 cost: pay.cost,
@@ -152,6 +158,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
       }
     }
   }
+  }
   return out;
 }
 
@@ -159,11 +166,11 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
 const MAX_KICKS = 6;
 
 /** How many times kicker could be paid: 0 or 1, or for multikicker up to what the player's mana could pay. */
-function kickChoices(s: GameState, playerId: PlayerId, def: CardDefinition): number[] {
+function kickChoices(s: GameState, playerId: PlayerId, def: CardDefinition, c: CardInstance): number[] {
   if (def.kicker) return [0, 1];
   if (!def.multikicker) return [0];
   const each = manaValue(parseManaCost(def.multikicker));
-  const spare = availableMana(s, playerId) - manaValue(parseManaCost(def.manaCost));
+  const spare = availableMana(s, playerId, c) - manaValue(parseManaCost(def.manaCost));
   const most = Math.min(MAX_KICKS, each > 0 ? Math.floor(spare / each) : MAX_KICKS);
   return Array.from({ length: Math.max(0, most) + 1 }, (_, i) => i);
 }
@@ -178,8 +185,9 @@ function helpedPayments(
   def: CardDefinition,
   c: CardInstance,
   cost: ManaCost,
-): { extra: Pick<SpellChoice, 'convoke' | 'delve'>; cost: ManaCost }[] {
-  const out: { extra: Pick<SpellChoice, 'convoke' | 'delve'>; cost: ManaCost }[] = [{ extra: {}, cost }];
+  reserved: InstanceId[] = [],
+): { extra: Pick<SpellChoice, 'convoke' | 'delve' | 'improvise'>; cost: ManaCost }[] {
+  const out: { extra: Pick<SpellChoice, 'convoke' | 'delve' | 'improvise'>; cost: ManaCost }[] = [{ extra: {}, cost }];
   if (def.convoke) {
     const picked: CardInstance[] = [];
     for (const creature of convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0)) {
@@ -196,11 +204,21 @@ function helpedPayments(
       out.push({ extra: { delve: graveyard.slice(0, n) }, cost: { ...cost, generic: cost.generic - n } });
     }
   }
+  if (hasImprovise(s, playerId, c)) {
+    for (const option of [...out]) {
+      const excluded = new Set([...reserved, ...(option.extra.convoke ?? [])]);
+      const artifacts = improviseCandidates(s, playerId).filter((a) => !excluded.has(a.id))
+        .sort((a, b) => Number(manaChoices(s, a).length > 0) - Number(manaChoices(s, b).length > 0));
+      for (let n = 1; n <= Math.min(option.cost.generic, artifacts.length); n++) {
+        out.push({ extra: { ...option.extra, improvise: artifacts.slice(0, n).map((a) => a.id) }, cost: { ...option.cost, generic: option.cost.generic - n } });
+      }
+    }
+  }
   return out;
 }
 
 /** Mana the player has in their pool plus what their untapped mana sources could make. */
-function availableMana(s: GameState, playerId: PlayerId): number {
+function availableMana(s: GameState, playerId: PlayerId, improvisedSpell?: CardInstance): number {
   const p = s.players[playerId]!;
   let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
   for (const id of p.battlefield) {
@@ -211,6 +229,12 @@ function availableMana(s: GameState, playerId: PlayerId): number {
     if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d);
     else if (d.manaAbility?.paid) available += 1;
   }
+  if (improvisedSpell && hasImprovise(s, playerId, improvisedSpell)) available += improviseCandidates(s, playerId)
+    .filter((a) => {
+      const d = s.cardDefs[a.defId]!;
+      const sick = d.types.includes('creature') && a.summoningSick && !hasKeyword(s, a, 'Haste');
+      return sick || (manaChoices(s, a).length === 0 && !d.manaAbility?.paid);
+    }).length;
   return available;
 }
 
@@ -221,10 +245,10 @@ const MAX_X = 12;
  * The values of {X} worth offering: 1 up to what the player's pool and
  * untapped mana sources could pay. [undefined] for spells without X.
  */
-function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alternative: boolean): (number | undefined)[] {
+function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alternative: boolean, c: CardInstance): (number | undefined)[] {
   const cost = parseManaCost(alternative ? def.alternativeCost?.mana : def.manaCost);
   if (!cost.x) return [undefined];
-  const available = availableMana(s, playerId);
+  const available = availableMana(s, playerId, c);
   const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
   const most = Math.min(MAX_X, Math.floor((available - base) / cost.x));
   return Array.from({ length: Math.max(0, most) }, (_, i) => i + 1);
@@ -341,7 +365,7 @@ export function getLegalActions(s: GameState): Action[] {
       const cost = item.kind === 'ability' ? triggerSpec(s, item)?.cost : undefined;
       const p = s.players[player]!;
       const life = item.kind === 'ability' ? triggerLifeCost(s, item) : undefined;
-      const affordable = (life === undefined || p.life >= life) && (!cost?.mana || canPay(p.manaPool, parseManaCost(cost.mana)));
+      const affordable = p.hand.length >= (cost?.discard ?? 0) && (life === undefined || p.life >= life) && (!cost?.mana || canPay(p.manaPool, parseManaCost(cost.mana)));
       const actions: Action[] = [{ type: 'Decide', player, accept: false }];
       if (affordable) actions.push({ type: 'Decide', player, accept: true });
       // While paying, lands can be tapped for mana.

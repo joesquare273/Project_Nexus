@@ -5,6 +5,41 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Casting support: Banon and Inspiring Statuary
+
+- Banon's Pray permission casts one eligible creature from your graveyard on
+  each of your turns: it must have arrived there this turn from a zone other
+  than the battlefield. Arrival history is recorded on zone changes. Normal
+  casting costs and timing still apply. The permission is tracked per permanent,
+  so Banon and Edgar can each grant a cast; the board labels which one is used.
+- Banon's attack trigger offers its {1} plus discard cost, refuses acceptance
+  without a card to discard, and asks which card to discard before drawing.
+- Inspiring Statuary grants improvise to nonartifact spells. Untapped artifacts,
+  including Statuary itself and summoning-sick artifact creatures, can each pay
+  for one generic mana. Treasure can be tapped without being sacrificed.
+- Improvise combines with the existing cost helpers without tapping a permanent
+  twice. The board and bots reserve the chosen artifacts when planning mana,
+  show improvise choices, and account for artifacts when offering X values.
+- Thirty new scenarios cover 2, 3 and 4 players, independent graveyard permissions,
+  mandatory cost payment, timing, generic-only improvise payment, and auto-tap.
+
+286 of 320 distinct precon cards are built; 34 remain. Validation: type-check,
+all 630 tests, and the browser production build passed. Thirty additional
+Commander fuzz games (seeds 109-138) completed with no invariant failures or
+action-limit timeouts.
+
+### Requested frontend and rules work; commit checkpoint
+
+The user wants an arcane fantasy presentation inspired by Hearthstone, MTG Arena,
+and Dueling Nexus, with its own identity: dark stone, engraved gold, crystal light,
+readable card art and controls, and event-driven magical effects. See
+`frontend-roadmap.md` for the initial source/reference review and rules backlog.
+The existing rules simplifications must be audited against Wizards' rules;
+visual polish must preserve legal choices, hidden information, and priority.
+
+After every commit, stop and report it. The user will push and then say
+**proceed** before the next group or frontend implementation stage begins.
+
 ### Counter distribution and ability targets: three more precon cards
 
 - Forgotten Ancient gets an optional +1/+1 counter for any player's spell.

@@ -26,6 +26,8 @@ export interface ManaTap {
 }
 
 export interface TapOptions {
+  /** Permanents reserved to pay a spell's convoke, improvise, or other tap costs. */
+  exclude?: InstanceId[];
   /** The mana is for an Equipment spell or an equip ability, so Equipment-only mana counts. */
   forEquipment?: boolean;
 }
@@ -36,7 +38,7 @@ export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions =
     .map((id) => s.cards[id]!)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
-      if (manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
+        if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
       if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick;
@@ -89,7 +91,7 @@ export function planTaps(
   if (opts.forEquipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
   const sources = manaSources(s, playerId, opts).sort((a, b) => reluctance(s, a) - reluctance(s, b));
   // Paid abilities spend the normal pool, so they're left out when Equipment-only mana is in play.
-  const paid = opts.forEquipment ? [] : paidManaSources(s, playerId);
+    const paid = opts.forEquipment ? [] : paidManaSources(s, playerId).filter((c) => !opts.exclude?.includes(c.id));
   return planWith(s, need, pool, sources, paid, 2);
 }
 

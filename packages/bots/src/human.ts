@@ -41,7 +41,7 @@ export interface CardPlay {
 }
 
 function withTaps(s: GameState, player: PlayerId, o: CostedOption): PlayChoice | null {
-  const taps = planTaps(s, player, o.cost, { forEquipment: o.forEquipment });
+  const taps = planTaps(s, player, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? o.action.improvise : [] });
   if (!taps) return null;
   return {
     taps: tapActions(player, taps),
@@ -82,13 +82,15 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     // Convoke and delve: one entry per number of creatures tapped or cards exiled.
     const convoked = a.type === 'CastSpell' ? (a.convoke?.length ?? 0) : 0;
     const delved = a.type === 'CastSpell' ? (a.delve?.length ?? 0) : 0;
-    const helped = convoked ? `, tapping ${convoked} creature${plural(convoked)} (convoke)` : delved ? `, exiling ${delved} card${plural(delved)} from your graveyard (delve)` : '';
+    const improvised = a.type === 'CastSpell' ? (a.improvise?.length ?? 0) : 0;
+    const helped = `${convoked ? `, tapping ${convoked} creature${plural(convoked)} (convoke)` : ''}${delved ? `, exiling ${delved} card${plural(delved)} from your graveyard (delve)` : ''}${improvised ? `, tapping ${improvised} artifact${plural(improvised)} (improvise)` : ''}`;
+    const permissionSource = a.type === 'CastSpell' ? a.graveyardSource : undefined;
     const kicks = a.type === 'CastSpell' ? (a.kicks ?? 0) : 0;
     const kicked = kicks === 0 ? '' : kicks === 1 ? ', kicked' : `, kicked ${kicks} times`;
-    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}`;
+    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name})` : ''}`;
     const key = isAbility
       ? `${a.card}#${a.ability}`
-      : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${kicks ? `#k${kicks}` : ''}`;
+      : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${kicks ? `#k${kicks}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;

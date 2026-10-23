@@ -353,7 +353,7 @@ export function triggerText(t: TriggerSpec): string {
     ? `choose one at random: ${t.randomModes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
     : t.effects.map(effectText).join(' and ');
   const body = t.cost
-    ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`, t.cost.lifeOf && "life equal to that spell's mana value"].filter(Boolean).join(' and ')}. If you do, ${effects}`
+    ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`, t.cost.lifeOf && "life equal to that spell's mana value", t.cost.discard && `discard ${t.cost.discard} card${t.cost.discard === 1 ? '' : 's'}`].filter(Boolean).join(' and ')}. If you do, ${effects}`
     : t.optional
       ? `you may ${effects}`
       : effects;

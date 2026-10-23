@@ -352,10 +352,8 @@
           "count": 1,
           "set": "fic",
           "number": "347",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sword of the Animist",
@@ -1013,12 +1011,8 @@
           "count": 1,
           "set": "fic",
           "number": "78",
-          "implemented": false,
-          "needs": [
-            "pray",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Edgar, Master Machinist",

@@ -188,7 +188,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   validateCost(c.unearth, (m) => err(`unearth: ${m}`));
   if (c.unearth !== undefined && !c.types.includes('creature')) err('only creatures have unearth.');
   if (c.ward !== undefined && (!isNonNegativeInt(c.ward) || c.ward === 0)) err('ward must be a positive whole number.');
-  if ((c.convoke || c.delve) && (isLand || c.token)) err('convoke and delve are for spells.');
+  if ((c.convoke || c.delve || c.improvise) && (isLand || c.token)) err('convoke, delve and improvise are for spells.');
   if (c.rebound && !isSpell) err('only instants and sorceries have rebound.');
   validateCost(c.kicker, (m) => err(`kicker: ${m}`));
   validateCost(c.multikicker, (m) => err(`multikicker: ${m}`));
@@ -334,6 +334,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
   if (t.ifBlitzed && t.when !== 'Dies') e('ifBlitzed is only for Dies.');
   validateCost(t.cost?.mana, e);
+  if (t.cost?.discard !== undefined && (!isNonNegativeInt(t.cost.discard) || t.cost.discard === 0)) e('discard cost must be a positive whole number.');
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
   if (t.randomModes) {
     if (t.effects?.length) e('a trigger with randomModes keeps "effects" empty.');
@@ -379,6 +380,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     }
   }
   validateFilter(st.filter, e);
+  validateFilter(st.grantImprovise, e);
   if (st.spellCostReduction) validateFilter(st.spellCostReduction.filter, e);
   if (st.equipCost) validateCost(st.equipCost.mana, e);
   if (st.castFromGraveyard) validateFilter(st.castFromGraveyard.filter, e);

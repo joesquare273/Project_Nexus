@@ -156,6 +156,8 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
 
 /** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
 export interface SpellChoice {
+  improvise?: InstanceId[];
+  graveyardSource?: InstanceId;
   /** The value chosen for {X}. */
   x?: number;
   mode?: number;
@@ -186,7 +188,11 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): Eff
 
 /** The effects a stack item applies when it resolves. */
 export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
-  if (item.kind === 'ability') return abilitySpec(s, item).effects;
+  if (item.kind === 'ability') {
+    const spec = abilitySpec(s, item);
+    const discard = item.from === 'trigger' ? (spec as TriggerSpec).cost?.discard : undefined;
+    return discard ? [{ effect: 'Discard', target: 'You', amount: discard }, ...spec.effects] : spec.effects;
+  }
   return spellEffects(defOf(s, s.cards[item.card]!), item);
 }
 
@@ -517,17 +523,27 @@ export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance):
   return null;
 }
 
-/** Edgar: "Once during each of your turns, you may cast an artifact spell from your graveyard." */
-function graveyardCastStatic(s: GameState, playerId: PlayerId, c: CardInstance): StaticSpec['castFromGraveyard'] | undefined {
-  if (s.activePlayer !== playerId || s.players[playerId]!.graveyardCastTurn === s.turnNumber || !isSpellCard(defOf(s, c))) return undefined;
+/** Each independent permanent granting a once-per-turn graveyard permission. */
+export function graveyardCastSources(s: GameState, playerId: PlayerId, c: CardInstance): InstanceId[] {
+  if (s.activePlayer !== playerId || !isSpellCard(defOf(s, c))) return [];
+  const out: InstanceId[] = [];
   for (const source of battlefield(s)) {
-    if (source.controller !== playerId) continue;
+    if (source.controller !== playerId || source.graveyardCastTurn === s.turnNumber) continue;
     for (const spec of defOf(s, source).statics ?? []) {
       const allow = spec.castFromGraveyard;
-      if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id })) return allow;
+      if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id })) { out.push(source.id); break; }
     }
   }
-  return undefined;
+  return out;
+}
+
+function graveyardCastStatic(s: GameState, playerId: PlayerId, c: CardInstance, selected?: InstanceId): (NonNullable<StaticSpec['castFromGraveyard']> & { source: InstanceId }) | undefined {
+  const sources = graveyardCastSources(s, playerId, c);
+  const source = selected ?? sources[0];
+  if (!source || !sources.includes(source)) return undefined;
+  const allow = defOf(s, s.cards[source]!).statics!.map((spec) => spec.castFromGraveyard)
+    .find((permission) => permission && matchesObject(s, permission.filter, c, { controller: playerId, source }));
+  return allow ? { ...allow, source } : undefined;
 }
 
 /**
@@ -567,6 +583,16 @@ export function convokeCost(s: GameState, cost: ManaCost, creatures: readonly Ca
 /** Untapped creatures a player could tap for convoke, in battlefield order. */
 export function convokeCandidates(s: GameState, playerId: PlayerId): CardInstance[] {
   return s.players[playerId]!.battlefield.map((id) => s.cards[id]!).filter((c) => c.controller === playerId && !c.tapped && isCreatureOnBattlefield(s, c));
+}
+
+export function hasImprovise(s: GameState, playerId: PlayerId, c: CardInstance): boolean {
+  if (defOf(s, c).improvise) return true;
+  return battlefield(s).some((source) => source.controller === playerId &&
+    defOf(s, source).statics?.some((spec) => spec.grantImprovise && matchesObject(s, spec.grantImprovise, c, { controller: playerId, source: source.id }, playerId)));
+}
+
+export function improviseCandidates(s: GameState, playerId: PlayerId): CardInstance[] {
+  return battlefield(s).filter((c) => c.controller === playerId && !c.tapped && hasType(s, c, 'artifact'));
 }
 
 export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: boolean): void {
@@ -690,7 +716,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (problem) reject(problem);
   }
   // From a graveyard, blitz is the only alternative cost that works, and the only way for Sabin (rule 118.9a).
-  const way = from === 'graveyard' ? graveyardWay(s, playerId, c) : null;
+  const way = from === 'graveyard' ? (choice.graveyardSource ? 'static' : graveyardWay(s, playerId, c)) : null;
+  if (choice.graveyardSource && (from !== 'graveyard' || c.owner !== playerId || !graveyardCastStatic(s, playerId, c, choice.graveyardSource))) reject('That graveyard-casting permission is not available.');
   if (way === 'blitz' && !alternative) reject(`${def.name} can only be cast from your graveyard for its blitz cost.`);
   if (from === 'graveyard' && alternative && way !== 'blitz') reject("That alternative cost can't be used from the graveyard.");
   const permission = (from === 'graveyard' || from === 'exile') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
@@ -726,6 +753,14 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = convokeCost(s, cost, convoked) ?? reject('That is more creatures than the spell needs.');
   }
   const delved = choice.delve ?? [];
+  const improvised = (choice.improvise ?? []).map((id) => card(s, id));
+  if (improvised.length > 0) {
+    if (!hasImprovise(s, playerId, c)) reject("That spell doesn't have improvise.");
+    const able = improviseCandidates(s, playerId);
+    if (new Set(improvised).size !== improvised.length || improvised.some((a) => !able.includes(a) || convoked.includes(a) || escalated.includes(a))) reject('Improvise with different untapped artifacts you control, tapping each only once.');
+    if (improvised.length > cost.generic) reject('Improvise can pay only generic mana.');
+    cost = { ...cost, generic: cost.generic - improvised.length };
+  }
   if (delved.length > 0) {
     if (!def.delve) reject(`${def.name} doesn't have delve.`);
     const graveyard = player(s, playerId).graveyard;
@@ -740,10 +775,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   for (const discarded of costCards) discard(ctx, discarded);
   for (const k of convoked) tap(ctx, k);
   for (const k of escalated) tap(ctx, k);
+  for (const a of improvised) tap(ctx, a);
   for (const g of delved) moveCard(ctx, g, 'exile');
   // Edgar's permission is used up for this turn.
-  const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c) : undefined;
-  if (way === 'static') player(s, playerId).graveyardCastTurn = s.turnNumber;
+  const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource) : undefined;
+  if (edgar) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
     casts[id] = (casts[id] ?? 0) + 1;
@@ -1937,6 +1973,7 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
   const spec = triggerSpec(s, item);
   const cost = spec?.cost;
   if (accept && cost) {
+    if (player(s, playerId).hand.length < (cost.discard ?? 0)) reject("You don't have enough cards to discard for that cost.");
     const life = triggerLifeCost(s, item);
     if (life !== undefined && player(s, playerId).life < life) reject("You don't have enough life to pay.");
     if (cost.mana) payMana(ctx, playerId, parseManaCost(cost.mana));

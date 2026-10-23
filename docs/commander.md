@@ -5,8 +5,8 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 93/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 86/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 94/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 87/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 94/100 |
 | Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 88/100 |
 
@@ -80,5 +80,6 @@ needing several groups' pieces waits for the last of them.
 | Equipment and one-offs, part 2 | **10 built (2026-10-23):** Wrecking Ball Arm, Conformer Shuriken, Conqueror's Flail, Dancer's Chakrams, Astrologian's Planisphere, Phoenix Down, Yuna's Decision, Cait Sith, Furious Rise, Avalanche of Sector 7. |
 | Graveyard and library choices | **4 built (2026-10-23):** Rejoin the Fight, Promise of Loyalty, Endless Detour, Combustible Gearhulk. |
 | Counter distribution and ability targets | **3 built (2026-10-23):** Forgotten Ancient, Estinien Varlineau, Professor Hojo. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (36 cards left in all). |
+| Casting support | **2 built (2026-10-23):** Banon, the Returners' Leader; Inspiring Statuary. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (34 cards left in all). |
 | Everything else | |

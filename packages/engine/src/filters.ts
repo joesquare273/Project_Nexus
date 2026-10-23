@@ -29,6 +29,7 @@ export function matchesObject(
   objController: PlayerId = obj.zone === 'battlefield' ? obj.controller : obj.owner,
 ): boolean {
   if (!f) return true;
+  if (f.newGraveyardCardNotFromBattlefield && (obj.zone !== 'graveyard' || obj.graveyardArrival?.turn !== s.turnNumber || obj.graveyardArrival.from === 'battlefield')) return false;
   if (f.anyOf && !f.anyOf.some((alt) => matchesObject(s, alt, obj, from, objController))) return false;
   const def = s.cardDefs[obj.defId]!;
   if (f.other && obj.id === from.source) return false;
