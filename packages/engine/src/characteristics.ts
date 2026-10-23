@@ -8,6 +8,7 @@
 // within a layer doesn't matter.
 
 import { matchesObject } from './filters.ts';
+import { objectManaValue } from './typerules.ts';
 import type {
   AnyCounter,
   Amount,
@@ -43,6 +44,8 @@ export interface Characteristics {
   toughness: number;
   keywords: Set<Keyword>;
   subtypes: string[];
+  /** Total ward cost: each instance of ward asks for its own payment (rule 702.21b). */
+  ward: number;
 }
 
 const def = (s: GameState, c: CardInstance): CardDefinition => s.cardDefs[c.defId]!;
@@ -123,6 +126,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'SoulCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
+    case 'ArtifactsYouControl':
+      return yours().filter((c) => def(s, c).types.includes('artifact')).length;
+    case 'GreatestManaValueAmongYourArtifacts':
+      return Math.max(0, ...yours().filter((c) => def(s, c).types.includes('artifact')).map((c) => objectManaValue(s, c)));
     case 'EquippedAttackingCreaturesYouControl':
       return yours().filter((c) => creature(c) && isEquipped(s, c) && (s.combat?.attacks.some((a) => a.attacker === c.id) ?? false)).length;
   }
@@ -182,6 +189,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     toughness: d.toughness ?? 0,
     keywords: new Set(d.keywords ?? []),
     subtypes: [...(d.subtypes ?? [])],
+    ward: d.ward ?? 0,
   };
   if (c.zone !== 'battlefield') return out;
 
@@ -193,6 +201,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       out.toughness += amountOf(s, spec.toughness, source.controller, source.id);
       for (const k of spec.keywords ?? []) out.keywords.add(k);
       for (const t of spec.addSubtypes ?? []) if (!out.subtypes.includes(t)) out.subtypes.push(t);
+      out.ward += spec.ward ?? 0;
       removed.push(...(spec.removeKeywords ?? []));
     }
   }

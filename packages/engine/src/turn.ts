@@ -2,7 +2,20 @@
 
 import { canAnyAttack, dealCombatDamage, startBlockers } from './combat.ts';
 import { resolveTop } from './stack.ts';
-import { addCounters, alivePlayers, battlefield, drawCards, emptyAllManaPools, nextAlive, player, untap, type Ctx } from './state.ts';
+import {
+  addCounters,
+  alivePlayers,
+  battlefield,
+  drawCards,
+  emptyAllManaPools,
+  moveCard,
+  nextAlive,
+  phaseInFor,
+  player,
+  sacrifice,
+  untap,
+  type Ctx,
+} from './state.ts';
 import { STEPS, type PlayerId, type Step } from './types.ts';
 
 export function givePriority(ctx: Ctx, playerId: PlayerId): void {
@@ -19,6 +32,8 @@ export function enterStep(ctx: Ctx, step: Step): void {
 
   switch (step) {
     case 'untap': {
+      // Phasing happens first (rule 502.1).
+      phaseInFor(ctx, s.activePlayer);
       const untapped: string[] = [];
       for (const c of battlefield(s)) {
         if (c.controller !== s.activePlayer) continue;
@@ -78,7 +93,22 @@ export function enterStep(ctx: Ctx, step: Step): void {
       givePriority(ctx, s.activePlayer);
       return;
     case 'upkeep':
+      // Rebound: "At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost."
+      // Simplified: it can be cast free at any time during this turn.
+      for (const id of s.players[s.activePlayer]!.exile) {
+        const c = s.cards[id]!;
+        if (!c.rebounding) continue;
+        delete c.rebounding;
+        c.castPermission = { player: s.activePlayer, turn: s.turnNumber, free: true };
+      }
+      givePriority(ctx, s.activePlayer);
+      return;
     case 'end':
+      // Blitz and unearth: "at the beginning of the next end step" (done as the step begins, without using the stack).
+      for (const c of battlefield(s)) {
+        if (c.unearthed) moveCard(ctx, c.id, 'exile');
+        else if (c.blitzed) sacrifice(ctx, c.id);
+      }
       givePriority(ctx, s.activePlayer);
       return;
   }

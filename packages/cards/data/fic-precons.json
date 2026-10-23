@@ -269,23 +269,16 @@
           "count": 1,
           "set": "fic",
           "number": "234",
-          "implemented": false,
-          "needs": [
-            "ward",
-            "static-abilities",
-            "count-based-pt"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Clever Concealment",
           "count": 1,
           "set": "fic",
           "number": "236",
-          "implemented": false,
-          "needs": [
-            "convoke",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Puresteel Paladin",
@@ -1005,11 +998,8 @@
           "count": 1,
           "set": "fic",
           "number": "57",
-          "implemented": false,
-          "needs": [
-            "blitz",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Snort",
@@ -1069,11 +1059,8 @@
           "count": 1,
           "set": "fic",
           "number": "80",
-          "implemented": false,
-          "needs": [
-            "tools",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Kefka, Dancing Mad",
@@ -1226,12 +1213,8 @@
           "count": 1,
           "set": "fic",
           "number": "328",
-          "implemented": false,
-          "needs": [
-            "unearth",
-            "activated-abilities",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ruinous Ultimatum",
@@ -2712,12 +2695,8 @@
           "count": 1,
           "set": "fic",
           "number": "37",
-          "implemented": false,
-          "needs": [
-            "shivas-aid",
-            "ward",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Observed Stasis",
@@ -2778,11 +2757,8 @@
           "count": 1,
           "set": "fic",
           "number": "52",
-          "implemented": false,
-          "needs": [
-            "rebound",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ardbert, Warrior of Darkness",
@@ -2797,11 +2773,8 @@
           "count": 1,
           "set": "fic",
           "number": "81",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Estinien Varlineau",
@@ -2910,11 +2883,8 @@
           "count": 1,
           "set": "fic",
           "number": "263",
-          "implemented": false,
-          "needs": [
-            "delve",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rite of Replication",
@@ -2942,10 +2912,8 @@
           "count": 1,
           "set": "fic",
           "number": "272",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Crux of Fate",
@@ -2960,12 +2928,8 @@
           "count": 1,
           "set": "fic",
           "number": "277",
-          "implemented": false,
-          "needs": [
-            "connive",
-            "convoke",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Murderous Rider // Swift End",

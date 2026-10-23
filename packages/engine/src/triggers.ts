@@ -83,6 +83,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'CardDrawn':
         out.push({ when: 'Draws', at, drawer: e.player });
         break;
+      case 'LifeChanged':
+        if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player });
+        break;
       case 'AttackDeclared': {
         const subjectController = s.cards[e.attacker]!.controller;
         out.push({ when: 'Attacks', at, subject: e.attacker, subjectController, defender: e.defendingPlayer });
@@ -183,6 +186,10 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'Chapter') {
     return o.subject === source && (spec.chapters ?? []).some((n) => n > (o.loreFrom ?? 0) && n <= (o.loreTo ?? 0));
   }
+  // "Whenever one or more opponents lose life".
+  if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
+  // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
+  if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
   if (o.when === 'YouAttack') return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
@@ -349,7 +356,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 
 /** Legal choices for each target of a queued trigger, in effect order. */
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
-  const context = t.defender ? { defender: t.defender } : {};
+  const context = { ...(t.defender ? { defender: t.defender } : {}), triggered: true };
   return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source, context));
 }
 
@@ -386,7 +393,7 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   const pending = s.pending;
   if (pending.kind !== 'chooseTargets' || pending.player !== playerId) reject('You are not choosing targets right now.');
   const t = s.triggerQueue[0]!;
-  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, t.defender ? { defender: t.defender } : {});
+  checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, { ...(t.defender ? { defender: t.defender } : {}), triggered: true });
   s.triggerQueue.shift();
   pushAbility(ctx, t, targets);
   givePriority(ctx, pending.then);

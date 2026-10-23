@@ -40,7 +40,7 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
-const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry']);
+const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand']);
 const PLAYER_ONLY_EFFECTS = new Set([
   'DrawCards',
   'GainLife',
@@ -184,6 +184,11 @@ export function validateCardDefinition(raw: unknown): string[] {
     if (!c.landcycling.basic && !c.landcycling.subtype) err('landcycling needs a subtype or basic: true.');
   }
   validateCost(c.cycling, (m) => err(`cycling: ${m}`));
+  validateCost(c.unearth, (m) => err(`unearth: ${m}`));
+  if (c.unearth !== undefined && !c.types.includes('creature')) err('only creatures have unearth.');
+  if (c.ward !== undefined && (!isNonNegativeInt(c.ward) || c.ward === 0)) err('ward must be a positive whole number.');
+  if ((c.convoke || c.delve) && (isLand || c.token)) err('convoke and delve are for spells.');
+  if (c.rebound && !isSpell) err('only instants and sorceries have rebound.');
   for (const color of c.colorIdentity ?? []) if (!['W', 'U', 'B', 'R', 'G'].includes(color)) err(`unknown color "${color}" in colorIdentity.`);
   if (c.types.includes('creature') && (!isNonNegativeInt(c.power) || !isNonNegativeInt(c.toughness))) {
     err('creatures need non-negative integer power and toughness.');
@@ -222,6 +227,9 @@ export function validateCardDefinition(raw: unknown): string[] {
     if (alt.life !== undefined && (!isNonNegativeInt(alt.life) || alt.life === 0)) err('alternativeCost life must be positive.');
     validateFilter(alt.ifControls, (m) => err(`alternativeCost: ${m}`));
     for (const e of alt.effects ?? []) validateEffect(e, false, (m) => err(`alternativeCost: ${m}`));
+    if (alt.discard !== undefined && (!isNonNegativeInt(alt.discard) || alt.discard === 0)) err('alternativeCost discard must be positive.');
+    if (alt.blitz && !c.types.includes('creature')) err('only creatures have blitz.');
+    if (alt.fromGraveyard && !alt.blitz) err('alternativeCost fromGraveyard is only for blitz.');
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
@@ -270,7 +278,11 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   if (e.effect === 'Counter' && e.target !== 'TargetSpell') err('Counter needs a TargetSpell target.');
-  if (e.if !== undefined && e.if !== 'castFromGraveyard' && e.if !== 'castFromExile') err(`unknown condition "${String(e.if)}".`);
+  if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
+  if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');
+  if (e.keep !== undefined && (e.effect !== 'LookAtTopPutInHand' || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
+  if (e.free && e.effect !== 'AllowCastFromGraveyard') err('free is only for AllowCastFromGraveyard.');
+  if (e.effect === 'AllowCastFromGraveyard' && e.target !== 'TargetCardInGraveyard') err('AllowCastFromGraveyard needs a TargetCardInGraveyard target.');
   if (e.effect === 'ChooseAndDestroy' && !e.filter) err('ChooseAndDestroy needs a filter.');
   validateCounterKind(e.counter, err);
   if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield') err('"counter" is only for AddCounters and ReturnToBattlefield.');
@@ -305,6 +317,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.attackersAtLeast !== undefined && t.when !== 'YouAttack') e('attackersAtLeast is only for YouAttack.');
   if (t.when === 'Chapter' && !t.chapters?.length) e('a chapter ability needs "chapters".');
   if (t.drawer !== undefined && t.drawer !== 'You' && t.drawer !== 'Opponent') e('drawer must be "You" or "Opponent".');
+  if (t.ifBlitzed && t.when !== 'Dies') e('ifBlitzed is only for Dies.');
   validateCost(t.cost?.mana, e);
   if (t.cost?.life !== undefined && (!isNonNegativeInt(t.cost.life) || t.cost.life === 0)) e('life cost must be positive.');
   if (!Array.isArray(t.effects) || t.effects.length === 0) {
@@ -317,7 +330,8 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
 function validateActivated(a: ActivatedSpec, err: Err): void {
   const e: Err = (msg) => err(`activated ability: ${msg}`);
   validateCost(a.cost?.mana, e);
-  if (a.zone !== undefined && a.zone !== 'battlefield' && a.zone !== 'hand') e(`unknown zone "${a.zone}".`);
+  if (a.zone !== undefined && a.zone !== 'battlefield' && a.zone !== 'hand' && a.zone !== 'graveyard') e(`unknown zone "${a.zone}".`);
+  if (a.cost?.life !== undefined && (!isNonNegativeInt(a.cost.life) || a.cost.life === 0)) e('life cost must be positive.');
   validateFilter(a.ifYouControl, e);
   const rc = a.cost?.removeCounter;
   if (rc) {
@@ -345,6 +359,8 @@ function validateStatic(st: StaticSpec, err: Err): void {
   validateFilter(st.filter, e);
   if (st.spellCostReduction) validateFilter(st.spellCostReduction.filter, e);
   if (st.equipCost) validateCost(st.equipCost.mana, e);
+  if (st.castFromGraveyard) validateFilter(st.castFromGraveyard.filter, e);
+  if (st.ward !== undefined && (!isNonNegativeInt(st.ward) || st.ward === 0)) e('ward must be a positive whole number.');
   if (st.entersWithExtraCounters !== undefined && st.affects !== 'EachMatching') e('entersWithExtraCounters needs an EachMatching static ability.');
   if (st.extraCounters !== undefined && (!isNonNegativeInt(st.extraCounters) || st.affects !== 'EachMatching')) {
     e('extraCounters must be a whole number on an EachMatching static ability.');

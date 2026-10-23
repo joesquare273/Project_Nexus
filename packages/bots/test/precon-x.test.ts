@@ -15,7 +15,7 @@ describe('{X} costs', () => {
     const s = newGame();
     const spell = put(s, 'P1', 'exsanguinate', 'hand');
     for (let i = 0; i < 5; i++) put(s, 'P1', 'swamp');
-    const labels = playableCards(s, 'P1').filter((p) => p.card === spell).map((p) => p.label);
+    const labels = playableCards(s, 'P1').filter((p) => p.card === spell).map((p) => `${p.label}${p.detail ?? ''}`);
     expect(labels).toEqual(['Cast with X = 1', 'Cast with X = 2', 'Cast with X = 3']);
   });
 

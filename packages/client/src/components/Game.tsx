@@ -428,7 +428,7 @@ export function Game({
     setMenu({
       title: def.name,
       options: cardPlays.map((p) => ({
-        label: p.kind === 'spell' ? `${p.label} ${def.name}` : p.kind === 'land' && p.label === 'Play' ? `Play ${def.name}` : p.label,
+        label: p.kind === 'spell' ? `${p.label} ${def.name}${p.detail ?? ''}` : p.kind === 'land' && p.label === 'Play' ? `Play ${def.name}` : p.label,
         pick: () => startPlay(p),
       })),
     });
@@ -491,7 +491,7 @@ export function Game({
       return marks;
     },
     cardNote: (id) => {
-      if (bottomPicks.includes(id)) return `Bottom ${bottomPicks.indexOf(id) + 1}`;
+      if (bottomPicks.includes(id)) return choosing ? 'Chosen' : `Bottom ${bottomPicks.indexOf(id) + 1}`;
       const planned = attackers.get(id);
       if (planned) return livingOpponents.length > 1 ? `→ ${planned}` : 'Attacking';
       const attack = view.combat?.attacks.find((a) => a.attacker === id);
@@ -662,6 +662,24 @@ export function Game({
       <aside className="sidebar">
         <GameLog entries={session.log} />
       </aside>
+      {/* "Look at the top seven cards of your library": the cards on offer. */}
+      {choosing?.purpose === 'hand' && (
+        <CardList
+          view={view}
+          title={`Top of your library: choose ${choosing.min} for your hand (${bottomPicks.length} chosen)`}
+          ids={choosing.cards}
+          h={h}
+          actions={
+            <button
+              className="primary"
+              disabled={!!choiceProblem(s, choosing, bottomPicks)}
+              onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}
+            >
+              Put into your hand
+            </button>
+          }
+        />
+      )}
       {offBoardOptions.length > 0 && (
         <CardList view={view} title={activeTargeting?.title ?? 'Choose a target'} ids={offBoardOptions} h={h} />
       )}
@@ -911,7 +929,9 @@ function PromptBar(p: PromptProps) {
             ? 'to sacrifice'
             : c.purpose === 'battlefield'
               ? 'to put onto the battlefield (in your hand)'
-              : 'to keep; the others are sacrificed';
+              : c.purpose === 'hand'
+                ? 'to put into your hand; the rest go on the bottom of your library'
+                : 'to keep; the others are sacrificed';
       const problem = choiceProblem(s, c, picks);
       text = `Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
       buttons = [

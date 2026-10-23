@@ -144,3 +144,13 @@ effects), so they come after. See [starter-kits.md](starter-kits.md).
 | "Search for up to N cards" | Takes as many as it can (up to N) | The player may take fewer |
 | Choices in "each player" effects | Players choose one at a time in turn order from the active player, seeing earlier choices | Simultaneous, in APNAP order (rule 101.4) |
 | {X} costs | The caster chooses X from 1 up to what their mana could pay, at most 12 | Any X, including 0 |
+| Ward | An opponent's spell or activated ability that targets it simply costs the ward amount more; an opponent's triggered ability can't target it | A triggered ability that counters the spell or ability unless its controller pays (rule 702.21) |
+| Convoke | Each creature pays a mana of its color if the cost still has one, otherwise {1}; the legal list taps creatures in board order and skips creatures that make mana | The player assigns each creature (rule 702.51) |
+| Connive with several creatures (Lethal Scheme) | Draw one card per creature, discard that many, then each nonland card discarded puts a +1/+1 counter on the next creature | Each creature connives in turn (rule 701.50) |
+| "Any number of target" permanents (Clever Concealment) | Up to six | Any number |
+| Phased-out permanents | Can't be seen on the battlefield row (a "Phased out" pile instead); a phased-out attacker or blocker simply stops dealing and taking combat damage | Rule 702.26 |
+| Blitz and unearth "at the beginning of the next end step" | Done as the end step begins, without using the stack | A delayed triggered ability |
+| Rebound | Castable without paying its mana cost at any time during your next turn, then it's gone for good | Only while the upkeep trigger resolves (rule 702.88) |
+| "You may cast target card from your graveyard" (Torrential Gearhulk, Emet-Selch) | Castable later that turn, with normal timing rules, instead of during the ability's resolution | Cast while the ability resolves, ignoring timing (rule 608.2g) |
+| Dig Through Time | The cards not taken go on the bottom in the order they were on top | Any order |
+| Emet-Selch's "once each turn" | Counts only when you say yes | Counts whenever you cast a spell this way |

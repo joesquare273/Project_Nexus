@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
 import { YOU, type Placement } from '../game/session.ts';
@@ -464,6 +464,10 @@ function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHan
         h={h}
       />
       <Pile view={view} pile={`${pid}:exile`} label="Exile" count={p.exile.length} top={p.exile.at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
+      {/* Phased out until their controller's next turn (Clever Concealment). */}
+      {p.phasedOut.length > 0 && (
+        <Pile view={view} pile={`${pid}:phasedOut`} label="Phased out" count={p.phasedOut.length} top={p.phasedOut.at(-1)} h={h} />
+      )}
     </div>
   );
 }
@@ -615,18 +619,22 @@ export function CardList({
   ids,
   h,
   onClose,
+  actions,
 }: {
   view: GameView;
   title: string;
   ids: InstanceId[];
   h: ZoneHandlers;
   onClose?: () => void;
+  /** Buttons in the list's header, for choices made in the list (the board's prompt bar is behind it). */
+  actions?: ReactNode;
 }) {
   return (
     <div className="overlay" onClick={onClose}>
       <div className="card-list" onClick={(e) => e.stopPropagation()}>
         <div className="card-list-head">
           <strong>{title}</strong>
+          {actions}
           {onClose && (
             <button className="ghost" onClick={onClose}>
               Close

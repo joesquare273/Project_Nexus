@@ -120,7 +120,7 @@ export function hasType(s: GameState, c: CardInstance, type: CardType): boolean 
 }
 
 export function isCreatureOnBattlefield(s: GameState, c: CardInstance | undefined): c is CardInstance {
-  return !!c && c.zone === 'battlefield' && hasType(s, c, 'creature');
+  return !!c && c.zone === 'battlefield' && !c.phasedOut && hasType(s, c, 'creature');
 }
 
 export function alivePlayers(s: GameState): PlayerId[] {
@@ -169,6 +169,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
+  // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
+  if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';
+  if (c.phasedOut) phaseIn(ctx, c, true);
   const fromList = zoneList(s, c.owner, from);
   if (fromList) {
     const i = fromList.indexOf(id);
@@ -204,6 +207,10 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.playableFromExile;
   delete c.castFromGraveyard;
   delete c.countersTurn;
+  delete c.castPermission;
+  delete c.unearthed;
+  delete c.rebounding;
+  if (to === 'battlefield') delete c.blitzed;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;
   // What it was like as it left, for abilities that look back (rule 608.2h). Kept until it enters again.
@@ -244,6 +251,43 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       for (const spec of defOf(s, source).statics ?? []) {
         if (spec.entersWithExtraCounters && staticAffects(s, source, spec, c)) addCounters(ctx, id, spec.entersWithExtraCounters);
       }
+    }
+  }
+}
+
+/**
+ * Phases a permanent out (rule 702.26): it leaves its owner's battlefield
+ * list but keeps its state, and so does everything attached to it.
+ */
+export function phaseOut(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s;
+  const c = card(s, id);
+  if (c.zone !== 'battlefield' || c.phasedOut) return;
+  const p = player(s, c.owner);
+  p.battlefield.splice(p.battlefield.indexOf(id), 1);
+  p.phasedOut = [...(p.phasedOut ?? []), id];
+  c.phasedOut = true;
+  ctx.ev.push({ type: 'PhasedOut', card: id });
+  // "Indirectly": Equipment attached to it phases out with it (rule 702.26g).
+  for (const other of battlefield(s)) if (other.attachedTo === id) phaseOut(ctx, other.id);
+}
+
+/** Phases a permanent back in, as it was. `silent` when it's about to move anyway. */
+export function phaseIn(ctx: Ctx, c: CardInstance, silent = false): void {
+  const p = player(ctx.s, c.owner);
+  p.phasedOut = (p.phasedOut ?? []).filter((x) => x !== c.id);
+  if (p.phasedOut.length === 0) delete p.phasedOut;
+  delete c.phasedOut;
+  p.battlefield.push(c.id);
+  if (!silent) ctx.ev.push({ type: 'PhasedIn', card: c.id });
+}
+
+/** The untap step: permanents the active player controls phase in (rule 502.1). */
+export function phaseInFor(ctx: Ctx, controller: PlayerId): void {
+  for (const pid of ctx.s.turnOrder) {
+    for (const id of [...(ctx.s.players[pid]!.phasedOut ?? [])]) {
+      const c = ctx.s.cards[id]!;
+      if (c.controller === controller) phaseIn(ctx, c);
     }
   }
 }
@@ -346,7 +390,7 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId, sacrificed = false): 
   const s = ctx.s;
   const c = s.cards[id]!;
   const backToHand = hasFlag(s, c, 'returnToHandIfDies');
-  if (hasFlag(s, c, 'exileIfWouldDie')) {
+  if (hasFlag(s, c, 'exileIfWouldDie') || c.unearthed) {
     moveCard(ctx, id, 'exile', { sacrificed });
     return;
   }

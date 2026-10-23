@@ -5,7 +5,47 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-22
 
-### Where this session stopped (2026-10-22)
+### Keywords and casting from the graveyard (C2, step 13)
+
+`npm run check` passed on this computer before starting (463 tests). New
+engine pieces, each in MTG terms:
+
+- **Ward {N}** (`ward` on a card, or a static ability granting it): an
+  opponent's spell or activated ability that targets the permanent costs {N}
+  more; an opponent's triggered ability can't target it.
+- **Convoke** and **delve**: `convoke` / `delve` lists on the `CastSpell`
+  action. Each convoking creature pays one mana of its color, or {1}; each
+  delved card pays {1}. The legal list offers 1, 2, 3... creatures (not ones
+  that make mana) or cards, and the board shows each as its own way to cast
+  ("Cast, tapping 2 creatures (convoke)").
+- **Phasing**: phased-out permanents leave the battlefield list (they're in
+  `phasedOut` on the player, still `zone: 'battlefield'`) with their state,
+  Equipment phases with its creature, and they phase in at their
+  controller's next untap step. The board shows a "Phased out" pile.
+- **Connive**, **look at the top N, put K into your hand** (a `chooseCards`
+  with purpose `hand`; the chooser sees the cards, nobody else does).
+- **Casting from the graveyard**: blitz (an alternative cost with a discard,
+  haste, "when this dies, draw a card", sacrificed at the end step; Sabin can
+  only be cast from the graveyard this way), Edgar's once-a-turn artifact
+  casting (enters tapped), and a per-card permission (`castPermission`) for
+  "you may cast target card from your graveyard" (free with Torrential
+  Gearhulk; exiled afterwards). Spells cast from a graveyard can be cheaper
+  (Emet-Selch).
+- **Unearth** (an ability that works from the graveyard), **rebound** (exiled
+  as it resolves when cast from hand; free to cast during your next turn),
+  "pay N life" in activated-ability costs, "if this spell was cast from your
+  hand", "whenever one or more opponents lose life", and counts of artifacts
+  and the greatest mana value among them.
+
+11 precon cards built (`packages/bots/test/precon-keywords.test.ts`):
+Bronze Guardian, Hraesvelgr of the First Brood, Clever Concealment, Lethal
+Scheme, Dig Through Time, Priest of Fell Rites, Sabin, Transpose, Edgar,
+Emet-Selch of the Third Seat and Torrential Gearhulk. 259 of 320 distinct
+precon cards are now built; 61 to go (mostly copies, Vehicles, Auras,
+Adventures, ninjutsu, the monarch, escalate/kicker and one-offs). The
+simplifications are listed in [decisions.md](decisions.md).
+
+### Where the previous session stopped (2026-10-22)
 
 Committed before the last full check finished, at the user's request. Last
 results: the foretell batch passed both 300-game fuzz runs; `npm run check`

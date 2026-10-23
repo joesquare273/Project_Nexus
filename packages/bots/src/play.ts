@@ -231,11 +231,11 @@ function priorityOptions(s: GameState): Option[] {
   for (const play of playableCards(s, YOU)) {
     if (play.kind !== 'spell') continue;
     const d = defOf(s, s.cards[play.card]!);
-    const key = `${d.id}|${play.label}`;
+    const key = `${d.id}|${play.label}|${play.detail ?? ''}`;
     if (seenSpell.has(key)) continue;
     seenSpell.add(key);
     options.push({
-      label: `${play.label} ${d.name} ${play.label === 'Cast' ? (d.manaCost ?? '') : ''}  - ${rulesSummary(d)}`,
+      label: `${play.label} ${d.name}${play.detail ?? ''} ${play.label === 'Cast' ? (d.manaCost ?? '') : ''}  - ${rulesSummary(d)}`,
       choose: async () => {
         const choices = play.choices;
         if (choices.length === 1) return [...choices[0]!.taps, choices[0]!.action];
@@ -478,7 +478,9 @@ async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind
         ? 'sacrifice'
         : p.purpose === 'battlefield'
           ? 'put onto the battlefield'
-          : 'keep (the rest are sacrificed)';
+          : p.purpose === 'hand'
+            ? 'put into your hand (the rest go on the bottom)'
+            : 'keep (the rest are sacrificed)';
   if (p.allOrNothing) {
     const yes = (await ask(`\n  Discard your whole hand (${p.cards.length} cards)? (y/N) `)).toLowerCase() === 'y';
     return [{ type: 'ChooseCards', player: YOU, cards: yes ? [...p.cards] : [] }];

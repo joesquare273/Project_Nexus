@@ -41,6 +41,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOtherOpponent: 'each other opponent',
   TargetSpell: 'target spell',
   AllGraveyardCards: 'all cards in all graveyards',
+  ConvokedCreatures: 'each creature that convoked this spell',
   You: 'you',
 };
 
@@ -57,6 +58,8 @@ const COUNT_TEXT: Record<string, string> = {
   CountersAmongCreaturesYouControl: 'counters among creatures you control',
   PlayersWhoLostLifeThisTurn: 'players who lost life this turn',
   SoulCountersOnThis: 'soul counters on this',
+  ArtifactsYouControl: 'artifacts you control',
+  GreatestManaValueAmongYourArtifacts: 'the greatest mana value among artifacts you control',
 };
 
 /** "a +1/+1 counter", "2 shield counters". */
@@ -218,6 +221,14 @@ function effectText(e: EffectSpec): string {
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'SearchLibraryToHand':
       return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand${e.toBattlefieldIfBehindOnLands ? ' (onto the battlefield tapped if an opponent controls more lands)' : ''}`;
+    case 'PhaseOut':
+      return `${who} phase out`;
+    case 'Connive':
+      return `${who} connives`;
+    case 'LookAtTopPutInHand':
+      return `look at the top ${n} cards of your library; put ${e.keep ?? 1} of them into your hand and the rest on the bottom`;
+    case 'AllowCastFromGraveyard':
+      return `you may cast ${who} this turn${e.free ? ' without paying its mana cost' : ''}; if it would be put into your graveyard, exile it instead`;
   }
 }
 
@@ -232,7 +243,14 @@ function keywordText(keywords: readonly string[]): string {
 
 /** A plain summary of an activated ability, e.g. "{1}{W}, {T}: tap target creature". */
 export function activatedText(a: ActivatedSpec): string {
-  const cost = [a.cost.mana, a.cost.tap && '{T}', a.cost.discardThis && 'discard this card'].filter(Boolean).join(', ');
+  if (a.effects[0]?.unearth) return `Unearth ${a.cost.mana}`;
+  const cost = [
+    a.cost.mana,
+    a.cost.tap && '{T}',
+    a.cost.life && `pay ${a.cost.life} life`,
+    a.cost.sacrificeThis && 'sacrifice this',
+    a.cost.discardThis && 'discard this card',
+  ].filter(Boolean).join(', ');
   const body = a.equip ? 'Equip' : a.effects.map(effectText).join(' and ');
   return a.equip ? `${body} ${a.cost.mana}` : `${cost}: ${body}`;
 }
@@ -295,7 +313,9 @@ function triggerCondition(t: TriggerSpec): string {
     YouAttack: '',
     Chapter: '',
     Sacrificed: 'is sacrificed',
+    OpponentLosesLife: '',
   }[t.when] ?? '';
+  if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
   if (t.when === 'Chapter') return `Chapter ${(t.chapters ?? []).map((n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][n] ?? n).join(', ')}`;
   if (t.when === 'YouAttack') return `Whenever you attack with ${t.attackersAtLeast ?? 1} or more creatures`;
   if (t.when === 'Draws') {
@@ -348,6 +368,11 @@ export function rulesSummary(def: CardDefinition): string {
   for (const t of def.triggers ?? []) parts.push(triggerText(t).replace(/\.$/, ''));
   if (def.equip) parts.push(`Equip ${def.equip}`);
   if (def.flashback) parts.push(`Flashback ${def.flashback}`);
+  if (def.ward) parts.push(`Ward {${def.ward}}`);
+  if (def.convoke) parts.push('Convoke');
+  if (def.delve) parts.push('Delve');
+  if (def.rebound) parts.push('Rebound');
+  if (def.unearth) parts.push(`Unearth ${def.unearth}`);
   if (def.notBuilt) {
     parts.push(
       def.types.includes('creature')
@@ -439,6 +464,10 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${cardName(s, e.card)} loses ${countersText(e.amount, e.counter)}.`;
     case 'Foretold':
       return `  ${who(e.player)} foretold a card.`;
+    case 'PhasedOut':
+      return `  ${cardName(s, e.card)} phased out.`;
+    case 'PhasedIn':
+      return `  ${cardName(s, e.card)} phased in.`;
     case 'SpellCountered':
       return `  ${cardName(s, e.card)} is countered by ${cardName(s, e.by)}.`;
     case 'ControlChanged':

@@ -9,7 +9,7 @@
 import { isEquipment } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
-import { canPay, parseManaCost } from './cost.ts';
+import { canPay, manaValue, parseManaCost } from './cost.ts';
 import {
   abilityCost,
   activatedAbilities,
@@ -29,7 +29,10 @@ import {
   type SpellChoice,
   choiceProblem,
   costCardChoices,
+  convokeCandidates,
+  convokeCost,
   foretellProblem,
+  graveyardWay,
   subsets,
   groupProblem,
 } from './stack.ts';
@@ -102,28 +105,65 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const def = s.cardDefs[c.defId]!;
     const from = playableZone(s, playerId, c);
     if (!from || !canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
-    // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a).
-    const alternatives = [false];
+    // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);
+    // Sabin can only be cast from the graveyard for its blitz cost.
+    const way = from === 'graveyard' ? graveyardWay(s, playerId, c) : null;
+    const alternatives = way === 'blitz' ? [true] : [false];
     if (def.alternativeCost && from !== 'graveyard' && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
+    // Cast without paying its mana cost: X is 0.
+    const free = (from === 'graveyard' || from === 'exile') && c.castPermission?.turn === s.turnNumber && !!c.castPermission.free;
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
-       for (const x of xChoices(s, playerId, def, alternative)) {
+       for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative)) {
         const choice: SpellChoice = { ...modes, ...(alternative ? { alternative: true } : {}), ...(x !== undefined ? { x } : {}) };
-        // "As an additional cost, discard a card": each way to pay it.
-        const discards = def.additionalCost
-          ? subsets(p.hand.filter((id) => id !== c.id), def.additionalCost.discard, def.additionalCost.discard)
-          : [[]];
+        // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
+        const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
+        const discards = discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
+          const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0);
           for (const costCards of discards) {
-            out.push({
-              action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}) },
-              cost: spellCost(s, def, from, targets, c, alternative, x ?? 0),
-              forEquipment: isEquipment(s, c),
-            });
+            for (const pay of helpedPayments(s, playerId, def, c, cost)) {
+              out.push({
+                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra },
+                cost: pay.cost,
+                forEquipment: isEquipment(s, c),
+              });
+            }
           }
         }
        }
       }
+    }
+  }
+  return out;
+}
+
+/**
+ * Ways to pay with convoke or delve: none, then more and more creatures (not
+ * ones that make mana, which are better tapped for it) or graveyard cards.
+ */
+function helpedPayments(
+  s: GameState,
+  playerId: PlayerId,
+  def: CardDefinition,
+  c: CardInstance,
+  cost: ManaCost,
+): { extra: Pick<SpellChoice, 'convoke' | 'delve'>; cost: ManaCost }[] {
+  const out: { extra: Pick<SpellChoice, 'convoke' | 'delve'>; cost: ManaCost }[] = [{ extra: {}, cost }];
+  if (def.convoke) {
+    const picked: CardInstance[] = [];
+    for (const creature of convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0)) {
+      if (picked.length >= manaValue(cost)) break;
+      const next = convokeCost(s, cost, [...picked, creature]);
+      if (!next) continue;
+      picked.push(creature);
+      out.push({ extra: { convoke: picked.map((k) => k.id) }, cost: next });
+    }
+  }
+  if (def.delve) {
+    const graveyard = s.players[playerId]!.graveyard.filter((id) => id !== c.id);
+    for (let n = 1; n <= Math.min(cost.generic, graveyard.length); n++) {
+      out.push({ extra: { delve: graveyard.slice(0, n) }, cost: { ...cost, generic: cost.generic - n } });
     }
   }
   return out;
@@ -158,7 +198,8 @@ function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alterna
 export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const out: CostedOption[] = [];
   const p = s.players[playerId]!;
-  const cards = [...p.battlefield, ...p.hand].map((id) => s.cards[id]!);
+  // Unearth works from the graveyard.
+  const cards = [...p.battlefield, ...p.hand, ...p.graveyard].map((id) => s.cards[id]!);
   for (const c of cards) {
     activatedAbilities(s.cardDefs[c.defId]!).forEach((spec, ability) => {
       if (activationProblem(s, playerId, c, spec)) return;

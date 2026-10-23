@@ -55,6 +55,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.costCards ? { costCards: action.costCards } : {}),
           ...(action.alternative ? { alternative: true } : {}),
           ...(action.x !== undefined ? { x: action.x } : {}),
+          ...(action.convoke ? { convoke: action.convoke } : {}),
+          ...(action.delve ? { delve: action.delve } : {}),
         });
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;

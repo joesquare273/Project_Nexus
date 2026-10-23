@@ -34,6 +34,8 @@ export interface CardPlay {
   /** For abilities: which one, and a short description ("Equip {2}"). */
   ability?: number;
   label: string;
+  /** For spells: how, after the card's name (" with X = 3", ", tapping 2 creatures (convoke)"). */
+  detail?: string;
   /** Every affordable way to do it (different targets or modes). */
   choices: PlayChoice[];
 }
@@ -58,6 +60,8 @@ function revealable(s: GameState, card: InstanceId, player: PlayerId): string {
   return subtypes.find((t) => hand.some((d) => d.subtypes?.includes(t))) ?? 'card';
 }
 
+const plural = (n: number) => (n > 1 ? 's' : '');
+
 /** Everything the player can do while they have priority, grouped by card. */
 export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
   if (s.pending.kind !== 'priority' || s.pending.player !== player) return [];
@@ -75,7 +79,14 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const isAbility = a.type === 'ActivateAbility';
     const alternative = a.type === 'CastSpell' && a.alternative;
     const x = a.type === 'CastSpell' ? a.x : undefined;
-    const key = isAbility ? `${a.card}#${a.ability}` : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}`;
+    // Convoke and delve: one entry per number of creatures tapped or cards exiled.
+    const convoked = a.type === 'CastSpell' ? (a.convoke?.length ?? 0) : 0;
+    const delved = a.type === 'CastSpell' ? (a.delve?.length ?? 0) : 0;
+    const helped = convoked ? `, tapping ${convoked} creature${plural(convoked)} (convoke)` : delved ? `, exiling ${delved} card${plural(delved)} from your graveyard (delve)` : '';
+    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${helped}`;
+    const key = isAbility
+      ? `${a.card}#${a.ability}`
+      : `${a.card}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;
@@ -97,7 +108,8 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
                 : s.cards[a.card]!.zone === 'hand'
                   ? 'Cast'
                   : `Cast from ${s.cards[a.card]!.zone}`
-            }${x !== undefined ? ` with X = ${x}` : ''}`,
+            }`,
+            ...(detail ? { detail } : {}),
             choices: [],
           };
       grouped.set(key, play);

@@ -70,5 +70,6 @@ needing several groups' pieces waits for the last of them.
 | Tokens, sacrifice and death triggers | **Choosing cards, 15 built (2026-10-22):** Big Score, Laughing Mad, Syphon Mind, Celes, Snort, Ruin Grinder, Mask of Memory, Mog, High Market, Scavenger Grounds, Professional Face-Breaker, Shadow, Archfiend of Depravity, Tragic Arrogance, Fandaniel. |
 | Graveyard and library | **Recursion, 6 built (2026-10-22):** Stitch Together, Reanimate, Cyan, Elena, Cid, Red XIII. |
 | Card draw, life and spells-matter | **13 built (2026-10-22):** Harmonize, Night's Whisper, Secret Rendezvous, Cut a Deal, Into the Story, Baleful Strix, Morbid Opportunist, Archmage Emeritus, Alphinaud, Alisaie, Bastion Protector, Dispatch, Puresteel Paladin. |
+| Keywords and casting from the graveyard | **11 built (2026-10-22):** Bronze Guardian (ward), Hraesvelgr of the First Brood (ward), Clever Concealment (convoke, phasing), Lethal Scheme (convoke, connive), Dig Through Time (delve), Priest of Fell Rites (unearth), Sabin (blitz from the graveyard), Transpose (rebound), Edgar, Emet-Selch of the Third Seat, Torrential Gearhulk. |
 | Sagas, Adventures, double-faced cards, X costs | |
 | Everything else | |

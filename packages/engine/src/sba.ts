@@ -53,6 +53,13 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
     moveCard(ctx, item.card, 'exile');
   }
   s.triggerQueue = s.triggerQueue.filter((t) => t.controller !== playerId);
+  // Their phased-out permanents leave too.
+  for (const pid of s.turnOrder) {
+    for (const id of [...(s.players[pid]!.phasedOut ?? [])]) {
+      const c = s.cards[id]!;
+      if (c.owner === playerId || c.controller === playerId) moveCard(ctx, id, 'exile');
+    }
+  }
   for (const c of battlefield(s)) {
     if (c.owner === playerId || c.controller === playerId) moveCard(ctx, c.id, 'exile');
   }

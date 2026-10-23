@@ -508,6 +508,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'destroy') return pick([...byValue].reverse().slice(0, p.max));
   // Putting lands onto the battlefield for free: always.
   if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
+  // Cards for our hand: the best.
+  if (p.purpose === 'hand') return pick(byValue.reverse().slice(0, p.max));
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
   const ours = s.cards[p.cards[0]!]!.controller === me;
   const order = ours ? byValue.reverse() : byValue;

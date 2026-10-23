@@ -30,6 +30,8 @@ export interface PlayerView {
   exile: InstanceId[];
   /** The command zone (Commander format). */
   command: InstanceId[];
+  /** Phased-out permanents this player controls: treated as though they don't exist until their next turn. */
+  phasedOut: InstanceId[];
   /** Times each commander has been cast from the command zone; the tax is {2} per cast. */
   commanderCasts: Record<InstanceId, number>;
   /** Combat damage taken from each commander; 21 from one commander knocks you out. */
@@ -87,6 +89,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       graveyard: [...p.graveyard],
       exile: [...p.exile],
       command: [...p.command],
+      phasedOut: s.turnOrder.flatMap((owner) => s.players[owner]!.phasedOut ?? []).filter((id) => s.cards[id]!.controller === pid),
       commanderCasts: { ...p.commanderCasts },
       commanderDamage: { ...p.commanderDamage },
       manaPool: { ...p.manaPool },
@@ -96,9 +99,11 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   }
   const stats: Record<InstanceId, PermanentStats> = {};
   const surveilled = s.pending.kind === 'surveil' && s.pending.player === viewer ? s.pending.card : null;
+  // Cards being looked at to choose from ("look at the top seven cards of your library").
+  const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer && s.pending.purpose === 'hand' ? s.pending.cards : [];
   for (const c of Object.values(s.cards)) {
     const faceDown = c.zone === 'exile' && c.foretoldTurn !== undefined && c.owner !== viewer;
-    const visible = !faceDown && (PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled);
+    const visible = !faceDown && (PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled || lookingAt.includes(c.id));
     if (visible) cards[c.id] = { ...c };
     if (c.zone === 'battlefield') {
       const ch = characteristics(s, c);

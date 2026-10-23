@@ -123,6 +123,8 @@ export const TARGET_KINDS = [
   'EachOtherOpponent',
   /** Every card in every graveyard matching `filter` ("all creature cards from all graveyards"). */
   'AllGraveyardCards',
+  /** The creatures that convoked the spell (Lethal Scheme). */
+  'ConvokedCreatures',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
@@ -257,6 +259,25 @@ export const EFFECT_KINDS = [
    * `chooser: 'You'` (with `onePerType`: at most one of each of those types).
    */
   'KeepAndSacrificeRest',
+  /**
+   * The target permanents phase out (rule 702.26): treated as though they
+   * don't exist until their controller's next untap step, along with anything
+   * attached to them.
+   */
+  'PhaseOut',
+  /**
+   * Each target creature connives (rule 701.50): its controller draws a card,
+   * then discards a card; a discarded nonland card puts a +1/+1 counter on it.
+   */
+  'Connive',
+  /** Look at the top `amount` cards of your library; put `keep` of them into your hand and the rest on the bottom. */
+  'LookAtTopPutInHand',
+  /**
+   * The target card in your graveyard may be cast this turn (`free`: without
+   * paying its mana cost); if it would go to the graveyard afterwards, it's
+   * exiled instead (Torrential Gearhulk, Emet-Selch).
+   */
+  'AllowCastFromGraveyard',
 ] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
 
@@ -292,6 +313,9 @@ export const COUNT_KINDS = [
   'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
   'OpponentsWithMoreCreatures',
+  'ArtifactsYouControl',
+  /** The greatest mana value among artifacts you control (Edgar). */
+  'GreatestManaValueAmongYourArtifacts',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -401,7 +425,7 @@ export interface EffectSpec {
   /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
   toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
-  if?: 'castFromGraveyard' | 'castFromExile';
+  if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
   /** SearchLibraryToBattlefield: the card enters tapped. */
@@ -434,6 +458,12 @@ export interface EffectSpec {
   groupOwnersDiffer?: boolean;
   /** ReturnToBattlefield: under your control instead of its owner's. */
   underYourControl?: boolean;
+  /** ReturnToBattlefield: unearth (rule 702.84): it gains haste, and is exiled at the next end step or if it would leave. */
+  unearth?: boolean;
+  /** LookAtTopPutInHand: how many go to your hand. */
+  keep?: number;
+  /** AllowCastFromGraveyard: without paying its mana cost. */
+  free?: boolean;
   /** AttachEquipmentTo: which chosen target (by index) is the Equipment. */
   from?: number;
 }
@@ -469,6 +499,8 @@ export const TRIGGER_EVENTS = [
   'Chapter',
   /** A permanent was sacrificed. */
   'Sacrificed',
+  /** One or more opponents lost life (use with `oneOrMore`). */
+  'OpponentLosesLife',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -602,6 +634,8 @@ export interface TriggerSpec {
   cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue' };
   /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
   oncePerTurnWhenPaid?: boolean;
+  /** Dies: only if it was cast for its blitz cost (rule 702.152). */
+  ifBlitzed?: boolean;
   effects: EffectSpec[];
 }
 
@@ -624,9 +658,11 @@ export interface ActivatedSpec {
      * `costCards`). Without `counter`, any kind (the engine picks which).
      */
     removeCounter?: { counter?: AnyCounter; from?: ObjectFilter };
+    /** "Pay 3 life". */
+    life?: number;
   };
   /** Where the card must be. Defaults to the battlefield. */
-  zone?: 'battlefield' | 'hand';
+  zone?: 'battlefield' | 'hand' | 'graveyard';
   /** "Activate only as a sorcery" (equip always is). */
   sorcerySpeed?: boolean;
   /** "Activate only if you control a creature with power 4 or greater." */
@@ -655,7 +691,14 @@ export interface StaticSpec {
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
    * turn ("the second spell you cast each turn costs {2} less").
    */
-  spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number };
+  spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean };
+  /** Ward (rule 702.21): each affected permanent has ward with this cost (Bronze Guardian). */
+  ward?: number;
+  /**
+   * Edgar: "Once during each of your turns, you may cast an artifact spell
+   * from your graveyard. If you cast a spell this way, that artifact enters tapped."
+   */
+  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean };
   /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
   equipCost?: { mana: string; ifArtifactsAtLeast: number };
   /** Works while the card is in this zone instead of on the battlefield (Anger, from the graveyard). */
@@ -790,11 +833,30 @@ export interface CardDefinition {
     ifControls?: ObjectFilter;
     /** Replaces the spell's effects when cast this way (overload). */
     effects?: EffectSpec[];
+    /** "Discard a card" as part of this cost (blitz); chosen with the action (`costCards`). */
+    discard?: number;
+    /**
+     * Blitz (rule 702.152): the creature gains haste and "When this creature
+     * dies, draw a card", and is sacrificed at the beginning of the next end step.
+     */
+    blitz?: boolean;
+    /** "You may cast this card from your graveyard using its blitz ability" (Sabin): this way only. */
+    fromGraveyard?: boolean;
   };
   /** "This spell can't be countered." */
   cantBeCountered?: boolean;
   /** "As an additional cost to cast this spell, discard a card": chosen with the action (`costCards`). */
   additionalCost?: { discard: number };
+  /** Ward {N} (rule 702.21). */
+  ward?: number;
+  /** Convoke (rule 702.51): creatures you tap while casting it each pay for {1} or one mana of their color. */
+  convoke?: boolean;
+  /** Delve (rule 702.66): each card exiled from your graveyard while casting it pays for {1}. */
+  delve?: boolean;
+  /** Rebound (rule 702.88): cast from your hand, it's exiled as it resolves and can be cast free during your next turn. */
+  rebound?: boolean;
+  /** Unearth cost (rule 702.84): an ability that works from the graveyard. */
+  unearth?: string;
   /** "This creature enters with N +1/+1 counters on it." */
   entersWithCounters?: number;
   /** "This creature enters with X +1/+1 counters on it" (Walking Ballista). */
@@ -881,6 +943,20 @@ export interface CardInstance {
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */
   commanderStays?: boolean;
+  /**
+   * `player` may cast this card from its graveyard or exile on `turn`
+   * (`free`: without paying its mana cost); with `exileAfter`, it's exiled
+   * instead of going to the graveyard afterwards.
+   */
+  castPermission?: { player: PlayerId; turn: number; free?: boolean; exileAfter?: boolean };
+  /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
+  phasedOut?: boolean;
+  /** Cast for its blitz cost. Kept as it dies (for "when this creature dies, draw a card") until it enters again. */
+  blitzed?: boolean;
+  /** Returned with unearth: exiled at the next end step or if it would leave the battlefield. */
+  unearthed?: boolean;
+  /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */
+  rebounding?: boolean;
 }
 
 export interface PlayerState {
@@ -925,6 +1001,10 @@ export interface PlayerState {
   /** "Prevent all damage that would be dealt to you this turn": the turn it applies to. */
   preventDamageTurn?: number;
   conceded: boolean;
+  /** Phased-out permanents this player owns (they're `zone: 'battlefield'` with `phasedOut`). */
+  phasedOut?: InstanceId[];
+  /** The last turn this player cast a spell from their graveyard with Edgar's permission. */
+  graveyardCastTurn?: number;
 }
 
 /** Steps and phases in turn order. */
@@ -966,6 +1046,12 @@ export interface SpellItem {
   manaSpent: number;
   /** The value chosen for {X}. */
   x?: number;
+  /** The creatures that convoked it. */
+  convoked?: InstanceId[];
+  /** Exiled instead of going to the graveyard (cast with a permission that says so). */
+  exileAfter?: boolean;
+  /** The permanent enters tapped (Edgar). */
+  entersTapped?: boolean;
 }
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
@@ -1046,13 +1132,15 @@ export interface Resolving {
   chosenManaValue?: number;
   /** Whether the cards chosen in the last choosing effect included a creature / a noncreature card. */
   chosenTypes?: { creature: boolean; noncreature: boolean };
+  /** Connive: the creatures conniving; each gets a +1/+1 counter per nonland card discarded, in order. */
+  conniving?: InstanceId[];
 }
 
 /** One player's choice of cards while a spell or ability resolves. */
 export interface CardChoice {
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy';
+  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1179,6 +1267,10 @@ export type Action =
       costCards?: InstanceId[];
       /** The value chosen for {X} in its cost. */
       x?: number;
+      /** Convoke: untapped creatures you control to tap as part of the payment. */
+      convoke?: InstanceId[];
+      /** Delve: cards in your graveyard to exile as part of the payment. */
+      delve?: InstanceId[];
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number }
@@ -1264,6 +1356,9 @@ export type GameEvent =
   | { type: 'CountersRemoved'; card: InstanceId; amount: number; counter: AnyCounter }
   /** A card was foretold: exiled face down. Which card stays hidden. */
   | { type: 'Foretold'; player: PlayerId; card: InstanceId }
+  /** A permanent phased out or back in (rule 702.26). */
+  | { type: 'PhasedOut'; card: InstanceId }
+  | { type: 'PhasedIn'; card: InstanceId }
   /** A spell was countered: it left the stack without resolving. */
   | { type: 'SpellCountered'; card: InstanceId; defId: CardDefId; by: InstanceId }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }

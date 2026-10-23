@@ -1,7 +1,7 @@
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { allCounters, amountOf, countOf, countersOf, isEquipment, powerOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { shuffleInPlace } from './rng.ts';
@@ -25,6 +25,7 @@ import {
   isCreatureOnBattlefield,
   moveCard,
   newId,
+  phaseOut,
   player,
   reject,
   removeCounters,
@@ -34,7 +35,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { canReveal, entersTapped, isPermanentCard, isSpellCard, manaChoices, objectManaValue } from './typerules.ts';
+import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaChoices, objectManaValue } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -51,6 +52,7 @@ import {
   type ManaType,
   type ObjectFilter,
   type PlayerId,
+  type StaticSpec,
   type Resolving,
   type SpellItem,
   type StackItem,
@@ -111,6 +113,14 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
       effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }],
     });
   }
+  if (def.unearth) {
+    out.push({
+      cost: { mana: def.unearth },
+      zone: 'graveyard',
+      sorcerySpeed: true,
+      effects: [{ effect: 'ReturnToBattlefield', target: 'This', unearth: true }],
+    });
+  }
   return out;
 }
 
@@ -134,6 +144,10 @@ export interface SpellChoice {
   alternative?: boolean;
   /** Cards discarded to pay an additional cost. */
   costCards?: InstanceId[];
+  /** Convoke: creatures tapped to help pay. */
+  convoke?: InstanceId[];
+  /** Delve: graveyard cards exiled to help pay. */
+  delve?: InstanceId[];
 }
 
 /**
@@ -188,6 +202,11 @@ export function alternativeCostProblem(s: GameState, def: CardDefinition, player
 /** For triggered abilities: the player attacked or damaged ("artifact that player controls"). */
 export interface TargetContext {
   defender?: PlayerId;
+  /**
+   * For a triggered ability. Ward is simplified: an opponent's triggered
+   * ability can't target a permanent with ward (as if its ward cost went unpaid).
+   */
+  triggered?: boolean;
 }
 
 export function isLegalTarget(
@@ -218,7 +237,8 @@ export function isLegalTarget(
     // A player who left the game took their cards with them (rule 800.4a).
     return c.zone === 'graveyard' && !s.players[c.owner]!.eliminated && matchesObject(s, effect.filter, c, viewpoint);
   }
-  if (c.zone !== 'battlefield') return false;
+  if (c.zone !== 'battlefield' || c.phasedOut) return false;
+  if (context.triggered && c.controller !== controller && characteristics(s, c).ward > 0) return false;
   // Shroud: nobody can target it. Hexproof: its controller's opponents can't (rules 702.11, 702.18).
   if (hasKeyword(s, c, 'Shroud')) return false;
   if (hasKeyword(s, c, 'Hexproof') && c.controller !== controller) return false;
@@ -291,7 +311,8 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
 
 /** A stack item's trigger context. */
 function contextOf(item: StackItem): TargetContext {
-  return item.kind === 'ability' && item.defender ? { defender: item.defender } : {};
+  if (item.kind !== 'ability') return {};
+  return { ...(item.defender ? { defender: item.defender } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
 }
 
 function sourceOf(item: StackItem): InstanceId {
@@ -424,7 +445,9 @@ export function playableZone(
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
-  if (c.owner === playerId && c.zone === 'graveyard' && defOf(s, c).flashback) return 'graveyard';
+  if (graveyardWay(s, playerId, c)) return 'graveyard';
+  // Rebound, or another permission to cast it this turn.
+  if (c.zone === 'exile' && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'exile';
   // A foretold card can be cast on a later turn than the one it was foretold on.
   if (c.owner === playerId && c.zone === 'exile' && c.foretoldTurn !== undefined) return c.foretoldTurn < s.turnNumber ? 'exile' : null;
   const p = c.playableFromExile;
@@ -435,6 +458,72 @@ export function playableZone(
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
   return null;
+}
+
+/** How a card in a graveyard can be cast: flashback, blitz (Sabin), a permission (Gearhulk, Emet-Selch), or Edgar's static. */
+export type GraveyardWay = 'flashback' | 'blitz' | 'permission' | 'static';
+
+export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance): GraveyardWay | null {
+  if (c.zone !== 'graveyard') return null;
+  if (c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'permission';
+  if (c.owner !== playerId) return null;
+  const def = defOf(s, c);
+  if (def.flashback) return 'flashback';
+  if (def.alternativeCost?.fromGraveyard) return 'blitz';
+  if (graveyardCastStatic(s, playerId, c)) return 'static';
+  return null;
+}
+
+/** Edgar: "Once during each of your turns, you may cast an artifact spell from your graveyard." */
+function graveyardCastStatic(s: GameState, playerId: PlayerId, c: CardInstance): StaticSpec['castFromGraveyard'] | undefined {
+  if (s.activePlayer !== playerId || s.players[playerId]!.graveyardCastTurn === s.turnNumber || !isSpellCard(defOf(s, c))) return undefined;
+  for (const source of battlefield(s)) {
+    if (source.controller !== playerId) continue;
+    for (const spec of defOf(s, source).statics ?? []) {
+      const allow = spec.castFromGraveyard;
+      if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id })) return allow;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Ward, simplified to an additional cost: targeting permanents with ward that
+ * an opponent of `playerId` controls costs their ward on top (rule 702.21 counters
+ * the spell or ability unless that's paid).
+ */
+export function wardCost(s: GameState, targets: readonly Target[], playerId: PlayerId): number {
+  const seen = new Set<InstanceId>();
+  let total = 0;
+  for (const t of targets) {
+    if (t.kind !== 'card' || seen.has(t.card)) continue;
+    seen.add(t.card);
+    const c = s.cards[t.card];
+    if (c?.zone === 'battlefield' && c.controller !== playerId) total += characteristics(s, c).ward;
+  }
+  return total;
+}
+
+const COLOR_MANA: Record<string, ManaType> = { W: 'W', U: 'U', B: 'B', R: 'R', G: 'G' };
+
+/**
+ * Convoke: each creature pays for one mana of its color if the cost still has
+ * some, or else {1}. Null if a creature would have nothing left to pay for.
+ */
+export function convokeCost(s: GameState, cost: ManaCost, creatures: readonly CardInstance[]): ManaCost | null {
+  let out = { ...cost };
+  for (const c of creatures) {
+    const color = colorsOf(defOf(s, c)).map((k) => COLOR_MANA[k]!).find((t) => (out[t] ?? 0) > 0);
+    if (color) out = { ...out, [color]: out[color]! - 1 };
+    else if (out.generic > 0) out = { ...out, generic: out.generic - 1 };
+    else return null;
+  }
+  return out;
+}
+
+/** Untapped creatures a player could tap for convoke, in battlefield order. */
+export function convokeCandidates(s: GameState, playerId: PlayerId): CardInstance[] {
+  return s.players[playerId]!.battlefield.map((id) => s.cards[id]!).filter((c) => c.controller === playerId && !c.tapped && isCreatureOnBattlefield(s, c));
 }
 
 export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: boolean): void {
@@ -468,14 +557,22 @@ export function spellCost(
   alternative = false,
   x = 0,
 ): ManaCost {
-  const base = alternative
-    ? def.alternativeCost?.mana
-    : from === 'graveyard'
-      ? def.flashback
-      : from === 'exile' && card?.foretoldTurn !== undefined
-        ? def.foretell
-        : def.manaCost;
+  const permission = card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile')
+    ? card.castPermission
+    : undefined;
+  const way = from === 'graveyard' && card ? graveyardWay(s, card.owner, card) : null;
+  const base = permission?.free
+    ? undefined
+    : alternative
+      ? def.alternativeCost?.mana
+      : way === 'flashback'
+        ? def.flashback
+        : from === 'exile' && card?.foretoldTurn !== undefined
+          ? def.foretell
+          : def.manaCost;
   let cost = parseManaCost(base);
+  // Ward on the targets (an additional cost here, see wardCost).
+  if (card) cost = { ...cost, generic: cost.generic + wardCost(s, targets, card.owner) };
   // {X}: each X symbol costs the chosen value (rule 107.3).
   if (cost.x) cost = { ...cost, generic: cost.generic + x * cost.x };
   // Commander tax: {2} more for each earlier cast from the command zone (rule 903.8).
@@ -502,6 +599,8 @@ export function spellCost(
       for (const spec of defOf(s, source).statics ?? []) {
         const r = spec.spellCostReduction;
         if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id })) continue;
+        // "Spells you cast from your graveyard cost {2} less" (Emet-Selch).
+        if (r.fromGraveyard && from !== 'graveyard') continue;
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[card.owner]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         cost = reduceGeneric(cost, r.generic);
@@ -529,14 +628,49 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     const problem = alternativeCostProblem(s, def, playerId);
     if (problem) reject(problem);
   }
+  // From a graveyard, blitz is the only alternative cost that works, and the only way for Sabin (rule 118.9a).
+  const way = from === 'graveyard' ? graveyardWay(s, playerId, c) : null;
+  if (way === 'blitz' && !alternative) reject(`${def.name} can only be cast from your graveyard for its blitz cost.`);
+  if (from === 'graveyard' && alternative && way !== 'blitz') reject("That alternative cost can't be used from the graveyard.");
+  const permission = (from === 'graveyard' || from === 'exile') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
+    ? c.castPermission
+    : undefined;
   checkTargets(s, spellEffects(def, choice), targets, playerId, id);
   const costCards = choice.costCards ?? [];
-  checkDiscardCost(s, playerId, def.additionalCost?.discard ?? 0, costCards, id);
+  const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
+  checkDiscardCost(s, playerId, discardCount, costCards, id);
   const x = choice.x ?? 0;
   if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
-  const manaSpent = payMana(ctx, playerId, spellCost(s, def, from, targets, c, alternative, x), isEquipment(s, c));
+  if (x > 0 && permission?.free) reject('X is 0 when a spell is cast without paying its mana cost.');
+  let cost = spellCost(s, def, from, targets, c, alternative, x);
+  // Convoke and delve pay part of the cost with creatures and graveyard cards.
+  const convoked = (choice.convoke ?? []).map((cid) => card(s, cid));
+  if (convoked.length > 0) {
+    if (!def.convoke) reject(`${def.name} doesn't have convoke.`);
+    const able = convokeCandidates(s, playerId);
+    if (new Set(convoked).size !== convoked.length || convoked.some((k) => !able.includes(k))) {
+      reject('Convoke with different untapped creatures you control.');
+    }
+    cost = convokeCost(s, cost, convoked) ?? reject('That is more creatures than the spell needs.');
+  }
+  const delved = choice.delve ?? [];
+  if (delved.length > 0) {
+    if (!def.delve) reject(`${def.name} doesn't have delve.`);
+    const graveyard = player(s, playerId).graveyard;
+    if (new Set(delved).size !== delved.length || delved.some((g) => g === id || !graveyard.includes(g))) {
+      reject('Delve exiles different other cards from your graveyard.');
+    }
+    if (delved.length > cost.generic) reject('That is more cards than the spell needs.');
+    cost = { ...cost, generic: cost.generic - delved.length };
+  }
+  const manaSpent = payMana(ctx, playerId, cost, isEquipment(s, c));
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   for (const discarded of costCards) discard(ctx, discarded);
+  for (const k of convoked) tap(ctx, k);
+  for (const g of delved) moveCard(ctx, g, 'exile');
+  // Edgar's permission is used up for this turn.
+  const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c) : undefined;
+  if (way === 'static') player(s, playerId).graveyardCastTurn = s.turnNumber;
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
     casts[id] = (casts[id] ?? 0) + 1;
@@ -564,6 +698,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     castFrom: from,
     manaSpent,
     ...(x > 0 ? { x } : {}),
+    ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
+    ...(permission?.exileAfter ? { exileAfter: true } : {}),
+    ...(edgar?.entersTapped ? { entersTapped: true } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'SpellCast', player: playerId, card: id, defId: c.defId, targets, manaSpent });
@@ -610,6 +747,7 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
   }
+  if (source) cost = { ...cost, generic: cost.generic + wardCost(s, targets, source.controller) };
   return cost;
 }
 
@@ -620,6 +758,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
     return 'You do not control that permanent.';
   }
   if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
+  if (zone === 'graveyard' && (c.zone !== 'graveyard' || c.owner !== playerId)) return 'That card is not in your graveyard.';
+  if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
@@ -736,6 +876,7 @@ export function activateAbility(
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
   payMana(ctx, playerId, abilityCost(s, spec, targets, c), spec.equip ?? false);
+  if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
   if (spec.cost.tap) tap(ctx, c);
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
@@ -816,6 +957,10 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'graveyard' ? [{ kind: 'card', card: subject }] : [];
     }
+    case 'ConvokedCreatures':
+      return item.kind === 'spell'
+        ? (item.convoked ?? []).filter((id) => isCreatureOnBattlefield(s, s.cards[id])).map((id) => ({ kind: 'card', card: id }))
+        : [];
     case 'CreatedTokens':
       return r.createdTokens.filter((id) => s.cards[id]!.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
     case 'ActivePlayer':
@@ -1215,8 +1360,40 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const countered = s.stack[index] as SpellItem;
         s.stack.splice(index, 1);
         ctx.ev.push({ type: 'SpellCountered', card: id, defId: s.cards[id]!.defId, by: source });
-        // A flashback spell is exiled instead (rule 702.34a).
-        moveCard(ctx, id, countered.castFrom === 'graveyard' ? 'exile' : 'graveyard');
+        // A flashback spell is exiled instead (rule 702.34a), and so is one cast with a permission that says so.
+        const flashback = countered.castFrom === 'graveyard' && !!defOf(s, s.cards[id]!).flashback;
+        moveCard(ctx, id, flashback || countered.exileAfter ? 'exile' : 'graveyard');
+      }
+      return;
+    case 'PhaseOut':
+      for (const id of onBattlefield) phaseOut(ctx, id);
+      return;
+    case 'Connive': {
+      // Simplified: the creatures connive together: draw one card each, discard as many, then each
+      // nonland card discarded puts a +1/+1 counter on the next of them.
+      const connivers = onBattlefield.filter((id) => isCreatureOnBattlefield(s, s.cards[id]));
+      if (connivers.length === 0) return;
+      const who = s.cards[connivers[0]!]!.controller;
+      drawCards(ctx, who, connivers.length);
+      const hand = s.players[who]!.hand;
+      if (hand.length === 0) return;
+      const n = Math.min(connivers.length, hand.length);
+      r.conniving = connivers;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: who, purpose: 'discard', cards: [...hand], min: n, max: n }];
+      return;
+    }
+    case 'LookAtTopPutInHand': {
+      const top = topOfLibrary(s, item.controller, amount);
+      if (top.length === 0) return;
+      const keep = Math.min(effect.keep ?? 1, top.length);
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: top, min: keep, max: keep }];
+      return;
+    }
+    case 'AllowCastFromGraveyard':
+      for (const id of cards) {
+        const c = s.cards[id]!;
+        if (c.zone !== 'graveyard') continue;
+        c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ...(effect.free ? { free: true } : {}) };
       }
       return;
     case 'PreventDamageToYouThisTurn':
@@ -1290,6 +1467,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         c.summoningSick = true;
         if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
         addCounters(ctx, id, effect.counters ?? 0, item.controller, effect.counter);
+        if (effect.unearth) {
+          c.unearthed = true;
+          s.temporaryEffects.push({ source: id, affected: id, keywords: ['Haste'] });
+        }
       }
       return;
     case 'Attach':
@@ -1409,10 +1590,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
 
 /** After the effects: instants and sorceries go to the graveyard, or exile if cast with flashback. */
 function finishResolving(ctx: Ctx, item: StackItem): void {
-  if (item.kind === 'spell' && ctx.s.cards[item.card]!.zone === 'stack') {
-    moveCard(ctx, item.card, item.castFrom === 'graveyard' ? 'exile' : 'graveyard');
+  const s = ctx.s;
+  if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') {
+    const c = s.cards[item.card]!;
+    if (item.castFrom === 'graveyard' || item.exileAfter) moveCard(ctx, item.card, 'exile');
+    else if (defOf(s, c).rebound && item.castFrom === 'hand') {
+      // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.
+      moveCard(ctx, item.card, 'exile');
+      c.rebounding = true;
+    } else moveCard(ctx, item.card, 'graveyard');
   }
-  givePriority(ctx, ctx.s.activePlayer);
+  givePriority(ctx, s.activePlayer);
 }
 
 /** Applies effects in order until done, or until a choice (surveil) is needed. */
@@ -1445,6 +1633,7 @@ function continueResolving(ctx: Ctx): void {
     }
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
     if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
+    if (effect.if === 'castFromHand' && !(item.kind === 'spell' && item.castFrom === 'hand')) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
@@ -1525,8 +1714,13 @@ export function resolveTop(ctx: Ctx): void {
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
       c.summoningSick = true;
-      if (entersTapped(s, c)) c.tapped = true;
+      if (entersTapped(s, c) || item.entersTapped) c.tapped = true;
       addCounters(ctx, c.id, extra, item.controller);
+      // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
+      if (item.alternative && def.alternativeCost?.blitz) {
+        c.blitzed = true;
+        s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });
+      }
       givePriority(ctx, s.activePlayer);
       return;
     }
@@ -1560,9 +1754,9 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
     if (life !== undefined && player(s, playerId).life < life) reject("You don't have enough life to pay.");
     if (cost.mana) payMana(ctx, playerId, parseManaCost(cost.mana));
     if (life) changeLife(ctx, playerId, -life);
-    // "Do this only once each turn" (G'raha Tia): paid, so done for this turn.
-    if (spec.oncePerTurnWhenPaid) s.triggeredThisTurn.push(`${item.source}#${item.ability}`);
   }
+  // "Do this only once each turn" (G'raha Tia, Emet-Selch): done, so not again this turn.
+  if (accept && spec?.oncePerTurnWhenPaid) s.triggeredThisTurn.push(`${item.source}#${item.ability}`);
   item.accepted = accept;
   ctx.ev.push({ type: 'Decided', player: playerId, item: item.id, card: item.source, accepted: accept });
   resolveTop(ctx);
@@ -1583,7 +1777,23 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
-  if (pending.purpose === 'discard') for (const id of cards) discard(ctx, id);
+  if (pending.purpose === 'discard') {
+    for (const id of cards) discard(ctx, id);
+    if (r.conniving) {
+      const nonland = cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
+      for (const id of r.conniving.slice(0, nonland)) addCounters(ctx, id, 1, pending.player);
+      delete r.conniving;
+    }
+  } else if (pending.purpose === 'hand') {
+    // The rest go on the bottom of the library, in the order shown.
+    const library = player(s, pending.player).library;
+    for (const id of cards) moveCard(ctx, id, 'hand');
+    for (const id of pending.cards) {
+      if (cards.includes(id) || !library.includes(id)) continue;
+      library.splice(library.indexOf(id), 1);
+      library.push(id);
+    }
+  }
   else if (pending.purpose === 'battlefield') {
     for (const id of cards) {
       moveCard(ctx, id, 'battlefield');

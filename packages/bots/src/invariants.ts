@@ -19,9 +19,14 @@ export function checkInvariants(s: GameState): string[] {
         else if (c.zone !== zone || c.owner !== pid) problems.push(`${id} listed in ${pid}.${zone} but is ${c.owner}.${c.zone}`);
       }
     }
+    for (const id of p.phasedOut ?? []) {
+      note(id);
+      const c = s.cards[id];
+      if (!c?.phasedOut || c.zone !== 'battlefield' || c.owner !== pid) problems.push(`${id} listed as phased out for ${pid} but isn't`);
+    }
     for (const t of MANA_TYPES) if (p.manaPool[t] < 0) problems.push(`${pid} has negative ${t} mana`);
     if (!Number.isInteger(p.life)) problems.push(`${pid} life is ${p.life}`);
-    if (p.eliminated && p.battlefield.length > 0) problems.push(`eliminated ${pid} still has permanents`);
+    if (p.eliminated && (p.battlefield.length > 0 || (p.phasedOut?.length ?? 0) > 0)) problems.push(`eliminated ${pid} still has permanents`);
   }
   for (const item of s.stack) {
     if (item.kind === 'ability') {
