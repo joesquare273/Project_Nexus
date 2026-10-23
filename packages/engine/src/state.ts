@@ -188,6 +188,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
   const lastPower = from === 'battlefield' && hasType(s, c, 'creature') ? powerOf(s, c) : undefined;
   const lastCounters = from === 'battlefield' ? Object.fromEntries(allCounters(c)) : undefined;
+  if (from === 'battlefield') {
+    for (const item of [...s.stack, ...s.triggerQueue, ...(s.resolving ? [s.resolving.item] : [])]) {
+      if ('source' in item && item.source === id && (item.sourceObject ?? 0) === c.zoneChanges! - 1) item.lastSourceCounterKinds = allCounters(c).length;
+    }
+  }
   const lastKeywords = from === 'battlefield' ? [...characteristics(s, c).keywords] : undefined;
   if (from === 'graveyard') player(s, c.owner).cardLeftGraveyardTurn = s.turnNumber;
   if (s.triggeredThisTurn.length > 0) {
@@ -380,7 +385,12 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
       return;
     }
   }
-  ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat });
+  const grantedTriggers = combat && target.kind === 'player'
+    ? s.temporaryEffects.filter(e => e.affected === sourceId && e.trigger?.when === 'CombatDamageToPlayer').map(e => e.trigger!)
+    : [];
+  ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat,
+    ...(grantedTriggers.length ? { grantedTriggers, sourceController: source.controller, sourceObject: source.zoneChanges ?? 0, sourceCounterKinds: allCounters(source).length } : {}),
+  });
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
     if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {

@@ -180,6 +180,8 @@ export const EFFECT_KINDS = [
   'SetBasePT',
   /** "gains [keywords] until end of turn". */
   'GrantKeywords',
+  /** Grant a self combat-damage-to-player trigger until end of turn. */
+  'GrantTrigger',
   /** Special one-turn rules: "can't be blocked this turn", "must be blocked this turn if able", and so on. */
   'GrantFlags',
   /** Exile the target until the source leaves the battlefield. */
@@ -370,6 +372,8 @@ export type Amount =
         | 'destroyedThisWay'
         | 'chosenCount'
         | 'chosenManaValue'
+        /** Number of distinct counter kinds on the ability's source. */
+        | 'sourceCounterKinds'
         | 'sourcePower'
         | 'subjectPower'
         | 'subjectCounters'
@@ -407,6 +411,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** GrantTrigger: the combat damage ability to grant until cleanup. */
+  trigger?: TriggerSpec;
   /** GainControl: give the permanent to the player captured by the trigger. */
   giveTo?: 'SubjectController';
   /** Affect the source only if it is still the same object as when it triggered. */
@@ -632,6 +638,8 @@ export interface ObjectFilter {
 }
 
 export interface TriggerSpec {
+  /** Support X: target slots are fixed when the entry trigger is queued. */
+  supportX?: boolean;
   when: TriggerEvent;
   /**
    * Subjects that trigger it. Absent means the card itself ("when this
@@ -1181,6 +1189,10 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  /** Captured granted or expanded trigger; immutable after queueing. */
+  spec?: TriggerSpec;
+  /** Last known counter kinds when this ability's source object left. */
+  lastSourceCounterKinds?: number;
   sourceObject?: number;
   subjectController?: PlayerId;
   modes?: number[];
@@ -1210,6 +1222,10 @@ export type StackItem = SpellItem | AbilityItem;
 
 /** A triggered ability waiting to be put on the stack. */
 export interface QueuedTrigger {
+  /** Captured granted or expanded trigger; immutable after queueing. */
+  spec?: TriggerSpec;
+  /** Last known counter kinds when this ability's source object left. */
+  lastSourceCounterKinds?: number;
   sourceObject?: number;
   subjectController?: PlayerId;
   modes?: number[];
@@ -1228,6 +1244,7 @@ export interface QueuedTrigger {
 
 /** An "until end of turn" effect on one object (rule 611.2). */
 export interface TemporaryEffect {
+  trigger?: TriggerSpec;
   basePowerToughness?: [number, number];
   timestamp?: number;
   source: InstanceId;
@@ -1539,7 +1556,7 @@ export type GameEvent =
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }
   | { type: 'AttackersUnblocked'; player: PlayerId; defender: PlayerId; attackers: InstanceId[] }
-  | { type: 'DamageDealt'; source: InstanceId; target: Target; amount: number; combat: boolean }
+  | { type: 'DamageDealt'; source: InstanceId; target: Target; amount: number; combat: boolean; grantedTriggers?: TriggerSpec[]; sourceController?: PlayerId; sourceObject?: number; sourceCounterKinds?: number }
   | { type: 'CreatureDied'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'PermanentDestroyed'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'LifeChanged'; player: PlayerId; from: number; to: number }

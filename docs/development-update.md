@@ -5,6 +5,36 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Blitzball Stadium: support X and temporary combat triggers
+
+- Built Blitzball Stadium's entry support X. Targets are chosen when the
+  trigger goes on the stack, may include opponents' creatures, must differ,
+  and can all be omitted. X zero works, and the captured trigger survives
+  the Stadium leaving. Partial target loss preserves remaining legal targets.
+- Go for the Goal! costs {3} and a tap, targets any creature, and grants
+  unblockability plus its own combat-damage-to-player draw trigger until
+  cleanup. The creature's controller draws, not the Stadium's controller.
+- The shared engine can grant self combat-damage-to-player triggers for a
+  turn and capture their specifications independently of the printed card.
+  Each grant triggers separately. Noncombat damage does not trigger it.
+- Draw counts distinct counter kinds at resolution, rather than the number
+  of counters. Last known counter information survives the source leaving
+  and returning as a new object, including lethal combat damage before
+  triggers are placed. The draw ability uses the stack and can be countered.
+- Browser and terminal narration describe the granted ability and support X;
+  the existing target picker and X-cost controls handle the card.
+- Added 36 scenarios across two, three and four players. Type-check and all
+  1,151 tests in 56 files passed, including full-game fuzz regressions. The
+  full suite completed with two workers (268 seconds); the initial default
+  concurrency run was interrupted while producing no results. Production
+  browser build passed with its existing large-bundle warning. No manual
+  browser playtest was performed for this engine-focused step.
+
+297 of 320 distinct precon cards are built; 23 remain. Limit Break is 97/100,
+Revival Trance 88/100, Counter Blitz 95/100, Scions & Spellcraft 94/100.
+
+Support rules reference: [Wizards' Oath of the Gatewatch release notes](https://magic.wizards.com/en/news/feature/oath-gatewatch-release-notes-2016-01-13). Card text is cached in `packages/cards/data/scryfall.json`.
+
 ### Browser-only application direction
 
 - Confirmed the graphical application stays in `packages/client`, using the

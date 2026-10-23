@@ -1754,14 +1754,8 @@
           "count": 1,
           "set": "fic",
           "number": "34",
-          "implemented": false,
-          "needs": [
-            "go-for-the-goal",
-            "support",
-            "triggers",
-            "activated-abilities",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lulu, Stern Guardian",

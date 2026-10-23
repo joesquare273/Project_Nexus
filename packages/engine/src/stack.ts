@@ -138,7 +138,7 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
 /** What a triggered or activated ability on the stack does. */
 export function abilitySpec(s: GameState, item: AbilityItem): TriggerSpec | ActivatedSpec {
   const def = defOf(s, s.cards[item.source]!);
-  return item.from === 'trigger' ? withMode(def.triggers![item.ability]!, item.mode, item.modes) : activatedAbilities(def)[item.ability]!;
+  return item.from === 'trigger' ? withMode(item.spec ?? def.triggers![item.ability]!, item.mode, item.modes) : activatedAbilities(def)[item.ability]!;
 }
 
 /** "Choose one at random": the trigger with the mode that came up as its effects. */
@@ -148,8 +148,8 @@ export function withMode(spec: TriggerSpec, mode: number | undefined, modes?: nu
 }
 
 /** The trigger behind a queued trigger, with its random mode. */
-export function queuedTriggerSpec(s: GameState, t: { source: InstanceId; ability: number; mode?: number; modes?: number[] }): TriggerSpec {
-  return withMode(defOf(s, s.cards[t.source]!).triggers![t.ability]!, t.mode, t.modes);
+export function queuedTriggerSpec(s: GameState, t: { source: InstanceId; ability: number; mode?: number; modes?: number[]; spec?: TriggerSpec }): TriggerSpec {
+  return withMode(t.spec ?? defOf(s, s.cards[t.source]!).triggers![t.ability]!, t.mode, t.modes);
 }
 
 /** The trigger behind an ability item, if it is a triggered ability. */
@@ -1187,7 +1187,9 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
           ? (r.destroyedCount ?? 0)
           : a.of === 'chosenCount'
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
-            : a.of === 'sourcePower'
+            : a.of === 'sourceCounterKinds'
+              ? sourceCounterKinds(s, r.item)
+              : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
               : a.of === 'previousTargetManaValue'
                 ? previousManaValue(s, r)
@@ -1325,7 +1327,16 @@ function previousManaValue(s: GameState, r: Resolving): number {
   return c ? manaValue(parseManaCost(defOf(s, c).manaCost)) : 0;
 }
 
-/** The triggering object's power, or how many counters it had as it left the battlefield. */
+/** Current counter kinds, or the source object's last known count after it leaves. */
+function sourceCounterKinds(s: GameState, item: StackItem): number {
+  const c = s.cards[sourceOf(item)]!;
+  if (item.kind === 'ability' && (c.zone !== item.sourceZone || (c.zoneChanges ?? 0) !== (item.sourceObject ?? 0))) {
+    return item.lastSourceCounterKinds ?? Object.values(c.lastCounters ?? {}).filter(n => n > 0).length;
+  }
+  return allCounters(c).length;
+}
+
+/** The triggering object's power, or how many counters it had as it left. */
 function subjectAmount(s: GameState, item: StackItem, of: 'subjectPower' | 'subjectCounters' | 'subjectPlusOneCounters'): number {
   const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
   if (!c) return 0;
@@ -1676,6 +1687,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createToken(ctx, s.cards[id]!.defId, item.controller));
       }
+      return;
+    case 'GrantTrigger':
+      for (const id of onBattlefield) s.temporaryEffects.push({ source, affected: id, trigger: effect.trigger! });
       return;
     case 'SetBasePT': {
       const timestamp = newTimestamp(s);

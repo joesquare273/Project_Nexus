@@ -78,6 +78,7 @@ function amountText(a: Amount | undefined): string {
   if (typeof a === 'number') return String(a);
   if ('of' in a) {
     if (a.of === 'previousTargetPower' || a.of === 'subjectPower') return 'its power';
+    if (a.of === 'sourceCounterKinds') return 'the number of kinds of counters on this creature';
     if (a.of === 'sourcePower') return "this creature's power";
     if (a.of === 'subjectCounters') return 'that many';
     return 'the number of permanents destroyed this way';
@@ -187,6 +188,8 @@ function effectText(e: EffectSpec): string {
       const sign = (v: number | undefined) => `${(v ?? 0) >= 0 ? '+' : ''}${v ?? 0}`;
       return `${who} ${who.startsWith('each') ? 'gets' : 'gets'} ${sign(e.power)}/${sign(e.toughness)} until end of turn`;
     }
+    case 'GrantTrigger':
+      return `${who} gains "${triggerText(e.trigger!)}" until end of turn`;
     case 'GrantKeywords':
       return `${who} gains ${keywordText(e.keywords ?? [])} ${e.whileYouControlSource ? 'for as long as you control this' : 'until end of turn'}`;
     case 'GrantFlags':
@@ -359,6 +362,7 @@ function triggerCondition(t: TriggerSpec): string {
 
 /** A plain summary of one triggered ability. */
 export function triggerText(t: TriggerSpec): string {
+  if (t.supportX) return "When this artifact enters, support X (up to X target creatures each get a +1/+1 counter).";
   const effects = t.randomModes
     ? `choose one at random: ${t.randomModes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
     : t.modes ? `choose one${t.bothIfCommander ? ' or both if you control a commander' : ''}: ${t.modes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`

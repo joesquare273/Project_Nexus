@@ -300,10 +300,19 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
   const inGraveyards = s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.map((id) => s.cards[id]!)).filter(withTriggers);
 
   const found: QueuedTrigger[] = [];
+  for (const e of events) {
+    if (e.type !== 'DamageDealt' || !e.combat || e.target.kind !== 'player') continue;
+    for (const spec of e.grantedTriggers ?? []) {
+      found.push({ source: e.source, sourceObject: e.sourceObject, controller: e.sourceController!,
+        sourceZone: 'battlefield', ability: -1, spec, subject: e.source, defender: e.target.player,
+        amount: e.amount, lastSourceCounterKinds: e.sourceCounterKinds });
+    }
+  }
   const batched = new Set<string>();
   const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard', o: Occurrence) => {
     if (s.players[controller]!.eliminated) return;
-    defOf(s, c).triggers!.forEach((spec, ability) => {
+    defOf(s, c).triggers!.forEach((original, ability) => {
+      let spec = original;
       if ((spec.zone ?? 'battlefield') !== zone || !triggersOn(spec, o, s, c.id, controller)) return;
       const key = `${c.id}#${ability}`;
       if (spec.oneOrMore) {
@@ -316,7 +325,12 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       }
       // "Do this only once each turn": marked when the cost is paid (see decide).
       if (spec.oncePerTurnWhenPaid && s.triggeredThisTurn.includes(key)) return;
+      if (spec.supportX) {
+        const slots = Math.min(c.xPaid ?? 0, battlefield(s).filter(x => x.id !== c.id && s.cardDefs[x.defId]!.types.includes('creature')).length);
+        spec = { ...spec, supportX: false, effects: Array.from({ length: slots }, () => ({ effect: 'AddCounters', amount: 1, target: 'TargetCreature', filter: { other: true }, upTo: true, group: 'support' })) };
+      }
       found.push({
+        ...(original.supportX ? { spec } : {}),
         source: c.id,
         sourceObject: c.zoneChanges ?? 0,
         ...(o.subjectController ? { subjectController: o.subjectController } : {}),
@@ -367,6 +381,8 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     sourceObject: t.sourceObject,
     ...(t.subjectController ? { subjectController: t.subjectController } : {}),
     from: 'trigger',
+    ...(t.spec ? { spec: t.spec } : {}),
+    ...(t.lastSourceCounterKinds !== undefined ? { lastSourceCounterKinds: t.lastSourceCounterKinds } : {}),
     ability: t.ability,
     sourceZone: t.sourceZone,
     controller: t.controller,

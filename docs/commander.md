@@ -5,10 +5,10 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 96/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 87/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 94/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 90/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 97/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 88/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 95/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 94/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -53,6 +53,13 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
+Blitzball Stadium is built (2026-10-23): support X chooses distinct targets
+on entry, and its activated ability grants unblockability and a combat-damage
+draw trigger until cleanup. Draw counts distinct counter kinds at resolution.
+297 of 320 distinct precon cards are built; 23 remain.
+
+### Previous checkpoint
+
 The Adventure batch is built (2026-10-23): Hypnotic Sprite // Mesmeric Glare,
 Murderous Rider // Swift End, and Hildibrand Manderville // Gentleman's Rise.
 Creature and Adventure casts use distinct characteristics, costs, timing, and
@@ -81,7 +88,7 @@ needing several groups' pieces waits for the last of them.
 | Card draw, life and spells-matter | **13 built (2026-10-22):** Harmonize, Night's Whisper, Secret Rendezvous, Cut a Deal, Into the Story, Baleful Strix, Morbid Opportunist, Archmage Emeritus, Alphinaud, Alisaie, Bastion Protector, Dispatch, Puresteel Paladin. |
 | Keywords and casting from the graveyard | **11 built (2026-10-22):** Bronze Guardian (ward), Hraesvelgr of the First Brood (ward), Clever Concealment (convoke, phasing), Lethal Scheme (convoke, connive), Dig Through Time (delve), Priest of Fell Rites (unearth), Sabin (blitz from the graveyard), Transpose (rebound), Edgar, Emet-Selch of the Third Seat, Torrential Gearhulk. |
 | Extra costs and random choices | **8 built (2026-10-22):** Rite of Replication (kicker), Everflowing Chalice (multikicker), Collective Effort (escalate), Cloud's Limit Break (tiered), Umaro and Summon: Magus Sisters (choose one at random), Thancred Waters, Krile Baldesion. |
-| X costs | **5 built (2026-10-22):** Walking Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond, Yuna's Whistle. Blitzball Stadium and Altered Ego still wait. |
+| X costs | **5 built (2026-10-22):** Walking Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond, Yuna's Whistle. Blitzball Stadium was built with temporary combat triggers; Altered Ego still waits. |
 | Alternate commanders and one-offs | **12 built (2026-10-22):** Tifa, Martial Artist; G'raha Tia, Scion Reborn; Stitcher's Supplier, Authority of the Consuls, Rise of the Dark Realms, Shelinda, Auron, Gyre Sage, Fathom Mage, Path of Discovery, Anger, Vincent. |
 | Sagas | **3 built (2026-10-22):** Summon: Kujata, Summon: Ixion, Summon: Valefor (Yojimbo and Magus Sisters came with later steps). Good King Mog XII and Esper Valigarmanda still wait. |
 | Counterspells and attack taxes | **3 built (2026-10-22):** An Offer You Can't Refuse, Propaganda, Summon: Yojimbo. |

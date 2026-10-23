@@ -106,6 +106,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'destroyedThisWay',
       'chosenCount',
       'chosenManaValue',
+      'sourceCounterKinds',
       'sourcePower',
       'subjectPower',
       'subjectCounters',
@@ -289,6 +290,13 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
+  if (e.effect === 'GrantTrigger') {
+    if (!e.trigger) err('GrantTrigger needs a trigger.');
+    else {
+      validateTrigger(e.trigger, err);
+      if (e.trigger.when !== 'CombatDamageToPlayer' || e.trigger.what) err('GrantTrigger currently supports self combat damage to a player.');
+    }
+  }
   if (e.effect === 'GrantFlags' && !e.flags?.length) err('GrantFlags needs flags.');
   for (const f of e.flags ?? []) if (!TEMPORARY_FLAGS.includes(f)) err(`unknown flag "${f}".`);
   if (e.effect === 'SetBasePT' && (!Number.isInteger(e.power) || !Number.isInteger(e.toughness))) err('SetBasePT needs integer power and toughness.');
@@ -328,6 +336,10 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (!TRIGGER_EVENTS.includes(t.when)) err(`unknown trigger event "${t.when}".`);
   const label = `trigger "${t.when}"`;
   const e: Err = (msg) => err(`${label}: ${msg}`);
+  if (t.supportX) {
+    if (t.when !== 'EntersBattlefield' || t.what || t.effects.length) e('supportX needs a self entry trigger with empty effects.');
+    return;
+  }
   validateFilter(t.what, e);
   if (t.when === 'SpellCast' && !t.what) e('say which spells with "what".');
   if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep' && t.when !== 'EndStep') {
