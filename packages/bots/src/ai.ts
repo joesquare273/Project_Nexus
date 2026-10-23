@@ -254,6 +254,7 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: 
       continue;
     }
     const amount = amountOf(s, e.amount, me);
+    if (e.effect === 'ReturnToBattlefield' && e.target === 'This' && card.zone === 'graveyard') score += value(s, card) - (a.costCards ?? []).reduce((n, id) => n + value(s, s.cards[id]!), 0);
     if (e.effect === 'GainLife' && e.target === 'You') score += s.players[me]!.life <= 12 ? amount / 2 : 0.1;
     if (e.effect === 'DrawCards' && e.target === 'You') score += amount * 1.5;
     if (e.effect === 'CreateToken') score += amount * 2;
@@ -510,6 +511,7 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
   if (p.purpose === 'library') return pick([]);
+  if (p.purpose === 'addCounters' && p.counter === 'cell' && p.cards.every(id => s.cards[id]!.controller !== me)) return pick([]);
   if (p.purpose === 'addCounters') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, p.max));
   if (p.purpose === 'distributeCounter') {
     const recipients = p.cards.filter((id) => s.cards[id]!.controller === me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));

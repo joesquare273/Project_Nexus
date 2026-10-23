@@ -25,6 +25,7 @@ import {
   isCreatureOnBattlefield,
   moveCard,
   newId,
+  newTimestamp,
   phaseOut,
   player,
   reject,
@@ -998,6 +999,7 @@ export function activateAbility(
 ): void {
   const s = ctx.s;
   const c = card(s, id);
+  const sourceObject = c.zoneChanges ?? 0;
   const spec = activatedAbilities(defOf(s, c))[index];
   if (!spec) reject('That card has no such ability.');
   const problem = activationProblem(s, playerId, c, spec);
@@ -1037,6 +1039,7 @@ export function activateAbility(
     kind: 'ability',
     source: id,
     from: 'activated',
+    sourceObject,
     ability: index,
     sourceZone: c.zone,
     controller: playerId,
@@ -1482,6 +1485,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) moveCard(ctx, id, 'hand');
       return;
     case 'AddCounters': {
+      if (effect.optional) {
+        if (onBattlefield.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'addCounters', cards: onBattlefield, min: 0, max: onBattlefield.length, ...(effect.counter ? { counter: effect.counter } : {}) }];
+        return;
+      }
       const src = s.cards[source]!;
       // Adapt: only if it has no +1/+1 counters. Monstrosity: only once.
       if (effect.ifSourceHasNoCounters && (src.counters ?? 0) > 0) return;
@@ -1654,6 +1661,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createToken(ctx, s.cards[id]!.defId, item.controller));
       }
       return;
+    case 'SetBasePT': {
+      const timestamp = newTimestamp(s);
+      for (const id of onBattlefield) s.temporaryEffects.push({ source, affected: id, basePowerToughness: [effect.power!, effect.toughness!], timestamp });
+      return;
+    }
     case 'ModifyPT':
     case 'GrantKeywords':
     case 'GrantFlags':
@@ -2055,7 +2067,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
   if (pending.purpose === 'addCounters') {
-    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, 1, r.item.controller);
+    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, 1, r.item.controller, pending.counter);
   } else if (pending.purpose === 'distributeCounter') {
     const distribution = r.distribution!;
     const recipient = cards[0];

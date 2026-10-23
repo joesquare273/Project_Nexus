@@ -5,6 +5,55 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Sephiroth, Fallen Hero: cell counters and temporary base stats
+
+- Built Jenova Cells: choose its creature target as the attack trigger goes on
+  the stack, then separately choose whether to put a cell counter on it during
+  resolution. Declining the counter still applies the remaining effect. An
+  illegal sole target prevents the entire ability from resolving.
+- Modified creatures you control when the effect resolves get base 7/5 until
+  end of turn. It includes a creature just given a cell counter. The affected
+  group is fixed: later modifications do not add creatures, and losing a
+  modification does not remove the effect. Cell counters persist through
+  cleanup and have no inherent power/toughness bonus.
+- Added timestamp ordering for base-setting effects (layer 7b). Sephiroth
+  overwrites an older Wrecking Ball Arm setting; attaching the Arm later can
+  overwrite Sephiroth. Equipping it to the same creature does not reset its
+  timestamp. Equipment bonuses, other additive effects and +1/+1 counters
+  apply afterwards. Effects disappear when their affected creature changes zones.
+- Modified checks now distinguish Equipment from Auras. Any Equipment or kind
+  of counter qualifies; an attached Aura qualifies only if the creature's
+  controller controls it. This prepares the filter for future Aura cards; it
+  does not mark those unbuilt cards implemented.
+- Built The Reunion from the graveyard at instant speed: pay {3} and sacrifice
+  a modified creature you control as costs, then return Sephiroth tapped.
+  Countering the ability does not refund costs. Activated abilities capture
+  their source object identity, so exiling and returning the card to the
+  graveyard in response cannot make the old ability return the new object.
+- Browser and terminal counter prompts name cell counters and allow choosing
+  none. AI can use Reunion and evaluate its sacrifice; optional cell counters
+  on opponents' creatures can be declined. Generic counter badges and token
+  separation already recognize the new counter kind.
+- Sixty-six scenarios cover 2, 3 and 4 players, optional counters and targeting,
+  counter persistence, additive stats, base-setting timestamps, affected groups,
+  zones and identity, instant timing, sacrifice costs, counters and AI choices.
+- Validation passed: type-check, all 1,029 tests in 53 files, and production
+  build. The existing Vite large-bundle warning remains. Twelve Commander fuzz
+  games (seeds 379-390) finished with no invariant failures or action-limit
+  timeouts. Follow-up card/copy/token and data-validation checks also passed.
+- Browser playtest: selected a Soldier as the attack-trigger target, passed
+  priority, then chose and confirmed the cell counter. It became 7/5; a second
+  Soldier with a +1/+1 counter and Behemoth Sledge became 10/8. No browser
+  warnings/errors. Screenshot saved in this chat's outputs; temporary QA sources
+  removed before the production build.
+- Rules checked against [Wizards' FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes),
+  Sephiroth and Red XIII: base-setting effects precede additive modifiers,
+  and Equipment/counter/Aura control determine whether a creature is modified.
+
+293 of 320 distinct precon cards are built; 27 remain. Limit Break is 97/100,
+Revival Trance 88/100, Counter Blitz 94/100, Scions & Spellcraft 91/100.
+Continue after the user's push/proceed checkpoint.
+
 ### Sublime Epiphany: five modes and individual ability targets
 
 - Built all five modes: counter a spell, counter an activated/triggered ability,

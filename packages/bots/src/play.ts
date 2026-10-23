@@ -481,7 +481,7 @@ async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind
           ? 'put onto the battlefield'
           : p.purpose === 'hand'
             ? 'put into your hand (the rest go on the bottom)'
-            : p.purpose === 'addCounters' ? 'receive a +1/+1 counter each'
+            : p.purpose === 'addCounters' ? `receive a ${p.counter ?? '+1/+1'} counter each`
             : 'keep (the rest are sacrificed)';
   if (p.allOrNothing) {
     const yes = (await ask(`\n  Discard your whole hand (${p.cards.length} cards)? (y/N) `)).toLowerCase() === 'y';

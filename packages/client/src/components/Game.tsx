@@ -934,7 +934,7 @@ function PromptBar(p: PromptProps) {
       { label: 'Auto-pay', onClick: p.onAutoPay, primary: true },
     ];
   } else if (p.targeting) {
-    text = `${p.targeting.title}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card, player, or stack ability.`;
+    text = `${p.targeting.title.replace(/\.$/, '')}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card, player, or stack ability.`;
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
     // An "up to one" target can be left out.
     if (p.canSkipTarget) buttons = [...buttons, { label: 'No target', onClick: p.onSkipTarget }];
@@ -979,7 +979,7 @@ function PromptBar(p: PromptProps) {
               : c.purpose === 'hand'
                 ? 'to put into your hand; the rest go on the bottom of your library'
                 : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
-                  : c.purpose === 'addCounters' ? 'to receive a +1/+1 counter each'
+                  : c.purpose === 'addCounters' ? `to receive a ${c.counter ?? '+1/+1'} counter each`
                   : c.purpose === 'distributeCounter' ? `to receive one +1/+1 counter (${c.counterCount} remain to assign); choose none to finish`
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
                     : 'to keep; the others are sacrificed';

@@ -2,7 +2,7 @@
 // creature you control"), targets ("target nonland permanent an opponent
 // controls") and searches ("a Plains card").
 
-import { characteristics, subtypesOf, isEquipped, totalCounters } from './characteristics.ts';
+import { characteristics, subtypesOf, isEquipped, isModified, totalCounters } from './characteristics.ts';
 import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
 import type { CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
@@ -39,7 +39,7 @@ export function matchesObject(
     const historic = def.types.includes('artifact') || !!def.supertypes?.includes('Legendary') || !!def.subtypes?.includes('Saga');
     if (historic !== f.historic) return false;
   }
-  if (f.modified !== undefined && (obj.zone === 'battlefield' && (isEquipped(s, obj) || totalCounters(obj) > 0)) !== f.modified) return false;
+  if (f.modified !== undefined && isModified(s, obj) !== f.modified) return false;
   if (f.commander !== undefined && !!obj.isCommander !== f.commander) return false;
   if (f.controller === 'You' && objController !== from.controller) return false;
   if (f.controller === 'Opponent' && objController === from.controller) return false;

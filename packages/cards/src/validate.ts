@@ -286,6 +286,8 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   if (e.effect === 'GrantFlags' && !e.flags?.length) err('GrantFlags needs flags.');
   for (const f of e.flags ?? []) if (!TEMPORARY_FLAGS.includes(f)) err(`unknown flag "${f}".`);
+  if (e.effect === 'SetBasePT' && (!Number.isInteger(e.power) || !Number.isInteger(e.toughness))) err('SetBasePT needs integer power and toughness.');
+  if (e.effect === 'AddCounters' && e.optional && (e.amount !== 1 || !CHOSEN_TARGET_KINDS.includes(e.target))) err('optional AddCounters needs one counter on a chosen target.');
   if (e.effect === 'ModifyPT' && e.power === undefined && e.toughness === undefined) err('ModifyPT needs power or toughness.');
   if (ABILITY_ONLY_TARGETS.has(e.target) && !inAbility) err(`"${e.target}" can only be used in abilities.`);
   if ((e.upTo || e.group) && !CHOSEN_TARGET_KINDS.includes(e.target)) err('upTo and group are only for chosen targets.');

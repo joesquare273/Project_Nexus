@@ -53,9 +53,9 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
-Sublime Epiphany is built (2026-10-23): all five modes, including countering
-an individual stack ability, with a checkbox-based mode picker in the browser.
-292 of 320 distinct precon cards are built; 28 remain.
+Sephiroth, Fallen Hero is built (2026-10-23): optional cell counters,
+temporary 7/5 base stats for modified creatures, and his graveyard return.
+293 of 320 distinct precon cards are built; 27 remain.
 
 ## C2 groups
 
@@ -92,5 +92,6 @@ needing several groups' pieces waits for the last of them.
 | Library casting and granted mana | **1 built (2026-10-23):** Summoning Materia. |
 | Entering attacking | **1 built (2026-10-23):** Interceptor, Shadow's Hound. Defender chosen during resolution; no attack-declaration triggers. |
 | Multimode stack interaction | **1 built (2026-10-23):** Sublime Epiphany. All 31 nonempty mode combinations; spells and individual abilities are distinct targets. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (28 cards left in all). |
+| Modified creatures and base stats | **1 built (2026-10-23):** Sephiroth, Fallen Hero. Optional cell counters and base-setting timestamps, including Equipment interactions. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (27 cards left in all). |
 | Everything else | |

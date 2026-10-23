@@ -194,13 +194,8 @@
           "count": 1,
           "set": "fic",
           "number": "92",
-          "implemented": false,
-          "needs": [
-            "jenova-cells",
-            "the-reunion",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Conformer Shuriken",

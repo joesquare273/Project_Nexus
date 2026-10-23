@@ -152,7 +152,7 @@ function effectText(e: EffectSpec): string {
     case 'AddCounters':
       if (e.monstrosity) return `monstrosity ${n}`;
       if (e.ifSourceHasNoCounters) return `adapt ${n}`;
-      return `put ${countersText(n, e.counter)} on ${who}`;
+      return `${e.optional ? 'you may ' : ''}put ${countersText(n, e.counter)} on ${who}`;
     case 'PutLastCounters':
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
     case 'RevealUntil':
@@ -181,6 +181,8 @@ function effectText(e: EffectSpec): string {
       return `create ${plural(`${e.token?.replace(/-token$/, '').replace(/-/g, ' ')} token`)}`;
     case 'CreateTokenCopy':
       return `create a token that's a copy of ${who}`;
+    case 'SetBasePT':
+      return `set the base power and toughness of ${who}${e.filter?.modified ? ' that are modified' : ''} to ${e.power}/${e.toughness} until end of turn`;
     case 'ModifyPT': {
       const sign = (v: number | undefined) => `${(v ?? 0) >= 0 ? '+' : ''}${v ?? 0}`;
       return `${who} ${who.startsWith('each') ? 'gets' : 'gets'} ${sign(e.power)}/${sign(e.toughness)} until end of turn`;
@@ -356,7 +358,7 @@ export function triggerText(t: TriggerSpec): string {
   const effects = t.randomModes
     ? `choose one at random: ${t.randomModes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
     : t.modes ? `choose one${t.bothIfCommander ? ' or both if you control a commander' : ''}: ${t.modes.map((m) => m.map(effectText).join(' and ')).join('; or ')}`
-    : t.effects.map(effectText).join(' and ');
+    : t.effects.map(effectText).join(t.effects.some(e => e.effect === 'AddCounters' && e.optional) ? '. Then ' : ' and ');
   const body = t.cost
     ? `you may pay ${[t.cost.mana, t.cost.life && `${t.cost.life} life`, t.cost.lifeOf && "life equal to that spell's mana value", t.cost.discard && `discard ${t.cost.discard} card${t.cost.discard === 1 ? '' : 's'}`].filter(Boolean).join(' and ')}. If you do, ${effects}`
     : t.optional

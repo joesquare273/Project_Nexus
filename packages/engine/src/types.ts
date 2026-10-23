@@ -68,7 +68,7 @@ export type Keyword = (typeof KEYWORDS)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow', 'cell'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -176,6 +176,8 @@ export const EFFECT_KINDS = [
   'CreateTokenCopy',
   /** "+X/+Y until end of turn" (negative for -X/-Y). */
   'ModifyPT',
+  /** Set affected creatures' base power/toughness until end of turn. */
+  'SetBasePT',
   /** "gains [keywords] until end of turn". */
   'GrantKeywords',
   /** Special one-turn rules: "can't be blocked this turn", "must be blocked this turn if able", and so on. */
@@ -469,7 +471,7 @@ export interface EffectSpec {
   anyNumber?: boolean;
   /** Discard: "may discard their hand": all of it or none. */
   wholeHand?: boolean;
-  /** Discard, Sacrifice: "may": up to `amount` instead of exactly. */
+  /** Discard/Sacrifice: up to amount. AddCounters: may put one counter on the chosen target. */
   optional?: boolean;
   /** KeepAndSacrificeRest: the spell's controller chooses for each player (Tragic Arrogance). */
   chooser?: 'You';
@@ -590,7 +592,7 @@ export interface ObjectFilter {
   powerLessThanSource?: boolean;
   /** Has exactly this name (partner with, "search for a card named ..."). */
   name?: string;
-  /** Is modified: equipped or has counters on it (rule 700.9; there are no Auras yet). */
+  /** Is modified: equipped, has counters, or has an Aura controlled by its controller (rule 700.9). */
   modified?: boolean;
   /** Is historic: an artifact, legendary, or a Saga (rule 700.6). */
   historic?: boolean;
@@ -992,6 +994,8 @@ export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'e
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  enteredTimestamp?: number;
+  attachedTimestamp?: number;
   graveyardArrival?: { turn: number; from: ZoneName };
   /** This object's once-per-turn permission to cast from the graveyard was used. */
   graveyardCastTurn?: number;
@@ -1213,6 +1217,8 @@ export interface QueuedTrigger {
 
 /** An "until end of turn" effect on one object (rule 611.2). */
 export interface TemporaryEffect {
+  basePowerToughness?: [number, number];
+  timestamp?: number;
   source: InstanceId;
   affected: InstanceId;
   power?: number;
@@ -1266,6 +1272,8 @@ export interface Resolving {
 
 /** One player's card choice during resolution or cleanup. */
 export interface CardChoice {
+  /** addCounters: a named counter instead of +1/+1. */
+  counter?: CounterKind;
   /** Counter-distribution progress for the board. */
   counterCount?: number;
   player: PlayerId;
@@ -1335,6 +1343,8 @@ export type Pending =
   | { kind: 'gameOver' };
 
 export interface GameState {
+  /** Shared ordering for continuous effects that set base power/toughness. */
+  effectTimestamp?: number;
   /** Cleanup actions have finished; state-based actions/triggers must be checked before ending the turn. */
   cleanupCheck?: boolean;
   cleanupNeedsPriority?: boolean;

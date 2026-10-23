@@ -91,6 +91,12 @@ export function cloneState(s: GameState): GameState {
   };
 }
 
+/** Assign a timestamp when a permanent enters, an Equipment attaches, or a base-setting effect starts. */
+export function newTimestamp(s: GameState): number {
+  s.effectTimestamp = (s.effectTimestamp ?? 0) + 1;
+  return s.effectTimestamp;
+}
+
 export function emptyManaPool(): ManaPool {
   const pool = {} as ManaPool;
   for (const t of MANA_TYPES) pool[t] = 0;
@@ -208,6 +214,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.xPaid;
   delete c.foretoldTurn;
   delete c.attachedTo;
+  delete c.attachedTimestamp;
   delete c.exiledUntilLeaves;
   delete c.playableFromExile;
   delete c.castFromGraveyard;
@@ -245,7 +252,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (from === 'battlefield') leftBattlefield(ctx, id);
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
   const d = s.cardDefs[c.defId]!;
-  if (to === 'battlefield') c.enteredTurn = s.turnNumber;
+  if (to === 'battlefield') { c.enteredTurn = s.turnNumber; c.enteredTimestamp = newTimestamp(s); }
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
   // "As this Saga enters, add a lore counter" (rule 714.3a).
   if (to === 'battlefield' && d.saga) addCounters(ctx, id, 1, c.controller, 'lore');
@@ -507,6 +514,7 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId): I
     deathtouched: false,
     isToken: true,
     enteredTurn: s.turnNumber,
+    enteredTimestamp: newTimestamp(s),
   };
   player(s, controller).battlefield.push(id);
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
@@ -518,6 +526,7 @@ export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): v
   if (e.zone !== 'battlefield' || !isCreatureOnBattlefield(ctx.s, ctx.s.cards[creature])) return;
   if (e.attachedTo === creature) return;
   e.attachedTo = creature;
+  e.attachedTimestamp = newTimestamp(ctx.s);
   ctx.ev.push({ type: 'Attached', equipment, creature });
 }
 

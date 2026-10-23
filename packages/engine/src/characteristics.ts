@@ -4,8 +4,8 @@
 // subtypes goes through here, so a buff only has to be described once.
 //
 // Simplified layers: type changes only add subtypes, ability changes only add
-// keywords, and power/toughness changes are all additive, so the order
-// within a layer doesn't matter.
+// keywords; base power/toughness setters use timestamps, then additive
+// modifiers and counters apply in their own layers.
 
 import { matchesObject } from './filters.ts';
 import { colorsOf } from './typerules.ts';
@@ -62,11 +62,18 @@ export function isEquipment(s: GameState, c: CardInstance): boolean {
 
 /** Equipment attached to this creature. */
 export function equipmentOn(s: GameState, creature: InstanceId): CardInstance[] {
-  return battlefieldCards(s).filter((e) => e.attachedTo === creature);
+  return battlefieldCards(s).filter((e) => e.attachedTo === creature && isEquipment(s, e));
 }
 
 export function isEquipped(s: GameState, c: CardInstance): boolean {
   return c.zone === 'battlefield' && equipmentOn(s, c.id).length > 0;
+}
+
+/** Modifications are checked from the creature's controller's point of view (rule 700.9). */
+export function isModified(s: GameState, c: CardInstance): boolean {
+  if (c.zone !== 'battlefield' || c.phasedOut) return false;
+  return isEquipped(s, c) || totalCounters(c) > 0 || battlefieldCards(s).some(a =>
+    a.attachedTo === c.id && a.controller === c.controller && def(s, a).subtypes?.includes('Aura'));
 }
 
 /** How many of something there are, from `player`'s point of view. */
@@ -224,11 +231,20 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   if (c.zone !== 'battlefield') return out;
 
   const removed: Keyword[] = [];
-  // "Has base power and toughness 7/7" (rule 613.4b) replaces the printed numbers before anything is added.
+  // Base-setting effects share layer 7b; later timestamps win before additions/counters.
+  let baseTimestamp = -1;
   for (const source of staticSources(s)) {
     for (const spec of def(s, source).statics ?? []) {
       if (!spec.basePowerToughness || (spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;
-      [out.power, out.toughness] = spec.basePowerToughness;
+      const timestamp = (spec.affects === 'EquippedCreature' ? source.attachedTimestamp : undefined) ?? source.enteredTimestamp ?? 0;
+      if (timestamp >= baseTimestamp) { [out.power, out.toughness] = spec.basePowerToughness; baseTimestamp = timestamp; }
+    }
+  }
+  for (const effect of s.temporaryEffects) {
+    if (effect.affected !== c.id || !effect.basePowerToughness || !effectLasts(s, effect)) continue;
+    if ((effect.timestamp ?? 0) >= baseTimestamp) {
+      [out.power, out.toughness] = effect.basePowerToughness;
+      baseTimestamp = effect.timestamp ?? 0;
     }
   }
   for (const source of staticSources(s)) {
