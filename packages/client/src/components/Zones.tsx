@@ -86,7 +86,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
           </div>
         )}
         {sick && (
-          <div className="badge sick" title="Summoning sick: can't attack or tap this turn">
+          <div className="badge sick" title="Summoning sick: can't attack or use abilities with the tap or untap symbol">
             z
           </div>
         )}

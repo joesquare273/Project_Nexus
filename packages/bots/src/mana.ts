@@ -3,6 +3,7 @@
 
 import {
   manaAbilityAmount,
+  legendaryManaCreatures,
   MANA_TYPES,
   manaChoices,
   parseManaCost,
@@ -23,6 +24,8 @@ export interface ManaTap {
   /** A paid mana ability ("{1}, {T}: Add {R}{G}"): which output, and which way to pay. */
   output?: number;
   payWith?: number;
+  /** Relic of Legends: the creature tapped as the cost, instead of the source. */
+  tapCreature?: InstanceId;
 }
 
 export interface TapOptions {
@@ -34,7 +37,7 @@ export interface TapOptions {
 
 /** Untapped permanents this player can tap for mana right now. */
 export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions = {}): CardInstance[] {
-  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === playerId)
+  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === playerId)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
       if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
@@ -61,12 +64,27 @@ function amountFrom(s: GameState, c: CardInstance): number {
 
 /** Untapped permanents with a paid mana ability ("{1}, {T}: Add {R}{G}") this player can use. */
 export function paidManaSources(s: GameState, playerId: PlayerId): CardInstance[] {
-  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === playerId)
+  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === playerId)
     .filter((c) => {
       const def = s.cardDefs[c.defId]!;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !!def.manaAbility?.paid && !c.tapped && c.controller === playerId && !sick;
     });
+}
+
+/** A source option can tap a creature through a Relic instead of tapping itself. */
+interface TapSource extends CardInstance { manaVia?: InstanceId }
+function sourceTap(src: TapSource, mana: ManaType): ManaTap {
+  return src.manaVia ? { card: src.manaVia, mana, tapCreature: src.id } : { card: src.id, mana };
+}
+function legendarySources(s: GameState, player: PlayerId, opts: TapOptions): TapSource[] {
+  const out: TapSource[] = [];
+  for (const relic of Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player)) {
+    for (const creature of legendaryManaCreatures(s, relic)) {
+      if (!opts.exclude?.includes(creature.id)) out.push({ ...creature, defId: relic.defId, manaVia: relic.id });
+    }
+  }
+  return out;
 }
 
 /**
@@ -87,9 +105,9 @@ export function planTaps(
   const p = s.players[playerId]!;
   const pool = { ...p.manaPool };
   if (opts.forEquipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
-  const sources = manaSources(s, playerId, opts).sort((a, b) => reluctance(s, a) - reluctance(s, b));
+  const sources: TapSource[] = [...manaSources(s, playerId, opts), ...legendarySources(s, playerId, opts)].sort((a, b) => reluctance(s, a) - reluctance(s, b));
   // Paid abilities spend the normal pool, so they're left out when Equipment-only mana is in play.
-    const paid = opts.forEquipment ? [] : paidManaSources(s, playerId).filter((c) => !opts.exclude?.includes(c.id));
+  const paid = opts.forEquipment ? [] : paidManaSources(s, playerId).filter((c) => !opts.exclude?.includes(c.id));
   return planWith(s, need, pool, sources, paid, 2);
 }
 
@@ -97,7 +115,7 @@ function planWith(
   s: GameState,
   need: ManaCost,
   pool: ManaPool,
-  sources: CardInstance[],
+  sources: TapSource[],
   paid: CardInstance[],
   depth: number,
 ): ManaTap[] | null {
@@ -108,21 +126,21 @@ function planWith(
     const others = paid.filter((c) => c !== conv);
     for (let payWith = 0; payWith < ability.costs.length; payWith++) {
       const cost = parseManaCost(ability.costs[payWith]);
-      const first = planDirect(s, cost, pool, sources);
+      const first = planDirect(s, cost, pool, sources.filter((c) => c.id !== conv.id));
       if (!first) continue;
       // The pool once those taps are made and the ability's cost is paid (the engine pays the same way).
       const after = { ...pool };
-      for (const t of first) after[t.mana] += amountFrom(s, s.cards[t.card]!);
+      for (const t of first) after[t.mana] += t.tapCreature ? 1 : amountFrom(s, s.cards[t.card]!);
       const spent = planPayment(after, cost);
       if (!spent) continue;
       for (const t of MANA_TYPES) after[t] -= spent[t] ?? 0;
-      const used = new Set(first.map((t) => t.card));
-      const rest = sources.filter((c) => !used.has(c.id));
+      const used = new Set(first.map((t) => t.tapCreature ?? t.card));
+      const rest = sources.filter((c) => c.id !== conv.id && !used.has(c.id));
       for (let output = 0; output < ability.outputs.length; output++) {
         const made = parseManaCost(ability.outputs[output]);
         const pool2 = { ...after };
         for (const t of MANA_TYPES) pool2[t] += made[t] ?? 0;
-        const tail = planWith(s, need, pool2, rest, others, depth - 1);
+        const tail = planWith(s, need, pool2, rest, others.filter((c) => !used.has(c.id)), depth - 1);
         if (!tail) continue;
         const mana = MANA_TYPES.find((t) => (made[t] ?? 0) > 0)!;
         return [...first, { card: conv.id, mana, output, payWith }, ...tail];
@@ -133,7 +151,7 @@ function planWith(
 }
 
 /** Plain taps only: one mana ability per source. */
-function planDirect(s: GameState, need: ManaCost, startPool: ManaPool, sources: CardInstance[]): ManaTap[] | null {
+function planDirect(s: GameState, need: ManaCost, startPool: ManaPool, sources: TapSource[]): ManaTap[] | null {
   const pool = { ...startPool };
   const colored: ManaType[] = [];
   for (const t of MANA_TYPES) {
@@ -155,7 +173,7 @@ function planDirect(s: GameState, need: ManaCost, startPool: ManaPool, sources: 
     for (const src of sources) {
       if (used.has(src.id) || !manaChoices(s, src).includes(want)) continue;
       used.add(src.id);
-      taps.push({ card: src.id, mana: want });
+      taps.push(sourceTap(src, want));
       if (assign(i + 1)) return true;
       used.delete(src.id);
       taps.pop();
@@ -172,7 +190,7 @@ function planDirect(s: GameState, need: ManaCost, startPool: ManaPool, sources: 
     const choices = manaChoices(s, src);
     const ability = s.cardDefs[src.defId]!.manaAbility;
     const pain = [...(ability?.painFor ?? []), ...(ability?.lifeFor ?? [])];
-    taps.push({ card: src.id, mana: choices.find((m) => !pain.includes(m)) ?? choices[0]! });
+    taps.push(sourceTap(src, choices.find((m) => !pain.includes(m)) ?? choices[0]!));
     generic -= amountFrom(s, src);
   }
   return generic <= 0 ? taps : null;
@@ -184,6 +202,7 @@ export function tapActions(playerId: PlayerId, taps: ManaTap[]): Action[] {
     player: playerId,
     card: t.card,
     mana: t.mana,
+    ...(t.tapCreature ? { tapCreature: t.tapCreature } : {}),
     ...(t.output !== undefined ? { output: t.output, payWith: t.payWith ?? 0 } : {}),
   }));
 }

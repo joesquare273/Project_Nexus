@@ -35,7 +35,7 @@ import {
   type Ctx,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, manaChoices, objectManaValue } from './typerules.ts';
+import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   MANA_TYPES,
@@ -436,11 +436,19 @@ export function activateManaAbility(
   mana: ManaType,
   output?: number,
   payWith = 0,
+  tapCreature?: InstanceId,
 ): void {
   const s = ctx.s;
   const c = card(s, id);
   const def = defOf(s, c);
-  if (c.zone !== 'battlefield' || c.controller !== playerId) reject('You do not control that permanent.');
+  if (c.zone !== 'battlefield' || c.phasedOut || c.controller !== playerId) reject('You do not control that permanent.');
+  if (tapCreature !== undefined) {
+    if (output !== undefined || !legendaryManaCreatures(s, c).some((candidate) => candidate.id === tapCreature)) reject('Tap an untapped legendary creature you control.');
+    if (!['W', 'U', 'B', 'R', 'G'].includes(mana)) reject('Choose a color of mana.');
+    tap(ctx, card(s, tapCreature));
+    addMana(ctx, playerId, mana, id);
+    return;
+  }
   if (output !== undefined) {
     if (c.tapped) reject('That permanent is already tapped.');
     if (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) {

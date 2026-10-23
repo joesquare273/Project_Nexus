@@ -45,7 +45,7 @@ import {
 import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
-import { canReveal, manaAbilityAmount, manaChoices } from './typerules.ts';
+import { canReveal, manaAbilityAmount, legendaryManaCreatures, manaChoices } from './typerules.ts';
 import { MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
@@ -280,10 +280,13 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
 /** Mana abilities the player could activate right now. */
 function manaAbilities(s: GameState, player: PlayerId): Action[] {
   const actions: Action[] = [];
-  for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && card.controller === player)) {
+  for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === player)) {
     const id = c.id;
     const def = s.cardDefs[c.defId]!;
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
+    for (const creature of legendaryManaCreatures(s, c)) {
+      for (const mana of ['W', 'U', 'B', 'R', 'G'] as const) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, tapCreature: creature.id });
+    }
     if (c.tapped || c.controller !== player || sick) continue;
     for (const mana of manaChoices(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
     // Paid mana abilities, for each way to pay that the pool covers.

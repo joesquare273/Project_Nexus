@@ -282,7 +282,7 @@ function bestPlay(s: GameState, me: PlayerId, legal: Action[]): Action | null {
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || manaValue(b.o.cost) - manaValue(a.o.cost));
   for (const { o } of options) {
-    const taps = planTaps(s, me, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? o.action.improvise : [] });
+    const taps = planTaps(s, me, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? [...(o.action.improvise ?? []), ...(o.action.convoke ?? []), ...(o.action.tapCreatures ?? [])] : [] });
     if (!taps) continue;
     if (taps.length > 0) return tapActions(me, taps)[0]!;
     // Only return actions the engine agrees are legal right now.

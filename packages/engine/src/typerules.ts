@@ -189,3 +189,10 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
   if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
   return true;
 }
+
+/** Relic of Legends' cost has no tap symbol, so summoning sickness does not apply. */
+export function legendaryManaCreatures(s: GameState, source: CardInstance): CardInstance[] {
+  if (source.zone !== 'battlefield' || source.phasedOut || !s.cardDefs[source.defId]!.manaAbility?.tapLegendaryCreature) return [];
+  return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === source.controller && !c.tapped &&
+    s.cardDefs[c.defId]!.types.includes('creature') && isLegendary(s.cardDefs[c.defId]!));
+}

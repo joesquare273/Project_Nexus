@@ -50,6 +50,7 @@ export {
   canReveal,
   entersTapped,
   manaChoices,
+  legendaryManaCreatures,
   manaProduced,
   manaAbilityAmount,
   objectManaValue,

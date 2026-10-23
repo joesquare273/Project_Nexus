@@ -814,6 +814,8 @@ export interface CardDefinition {
   manaAbility?: {
     /** "{T}, Sacrifice this: Add ..." (Treasure). */
     sacrifice?: boolean;
+    /** A separate ability: tap an untapped legendary creature you control for one mana of any color. */
+    tapLegendaryCreature?: boolean;
     /** "Spend this mana only to cast an Equipment spell or activate an equip ability." */
     onlyForEquipment?: boolean;
     /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
@@ -1395,7 +1397,7 @@ export type Action =
       tapCreatures?: InstanceId[];
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
-  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number }
+  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId }
   /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[] }
   /** Foretell: pay {2} and exile a card from your hand face down (a special action during your turn). */

@@ -3135,10 +3135,8 @@
           "count": 1,
           "set": "fic",
           "number": "354",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sol Ring",

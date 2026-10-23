@@ -5,6 +5,44 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Relic of Legends: mana costs that tap another creature
+
+- Built both Relic of Legends abilities. Its ordinary tap ability makes one
+  mana of any color. The separate ability taps an untapped legendary creature
+  you control, makes one mana immediately, and does not use the stack or target
+  that creature. The Relic can already be tapped; summoning sickness does not
+  prevent the creature from paying this cost.
+- Added an explicit creature payment to mana actions and a shared candidate
+  check. Legendary creatures must be untapped, controlled, on the battlefield,
+  and phased in. Ownership does not matter; phased-out mana sources are also
+  excluded from ordinary mana menus and the auto-tapper.
+- Shared AI/browser/terminal payment planning supports Relic payments, including
+  paying a filter land first. Multiple Relics or a creature's own mana ability
+  cannot spend the same creature twice. Creatures reserved for convoke,
+  improvise, or escalation are excluded from automatic mana payments.
+- Browser controls choose the creature first, then its mana color. Spent
+  creatures disappear from the choices. Choice menus use a responsive grid;
+  fixed the narrow-screen flex wrapping that pushed choices out of the prompt.
+  The summoning-sickness tooltip now refers to tap/untap-symbol abilities,
+  rather than saying the creature cannot be tapped at all.
+- Forty-eight scenarios cover 2, 3 and 4 players. Final type-check, all 786
+  tests in 48 files, and production build passed. The existing Vite large-bundle
+  warning remains. Sixty Commander fuzz games (199-258) passed without invariant
+  failures or action-limit timeouts; the final thirty followed the convoke fix.
+- Browser playtest: a tapped Relic tapped summoning-sick Tifa for blue, removed
+  her from the menu, then tapped Bugenhagen for red. No console errors. At the
+  actual 319px viewport all five color buttons and Cancel fit within the screen.
+  The desktop viewport override did not change the host's actual narrow view,
+  so this playtest does not claim desktop-width visual verification. Override
+  was reset and temporary QA sources removed. A chooser preview is in this
+  chat's outputs.
+- Rules checked against [Wizards' Dominaria United release notes](https://magic.wizards.com/en/news/feature/dominaria-united-release-notes-2022-08-26),
+  Relic of Legends rulings, including using a newly controlled creature.
+
+289 of 320 distinct precon cards are built; 31 remain. Limit Break is 95/100,
+Revival Trance 87/100, Counter Blitz 94/100, Scions & Spellcraft 90/100.
+Continue after the user's push/proceed checkpoint.
+
 ### Coveted Jewel: unblocked attackers and control changes
 
 - Built Coveted Jewel's entry draw, tap for three mana of one chosen color,

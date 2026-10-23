@@ -41,7 +41,7 @@ export interface CardPlay {
 }
 
 function withTaps(s: GameState, player: PlayerId, o: CostedOption): PlayChoice | null {
-  const taps = planTaps(s, player, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? o.action.improvise : [] });
+  const taps = planTaps(s, player, o.cost, { forEquipment: o.forEquipment, exclude: o.action.type === 'CastSpell' ? [...(o.action.improvise ?? []), ...(o.action.convoke ?? []), ...(o.action.tapCreatures ?? [])] : [] });
   if (!taps) return null;
   return {
     taps: tapActions(player, taps),

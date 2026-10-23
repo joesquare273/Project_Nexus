@@ -1894,11 +1894,15 @@ button.phase.current {
   align-items: stretch;
   flex-shrink: 0;
 }
+.prompt.modal-choice .prompt-text { flex: 0 0 auto; }
 .prompt.modal-choice .prompt-buttons {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 }
 .prompt.modal-choice button { text-align: left; }
+.prompt.ability-menu .prompt-buttons {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+}
 /* Damage is marked, not a toughness modifier. "left" is a visual damage-capacity hint. */
 .badge.pt { display: flex; align-items: center; justify-content: center; }
 .badge.pt.wounded { background: #321616; border: 1px solid #e2766a; color: #fff0e8; }
