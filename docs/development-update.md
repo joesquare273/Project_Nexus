@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Fix: phased-out Equipment and a dying creature
+
+The Commander fuzz (seed 99, 4 players) found Equipment left attached to a
+creature in the graveyard: Clever Concealment phased out only the
+Equipment, and phased-out permanents aren't in the battlefield list, so
+when the creature died nothing unattached them. Leaving the battlefield now
+also unattaches phased-out attachments (they phase in unattached). Test in
+`precon-equipment-2.test.ts`.
+
 ### Board: clicking your own permanents fixed; attachments move with their creature
 
 - **Fixed:** clicking your own nonland permanents did nothing (choosing

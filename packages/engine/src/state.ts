@@ -296,9 +296,11 @@ export function phaseInFor(ctx: Ctx, controller: PlayerId): void {
 function leftBattlefield(ctx: Ctx, id: InstanceId): void {
   const s = ctx.s;
   if (s.temporaryEffects.length > 0) s.temporaryEffects = s.temporaryEffects.filter((e) => e.affected !== id);
-  for (const other of battlefield(s)) {
+  // Phased-out Equipment counts too: it isn't in the battlefield list, but it's still attached.
+  const phasedOut = s.turnOrder.flatMap((pid) => (s.players[pid]!.phasedOut ?? []).map((x) => s.cards[x]!));
+  for (const other of [...battlefield(s), ...phasedOut]) {
     if (other.attachedTo !== id) continue;
-    // Equipment stays on the battlefield, unattached (rule 301.5c).
+    // Equipment stays on the battlefield, unattached (rule 301.5c); a phased-out one phases in unattached.
     delete other.attachedTo;
     ctx.ev.push({ type: 'Attached', equipment: other.id, creature: null });
   }

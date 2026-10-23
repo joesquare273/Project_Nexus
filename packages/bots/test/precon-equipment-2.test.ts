@@ -171,3 +171,19 @@ describe('One-offs', () => {
     expect(s.players.P2!.life).toBe(19);
   });
 });
+
+describe('Phasing and Equipment', () => {
+  it('Equipment that phased out without its creature is unattached when the creature dies (fuzz seed 99)', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', RAT);
+    const plate = put(s, 'P1', 'darksteel-plate', 'battlefield', { attachedTo: rat });
+    // Phase out only the Equipment (as Clever Concealment can).
+    s.players.P1!.battlefield = s.players.P1!.battlefield.filter((id) => id !== plate);
+    s.players.P1!.phasedOut = [plate];
+    s.cards[plate]!.phasedOut = true;
+    const kill = put(s, 'P1', 'sephiroths-intervention', 'hand');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kill, targets: [card(rat)] }).state;
+    expect([s.cards[rat]!.zone, s.cards[plate]!.attachedTo]).toEqual(['graveyard', undefined]);
+  });
+});
