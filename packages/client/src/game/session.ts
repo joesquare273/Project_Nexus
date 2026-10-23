@@ -19,6 +19,7 @@ import {
   type GameView,
   type InstanceId,
   type PlayerId,
+  type Step,
 } from '@nexus/engine';
 import { CARD_DEFS, FIN_PRECONS, preconDeck, preconDeckWithCommander, starterKitDeck } from '@nexus/cards';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
@@ -73,8 +74,10 @@ export class GameSession {
   readonly options: SessionOptions;
   readonly opponents: PlayerId[];
   readonly log: LogEntry[] = [];
-  /** Stop at every step instead of passing automatically when nothing important is happening. */
+  /** Pause whenever you receive priority, even without playable cards. */
   stopEverywhere = false;
+  /** Priority stops on these steps, on any player's turn. Never skips turn-based actions. */
+  readonly phaseStops = new Set<Step>();
   /** Tap mana sources for you when you cast or activate, instead of you choosing which to tap. */
   autoTap = false;
   /** You're partway through paying a cost: keep priority until you finish or cancel. */
@@ -196,6 +199,7 @@ export class GameSession {
     const pending = s.pending;
     switch (pending.kind) {
       case 'priority':
+        if (this.stopEverywhere || this.phaseStops.has(s.step)) return null;
         if (this.plays().length === 0 || !this.worthStopping()) return { type: 'PassPriority', player: YOU };
         return null;
       case 'declareBlockers': {
@@ -218,7 +222,6 @@ export class GameSession {
   /** Stop for your main phases, for spells you might answer, and for steps where instants matter. */
   private worthStopping(): boolean {
     const s = this.state;
-    if (this.stopEverywhere) return true;
     const top = s.stack.at(-1);
     if (top) return top.controller !== YOU;
     if (s.activePlayer === YOU) return s.step === 'main1' || s.step === 'main2';

@@ -21,6 +21,7 @@ import {
   type InstanceId,
   type ManaType,
   type PlayerId,
+  type Step,
   type Target,
 } from '@nexus/engine';
 import { manaSources, paidManaSources, planTaps, tapActions } from '@nexus/bots';
@@ -43,7 +44,7 @@ const BOT_DELAY_MS = 550;
 
 const sameTarget = (a: Target, b: Target) => JSON.stringify(a) === JSON.stringify(b);
 
-const STEP_SHORT: [string, string][] = [
+const STEP_SHORT: [Step, string][] = [
   ['upkeep', 'Upkeep'],
   ['draw', 'Draw'],
   ['main1', 'Main 1'],
@@ -613,7 +614,7 @@ export function Game({
           ))}
         </div>
         <div className="midline" data-pile="stack">
-          <PhaseTrack view={view} />
+          <PhaseTrack view={view} session={session} onChange={refresh} />
           <StackView view={view} onHover={setHovered} h={h} />
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
         </div>
@@ -753,7 +754,8 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
       {open && (
         <div className="settings-panel" role="dialog" aria-label="Settings">
           <div className="settings-title">Settings</div>
-          <label title="Stop at every step instead of passing automatically">
+          <p className="settings-help">Select a step on the turn track to pause for priority there on any player's turn. ◆ marks a selected stop.</p>
+          <label title="Pause whenever you receive priority, even when you have no playable cards">
             <input
               type="checkbox"
               checked={session.stopEverywhere}
@@ -762,7 +764,7 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
                 onChange();
               }}
             />{' '}
-            Stop at every step
+            Full control: pause for priority
           </label>
           <label title="Tap your lands for you when you cast a spell, instead of choosing which to tap">
             <input
@@ -787,16 +789,34 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
   );
 }
 
-function PhaseTrack({ view }: { view: GameView }) {
+function PhaseTrack({ view, session, onChange }: { view: GameView; session: GameSession; onChange: () => void }) {
   return (
-    <div className="phases">
+    <div className="phases" role="group" aria-label="Turn steps and priority stops">
       <span className="phase-owner">{view.activePlayer === YOU ? 'Your turn' : `${view.activePlayer}'s turn`}</span>
       {STEP_SHORT.map(([step, label]) => (
-        <span key={step} className={`phase ${view.step === step ? 'current' : ''}`}>
+        <button
+          key={step}
+          className={`phase ${view.step === step ? 'current' : ''} ${session.phaseStops.has(step) ? 'stop' : ''}`}
+          aria-pressed={session.phaseStops.has(step)}
+          aria-current={view.step === step ? 'step' : undefined}
+          aria-label={`${label}: ${session.phaseStops.has(step) ? 'remove' : 'add'} priority stop`}
+          title={`Pause when you receive priority in ${label}, on any player's turn. Click to ${session.phaseStops.has(step) ? 'remove' : 'add'} this stop.`}
+          onClick={() => {
+            if (session.phaseStops.has(step)) session.phaseStops.delete(step);
+            else session.phaseStops.add(step);
+            onChange();
+          }}
+        >
           {label}
-        </span>
+          {session.phaseStops.has(step) && <span aria-hidden="true"> ◆</span>}
+        </button>
       ))}
       <span className="turn-no">Turn {view.turnNumber}</span>
+      <span className={`priority-owner ${view.pending.kind !== 'gameOver' && view.pending.player === YOU ? 'yours' : ''}`}>
+        {view.pending.kind === 'priority'
+          ? `${view.pending.player === YOU ? 'You have' : `${view.pending.player} has`} priority`
+          : view.pending.kind === 'gameOver' ? 'Game over' : `${view.pending.player === YOU ? 'Your' : `${view.pending.player}'s`} decision`}
+      </span>
     </div>
   );
 }
@@ -882,7 +902,7 @@ function PromptBar(p: PromptProps) {
   if (pending.kind === 'gameOver') {
     text = 'Game over.';
   } else if (!p.yourMove) {
-    text = `${pending.player} is thinking…`;
+    text = pending.player === YOU ? 'Preparing your next decision…' : `${pending.player} is thinking…`;
   } else if (p.menu) {
     text = `${p.menu.title}:`;
     buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
@@ -1026,15 +1046,16 @@ function PromptBar(p: PromptProps) {
     if (top) {
       const src = top.kind === 'spell' ? top.card : top.source;
       const whose = top.controller === YOU ? 'Your' : `${top.controller}'s`;
-      text = `${whose} ${cardName(s, src)}${top.kind === 'ability' ? ' ability' : ''} is on the stack. Respond with an instant, or let it resolve.`;
-      buttons = [{ label: 'Let it resolve', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
+      text = `${whose} ${cardName(s, src)}${top.kind === 'ability' ? ' ability' : ''} is on the stack. Respond with a legal spell or ability. It resolves after everyone passes in succession.`;
+      buttons = [{ label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
     } else {
       const yours = s.activePlayer === YOU;
-      text = yours
+      const main = s.step === 'main1' || s.step === 'main2';
+      text = yours && main
         ? `${stepName(s.step)}: play a land, cast a spell, or use an ability. Glowing cards are playable.`
-        : `${s.activePlayer}'s ${stepName(s.step).toLowerCase()}. You can cast instants.`;
-      const label = yours && s.step === 'main1' ? 'Go to combat' : yours && s.step === 'main2' ? 'End turn' : 'Pass';
-      buttons = [{ label, onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
+        : `${yours ? 'Your' : `${s.activePlayer}'s`} ${stepName(s.step).toLowerCase()}: cast a legal instant or use an ability.`;
+      text += ' Everyone must pass in succession to advance.';
+      buttons = [{ label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
     }
   }
 

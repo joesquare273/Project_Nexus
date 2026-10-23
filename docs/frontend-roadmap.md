@@ -72,3 +72,11 @@ Authoritative source: [Wizards' rules page](https://magic.wizards.com/en/rules),
 4. Add event-driven magical effects and validate normal and reduced-motion interaction paths.
 
 Use reviewable commits and stop after each commit for the user's push/proceed checkpoint. Keep the remaining card roadmap visible throughout this frontend work.
+
+## Priority controls checkpoint (October 23, 2026)
+
+The board now has selectable priority stops, a priority-owner indicator, truthful
+Pass priority labels, and full control that pauses even without playable cards.
+This is client automation and interaction work; the engine-rules backlog above
+remains open. After the user pushes this commit and says proceed, resume building
+the remaining 34 precon cards in groups. Report usage/credits after each commit.

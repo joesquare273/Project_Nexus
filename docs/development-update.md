@@ -5,6 +5,37 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Priority controls and the next card checkpoint
+
+- Full control now pauses whenever you receive priority, even with no playable
+  cards or while your own spell is on the stack. Previously the empty-play-list
+  condition auto-passed before the full-control setting could take effect.
+- Turn-track buttons toggle persistent priority stops for this game, on any
+  player's turn; diamonds mark selected stops. They never jump to a step or
+  skip another player's priority. Turn-based actions happen before the pause.
+- The track distinguishes the active turn from the priority owner or decision
+  maker. Main-phase and stack buttons now say "Pass priority" and explain
+  consecutive passes; they no longer promise to end the turn or resolve a spell
+  immediately. Tutorial tips use the same wording. Non-main steps no longer
+  suggest that a land can be played there.
+- Reference checked: Comprehensive Rules 117.3a-d and 117.4 (September 25, 2026),
+  https://media.wizards.com/2026/downloads/MagicCompRules%2020260925.txt.
+- Browser review: four-player Commander, upkeep/draw stops, full-control toggle,
+  passing priority, settings and the priority owner at 1280x800 and 390x844.
+  The narrow prompt wraps above its buttons. No browser console errors were
+  reported. Four-player opponent panels remain cramped on phones and need a
+  separate layout pass; this change improves the priority controls.
+- Validation: type-check, all 648 tests, and production build passed. Vite still reports its existing large JavaScript bundle warning.
+- Eighteen new session scenarios cover 2, 3 and 4 players: no-play pauses,
+  both players' turns, stop removal, normal auto-passing, drawing before priority,
+  each opponent's response window, and responding to your own spell.
+- After this commit's push/proceed checkpoint, return to the remaining precon
+  cards. Progress is still 286/320 built, 34 remaining. The frontend and known
+  engine-rules backlog does not replace card completion.
+- The user requested current purchased credits, remaining usage allowance and
+  available reset credits after every commit; query them fresh rather than
+  storing account balances in the repository.
+
 ### Arcane frontend foundation and commander artwork
 
 - Added Poly Haven's CC0 Rock 01 diffuse texture locally (1K, 688,083 bytes),

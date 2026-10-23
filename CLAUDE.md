@@ -9,8 +9,12 @@ this repo, not only in local memory.
 
 - **Work directly on `main`. No branches, no pull requests.** Commit to
   `main`. **Stop after each commit and report the hash. The user pushes and
-  says "proceed" before the next group or implementation step.** Before
-  starting on a computer, sync so it has the other computer's work. Keep
+  says "proceed" before the next group or implementation step.**
+  Before reporting each commit, refresh account usage and include purchased credits,
+  remaining allowance, and available reset credits. After the focused priority
+  controls commit, return to building the remaining 34 precon cards in groups.
+  Frontend work does not replace the card-completion roadmap.
+  Before starting on a computer, sync so it has the other computer's work. Keep
   `main` passing `npm run check`.
 - **The Final Fantasy Starter Kits are the testbed.** Every game uses the
   exact Red-White and Blue-Black kit decklists. Don't add placeholder cards

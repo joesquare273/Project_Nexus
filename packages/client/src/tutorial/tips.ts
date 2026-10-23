@@ -59,7 +59,7 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
       title: 'Casting spells',
       text:
         "Glowing cards are ones you can afford right now. Click one to cast it, then click your glowing lands to tap them for mana (or press Auto-pay). " +
-        'Hover over a card to read what it does. When you\'re done, press "Go to combat" or "End turn".',
+        'Hover over a card to read what it does. When you\'re done, press "Pass priority". The step advances after everyone passes in succession.',
     });
   }
   if (p.kind === 'declareAttackers' && p.player === YOU) {
@@ -86,7 +86,7 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
       title: 'Responding',
       text:
         "Your opponent cast something; it's on the stack (top right). You can answer with an instant (a glowing card), " +
-        'or press "Let it resolve".',
+        'or press "Pass priority". It resolves after everyone passes in succession.',
     });
   }
   if (p.kind === 'surveil' && p.player === YOU) {
