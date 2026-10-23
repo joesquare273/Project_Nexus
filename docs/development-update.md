@@ -5,6 +5,51 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Interceptor, Shadow's Hound: returning tapped and attacking
+
+- Built Interceptor's printed menace, its menace grant to Assassins you control,
+  and its graveyard trigger. Attacking with one or more legendary creatures
+  produces one trigger, and returning the Hound requires paying {2}{B} on
+  resolution. Other players' attacks and copies outside the graveyard do not
+  trigger it. Leaving and reentering the graveyard makes it a new object that
+  the original trigger cannot return.
+- Added a non-target defending-player choice during resolution in multiplayer
+  games. The Hound enters tapped and attacking the chosen opponent; another
+  opponent may be chosen even if no original attacker attacks them. The choice
+  yields no priority window. A conceded defender is removed from the options.
+  Browser controls, terminal controls, legal actions and bots support it.
+- Entering attacking emits its own event rather than AttackDeclared: it does
+  not retrigger attack-declaration abilities or pay attack-declaration taxes.
+  The chosen player can block normally, including Interceptor's menace
+  requirement, and an unblocked Hound deals its four combat damage.
+- Separated subtype additions (layer 4) from ability/stat evaluation so a static
+  ability can safely filter by creature type. This includes granted types:
+  Reaper's Scythe makes its equipped creature an Assassin before Interceptor
+  checks whether that creature receives menace. Phasing, detachment and source
+  removal update the bonus immediately.
+- Fifty-one scenarios cover 2, 3 and 4 players, costs, optional payment, source
+  zones and identity, original attacker removal, menace, damage, Propaganda,
+  granted creature types, defender selection, invalid choices and concessions.
+- Validation passed: type-check, all 918 tests in 51 files, and the production
+  build. The existing Vite large-bundle warning remains. Thirty Commander fuzz
+  games (seeds 319-348) completed with no invariant failures or action-limit
+  timeouts.
+- Browser playtest used the real Game UI in a prepared three-player position:
+  Bugenhagen attacked Bot1; selected Attack Bot2 for Interceptor; passed priority
+  through both defending players' blocker decisions. Bot1 lost one life, Bot2
+  lost four, and the Hound appeared tapped with its Bot2 attack marker. No
+  browser warnings/errors. Screenshots saved in this chat's outputs; temporary
+  QA sources removed before the production build.
+- Rules checked against [Wizards' FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes),
+  Interceptor: choose what it attacks as it returns; entering attacking does
+  not trigger abilities that require declaring an attacker. The current engine
+  supports attacking players; planeswalker/battle combat remains outside its
+  supported card types, as before.
+
+291 of 320 distinct precon cards are built; 29 remain. Limit Break is 96/100,
+Revival Trance 88/100, Counter Blitz 94/100, Scions & Spellcraft 90/100.
+Continue after the user's push/proceed checkpoint.
+
 ### Summoning Materia: library casting and granted mana
 
 - Built Summoning Materia: equip {2}, +2/+2 and vigilance for the equipped

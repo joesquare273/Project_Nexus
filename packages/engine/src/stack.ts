@@ -1702,10 +1702,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) {
         const c = s.cards[id]!;
         if (c.zone !== 'graveyard') continue;
+        const defenders = effect.attacking && s.combat ? alivePlayers(s).filter((p) => p !== item.controller) : [];
+        if (defenders.length > 1 && !r.attackingDefender) {
+          s.pending = { kind: 'chooseDefender', player: item.controller, card: id, defenders };
+          return;
+        }
+        const defender = r.attackingDefender ?? defenders[0];
         moveCard(ctx, id, 'battlefield');
         if (effect.underYourControl) c.controller = item.controller;
         c.summoningSick = true;
         if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        if (effect.attacking && s.combat && defender && defenders.includes(defender)) {
+          s.combat.attacks.push({ attacker: id, defender });
+          ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });
+        }
+        delete r.attackingDefender;
         addCounters(ctx, id, effect.counters ?? 0, item.controller, effect.counter);
         if (effect.unearth) {
           c.unearthed = true;
@@ -1924,6 +1935,7 @@ function continueResolving(ctx: Ctx): void {
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
     }
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
+    if (s.pending.kind === 'chooseDefender') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -2114,7 +2126,19 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   continueResolving(ctx);
 }
 
-/** Carries on resolving after the player who had to choose left the game. */
+/** Choosing what a returning creature attacks is part of resolution, not targeting. */
+export function chooseDefender(ctx: Ctx, playerId: PlayerId, defender: PlayerId): void {
+  const s = ctx.s, pending = s.pending;
+  if (pending.kind !== 'chooseDefender' || pending.player !== playerId || !s.resolving) reject('You have no defending player to choose.');
+  if (!pending.defenders.includes(defender) || !s.players[defender] || s.players[defender]!.eliminated || defender === playerId) reject('Choose an opponent still in the game.');
+  s.resolving.attackingDefender = defender;
+  // Retry the paused ReturnToBattlefield effect after this non-target choice.
+  s.resolving.next--;
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  resumeResolving(ctx);
+}
+
+/** Carries on resolving after a decision, including when a chooser leaves the game. */
 export function resumeResolving(ctx: Ctx): void {
   continueResolving(ctx);
 }

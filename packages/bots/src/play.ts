@@ -536,6 +536,12 @@ async function playOneGame(gameSeed: number): Promise<void> {
       const choice = options[Number(await ask('  Choose modes: ')) - 1];
       if (!choice) continue;
       actions = [choice];
+    } else if (pending.kind === 'chooseDefender') {
+      console.log('  Choose which player the returning creature attacks:');
+      pending.defenders.forEach((id, i) => console.log('    ' + (i + 1) + ') ' + id));
+      const defender = pending.defenders[Number(await ask('  Defending player: ')) - 1];
+      if (!defender) continue;
+      actions = [{ type: 'ChooseDefender', player: YOU, defender }];
     } else if (pending.kind === 'chooseTargets') {
       actions = await decideTriggerTargets(s);
     } else if (pending.kind === 'decide') {

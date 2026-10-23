@@ -357,6 +357,8 @@ export function getLegalActions(s: GameState): Action[] {
     case 'gameOver':
       return [];
 
+    case 'chooseDefender':
+      return pending.defenders.filter((id) => id !== pending.player && !s.players[id]!.eliminated).map((defender): Action => ({ type: 'ChooseDefender', player: pending.player, defender }));
     case 'chooseModes':
       return triggerModeOptions(s, s.triggerQueue[0]!).map((modes): Action => ({ type: 'ChooseModes', player: pending.player, modes }));
     case 'chooseTargets': {

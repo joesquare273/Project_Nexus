@@ -905,11 +905,8 @@
           "count": 1,
           "set": "fic",
           "number": "47",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rejoin the Fight",

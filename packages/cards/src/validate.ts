@@ -265,6 +265,7 @@ export function validateCardDefinition(raw: unknown): string[] {
 
 function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.giveTo && (e.effect !== 'GainControl' || e.giveTo !== 'SubjectController')) err('giveTo is only for GainControl to SubjectController.');
+  if (e.attacking && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This' || !inAbility)) err('attacking is only for ReturnToBattlefield on This in an ability.');
   if (e.sameObject && (!inAbility || e.target !== 'This')) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
   if (!TARGET_KINDS.includes(e.target)) err(`unknown target "${e.target}".`);
@@ -387,10 +388,11 @@ function validateStatic(st: StaticSpec, err: Err): void {
   if (st.affects === 'EachMatching') {
     if (!st.filter) e('EachMatching needs a filter.');
     // These would ask for the very characteristics the static ability changes.
-    for (const key of ['powerAtLeast', 'toughnessAtLeast', 'subtypes', 'nonSubtypes'] as const) {
+    for (const key of ['powerAtLeast', 'toughnessAtLeast'] as const) {
       if (st.filter?.[key] !== undefined) e(`an EachMatching filter can't use ${key}.`);
     }
   }
+  if (st.addSubtypes && st.affects === 'EachMatching') e('subtype additions need Self or EquippedCreature.');
   validateFilter(st.filter, e);
   validateFilter(st.grantImprovise, e);
   if (st.spellCostReduction) validateFilter(st.spellCostReduction.filter, e);

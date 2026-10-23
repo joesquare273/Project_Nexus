@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
-import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards } from './stack.ts';
+import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards, chooseDefender } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -105,6 +105,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ChooseTargets':
         chooseTriggerTargets(ctx, action.player, action.targets);
+        break;
+      case 'ChooseDefender':
+        chooseDefender(ctx, action.player, action.defender);
         break;
       case 'ChooseModes':
         chooseTriggerModes(ctx, action.player, action.modes);

@@ -513,6 +513,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       if (e.from === 'library' && e.to === 'exile') return `  ${cardName(s, e.card)} is exiled from the top of the library.`;
       if (e.from === 'library' && e.to === 'graveyard') return `  ${cardName(s, e.card)} is milled.`;
       return null;
+    case 'CreatureEnteredAttacking':
+      return `  ${cardName(s, e.card)} enters tapped and attacking ${e.defender === viewer ? 'you' : e.defender}.`;
     case 'AttackDeclared':
       return `  ${cardName(s, e.attacker)} attacks ${e.defendingPlayer === viewer ? 'you' : e.defendingPlayer}.`;
     case 'BlockDeclared':

@@ -171,6 +171,18 @@ function staticSources(s: GameState): CardInstance[] {
   return out;
 }
 
+/** Layer 4 subtype additions, independent of ability and power/toughness evaluation. */
+export function subtypesOf(s: GameState, c: CardInstance): string[] {
+  const subtypes = new Set(def(s, c).subtypes ?? []);
+  if (c.zone === 'battlefield') for (const source of staticSources(s)) {
+    for (const spec of def(s, source).statics ?? []) {
+      if (!spec.addSubtypes || spec.affects === 'EachMatching' || (spec.zone ?? 'battlefield') !== source.zone || staticApplies(s, source, spec) !== c.id) continue;
+      for (const subtype of spec.addSubtypes) subtypes.add(subtype);
+    }
+  }
+  return [...subtypes];
+}
+
 /** Whether a static ability of `source` applies to `c`. */
 export function staticAffects(s: GameState, source: CardInstance, spec: StaticSpec, c: CardInstance): boolean {
   // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
@@ -181,7 +193,7 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
   if (spec.affects === 'EachMatching') {
     // An ability an Equipment grants to others while attached (Dancer's Chakrams).
     if (spec.conditions?.includes('attached') && !source.attachedTo) return false;
-    // Filters here avoid power, toughness and subtypes, which would ask for these same characteristics.
+    // Filters avoid power/toughness; subtypes are evaluated separately in layer 4.
     return c.zone === 'battlefield' && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id });
   }
   return staticApplies(s, source, spec) === c.id;
@@ -206,7 +218,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     power: d.power ?? 0,
     toughness: d.toughness ?? 0,
     keywords: new Set(d.keywords ?? []),
-    subtypes: [...(d.subtypes ?? [])],
+    subtypes: subtypesOf(s, c),
     ward: d.ward ?? 0,
   };
   if (c.zone !== 'battlefield') return out;
@@ -225,7 +237,6 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       out.power += amountOf(s, spec.power, source.controller, source.id);
       out.toughness += amountOf(s, spec.toughness, source.controller, source.id);
       for (const k of spec.keywords ?? []) out.keywords.add(k);
-      for (const t of spec.addSubtypes ?? []) if (!out.subtypes.includes(t)) out.subtypes.push(t);
       out.ward += spec.ward ?? 0;
       removed.push(...(spec.removeKeywords ?? []));
     }

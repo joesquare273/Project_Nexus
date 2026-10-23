@@ -47,6 +47,7 @@ export function checkInvariants(s: GameState): string[] {
   }
   if (s.pending.kind === 'priority' && s.triggerQueue.length > 0 && !s.triggersHeld) problems.push('priority given with triggers still queued');
   if (s.pending.kind === 'decide' && s.stack.at(-1)?.id !== s.pending.item) problems.push('deciding on an ability not on top');
+  if (s.pending.kind === 'chooseDefender' && (!s.resolving || !s.combat)) problems.push('choosing a defender without a resolving effect and combat');
   if (s.pending.kind === 'surveil' && !s.resolving) problems.push('surveilling with nothing resolving');
   if (s.pending.kind === 'priority' && s.resolving) problems.push('priority given while something is still resolving');
   if (s.pending.kind === 'mulligan' || s.pending.kind === 'bottomCards') {

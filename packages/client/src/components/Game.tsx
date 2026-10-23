@@ -970,6 +970,13 @@ function PromptBar(p: PromptProps) {
           : []),
       ];
     }
+  } else if (pending.kind === 'chooseDefender') {
+    text = cardName(s, pending.card) + ': choose which opponent it enters attacking.';
+    buttons = pending.defenders.filter((id) => !s.players[id]!.eliminated).map((defender) => ({
+      label: 'Attack ' + defender,
+      onClick: () => p.submit([{ type: 'ChooseDefender', player: YOU, defender }]),
+      primary: true,
+    }));
   } else if (pending.kind === 'chooseModes') {
     const t = s.triggerQueue[0]!;
     const spec = queuedTriggerSpec(s, t);

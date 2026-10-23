@@ -2,7 +2,7 @@
 // creature you control"), targets ("target nonland permanent an opponent
 // controls") and searches ("a Plains card").
 
-import { characteristics, isEquipped, totalCounters } from './characteristics.ts';
+import { characteristics, subtypesOf, isEquipped, totalCounters } from './characteristics.ts';
 import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
 import type { CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
@@ -51,7 +51,7 @@ export function matchesObject(
     if (!f.categories.every((c) => categories.includes(c))) return false;
   }
   if (f.subtypes) {
-    const subtypes = obj.zone === 'battlefield' ? characteristics(s, obj).subtypes : (def.subtypes ?? []);
+    const subtypes = subtypesOf(s, obj);
     if (!f.subtypes.some((t) => subtypes.includes(t))) return false;
   }
   if (f.supertypes && !f.supertypes.every((t) => def.supertypes?.includes(t))) return false;
@@ -76,7 +76,7 @@ export function matchesObject(
     if (f.nonColors?.some((c) => colors.includes(c))) return false;
   }
   if (f.nonSubtypes) {
-    const subtypes = obj.zone === 'battlefield' ? characteristics(s, obj).subtypes : (def.subtypes ?? []);
+    const subtypes = subtypesOf(s, obj);
     if (f.nonSubtypes.some((t) => subtypes.includes(t))) return false;
   }
   if (f.powerAtLeast !== undefined || f.powerAtMost !== undefined || f.toughnessAtLeast !== undefined) {

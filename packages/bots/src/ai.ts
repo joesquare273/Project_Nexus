@@ -568,6 +568,10 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;
     if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
+    if (pending.kind === 'chooseDefender') {
+      const choices = legal.filter((a): a is Extract<Action, { type: 'ChooseDefender' }> => a.type === 'ChooseDefender');
+      return choices.sort((a, b) => s.players[a.defender]!.life - s.players[b.defender]!.life)[0]!;
+    }
     if (pending.kind === 'surveil') return chooseSurveil(s, pending.player, pending.card);
     if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
     // A commander is almost always worth having back in the command zone.

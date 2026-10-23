@@ -456,7 +456,9 @@ export interface EffectSpec {
   if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
-  /** SearchLibraryToBattlefield: the card enters tapped. */
+  /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
+  attacking?: boolean;
+  /** SearchLibraryToBattlefield or ReturnToBattlefield: the card enters tapped. */
   entersTapped?: boolean;
   /** Exile: also exile every token that player controls with the same name (Legions to Ashes). */
   sameNameTokens?: boolean;
@@ -1220,6 +1222,8 @@ export interface TemporaryEffect {
 
 /** A spell or ability partway through resolving, waiting on a choice (surveil). */
 export interface Resolving {
+  /** The non-target defending-player choice for entering attacking. */
+  attackingDefender?: PlayerId;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
   distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number> };
   item: StackItem;
@@ -1294,6 +1298,7 @@ export interface CombatState {
 
 /** Whose decision the game is waiting on. */
 export type Pending =
+  | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
   | { kind: 'priority'; player: PlayerId; passes: number }
   | { kind: 'declareAttackers'; player: PlayerId }
@@ -1417,6 +1422,7 @@ export type Action =
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
   | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
+  | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'Decide'; player: PlayerId; accept: boolean }
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
@@ -1437,6 +1443,7 @@ export type Action =
 export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
 export type GameEvent =
+  | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }
   | { type: 'AbilityTargeted'; card: InstanceId; controller: PlayerId; source: InstanceId }
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
   | { type: 'LibraryShuffled'; player: PlayerId }

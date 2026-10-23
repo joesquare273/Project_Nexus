@@ -190,6 +190,10 @@ function repairPending(ctx: Ctx): void {
     case 'decide':
       if (s.stack.at(-1)?.id !== pending.item) givePriority(ctx, s.activePlayer);
       break;
+    case 'chooseDefender':
+      if (!s.resolving) givePriority(ctx, s.activePlayer);
+      else pending.defenders = pending.defenders.filter((id) => !s.players[id]!.eliminated);
+      break;
     case 'surveil':
       // The resolving spell or ability left with its controller.
       if (!s.resolving) givePriority(ctx, s.activePlayer);
