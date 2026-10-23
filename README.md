@@ -57,8 +57,7 @@ packages/
 docs/       development log, roadmap, card types, decisions
 ```
 
-Planned later: `server` (WebSocket rooms) for online play, and possibly a
-Godot client for heavier visual effects.
+Planned later: `server` (WebSocket rooms) for online play. The graphical application is browser-based.
 
 ## Commands
 

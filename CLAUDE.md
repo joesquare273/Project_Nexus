@@ -39,7 +39,7 @@ this repo, not only in local memory.
   See `docs/development-update.md`.
 - **A graphical interface comes first.** The browser board (`packages/client`,
   `npm run dev`) is the main way to play; the terminal client is secondary.
-  A Godot client may come much later, so the client talks to the engine only
+  The application is browser-based; the client talks to the engine only
   through JSON (`GameView`, legal actions, events, `Action`).
 - **Frontend direction (2026-10-23):** an arcane fantasy table, with inspiration
   from Hearthstone, MTG Arena and Dueling Nexus while keeping its own identity.

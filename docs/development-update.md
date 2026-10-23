@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Browser-only application direction
+
+- Confirmed the graphical application stays in `packages/client`, using the
+  TypeScript engine through its existing JSON view/action boundary.
+- Removed the proposed Godot migration from the README, project guidance,
+  design decisions, historical browser note, and session comment.
+- The untracked local `client-godot/` contains generated `.godot` data only.
+  Its removal was requested, but automated deletion was blocked by execution
+  policy; the folder still requires manual removal. Other local caches remain.
+- No game behavior or card implementation changed. The latest card checkpoint
+  remains 296 of 320 distinct precon cards built, with 24 remaining.
+- Validation: `git diff --check` passed and a search of the tracked project
+  guidance and session comment found no remaining Godot migration references.
+
 ### Adventure batch, larger battlefield cards, and readable AI turns
 
 - Completed Hypnotic Sprite // Mesmeric Glare, Murderous Rider // Swift End,
@@ -1292,8 +1306,7 @@ its daily bulk data files instead of the API.
 ### Started: browser board
 
 The terminal client is hard to play, so a graphical browser client
-(`packages/client`) is in progress on the `browser-client` branch. A Godot
-version may come much later for heavier effects; see
+(`packages/client`) is in progress on the `browser-client` branch. See
 [decisions.md](decisions.md).
 
 ### Done: K1 triggered abilities

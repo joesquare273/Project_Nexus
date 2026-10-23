@@ -1,6 +1,6 @@
 // A local game against bots, with no UI code. The board renders `view()` (what
 // you're allowed to see), offers `plays()` and the engine's legal actions,
-// and sends your choices back with `submit()`. A networked or Godot client
+// and sends your choices back with `submit()`. A networked browser client
 // would get the same view and send the same actions through a server.
 
 import { actionDelay, type AiPace } from './pacing.ts';
