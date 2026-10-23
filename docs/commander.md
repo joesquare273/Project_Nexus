@@ -1,14 +1,14 @@
-87/100 |91/100 |84/100 |92/100 |# Final Fantasy Commander precons: roadmap
+# Final Fantasy Commander precons: roadmap
 
 The four Final Fantasy Commander precons, exactly as printed, playable in the
 Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 92/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 93/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 86/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 93/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 87/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 94/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 88/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -79,5 +79,6 @@ needing several groups' pieces waits for the last of them.
 | Foretell | **3 built (2026-10-22):** Ultimate Magic: Holy, Ultimate Magic: Meteor, Lifestream's Blessing. |
 | Equipment and one-offs, part 2 | **10 built (2026-10-23):** Wrecking Ball Arm, Conformer Shuriken, Conqueror's Flail, Dancer's Chakrams, Astrologian's Planisphere, Phoenix Down, Yuna's Decision, Cait Sith, Furious Rise, Avalanche of Sector 7. |
 | Graveyard and library choices | **4 built (2026-10-23):** Rejoin the Fight, Promise of Loyalty, Endless Detour, Combustible Gearhulk. |
-| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (39 cards left in all). |
+| Counter distribution and ability targets | **3 built (2026-10-23):** Forgotten Ancient, Estinien Varlineau, Professor Hojo. |
+| Adventures, double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (36 cards left in all). |
 | Everything else | |

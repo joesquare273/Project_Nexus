@@ -50,6 +50,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
 };
 
 const COUNT_TEXT: Record<string, string> = {
+  OpponentsDamagedBySourceOrDragonThisTurn: 'opponents dealt combat damage by this creature or a Dragon this turn',
   EquipmentYouControl: 'Equipment you control',
   CreaturesYouControl: 'creatures you control',
   EquippedCreaturesYouControl: 'equipped creatures you control',
@@ -94,6 +95,7 @@ function targetText(e: EffectSpec): string {
 }
 
 function effectText(e: EffectSpec): string {
+  if (e.effect === 'DistributeCounters') return 'Move any number of +1/+1 counters from this creature onto other creatures';
   if (e.effect === 'ChooseGraveyardCards') return 'Each opponent chooses a different creature card from your graveyard';
   if (e.effect === 'ReturnChosenToBattlefield') return 'Return the chosen cards to the battlefield under your control';
   if (e.effect === 'PutIntoLibrary') return "Its owner puts it on the top or bottom of their library";
@@ -301,6 +303,8 @@ function subjectText(f: ObjectFilter, noun: string, plural = false): string {
 }
 
 function triggerCondition(t: TriggerSpec): string {
+  if (t.when === 'SecondMain') return 'At the beginning of your second main phase';
+  if (t.when === 'AbilityTargetsCreature') return 'Whenever one or more creatures you control become the target of an activated ability';
   if (t.when === 'BeginCombat') return t.turn === 'Each' ? 'At the beginning of each combat' : 'At the beginning of combat on your turn';
   if (t.when === 'Upkeep') return t.turn === 'Each' ? "At the beginning of each player's upkeep" : 'At the beginning of your upkeep';
   if (t.when === 'EndStep') {

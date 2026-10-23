@@ -74,6 +74,13 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
   const yours = () => battlefieldCards(s).filter((c) => c.controller === player);
   const creature = (c: CardInstance) => def(s, c).types.includes('creature');
   switch (kind) {
+    case 'OpponentsDamagedBySourceOrDragonThisTurn': {
+      const currentObject = source ? (s.cards[source]?.zoneChanges ?? 0) : -1;
+      return new Set((s.combatDamageHistory ?? []).filter((hit) =>
+        hit.player !== player && !s.players[hit.player]!.eliminated &&
+        (hit.dragon || (hit.source === source && hit.sourceObject === currentObject)),
+      ).map((hit) => hit.player)).size;
+    }
     case 'EquipmentYouControl':
       return yours().filter((c) => isEquipment(s, c)).length;
     case 'CreaturesYouControl':

@@ -157,11 +157,8 @@
           "count": 1,
           "set": "fic",
           "number": "69",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summoning Materia",
@@ -2026,10 +2023,8 @@
           "count": 1,
           "set": "fic",
           "number": "304",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Generous Patron",
@@ -2709,10 +2704,8 @@
           "count": 1,
           "set": "fic",
           "number": "82",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hildibrand Manderville // Gentleman's Rise",

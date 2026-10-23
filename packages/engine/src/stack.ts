@@ -821,7 +821,16 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
   }
-  if (source) cost = { ...cost, generic: cost.generic + wardCost(s, targets, source.controller) };
+  if (source) {
+    const who = source.controller;
+    if (s.activePlayer === who && player(s, who).friendlyTargetAbilityTurn !== s.turnNumber &&
+        targets.some((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) && s.cards[t.card]!.controller === who)) {
+      for (const permanent of battlefield(s).filter((c) => c.controller === who)) {
+        for (const st of defOf(s, permanent).statics ?? []) cost = reduceGeneric(cost, st.firstFriendlyTargetActivationDiscount ?? 0);
+      }
+    }
+    cost = { ...cost, generic: cost.generic + wardCost(s, targets, who) };
+  }
   return cost;
 }
 
@@ -936,6 +945,8 @@ export function activateAbility(
   const problem = activationProblem(s, playerId, c, spec);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
+  const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
+  for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
   if (spec.cost.sacrifice) {
     if (costCards.length !== 1 || !sacrificeCandidates(s, playerId, spec.cost.sacrifice, id).includes(costCards[0]!)) {
@@ -950,6 +961,7 @@ export function activateAbility(
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
   payMana(ctx, playerId, abilityCost(s, spec, targets, c), spec.equip ?? false);
+  if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
   if (spec.cost.tap) tap(ctx, c);
   if (rc) {
@@ -1187,6 +1199,7 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
 
 /** Why a set of chosen cards doesn't fit a choice, or null if it does. */
 export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceId[]): string | null {
+  if (choice.purpose === 'distributeCounter' && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
   if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
   if (choice.allOrNothing) return cards.length === 0 || cards.length === choice.cards.length ? null : 'Choose all of them or none.';
   if (cards.length < choice.min || cards.length > choice.max) {
@@ -1269,6 +1282,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
+    case 'DistributeCounters': {
+      const from = s.cards[source]!;
+      if (from.zone !== 'battlefield' || !(from.counters && from.counters > 0)) return;
+      const candidates = battlefield(s).filter((c) => matchesObject(s, effect.filter, c, { controller: item.controller, source })).map((c) => c.id);
+      if (!candidates.length) return;
+      r.distribution = { source, remaining: from.counters, assigned: {} };
+      r.choiceQueue = [{ player: item.controller, purpose: 'distributeCounter', cards: candidates, min: 0, max: 1, counterCount: from.counters }];
+      return;
+    }
     case 'ChooseGraveyardCards': {
       r.chosen = [];
       const order = alivePlayers(s);
@@ -1942,7 +1964,24 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
-  if (pending.purpose === 'reanimate') {
+  if (pending.purpose === 'distributeCounter') {
+    const distribution = r.distribution!;
+    const recipient = cards[0];
+    const assigned = recipient ? { ...distribution.assigned, [recipient]: (distribution.assigned[recipient] ?? 0) + 1 } : distribution.assigned;
+    const remaining = distribution.remaining - (recipient ? 1 : 0);
+    r.distribution = { ...distribution, assigned, remaining };
+    if (recipient && remaining > 0) r.choiceQueue = [{ ...pending, cards: [...pending.cards], counterCount: remaining }, ...(r.choiceQueue ?? [])];
+    else {
+      const moved = Object.values(assigned).reduce((total, n) => total + n, 0);
+      let available = removeCounters(ctx, distribution.source, '+1/+1', moved);
+      for (const [to, n] of Object.entries(assigned)) {
+        const movedToRecipient = Math.min(n, available);
+        addCounters(ctx, to, movedToRecipient, r.item.controller);
+        available -= movedToRecipient;
+      }
+      delete r.distribution;
+    }
+  } else if (pending.purpose === 'reanimate') {
     // Reserve the card until all opponents have chosen; all enter together afterwards.
   } else if (pending.purpose === 'library') {
     const id = pending.cards[0]!;

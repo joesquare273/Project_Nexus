@@ -148,6 +148,7 @@ export function startNextTurn(ctx: Ctx): void {
   s.turnNumber += 1;
   s.triggeredThisTurn = [];
   s.creaturesDiedThisTurn = 0;
+  s.combatDamageHistory = [];
   s.combatsThisTurn = 0;
   s.extraCombats = 0;
   delete s.players[s.activePlayer]!.attackTaxes;

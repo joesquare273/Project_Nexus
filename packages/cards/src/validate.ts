@@ -367,6 +367,7 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
 
 function validateStatic(st: StaticSpec, err: Err): void {
   const e: Err = (msg) => err(`static ability: ${msg}`);
+  if (st.firstFriendlyTargetActivationDiscount !== undefined && (!isNonNegativeInt(st.firstFriendlyTargetActivationDiscount) || st.affects !== 'Self')) e('activation discount needs a whole number on a Self static ability.');
   if (st.affects !== 'Self' && st.affects !== 'EquippedCreature' && st.affects !== 'EachMatching') {
     e('affects must be "Self", "EquippedCreature" or "EachMatching".');
   }

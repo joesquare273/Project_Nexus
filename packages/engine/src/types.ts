@@ -150,6 +150,7 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  'DistributeCounters',
   'ChooseGraveyardCards',
   'ReturnChosenToBattlefield',
   'PutIntoLibrary',
@@ -298,6 +299,7 @@ export type EffectKind = (typeof EFFECT_KINDS)[number];
 
 /** Things whose number an amount can count, from the point of view of the spell or ability's controller. */
 export const COUNT_KINDS = [
+  'OpponentsDamagedBySourceOrDragonThisTurn',
   'EquipmentYouControl',
   'CreaturesYouControl',
   'EquippedCreaturesYouControl',
@@ -502,6 +504,8 @@ export interface EffectSpec {
  * dealt damage, or the spell that was cast.
  */
 export const TRIGGER_EVENTS = [
+  'SecondMain',
+  'AbilityTargetsCreature',
   'EntersBattlefield',
   'Dies',
   'Attacks',
@@ -715,6 +719,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** Professor Hojo: your first activated ability targeting your creature on your turn costs less. */
+  firstFriendlyTargetActivationDiscount?: number;
   /**
    * Which permanents it changes: this card, the creature this Equipment is
    * attached to, or each permanent matching `filter` ("each creature you
@@ -954,6 +960,8 @@ export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'e
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  /** Distinguishes successive objects represented by this physical card. */
+  zoneChanges?: number;
   /** Players this creature cannot attack while its uninterrupted vow counter remains. */
   vowTo?: PlayerId[];
   id: InstanceId;
@@ -1023,6 +1031,8 @@ export interface CardInstance {
 }
 
 export interface PlayerState {
+  /** Last turn this player activated an ability targeting a creature they controlled. */
+  friendlyTargetAbilityTurn?: number;
   id: PlayerId;
   life: number;
   /** Index 0 is the top of the library. */
@@ -1176,6 +1186,8 @@ export interface TemporaryEffect {
 
 /** A spell or ability partway through resolving, waiting on a choice (surveil). */
 export interface Resolving {
+  /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
+  distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number> };
   item: StackItem;
   /** Index of the next effect to apply. */
   next: number;
@@ -1213,9 +1225,11 @@ export interface Resolving {
 
 /** One player's choice of cards while a spell or ability resolves. */
 export interface CardChoice {
+  /** Counter-distribution progress for the board. */
+  counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw';
+  purpose: 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1278,6 +1292,7 @@ export type Pending =
   | { kind: 'gameOver' };
 
 export interface GameState {
+  combatDamageHistory?: { source: InstanceId; sourceObject: number; player: PlayerId; dragon: boolean }[];
   format: FormatConfig;
   cardDefs: Record<CardDefId, CardDefinition>;
   cards: Record<InstanceId, CardInstance>;
@@ -1380,6 +1395,7 @@ export type Action =
 export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
 export type GameEvent =
+  | { type: 'AbilityTargeted'; card: InstanceId; controller: PlayerId; source: InstanceId }
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
   | { type: 'LibraryShuffled'; player: PlayerId }
   /** `n`: how many cards that player has drawn this turn, counting this one. */

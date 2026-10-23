@@ -5,6 +5,31 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Counter distribution and ability targets: three more precon cards
+
+- Forgotten Ancient gets an optional +1/+1 counter for any player's spell.
+  At upkeep, its controller may distribute any number of its counters among
+  other creatures, including opponents' creatures. Choices are collected before
+  counters move, with one placement per recipient so Hardened Scales applies
+  once to that recipient's allocation. The board shows remaining counters;
+  the bot prefers its own creatures.
+- Estinien Varlineau gets a counter and temporary flying for your noncreature
+  spells. Combat-damage history records distinct opponents damaged by Estinien
+  or any Dragon. Its second-main-phase trigger draws and loses that much life.
+  History resets each turn and distinguishes successive objects when a physical
+  card leaves and returns.
+- Professor Hojo discounts your first activated ability targeting your creature
+  on your turn. Activations before Hojo enters still count toward that first
+  ability. Becoming the target of an activated ability triggers its draw once
+  each turn, including when an opponent activates the ability.
+- Thirty-three new scenarios cover 2, 3 and 4 players, voluntary choices,
+  batch counter placement, immutable input state, turn history, and Hojo's timing.
+
+284 of 320 distinct precon cards are built; 36 remain. Validation: type-check,
+all 600 tests, and the browser production build passed. Thirty additional
+Commander fuzz games (seeds 79-108) completed with no invariant failures or
+action-limit timeouts.
+
 ### Commander regression checks after the graveyard/library group
 
 - Expanded Terra, Tidus, Y'shtola, Tifa and G'raha Tia's ability scenarios

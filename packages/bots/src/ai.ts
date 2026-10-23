@@ -499,6 +499,10 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
   if (p.purpose === 'library') return pick([]);
+  if (p.purpose === 'distributeCounter') {
+    const recipients = p.cards.filter((id) => s.cards[id]!.controller === me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));
+    return pick(recipients.slice(0, 1));
+  }
   if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
   if (p.purpose === 'discard') {
     if (p.max === 0) return pick([]);

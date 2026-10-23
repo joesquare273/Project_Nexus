@@ -169,6 +169,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
+  c.zoneChanges = (c.zoneChanges ?? 0) + 1;
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';
   if (c.phasedOut) phaseIn(ctx, c, true);
@@ -372,6 +373,10 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat });
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
+    if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {
+      source: sourceId, sourceObject: source.zoneChanges ?? 0, player: target.player,
+      dragon: characteristics(s, source).subtypes.includes('Dragon'),
+    }];
     changeLife(ctx, target.player, -amount);
     // Commander damage (rule 903.10a): combat damage from a commander is tracked per commander.
     if (combat && source.isCommander) {
