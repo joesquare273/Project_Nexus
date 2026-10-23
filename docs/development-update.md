@@ -5,6 +5,27 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Arcane frontend foundation and commander artwork
+
+- Added Poly Haven's CC0 Rock 01 diffuse texture locally (1K, 688,083 bytes),
+  with source, download URL, and license recorded in
+  `packages/client/public/textures/README.md`. No runtime texture-host dependency.
+- Applied dark stone, blue crystal light, gold borders, and serif menu headings;
+  rules text and numbers retain the readable interface font. Added keyboard
+  focus outlines and a narrow-screen commander grid.
+- Removed forced 16:9 cropping from deck and commander artwork. Images retain
+  their natural ratio and cannot shrink inside flex layouts. Scoped commander
+  image rules to the direct artwork child so mana symbols stay 12 by 12 pixels.
+- Exposed commander selection with aria-pressed. No gameplay rules changed.
+- Browser review: desktop and 390px-wide commander picker; all eight commanders'
+  loaded artwork measured 182 by 133px against 626 by 457px source artwork on
+  desktop (rounding only). At narrow width, Cloud/Tifa measured 163 by 119px.
+  Started a Commander game with Tifa, kept a hand, played Mountain, checked
+  settings and returned to the menu. No browser console errors were reported.
+- Validation: type-check, all 630 tests, and production build passed. Vite still
+  reports its existing large JavaScript bundle warning. The broader controls,
+  animation, and MTG rules backlog remains in `frontend-roadmap.md`.
+
 ### Casting support: Banon and Inspiring Statuary
 
 - Banon's Pray permission casts one eligible creature from your graveyard on

@@ -210,6 +210,7 @@ function CommanderPicker({ precon, chosen, onChoose }: { precon: string; chosen:
           <button
             key={c.name}
             className={`commander-choice ${current === c.name ? 'chosen' : ''}`}
+            aria-pressed={current === c.name}
             onClick={() => onChoose(c.printed ? undefined : c.name)}
           >
             <img src={SCRYFALL[c.defId]?.image.artCrop} alt="" />
