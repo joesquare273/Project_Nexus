@@ -1037,6 +1037,9 @@ function PromptBar(p: PromptProps) {
           : []),
       ];
     }
+  } else if (pending.kind === 'copyCreature') {
+    text = cardName(s,pending.source) + ': become a copy of ' + cardName(s,pending.target) + (pending.effect.copyUntilEndOfTurn ? ' until end of turn?' : '?');
+    buttons = getLegalActions(s).flatMap(action=>action.type==='CopyCreature' ? [{label:action.accept?'Become a copy':'Keep current form',onClick:()=>p.submit([action]),primary:action.accept}] : []);
   } else if (pending.kind === 'chooseOpponent') {
     text = 'Choose the opponent who will decide which exiled card goes on the bottom of your library.';
     buttons = pending.opponents.filter(id => !s.players[id]!.eliminated).map(opponent => ({

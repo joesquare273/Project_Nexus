@@ -117,13 +117,13 @@ export function manaAbilityAmount(c: CardInstance, def: CardDefinition): number 
  * identity" and "any color a land an opponent controls could produce".
  */
 export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
-  const def = s.cardDefs[c.defId]!;
+  const def = currentDefinition(s, c);
   const ability = def.manaAbility;
   const yours = () => s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === c.controller);
   // "Add {G} for each +1/+1 counter": nothing to add without counters.
   if (ability?.amountPerCounter && manaAbilityAmount(c, def) === 0) return [];
   // "Activate only if you control five or more lands."
-  if (ability?.ifLandsAtLeast && yours().filter((x) => s.cardDefs[x.defId]!.types.includes('land')).length < ability.ifLandsAtLeast) return [];
+  if (ability?.ifLandsAtLeast && yours().filter((x) => currentDefinition(s, x).types.includes('land')).length < ability.ifLandsAtLeast) return [];
   const made = new Set<ManaType>(manaProduced(def));
   if (ability?.anyColorIfControls && yours().some((x) => matchesObject(s, ability.anyColorIfControls, x, { controller: c.controller }))) {
     for (const m of ['W', 'U', 'B', 'R', 'G'] as const) made.add(m);
@@ -137,7 +137,7 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   }
   if (def.manaAbility?.yourLandColors) {
     for (const id of s.players[c.controller]!.battlefield) {
-      const land = s.cardDefs[s.cards[id]!.defId]!;
+      const land = currentDefinition(s, s.cards[id]!);
       if (land.types.includes('land')) for (const m of manaProduced(land)) made.add(m);
     }
   }
@@ -145,7 +145,7 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
     for (const pid of s.turnOrder) {
       if (pid === c.controller) continue;
       for (const id of s.players[pid]!.battlefield) {
-        const land = s.cardDefs[s.cards[id]!.defId]!;
+        const land = currentDefinition(s, s.cards[id]!);
         if (land.types.includes('land')) for (const m of manaProduced(land)) if (m !== 'C') made.add(m);
       }
     }
@@ -155,10 +155,10 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
 
 /** For lands like snarls: whether you have a card you could reveal to have it enter untapped. */
 export function canReveal(s: GameState, c: CardInstance, controller: string = c.controller): boolean {
-  const subtypes = s.cardDefs[c.defId]!.entersTappedUnless?.revealSubtypes;
+  const subtypes = currentDefinition(s, c).entersTappedUnless?.revealSubtypes;
   if (!subtypes) return false;
   const hand = s.players[controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
-  return subtypes.some((t) => hand.some((x) => s.cardDefs[x.defId]!.subtypes?.includes(t)));
+  return subtypes.some((t) => hand.some((x) => currentDefinition(s, x).subtypes?.includes(t)));
 }
 
 /**
@@ -173,15 +173,15 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
       if (pid === c.controller) continue;
       for (const id of s.players[pid]!.battlefield) {
         const o = s.cards[id]!;
-        if (o.controller === pid && o.id !== c.id && s.cardDefs[o.defId]!.statics?.some((st) => st.opponentCreaturesEnterTapped)) return true;
+        if (o.controller === pid && o.id !== c.id && currentDefinition(s, o).statics?.some((st) => st.opponentCreaturesEnterTapped)) return true;
       }
     }
   }
-  const def = s.cardDefs[c.defId]!;
+  const def = currentDefinition(s, c);
   if (def.entersTapped) return true;
   const unless = def.entersTappedUnless;
   if (!unless) return false;
-  const defOf = (x: CardInstance) => s.cardDefs[x.defId]!;
+  const defOf = (x: CardInstance) => currentDefinition(s, x);
   const mine = s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
   if (unless.controlsSubtypes?.some((t) => mine.some((x) => defOf(x).subtypes?.includes(t)))) return false;
   if (unless.basicLands !== undefined && mine.filter((x) => isBasicLand(defOf(x))).length >= unless.basicLands) {
@@ -193,9 +193,9 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
 
 /** Relic of Legends' cost has no tap symbol, so summoning sickness does not apply. */
 export function legendaryManaCreatures(s: GameState, source: CardInstance): CardInstance[] {
-  if (source.zone !== 'battlefield' || source.phasedOut || !s.cardDefs[source.defId]!.manaAbility?.tapLegendaryCreature) return [];
+  if (source.zone !== 'battlefield' || source.phasedOut || !currentDefinition(s, source).manaAbility?.tapLegendaryCreature) return [];
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === source.controller && !c.tapped &&
-    currentDefinition(s,c).types.includes('creature') && isLegendary(s.cardDefs[c.defId]!));
+    currentDefinition(s,c).types.includes('creature') && isLegendary(currentDefinition(s, c)));
 }
 
 /** Active permanents whose abilities apply to their controller. */
@@ -203,19 +203,19 @@ function librarySources(s: GameState, player: string): CardInstance[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player);
 }
 export function visibleLibraryTop(s: GameState, player: string): string | undefined {
-  return librarySources(s, player).some((c) => s.cardDefs[c.defId]!.lookAtLibraryTop) ? s.players[player]?.library[0] : undefined;
+  return librarySources(s, player).some((c) => currentDefinition(s, c).lookAtLibraryTop) ? s.players[player]?.library[0] : undefined;
 }
-export function canCastLibraryTop(s: GameState, player: string, c: CardInstance, definition = s.cardDefs[c.defId]!): boolean {
+export function canCastLibraryTop(s: GameState, player: string, c: CardInstance, definition = currentDefinition(s, c)): boolean {
   if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id || !definition.types.includes('creature')) return false;
   return librarySources(s, player).some((source) => {
     const host = source.attachedTo ? s.cards[source.attachedTo] : undefined;
-    return s.cardDefs[source.defId]!.castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && currentDefinition(s,host).types.includes('creature');
+    return currentDefinition(s, source).castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && currentDefinition(s,host).types.includes('creature');
   });
 }
 /** Each entry is an ability of the equipped creature, distinct from its printed mana abilities. */
 export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[] }[] {
   if (c.zone !== 'battlefield' || c.phasedOut || !currentDefinition(s,c).types.includes('creature')) return [];
   return Object.values(s.cards).filter((equipment) => equipment.zone === 'battlefield' && !equipment.phasedOut && equipment.attachedTo === c.id)
-    .flatMap((equipment) => (s.cardDefs[equipment.defId]!.statics ?? []).filter((spec) => spec.affects === 'EquippedCreature' && spec.grantsMana)
+    .flatMap((equipment) => (currentDefinition(s, equipment).statics ?? []).filter((spec) => spec.affects === 'EquippedCreature' && spec.grantsMana)
       .map((spec) => ({ source: equipment.id, mana: spec.grantsMana! })));
 }

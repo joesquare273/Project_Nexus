@@ -1,7 +1,7 @@
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { spellDefinition } from './cardface.ts';
+import { copiableDefinition, spellDefinition } from './cardface.ts';
 import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, subtypesOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
@@ -144,6 +144,7 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
 /** What a triggered or activated ability on the stack does. */
 export function abilitySpec(s: GameState, item: AbilityItem): TriggerSpec | ActivatedSpec {
   if (item.spec) return withMode(item.spec, item.mode, item.modes);
+  if (item.activatedSpec) return item.activatedSpec;
   const def = defOf(s, s.cards[item.source]!);
   return item.from === 'trigger' ? withMode(item.spec ?? def.triggers![item.ability]!, item.mode, item.modes) : activatedAbilities(def)[item.ability]!;
 }
@@ -301,7 +302,7 @@ export function isLegalTarget(
   if (hasKeyword(s, c, 'Hexproof') && c.controller !== controller) return false;
   if (kind === 'TargetPermanent') return matchesObject(s, effect.filter, c, viewpoint);
   if (!isCreatureOnBattlefield(s, c)) return false;
-  if (kind === 'AnyTarget' || kind === 'TargetCreature') return true;
+  if (kind === 'AnyTarget' || kind === 'TargetCreature') return matchesObject(s, effect.filter, c, viewpoint);
   if (kind === 'OpponentCreature') return c.controller !== controller;
   return false;
 }
@@ -385,7 +386,7 @@ function sourceOf(item: StackItem): InstanceId {
 
 function sameTargetObject(s: GameState, item: StackItem, index: number): boolean {
   const t = item.targets[index];
-  return item.kind !== 'spell' || !item.targetObjects || t?.kind !== 'card' || (s.cards[t.card]?.zoneChanges ?? 0) === item.targetObjects[index];
+  return !item.targetObjects || t?.kind !== 'card' || (s.cards[t.card]?.zoneChanges ?? 0) === item.targetObjects[index];
 }
 
 /** A spell or ability whose targets have all become illegal doesn't resolve (rule 608.2b). */
@@ -1137,6 +1138,8 @@ export function activateAbility(
     kind: 'ability',
     source: id,
     from: 'activated',
+    activatedSpec: structuredClone(spec),
+    targetObjects: targets.map(t=>t.kind==='card' ? (s.cards[t.card]?.zoneChanges ?? 0) : null),
     ...(exiledAsCost ? { exiledAsCost } : {}),
     sourceObject,
     ability: index,
@@ -1456,7 +1459,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const s = ctx.s;
   const item = r.item;
   const source = sourceOf(item);
-  if (effect.sameObject && item.kind === 'ability' && (s.cards[source]?.zoneChanges ?? 0) !== item.sourceObject) return;
+  if (effect.sameObject && item.kind === 'ability' && ((s.cards[source]?.zoneChanges ?? 0) !== item.sourceObject || s.cards[source]?.phasedOut)) return;
   const amount = resolvedAmount(s, effect, r);
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
@@ -1806,9 +1809,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'CreateTokenCopy':
-      // The copy uses the original's printed card (its copiable values, rule 707.2).
+      // Copy effects and their exceptions are themselves copiable (rule 707.2).
       for (const id of onBattlefield) {
-        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createToken(ctx, s.cards[id]!.defId, item.controller));
+        const original=s.cards[id]!, definition=structuredClone(copiableDefinition(s,original));
+        const printing=original.copy?.printing??original.printing??definition.printing;
+        const copy={definition,artDefId:original.copy?.artDefId??original.defId,copiedName:definition.name,...(printing?{printing}:{})};
+        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createToken(ctx, original.defId, item.controller, copy));
       }
       return;
     case 'GrantTrigger':
@@ -1869,6 +1875,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const recipient = targets.find(t => t.kind === 'player');
       if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount };
       return;
+    }
+    case 'CopyCreature': {
+      const t = targets.find(t=>t.kind==='card');
+      const src=s.cards[source];
+      const target=t?.kind==='card' ? s.cards[t.card] : undefined;
+      if(src?.zone==='battlefield' && !src.phasedOut && target && isCreatureOnBattlefield(s,target)) {
+        s.pending={kind:'copyCreature',player:item.controller,source,target:target.id,sourceObject:src.zoneChanges??0,targetObject:target.zoneChanges??0,effect:structuredClone(effect)};
+      }
+      break;
     }
     case 'MillAndGrantOneCast': {
       const milled: CastGroup['cards'] = [];
@@ -2162,7 +2177,7 @@ function continueResolving(ctx: Ctx): void {
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
     }
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
-    if (s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
+    if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -2448,5 +2463,35 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
   if (pending.kind !== 'chooseMana' || pending.player !== playerId || !s.resolving || !COLORS.includes(mana as never)) reject('Choose a color of mana for the resolving ability.');
   if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
   s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
+  continueResolving(ctx);
+}
+
+/** Copiable values exclude counters and continuous effects (rule 707.2). */
+export function canChooseCopy(s: GameState, pending: Extract<GameState['pending'],{kind:'copyCreature'}>): boolean {
+  const source=s.cards[pending.source], target=s.cards[pending.target];
+  return !!source && source.zone==='battlefield' && !source.phasedOut && (source.zoneChanges??0)===pending.sourceObject && !!target && isCreatureOnBattlefield(s,target) && (target.zoneChanges??0)===pending.targetObject;
+}
+
+export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
+  const s=ctx.s, p=s.pending, r=s.resolving;
+  if(p.kind!=='copyCreature' || p.player!==playerId || !r) reject('No copy choice is waiting for you.');
+  if(accept) {
+    if(!canChooseCopy(s,p)) reject('The creatures are no longer available to copy.');
+    const source=s.cards[p.source]!, target=s.cards[p.target]!, effect=p.effect;
+    const original=copiableDefinition(s,target), definition=structuredClone(original);
+    definition.id=source.defId;
+    if(effect.copyName) definition.name=effect.copyName;
+    delete definition.token;
+    definition.keywords=[...new Set([...(definition.keywords??[]),...(effect.copyKeywords??[])])];
+    if(effect.copyKeepTrigger && r.item.kind==='ability' && r.item.spec) definition.triggers=[...(definition.triggers??[]),structuredClone(r.item.spec)];
+    const printing=target.copy?.printing??target.printing??original.printing;
+    source.copy={definition,artDefId:target.copy?.artDefId??target.defId,copiedName:original.name,...(printing?{printing:structuredClone(printing)}:{}),...(effect.copyUntilEndOfTurn?{untilTurn:s.turnNumber,...(source.copy?{previous:structuredClone(source.copy)}:{})}:{})};
+    newTimestamp(s);
+    ctx.ev.push({type:'BecameCopy',card:source.id,copied:target.id,name:original.name});
+    if(effect.copyBuffBoth) for(const id of new Set([source.id,target.id])) {
+      s.temporaryEffects.push({source:source.id,affected:id,power:effect.power??0,toughness:effect.toughness??0,keywords:effect.keywords??[],flags:effect.flags??[]});
+    }
+  }
+  s.pending={kind:'priority',player:playerId,passes:0};
   continueResolving(ctx);
 }

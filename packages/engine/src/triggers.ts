@@ -191,7 +191,7 @@ function matchesFilter(
   if (!filter) return o.subject === source;
   const subject=o.damageSource?.card ?? s.cards[o.subject]!;
   const viewpoint={controller,source,...(o.damageSource ? {power:o.damageSource.power,toughness:o.damageSource.toughness} : {})};
-  const definition=o.lastTypes ? {...defOf(s,subject),types:o.lastTypes} : undefined;
+  const definition=o.lastTypes ? {...(subject.lastDefinition??defOf(s,subject)),types:o.lastTypes} : undefined;
   if (filter.equippedBySource && o.when === 'Dies') {
     // "Whenever equipped creature dies": look back at what was attached when it died (rule 603.10a).
     if (!o.equippedBy?.includes(source)) return false;
@@ -265,7 +265,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
   if (spec.ifSubjectControllerHasMoreLands && o.subjectController) {
-    const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && s.cardDefs[c.defId]!.types.includes('land')).length;
+    const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && defOf(s,c).types.includes('land')).length;
     if (lands(o.subjectController) <= lands(controller)) return false;
   }
   if (spec.nthSpellThisTurn !== undefined && o.spellNumber !== spec.nthSpellThisTurn) return false;
@@ -315,7 +315,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
   const leftBattlefield = [...moved]
     .filter(([id, m]) => m.left !== undefined && s.cards[id]!.zone !== 'battlefield')
     .map(([id]) => s.cards[id]!)
-    .filter(withTriggers);
+    .filter(c=>(c.lastDefinition??defOf(s,c)).triggers?.length);
   const inGraveyards = s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.map((id) => s.cards[id]!)).filter(withTriggers);
 
   const found: QueuedTrigger[] = [];
@@ -347,7 +347,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
   const batched = new Set<string>();
   const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard', o: Occurrence) => {
     if (s.players[controller]!.eliminated) return;
-    defOf(s, c).triggers!.forEach((original, ability) => {
+    const definition = zone === 'battlefield' && c.zone !== 'battlefield' ? c.lastDefinition ?? defOf(s,c) : defOf(s,c);
+    definition.triggers!.forEach((original, ability) => {
       let spec = original;
       if ((spec.zone ?? 'battlefield') !== zone || !triggersOn(spec, o, s, c.id, controller)) return;
       const key = `${c.id}#${ability}`;
@@ -367,7 +368,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         spec = { ...spec, supportX: false, effects: Array.from({ length: slots }, () => ({ effect: 'AddCounters', amount: 1, target: 'TargetCreature', filter: { other: true }, upTo: true, group: 'support' })) };
       }
       found.push({
-        ...(original.supportX ? { spec } : {}),
+        spec: structuredClone(spec),
         source: c.id,
         sourceObject: c.zoneChanges ?? 0,
         ...(o.subjectController ? { subjectController: o.subjectController } : {}),
@@ -425,6 +426,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     sourceZone: t.sourceZone,
     controller: t.controller,
     targets,
+    targetObjects: targets.map(t=>t.kind==='card' ? s.cards[t.card]?.zoneChanges??0 : null),
     ...(t.modes ? { modes: [...t.modes] } : {}),
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),

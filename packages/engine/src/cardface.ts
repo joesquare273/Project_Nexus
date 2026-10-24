@@ -8,6 +8,13 @@ export function spellDefinition(def: CardDefinition, adventure = false): CardDef
   return { id: def.id, ...def.adventure, subtypes: ['Adventure'] };
 }
 
+/** Copy effects operate on these values, before type/color changes, buffs, counters or crew. */
+export function copiableDefinition(s: GameState, c: CardInstance): CardDefinition {
+  let copy = c.zone === 'battlefield' ? c.copy : undefined;
+  while (copy?.untilTurn !== undefined && copy.untilTurn < s.turnNumber) copy = copy.previous;
+  return copy?.definition ?? s.cardDefs[c.defId]!;
+}
+
 // A state is cloned for each action. Within that action, index only sources
 // with layer-4/5 abilities. Entry/attachment timestamps and battlefield size
 // invalidate the index; conditions and source identity are still read live.
@@ -18,13 +25,13 @@ export function continuousSources(s: GameState): CardInstance[] {
   const cached = sourceCache.get(s);
   if (cached?.version === version && cached.count === count && cached.defs === s.cardDefs) return cached.sources;
   const sources = s.turnOrder.flatMap(p=>s.players[p]!.battlefield.map(id=>s.cards[id]!)).filter(c=>
-    s.cardDefs[c.defId]!.statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.noncreatureIfGraveyardBelow !== undefined));
+    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.noncreatureIfGraveyardBelow !== undefined));
   sourceCache.set(s,{version,count,defs:s.cardDefs,sources});
   return sources;
 }
 
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
-  const def = s.cardDefs[c.defId];
+  const def = copiableDefinition(s,c);
   if (!def) throw new Error(`Missing card definition "${c.defId}".`);
   if (c.zone !== 'battlefield') return spellDefinition(def, c.zone === 'stack' && !!c.adventureSpell);
   let out = def;
@@ -34,7 +41,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   const layers: { source: CardInstance; spec: StaticSpec; timestamp: number }[] = [];
   for (const source of continuousSources(s)) {
     if (source.phasedOut || (source.id !== c.id && source.attachedTo !== c.id)) continue;
-    for (const spec of s.cardDefs[source.defId]!.statics ?? []) {
+    for (const spec of copiableDefinition(s,source).statics ?? []) {
       if (spec.zone || spec.affects === 'EachMatching' || !(spec.addSubtypes || spec.setCreatureTypes || spec.setColors || spec.noncreatureIfGraveyardBelow !== undefined)) continue;
       if ((spec.affects === 'Self' ? source.id : source.attachedTo) !== c.id) continue;
       if (spec.conditions?.some(condition =>
@@ -42,7 +49,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
         condition === 'legendary' ? !def.supertypes?.includes('Legendary') :
         condition === 'twoNoncreatureSpellsThisTurn' ? (s.players[source.controller]!.noncreatureSpellsThisTurn ?? 0) < 2 :
         condition === 'attached' ? !source.attachedTo :
-        condition === 'equipped' ? !s.turnOrder.some(p => s.players[p]!.battlefield.some(id => s.cards[id]!.attachedTo === c.id && s.cardDefs[s.cards[id]!.defId]!.subtypes?.includes('Equipment'))) : false)) continue;
+        condition === 'equipped' ? !s.turnOrder.some(p => s.players[p]!.battlefield.some(id => s.cards[id]!.attachedTo === c.id && copiableDefinition(s,s.cards[id]!).subtypes?.includes('Equipment'))) : false)) continue;
       layers.push({ source, spec, timestamp: (spec.affects === 'EquippedCreature' ? source.attachedTimestamp : undefined) ?? source.enteredTimestamp ?? 0 });
     }
   }

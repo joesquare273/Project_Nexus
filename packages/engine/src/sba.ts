@@ -214,6 +214,9 @@ function repairPending(ctx: Ctx): void {
     case 'decide':
       if (s.stack.at(-1)?.id !== pending.item) givePriority(ctx, s.activePlayer);
       break;
+    case 'copyCreature':
+      if (!s.resolving) givePriority(ctx, s.activePlayer);
+      break;
     case 'chooseOpponent':
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else pending.opponents = pending.opponents.filter(id => !s.players[id]!.eliminated);

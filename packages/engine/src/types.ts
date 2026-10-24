@@ -195,6 +195,8 @@ export const EFFECT_KINDS = [
   /** Exile the top card of your library; you may play it while you control the source. */
   'ExileTopCardToPlay',
   'AddMana',
+  /** Optionally copy another creature's copiable values. */
+  'CopyCreature',
   /** Mill players, optionally reward any land with one token, and grant one shared cast this turn. */
   'MillAndGrantOneCast',
   'Mill',
@@ -412,6 +414,7 @@ export type Amount =
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
   'mustBeBlocked',
+  'mustAttack',
   /** "If that creature would die this turn, exile it instead." */
   'exileIfWouldDie',
   /** "When that creature dies this turn, return that card to its owner's hand." */
@@ -424,6 +427,12 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** CopyCreature: name exception, duration, retained resolving trigger, and optional buffs to both objects. */
+  copyName?: string;
+  copyUntilEndOfTurn?: boolean;
+  copyKeepTrigger?: boolean;
+  copyKeywords?: Keyword[];
+  copyBuffBoth?: boolean;
   /** GrantTrigger: the combat damage ability to grant until cleanup. */
   trigger?: TriggerSpec;
   /** GainControl: give the permanent to the player captured by the trigger. */
@@ -1046,8 +1055,22 @@ export type ZoneName = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile
 /** Zones whose contents every player may see. */
 export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'exile', 'stack', 'command'];
 
+/** Layer-1 copy values, with an earlier copy restored when this temporary copy expires. */
+export interface BattlefieldCopy {
+  definition: CardDefinition;
+  artDefId: CardDefId;
+  printing?: CardDefinition['printing'];
+  copiedName: string;
+  untilTurn?: number;
+  previous?: BattlefieldCopy;
+}
+
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  /** Copiable values of a battlefield object; counters, damage, control and attachments remain separate. */
+  copy?: BattlefieldCopy;
+  /** Copied abilities as the object left the battlefield, for death/leave triggers. */
+  lastDefinition?: CardDefinition;
   /** Physical printing selected by the deck, independent of shared rules identity. */
   printing?: CardDefinition['printing'];
   /** Crew animation lasts until cleanup, and ends when this object changes zones. */
@@ -1252,6 +1275,9 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  targetObjects?: (number | null)[];
+  /** Activated abilities remain independent of subsequent source copies. */
+  activatedSpec?: ActivatedSpec;
   /** Cost-exiled objects; later zone changes cannot substitute a new object. */
   exiledAsCost?: { card: InstanceId; object: number }[];
   /** Rule triggers have no physical source; source is the @monarch designation key. */
@@ -1417,6 +1443,7 @@ export interface CombatState {
 
 /** Whose decision the game is waiting on. */
 export type Pending =
+  | { kind: 'copyCreature'; player: PlayerId; source: InstanceId; target: InstanceId; sourceObject: number; targetObject: number; effect: EffectSpec }
   | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number }
   | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[] }
   | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
@@ -1519,6 +1546,7 @@ export interface GameState {
 // ---------------------------------------------------------------------------
 
 export type Action =
+  | { type: 'CopyCreature'; player: PlayerId; accept: boolean }
   | { type: 'ChooseOpponent'; player: PlayerId; opponent: PlayerId }
   /** `reveal`: for lands like snarls, reveal a matching card to enter untapped (default: if you can). */
   | { type: 'PlayLand'; player: PlayerId; card: InstanceId; reveal?: boolean }
@@ -1594,6 +1622,8 @@ export interface DamageSourceSnapshot {
 }
 
 export type GameEvent =
+  | { type: 'BecameCopy'; card: InstanceId; copied: InstanceId; name: string }
+  | { type: 'CopyEnded'; card: InstanceId }
   | { type: 'CoinFlipped'; player: PlayerId; won: boolean }
   | { type: 'MonarchChanged'; player: PlayerId; previous?: PlayerId }
   | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }

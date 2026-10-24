@@ -1,3 +1,4 @@
+import { currentDefinition } from './cardface.ts';
 // Turn structure, steps, and priority (PRD 7.2, 7.4).
 
 import { canAnyAttack, dealCombatDamage, startBlockers } from './combat.ts';
@@ -93,7 +94,7 @@ export function enterStep(ctx: Ctx, step: Step): void {
     case 'main1':
       // Rule 714.3b: each Saga the active player controls gets a lore counter.
       for (const c of battlefield(s)) {
-        if (c.controller === s.activePlayer && s.cardDefs[c.defId]!.saga) addCounters(ctx, c.id, 1, s.activePlayer, 'lore');
+        if (c.controller === s.activePlayer && currentDefinition(s, c).saga) addCounters(ctx, c.id, 1, s.activePlayer, 'lore');
       }
       givePriority(ctx, s.activePlayer);
       return;
@@ -143,7 +144,7 @@ export function advanceStep(ctx: Ctx): void {
 
 /** The default is seven; "no maximum" is an active continuous ability. */
 export function maximumHandSize(s: GameState, playerId: PlayerId): number | null {
-  return battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && s.cardDefs[c.defId]!.statics?.some((spec) => spec.noMaximumHandSize)) ? null : 7;
+  return battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && currentDefinition(s, c).statics?.some((spec) => spec.noMaximumHandSize)) ? null : 7;
 }
 
 /** Rule 514.2, followed by the state-based-action/trigger check in stabilize. */
@@ -166,6 +167,12 @@ export function cleanupDamage(ctx: Ctx): void {
   if (ctx.s.castGroups) ctx.s.castGroups=ctx.s.castGroups.filter(g=>g.turn!==ctx.s.turnNumber);
   for (const c of Object.values(ctx.s.cards)) if (c.adventureGraveyard?.expiresOnTurn === ctx.s.turnNumber) delete c.adventureGraveyard;
   for (const c of Object.values(ctx.s.cards).filter((card) => card.zone === 'battlefield')) {
+    if (c.copy?.untilTurn !== undefined && c.copy.untilTurn <= ctx.s.turnNumber) {
+      do { c.copy=c.copy.previous; } while(c.copy?.untilTurn !== undefined && c.copy.untilTurn <= ctx.s.turnNumber);
+      if(!c.copy) delete c.copy;
+      ctx.s.effectTimestamp=(ctx.s.effectTimestamp??0)+1;
+      ctx.ev.push({type:'CopyEnded',card:c.id});
+    }
     delete c.crewed;
     c.damage = 0;
     c.deathtouched = false;

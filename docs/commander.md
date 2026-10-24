@@ -6,8 +6,8 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
 | Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 99/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 95/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 96/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 96/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 97/100 |
 | Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 97/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
@@ -52,6 +52,15 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
 
 ## Latest card checkpoint
+
+Gogo, Mysterious Mime and Kimahri, Valiant Guardian are built (2026-10-24),
+including optional battlefield copies, retained name/ability exceptions,
+Gogo's combat buffs and attack requirements, and Kimahri's counters and taps.
+Copy values exclude counters, attachments, crew and continuous effects;
+temporary copies restore earlier permanent copies at cleanup.
+309 of 320 distinct precon cards are built; 11 remain.
+
+### Previous checkpoint
 
 Locke, Treasure Hunter is built (2026-10-24), including his power-based
 blocking restriction, Mug's mill and single Treasure reward, and one shared
@@ -154,5 +163,6 @@ needing several groups' pieces waits for the last of them.
 | Multimode stack interaction | **1 built (2026-10-23):** Sublime Epiphany. All 31 nonempty mode combinations; spells and individual abilities are distinct targets. |
 | Modified creatures and base stats | **1 built (2026-10-23):** Sephiroth, Fallen Hero. Optional cell counters and base-setting timestamps, including Equipment interactions. |
 | Adventures | **3 built (2026-10-23):** Hypnotic Sprite, Murderous Rider, Hildibrand Manderville. Full Adventure casting, exile follow-up, Rider death trigger, and Hildibrand token anthem and graveyard permission. |
-| Double-faced cards, copies, Vehicles, Auras, the monarch | Still to come (24 cards left in all). |
+| Battlefield copies | **2 built (2026-10-24):** Gogo, Mysterious Mime and Kimahri, Valiant Guardian. Copiable values, retained exceptions, stacked copy durations, copied abilities and browser choices. |
+| Remaining one-offs | 11 distinct cards remain, including double-faced cards, Sagas, hideaway and Equipment. |
 | Everything else | |

@@ -34,7 +34,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (hasFlag(s, blocker, 'cantBlock')) return false;
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   for (const source of battlefield(s)) {
-    for (const spec of s.cardDefs[source.defId]!.statics ?? []) {
+    for (const spec of currentDefinition(s, source).statics ?? []) {
       if (spec.cantBeBlockedByGreaterPower && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) > powerOf(s, attacker)) return false;
       const most = spec.cantBeBlockedByPowerAtMost;
       if (most !== undefined && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) <= most) return false;
@@ -46,14 +46,14 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   // Landwalk (rule 702.14): unblockable while the defending player controls such a land.
   if (hasKeyword(s, attacker, 'NonbasicLandwalk')) {
     const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
-    if (defenderLands.some((c) => s.cardDefs[c.defId]!.types.includes('land') && !isBasicLand(s.cardDefs[c.defId]!))) return false;
+    if (defenderLands.some((c) => currentDefinition(s, c).types.includes('land') && !isBasicLand(currentDefinition(s, c)))) return false;
   }
   if (hasKeyword(s, attacker, 'Islandwalk')) {
     const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
-    if (defenderLands.some((c) => s.cardDefs[c.defId]!.subtypes?.includes('Island'))) return false;
+    if (defenderLands.some((c) => currentDefinition(s, c).subtypes?.includes('Island'))) return false;
   }
   // Intimidate (rule 702.13): only artifact creatures and creatures that share a color with it.
-  if (hasKeyword(s, attacker, 'Intimidate') && !s.cardDefs[blocker.defId]!.types.includes('artifact')) {
+  if (hasKeyword(s, attacker, 'Intimidate') && !currentDefinition(s, blocker).types.includes('artifact')) {
     const colors = colorsOf(currentDefinition(s, attacker));
     if (!colorsOf(currentDefinition(s, blocker)).some((c) => colors.includes(c))) return false;
   }
@@ -75,14 +75,18 @@ export function canAttackPlayer(s: GameState, c: CardInstance, defender: PlayerI
 
 /** Each continuous goad effect imposes attack and defender requirements, rather than a restriction. */
 export function hasGoad(s: GameState): boolean {
-  return continuousSources(s).some(source=>!source.phasedOut && s.cardDefs[source.defId]!.statics?.some(st=>st.goaded));
+  return continuousSources(s).some(source=>!source.phasedOut && currentDefinition(s, source).statics?.some(st=>st.goaded));
+}
+
+export function hasAttackRequirements(s: GameState): boolean {
+  return hasGoad(s) || s.temporaryEffects.some(e=>e.flags?.includes('mustAttack'));
 }
 
 export function goadedBy(s: GameState, c: CardInstance): PlayerId[] {
   const players = new Set<PlayerId>();
   for (const source of continuousSources(s)) {
     if (source.phasedOut) continue;
-    for (const spec of s.cardDefs[source.defId]!.statics ?? []) {
+    for (const spec of currentDefinition(s, source).statics ?? []) {
       if (spec.goaded && staticAffects(s, source, spec, c)) players.add(source.controller);
     }
   }
@@ -96,7 +100,7 @@ function goadScore(goaders: PlayerId[], defender: PlayerId): number {
 /** Best free attacks: a player is never required to pay an attack tax to meet a requirement. */
 export function requiredAttackDefenders(s: GameState, c: CardInstance): PlayerId[] {
   const goaders = goadedBy(s,c);
-  if (!goaders.length || !canAttack(s,c,c.controller)) return [];
+  if ((!goaders.length && !hasFlag(s,c,'mustAttack')) || !canAttack(s,c,c.controller)) return [];
   const free = alivePlayers(s).filter(p=>p!==c.controller && canAttackPlayer(s,c,p) && attackTaxFor(s,p)===0);
   const best = Math.max(0,...free.map(p=>goadScore(goaders,p)));
   return free.filter(p=>goadScore(goaders,p)===best);
@@ -104,12 +108,12 @@ export function requiredAttackDefenders(s: GameState, c: CardInstance): PlayerId
 
 /** The attacks must satisfy as many requirements as possible (rule 508.1d). */
 export function attackRequirementProblem(s: GameState, player: PlayerId, attacks: readonly Attack[]): string | null {
-  if (!hasGoad(s)) return null;
+  if (!hasAttackRequirements(s)) return null;
   for (const c of attackersFor(s,player)) {
     const required = requiredAttackDefenders(s,c);
     if (!required.length) continue;
     const attack = attacks.find(a=>a.attacker===c.id);
-    if (!attack) return 'A goaded creature must attack this combat if able.';
+    if (!attack) return 'A creature required to attack must attack this combat if able.';
     if (goadScore(goadedBy(s,c),attack.defender) < goadScore(goadedBy(s,c),required[0]!)) return 'A goaded creature must attack a player other than its goader if able.';
   }
   return null;
@@ -118,7 +122,7 @@ export function attackRequirementProblem(s: GameState, player: PlayerId, attacks
 /** Complete a sampled or AI attack with obligatory free attacks, preserving valid chosen defenders. */
 export function completeRequiredAttacks(s: GameState, player: PlayerId, attacks: readonly Attack[]): Attack[] {
   const out = attacks.map(a=>({...a}));
-  if (!hasGoad(s)) return out;
+  if (!hasAttackRequirements(s)) return out;
   for (const c of attackersFor(s,player)) {
     const required=requiredAttackDefenders(s,c);
     if (!required.length) continue;
@@ -134,7 +138,7 @@ export function attackTaxFor(s: GameState, defender: PlayerId): number {
   let tax = (s.players[defender]!.attackTaxes ?? []).reduce((n, k) => n + k, 0);
   for (const c of s.players[defender]!.battlefield.map((id) => s.cards[id]!)) {
     if (c.controller !== defender) continue;
-    for (const st of s.cardDefs[c.defId]!.statics ?? []) tax += st.attackTax ?? 0;
+    for (const st of currentDefinition(s, c).statics ?? []) tax += st.attackTax ?? 0;
   }
   return tax;
 }

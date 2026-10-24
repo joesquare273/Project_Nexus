@@ -8,6 +8,7 @@
 // only stop when a decision matters (type "f" to stop at every step).
 
 import {
+  currentDefinition,
   queuedTriggerSpec,
   choiceProblem,
   FREE_FOR_ALL,
@@ -96,7 +97,7 @@ let stopEverywhere = false;
 // Display
 // ---------------------------------------------------------------------------
 
-const defOf = (s: GameState, c: CardInstance) => s.cardDefs[c.defId]!;
+const defOf = currentDefinition;
 
 function creatureText(s: GameState, c: CardInstance): string {
   const d = defOf(s, c);
@@ -537,6 +538,9 @@ async function playOneGame(gameSeed: number): Promise<void> {
       const choice = options[Number(await ask('  Choose modes: ')) - 1];
       if (!choice) continue;
       actions = [choice];
+    } else if (pending.kind === 'copyCreature') {
+      const accept = /^y/i.test(await ask('  Become a copy? [y/N] '));
+      actions = [{type:'CopyCreature',player:YOU,accept}];
     } else if (pending.kind === 'chooseOpponent') {
       console.log('  Choose the opponent who chooses the card for the bottom of your library:');
       pending.opponents.forEach((id, i) => console.log('    ' + (i + 1) + ') ' + id));

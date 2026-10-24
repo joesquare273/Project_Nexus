@@ -1,3 +1,4 @@
+import { rulesSummary } from '@nexus/bots/narrate';
 import { useEffect, useRef } from 'react';
 import type { GameView, InstanceId } from '@nexus/engine';
 import { defOf, isCreature, rulesText, scryfallOf, typeLine } from '../game/cards.ts';
@@ -9,12 +10,14 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
   const c = id ? view.cards[id] : undefined;
   // A pop-out on the right edge, only while a card is hovered (or triggering).
   if (!c) return null;
-  const def = defOf(c.defId);
-  const info = scryfallOf(c.defId,c.printing);
+  const def = view.stats[c.id]?.definition ?? defOf(c.defId);
+  const info = scryfallOf(c.copy?.artDefId ?? c.defId,c.copy?.printing ?? c.printing);
   const stats = c.zone === 'battlefield' ? view.stats[c.id] : undefined;
   const creature = stats?.types ? stats.types.includes('creature') : isCreature(def) || !!c.crewed;
   const indestructible = stats?.keywords.includes('Indestructible');
   const status = [
+    c.copy && 'Copying ' + c.copy.copiedName,
+    stats?.mustAttack && 'Must attack this turn if able',
     c.zone === 'battlefield' && c.tapped && 'Tapped',
     c.zone === 'battlefield' && c.damage > 0 && `${c.damage} damage`,
     c.zone === 'battlefield' && c.summoningSick && creature && 'Summoning sick',
@@ -23,14 +26,14 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
   return (
     <div key={id} className="inspector" aria-live="polite">
       <div className="inspector-card">
-        <CardFace printing={c.printing} defId={c.defId} size="large" />
+        <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="large" />
       </div>
       <div className="inspector-text">
         <div className="inspector-title">
           <strong>{def.name}</strong> <ManaCost cost={def.manaCost} />
         </div>
         <div className="inspector-type">{stats?.types ? typeLine({ ...def, types: stats.types, subtypes: stats.subtypes }) : info?.typeLine ?? typeLine(def)}</div>
-        <p className="inspector-rules">{rulesText(def)}</p>
+        <p className="inspector-rules">{c.copy ? rulesSummary(def).replace(/^\d+\/\d+\s*/, '') : rulesText(def)}</p>
         {def.notBuilt && (
           <p className="inspector-not-built">
             {isCreature(def)

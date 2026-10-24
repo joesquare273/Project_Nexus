@@ -10,6 +10,7 @@ import { maximumHandSize } from './turn.ts';
 import { characteristics, hasFlag } from './characteristics.ts';
 import {
   PUBLIC_ZONES,
+  type CardDefinition,
   type Keyword,
   type CardType,
   type Color,
@@ -58,6 +59,8 @@ export interface PlayerView {
 
 /** A permanent's current power, toughness, keywords and subtypes, after counters, Equipment and effects. */
 export interface PermanentStats {
+  definition?: CardDefinition;
+  mustAttack?: boolean;
   types?: CardType[];
   colors?: Color[];
   goadedBy?: PlayerId[];
@@ -129,6 +132,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
     if (c.zone === 'battlefield') {
       const ch = characteristics(s, c);
       stats[c.id] = {
+        ...(c.copy ? {definition: currentDefinition(s,c)} : {}),
+        mustAttack: hasFlag(s,c,'mustAttack'),
         types: [...currentDefinition(s,c).types],
         colors: colorsOf(currentDefinition(s,c)),
         goadedBy: goadedBy(s,c),

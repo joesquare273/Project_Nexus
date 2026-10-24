@@ -76,7 +76,7 @@ function reluctance(s: GameState, c: CardInstance): number {
 /** Mana a source makes for a symbol: colorless if it can (no pain), otherwise the wanted color. */
 function amountFrom(s: GameState, c: CardInstance & { grantedBy?: InstanceId }): number {
   if (c.grantedBy) return 1;
-  return manaAbilityAmount(c, s.cardDefs[c.defId]!);
+  return manaAbilityAmount(c, currentDefinition(s, c));
 }
 
 /** Untapped permanents with a paid mana ability ("{1}, {T}: Add {R}{G}") this player can use. */
@@ -146,7 +146,7 @@ function planWith(
   const direct = planDirect(s, need, pool, sources);
   if (direct || depth === 0) return direct;
   for (const conv of paid) {
-    const ability = s.cardDefs[conv.defId]!.manaAbility!.paid!;
+    const ability = currentDefinition(s, conv).manaAbility!.paid!;
     const others = paid.filter((c) => c !== conv);
     for (let payWith = 0; payWith < ability.costs.length; payWith++) {
       const cost = parseManaCost(ability.costs[payWith]);
@@ -212,7 +212,7 @@ function planDirect(s: GameState, need: ManaCost, startPool: ManaPool, sources: 
     used.add(src.id);
     // For generic mana, prefer a type that doesn't hurt (a pain land's {C}).
     const choices = sourceChoices(s, src);
-    const ability = s.cardDefs[src.defId]!.manaAbility;
+    const ability = currentDefinition(s, src).manaAbility;
     const pain = src.grantedBy ? [] : [...(ability?.painFor ?? []), ...(ability?.lifeFor ?? [])];
     taps.push(sourceTap(src, choices.find((m) => !pain.includes(m)) ?? choices[0]!));
     generic -= amountFrom(s, src);

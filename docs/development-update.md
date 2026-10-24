@@ -5,6 +5,42 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-24
 
+### Gogo, Mysterious Mime and Kimahri, Valiant Guardian
+
+- Built Gogo's optional beginning-of-combat copy, name exception and cleanup
+  duration. A successful copy gives both creatures +2/+0, haste, and an
+  attack-this-turn requirement. Tapped creatures and attack taxes remain
+  subject to normal restrictions; neither player nor AI must pay a tax.
+- Built Kimahri's targeted Ronso Rage: add a counter, tap an opponent's
+  creature, then optionally copy it permanently while retaining its name,
+  vigilance and Ronso Rage. An illegal target stops the entire ability; a
+  departed source can still tap a valid target without changing a new object.
+- Added shared copiable battlefield definitions. Copying excludes counters,
+  damage, attachments, crew and other continuous effects, preserves physical
+  ownership, control and commander status, and does not cause entry triggers.
+  Temporary copies restore underlying permanent copies at cleanup. Existing
+  token-copy spells now copy these values and name/ability exceptions too.
+- Copied static, mana, activated and triggered abilities work through the
+  engine and AI. Stack abilities retain their captured rules after the source
+  changes form or leaves; copied death abilities use last-known definitions.
+- Browser and terminal players can accept or decline copies. Battlefield
+  art, inspector characteristics/rules, and status show the copied form.
+- Fixed creature target filters ignoring controller/other restrictions and
+  added target-object snapshots for abilities, including blink responses.
+- Existing ward simplification remains: opposing triggered abilities cannot
+  target ward permanents (see decisions.md). This is shared engine behavior,
+  including Ronso Rage, rather than a new ward implementation.
+- Added 66 focused rules, AI, multiplayer and browser checks, including
+  phased-out sources and expiration while phased out.
+- Validation: type-check, all 1,784 tests across 74 files in a sequential
+  full-suite run, and browser production build pass. The existing large-bundle
+  warning remains.
+- Progress: 309/320 distinct precon cards built; 11 remain. Revival Trance
+  is 96/100 and Counter Blitz is 97/100.
+
+Rules reference: [Wizards FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes), Gogo, Mysterious Mime and Kimahri, Valiant Guardian.
+
+
 ### Locke, Treasure Hunter
 
 - Built Locke's blocking restriction against creatures with greater current

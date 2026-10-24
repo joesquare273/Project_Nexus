@@ -1,3 +1,4 @@
+import {currentDefinition} from '@nexus/engine';
 // Turns engine events into readable lines for terminal output. Pass events
 // already filtered for the viewer, so hidden cards stay hidden.
 
@@ -216,6 +217,7 @@ function effectText(e: EffectSpec): string {
     case 'ExileTopCardToPlay':
       return 'exile the top card of your library; you may play it for as long as you control this';
     case 'AddMana': return who + ' adds ' + n + ' mana of any color (chosen when this resolves)';
+    case 'CopyCreature': return 'you may have this creature become a copy of ' + who + (e.copyName ? ', except its name is ' + e.copyName : '') + (e.copyUntilEndOfTurn ? ' until end of turn' : '') + (e.copyKeepTrigger ? ', retaining this ability and vigilance' : '') + (e.copyBuffBoth ? '; if you do, both creatures get +2/+0, haste, and must attack this turn if able' : '');
     case 'MillAndGrantOneCast': return who + ' mills ' + n + (e.token ? '; if a land was milled, create one ' + e.token.replace(/-token$/, '').replaceAll('-', ' ') + ' token' : '') + '; until end of turn, you may cast one spell from those cards';
     case 'Mill':
       return `mill ${n}`;
@@ -472,7 +474,7 @@ export function stepName(step: string): string {
 export function cardName(s: GameState, id: string | undefined): string {
   if (!id) return 'a card';
   if (id === '@monarch') return 'The monarch';
-  const c = s.cards[id], def = s.cardDefs[c?.defId ?? ''];
+  const c = s.cards[id], def = c ? currentDefinition(s,c) : undefined;
   return (c?.zone === 'stack' && c.adventureSpell ? def?.adventure?.name : def?.name.split(' // ')[0]) ?? id;
 }
 
@@ -490,6 +492,8 @@ export function targetName(s: GameState, t: Target, viewer?: string): string {
 export function describe(s: GameState, e: GameEvent, viewer?: string): string | null {
   const who = (p: string) => (p === viewer ? 'You' : p);
   switch (e.type) {
+    case 'BecameCopy': return cardName(s,e.card) + ' becomes a copy of ' + e.name + '.';
+    case 'CopyEnded': return cardName(s,e.card) + ' returns to its original form.';
     case 'CoinFlipped': return `${who(e.player)} ${e.player === viewer ? (e.won ? 'win' : 'lose') : (e.won ? 'wins' : 'loses')} a coin flip.`;
     case 'MonarchChanged': return `${who(e.player)} ${e.player === viewer ? 'become' : 'becomes'} the monarch.`;
     case 'TurnChanged':

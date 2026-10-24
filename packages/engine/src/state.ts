@@ -178,6 +178,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
+  const lastDefinition = from === 'battlefield' && c.copy ? defOf(s,c) : undefined;
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
   delete c.graveyardCastTurn;
@@ -217,6 +218,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   c.damage = 0;
   c.deathtouched = false;
   c.controller = to === 'battlefield' ? (opts.controller ?? c.owner) : c.owner;
+  if (from === 'battlefield') { if (lastDefinition) c.lastDefinition=lastDefinition; else delete c.lastDefinition; }
+  if (to === 'battlefield') delete c.lastDefinition;
+  delete c.copy;
   delete c.counters;
   delete c.namedCounters;
   delete c.vowTo;
@@ -531,7 +535,7 @@ export function untap(ctx: Ctx, c: CardInstance): boolean {
 }
 
 /** Creates a token on the battlefield under `controller`'s control (rule 111). */
-export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId): InstanceId {
+export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, copy?: CardInstance['copy']): InstanceId {
   const s = ctx.s;
   if (!s.cardDefs[defId]) throw new Error(`Missing token definition "${defId}".`);
   const id = newId(s, 'k');
@@ -546,10 +550,18 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId): I
     damage: 0,
     deathtouched: false,
     isToken: true,
+    ...(copy ? {copy:structuredClone(copy)} : {}),
     enteredTurn: s.turnNumber,
     enteredTimestamp: newTimestamp(s),
   };
   player(s, controller).battlefield.push(id);
+  const c=s.cards[id]!, d=defOf(s,c);
+  c.tapped=entersTapped(s,c);
+  if(d.entersWithCounters) addCounters(ctx,id,d.entersWithCounters,undefined,d.entersWithCounterKind);
+  if(d.saga) addCounters(ctx,id,1,controller,'lore');
+  for(const source of battlefield(s)) for(const spec of defOf(s,source).statics??[]) {
+    if(source.id!==id && spec.entersWithExtraCounters && staticAffects(s,source,spec,c)) addCounters(ctx,id,spec.entersWithExtraCounters);
+  }
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
   return id;
 }

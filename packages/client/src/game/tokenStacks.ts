@@ -3,7 +3,7 @@ import { characteristics, staticAffects, type GameState, type InstanceId } from 
 /** A display-only group. Any individual ability, modification or combat role keeps a token separate. */
 export function tokenStackKey(s: GameState, id: InstanceId): string | null {
   const c = s.cards[id];
-  if (!c?.isToken || c.zone !== 'battlefield' || c.phasedOut || c.tapped || c.damage || c.deathtouched || c.monstrous || c.blitzed || c.unearthed || c.attachedTo || c.isCommander || c.vowTo?.length) return null;
+  if (!c?.isToken || c.zone !== 'battlefield' || c.phasedOut || c.tapped || c.damage || c.deathtouched || c.copy || c.monstrous || c.blitzed || c.unearthed || c.attachedTo || c.isCommander || c.vowTo?.length) return null;
   if ((c.counters ?? 0) > 0 || Object.values(c.namedCounters ?? {}).some((n) => n > 0)) return null;
   const d = s.cardDefs[c.defId]!;
   if (d.keywords?.length || d.triggers?.length || d.activated?.length || d.statics?.length || d.produces?.length || d.manaAbility || d.equip) return null;

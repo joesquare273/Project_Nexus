@@ -6,6 +6,7 @@
 import {
   canAttackPlayer,
   completeRequiredAttacks,
+  copiableDefinition,
   currentDefinition,
   spellDefinition,
   queuedTriggerSpec,
@@ -187,6 +188,7 @@ function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Tar
     return caster === me ? -20 : 2 + objectManaValue(s, c);
   }
   const mine = (c.zone === 'battlefield' ? c.controller : c.owner) === me;
+  if (effect.effect === 'CopyCreature') { const d=copiableDefinition(s,c); return (d.power??0)+(d.toughness??0)+(d.keywords?.length??0)*2; }
   if (effect.effect === 'CreateTokenCopy') return value(s, c);
   if (effect.effect === 'ReturnToBattlefield') return mine ? value(s, c) : -5;
   if (!harmful) return mine ? value(s, c) : -value(s, c);
@@ -463,7 +465,7 @@ function chooseTriggerTargets(s: GameState, me: PlayerId, legal: Action[]): Acti
     CHOSEN_TARGET_KINDS.includes(e.target),
   );
   const score = (a: Action) =>
-    a.type === 'ChooseTargets' ? a.targets.reduce((n, target, i) => n + scoreTarget(s, me, effects[i]!, target), 0) : -1e9;
+    a.type === 'ChooseTargets' ? a.targets.reduce((n, target, i) => n + scoreTarget(s, me, effects[i]!, target) + (target.kind==='card' && queuedTriggerSpec(s,t).effects.some(e=>e.effect==='CopyCreature'&&e.target==='PreviousTarget') ? scoreTarget(s,me,{effect:'CopyCreature',target:'TargetCreature'},target) : 0), 0) : -1e9;
   return [...legal].sort((a, b) => score(b) - score(a))[0]!;
 }
 
@@ -622,6 +624,14 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseDefender') {
       const choices = legal.filter((a): a is Extract<Action, { type: 'ChooseDefender' }> => a.type === 'ChooseDefender');
       return choices.sort((a, b) => s.players[a.defender]!.life - s.players[b.defender]!.life)[0]!;
+    }
+    if (pending.kind === 'copyCreature') {
+      const source=s.cards[pending.source]!, target=s.cards[pending.target]!, d=copiableDefinition(s,target), own=copiableDefinition(s,source);
+      const rank=(x:CardDefinition)=>(x.power??0)+(x.toughness??0)+(x.keywords?.length??0)*2+(x.activated?.length??0)*2+(x.triggers?.length??0)*2;
+      const t=(d.toughness??0)+(source.counters??0);
+      const safe=t>0 && (t>source.damage || !!d.keywords?.includes('Indestructible'));
+      const want=safe && (pending.effect.copyBuffBoth || rank(d)>=rank(own));
+      return legal.find(a=>a.type==='CopyCreature'&&a.accept===want) ?? legal[0]!;
     }
     if (pending.kind === 'exileTop') return { type: 'ExileTop', player: pending.player, exile: s.players[pending.player]!.library.length > 1 };
     if (pending.kind === 'surveil') return chooseSurveil(s, pending.player, pending.card);

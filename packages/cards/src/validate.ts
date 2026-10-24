@@ -279,7 +279,7 @@ export function validateCardDefinition(raw: unknown): string[] {
 function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.giveTo && (e.effect !== 'GainControl' || e.giveTo !== 'SubjectController')) err('giveTo is only for GainControl to SubjectController.');
   if (e.attacking && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This' || !inAbility)) err('attacking is only for ReturnToBattlefield on This in an ability.');
-  if (e.sameObject && (!inAbility || (e.target !== 'This' && !(e.effect === 'Sacrifice' && e.target === 'You' && e.filter?.self)))) err('sameObject is only for an ability affecting This.');
+  if (e.sameObject && (!inAbility || (e.target !== 'This' && e.effect !== 'CopyCreature' && !(e.effect === 'Sacrifice' && e.target === 'You' && e.filter?.self)))) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
   if (!TARGET_KINDS.includes(e.target)) err(`unknown target "${e.target}".`);
   if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined) err(`${e.effect} needs an amount.`);
@@ -298,6 +298,8 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
+  if (e.effect !== 'CopyCreature' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyKeywords,e.copyBuffBoth].some(x=>x!==undefined)) err('copy options require CopyCreature.');
+  for (const k of e.copyKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown copy keyword "${k}".`);
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   if (e.effect === 'ReflexiveTrigger') {
     if (!e.trigger || e.trigger.when !== 'Reflexive' || !e.ifSacrificed || e.target !== 'You') err('ReflexiveTrigger needs a captured Reflexive trigger after a sacrifice, targeting You.');

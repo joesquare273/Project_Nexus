@@ -5,6 +5,7 @@
 import {
   FORETELL_COST,
   abilityOptions,
+  currentDefinition,
   activatedAbilities,
   getLegalActions,
   spellOptions,
@@ -98,7 +99,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
       : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
-      const def = s.cardDefs[s.cards[a.card]!.defId]!;
+      const def = currentDefinition(s,s.cards[a.card]!);
       play = isAbility
         ? {
             card: a.card,
@@ -137,7 +138,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
   // Foretell (a special action): pay {2}, exile it face down, cast it on a later turn.
   for (const id of s.players[player]!.hand) {
     const c = s.cards[id]!;
-    const def = s.cardDefs[c.defId]!;
+    const def = currentDefinition(s,c);
     if (!def.foretell || s.activePlayer !== player) continue;
     const taps = planTaps(s, player, FORETELL_COST);
     if (!taps) continue;

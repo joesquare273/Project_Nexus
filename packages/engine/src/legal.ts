@@ -7,12 +7,13 @@
 // small in pods.
 
 import { currentDefinition, spellDefinition } from './cardface.ts';
-import { canAttackPlayer, hasGoad, completeRequiredAttacks, attackRequirementProblem } from './combat.ts';
+import { canAttackPlayer, hasAttackRequirements, completeRequiredAttacks, attackRequirementProblem } from './combat.ts';
 import { isEquipment } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
 import { canPay, manaValue, parseManaCost } from './cost.ts';
 import {
+  canChooseCopy,
   abilityCost,
   activatedAbilities,
   activationProblem,
@@ -44,7 +45,7 @@ import {
   subsets,
   groupProblem,
 } from './stack.ts';
-import { alivePlayers, hasKeyword } from './state.ts';
+import { battlefield, alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices } from './typerules.ts';
@@ -120,7 +121,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const top = p.library[0];
   if (top) candidates.push(s.cards[top]!);
   for (const c of candidates) {
-    const printed = s.cardDefs[c.defId]!;
+    const printed = currentDefinition(s, c);
     for (const adventure of printed.adventure ? [false, true] : [false]) {
     const def = spellDefinition(printed, adventure);
     const naturalFrom = playableZone(s, playerId, c, adventure, false);
@@ -281,9 +282,9 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
   const out: CostedOption[] = [];
   const p = s.players[playerId]!;
   // Unearth works from the graveyard.
-  const cards = [...p.battlefield, ...p.hand, ...p.graveyard].map((id) => s.cards[id]!);
+  const cards = [...battlefield(s).filter(c=>c.controller===playerId), ...[...p.hand,...p.graveyard].map(id=>s.cards[id]!)];
   for (const c of cards) {
-    activatedAbilities(s.cardDefs[c.defId]!).forEach((spec, ability) => {
+    activatedAbilities(currentDefinition(s, c)).forEach((spec, ability) => {
       if (activationProblem(s, playerId, c, spec)) return;
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
@@ -304,7 +305,7 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
   const actions: Action[] = [];
   for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === player)) {
     const id = c.id;
-    const def = s.cardDefs[c.defId]!;
+    const def = currentDefinition(s, c);
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
     for (const creature of legendaryManaCreatures(s, c)) {
       for (const mana of ['W', 'U', 'B', 'R', 'G'] as const) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, tapCreature: creature.id });
@@ -465,7 +466,7 @@ export function getLegalActions(s: GameState): Action[] {
           });
         }
       }
-      if (!hasGoad(s)) {
+      if (!hasAttackRequirements(s)) {
         if (taxed) actions.push(...manaAbilities(s, player));
         return actions;
       }
@@ -478,6 +479,7 @@ export function getLegalActions(s: GameState): Action[] {
     case 'declareBlockers':
       return blockActions(s, pending.player);
 
+    case 'copyCreature': return [{type:'CopyCreature',player:pending.player,accept:false},...(canChooseCopy(s,pending)?[{type:'CopyCreature' as const,player:pending.player,accept:true}]:[])];
     case 'priority': {
       const player = pending.player;
       const p = s.players[player]!;
@@ -486,7 +488,7 @@ export function getLegalActions(s: GameState): Action[] {
         const lands = [...p.hand, ...s.turnOrder.flatMap((pid) => s.players[pid]!.exile)].filter((id) => {
           const c = s.cards[id]!;
           const zone = playableZone(s, player, c);
-          return (zone === 'hand' || zone === 'exile') && s.cardDefs[c.defId]!.types.includes('land');
+          return (zone === 'hand' || zone === 'exile') && currentDefinition(s, c).types.includes('land');
         });
         for (const card of lands) {
           // Snarls: reveal to enter untapped, or play it tapped anyway.
