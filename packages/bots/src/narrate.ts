@@ -227,7 +227,7 @@ function effectText(e: EffectSpec): string {
       }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'ReturnToBattlefield':
-      return `return ${who} to the battlefield${e.counters ? ` with ${countersText(e.counters, e.counter)} on it` : ''}`;
+      return `return ${who} to the battlefield${e.attachToReturnedTarget !== undefined ? ' attached to the returned creature if able' : ''}${e.counters ? ` with ${countersText(e.counters, e.counter)} on it` : ''}`;
     case 'Attach':
       return `attach this to ${who}`;
     case 'AttachAllEquipment':

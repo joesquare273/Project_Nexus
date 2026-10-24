@@ -10,6 +10,7 @@ import {
   aliveFromActive,
   alivePlayers,
   battlefield,
+  canAttach,
   becomeMonarch,
   nextAlive,
   defOf,
@@ -99,6 +100,16 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
     for (const id of zeroToughness) putIntoGraveyard(ctx, id);
     for (const id of lethal) destroy(ctx, id);
     if (zeroToughness.length + lethal.length > 0) changed = true;
+
+    // Auras need a legal enchanted object; Equipment merely becomes unattached.
+    for (const c of battlefield(s)) {
+      const def = defOf(s, c);
+      if (def.subtypes?.includes('Aura') && (!c.attachedTo || !canAttach(s, c, s.cards[c.attachedTo]))) {
+        putIntoGraveyard(ctx, c.id); changed = true;
+      } else if (c.attachedTo && !canAttach(s, c, s.cards[c.attachedTo])) {
+        delete c.attachedTo; delete c.attachedTimestamp; changed = true;
+      }
+    }
 
     // A Saga with at least its final chapter's lore counters, and no chapter ability waiting, is sacrificed (rule 714.4).
     for (const c of battlefield(s)) {

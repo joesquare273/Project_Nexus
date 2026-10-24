@@ -5,7 +5,7 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 98/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 99/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 91/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 96/100 |
 | Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 95/100 |
@@ -52,6 +52,13 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
 
 ## Latest card checkpoint
+
+Unfinished Business is built (2026-10-23): returns a creature followed by up to
+two targeted Aura/Equipment cards, attached where legal. Missing creatures do
+not stop Equipment returning unattached; illegal Auras remain in the graveyard.
+301 of 320 distinct precon cards are built; 19 remain.
+
+### Previous checkpoint
 
 Palace Jailer and Coin of Fate are built (2026-10-23), including monarch
 transfer, end-step draw, opponent-selected graveyard recovery and Jailer exile

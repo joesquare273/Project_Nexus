@@ -4,6 +4,7 @@
 
 import { currentDefinition as defOf } from './cardface.ts';
 import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, staticAffects, powerOf } from './characteristics.ts';
+import { matchesObject } from './filters.ts';
 import { entersTapped } from './typerules.ts';
 import {
   MANA_TYPES,
@@ -551,9 +552,17 @@ export function becomeMonarch(ctx: Ctx, playerId: PlayerId): void {
   }
 }
 
+/** Attachment itself does not target, so shroud and hexproof do not prevent it. */
+export function canAttach(s: GameState, attachment: CardInstance, host: CardInstance | undefined): boolean {
+  if (!host || host.zone !== 'battlefield' || host.phasedOut || attachment.id === host.id) return false;
+  const def = defOf(s, attachment);
+  if (def.subtypes?.includes('Aura')) return matchesObject(s, def.enchant ?? { types: ['creature'] }, host, { controller: attachment.controller, source: attachment.id });
+  return def.subtypes?.includes('Equipment') === true && isCreatureOnBattlefield(s, host) && !hasType(s, attachment, 'creature');
+}
+
 export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): void {
   const e = ctx.s.cards[equipment]!;
-  if (e.zone !== 'battlefield' || !isCreatureOnBattlefield(ctx.s, ctx.s.cards[creature])) return;
+  if (e.zone !== 'battlefield' || !canAttach(ctx.s, e, ctx.s.cards[creature])) return;
   if (e.attachedTo === creature) return;
   e.attachedTo = creature;
   e.attachedTimestamp = newTimestamp(ctx.s);

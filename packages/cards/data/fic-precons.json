@@ -258,10 +258,8 @@
           "count": 1,
           "set": "fic",
           "number": "259",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Vanquish the Horde",

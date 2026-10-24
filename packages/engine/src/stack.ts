@@ -12,6 +12,7 @@ import {
   aliveFromActive,
   alivePlayers,
   attach,
+  canAttach,
   battlefield,
   becomeMonarch,
   card,
@@ -376,12 +377,17 @@ function sourceOf(item: StackItem): InstanceId {
   return item.kind === 'ability' ? item.source : item.card;
 }
 
+function sameTargetObject(s: GameState, item: StackItem, index: number): boolean {
+  const t = item.targets[index];
+  return item.kind !== 'spell' || !item.targetObjects || t?.kind !== 'card' || (s.cards[t.card]?.zoneChanges ?? 0) === item.targetObjects[index];
+}
+
 /** A spell or ability whose targets have all become illegal doesn't resolve (rule 608.2b). */
 function allTargetsIllegal(s: GameState, item: StackItem): boolean {
   const needs = choosingEffects(effectsOf(s, item));
   return (
-    needs.length > 0 &&
-    needs.every((e, i) => !isLegalTarget(s, e, item.targets[i]!, item.controller, sourceOf(item), contextOf(item)))
+    needs.some((_, i) => item.targets[i]?.kind !== 'none') &&
+    needs.every((e, i) => item.targets[i]?.kind === 'none' || !sameTargetObject(s, item, i) || !isLegalTarget(s, e, item.targets[i]!, item.controller, sourceOf(item), contextOf(item)))
   );
 }
 
@@ -848,6 +854,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     card: id,
     controller: playerId,
     targets,
+    targetObjects: targets.map(t => t.kind === 'card' ? s.cards[t.card]!.zoneChanges ?? 0 : null),
     ...(choice.mode !== undefined ? { mode: choice.mode } : {}),
     ...(choice.modes ? { modes: [...choice.modes].sort((a, b) => a - b) } : {}),
     ...(alternative ? { alternative } : {}),
@@ -1816,6 +1823,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) {
         const c = s.cards[id]!;
         if (c.zone !== 'graveyard') continue;
+        const linked = effect.attachToReturnedTarget === undefined ? undefined : item.targets[effect.attachToReturnedTarget];
+        const candidate = linked?.kind === 'card' ? s.cards[linked.card] : undefined;
+        const host = candidate && r.returnedObjects?.[candidate.id] === (candidate.zoneChanges ?? 0) ? candidate : undefined;
+        const attaching = effect.attachToReturnedTarget !== undefined;
+        // Illegal Auras stay in the graveyard; Equipment still enters unattached.
+        if (attaching && defOf(s, c).subtypes?.includes('Aura') && !canAttach(s, c, host)) continue;
         const defenders = effect.attacking && s.combat ? alivePlayers(s).filter((p) => p !== item.controller) : [];
         if (defenders.length > 1 && !r.attackingDefender) {
           s.pending = { kind: 'chooseDefender', player: item.controller, card: id, defenders };
@@ -1823,7 +1836,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
         const defender = r.attackingDefender ?? defenders[0];
         moveCard(ctx, id, 'battlefield');
+        r.returnedObjects ??= {};
+        r.returnedObjects[id] = c.zoneChanges ?? 0;
         if (effect.underYourControl) c.controller = item.controller;
+        if (attaching && host && canAttach(s, c, host)) attach(ctx, id, host.id);
         c.summoningSick = true;
         if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
         if (effect.attacking && s.combat && defender && defenders.includes(defender)) {
@@ -2000,6 +2016,7 @@ function continueResolving(ctx: Ctx): void {
     if (r.next >= effects.length) break;
     const effect = effects[r.next++]!;
     const chosen = CHOSEN_TARGET_KINDS.includes(effect.target) ? item.targets[r.chosenUsed++] : undefined;
+    if (chosen && !sameTargetObject(s, item, r.chosenUsed - 1)) continue;
     if (chosen) {
       r.previousTarget = chosen;
       // Remember its power now: "life equal to its power" still works after it's exiled (rule 608.2h).

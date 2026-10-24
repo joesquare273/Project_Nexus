@@ -257,6 +257,10 @@ export function validateCardDefinition(raw: unknown): string[] {
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
   }
 
+  if (c.enchant) {
+    if (!c.subtypes?.includes('Aura')) err('enchant requires an Aura.');
+    validateFilter(c.enchant, err);
+  }
   for (const e of c.effects ?? []) validateEffect(e, false, err);
   for (const [i, mode] of (c.modes ?? []).entries()) {
     if (!Array.isArray(mode) || mode.length === 0) err(`mode ${i + 1} needs at least one effect.`);
@@ -314,6 +318,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
   if (e.whileYouControlSource && e.effect !== 'GrantKeywords') err('whileYouControlSource is only for GrantKeywords.');
   if (e.effect === 'Fight' && !inAbility) err('Fight is only for abilities (the source creature fights).');
+  if (e.attachToReturnedTarget !== undefined && (e.effect !== 'ReturnToBattlefield' || e.target !== 'TargetCardInGraveyard' || !isNonNegativeInt(e.attachToReturnedTarget))) err('attachToReturnedTarget needs ReturnToBattlefield targeting a graveyard card and a whole target index.');
   if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');
   if (e.keep !== undefined && (e.effect !== 'LookAtTopPutInHand' || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
   if (e.free && e.effect !== 'AllowCastFromGraveyard') err('free is only for AllowCastFromGraveyard.');

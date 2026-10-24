@@ -450,6 +450,8 @@ export interface EffectSpec {
   keywords?: Keyword[];
   /** GrantFlags. */
   flags?: TemporaryFlag[];
+  /** ReturnToBattlefield: enter attached to a creature returned for this chosen-target index. */
+  attachToReturnedTarget?: number;
   /** ReturnToBattlefield: extra +1/+1 counters. */
   counters?: number;
   /** AddCounters, ReturnToBattlefield, or KeepAndSacrificeRest's vow: a named counter. */
@@ -901,6 +903,8 @@ export interface CardDefinition {
   activated?: ActivatedSpec[];
   /** Static abilities. */
   statics?: StaticSpec[];
+  /** Aura enchant restriction; applies to attachment, without targeting. */
+  enchant?: ObjectFilter;
   /** Equipment: the equip cost. */
   equip?: string;
   /** "Equip legendary creature {3}": a second, cheaper equip ability for legendary creatures. */
@@ -1181,6 +1185,8 @@ export interface SpellItem {
   kind: 'spell';
   card: InstanceId;
   controller: PlayerId;
+  /** Card-object identities when a spell chose its targets. */
+  targetObjects?: (number | null)[];
   /** One target per effect that requires a choice, in effect order. */
   targets: Target[];
   /** For modal spells, the chosen mode. */
@@ -1285,6 +1291,8 @@ export interface TemporaryEffect {
 
 /** A spell or ability partway through resolving, waiting on a choice (surveil). */
 export interface Resolving {
+  /** Objects returned earlier during this resolution, for linked attachments. */
+  returnedObjects?: Record<InstanceId, number>;
   /** The non-target defending-player choice for entering attacking. */
   attackingDefender?: PlayerId;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */

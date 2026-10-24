@@ -5,6 +5,35 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Unfinished Business and linked graveyard returns
+
+- Built Unfinished Business with one mandatory creature target and up to two
+  distinct Aura/Equipment targets from your own graveyard. Equipment returns
+  unattached if the creature cannot return; illegal Auras remain in the graveyard.
+  Entering attachments do not target the returned battlefield creature, so
+  shroud/hexproof do not prevent attachment. Equip costs are not paid.
+- Linked return effects retain the returned creature object identity. Spells
+  snapshot targeted card identities, preventing a card that left and reentered
+  its zone from being mistaken for the originally targeted object. Fixed omitted
+  optional targets incorrectly keeping an otherwise fully illegal spell alive.
+- Added Aura enchant-restriction metadata and shared attachment legality.
+  Illegal/unattached Auras go to the graveyard during state-based actions;
+  illegal Equipment attachments fall off. Observed Stasis and Eye of Nidhogg
+  retain their unbuilt status: this batch adds their enchant restrictions only.
+- Added 51 two-, three- and four-player scenarios covering optional/illegal
+  targets, vanished targets, zone identity, attachment restrictions, shroud,
+  creature Equipment, zero-toughness rescue, entry triggers, bot play and Aura
+  state-based actions. Type-check, all 1,310 tests in 60 files (two workers,
+  273 seconds), and browser production build pass. No UI interaction changed
+  and no interactive browser playtest was performed. Existing bundle-size
+  warning remains.
+- Progress: 301/320 distinct precon cards built, 19 remaining. Limit Break
+  99/100, Revival Trance 91/100, Counter Blitz 96/100, Scions & Spellcraft 95/100.
+
+Rules reference: [Wizards' Wilds of Eldraine release notes](https://magic.wizards.com/en/news/feature/wilds-of-eldraine-release-notes), Unfinished Business.
+
+
+
 ### Monarch cards, readable targeting and four-player table
 
 - Built Palace Jailer and Coin of Fate with shared monarch rules, combat-damage

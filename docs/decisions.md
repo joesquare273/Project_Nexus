@@ -186,3 +186,14 @@ items carry a captured specification and an explicit monarch rule tag, with
 exiled object and ends on a future opponent monarch transition. Coin of Fate
 tracks both card ID and object identity for cards exiled as costs, preventing
 an object that left and reentered exile from being returned by the old ability.
+
+## Linked returns and attachment restrictions (2026-10-23)
+
+ReturnToBattlefield can reference an earlier chosen target with
+`attachToReturnedTarget`. The resolution records returned object identities,
+so only a creature returned by this resolution can receive those attachments.
+Aura `enchant` filters govern attachment, without targeting. Illegal Auras stay
+in the graveyard; Equipment still returns unattached. All effects finish before
+state-based actions check the returned permanents. Cast spells record chosen
+card zone-change identities; omitted optional targets do not count as legal
+targets when deciding whether a targeted spell fails to resolve.
