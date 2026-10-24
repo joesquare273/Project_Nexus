@@ -7,7 +7,7 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 |---|---|---|---|
 | Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 99/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 96/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 97/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 98/100 |
 | Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 97/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
@@ -52,6 +52,14 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
 
 ## Latest card checkpoint
+
+Altered Ego is built (2026-10-24): it can't be countered, and as it resolves its
+controller may choose any creature on the battlefield for it to enter as a copy
+of, with X additional +1/+1 counters. Copied entry abilities trigger; counters,
+damage and tapped status are not copied. 310 of 320 distinct precon cards are
+built; 10 remain.
+
+### Previous checkpoint
 
 Gogo, Mysterious Mime and Kimahri, Valiant Guardian are built (2026-10-24),
 including optional battlefield copies, retained name/ability exceptions,
@@ -147,7 +155,7 @@ needing several groups' pieces waits for the last of them.
 | Card draw, life and spells-matter | **13 built (2026-10-22):** Harmonize, Night's Whisper, Secret Rendezvous, Cut a Deal, Into the Story, Baleful Strix, Morbid Opportunist, Archmage Emeritus, Alphinaud, Alisaie, Bastion Protector, Dispatch, Puresteel Paladin. |
 | Keywords and casting from the graveyard | **11 built (2026-10-22):** Bronze Guardian (ward), Hraesvelgr of the First Brood (ward), Clever Concealment (convoke, phasing), Lethal Scheme (convoke, connive), Dig Through Time (delve), Priest of Fell Rites (unearth), Sabin (blitz from the graveyard), Transpose (rebound), Edgar, Emet-Selch of the Third Seat, Torrential Gearhulk. |
 | Extra costs and random choices | **8 built (2026-10-22):** Rite of Replication (kicker), Everflowing Chalice (multikicker), Collective Effort (escalate), Cloud's Limit Break (tiered), Umaro and Summon: Magus Sisters (choose one at random), Thancred Waters, Krile Baldesion. |
-| X costs | **5 built (2026-10-22):** Walking Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond, Yuna's Whistle. Blitzball Stadium was built with temporary combat triggers; Altered Ego still waits. |
+| X costs | **5 built (2026-10-22):** Walking Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond, Yuna's Whistle. Blitzball Stadium was built with temporary combat triggers; Altered Ego came with entering as a copy. |
 | Alternate commanders and one-offs | **12 built (2026-10-22):** Tifa, Martial Artist; G'raha Tia, Scion Reborn; Stitcher's Supplier, Authority of the Consuls, Rise of the Dark Realms, Shelinda, Auron, Gyre Sage, Fathom Mage, Path of Discovery, Anger, Vincent. |
 | Sagas | **3 built (2026-10-22):** Summon: Kujata, Summon: Ixion, Summon: Valefor (Yojimbo and Magus Sisters came with later steps). Good King Mog XII and Esper Valigarmanda still wait. |
 | Counterspells and attack taxes | **3 built (2026-10-22):** An Offer You Can't Refuse, Propaganda, Summon: Yojimbo. |
@@ -164,5 +172,6 @@ needing several groups' pieces waits for the last of them.
 | Modified creatures and base stats | **1 built (2026-10-23):** Sephiroth, Fallen Hero. Optional cell counters and base-setting timestamps, including Equipment interactions. |
 | Adventures | **3 built (2026-10-23):** Hypnotic Sprite, Murderous Rider, Hildibrand Manderville. Full Adventure casting, exile follow-up, Rider death trigger, and Hildibrand token anthem and graveyard permission. |
 | Battlefield copies | **2 built (2026-10-24):** Gogo, Mysterious Mime and Kimahri, Valiant Guardian. Copiable values, retained exceptions, stacked copy durations, copied abilities and browser choices. |
-| Remaining one-offs | 11 distinct cards remain, including double-faced cards, Sagas, hideaway and Equipment. |
+| Entering as a copy | **1 built (2026-10-24):** Altered Ego. |
+| Remaining one-offs | 10 distinct cards remain, including double-faced cards, Sagas, hideaway and Equipment. |
 | Everything else | |

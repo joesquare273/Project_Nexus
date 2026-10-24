@@ -1026,6 +1026,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
                   : c.purpose === 'addCounters' ? `to receive a ${c.counter ?? '+1/+1'} counter each`
                   : c.purpose === 'distributeCounter' ? `to receive one +1/+1 counter (${c.counterCount} remain to assign); choose none to finish`
+                  : c.purpose === 'copyOnEntry' ? 'for your entering creature to copy; choose none to have it enter as itself'
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
                     : 'to keep; the others are sacrificed';
       const problem = choiceProblem(s, c, picks);

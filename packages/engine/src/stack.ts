@@ -2205,6 +2205,16 @@ export function resolveTop(ctx: Ctx): void {
   const fizzled = allTargetsIllegal(s, item);
 
   if (item.kind === 'spell') {
+    const entering = defOf(s, s.cards[item.card]!);
+    // "You may have it enter as a copy": chosen as it resolves (rule 707.5), before it moves.
+    if (entering.entersAsCopy && item.entryCopy === undefined) {
+      const creatures = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c)).map((c) => c.id);
+      if (creatures.length) {
+        s.pending = { kind: 'chooseCards', purpose: 'copyOnEntry', player: item.controller, cards: creatures, min: 0, max: 1, item: item.id };
+        return;
+      }
+      item.entryCopy = null;
+    }
     s.stack.pop();
     const c = s.cards[item.card]!;
     const def = defOf(s, c);
@@ -2215,6 +2225,7 @@ export function resolveTop(ctx: Ctx): void {
       if (def.enchant && fizzled) { moveCard(ctx,c.id,'graveyard'); givePriority(ctx,s.activePlayer); return; }
       const extra = c.extraCountersOnEnter ?? 0;
       moveCard(ctx, c.id, 'battlefield', { controller: item.controller });
+      if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
       if (item.x) c.xPaid = item.x;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
@@ -2464,6 +2475,33 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
   if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
   s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
   continueResolving(ctx);
+}
+
+/** The ChooseCards answer for "enter as a copy": none, or one creature still on the battlefield. */
+export function chooseEntryCopy(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s, p = s.pending, item = s.stack.at(-1);
+  if (p.kind !== 'chooseCards' || p.purpose !== 'copyOnEntry' || p.player !== playerId) reject('You are not choosing a creature to copy.');
+  if (item?.kind !== 'spell' || item.id !== p.item) throw new Error('The entering spell is not on top of the stack.');
+  const problem = choiceProblem(s, p, cards);
+  if (problem) reject(problem);
+  const chosen = cards[0] ? s.cards[cards[0]] : undefined;
+  if (chosen && !isCreatureOnBattlefield(s, chosen)) reject('Choose a creature still on the battlefield.');
+  item.entryCopy = chosen ? { card: chosen.id, object: chosen.zoneChanges ?? 0 } : null;
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  resolveTop(ctx);
+}
+
+/** It enters with the copied creature's copiable values, so its own entry abilities are the copy's (rule 707.5). */
+function enterAsCopy(ctx: Ctx, c: CardInstance, chosen: { card: InstanceId; object: number }): void {
+  const s = ctx.s, target = s.cards[chosen.card];
+  if (!isCreatureOnBattlefield(s, target) || (target.zoneChanges ?? 0) !== chosen.object) return;
+  const original = copiableDefinition(s, target), definition = structuredClone(original);
+  definition.id = c.defId;
+  delete definition.token;
+  const printing = target.copy?.printing ?? target.printing ?? original.printing;
+  c.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };
+  newTimestamp(s);
+  ctx.ev.push({ type: 'BecameCopy', card: c.id, copied: target.id, name: original.name });
 }
 
 /** Copiable values exclude counters and continuous effects (rule 707.2). */

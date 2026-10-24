@@ -1024,6 +1024,8 @@ export interface CardDefinition {
   entersWithCounters?: number;
   /** "This creature enters with X +1/+1 counters on it" (Walking Ballista). */
   entersWithXCounters?: boolean;
+  /** "You may have this creature enter as a copy of any creature on the battlefield" (Altered Ego). */
+  entersAsCopy?: boolean;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
   saga?: number;
   /** The kind of those counters, if not +1/+1 ("enters with a page counter on it"). */
@@ -1249,6 +1251,8 @@ export interface SpellItem {
   controller: PlayerId;
   /** Card-object identities when a spell chose its targets. */
   targetObjects?: (number | null)[];
+  /** entersAsCopy: the creature chosen to copy as it resolves (null: none). */
+  entryCopy?: { card: InstanceId; object: number } | null;
   /** One target per effect that requires a choice, in effect order. */
   targets: Target[];
   /** For modal spells, the chosen mode. */
@@ -1405,7 +1409,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1414,6 +1418,8 @@ export interface CardChoice {
   allOrNothing?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */
   onePerType?: CardType[];
+  /** copyOnEntry: the permanent spell waiting on the stack for the choice. */
+  item?: string;
 }
 
 export interface Attack {

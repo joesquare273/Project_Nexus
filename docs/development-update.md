@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-24
 
+### Altered Ego
+
+- Built Altered Ego: can't be countered, enters with X +1/+1 counters, and may
+  enter as a copy of any creature on the battlefield (any controller). The
+  choice is made as the spell resolves (rule 707.5), through a new `copyOnEntry`
+  card choice; choosing none enters it as itself (0/0 plus X).
+- The copy is applied as it enters, so the copied creature's entry triggers
+  and the legend rule apply. Counters, damage, tapped status and other
+  non-copiable state are not copied; a copied token's values don't make it a token.
+- AI copies the most valuable creature. Browser and terminal show the choice.
+- Added 13 focused checks across 2, 3 and 4 players.
+- Progress: 310/320 distinct precon cards built; 10 remain. Counter Blitz is
+  98/100.
+
 ### Gogo, Mysterious Mime and Kimahri, Valiant Guardian
 
 - Built Gogo's optional beginning-of-combat copy, name exception and cleanup

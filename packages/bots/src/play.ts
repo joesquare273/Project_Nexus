@@ -484,6 +484,7 @@ async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind
             ? 'put into your hand (the rest go on the bottom)'
             : p.purpose === 'fateBottom' ? 'put on the bottom of the caster’s library (the other returns tapped)'
             : p.purpose === 'addCounters' ? `receive a ${p.counter ?? '+1/+1'} counter each`
+            : p.purpose === 'copyOnEntry' ? 'copy as your creature enters (none: it enters as itself)'
             : 'keep (the rest are sacrificed)';
   if (p.allOrNothing) {
     const yes = (await ask(`\n  Discard your whole hand (${p.cards.length} cards)? (y/N) `)).toLowerCase() === 'y';

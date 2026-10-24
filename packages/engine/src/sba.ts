@@ -237,6 +237,11 @@ function repairPending(ctx: Ctx): void {
     case 'chooseCards':
       // A player who left doesn't choose; the spell or ability carries on without them.
       if (pending.purpose === 'handSize') break;
+      // The entering spell left the stack, or its controller left the game.
+      if (pending.purpose === 'copyOnEntry') {
+        if (s.stack.at(-1)?.id !== pending.item || s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
+        break;
+      }
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else if (s.players[pending.player]!.eliminated) {
         if (pending.purpose === 'fateBottom') { s.resolving.choiceQueue = []; s.resolving.next--; }

@@ -543,6 +543,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.kind !== 'chooseCards') return legal[0]!;
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
+  // Enter as a copy of the best creature on the battlefield, whoever controls it.
+  if (p.purpose === 'copyOnEntry') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'library') return pick([]);
   if (p.purpose === 'addCounters' && p.counter === 'cell' && p.cards.every(id => s.cards[id]!.controller !== me)) return pick([]);
   if (p.purpose === 'addCounters') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, p.max));

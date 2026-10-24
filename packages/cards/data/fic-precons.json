@@ -2024,11 +2024,8 @@
           "count": 1,
           "set": "fic",
           "number": "317",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Endless Detour",
