@@ -14,6 +14,7 @@ import type {
   AbilityItem,
   CardInstance,
   GameEvent,
+  CardType,
   GameState,
   InstanceId,
   ObjectFilter,
@@ -26,6 +27,7 @@ import type {
 
 /** One thing that happened that an ability might be waiting for. */
 interface Occurrence {
+  lastTypes?: CardType[];
   when: TriggerEvent;
   /** Index of the event, to tell which permanents were on the battlefield at the time. */
   at: number;
@@ -62,6 +64,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
   const out: Occurrence[] = [];
   events.forEach((e, at) => {
     switch (e.type) {
+      case 'CoinFlipped':
+        if(e.won) out.push({when:'CoinFlipWon',at,subjectController:e.player});
+        break;
       case 'AttackersUnblocked':
         out.push({ when: 'AttackersUnblocked', at, subject: e.attackers[0], subjectController: e.player, defender: e.defender });
         break;
@@ -75,6 +80,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         } else if (e.from === 'battlefield' && e.to === 'graveyard') {
           out.push({
             when: 'Dies',
+            lastTypes: e.lastTypes,
             at,
             subject: e.card,
             subjectController: e.controller ?? e.owner,
@@ -175,13 +181,15 @@ function matchesFilter(
 ): boolean {
   if (o.subject === undefined) return false;
   if (!filter) return o.subject === source;
+  const subject=s.cards[o.subject]!;
+  const definition=o.lastTypes ? {...defOf(s,subject),types:o.lastTypes} : undefined;
   if (filter.equippedBySource && o.when === 'Dies') {
     // "Whenever equipped creature dies": look back at what was attached when it died (rule 603.10a).
     if (!o.equippedBy?.includes(source)) return false;
     const { equippedBySource: _, ...rest } = filter;
-    return matchesObject(s, rest, s.cards[o.subject]!, { controller, source }, o.subjectController);
+    return matchesObject(s, rest, subject, { controller, source }, o.subjectController, definition);
   }
-  return matchesObject(s, filter, s.cards[o.subject]!, { controller, source }, o.subjectController);
+  return matchesObject(s, filter, subject, { controller, source }, o.subjectController, definition);
 }
 
 /** Intervening "if" conditions about the game rather than the event (rule 603.4). */
@@ -200,6 +208,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  if (o.when === 'CoinFlipWon') return o.subjectController === controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).
   if (o.when === 'Chapter') {

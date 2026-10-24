@@ -10,18 +10,18 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
   // A pop-out on the right edge, only while a card is hovered (or triggering).
   if (!c) return null;
   const def = defOf(c.defId);
-  const info = scryfallOf(c.defId);
+  const info = scryfallOf(c.defId,c.printing);
   const stats = c.zone === 'battlefield' ? view.stats[c.id] : undefined;
   const indestructible = stats?.keywords.includes('Indestructible');
   const status = [
     c.zone === 'battlefield' && c.tapped && 'Tapped',
     c.zone === 'battlefield' && c.damage > 0 && `${c.damage} damage`,
-    c.zone === 'battlefield' && c.summoningSick && isCreature(def) && 'Summoning sick',
+    c.zone === 'battlefield' && c.summoningSick && (isCreature(def) || c.crewed) && 'Summoning sick',
   ].filter(Boolean);
   return (
     <div key={id} className="inspector" aria-live="polite">
       <div className="inspector-card">
-        <CardFace defId={c.defId} size="large" />
+        <CardFace printing={c.printing} defId={c.defId} size="large" />
       </div>
       <div className="inspector-text">
         <div className="inspector-title">
@@ -36,7 +36,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
               : "Not built yet: this card can't be cast until its abilities are built."}
           </p>
         )}
-        {isCreature(def) && (
+        {(isCreature(def) || c.crewed) && (
           <div className="inspector-pt">
             {stats?.power ?? def.power}/{stats?.toughness ?? def.toughness}
           </div>

@@ -197,3 +197,23 @@ in the graveyard; Equipment still returns unattached. All effects finish before
 state-based actions check the returned permanents. Cast spells record chosen
 card zone-change identities; omitted optional targets do not count as legal
 targets when deciding whether a targeted spell fails to resolve.
+
+## Crew and reflexive triggers (2026-10-23)
+
+Crew is an activated cost paid by tapping other creatures; current signed power
+is checked and summoning sickness does not prevent paying that cost. The
+resolved animation changes effective battlefield types until cleanup, while
+preserving printed rules identity. A departure records last battlefield types
+for death triggers. Falcon's sacrifice queues a captured reflexive trigger; its
+targets are chosen after the sacrifice and it can be countered independently.
+
+## Physical printings and public commander identity (2026-10-23)
+
+Deck printing assignments are parallel to deck card IDs and shuffled together.
+They are presentation metadata on each card instance, retained through zone
+changes, and never change rules identity or legality. Alternate commander
+selection swaps the associated printing as well as the ID. Artwork lookup uses
+set/collector number when provided; a missing exact print falls back to a drawn
+card rather than silently showing another printing. Hidden-card flights do not
+include printing metadata. Public commander IDs/names are available separately
+from hidden card views for damage history, without revealing library positions.

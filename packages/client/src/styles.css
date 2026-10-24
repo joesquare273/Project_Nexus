@@ -2017,3 +2017,32 @@ button.phase.current {
 .four-players .hand { container-type:inline-size; min-width:0; }
 .four-players .hand .hand-card, .four-players .hand:hover .hand-card, .four-players .hand:has(.hand-card:focus-visible) .hand-card { flex:0 0 var(--hand-w); margin:0; }
 .four-players .hand .hand-card + .hand-card { margin-left:min(0px,calc((100cqw - var(--hand-w)) / max(1, var(--hand-count) - 1) - var(--hand-w))); }
+
+/* Commanders occupy the upper-left corner of their owner's seat. */
+.zone-top { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.zone-top .player-header { flex:1; min-width:0; }
+.command-zone { display:flex; align-items:center; gap:4px; flex-shrink:0; padding:3px 5px; border:1px solid #c4a15b80; border-radius:7px; min-height:48px; }
+.command-zone-label { font-size:9px; color:var(--gold); writing-mode:vertical-rl; text-transform:uppercase; }
+.command-zone .command-card { width:32px; flex-shrink:0; }
+.command-zone-empty { font-size:10px; opacity:.6; }
+.zone-top .cmd-damage { display:none; }
+.life-hub { display:flex; align-items:center; justify-content:center; gap:12px; padding:3px 8px; flex-shrink:0; }
+.life-button { display:flex; align-items:center; gap:7px; padding:3px 12px; border-radius:20px; background:#14232e; border:1px solid #9a824d; }
+.life-button > span { font-size:12px; }
+.life-button .life { font-size:26px; min-width:30px; padding:0; }
+.life-button.active { border-color:var(--gold); box-shadow:0 0 10px #e7c96d50; }
+.life-button.eliminated { opacity:.4; }
+.four-players .table { grid-template-rows:auto auto minmax(0,1fr) auto minmax(0,1fr) auto; }
+.four-players .life-hub { grid-area:4 / 1 / 5 / 3; }
+.four-players .opponent:nth-child(3) { grid-area:5 / 2; }
+.four-players .zone.you, .four-players .you-bar { grid-area:5 / 1; }
+.four-players .prompt { grid-area:6 / 1 / auto / 3; }
+.commander-damage-overlay { position:fixed; inset:0; z-index:80; background:#0007; display:flex; align-items:center; justify-content:center; }
+.commander-damage-panel { width:min(520px,92vw); max-height:85dvh; overflow:auto; padding:18px; background:#14212d; border:1px solid #c4a15b; border-radius:12px; box-shadow:0 12px 40px #000b; text-align:left; }
+.commander-damage-title { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.commander-damage-title h3 { margin:0; }
+.commander-damage-panel p { color:var(--muted); font-size:12px; }
+.damage-owner h4 { margin:12px 0 5px; font-size:13px; color:var(--gold); }
+.commander-damage-row { display:grid; grid-template-columns:1fr auto; gap:4px 12px; padding:4px 0; font-size:13px; }
+.commander-damage-row meter { grid-column:1 / -1; width:100%; height:8px; }
+.commander-damage-row.danger strong { color:#ff8880; }

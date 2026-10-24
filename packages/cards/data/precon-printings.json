@@ -1,0 +1,325 @@
+{
+  "fin/304": {
+    "name": "Mountain",
+    "typeLine": "Basic Land — Mountain",
+    "oracleText": "({T}: Add {R}.)",
+    "set": "fin",
+    "number": "304",
+    "artist": "Randy Gallegos",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/0/d061b9a8-e95d-48ec-a1c9-337433b62dfc.jpg?1783906540",
+      "normal": "https://cards.scryfall.io/normal/front/d/0/d061b9a8-e95d-48ec-a1c9-337433b62dfc.jpg?1783906540",
+      "large": "https://cards.scryfall.io/large/front/d/0/d061b9a8-e95d-48ec-a1c9-337433b62dfc.jpg?1783906540",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/0/d061b9a8-e95d-48ec-a1c9-337433b62dfc.jpg?1783906540"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/304/mountain?utm_source=api",
+    "scryfallId": "d061b9a8-e95d-48ec-a1c9-337433b62dfc",
+    "relatedTokens": []
+  },
+  "fin/305": {
+    "name": "Mountain",
+    "typeLine": "Basic Land — Mountain",
+    "oracleText": "({T}: Add {R}.)",
+    "set": "fin",
+    "number": "305",
+    "artist": "Sean Vo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/a/ea1735b9-fd10-4c9c-b9d3-046d8c22b852.jpg?1783906539",
+      "normal": "https://cards.scryfall.io/normal/front/e/a/ea1735b9-fd10-4c9c-b9d3-046d8c22b852.jpg?1783906539",
+      "large": "https://cards.scryfall.io/large/front/e/a/ea1735b9-fd10-4c9c-b9d3-046d8c22b852.jpg?1783906539",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/a/ea1735b9-fd10-4c9c-b9d3-046d8c22b852.jpg?1783906539"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/305/mountain?utm_source=api",
+    "scryfallId": "ea1735b9-fd10-4c9c-b9d3-046d8c22b852",
+    "relatedTokens": []
+  },
+  "fin/307": {
+    "name": "Forest",
+    "typeLine": "Basic Land — Forest",
+    "oracleText": "({T}: Add {G}.)",
+    "set": "fin",
+    "number": "307",
+    "artist": "Leon Tukker",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/d/3d08f6a6-316d-45d8-aabe-1760a20903ac.jpg?1783906539",
+      "normal": "https://cards.scryfall.io/normal/front/3/d/3d08f6a6-316d-45d8-aabe-1760a20903ac.jpg?1783906539",
+      "large": "https://cards.scryfall.io/large/front/3/d/3d08f6a6-316d-45d8-aabe-1760a20903ac.jpg?1783906539",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/d/3d08f6a6-316d-45d8-aabe-1760a20903ac.jpg?1783906539"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/307/forest?utm_source=api",
+    "scryfallId": "3d08f6a6-316d-45d8-aabe-1760a20903ac",
+    "relatedTokens": []
+  },
+  "fin/308": {
+    "name": "Forest",
+    "typeLine": "Basic Land — Forest",
+    "oracleText": "({T}: Add {G}.)",
+    "set": "fin",
+    "number": "308",
+    "artist": "Sean Vo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/5/c52038c8-5bba-4d8e-845f-30af44300acc.jpg?1783906539",
+      "normal": "https://cards.scryfall.io/normal/front/c/5/c52038c8-5bba-4d8e-845f-30af44300acc.jpg?1783906539",
+      "large": "https://cards.scryfall.io/large/front/c/5/c52038c8-5bba-4d8e-845f-30af44300acc.jpg?1783906539",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/5/c52038c8-5bba-4d8e-845f-30af44300acc.jpg?1783906539"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/308/forest?utm_source=api",
+    "scryfallId": "c52038c8-5bba-4d8e-845f-30af44300acc",
+    "relatedTokens": []
+  },
+  "fin/295": {
+    "name": "Plains",
+    "typeLine": "Basic Land — Plains",
+    "oracleText": "({T}: Add {W}.)",
+    "set": "fin",
+    "number": "295",
+    "artist": "Jonas De Ro",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/6/e623b058-76d2-476b-9ee6-82807f7992c3.jpg?1783906544",
+      "normal": "https://cards.scryfall.io/normal/front/e/6/e623b058-76d2-476b-9ee6-82807f7992c3.jpg?1783906544",
+      "large": "https://cards.scryfall.io/large/front/e/6/e623b058-76d2-476b-9ee6-82807f7992c3.jpg?1783906544",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/6/e623b058-76d2-476b-9ee6-82807f7992c3.jpg?1783906544"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/295/plains?utm_source=api",
+    "scryfallId": "e623b058-76d2-476b-9ee6-82807f7992c3",
+    "relatedTokens": []
+  },
+  "fin/296": {
+    "name": "Plains",
+    "typeLine": "Basic Land — Plains",
+    "oracleText": "({T}: Add {W}.)",
+    "set": "fin",
+    "number": "296",
+    "artist": "Eddie Mendoza",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/e/ee86ac2f-f398-4422-8721-8ac859fbf5bc.jpg?1783906544",
+      "normal": "https://cards.scryfall.io/normal/front/e/e/ee86ac2f-f398-4422-8721-8ac859fbf5bc.jpg?1783906544",
+      "large": "https://cards.scryfall.io/large/front/e/e/ee86ac2f-f398-4422-8721-8ac859fbf5bc.jpg?1783906544",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/e/ee86ac2f-f398-4422-8721-8ac859fbf5bc.jpg?1783906544"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/296/plains?utm_source=api",
+    "scryfallId": "ee86ac2f-f398-4422-8721-8ac859fbf5bc",
+    "relatedTokens": []
+  },
+  "fic/332": {
+    "name": "Arcane Signet",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "fic",
+    "number": "332",
+    "artist": "Grace Zhu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/c/9ce66ebc-b39f-4b40-9d95-981629a5dd06.jpg?1783906246",
+      "normal": "https://cards.scryfall.io/normal/front/9/c/9ce66ebc-b39f-4b40-9d95-981629a5dd06.jpg?1783906246",
+      "large": "https://cards.scryfall.io/large/front/9/c/9ce66ebc-b39f-4b40-9d95-981629a5dd06.jpg?1783906246",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/c/9ce66ebc-b39f-4b40-9d95-981629a5dd06.jpg?1783906246"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/332/arcane-signet?utm_source=api",
+    "scryfallId": "9ce66ebc-b39f-4b40-9d95-981629a5dd06",
+    "relatedTokens": []
+  },
+  "fic/356": {
+    "name": "Sol Ring",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add {C}{C}.",
+    "set": "fic",
+    "number": "356",
+    "artist": "Andrea Tentori Montalto",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/f/8fb860f9-3729-436e-adfb-c98c2a389d5d.jpg?1783906236",
+      "normal": "https://cards.scryfall.io/normal/front/8/f/8fb860f9-3729-436e-adfb-c98c2a389d5d.jpg?1783906236",
+      "large": "https://cards.scryfall.io/large/front/8/f/8fb860f9-3729-436e-adfb-c98c2a389d5d.jpg?1783906236",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/f/8fb860f9-3729-436e-adfb-c98c2a389d5d.jpg?1783906236"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/356/sol-ring?utm_source=api",
+    "scryfallId": "8fb860f9-3729-436e-adfb-c98c2a389d5d",
+    "relatedTokens": []
+  },
+  "fic/484": {
+    "name": "Command Tower",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "fic",
+    "number": "484",
+    "artist": "Anthony Devine",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/a/4a2dfd72-a8f4-4e43-b5de-caf6a129a51a.jpg?1783906200",
+      "normal": "https://cards.scryfall.io/normal/front/4/a/4a2dfd72-a8f4-4e43-b5de-caf6a129a51a.jpg?1783906200",
+      "large": "https://cards.scryfall.io/large/front/4/a/4a2dfd72-a8f4-4e43-b5de-caf6a129a51a.jpg?1783906200",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/a/4a2dfd72-a8f4-4e43-b5de-caf6a129a51a.jpg?1783906200"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/484/command-tower?utm_source=api",
+    "scryfallId": "4a2dfd72-a8f4-4e43-b5de-caf6a129a51a",
+    "relatedTokens": []
+  },
+  "fin/301": {
+    "name": "Swamp",
+    "typeLine": "Basic Land — Swamp",
+    "oracleText": "({T}: Add {B}.)",
+    "set": "fin",
+    "number": "301",
+    "artist": "Fang Xinyu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/7/a7f56d20-16dc-4b7f-98bf-124817a83bae.jpg?1783906542",
+      "normal": "https://cards.scryfall.io/normal/front/a/7/a7f56d20-16dc-4b7f-98bf-124817a83bae.jpg?1783906542",
+      "large": "https://cards.scryfall.io/large/front/a/7/a7f56d20-16dc-4b7f-98bf-124817a83bae.jpg?1783906542",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/7/a7f56d20-16dc-4b7f-98bf-124817a83bae.jpg?1783906542"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/301/swamp?utm_source=api",
+    "scryfallId": "a7f56d20-16dc-4b7f-98bf-124817a83bae",
+    "relatedTokens": []
+  },
+  "fin/302": {
+    "name": "Swamp",
+    "typeLine": "Basic Land — Swamp",
+    "oracleText": "({T}: Add {B}.)",
+    "set": "fin",
+    "number": "302",
+    "artist": "Sean Vo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/8/08ec1e4f-e284-4216-a022-bd94c4dae02b.jpg?1783906542",
+      "normal": "https://cards.scryfall.io/normal/front/0/8/08ec1e4f-e284-4216-a022-bd94c4dae02b.jpg?1783906542",
+      "large": "https://cards.scryfall.io/large/front/0/8/08ec1e4f-e284-4216-a022-bd94c4dae02b.jpg?1783906542",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/8/08ec1e4f-e284-4216-a022-bd94c4dae02b.jpg?1783906542"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/302/swamp?utm_source=api",
+    "scryfallId": "08ec1e4f-e284-4216-a022-bd94c4dae02b",
+    "relatedTokens": []
+  },
+  "fic/334": {
+    "name": "Arcane Signet",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "fic",
+    "number": "334",
+    "artist": "Russell Dongjun Lu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/d/9df4b5a2-95bf-4268-9d75-6065176651d1.jpg?1785650657",
+      "normal": "https://cards.scryfall.io/normal/front/9/d/9df4b5a2-95bf-4268-9d75-6065176651d1.jpg?1785650657",
+      "large": "https://cards.scryfall.io/large/front/9/d/9df4b5a2-95bf-4268-9d75-6065176651d1.jpg?1785650657",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/d/9df4b5a2-95bf-4268-9d75-6065176651d1.jpg?1785650657"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/334/arcane-signet?utm_source=api",
+    "scryfallId": "9df4b5a2-95bf-4268-9d75-6065176651d1",
+    "relatedTokens": []
+  },
+  "fic/358": {
+    "name": "Sol Ring",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add {C}{C}.",
+    "set": "fic",
+    "number": "358",
+    "artist": "Grace Zhu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/a/9a34ac23-e318-4c0b-ab4c-e1eaa0e2547e.jpg?1783906235",
+      "normal": "https://cards.scryfall.io/normal/front/9/a/9a34ac23-e318-4c0b-ab4c-e1eaa0e2547e.jpg?1783906235",
+      "large": "https://cards.scryfall.io/large/front/9/a/9a34ac23-e318-4c0b-ab4c-e1eaa0e2547e.jpg?1783906235",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/a/9a34ac23-e318-4c0b-ab4c-e1eaa0e2547e.jpg?1783906235"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/358/sol-ring?utm_source=api",
+    "scryfallId": "9a34ac23-e318-4c0b-ab4c-e1eaa0e2547e",
+    "relatedTokens": []
+  },
+  "fic/486": {
+    "name": "Command Tower",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "fic",
+    "number": "486",
+    "artist": "Jonas De Ro",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/0/605b2218-0eab-4c9d-a5d8-7fab342137a0.jpg?1783906199",
+      "normal": "https://cards.scryfall.io/normal/front/6/0/605b2218-0eab-4c9d-a5d8-7fab342137a0.jpg?1783906199",
+      "large": "https://cards.scryfall.io/large/front/6/0/605b2218-0eab-4c9d-a5d8-7fab342137a0.jpg?1783906199",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/0/605b2218-0eab-4c9d-a5d8-7fab342137a0.jpg?1783906199"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/486/command-tower?utm_source=api",
+    "scryfallId": "605b2218-0eab-4c9d-a5d8-7fab342137a0",
+    "relatedTokens": []
+  },
+  "fin/298": {
+    "name": "Island",
+    "typeLine": "Basic Land — Island",
+    "oracleText": "({T}: Add {U}.)",
+    "set": "fin",
+    "number": "298",
+    "artist": "Eddie Mendoza",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/e/eeecf096-87dd-4dcb-953f-700445bf3f3a.jpg?1783906542",
+      "normal": "https://cards.scryfall.io/normal/front/e/e/eeecf096-87dd-4dcb-953f-700445bf3f3a.jpg?1783906542",
+      "large": "https://cards.scryfall.io/large/front/e/e/eeecf096-87dd-4dcb-953f-700445bf3f3a.jpg?1783906542",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/e/eeecf096-87dd-4dcb-953f-700445bf3f3a.jpg?1783906542"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/298/island?utm_source=api",
+    "scryfallId": "eeecf096-87dd-4dcb-953f-700445bf3f3a",
+    "relatedTokens": []
+  },
+  "fin/299": {
+    "name": "Island",
+    "typeLine": "Basic Land — Island",
+    "oracleText": "({T}: Add {U}.)",
+    "set": "fin",
+    "number": "299",
+    "artist": "Jeremy Paillotin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/4/347e00db-abcf-4053-aa27-4a5b42e1da55.jpg?1783906542",
+      "normal": "https://cards.scryfall.io/normal/front/3/4/347e00db-abcf-4053-aa27-4a5b42e1da55.jpg?1783906542",
+      "large": "https://cards.scryfall.io/large/front/3/4/347e00db-abcf-4053-aa27-4a5b42e1da55.jpg?1783906542",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/4/347e00db-abcf-4053-aa27-4a5b42e1da55.jpg?1783906542"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/299/island?utm_source=api",
+    "scryfallId": "347e00db-abcf-4053-aa27-4a5b42e1da55",
+    "relatedTokens": []
+  },
+  "fic/335": {
+    "name": "Arcane Signet",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "fic",
+    "number": "335",
+    "artist": "Madeline Boni",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/c/4c861c4c-0520-46d9-b281-63a1188417dc.jpg?1783906247",
+      "normal": "https://cards.scryfall.io/normal/front/4/c/4c861c4c-0520-46d9-b281-63a1188417dc.jpg?1783906247",
+      "large": "https://cards.scryfall.io/large/front/4/c/4c861c4c-0520-46d9-b281-63a1188417dc.jpg?1783906247",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/c/4c861c4c-0520-46d9-b281-63a1188417dc.jpg?1783906247"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/335/arcane-signet?utm_source=api",
+    "scryfallId": "4c861c4c-0520-46d9-b281-63a1188417dc",
+    "relatedTokens": []
+  },
+  "fic/359": {
+    "name": "Sol Ring",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add {C}{C}.",
+    "set": "fic",
+    "number": "359",
+    "artist": "Piotr Dura",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/a/1abcafa9-0f27-482f-95a9-24520f0106b8.jpg?1783906235",
+      "normal": "https://cards.scryfall.io/normal/front/1/a/1abcafa9-0f27-482f-95a9-24520f0106b8.jpg?1783906235",
+      "large": "https://cards.scryfall.io/large/front/1/a/1abcafa9-0f27-482f-95a9-24520f0106b8.jpg?1783906235",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/a/1abcafa9-0f27-482f-95a9-24520f0106b8.jpg?1783906235"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/359/sol-ring?utm_source=api",
+    "scryfallId": "1abcafa9-0f27-482f-95a9-24520f0106b8",
+    "relatedTokens": []
+  },
+  "fic/382": {
+    "name": "Command Tower",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "fic",
+    "number": "382",
+    "artist": "Alayna Danner",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/a/9ac9c12b-5135-4124-b01b-336560907940.jpg?1783906224",
+      "normal": "https://cards.scryfall.io/normal/front/9/a/9ac9c12b-5135-4124-b01b-336560907940.jpg?1783906224",
+      "large": "https://cards.scryfall.io/large/front/9/a/9ac9c12b-5135-4124-b01b-336560907940.jpg?1783906224",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/a/9ac9c12b-5135-4124-b01b-336560907940.jpg?1783906224"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/382/command-tower?utm_source=api",
+    "scryfallId": "9ac9c12b-5135-4124-b01b-336560907940",
+    "relatedTokens": []
+  }
+}

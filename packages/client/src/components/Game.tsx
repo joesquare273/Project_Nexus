@@ -31,6 +31,7 @@ import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
+import { LifeTotals } from './LifeTotals.tsx';
 import { CardFace } from './Card.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
@@ -401,7 +402,7 @@ export function Game({
     const costKeys = [...new Set(forMode.map(costOf))];
     if (costKey === undefined && costKeys.length > 1) {
       const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
-      const verb = ability?.cost.exileGraveyard ? 'exile from your graveyard' : ability?.cost.sacrifice ? 'sacrifice' : 'discard';
+      const verb = ability?.cost.crew !== undefined ? 'tap to crew with' : ability?.cost.exileGraveyard ? 'exile from your graveyard' : ability?.cost.sacrifice ? 'sacrifice' : 'discard';
       setMenu({
         title: `${def.name}: ${verb} which card?`,
         options: costKeys.map((k) => ({
@@ -512,6 +513,7 @@ export function Game({
       if (notice?.sourceCard === id) return 'SOURCE';
       const attachedTo = view.cards[id]?.attachedTo;
       if (attachedTo) return `⚔ ${cardName(s, attachedTo)}`;
+      if (defOf(view.cards[id]!.defId).crew !== undefined) return view.cards[id]!.crewed ? 'Crewed until end of turn' : `Crew ${defOf(view.cards[id]!.defId).crew}`;
       const st = view.stats[id];
       if (st?.cantBeBlocked) return "Can't be blocked";
       if (st?.mustBeBlocked) return 'Must be blocked';
@@ -640,6 +642,7 @@ export function Game({
             {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source} → {n.labels.join(' + ')}</div>)}
           </details> : <span>Targeted actions will appear here.</span>}
         </section>
+        <LifeTotals view={view} />
         <YourZone fit={fourPlayers} view={view} h={h} placement={session.placement} onPlaced={refresh} />
         <PromptBar
           session={session}
@@ -669,7 +672,6 @@ export function Game({
           setBottomPicks={setBottomPicks}
         />
         <div className={`you-bar ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
-          <PlayerHeader view={view} pid={YOU} h={h} />
           <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>
         {error && <div className="toast">{error}</div>}
@@ -677,7 +679,7 @@ export function Game({
           <div key={spotlight.key} className="spotlight" aria-live="polite">
             <div className="spotlight-label">{cardName(s, spotlight.card)} triggers</div>
             <div className="spotlight-card">
-              <CardFace defId={view.cards[spotlight.card]!.defId} size="large" />
+              <CardFace printing={view.cards[spotlight.card]!.printing} defId={view.cards[spotlight.card]!.defId} size="large" />
             </div>
           </div>
         )}
@@ -717,7 +719,7 @@ export function Game({
       {surveilCard && view.cards[surveilCard] && (
         <div className="surveil-card">
           <div className="surveil-label">Top of your library</div>
-          <CardFace defId={view.cards[surveilCard]!.defId} size="normal" />
+          <CardFace printing={view.cards[surveilCard]!.printing} defId={view.cards[surveilCard]!.defId} size="normal" />
         </div>
       )}
       {zoneView?.zone === 'exile' && (
@@ -880,7 +882,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: Game
           >
             {c && (
               <div className="stack-thumb">
-                <CardFace defId={c.defId} size="small" />
+                <CardFace printing={c.printing} defId={c.defId} size="small" />
               </div>
             )}
             <div>

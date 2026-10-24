@@ -8,6 +8,7 @@ import fin from '../data/fin.json' with { type: 'json' };
 import fic from '../data/fic.json' with { type: 'json' };
 import ficPrecons from '../data/fic-precons.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
+import preconPrintings from '../data/precon-printings.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 import { validateCardList } from './validate.ts';
@@ -61,6 +62,11 @@ export interface ScryfallInfo {
 
 /** By card id. Refresh with `npm run scryfall`. Placeholder cards have no entry. */
 export const SCRYFALL: Record<CardDefId, ScryfallInfo> = scryfall;
+/** Artwork by physical printing; variants share the same engine card definition. */
+export const SCRYFALL_PRINTINGS: Record<string,ScryfallInfo> = Object.fromEntries(
+  [...Object.values(SCRYFALL), ...Object.values(preconPrintings)].map(info=>[info.set+'/'+info.number,info]),
+);
+export interface PrintedPrecon { commander: CardDefId; deck: CardDefId[]; commanderPrinting: { set:string; number:string }; deckPrintings: { set:string; number:string }[] }
 
 export interface PreconDeck {
   name: string;
@@ -127,20 +133,21 @@ export function preconCommanders(name: string): CommanderChoice[] {
  * `commanderName` (one of `preconCommanders`), that card leads it and the
  * printed commander joins the 99.
  */
-export function preconDeckWithCommander(name: string, commanderName?: string): { commander: CardDefId; deck: CardDefId[] } {
+export function preconDeckWithCommander(name: string, commanderName?: string): PrintedPrecon {
   const base = preconDeck(name);
   if (!commanderName) return base;
   const choice = preconCommanders(name).find((c) => c.name === commanderName);
   if (!choice) throw new Error(`${commanderName} can't lead ${name}: it must be a legendary creature or Vehicle in all of the deck's colors.`);
   if (choice.printed) return base;
   const deck = [...base.deck];
-  deck.splice(deck.indexOf(choice.defId), 1);
-  deck.push(base.commander);
-  return { commander: choice.defId, deck };
+  const at=deck.indexOf(choice.defId), deckPrintings=[...base.deckPrintings];
+  const commanderPrinting=deckPrintings.splice(at,1)[0]!;
+  deck.splice(at,1); deck.push(base.commander); deckPrintings.push(base.commanderPrinting);
+  return { commander:choice.defId,deck,commanderPrinting,deckPrintings };
 }
 
 /** A precon as a commander plus a 99-card library, for createGame. */
-export function preconDeck(name: string): { commander: CardDefId; deck: CardDefId[] } {
+export function preconDeck(name: string): PrintedPrecon {
   const precon = FIN_PRECONS.find((p) => p.name === name || p.name.startsWith(name));
   if (!precon) throw new Error(`No precon named "${name}".`);
   const id = (cardName: string) => {
@@ -150,6 +157,8 @@ export function preconDeck(name: string): { commander: CardDefId; deck: CardDefI
   };
   return {
     commander: id(precon.commander.name),
+    commanderPrinting: {set:precon.commander.set,number:precon.commander.number},
+    deckPrintings: precon.cards.flatMap(c=>Array.from({length:c.count},()=>({set:c.set,number:c.number}))),
     deck: precon.cards.flatMap((c) => Array<CardDefId>(c.count).fill(id(c.name))),
   };
 }

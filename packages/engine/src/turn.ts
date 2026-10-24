@@ -161,6 +161,7 @@ export function discardToHandSize(ctx: Ctx, playerId: PlayerId, cards: InstanceI
 export function cleanupDamage(ctx: Ctx): void {
   for (const c of Object.values(ctx.s.cards)) if (c.adventureGraveyard?.expiresOnTurn === ctx.s.turnNumber) delete c.adventureGraveyard;
   for (const c of Object.values(ctx.s.cards).filter((card) => card.zone === 'battlefield')) {
+    delete c.crewed;
     c.damage = 0;
     c.deathtouched = false;
   }

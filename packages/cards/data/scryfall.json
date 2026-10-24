@@ -2652,7 +2652,7 @@
   "hildibrand-manderville-gentlemans-rise": {
     "name": "Hildibrand Manderville // Gentleman's Rise",
     "typeLine": "Legendary Creature — Human Detective // Instant — Adventure",
-    "oracleText": "Hildibrand Manderville\nCreature tokens you control get +1/+1.\nWhen Hildibrand Manderville dies, you may cast it from your graveyard as an Adventure until the end of your next turn.\n\n//\n\nGentleman's Rise\nCreate a 2/2 black Zombie creature token. (Then exile this card. You may cast the creature later from exile.)",
+    "oracleText": "Creature tokens you control get +1/+1.\nWhen Hildibrand Manderville dies, you may cast it from your graveyard as an Adventure until the end of your next turn.\n\nCreate a 2/2 black Zombie creature token. (Then exile this card. You may cast the creature later from exile.)",
     "set": "fic",
     "number": "83",
     "artist": "AKAGI",
@@ -2734,7 +2734,7 @@
   "hypnotic-sprite-mesmeric-glare": {
     "name": "Hypnotic Sprite // Mesmeric Glare",
     "typeLine": "Creature — Faerie // Instant — Adventure",
-    "oracleText": "Hypnotic Sprite\nFlying\n\n//\n\nMesmeric Glare\nCounter target spell with mana value 3 or less. (Then exile this card. You may cast the creature later from exile.)",
+    "oracleText": "Flying\n\nCounter target spell with mana value 3 or less. (Then exile this card. You may cast the creature later from exile.)",
     "set": "fic",
     "number": "264",
     "artist": "Mizutametori",
@@ -3473,7 +3473,7 @@
   "murderous-rider-swift-end": {
     "name": "Murderous Rider // Swift End",
     "typeLine": "Creature — Zombie Knight // Instant — Adventure",
-    "oracleText": "Murderous Rider\nLifelink\nWhen this creature dies, put it on the bottom of its owner's library.\n\n//\n\nSwift End\nDestroy target creature or planeswalker. You lose 2 life. (Then exile this card. You may cast the creature later from exile.)",
+    "oracleText": "Lifelink\nWhen this creature dies, put it on the bottom of its owner's library.\n\nDestroy target creature or planeswalker. You lose 2 life. (Then exile this card. You may cast the creature later from exile.)",
     "set": "fic",
     "number": "279",
     "artist": "David Astruga",
@@ -6660,5 +6660,22 @@
         "scryfallId": "4cecd5c6-d6c8-4cd5-97a3-cddaf051af15"
       }
     ]
+  },
+  "the-blackjack-token": {
+    "name": "The Blackjack",
+    "typeLine": "Token Legendary Artifact — Vehicle",
+    "oracleText": "Flying, crew 2",
+    "set": "tfic",
+    "number": "8",
+    "artist": "Enora Mercier",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/f/af39ce29-47bb-42bf-8d3d-224bdce96a83.jpg?1783906141",
+      "normal": "https://cards.scryfall.io/normal/front/a/f/af39ce29-47bb-42bf-8d3d-224bdce96a83.jpg?1783906141",
+      "large": "https://cards.scryfall.io/large/front/a/f/af39ce29-47bb-42bf-8d3d-224bdce96a83.jpg?1783906141",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/f/af39ce29-47bb-42bf-8d3d-224bdce96a83.jpg?1783906141"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfic/8/the-blackjack?utm_source=api",
+    "scryfallId": "af39ce29-47bb-42bf-8d3d-224bdce96a83",
+    "relatedTokens": []
   }
 }

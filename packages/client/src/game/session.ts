@@ -272,7 +272,8 @@ export class GameSession {
   /** A zone change for the board to animate. Tokens appearing and leaving the game aren't flights. */
   private recordMove(e: GameEvent): void {
     const add = (m: Omit<CardMove, 'key'>) => {
-      this.moves.push({ key: this.nextMoveKey++, ...m });
+      const printing=m.defId && m.card ? this.state.cards[m.card]?.printing : undefined;
+      this.moves.push({ key: this.nextMoveKey++, ...m, ...(printing ? {printing:{...printing}} : {}) });
       if (this.moves.length > 200) this.moves.splice(0, this.moves.length - 200);
     };
     if (e.type === 'CardDrawn') {

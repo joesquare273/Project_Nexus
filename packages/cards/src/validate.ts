@@ -257,6 +257,7 @@ export function validateCardDefinition(raw: unknown): string[] {
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
   }
 
+  if (c.crew !== undefined && (!isNonNegativeInt(c.crew) || !c.subtypes?.includes('Vehicle') || !Number.isInteger(c.power) || !Number.isInteger(c.toughness))) err('crew requires a Vehicle with printed power/toughness and a nonnegative whole cost.');
   if (c.enchant) {
     if (!c.subtypes?.includes('Aura')) err('enchant requires an Aura.');
     validateFilter(c.enchant, err);
@@ -276,7 +277,7 @@ export function validateCardDefinition(raw: unknown): string[] {
 function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.giveTo && (e.effect !== 'GainControl' || e.giveTo !== 'SubjectController')) err('giveTo is only for GainControl to SubjectController.');
   if (e.attacking && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This' || !inAbility)) err('attacking is only for ReturnToBattlefield on This in an ability.');
-  if (e.sameObject && (!inAbility || e.target !== 'This')) err('sameObject is only for an ability affecting This.');
+  if (e.sameObject && (!inAbility || (e.target !== 'This' && !(e.effect === 'Sacrifice' && e.target === 'You' && e.filter?.self)))) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
   if (!TARGET_KINDS.includes(e.target)) err(`unknown target "${e.target}".`);
   if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined) err(`${e.effect} needs an amount.`);
@@ -295,6 +296,12 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
+  if (e.effect === 'ReflexiveTrigger') {
+    if (!e.trigger || e.trigger.when !== 'Reflexive' || !e.ifSacrificed || e.target !== 'You') err('ReflexiveTrigger needs a captured Reflexive trigger after a sacrifice, targeting You.');
+    else validateTrigger(e.trigger, err);
+  }
+  if (e.effect === 'FlipCoin' && e.target !== 'You') err('FlipCoin currently targets You.');
+  if (e.effect === 'AnimateVehicle' && e.target !== 'This') err('AnimateVehicle needs This.');
   if (e.effect === 'GrantTrigger') {
     if (!e.trigger) err('GrantTrigger needs a trigger.');
     else {
@@ -399,6 +406,7 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
   if (a.zone !== undefined && a.zone !== 'battlefield' && a.zone !== 'hand' && a.zone !== 'graveyard') e(`unknown zone "${a.zone}".`);
   if (a.cost?.life !== undefined && (!isNonNegativeInt(a.cost.life) || a.cost.life === 0)) e('life cost must be positive.');
   validateFilter(a.ifYouControl, e);
+  if (a.cost.crew !== undefined && (!isNonNegativeInt(a.cost.crew) || a.cost.discard || a.cost.sacrifice || a.cost.exileGraveyard || a.cost.removeCounter?.from || a.cost.tap)) e('crew needs a nonnegative whole cost without another card-selection or tap cost.');
   const rc = a.cost?.removeCounter;
   if (rc) {
     validateCounterKind(rc.counter, e, true);

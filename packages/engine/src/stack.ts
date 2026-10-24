@@ -5,7 +5,7 @@ import { spellDefinition } from './cardface.ts';
 import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, subtypesOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
-import { shuffleInPlace } from './rng.ts';
+import { randomInt, shuffleInPlace } from './rng.ts';
 import {
   addCounters,
   addMana,
@@ -89,6 +89,7 @@ export function choosingEffects(effects: readonly EffectSpec[] | undefined): Eff
 /** A card's activated abilities, including the ones its equip cost and landcycling stand for. */
 export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
   const out = [...(def.activated ?? [])];
+  if (def.crew !== undefined) out.push({ cost: { crew: def.crew }, effects: [{ effect: 'AnimateVehicle', target: 'This', sameObject: true }] });
   if (def.equip) {
     out.push({
       cost: { mana: def.equip },
@@ -977,12 +978,18 @@ export function counterCostCandidates(s: GameState, playerId: PlayerId, spec: Ac
 }
 
 /** Why an ability's discard or sacrifice cost can't be paid right now, or null. */
+/** Summoning-sick creatures may crew: this cost does not use their tap symbol. */
+function crewCandidates(s: GameState, playerId: PlayerId, source: InstanceId): CardInstance[] {
+  return battlefield(s).filter(c => c.id !== source && c.controller === playerId && !c.tapped && isCreatureOnBattlefield(s,c));
+}
+
 export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec): string | null {
   const rc = spec.cost.removeCounter;
   if (rc && (rc.from ? counterCostCandidates(s, playerId, spec, c.id).length === 0 : !counterToRemove(c, rc.counter))) {
     return 'There is no counter to remove for that.';
   }
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length === 0) return 'You have nothing to sacrifice for that.';
+  if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   const n = spec.cost.discard ?? 0;
   if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
   return null;
@@ -1013,6 +1020,15 @@ function graveyardCostCandidates(s: GameState, playerId: PlayerId, spec: Activat
 export function costCardChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[][] {
   // No way to pay at all (no counter to remove, nothing to sacrifice, too few cards to discard).
   if (costCardProblem(s, playerId, s.cards[source]!, spec)) return [];
+  if (spec.cost.crew !== undefined) {
+    const candidates=crewCandidates(s,playerId,source).filter(c=>powerOf(s,c)>0), out: InstanceId[][]=[];
+    const walk=(start:number,picked:InstanceId[],power:number):void=>{
+      if(out.length>=200)return;
+      if(power>=spec.cost.crew!){out.push(picked);return;}
+      for(let i=start;i<candidates.length && out.length<200;i++) walk(i+1,[...picked,candidates[i]!.id],power+powerOf(s,candidates[i]!));
+    };
+    walk(0,[],0);return out;
+  }
   if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
   if (spec.cost.sacrifice) return sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]);
   if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
@@ -1053,7 +1069,10 @@ export function activateAbility(
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
-  if (spec.cost.exileGraveyard) {
+  if (spec.cost.crew !== undefined) {
+    const candidates=crewCandidates(s,playerId,id).map(c=>c.id);
+    if(new Set(costCards).size!==costCards.length || costCards.some(k=>!candidates.includes(k)) || costCards.reduce((sum,k)=>sum+powerOf(s,s.cards[k]!),0)<spec.cost.crew) reject('Choose other untapped creatures you control with enough total power to crew.');
+  } else if (spec.cost.exileGraveyard) {
     const available = graveyardCostCandidates(s, playerId, spec, id);
     if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
   } else if (spec.cost.sacrifice) {
@@ -1072,6 +1091,7 @@ export function activateAbility(
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
   if (spec.cost.tap) tap(ctx, c);
+  if (spec.cost.crew !== undefined) for (const crew of costCards) tap(ctx,s.cards[crew]!);
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
     removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, 1);
@@ -1081,7 +1101,7 @@ export function activateAbility(
     return { card, object: s.cards[card]!.zoneChanges ?? 0 };
   }) : undefined;
   if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
-  else if (!rc?.from && !spec.cost.exileGraveyard) for (const discarded of costCards) discard(ctx, discarded);
+  else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
@@ -1746,6 +1766,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'AttackTaxUntilYourNextTurn': {
       const p = player(s, item.controller);
       p.attackTaxes = [...(p.attackTaxes ?? []), amount];
+      return;
+    }
+    case 'AnimateVehicle':
+      for(const id of onBattlefield) if(!s.cards[id]!.phasedOut) s.cards[id]!.crewed=true;
+      return;
+    case 'FlipCoin':
+      for(const player of targetPlayers(targets)) ctx.ev.push({type:'CoinFlipped',player,won:randomInt(s,2)===1});
+      return;
+    case 'ReflexiveTrigger': {
+      const c=s.cards[source]!;
+      s.triggerQueue.push({source,ability:-1,controller:item.controller,sourceZone:item.kind==='ability'?item.sourceZone:'stack',sourceObject:item.kind==='ability'?item.sourceObject:c.zoneChanges,spec:structuredClone(effect.trigger!)});
       return;
     }
     case 'CreateTokenCopy':

@@ -226,6 +226,9 @@ function effectText(e: EffectSpec): string {
         return `its controller searches their library for a basic land card and puts it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
       }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
+    case 'AnimateVehicle': return 'become an artifact creature until end of turn';
+    case 'FlipCoin': return 'flip a coin';
+    case 'ReflexiveTrigger': return 'when you do, return a target creature card from your graveyard';
     case 'ReturnToBattlefield':
       return `return ${who} to the battlefield${e.attachToReturnedTarget !== undefined ? ' attached to the returned creature if able' : ''}${e.counters ? ` with ${countersText(e.counters, e.counter)} on it` : ''}`;
     case 'Attach':
@@ -270,6 +273,7 @@ function keywordText(keywords: readonly string[]): string {
 
 /** A plain summary of an activated ability, e.g. "{1}{W}, {T}: tap target creature". */
 export function activatedText(a: ActivatedSpec): string {
+  if (a.cost.crew !== undefined) return `Crew ${a.cost.crew} — tap other creatures with total power ${a.cost.crew} or more`;
   if (a.effects[0]?.unearth) return `Unearth ${a.cost.mana}`;
   const cost = [
     a.cost.mana,
@@ -318,6 +322,8 @@ function subjectText(f: ObjectFilter, noun: string, plural = false): string {
 }
 
 function triggerCondition(t: TriggerSpec): string {
+  if (t.when === 'CoinFlipWon') return 'Whenever you win a coin flip';
+  if (t.when === 'Reflexive') return 'When you do';
   if (t.when === 'SecondMain') return 'At the beginning of your second main phase';
   if (t.when === 'AbilityTargetsCreature') return 'Whenever one or more creatures you control become the target of an activated ability';
   if (t.when === 'BeginCombat') return t.turn === 'Each' ? 'At the beginning of each combat' : 'At the beginning of combat on your turn';
@@ -330,6 +336,8 @@ function triggerCondition(t: TriggerSpec): string {
         : 'At the beginning of your end step';
   }
   const verb = {
+    CoinFlipWon: '',
+    Reflexive: '',
     AttackersUnblocked: '',
     EntersBattlefield: 'enters',
     Dies: 'dies',
@@ -467,6 +475,7 @@ export function targetName(s: GameState, t: Target, viewer?: string): string {
 export function describe(s: GameState, e: GameEvent, viewer?: string): string | null {
   const who = (p: string) => (p === viewer ? 'You' : p);
   switch (e.type) {
+    case 'CoinFlipped': return `${who(e.player)} ${e.player === viewer ? (e.won ? 'win' : 'lose') : (e.won ? 'wins' : 'loses')} a coin flip.`;
     case 'MonarchChanged': return `${who(e.player)} ${e.player === viewer ? 'become' : 'becomes'} the monarch.`;
     case 'TurnChanged':
       return `\n===== Turn ${e.turnNumber}: ${e.activePlayer === viewer ? 'your' : `${e.activePlayer}'s`} turn =====`;

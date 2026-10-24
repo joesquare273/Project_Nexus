@@ -1,7 +1,7 @@
 // Display helpers for cards: definitions, colors, Scryfall info and text.
 
 import { parseManaCost, manaProduced, COLORS, type CardDefinition, type CardDefId, type Color } from '@nexus/engine';
-import { CARD_DEFS, SCRYFALL, type ScryfallInfo } from '@nexus/cards';
+import { CARD_DEFS, SCRYFALL, SCRYFALL_PRINTINGS, type ScryfallInfo } from '@nexus/cards';
 import { rulesSummary } from '@nexus/bots/narrate';
 
 export function defOf(defId: CardDefId): CardDefinition {
@@ -10,8 +10,8 @@ export function defOf(defId: CardDefId): CardDefinition {
   return def;
 }
 
-export function scryfallOf(defId: CardDefId): ScryfallInfo | undefined {
-  return SCRYFALL[defId];
+export function scryfallOf(defId: CardDefId, printing?: CardDefinition['printing']): ScryfallInfo | undefined {
+  return printing ? SCRYFALL_PRINTINGS[printing.set.toLowerCase()+'/'+printing.number] : SCRYFALL[defId];
 }
 
 /** Colors from the mana cost, or from the mana a land makes. */

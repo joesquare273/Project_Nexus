@@ -10,5 +10,6 @@ export function spellDefinition(def: CardDefinition, adventure = false): CardDef
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
   const def = s.cardDefs[c.defId];
   if (!def) throw new Error(`Missing card definition "${c.defId}".`);
+  if (c.zone === 'battlefield' && c.crewed) return { ...def, types: [...new Set([...def.types, 'artifact' as const, 'creature' as const])] };
   return spellDefinition(def, c.zone === 'stack' && !!c.adventureSpell);
 }

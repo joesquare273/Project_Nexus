@@ -40,7 +40,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
   const stats = view.stats[id];
   const marks = h.markCard(id);
   const note = h.cardNote(id);
-  const creature = isCreature(def);
+  const creature = isCreature(def) || !!c.crewed;
   const sick = c.summoningSick && creature && !stats?.keywords.includes('Haste');
   const changed = stats && (stats.power !== def.power || stats.toughness !== def.toughness);
   const indestructible = stats?.keywords.includes('Indestructible');
@@ -58,7 +58,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
       onMouseLeave={() => h.onHover(null)}
     >
       <div className="bf-inner">
-        <CardFace defId={c.defId} size="small" />
+        <CardFace printing={c.printing} defId={c.defId} size="small" />
         {c.isToken && <div className="badge token">token</div>}
         {(c.counters ?? 0) > 0 && (
           <div key={c.counters} className="badge counters pop">
@@ -322,7 +322,7 @@ function ManaPool({ pool, equipment }: { pool: GameView['players'][string]['mana
 }
 
 /** A life total that flashes and shows how much it changed ("-3" floating up). */
-function Life({ life }: { life: number }) {
+export function Life({ life }: { life: number }) {
   const previous = useRef(life);
   const delta = life - previous.current;
   // Remember the last change until the next one, so a re-render doesn't replay it.
@@ -354,7 +354,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   const marks = h.markPlayer(pid);
   const active = view.activePlayer === pid;
   return (
-    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)} data-pile={`${pid}:command`}>
+    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
       <div className="avatar">{pid === YOU ? 'You' : pid.replace('Bot', 'B')}</div>
       <div className="who">
         <div className="name">
@@ -374,6 +374,17 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
             ))}
         </div>
       </div>
+
+      {p.eliminated && <div className="out">Out of the game</div>}
+    </div>
+  );
+}
+
+export function CommandZone({view,pid,h}:{view:GameView;pid:PlayerId;h:ZoneHandlers}) {
+  const p=view.players[pid]!;
+  if(!p.commanders.length) return null;
+  return <div className="command-zone" data-pile={pid+':command'}>
+    <span className="command-zone-label">Command</span>
       {p.command.map((id) => {
         const tax = 2 * (p.commanderCasts[id] ?? 0);
         return (
@@ -389,22 +400,20 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
             onMouseEnter={() => h.onHover(id)}
             onMouseLeave={() => h.onHover(null)}
           >
-            <CardFace defId={view.cards[id]!.defId} size="small" />
+            <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="small" />
             {tax > 0 && <div className="badge tax">+{tax}</div>}
           </div>
         );
       })}
-      <Life life={p.life} />
-      {p.eliminated && <div className="out">Out of the game</div>}
-    </div>
-  );
+    {p.command.length===0 && <span className="command-zone-empty">Empty</span>}
+  </div>;
 }
 
 export function OpponentZone({ view, pid, h, fit = false }: { view: GameView; pid: PlayerId; h: ZoneHandlers; fit?: boolean }) {
   const p = view.players[pid]!;
   return (
     <section className={`zone opponent ${p.eliminated ? 'eliminated' : ''}`}>
-      <PlayerHeader view={view} pid={pid} h={h} />
+      <div className="zone-top"><CommandZone view={view} pid={pid} h={h} /><PlayerHeader view={view} pid={pid} h={h} /></div>
       <div className="opp-hand" data-pile={`${pid}:hand`}>
         {Array.from({ length: Math.min(p.handCount, 10) }, (_, i) => (
           <CardBack key={i} />
@@ -433,6 +442,7 @@ export function YourZone({
 }) {
   return (
     <section className={`zone you ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
+      <div className="zone-top"><CommandZone view={view} pid={YOU} h={h} /><PlayerHeader view={view} pid={YOU} h={h} /></div>
       <FitBoard enabled={fit}><div className="zone-body">
         <Battlefield view={view} pid={YOU} h={h} placement={fit ? undefined : placement} onPlaced={onPlaced} />
         <ZonePiles view={view} pid={YOU} h={h} />
@@ -471,7 +481,7 @@ function HandCard({
       onMouseEnter={() => h.onHover(id)}
       onMouseLeave={() => h.onHover(null)}
     >
-      <CardFace defId={view.cards[id]!.defId} size="normal" />
+      <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" />
       {tag && <div className="badge from-zone">{tag}</div>}
     </div>
   );
@@ -513,7 +523,7 @@ function Pile({
       {/* Keyed by count: the pile bumps whenever a card goes in or comes out. */}
       <div key={count} className={`pile-card ${count === 0 ? 'empty' : ''} bump`}>
         {count > 0 && faceDown && <CardBack />}
-        {count > 0 && !faceDown && top && view.cards[top] && <CardFace defId={view.cards[top]!.defId} size="small" />}
+        {count > 0 && !faceDown && top && view.cards[top] && <CardFace printing={view.cards[top]!.printing} defId={view.cards[top]!.defId} size="small" />}
         {/* A foretold card is face down to everyone but its owner. */}
         {count > 0 && !faceDown && top && !view.cards[top] && <CardBack />}
         {count > 1 && <div className="pile-depth" />}
@@ -668,7 +678,7 @@ export function ExileList({
                     onMouseEnter={() => h.onHover(id)}
                     onMouseLeave={() => h.onHover(null)}
                   >
-                    <CardFace defId={view.cards[id]!.defId} size="normal" />
+                    <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" />
                   </div>
                   {note && <div className="list-note">{note}</div>}
                 </div>
@@ -728,7 +738,7 @@ export function CardList({
               onMouseEnter={() => h.onHover(id)}
               onMouseLeave={() => h.onHover(null)}
             >
-              <CardFace defId={view.cards[id]!.defId} size="normal" />
+              <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" />
             </div>
           ))}
           {ids.length === 0 && <div className="empty-row">Empty</div>}

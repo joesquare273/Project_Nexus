@@ -9,6 +9,7 @@ import {
   PUBLIC_ZONES,
   type Keyword,
   type CardInstance,
+  type CardDefId,
   type CombatState,
   type GameEvent,
   type GameState,
@@ -21,6 +22,8 @@ import {
 } from './types.ts';
 
 export interface PlayerView {
+  /** Commander identities are public even while their current zone is hidden. */
+  commanders: { id: InstanceId; defId: CardDefId }[];
   id: PlayerId;
   life: number;
   handCount: number;
@@ -94,6 +97,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       ...(pid === viewer && visibleLibraryTop(s, viewer) ? { libraryTop: visibleLibraryTop(s, viewer) } : {}),
       ...(pid === viewer ? { hand: [...p.hand] } : {}),
       // What they control, including permanents they took from someone else.
+      commanders: Object.values(s.cards).filter(c=>c.isCommander && c.owner===pid).map(c=>({id:c.id,defId:c.defId})),
       battlefield: s.turnOrder.flatMap((owner) => s.players[owner]!.battlefield).filter((id) => s.cards[id]!.controller === pid),
       graveyard: [...p.graveyard],
       exile: [...p.exile],

@@ -12,6 +12,9 @@ export interface PlayerSetup {
   id: PlayerId;
   /** The library. In Commander, everything except the commander. */
   deck: CardDefId[];
+  /** Parallel to deck, preserving different basic-land and shared-card printings. */
+  deckPrintings?: CardDefinition['printing'][];
+  commanderPrinting?: CardDefinition['printing'];
   /** Commander format: the commander, which starts in the command zone. */
   commander?: CardDefId;
 }
@@ -42,6 +45,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
   }
   if (new Set(players.map((p) => p.id)).size !== players.length) throw new Error('Player ids must be unique.');
   for (const p of players) {
+    if (p.deckPrintings && p.deckPrintings.length !== p.deck.length) throw new Error('Deck printings must match the deck length.');
     for (const id of p.deck) {
       const def = cardDefs[id];
       if (!def) throw new Error(`Unknown card "${id}".`);
@@ -102,13 +106,14 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       conceded: false,
     };
     // Shuffle before assigning instance ids so ids reveal nothing about library order.
-    const order = [...p.deck];
+    const order = p.deck.map((defId,i)=>({defId,printing:p.deckPrintings?.[i]}));
     shuffleInPlace(s, order);
-    for (const defId of order) {
+    for (const {defId,printing} of order) {
       const id = `c${s.nextId++}`;
       s.cards[id] = {
         id,
         defId,
+        ...(printing ? { printing: { ...printing } } : {}),
         owner: p.id,
         controller: p.id,
         zone: 'library',
@@ -125,6 +130,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       s.cards[id] = {
         id,
         defId: p.commander,
+        ...(p.commanderPrinting ? { printing: { ...p.commanderPrinting } } : {}),
         owner: p.id,
         controller: p.id,
         zone: 'command',

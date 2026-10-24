@@ -153,6 +153,9 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  'AnimateVehicle',
+  'FlipCoin',
+  'ReflexiveTrigger',
   /** Choose up to amount matching permanents on resolution; put a +1/+1 counter on each. */
   'ChooseCounterRecipients',
   'BecomeMonarch',
@@ -530,6 +533,8 @@ export interface EffectSpec {
  * dealt damage, or the spell that was cast.
  */
 export const TRIGGER_EVENTS = [
+  'CoinFlipWon',
+  'Reflexive',
   /** Grouped by attacker controller after a defending player declares blockers. */
   'AttackersUnblocked',
   'SecondMain',
@@ -720,6 +725,8 @@ export interface TriggerSpec {
 /** A non-mana activated ability: "[cost]: [effect]" (rule 602). */
 export interface ActivatedSpec {
   cost: {
+    /** Tap other creatures with at least this much total power (crew). */
+    crew?: number;
     /** Exile this many matching cards from your graveyard as a cost. */
     exileGraveyard?: { amount: number; filter: ObjectFilter };
     mana?: string;
@@ -905,6 +912,8 @@ export interface CardDefinition {
   statics?: StaticSpec[];
   /** Aura enchant restriction; applies to attachment, without targeting. */
   enchant?: ObjectFilter;
+  /** Vehicle crew cost; creates an activated ability. */
+  crew?: number;
   /** Equipment: the equip cost. */
   equip?: string;
   /** "Equip legendary creature {3}": a second, cheaper equip ability for legendary creatures. */
@@ -1017,6 +1026,10 @@ export const PUBLIC_ZONES: readonly ZoneName[] = ['battlefield', 'graveyard', 'e
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  /** Physical printing selected by the deck, independent of shared rules identity. */
+  printing?: CardDefinition['printing'];
+  /** Crew animation lasts until cleanup, and ends when this object changes zones. */
+  crewed?: boolean;
   enteredTimestamp?: number;
   attachedTimestamp?: number;
   graveyardArrival?: { turn: number; from: ZoneName };
@@ -1524,6 +1537,7 @@ export type Action =
 export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
 export type GameEvent =
+  | { type: 'CoinFlipped'; player: PlayerId; won: boolean }
   | { type: 'MonarchChanged'; player: PlayerId; previous?: PlayerId }
   | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }
   | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }
@@ -1543,6 +1557,8 @@ export type GameEvent =
       to: ZoneName;
           /** Leaving the battlefield: the Equipment attached to it at that moment (for look-back triggers). */
       equippedBy?: InstanceId[];
+      /** Types just before leaving, including temporary crew animation. */
+      lastTypes?: CardType[];
       /** It was sacrificed. */
       sacrificed?: boolean;
     }

@@ -5,6 +5,7 @@
 
 import {
   canAttackPlayer,
+  currentDefinition,
   spellDefinition,
   queuedTriggerSpec,
   attackTax,
@@ -43,7 +44,7 @@ import {
 import { planTaps, tapActions, optionTapPlanner } from './mana.ts';
 import type { Bot } from './index.ts';
 
-const def = (s: GameState, c: CardInstance): CardDefinition => s.cardDefs[c.defId]!;
+const def = (s: GameState, c: CardInstance): CardDefinition => currentDefinition(s,c);
 const power = (s: GameState, c: CardInstance) => powerOf(s, c);
 const toughness = (s: GameState, c: CardInstance) => toughnessOf(s, c);
 const has = (s: GameState, c: CardInstance, k: Parameters<typeof hasKeyword>[2]) => hasKeyword(s, c, k);
@@ -234,6 +235,12 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: 
     effects = spellEffects(d, a);
   } else {
     effects = activatedAbilities(d)[a.ability]!.effects;
+    if (effects.some(e=>e.effect==='AnimateVehicle')) {
+      if(card.crewed || card.tapped) return -100;
+      const attacking=s.activePlayer===me && ['main1','beginCombat'].includes(s.step) && (!card.summoningSick || has(s,card,'Haste'));
+      const defending=s.activePlayer!==me && s.step==='declareAttackers' && s.combat?.attacks.some(a=>a.defender===me);
+      return attacking || defending ? 2 + power(s,card)/2 - (a.costCards??[]).reduce((n,id)=>n+value(s,s.cards[id]!)*0.2,0) : -100;
+    }
     if (effects.some((e) => e.effect === 'Attach')) return scoreEquip(s, me, card, targets[0]);
     if (effects.some((e) => e.effect === 'SearchLibraryToHand')) return needsLand(s, me) ? 3 : -1;
   }

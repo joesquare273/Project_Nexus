@@ -5,6 +5,44 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Vehicles, exact printings and table readability
+
+- Built Setzer, Wandering Gambler and The Falcon, Airship Restored. Crew taps
+  other creatures with enough total current power as a cost; summoning-sick
+  crew is allowed, the Vehicle remains subject to its own summoning sickness,
+  and animation ends at cleanup or a zone change. Crew uses the stack and
+  countering it does not refund costs. Creature-death triggers retain the
+  Vehicle's last battlefield types. Bots crew for combat and avoid repeat loops.
+- Added the exact tfic/8 Blackjack token printing from Scryfall. Setzer flips
+  seeded, replayable coins for your Vehicle combat damage and creates two
+  tapped Treasures on wins. Falcon sacrifices before choosing a graveyard
+  target, using a separate reflexive trigger. Its graveyard ability returns
+  it tapped and uncrewed; old abilities cannot affect a later card object.
+- Audited all 400 cards in the four source decklists: 320 names, 339 exact
+  printings. The decklists were correct; name-based artwork selection caused
+  33 incorrect assignments across Arcane Signet, Sol Ring, Command Tower and
+  basic-land variants. Added 19 alternate artwork records and per-instance
+  printing metadata, preserved through shuffle, alternate commanders, zone
+  changes, inspection, piles and card-flight animations. Rules IDs are shared.
+  The read-only audit can recheck the current source downloads.
+- Fixed crowded four-player seats shrinking their contents toward the left:
+  fitting now reflows across the full quadrant width before reducing scale.
+  Moved command zones into the upper-left corner of their respective seats.
+  Life totals share a center row; clicking one opens commander damage grouped
+  by original owner, with each commander tracked separately. Public commander
+  identities remain available when the card is in a hidden zone, without
+  revealing that zone's contents or position.
+- Validation: type-check; all 1,382 tests in 64 files (two workers, 246 seconds);
+  browser production build; exact-token check; and source-verified printing
+  audit all pass. New coverage includes 57 Vehicle scenarios, nine printing
+  tests and six client artwork/life-detail tests. The existing bundle-size
+  warning remains. Visual browser QA was blocked: the isolated preview could
+  not connect to the local test server through either localhost address.
+- Progress: 303/320 distinct cards built; 17 remain. Limit Break 99/100,
+  Revival Trance 93/100, Counter Blitz 96/100, Scions & Spellcraft 95/100.
+
+
+
 ### Unfinished Business and linked graveyard returns
 
 - Built Unfinished Business with one mandatory creature target and up to two

@@ -38,11 +38,11 @@ function DrawnCard({ def }: { def: CardDefinition }) {
 export type CardSize = 'small' | 'normal' | 'large';
 
 /** A card face: the real Scryfall image when there is one, otherwise a drawn frame. */
-export function CardFace({ defId, size = 'normal' }: { defId: string; size?: CardSize }) {
+export function CardFace({ defId, printing, size = 'normal' }: { defId: string; printing?: CardDefinition['printing']; size?: CardSize }) {
   const def = defOf(defId);
-  const info = scryfallOf(defId);
-  const [failed, setFailed] = useState(false);
-  if (!info || failed) return <DrawnCard def={def} />;
+  const info = scryfallOf(defId,printing);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!info || failedSrc === info.image[size]) return <DrawnCard def={def} />;
   return (
     <img
       className="card-img"
@@ -50,7 +50,7 @@ export function CardFace({ defId, size = 'normal' }: { defId: string; size?: Car
       alt={def.name}
       draggable={false}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(info.image[size])}
     />
   );
 }

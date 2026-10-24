@@ -96,3 +96,12 @@ after the user pushes this checkpoint and says proceed.
 Four-player layout: equal quadrants with You bottom left, collapsed game log,
 fitted battlefields/piles and a compact hand that expands on hover/focus.
 Expanded hand and log overlay the table; opponents keep their allotted space.
+
+## 2026-10-23: printing identity and centralized player information
+
+All four precons preserve physical printing choices independently of shared
+engine card IDs. Command zones now sit in the upper-left of each seat. The
+center life row opens incoming commander-damage details on click, grouped by
+commander owner while retaining per-commander totals. Crowded fitted boards
+reflow across the whole seat width before shrinking. See the printing audit
+and development log for validation and the blocked visual-browser check.

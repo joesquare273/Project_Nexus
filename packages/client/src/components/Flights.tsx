@@ -8,7 +8,7 @@
 // glides from its old spot to its new one while the real card waits hidden.
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { CardDefId, InstanceId, PlayerId, ZoneName } from '@nexus/engine';
+import type { CardDefId, CardDefinition, InstanceId, PlayerId, ZoneName } from '@nexus/engine';
 import { CardBack, CardFace } from './Card.tsx';
 
 /** One card changing zones, as the viewer may see it. */
@@ -17,6 +17,7 @@ export interface CardMove {
   card?: InstanceId;
   /** Absent for a card the viewer can't see (an opponent's draw, a foretold card): it flies face down. */
   defId?: CardDefId;
+  printing?: CardDefinition['printing'];
   /** Whose zone it left and whose zone it went to. */
   fromPlayer: PlayerId;
   toPlayer: PlayerId;
@@ -28,6 +29,7 @@ interface Flight {
   key: number;
   card?: InstanceId;
   defId?: CardDefId;
+  printing?: CardDefinition['printing'];
   from: Box;
   to: Box;
   delay: number;
@@ -75,7 +77,7 @@ export function CardFlights({ moves }: { moves: readonly CardMove[] }) {
         if (!from || !to || (Math.abs(from.left - to.left) < 4 && Math.abs(from.top - to.top) < 4)) continue;
         // The real card waits, hidden, until its copy lands.
         target?.classList.add('in-flight');
-        added.push({ key: m.key, ...(m.card ? { card: m.card } : {}), ...(m.defId ? { defId: m.defId } : {}), from, to, delay: added.length * STAGGER_MS });
+        added.push({ key: m.key, ...(m.card ? { card: m.card } : {}), ...(m.defId ? { defId: m.defId, printing:m.printing } : {}), from, to, delay: added.length * STAGGER_MS });
       }
     }
     // Remember where every card is now, for the next moves.
@@ -131,7 +133,7 @@ function FlightCard({ flight, onLand }: { flight: Flight; onLand: () => void }) 
   const { from } = flight;
   return (
     <div ref={ref} className="flight-card" style={{ left: from.left, top: from.top, width: from.width, height: from.height }}>
-      {flight.defId ? <CardFace defId={flight.defId} size="small" /> : <CardBack />}
+      {flight.defId ? <CardFace printing={flight.printing} defId={flight.defId} size="small" /> : <CardBack />}
     </div>
   );
 }

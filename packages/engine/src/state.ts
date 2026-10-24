@@ -196,6 +196,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       if ('source' in item && item.source === id && (item.sourceObject ?? 0) === c.zoneChanges! - 1) item.lastSourceCounterKinds = allCounters(c).length;
     }
   }
+  const lastTypes = from === 'battlefield' ? [...defOf(s,c).types] : undefined;
   const lastKeywords = from === 'battlefield' ? [...characteristics(s, c).keywords] : undefined;
   if (from === 'graveyard') player(s, c.owner).cardLeftGraveyardTurn = s.turnNumber;
   if (s.triggeredThisTurn.length > 0) {
@@ -218,6 +219,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.extraCountersOnEnter;
   delete c.xPaid;
   delete c.foretoldTurn;
+  delete c.crewed;
   delete c.attachedTo;
   delete c.attachedTimestamp;
   delete c.exiledUntilLeaves;
@@ -251,7 +253,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       card: id,
       defId: c.defId,
       owner: c.owner,
-      ...(from === 'battlefield' ? { controller } : {}),
+      ...(from === 'battlefield' ? { controller, lastTypes } : {}),
       ...(equippedBy.length > 0 ? { equippedBy } : {}),
       ...(opts.sacrificed ? { sacrificed: true } : {}),
       from,

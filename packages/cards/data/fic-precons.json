@@ -878,13 +878,8 @@
           "count": 1,
           "set": "fic",
           "number": "45",
-          "implemented": false,
-          "needs": [
-            "crew",
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Interceptor, Shadow's Hound",
@@ -1035,11 +1030,8 @@
           "count": 1,
           "set": "fic",
           "number": "93",
-          "implemented": false,
-          "needs": [
-            "treasure",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "The Warring Triad",
