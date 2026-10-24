@@ -191,6 +191,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastCounters = from === 'battlefield' ? Object.fromEntries(allCounters(c)) : undefined;
   if (from === 'battlefield') {
     for (const item of [...s.stack, ...s.triggerQueue, ...(s.resolving ? [s.resolving.item] : [])]) {
+      if ('rule' in item && item.rule === 'monarch' && item.subject === id && item.subjectObject === c.zoneChanges! - 1) item.subjectController = controller;
       if ('source' in item && item.source === id && (item.sourceObject ?? 0) === c.zoneChanges! - 1) item.lastSourceCounterKinds = allCounters(c).length;
     }
   }
@@ -219,6 +220,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.attachedTo;
   delete c.attachedTimestamp;
   delete c.exiledUntilLeaves;
+  delete c.exiledUntilOpponentMonarch;
   delete c.playableFromExile;
   delete c.castFromGraveyard;
   delete c.countersTurn;
@@ -389,8 +391,10 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   const grantedTriggers = combat && target.kind === 'player'
     ? s.temporaryEffects.filter(e => e.affected === sourceId && e.trigger?.when === 'CombatDamageToPlayer').map(e => e.trigger!)
     : [];
+  const damagedMonarch = combat && target.kind === 'player' && s.monarch === target.player && hasType(s, source, 'creature') ? target.player : undefined;
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat,
-    ...(grantedTriggers.length ? { grantedTriggers, sourceController: source.controller, sourceObject: source.zoneChanges ?? 0, sourceCounterKinds: allCounters(source).length } : {}),
+    ...(damagedMonarch ? { damagedMonarch } : {}),
+    ...(grantedTriggers.length || damagedMonarch ? { grantedTriggers, sourceController: source.controller, sourceObject: source.zoneChanges ?? 0, sourceCounterKinds: allCounters(source).length } : {}),
   });
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
@@ -530,6 +534,21 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId): I
   player(s, controller).battlefield.push(id);
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
   return id;
+}
+
+/** Becoming monarch is an event even when initiated by a source-less rule ability. */
+export function becomeMonarch(ctx: Ctx, playerId: PlayerId): void {
+  const s = ctx.s;
+  if (!s.players[playerId] || s.players[playerId]!.eliminated || s.monarch === playerId) return;
+  const previous = s.monarch;
+  s.monarch = playerId;
+  ctx.ev.push({ type: 'MonarchChanged', player: playerId, ...(previous ? { previous } : {}) });
+  for (const c of Object.values(s.cards)) {
+    if (c.zone !== 'exile' || !c.exiledUntilOpponentMonarch || c.exiledUntilOpponentMonarch === playerId || s.players[c.owner]!.eliminated) continue;
+    moveCard(ctx, c.id, 'battlefield');
+    c.summoningSick = true;
+    if (entersTapped(s, c)) c.tapped = true;
+  }
 }
 
 export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): void {

@@ -59,6 +59,7 @@ export interface PermanentStats {
 }
 
 export interface GameView {
+  monarch?: PlayerId;
   viewer: PlayerId;
   formatName: string;
   turnOrder: PlayerId[];
@@ -127,6 +128,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   }
   return {
     viewer,
+    ...(s.monarch ? { monarch: s.monarch } : {}),
     formatName: s.format.name,
     turnOrder: [...s.turnOrder],
     activePlayer: s.activePlayer,

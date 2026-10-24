@@ -13,6 +13,7 @@ import {
   alivePlayers,
   attach,
   battlefield,
+  becomeMonarch,
   card,
   changeLife,
   createToken,
@@ -138,6 +139,7 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
 
 /** What a triggered or activated ability on the stack does. */
 export function abilitySpec(s: GameState, item: AbilityItem): TriggerSpec | ActivatedSpec {
+  if (item.spec) return withMode(item.spec, item.mode, item.modes);
   const def = defOf(s, s.cards[item.source]!);
   return item.from === 'trigger' ? withMode(item.spec ?? def.triggers![item.ability]!, item.mode, item.modes) : activatedAbilities(def)[item.ability]!;
 }
@@ -931,6 +933,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   }
   if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
   if (zone === 'graveyard' && (c.zone !== 'graveyard' || c.owner !== playerId)) return 'That card is not in your graveyard.';
+  if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
     return 'That can only be activated in your main phase with an empty stack.';
@@ -996,9 +999,14 @@ export function sacrificeCandidates(s: GameState, playerId: PlayerId, filter: Ob
 }
 
 /** Ways to pay an ability's "discard" or "sacrifice a ..." cost: one list of cards per way. */
+function graveyardCostCandidates(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[] {
+  return spec.cost.exileGraveyard ? player(s, playerId).graveyard.filter(id => matchesObject(s, spec.cost.exileGraveyard!.filter, s.cards[id]!, { controller: playerId, source })) : [];
+}
+
 export function costCardChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[][] {
   // No way to pay at all (no counter to remove, nothing to sacrifice, too few cards to discard).
   if (costCardProblem(s, playerId, s.cards[source]!, spec)) return [];
+  if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
   if (spec.cost.sacrifice) return sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]);
   if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
   const n = spec.cost.discard ?? 0;
@@ -1038,7 +1046,10 @@ export function activateAbility(
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
-  if (spec.cost.sacrifice) {
+  if (spec.cost.exileGraveyard) {
+    const available = graveyardCostCandidates(s, playerId, spec, id);
+    if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
+  } else if (spec.cost.sacrifice) {
     if (costCards.length !== 1 || !sacrificeCandidates(s, playerId, spec.cost.sacrifice, id).includes(costCards[0]!)) {
       reject('Choose one permanent you control to sacrifice for that.');
     }
@@ -1058,8 +1069,12 @@ export function activateAbility(
     const from = s.cards[rc.from ? costCards[0]! : id]!;
     removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, 1);
   }
+  const exiledAsCost = spec.cost.exileGraveyard ? costCards.map(card => {
+    moveCard(ctx, card, 'exile');
+    return { card, object: s.cards[card]!.zoneChanges ?? 0 };
+  }) : undefined;
   if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
-  else if (!rc?.from) for (const discarded of costCards) discard(ctx, discarded);
+  else if (!rc?.from && !spec.cost.exileGraveyard) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
@@ -1069,6 +1084,7 @@ export function activateAbility(
     kind: 'ability',
     source: id,
     from: 'activated',
+    ...(exiledAsCost ? { exiledAsCost } : {}),
     sourceObject,
     ability: index,
     sourceZone: c.zone,
@@ -1153,6 +1169,11 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return attached && s.cards[attached]?.zone === 'battlefield' ? [{ kind: 'card', card: attached }] : [];
     }
     case 'SubjectController': {
+      if (item.kind === 'ability' && item.rule === 'monarch') {
+        const creature = item.subject ? s.cards[item.subject] : undefined;
+        const who = creature?.zone === 'battlefield' && (creature.zoneChanges ?? 0) === item.subjectObject ? creature.controller : item.subjectController;
+        return who && !s.players[who]!.eliminated ? toPlayers([who]) : [];
+      }
       if (item.kind === 'ability' && item.subjectController) return s.players[item.subjectController]!.eliminated ? [] : toPlayers([item.subjectController]);
       const subject = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
       if (!subject) return [];
@@ -1387,6 +1408,24 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
+    case 'BecomeMonarch':
+      for (const who of targetPlayers(targets)) becomeMonarch(ctx, who);
+      return;
+    case 'ExileUntilOpponentMonarch':
+      for (const id of onBattlefield) {
+        moveCard(ctx, id, 'exile');
+        s.cards[id]!.exiledUntilOpponentMonarch = item.controller;
+      }
+      return;
+    case 'ChooseFate': {
+      const candidates = fateCards(s, item);
+      if (!candidates.length) return;
+      if (candidates.length === 1) { finishFate(ctx, r, candidates[0]!); return; }
+      const opponents = alivePlayers(s).filter(who => who !== item.controller);
+      if (opponents.length === 1) queueFateChoice(s, r, opponents[0]!);
+      else if (opponents.length) s.pending = { kind: 'chooseOpponent', player: item.controller, opponents };
+      return;
+    }
     case 'ChooseCounterRecipients': {
       const candidates = battlefield(s).filter((c) => matchesObject(s, effect.filter, c, { controller: item.controller, source })).map((c) => c.id);
       if (candidates.length) r.choiceQueue = [{ player: item.controller, purpose: 'addCounters', cards: candidates, min: 0, max: Math.min(amount, candidates.length) }];
@@ -2013,7 +2052,7 @@ function continueResolving(ctx: Ctx): void {
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
     }
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
-    if (s.pending.kind === 'chooseDefender') return;
+    if (s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -2104,6 +2143,36 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
   resolveTop(ctx);
 }
 
+function fateCards(s: GameState, item: StackItem): InstanceId[] {
+  return item.kind === 'ability' ? (item.exiledAsCost ?? []).filter(ref => {
+    const c = s.cards[ref.card];
+    return c?.zone === 'exile' && (c.zoneChanges ?? 0) === ref.object && !s.players[c.owner]!.eliminated;
+  }).map(ref => ref.card) : [];
+}
+
+function queueFateChoice(s: GameState, r: Resolving, opponent: PlayerId): void {
+  const cards = fateCards(s, r.item);
+  if (cards.length) r.choiceQueue = [{ player: opponent, purpose: 'fateBottom', cards, min: 1, max: 1 }];
+}
+
+function finishFate(ctx: Ctx, r: Resolving, bottom: InstanceId): void {
+  const cards = fateCards(ctx.s, r.item);
+  if (cards.includes(bottom)) moveCard(ctx, bottom, 'library');
+  for (const id of cards.filter(id => id !== bottom)) {
+    moveCard(ctx, id, 'battlefield');
+    ctx.s.cards[id]!.summoningSick = true;
+    ctx.s.cards[id]!.tapped = true;
+  }
+}
+
+export function chooseOpponent(ctx: Ctx, playerId: PlayerId, opponent: PlayerId): void {
+  const s = ctx.s, pending = s.pending;
+  if (pending.kind !== 'chooseOpponent' || pending.player !== playerId || !s.resolving || !pending.opponents.includes(opponent) || s.players[opponent]!.eliminated) reject('Choose a living opponent for this decision.');
+  queueFateChoice(s, s.resolving, opponent);
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  continueResolving(ctx);
+}
+
 /** The ChooseCards action: the chosen cards are discarded, sacrificed, or kept (and the others sacrificed). */
 export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
   const s = ctx.s;
@@ -2119,7 +2188,9 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
   }
-  if (pending.purpose === 'addCounters') {
+  if (pending.purpose === 'fateBottom') {
+    finishFate(ctx, r, cards[0]!);
+  } else if (pending.purpose === 'addCounters') {
     for (const id of cards) if (s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, 1, r.item.controller, pending.counter);
   } else if (pending.purpose === 'distributeCounter') {
     const distribution = r.distribution!;

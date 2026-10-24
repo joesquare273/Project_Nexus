@@ -1967,3 +1967,53 @@ button.phase.current {
 .stack { max-height: min(36vh, 320px); overflow-y: auto; }
 .stack-modes { margin-top: 5px; color: #ddd3bb; font-size: 11px; line-height: 1.4; }
 .stack-modes > div + div { margin-top: 3px; }
+
+.target-notice { display:flex; align-items:flex-start; gap:12px; padding:10px 14px; margin:4px 12px; background:#16252e; border:1px solid #647c8b; border-radius:8px; font-size:14px; flex-shrink:0; }
+.target-notice details { flex:1; min-width:0; }
+.target-notice summary { cursor:pointer; line-height:1.6; }
+.target-notice strong { color:#ffbc75; }
+.target-notice .source-label { color:#88d5ff; }
+.target-notice small { display:block; opacity:.8; margin:6px 0; }
+.target-notice details div { padding:4px 0; }
+.bf-card.effect-source { outline:3px solid #69c8ff; outline-offset:3px; }
+.bf-card.effect-target, .player-header.effect-target { outline:4px solid #ffab52; outline-offset:3px; box-shadow:0 0 18px #ffab5277; }
+
+.target-notice details[open] { max-height:150px; overflow:auto; }
+
+/* Four equally sized seats: You bottom left, opponents in turn order. */
+.game.four-players { grid-template-columns:minmax(0,1fr); }
+.four-players .table { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:auto auto minmax(0,1fr) minmax(0,1fr) auto; gap:6px; padding:6px; }
+.four-players .opponents { display:contents; }
+.four-players .opponent:nth-child(1) { grid-area:3 / 1; }
+.four-players .opponent:nth-child(2) { grid-area:3 / 2; }
+.four-players .opponent:nth-child(3) { grid-area:4 / 2; }
+.four-players .zone.you { grid-area:4 / 1; margin:0; padding-bottom:78px; }
+.four-players .zone { --bf-w:96px; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.four-players .zone-body { flex:1; min-height:0; align-items:stretch; }
+.four-players .zone .player-header { flex-shrink:0; }
+.four-players .opp-hand { display:none; }
+.four-players .row.lands { --bf-w:56px; }
+.four-players .row.creatures.free { flex:none; }
+.four-players .midline { grid-area:1 / 1 / auto / 3; min-height:38px; padding-right:340px; }
+.four-players .target-notice { grid-area:2 / 1 / auto / 3; margin:0; padding:5px 10px; }
+.four-players .prompt { grid-area:5 / 1 / auto / 3; }
+.four-players .you-bar { grid-area:4 / 1; align-self:end; z-index:7; min-width:0; padding:3px 8px 8px; pointer-events:none; }
+.four-players .you-bar > * { pointer-events:auto; }
+.four-players .you-bar .player-header { width:145px; margin:0; padding:3px; }
+.four-players .you-bar .avatar { display:none; }
+.four-players .you-bar .life { font-size:24px; }
+.four-players .you-bar .command-card { width:30px; }
+.four-players .hand { --hand-w:48px; min-height:70px; padding-top:4px; position:relative; }
+.four-players .hand-card { flex-shrink:1; min-width:0; margin:0 -5px; transition:width .18s ease, transform .18s ease; }
+.four-players .hand:hover, .four-players .hand:has(.hand-card:focus-visible) { --hand-w:100px; z-index:12; }
+.four-players .hand:hover .hand-card, .four-players .hand:has(.hand-card:focus-visible) .hand-card { flex-shrink:0; margin:0 -24px; }
+.four-players .hand-card:focus-visible { outline:3px solid var(--gold); transform:translateY(-8%) scale(1.15); z-index:13; }
+.four-players .sidebar { display:none; }
+.four-players.log-open .sidebar { display:flex; position:fixed; right:8px; top:58px; bottom:16px; width:270px; z-index:30; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 32px #000a; }
+.fit-board { position:relative; flex:1; min-width:0; min-height:0; overflow:hidden; }
+.fit-board-content { position:absolute; top:0; left:0; width:100%; transform-origin:top left; padding:5px; box-sizing:border-box; }
+@media (max-height:700px) { .four-players .zone.you { padding-bottom:64px; } .four-players .hand { --hand-w:40px; min-height:55px; } .four-players .player-header { padding:2px; } }
+
+.four-players .hand { container-type:inline-size; min-width:0; }
+.four-players .hand .hand-card, .four-players .hand:hover .hand-card, .four-players .hand:has(.hand-card:focus-visible) .hand-card { flex:0 0 var(--hand-w); margin:0; }
+.four-players .hand .hand-card + .hand-card { margin-left:min(0px,calc((100cqw - var(--hand-w)) / max(1, var(--hand-count) - 1) - var(--hand-w))); }

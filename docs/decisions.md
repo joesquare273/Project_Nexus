@@ -177,3 +177,12 @@ The existing automatic payment system still selects mana types. Within the
 same type, scry-bearing mana is spent first, including on noncreature spells
 and activated abilities. Choosing individual floating mana units is not yet
 a separate player control; tap sources accordingly when saving this mana.
+
+## Monarch and exile-cost identity (2026-10-23)
+
+The monarch is a player designation, not a card instance. Rule-trigger stack
+items carry a captured specification and an explicit monarch rule tag, with
+`@monarch` as a serialization key only. Jailer return tracking belongs to the
+exiled object and ends on a future opponent monarch transition. Coin of Fate
+tracks both card ID and object identity for cards exiled as costs, preventing
+an object that left and reentered exile from being returned by the old ability.

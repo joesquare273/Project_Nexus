@@ -301,6 +301,15 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
 
   const found: QueuedTrigger[] = [];
   for (const e of events) {
+    if (e.type === 'StepChanged' && e.step === 'end' && s.monarch === e.activePlayer) {
+      found.push({ source: '@monarch', sourceZone: 'command', rule: 'monarch', ability: -1, controller: e.activePlayer,
+        spec: { when: 'EndStep', effects: [{ effect: 'DrawCards', target: 'You', amount: 1 }] } });
+    }
+    if (e.type === 'DamageDealt' && e.damagedMonarch) {
+      found.push({ source: '@monarch', sourceZone: 'command', rule: 'monarch', ability: -1, controller: e.damagedMonarch,
+        subject: e.source, subjectController: e.sourceController, subjectObject: e.sourceObject,
+        spec: { when: 'CombatDamageToPlayer', effects: [{ effect: 'BecomeMonarch', target: 'SubjectController' }] } });
+    }
     if (e.type === 'SpellCast') {
       for (const unit of e.scryMana ?? []) {
         found.push({ source: unit.source, sourceObject: unit.sourceObject, controller: e.player,
@@ -389,6 +398,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     sourceObject: t.sourceObject,
     ...(t.subjectController ? { subjectController: t.subjectController } : {}),
     from: 'trigger',
+    ...(t.rule ? { rule: t.rule, subjectObject: t.subjectObject } : {}),
     ...(t.spec ? { spec: t.spec } : {}),
     ...(t.lastSourceCounterKinds !== undefined ? { lastSourceCounterKinds: t.lastSourceCounterKinds } : {}),
     ability: t.ability,

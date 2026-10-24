@@ -149,6 +149,7 @@ const HARMFUL = new Set([
   'ShuffleIntoLibraryReveal',
   'Tap',
   'ExileUntilSourceLeaves',
+  'ExileUntilOpponentMonarch',
   'LoseLife',
 ]);
 
@@ -168,6 +169,11 @@ function scoreTarget(s: GameState, me: PlayerId, effect: EffectSpec, target: Tar
   if (target.kind === 'none') return 0;
   if (target.kind === 'ability') {
     const item = s.stack.find((item) => item.id === target.ability);
+    if (item?.kind === 'ability' && item.rule === 'monarch' && item.subject) {
+      const creature = s.cards[item.subject];
+      const recipient = creature?.zone === 'battlefield' && (creature.zoneChanges ?? 0) === item.subjectObject ? creature.controller : item.subjectController;
+      return recipient === me ? -20 : 4;
+    }
     return !item ? 0 : item.controller === me ? -20 : 4;
   }
   const c = s.cards[target.card]!;
@@ -256,6 +262,8 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: 
     }
     const amount = amountOf(s, e.amount, me);
     if (e.effect === 'ReturnToBattlefield' && e.target === 'This' && card.zone === 'graveyard') score += value(s, card) - (a.costCards ?? []).reduce((n, id) => n + value(s, s.cards[id]!), 0);
+    if (e.effect === 'BecomeMonarch' && e.target === 'You') score += s.monarch === me ? 0.2 : 3;
+    if (e.effect === 'ChooseFate' && a.costCards?.length) score += Math.min(...a.costCards.map(id => value(s, s.cards[id]!))) - 1;
     if (e.effect === 'GainLife' && e.target === 'You') score += s.players[me]!.life <= 12 ? amount / 2 : 0.1;
     if (e.effect === 'DrawCards' && e.target === 'You') score += amount * 1.5;
     if (e.effect === 'CreateToken') score += amount * 2;
@@ -528,6 +536,7 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     return pick(ranked.filter((id) => p.cards.includes(id)).slice(0, n));
   }
   const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
+  if (p.purpose === 'fateBottom') return pick(byValue.reverse().slice(0, 1));
   if (p.purpose === 'reanimate') return pick(byValue.slice(0, p.min));
   if (p.purpose === 'sacrifice') return pick(byValue.slice(0, p.min));
   // Destroying an opponent's permanent of our choice: their best.

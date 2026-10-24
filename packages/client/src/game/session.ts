@@ -3,6 +3,7 @@
 // and sends your choices back with `submit()`. A networked browser client
 // would get the same view and send the same actions through a server.
 
+import { eventTargetNotices, targetNotice, type TargetNotice } from './targeting.ts';
 import { actionDelay, type AiPace } from './pacing.ts';
 import {
   COMMANDER,
@@ -80,6 +81,7 @@ export class GameSession {
   /** Visible actions and automatic resolutions pause before the next advance. */
   aiPace: AiPace = 'normal';
   presentationDelayMs = 0;
+  readonly targetHistory: TargetNotice[] = [];
   /** Priority stops on these steps, on any player's turn. Never skips turn-based actions. */
   readonly phaseStops = new Set<Step>();
   /** Tap mana sources for you when you cast or activate, instead of you choosing which to tap. */
@@ -167,6 +169,9 @@ export class GameSession {
     if ('error' in result) return readable(this.state, result.error);
     this.state = result.state;
     this.recent.clear();
+    const notices = eventTargetNotices(this.state, result.events);
+    this.targetHistory.unshift(...notices.reverse()); this.targetHistory.splice(8);
+    this.presentationDelayMs = notices.length ? actionDelay(result.events, actions.at(-1)!, false, this.aiPace, true) : 0;
     this.narrate(result.events);
     return null;
   }
@@ -186,9 +191,15 @@ export class GameSession {
     if (!action) return 'you';
     const result = applyAll(s, [action]);
     if ('error' in result) throw new Error(`Automatic action was illegal: ${result.error}`);
+    const resolved = result.events.find(e => e.type === 'StackItemResolved');
+    const top = resolved?.type === 'StackItemResolved' ? [s.resolving?.item, ...s.stack].find(item => item?.id === resolved.item) : undefined;
+    const resolution = top ? targetNotice(s, top.kind === 'spell' ? top.card : top.source, top.controller, top.targets) : null;
     this.state = result.state;
+    const notices = eventTargetNotices(this.state, result.events);
+    if (resolution) notices.unshift(resolution);
+    this.targetHistory.unshift(...notices.reverse()); this.targetHistory.splice(8);
     this.narrate(result.events);
-    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace);
+    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace, notices.length > 0);
     if (this.presentationDelayMs > 0) {
       this.recent = touchedCards(result.events);
       return 'bot';

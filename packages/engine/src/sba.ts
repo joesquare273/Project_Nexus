@@ -10,6 +10,8 @@ import {
   aliveFromActive,
   alivePlayers,
   battlefield,
+  becomeMonarch,
+  nextAlive,
   defOf,
   destroy,
   emptyManaPool,
@@ -35,6 +37,7 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
   const p = s.players[playerId]!;
   p.eliminated = true;
   p.manaPool = emptyManaPool();
+  delete p.creatureScryMana;
   p.equipmentMana = emptyManaPool();
   if (s.resolving?.item.controller === playerId) {
     const item = s.resolving.item;
@@ -139,6 +142,11 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
         changed = true;
       }
     }
+    if (s.monarch && s.players[s.monarch]!.eliminated) {
+      const living = alivePlayers(s);
+      if (living.length) becomeMonarch(ctx, s.players[s.activePlayer]!.eliminated ? nextAlive(s, s.activePlayer) : s.activePlayer);
+      else delete s.monarch;
+    }
     if (!changed) break;
   }
 
@@ -190,6 +198,10 @@ function repairPending(ctx: Ctx): void {
     case 'decide':
       if (s.stack.at(-1)?.id !== pending.item) givePriority(ctx, s.activePlayer);
       break;
+    case 'chooseOpponent':
+      if (!s.resolving) givePriority(ctx, s.activePlayer);
+      else pending.opponents = pending.opponents.filter(id => !s.players[id]!.eliminated);
+      break;
     case 'chooseDefender':
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else pending.defenders = pending.defenders.filter((id) => !s.players[id]!.eliminated);
@@ -202,7 +214,10 @@ function repairPending(ctx: Ctx): void {
       // A player who left doesn't choose; the spell or ability carries on without them.
       if (pending.purpose === 'handSize') break;
       if (!s.resolving) givePriority(ctx, s.activePlayer);
-      else if (s.players[pending.player]!.eliminated) resumeResolving(ctx);
+      else if (s.players[pending.player]!.eliminated) {
+        if (pending.purpose === 'fateBottom') { s.resolving.choiceQueue = []; s.resolving.next--; }
+        resumeResolving(ctx);
+      }
       break;
     case 'chooseLegend':
     case 'commanderZone':

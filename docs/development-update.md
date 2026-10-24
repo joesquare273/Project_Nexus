@@ -5,6 +5,38 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-23
 
+### Monarch cards, readable targeting and four-player table
+
+- Built Palace Jailer and Coin of Fate with shared monarch rules, combat-damage
+  transfer, end-step draw and multiplayer succession. Jailer exile lasts until
+  an opponent becomes monarch; Coin pays its exile/sacrifice costs before the
+  chosen opponent decides which creature goes to the library bottom.
+- Added 60 card/rules scenarios across two, three and four players, including
+  countering, departed sources, changed controllers, departed exiled objects,
+  commander movement and opponent concession. Bots and browser choices support
+  both cards. The monarch badge and sourceless rule abilities are visible.
+- Targeting now shows an explicit controller/source → target callout, blue source
+  and orange target highlights, and eight recent targeting records. Combat
+  attacks/blocks also appear. Playback can be paused/resumed; targeted actions
+  and resolutions pause for 3.2 seconds at Normal speed (pace settings scale it).
+  Name snapshots remain readable after cards leave play; hand contents are unchanged.
+- Type-check and production build pass. Targeting/pacing tests pass (13 cases).
+  Full regression: all 1,259 tests in 59 files passed (two workers, 229 seconds). The existing
+  large-bundle warning remains. Interactive browser QA could not be completed:
+  the in-app browser timed out and the native Chrome window became unavailable.
+- Four-player games now use equal quadrants, with You at bottom left. The game
+  log is collapsed by default and opens as an overlay. Battlefields and their
+  piles scale to available space instead of scrolling. Your hand expands on
+  hover/focus and contracts on mouse leave; it overlays your seat rather than
+  resizing opponents. Automatic layout is used for your fitted battlefield.
+  Browser verification was blocked when computer use could not confidently
+  determine Chrome's URL; no visual verification is claimed. All 60 client tests
+  passed again after the layout work, as did type-check and production build.
+- Progress: 300/320 distinct cards built, 20 remaining. Limit Break 98/100,
+  Revival Trance 91/100, Counter Blitz 96/100, Scions & Spellcraft 95/100.
+
+
+
 ### Path of Ancestry: floating mana and delayed scry
 
 - Built the missing scry rider on Path of Ancestry. It still enters tapped

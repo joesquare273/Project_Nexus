@@ -3,10 +3,11 @@ import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
 import { YOU, type Placement } from '../game/session.ts';
 import { groupTokenCards } from '../game/tokenStacks.ts';
+import { FitBoard } from './FitBoard.tsx';
 import { CardBack, CardFace, ManaCost } from './Card.tsx';
 
 /** How a card or player should be highlighted right now. */
-export type Mark =
+export type Mark = 'effect-source' | 'effect-target'
   | 'playable'
   | 'target'
   | 'can-attack'
@@ -359,6 +360,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
         <div className="name">
           {pid === YOU ? 'You' : pid}
           {active && <span className="turn-pill">Turn</span>}
+          {view.monarch === pid && <span className="turn-pill" title="The monarch draws at their end step; creature combat damage can transfer the crown">Monarch</span>}
         </div>
         <div className="counts">
           <span title={p.maximumHandSize === null ? "Cards in hand: no maximum hand size" : `Cards in hand: discard down to ${p.maximumHandSize} during your cleanup step`}>✋ {p.handCount}/{p.maximumHandSize ?? "∞"}</span>
@@ -398,7 +400,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   );
 }
 
-export function OpponentZone({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
+export function OpponentZone({ view, pid, h, fit = false }: { view: GameView; pid: PlayerId; h: ZoneHandlers; fit?: boolean }) {
   const p = view.players[pid]!;
   return (
     <section className={`zone opponent ${p.eliminated ? 'eliminated' : ''}`}>
@@ -408,15 +410,16 @@ export function OpponentZone({ view, pid, h }: { view: GameView; pid: PlayerId; 
           <CardBack key={i} />
         ))}
       </div>
-      <div className="zone-body">
+      <FitBoard enabled={fit}><div className="zone-body">
         <Battlefield view={view} pid={pid} h={h} />
         <ZonePiles view={view} pid={pid} h={h} />
-      </div>
+      </div></FitBoard>
     </section>
   );
 }
 
 export function YourZone({
+  fit = false,
   view,
   h,
   placement,
@@ -426,13 +429,14 @@ export function YourZone({
   h: ZoneHandlers;
   placement: Placement;
   onPlaced: () => void;
+  fit?: boolean;
 }) {
   return (
     <section className={`zone you ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
-      <div className="zone-body">
-        <Battlefield view={view} pid={YOU} h={h} placement={placement} onPlaced={onPlaced} />
+      <FitBoard enabled={fit}><div className="zone-body">
+        <Battlefield view={view} pid={YOU} h={h} placement={fit ? undefined : placement} onPlaced={onPlaced} />
         <ZonePiles view={view} pid={YOU} h={h} />
-      </div>
+      </div></FitBoard>
     </section>
   );
 }
@@ -454,6 +458,12 @@ function HandCard({
   return (
     <div
       data-card={id}
+      tabIndex={0}
+      role="button"
+      aria-label={defOf(view.cards[id]!.defId).name}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h.onCard(id); } }}
+      onFocus={() => h.onHover(id)}
+      onBlur={() => h.onHover(null)}
       className={`hand-card ${marks.join(' ')} ${tag ? 'elsewhere' : ''}`}
       data-choice-label={view.pending.kind === 'chooseCards' ? (['discard', 'handSize'].includes(view.pending.purpose) ? 'Discard' : 'Chosen') : 'Bottom'}
       style={{ '--tilt': `${tilt}deg` } as CSSProperties}
@@ -544,7 +554,7 @@ export function Hand({ view, h, elsewhere }: { view: GameView; h: ZoneHandlers; 
   const hand = view.players[YOU]!.hand ?? [];
   const all = [...hand, ...elsewhere];
   return (
-    <div className="hand" data-pile={`${YOU}:hand`}>
+    <div className="hand" style={{ '--hand-count': all.length } as CSSProperties} data-pile={`${YOU}:hand`}>
       {all.map((id, i) => {
         const tilt = (i - (all.length - 1) / 2) * 2;
         const zone = view.cards[id]!.zone;

@@ -108,6 +108,9 @@ function effectText(e: EffectSpec): string {
   const n = amountText(e.amount);
   const plural = (word: string) => (n === '1' ? `a ${word}` : `${n} ${word}s`);
   switch (e.effect) {
+    case 'BecomeMonarch': return `${who} become${you ? '' : 's'} the monarch`;
+    case 'ExileUntilOpponentMonarch': return `exile ${who} until an opponent becomes the monarch`;
+    case 'ChooseFate': return 'An opponent chooses an exiled card for the bottom of your library; return the other tapped';
     case 'DealDamage':
       return `deal ${n} damage to ${who}`;
     case 'Destroy':
@@ -271,6 +274,7 @@ export function activatedText(a: ActivatedSpec): string {
   const cost = [
     a.cost.mana,
     a.cost.tap && '{T}',
+    a.cost.exileGraveyard && `exile ${a.cost.exileGraveyard.amount} creature cards from your graveyard`,
     a.cost.life && `pay ${a.cost.life} life`,
     a.cost.sacrificeThis && 'sacrifice this',
     a.cost.discardThis && 'discard this card',
@@ -444,6 +448,7 @@ export function stepName(step: string): string {
 
 export function cardName(s: GameState, id: string | undefined): string {
   if (!id) return 'a card';
+  if (id === '@monarch') return 'The monarch';
   const c = s.cards[id], def = s.cardDefs[c?.defId ?? ''];
   return (c?.zone === 'stack' && c.adventureSpell ? def?.adventure?.name : def?.name.split(' // ')[0]) ?? id;
 }
@@ -462,6 +467,7 @@ export function targetName(s: GameState, t: Target, viewer?: string): string {
 export function describe(s: GameState, e: GameEvent, viewer?: string): string | null {
   const who = (p: string) => (p === viewer ? 'You' : p);
   switch (e.type) {
+    case 'MonarchChanged': return `${who(e.player)} ${e.player === viewer ? 'become' : 'becomes'} the monarch.`;
     case 'TurnChanged':
       return `\n===== Turn ${e.turnNumber}: ${e.activePlayer === viewer ? 'your' : `${e.activePlayer}'s`} turn =====`;
     case 'CardDrawn':

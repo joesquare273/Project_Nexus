@@ -142,7 +142,7 @@ function render(s: GameState): void {
       continue;
     }
     out.push(
-      `  ${name}: ${p.life} life | hand ${p.handCount} | library ${p.libraryCount} | graveyard ${p.graveyard.length}`,
+      `  ${name}: ${p.life} life${view.monarch === pid ? ' [monarch]' : ''} | hand ${p.handCount} | library ${p.libraryCount} | graveyard ${p.graveyard.length}`,
     );
     out.push(...battlefieldText(s, p.battlefield));
   }
@@ -481,6 +481,7 @@ async function decideCards(s: GameState, p: Extract<GameState['pending'], { kind
           ? 'put onto the battlefield'
           : p.purpose === 'hand'
             ? 'put into your hand (the rest go on the bottom)'
+            : p.purpose === 'fateBottom' ? 'put on the bottom of the caster’s library (the other returns tapped)'
             : p.purpose === 'addCounters' ? `receive a ${p.counter ?? '+1/+1'} counter each`
             : 'keep (the rest are sacrificed)';
   if (p.allOrNothing) {
@@ -536,6 +537,12 @@ async function playOneGame(gameSeed: number): Promise<void> {
       const choice = options[Number(await ask('  Choose modes: ')) - 1];
       if (!choice) continue;
       actions = [choice];
+    } else if (pending.kind === 'chooseOpponent') {
+      console.log('  Choose the opponent who chooses the card for the bottom of your library:');
+      pending.opponents.forEach((id, i) => console.log('    ' + (i + 1) + ') ' + id));
+      const opponent = pending.opponents[Number(await ask('  Opponent: ')) - 1];
+      if (!opponent) continue;
+      actions = [{ type: 'ChooseOpponent', player: YOU, opponent }];
     } else if (pending.kind === 'chooseDefender') {
       console.log('  Choose which player the returning creature attacks:');
       pending.defenders.forEach((id, i) => console.log('    ' + (i + 1) + ') ' + id));

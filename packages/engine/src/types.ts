@@ -155,6 +155,9 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 export const EFFECT_KINDS = [
   /** Choose up to amount matching permanents on resolution; put a +1/+1 counter on each. */
   'ChooseCounterRecipients',
+  'BecomeMonarch',
+  'ExileUntilOpponentMonarch',
+  'ChooseFate',
   'DistributeCounters',
   'ChooseGraveyardCards',
   'ReturnChosenToBattlefield',
@@ -715,6 +718,8 @@ export interface TriggerSpec {
 /** A non-mana activated ability: "[cost]: [effect]" (rule 602). */
 export interface ActivatedSpec {
   cost: {
+    /** Exile this many matching cards from your graveyard as a cost. */
+    exileGraveyard?: { amount: number; filter: ObjectFilter };
     mana?: string;
     tap?: boolean;
     /** Discard this card (cycling, landcycling). */
@@ -1047,6 +1052,8 @@ export interface CardInstance {
   attachedTo?: InstanceId;
   /** Exiled "until [source] leaves the battlefield". */
   exiledUntilLeaves?: InstanceId;
+  /** Return when someone other than this ability controller becomes monarch. */
+  exiledUntilOpponentMonarch?: PlayerId;
   /** In exile, and `player` may play it as long as they control `source`. */
   /** `untilTurn`: playable until the end of that turn ("until end of turn", "until the end of your next turn") instead of while `player` controls `source`. */
   /** `untilReplaced`: playable until `source` exiles another card this way, whether or not `player` still controls it (Furious Rise). */
@@ -1200,6 +1207,11 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  /** Cost-exiled objects; later zone changes cannot substitute a new object. */
+  exiledAsCost?: { card: InstanceId; object: number }[];
+  /** Rule triggers have no physical source; source is the @monarch designation key. */
+  rule?: 'monarch';
+  subjectObject?: number;
   /** Captured granted or expanded trigger; immutable after queueing. */
   spec?: TriggerSpec;
   /** Last known counter kinds when this ability's source object left. */
@@ -1233,6 +1245,9 @@ export type StackItem = SpellItem | AbilityItem;
 
 /** A triggered ability waiting to be put on the stack. */
 export interface QueuedTrigger {
+  /** Rule triggers have no physical source; source is the @monarch designation key. */
+  rule?: 'monarch';
+  subjectObject?: number;
   /** Captured granted or expanded trigger; immutable after queueing. */
   spec?: TriggerSpec;
   /** Last known counter kinds when this ability's source object left. */
@@ -1317,7 +1332,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1348,6 +1363,7 @@ export interface CombatState {
 
 /** Whose decision the game is waiting on. */
 export type Pending =
+  | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[] }
   | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
   | { kind: 'priority'; player: PlayerId; passes: number }
@@ -1382,6 +1398,8 @@ export type Pending =
   | { kind: 'gameOver' };
 
 export interface GameState {
+  /** The monarch designation persists independently of the cards that created it. */
+  monarch?: PlayerId;
   /** Shared ordering for continuous effects that set base power/toughness. */
   effectTimestamp?: number;
   /** Cleanup actions have finished; state-based actions/triggers must be checked before ending the turn. */
@@ -1434,6 +1452,7 @@ export interface GameState {
 // ---------------------------------------------------------------------------
 
 export type Action =
+  | { type: 'ChooseOpponent'; player: PlayerId; opponent: PlayerId }
   /** `reveal`: for lands like snarls, reveal a matching card to enter untapped (default: if you can). */
   | { type: 'PlayLand'; player: PlayerId; card: InstanceId; reveal?: boolean }
   /**
@@ -1497,6 +1516,7 @@ export type Action =
 export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
 export type GameEvent =
+  | { type: 'MonarchChanged'; player: PlayerId; previous?: PlayerId }
   | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }
   | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }
   | { type: 'AbilityTargeted'; card: InstanceId; controller: PlayerId; source: InstanceId }
@@ -1567,7 +1587,7 @@ export type GameEvent =
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }
   | { type: 'AttackersUnblocked'; player: PlayerId; defender: PlayerId; attackers: InstanceId[] }
-  | { type: 'DamageDealt'; source: InstanceId; target: Target; amount: number; combat: boolean; grantedTriggers?: TriggerSpec[]; sourceController?: PlayerId; sourceObject?: number; sourceCounterKinds?: number }
+  | { type: 'DamageDealt'; damagedMonarch?: PlayerId; source: InstanceId; target: Target; amount: number; combat: boolean; grantedTriggers?: TriggerSpec[]; sourceController?: PlayerId; sourceObject?: number; sourceCounterKinds?: number }
   | { type: 'CreatureDied'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'PermanentDestroyed'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'LifeChanged'; player: PlayerId; from: number; to: number }

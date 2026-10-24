@@ -6,6 +6,7 @@ import { MANA_TYPES, type GameState } from '@nexus/engine';
 /** Returns a list of broken invariants. Empty means the state is consistent. */
 export function checkInvariants(s: GameState): string[] {
   const problems: string[] = [];
+  if (s.monarch && s.players[s.monarch]?.eliminated) problems.push('an eliminated player is still monarch');
   const seen = new Map<string, number>();
   const note = (id: string) => seen.set(id, (seen.get(id) ?? 0) + 1);
 
@@ -33,7 +34,7 @@ export function checkInvariants(s: GameState): string[] {
   }
   for (const item of s.stack) {
     if (item.kind === 'ability') {
-      if (!s.cards[item.source]) problems.push(`ability ${item.id} has unknown source ${item.source}`);
+      if (!item.rule && !s.cards[item.source]) problems.push(`ability ${item.id} has unknown source ${item.source}`);
       if (s.players[item.controller]!.eliminated) problems.push(`ability ${item.id} belongs to an eliminated player`);
       continue;
     }

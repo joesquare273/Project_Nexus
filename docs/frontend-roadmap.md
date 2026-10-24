@@ -84,3 +84,15 @@ the remaining 34 precon cards in groups. Report usage/credits after each commit.
 ## 2026-10-23: battlefield scale and visible AI turns
 
 Battlefield cards are larger, while hand sizes remain unchanged. Creature and land rows wrap without overlapping, player zones share vertical space, and crowded zones scroll. Opponent piles use a compact column. AI casts, abilities, combat, and automatic resolutions now pause visibly; Settings offers Normal, Slow, and Fast. Adventure choices name the selected half, and the stack identifies Adventure spells.
+
+## 2026-10-23: targeting readability
+
+Explicit controller/source → target callouts, persistent source/target highlights,
+recent targeting history, combat participant labels and pause/resume playback are
+built. Targeted actions/resolutions linger longer, with Normal/Slow/Fast retained.
+Card progress is 300/320 distinct precon cards; 20 remain. Continue card batches
+after the user pushes this checkpoint and says proceed.
+
+Four-player layout: equal quadrants with You bottom left, collapsed game log,
+fitted battlefields/piles and a compact hand that expands on hover/focus.
+Expanded hand and log overlay the table; opponents keep their allotted space.

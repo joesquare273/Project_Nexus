@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
-import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards, chooseDefender } from './stack.ts';
+import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -34,6 +34,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     }
 
     switch (action.type) {
+      case 'ChooseOpponent':
+        chooseOpponent(ctx, action.player, action.opponent);
+        break;
       case 'Concede':
         // Allowed at any time, not only with priority (rule 104.3a).
         p.conceded = true;

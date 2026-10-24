@@ -288,6 +288,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   validateFilter(e.filter, err);
   if (e.effect === 'ChooseCounterRecipients' && (e.target !== 'You' || !e.filter || typeof e.amount !== 'number' || !isNonNegativeInt(e.amount))) err('ChooseCounterRecipients needs You, a filter, and a nonnegative whole-number amount.');
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
+  if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   if (e.effect === 'GrantTrigger') {
@@ -384,6 +385,12 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
 function validateActivated(a: ActivatedSpec, err: Err): void {
   const e: Err = (msg) => err(`activated ability: ${msg}`);
   validateCost(a.cost?.mana, e);
+  if (a.cost?.exileGraveyard) {
+    const cost = a.cost.exileGraveyard;
+    if (!isNonNegativeInt(cost.amount) || cost.amount === 0) e('exileGraveyard needs a positive whole-number amount.');
+    validateFilter(cost.filter, e);
+    if (a.cost.discard || a.cost.sacrifice || a.cost.removeCounter?.from) e('exileGraveyard cannot share costCards with other choices.');
+  }
   if (a.zone !== undefined && a.zone !== 'battlefield' && a.zone !== 'hand' && a.zone !== 'graveyard') e(`unknown zone "${a.zone}".`);
   if (a.cost?.life !== undefined && (!isNonNegativeInt(a.cost.life) || a.cost.life === 0)) e('life cost must be positive.');
   validateFilter(a.ifYouControl, e);

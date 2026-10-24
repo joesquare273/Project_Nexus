@@ -126,6 +126,11 @@ export function Game({
   const [blocks, setBlocks] = useState<Map<InstanceId, InstanceId>>(new Map());
   const [pickedAttacker, setPickedAttacker] = useState<InstanceId | null>(null);
   const [busy, setBusy] = useState(false);
+  const fourPlayers = session.opponents.length === 3;
+  const [logOpen, setLogOpen] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  const notice = session.targetHistory[0];
   const timer = useRef<number | undefined>(undefined);
 
   const s = session.state;
@@ -141,6 +146,7 @@ export function Game({
   /** Runs bots and automatic passes until the game needs you (or the game ends). */
   const run = useCallback(() => {
     window.clearTimeout(timer.current);
+    if (pausedRef.current) { setBusy(false); refresh(); return; }
     for (let i = 0; i < 400; i++) {
       const step = session.advance();
       if (step === 'you' || step === 'over') {
@@ -213,7 +219,10 @@ export function Game({
       return;
     }
     setError(null);
-    run();
+    if (session.presentationDelayMs && !pausedRef.current) {
+      setBusy(true); refresh(); window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(run, session.presentationDelayMs);
+    } else run();
   };
 
   useEffect(() => {
@@ -392,7 +401,7 @@ export function Game({
     const costKeys = [...new Set(forMode.map(costOf))];
     if (costKey === undefined && costKeys.length > 1) {
       const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
-      const verb = ability?.cost.sacrifice ? 'sacrifice' : 'discard';
+      const verb = ability?.cost.exileGraveyard ? 'exile from your graveyard' : ability?.cost.sacrifice ? 'sacrifice' : 'discard';
       setMenu({
         title: `${def.name}: ${verb} which card?`,
         options: costKeys.map((k) => ({
@@ -463,7 +472,7 @@ export function Game({
   // Choosing cards to discard, sacrifice or keep: the cards on offer glow and toggle when clicked.
   const choosing = yourMove && pending.kind === 'chooseCards' ? pending : null;
   const h: ZoneHandlers = {
-    tokenStackKey: (id) => tokenStackKey(s, id),
+    tokenStackKey: (id) => notice?.sourceCard === id || notice?.targets.some(t => t.kind === 'card' && t.card === id) ? id : tokenStackKey(s, id),
     markCard: (id) => {
       const marks: Mark[] = [];
       if (bottoming && s.cards[id]?.zone === 'hand') marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
@@ -477,11 +486,14 @@ export function Game({
       if (view.combat?.blocks.some((b) => b.blocker === id)) marks.push('blocking');
       if (pickedAttacker === id) marks.push('selected');
       if (step?.focus(s).includes(id)) marks.push('focus');
+      if (notice?.sourceCard === id) marks.push('effect-source');
+      if (notice?.targets.some(t => t.kind === 'card' && t.card === id)) marks.push('effect-target');
       if (session.recent.has(id)) marks.push('recent');
       return marks;
     },
     markPlayer: (pid) => {
       const marks: Mark[] = [];
+      if (notice?.targets.some(t => t.kind === 'player' && t.player === pid)) marks.push('effect-target');
       if (nextOptions.some((t) => t.kind === 'player' && t.player === pid)) marks.push('target');
       if (pending.kind === 'declareAttackers' && yourMove && pid === currentDefender && livingOpponents.length > 1) {
         marks.push('defender');
@@ -496,6 +508,8 @@ export function Game({
       if (attack) return `→ ${attack.defender === YOU ? 'You' : attack.defender}`;
       const blocking = blocks.get(id) ?? view.combat?.blocks.find((b) => b.blocker === id)?.attacker;
       if (blocking) return `Blocks ${cardName(s, blocking)}`;
+      if (notice?.targets.some(t => t.kind === 'card' && t.card === id)) return 'TARGET';
+      if (notice?.sourceCard === id) return 'SOURCE';
       const attachedTo = view.cards[id]?.attachedTo;
       if (attachedTo) return `⚔ ${cardName(s, attachedTo)}`;
       const st = view.stats[id];
@@ -601,19 +615,32 @@ export function Game({
   const legendChoices = yourMove && pending.kind === 'chooseLegend' ? pending.cards : [];
 
   return (
-    <div className="game">
+    <div className={`game ${fourPlayers ? 'four-players' : ''} ${logOpen ? 'log-open' : ''}`}>
       <main className="table">
         <div className={`opponents n${session.opponents.length}`}>
           {session.opponents.map((pid) => (
-            <OpponentZone key={pid} view={view} pid={pid} h={h} />
+            <OpponentZone key={pid} view={view} pid={pid} h={h} fit={fourPlayers} />
           ))}
         </div>
         <div className="midline" data-pile="stack">
           <PhaseTrack view={view} session={session} onChange={refresh} />
           <StackView view={view} onHover={setHovered} h={h} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />
+          {fourPlayers && <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide game log' : 'Show game log'}</button>}
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
         </div>
-        <YourZone view={view} h={h} placement={session.placement} onPlaced={refresh} />
+        <section className="target-notice" aria-label="Targeting activity">
+          <button aria-pressed={paused} onClick={() => {
+            pausedRef.current = !pausedRef.current; setPaused(pausedRef.current);
+            window.clearTimeout(timer.current); setBusy(false);
+            if (!pausedRef.current) run();
+          }}>{paused ? 'Resume playback' : 'Pause playback'}</button>
+          {notice ? <details>
+            <summary><span className="source-label">{notice.controller} · {notice.source}</span> → <strong>{notice.labels.join(' + ')}</strong></summary>
+            <small>Most recent targeted action · blue = source · orange = target</small>
+            {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source} → {n.labels.join(' + ')}</div>)}
+          </details> : <span>Targeted actions will appear here.</span>}
+        </section>
+        <YourZone fit={fourPlayers} view={view} h={h} placement={session.placement} onPlaced={refresh} />
         <PromptBar
           session={session}
           view={view}
@@ -662,6 +689,11 @@ export function Game({
         <GameLog entries={session.log} />
       </aside>
       {/* "Look at the top seven cards of your library": the cards on offer. */}
+      {choosing?.purpose === 'fateBottom' && (
+        <CardList view={view} title="Coin of Fate: choose the card for the bottom of its owner's library" ids={choosing.cards} h={h}
+          actions={<button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}>Put on bottom</button>}
+        />
+      )}
       {choosing?.purpose === 'hand' && (
         <CardList
           view={view}
@@ -853,7 +885,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: Game
             )}
             <div>
               <div className="stack-name">
-                {c ? (item.kind === 'spell' && item.adventure ? `${defOf(c.defId).adventure!.name} — Adventure` : defOf(c.defId).name.split(' // ')[0]) : 'A card'}
+                {c ? (item.kind === 'spell' && item.adventure ? `${defOf(c.defId).adventure!.name} — Adventure` : defOf(c.defId).name.split(' // ')[0]) : (item.kind === 'ability' && item.rule === 'monarch' ? 'The monarch' : 'A card')}
                 {item.kind === 'ability' && <em> — ability</em>}
                 {item.kind === 'ability' && item.modes && <em> (mode{item.modes.length > 1 ? 's' : ''} {item.modes.map((i) => i + 1).join(' + ')})</em>}
                 {item === view.resolving && <em> (resolving)</em>}
@@ -878,7 +910,7 @@ function targetLabel(view: GameView, t: Target): string {
   if (t.kind === 'player') return t.player === YOU ? 'you' : t.player;
   if (t.kind === 'ability') {
     const item = view.stack.find(item => item.id === t.ability);
-    return item?.kind === 'ability' ? (view.cards[item.source] ? defOf(view.cards[item.source]!.defId).name : 'A card') + ' ability' : 'an ability';
+    return item?.kind === 'ability' && item.rule === 'monarch' ? 'The monarch ability' : item?.kind === 'ability' ? (view.cards[item.source] ? defOf(view.cards[item.source]!.defId).name : 'A card') + ' ability' : 'an ability';
   }
   const c = view.cards[t.card];
   return c ? defOf(c.defId).name : 'a card';
@@ -985,7 +1017,8 @@ function PromptBar(p: PromptProps) {
               ? 'to put onto the battlefield (in your hand)'
               : c.purpose === 'hand'
                 ? 'to put into your hand; the rest go on the bottom of your library'
-                : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
+                : c.purpose === 'fateBottom' ? 'to put on the bottom of the caster’s library; the other returns to the battlefield tapped'
+                  : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
                   : c.purpose === 'addCounters' ? `to receive a ${c.counter ?? '+1/+1'} counter each`
                   : c.purpose === 'distributeCounter' ? `to receive one +1/+1 counter (${c.counterCount} remain to assign); choose none to finish`
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
@@ -999,6 +1032,11 @@ function PromptBar(p: PromptProps) {
           : []),
       ];
     }
+  } else if (pending.kind === 'chooseOpponent') {
+    text = 'Choose the opponent who will decide which exiled card goes on the bottom of your library.';
+    buttons = pending.opponents.filter(id => !s.players[id]!.eliminated).map(opponent => ({
+      label: opponent, onClick: () => p.submit([{ type: 'ChooseOpponent', player: YOU, opponent }]),
+    }));
   } else if (pending.kind === 'chooseDefender') {
     text = cardName(s, pending.card) + ': choose which opponent it enters attacking.';
     buttons = pending.defenders.filter((id) => !s.players[id]!.eliminated).map((defender) => ({
