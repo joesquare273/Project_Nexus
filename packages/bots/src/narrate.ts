@@ -216,6 +216,7 @@ function effectText(e: EffectSpec): string {
     case 'ExileTopCardToPlay':
       return 'exile the top card of your library; you may play it for as long as you control this';
     case 'AddMana': return who + ' adds ' + n + ' mana of any color (chosen when this resolves)';
+    case 'MillAndGrantOneCast': return who + ' mills ' + n + (e.token ? '; if a land was milled, create one ' + e.token.replace(/-token$/, '').replaceAll('-', ' ') + ' token' : '') + '; until end of turn, you may cast one spell from those cards';
     case 'Mill':
       return `mill ${n}`;
     case 'LookAndExileTop': return 'look at the top card of your library; you may exile it face down';
@@ -405,6 +406,7 @@ export function rulesSummary(def: CardDefinition): string {
     parts.push(`Costs {${def.costReduction.generic}} less for each of the ${COUNT_TEXT[def.costReduction.perCount] ?? def.costReduction.perCount}`);
   }
   for (const st of def.statics ?? []) {
+    if (st.cantBeBlockedByGreaterPower) parts.push('Cannot be blocked by creatures with greater power');
     if (st.noncreatureIfGraveyardBelow !== undefined) parts.push('Not a creature while your graveyard has fewer than ' + st.noncreatureIfGraveyardBelow + ' cards');
     if (st.setCreatureTypes) parts.push('Enchanted creature is a ' + (st.setColors ?? []).join('/') + ' ' + st.setCreatureTypes.join(' '));
     if (st.basePowerToughness) parts.push('Base power/toughness ' + st.basePowerToughness.join('/'));

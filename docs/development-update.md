@@ -5,6 +5,35 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-24
 
+### Locke, Treasure Hunter
+
+- Built Locke's blocking restriction against creatures with greater current
+  power. Existing blocks remain intact if powers change afterward.
+- Mug mills one card from each living player, including its controller, and
+  creates exactly one untapped Treasure if any land was milled. The cached
+  Treasure printing matches Locke's related-token reference.
+- Each trigger grants one shared casting allowance among those exact milled
+  card objects. It expires at cleanup, survives Locke leaving or changing
+  control, and is spent when a spell is successfully cast, even if countered.
+  Moving a card away and back does not restore permission.
+- Added explicit casting choices for Mug alongside flashback, Banon, Edgar and other
+  permissions. Using another permission preserves Mug. Actual flashback use
+  is recorded on the stack item, so casting a card with flashback through Mug
+  does not incorrectly exile it. Normal timing, mana, alternative/additional
+  costs and ownership apply; X choices now include zero.
+- Added 65 focused rules and browser-session checks across two, three and
+  four players, covering permissions, counters, card-object identity, costs,
+  Adventure casts, Treasure funding and input-state purity.
+- Validation: type-check, 1,718 tests across 72 files (broad regression and
+  focused follow-ups), and browser production build pass. The large fuzz and
+  Commander suites ran sequentially; the final Commander suite also passed
+  after the casting-choice update. Existing large-bundle warning remains.
+- Progress: 307/320 distinct precon cards built; 13 remain. Revival Trance
+  is 95/100.
+
+Rules reference: [Wizards FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes), Locke, Treasure Hunter.
+
+
 ### Eye of Nidhogg and The Warring Triad
 
 - Built Eye of Nidhogg: the enchanted creature becomes a black Dragon with

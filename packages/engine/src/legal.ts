@@ -38,6 +38,7 @@ import {
   improviseCandidates,
   foretellProblem,
   graveyardWay,
+  castGroupsFor,
   graveyardCastSources,
   queuedTriggerSpec,
   subsets,
@@ -109,24 +110,36 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   if (castingForbidden(s, playerId)) return out;
   for (const id of [...p.hand, ...p.graveyard, ...p.command]) candidates.push(s.cards[id]!);
   for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) candidates.push(s.cards[id]!);
+  // Group permissions may include cards in another player's graveyard.
+  for (const group of s.castGroups ?? []) if (group.player===playerId && group.turn===s.turnNumber) {
+    for (const ref of group.cards) {
+      const c=s.cards[ref.card];
+      if (c && !candidates.includes(c) && castGroupsFor(s,playerId,c).some(g=>g.id===group.id)) candidates.push(c);
+    }
+  }
   const top = p.library[0];
   if (top) candidates.push(s.cards[top]!);
   for (const c of candidates) {
     const printed = s.cardDefs[c.defId]!;
     for (const adventure of printed.adventure ? [false, true] : [false]) {
     const def = spellDefinition(printed, adventure);
-    const from = playableZone(s, playerId, c, adventure);
+    const naturalFrom = playableZone(s, playerId, c, adventure, false);
+    const groups = castGroupsFor(s,playerId,c);
+    const from = naturalFrom ?? ((c.zone==='graveyard'||c.zone==='exile') && groups.length ? c.zone : null);
     if (!from || !canEverCast(def) || (!hasInstantTiming(def) && !sorcerySpeed)) continue;
     const payments = new Map<string, ReturnType<typeof helpedPayments>>();
     // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);
-    // Sabin can only be cast from the graveyard for its blitz cost.
-    const way = from === 'graveyard' ? graveyardWay(s, playerId, c, adventure) : null;
-    const permissions = way === 'static' ? graveyardCastSources(s, playerId, c, adventure).map((graveyardSource) => ({ graveyardSource })) : [{}];
+    // Without another permission, Sabin uses its native graveyard blitz route.
+    const naturalWay = from === 'graveyard' ? graveyardWay(s, playerId, c, adventure) : null;
+    const permissions: SpellChoice[] = naturalFrom && naturalWay !== 'static' ? [{}] : [];
+    if (from === 'graveyard' && c.owner === playerId) permissions.push(...graveyardCastSources(s,playerId,c,adventure).map(graveyardSource=>({graveyardSource})));
+    permissions.push(...groups.map(g=>({castGroup:g.id})));
     for (const permission of permissions) {
+    const way = permission.castGroup ? 'group' : permission.graveyardSource ? 'static' : naturalWay;
     const alternatives = way === 'blitz' ? [true] : [false];
-    if (def.alternativeCost && from !== 'graveyard' && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
-    // Cast without paying its mana cost: X is 0.
-    const free = (from === 'graveyard' || from === 'exile') && c.castPermission?.turn === s.turnNumber && !!c.castPermission.free;
+    // Cast without paying its mana cost: X is 0 and alternative costs cannot be combined.
+    const free = !permission.castGroup && !permission.graveyardSource && (from === 'graveyard' || from === 'exile') && c.castPermission?.player===playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.free;
+    if (def.alternativeCost && way !== 'flashback' && way !== 'blitz' && !free && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
        for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative, c)) {
@@ -149,7 +162,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
         const discards = discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
-          const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
+          const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           const paymentKey = JSON.stringify([cost, tapCreatures]);
           if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
           for (const costCards of discards) {
@@ -260,7 +273,7 @@ function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alterna
   const available = availableMana(s, playerId, c);
   const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
   const most = Math.min(MAX_X, Math.floor((available - base) / cost.x));
-  return Array.from({ length: Math.max(0, most) }, (_, i) => i + 1);
+  return Array.from({ length: Math.max(0, most) + 1 }, (_, i) => i);
 }
 
 /** Every non-mana ability the player could activate right now, ignoring mana. */

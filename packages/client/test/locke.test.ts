@@ -1,0 +1,9 @@
+import {describe,expect,it} from 'vitest';
+import {GameSession,YOU} from '../src/game/session.ts';
+import {newGame,put,act,settle} from '../../bots/test/kit-helpers.ts';
+import {viewFor} from '@nexus/engine';
+function fixture(){let s=newGame();s.players[YOU]={...s.players.P1!,id:YOU};delete s.players.P1;s.turnOrder=[YOU,'P2'];for(const c of Object.values(s.cards))if(c.owner==='P1')c.owner=c.controller=YOU;s.activePlayer=YOU;s.step='declareAttackers';s.pending={kind:'declareAttackers',player:YOU};const locke=put(s,YOU,'locke-treasure-hunter'),card=put(s,'P2','sol-ring','library');s=act(s,{type:'DeclareAttackers',player:YOU,attacks:[{attacker:locke,defender:'P2'}]});s=settle(s).state;s.step='main2';s.pending={kind:'priority',player:YOU,passes:0};s.players[YOU]!.manaPool.C=1;return{session:new GameSession({deck:'RW',opponents:1,seed:1,bot:'ai'},{state:s,bots:{P2:()=>({type:'PassPriority',player:'P2'})}}),card};}
+describe('Mug through the browser session API',()=>{
+ it('shows a playable opponent graveyard card with its Mug choice and submits the selected permission',()=>{const{session,card}=fixture();expect(session.view().cards[card]).toMatchObject({defId:'sol-ring',zone:'graveyard',owner:'P2'});const play=session.plays().find(p=>p.card===card&&p.label==='Cast using Mug');expect(play?.detail).toContain('one spell');const choice=play!.choices[0]!;expect(choice.action).toHaveProperty('castGroup');expect(session.submit([...choice.taps,choice.action])).toBeNull();expect(session.state.cards[card]!.zone).toBe('stack');expect(session.state.castGroups).toHaveLength(0);});
+ it('keeps the other player hand private while exposing public milled cards',()=>{const{session,card}=fixture();const hidden=put(session.state,'P2','mind-stone','hand');const view=viewFor(session.state,YOU);expect(view.cards[hidden]).toBeUndefined();expect(view.cards[card]).toBeDefined();});
+});

@@ -11,12 +11,12 @@ const RAT = 'undercity-dire-rat';
 const castX = (s: GameState, id: string, x: number) => cast(s, { type: 'CastSpell', player: 'P1', card: id, targets: [], x });
 
 describe('{X} costs', () => {
-  it('X is offered from 1 up to what your mana can pay, and the board labels each choice', () => {
+  it('X is offered from 0 up to what your mana can pay, and the board labels each choice', () => {
     const s = newGame();
     const spell = put(s, 'P1', 'exsanguinate', 'hand');
     for (let i = 0; i < 5; i++) put(s, 'P1', 'swamp');
     const labels = playableCards(s, 'P1').filter((p) => p.card === spell).map((p) => `${p.label}${p.detail ?? ''}`);
-    expect(labels).toEqual(['Cast with X = 1', 'Cast with X = 2', 'Cast with X = 3']);
+    expect(labels).toEqual(['Cast with X = 0', 'Cast with X = 1', 'Cast with X = 2', 'Cast with X = 3']);
   });
 
   it('Exsanguinate: each opponent loses X; you gain the total lost', () => {

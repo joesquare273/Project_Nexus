@@ -1009,13 +1009,8 @@
           "count": 1,
           "set": "fic",
           "number": "87",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "mug",
-            "treasure",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mog, Moogle Warrior",

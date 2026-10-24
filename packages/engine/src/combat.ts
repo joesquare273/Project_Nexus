@@ -35,6 +35,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   for (const source of battlefield(s)) {
     for (const spec of s.cardDefs[source.defId]!.statics ?? []) {
+      if (spec.cantBeBlockedByGreaterPower && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) > powerOf(s, attacker)) return false;
       const most = spec.cantBeBlockedByPowerAtMost;
       if (most !== undefined && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) <= most) return false;
     }

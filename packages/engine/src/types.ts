@@ -195,6 +195,8 @@ export const EFFECT_KINDS = [
   /** Exile the top card of your library; you may play it while you control the source. */
   'ExileTopCardToPlay',
   'AddMana',
+  /** Mill players, optionally reward any land with one token, and grant one shared cast this turn. */
+  'MillAndGrantOneCast',
   'Mill',
   /** Privately look at the top card and optionally exile it face down, linked to this source object. */
   'LookAndExileTop',
@@ -433,7 +435,7 @@ export interface EffectSpec {
   target: TargetKind;
   /** For TargetPermanent, TargetCardInGraveyard and SearchLibraryToHand: what qualifies. */
   filter?: ObjectFilter;
-  /** CreateToken: the token's card id. */
+  /** CreateToken, or the one land-mill reward for MillAndGrantOneCast: token card id. */
   token?: CardDefId;
   /** ModifyPT. */
   power?: number;
@@ -813,6 +815,8 @@ export interface StaticSpec {
   basePowerToughness?: [number, number];
   /** "Can't be blocked by creatures with power 2 or less." */
   cantBeBlockedByPowerAtMost?: number;
+  /** A blocker with greater power than the affected attacker cannot block it. */
+  cantBeBlockedByGreaterPower?: boolean;
   /** Conqueror's Flail: while it applies, its controller's opponents can't cast spells during that player's turn. */
   opponentsCantCastDuringYourTurn?: boolean;
   /**
@@ -1213,6 +1217,8 @@ export type Step = (typeof STEPS)[number];
 export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId } | { kind: 'ability'; ability: string } | { kind: 'none' };
 
 export interface SpellItem {
+  /** This cast actually used flashback, rather than another permission on a card with flashback. */
+  flashback?: boolean;
   adventure?: boolean;
   id: string;
   kind: 'spell';
@@ -1448,7 +1454,17 @@ export type Pending =
   | ({ kind: 'chooseCards' } & CardChoice)
   | { kind: 'gameOver' };
 
+/** One casting allowance shared by a group of card objects, independent of other permissions. */
+export interface CastGroup {
+  id: string;
+  source: InstanceId;
+  player: PlayerId;
+  turn: number;
+  cards: { card: InstanceId; object: number; zone: 'graveyard' | 'exile' }[];
+}
+
 export interface GameState {
+  castGroups?: CastGroup[];
   /** The monarch designation persists independently of the cards that created it. */
   monarch?: PlayerId;
   /** Shared ordering for continuous effects that set base power/toughness. */
@@ -1518,6 +1534,8 @@ export type Action =
       card: InstanceId;
       /** Which permanent's graveyard-casting permission is being used. */
       graveyardSource?: InstanceId;
+      /** Use this shared one-spell allowance instead of another permission. */
+      castGroup?: string;
       targets?: Target[];
       mode?: number;
       modes?: number[];

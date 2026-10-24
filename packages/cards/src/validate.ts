@@ -40,12 +40,13 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
-const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand', 'PlayLinkedExile', 'AddMana']);
+const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand', 'PlayLinkedExile', 'AddMana', 'MillAndGrantOneCast']);
 const PLAYER_ONLY_EFFECTS = new Set([
   'AddMana',
   'DrawCards',
   'GainLife',
   'LoseLife',
+  'MillAndGrantOneCast',
   'Mill',
   'ExileGraveyard',
   'SacrificeGreatestPower',
@@ -293,6 +294,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
   validateFilter(e.filter, err);
   if (e.effect === 'ChooseCounterRecipients' && (e.target !== 'You' || !e.filter || typeof e.amount !== 'number' || !isNonNegativeInt(e.amount))) err('ChooseCounterRecipients needs You, a filter, and a nonnegative whole-number amount.');
+  if (e.effect === 'MillAndGrantOneCast' && e.token !== undefined && typeof e.token !== 'string') err('MillAndGrantOneCast token must be a token id.');
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
@@ -427,6 +429,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
   if ((st.setColors || st.setCreatureTypes) && (st.affects === 'EachMatching' || st.zone)) e('type/color setters need a battlefield Self or EquippedCreature ability.');
   for (const color of st.setColors ?? []) if (!COLORS.includes(color)) e('unknown setColors color.');
   for (const sub of st.setCreatureTypes ?? []) if (!typeLists.creature.includes(sub)) e('unknown creature subtype.');
+  if (st.cantBeBlockedByGreaterPower !== undefined && typeof st.cantBeBlockedByGreaterPower !== 'boolean') e('cantBeBlockedByGreaterPower must be boolean.');
   if (st.firstFriendlyTargetActivationDiscount !== undefined && (!isNonNegativeInt(st.firstFriendlyTargetActivationDiscount) || st.affects !== 'Self')) e('activation discount needs a whole number on a Self static ability.');
   if (st.affects !== 'Self' && st.affects !== 'EquippedCreature' && st.affects !== 'EachMatching') {
     e('affects must be "Self", "EquippedCreature" or "EachMatching".');

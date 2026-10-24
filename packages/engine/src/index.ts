@@ -15,6 +15,7 @@ export {
   choiceProblem,
   effectsOf,
   playableZone,
+  castGroupsFor,
   queuedTriggerSpec,
   spellEffects,
   FORETELL_COST,

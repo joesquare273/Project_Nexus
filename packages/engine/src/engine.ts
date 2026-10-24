@@ -63,6 +63,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.improvise ? { improvise: action.improvise } : {}),
           ...(action.delve ? { delve: action.delve } : {}),
           ...(action.graveyardSource ? { graveyardSource: action.graveyardSource } : {}),
+          ...(action.castGroup !== undefined ? { castGroup: action.castGroup } : {}),
           ...(action.kicks ? { kicks: action.kicks } : {}),
           ...(action.tapCreatures ? { tapCreatures: action.tapCreatures } : {}),
         });

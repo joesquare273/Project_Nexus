@@ -50,6 +50,7 @@ import {
   type CardChoice,
   type CardDefinition,
   type CardInstance,
+  type CastGroup,
   type CreatureScryMana,
   type EffectSpec,
   type GameState,
@@ -165,6 +166,8 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
 
 /** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
 export interface SpellChoice {
+  /** Select a shared one-spell permission explicitly. Omit to prefer another available permission. */
+  castGroup?: string;
   adventure?: boolean;
   improvise?: InstanceId[];
   graveyardSource?: InstanceId;
@@ -524,18 +527,26 @@ export function activateManaAbility(
 // Playing cards and activating abilities
 // ---------------------------------------------------------------------------
 
+/** Unspent, current-turn allowances that still refer to this exact card object. */
+export function castGroupsFor(s: GameState, player: PlayerId, c: CardInstance): CastGroup[] {
+  return (s.castGroups ?? []).filter(g=>g.player===player && g.turn===s.turnNumber &&
+    g.cards.some(ref=>ref.card===c.id && ref.object===(c.zoneChanges??0) && ref.zone===c.zone));
+}
+
 /** Where a player could play or cast this card from right now, or null. */
 export function playableZone(
   s: GameState,
   playerId: PlayerId,
   c: CardInstance,
   adventure = false,
+  includeGroups = true,
 ): 'hand' | 'graveyard' | 'exile' | 'command' | 'library' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
   if (canCastLibraryTop(s, playerId, c, spellDefinition(defOf(s, c), adventure))) return 'library';
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
   if (graveyardWay(s, playerId, c, adventure)) return 'graveyard';
+  if (includeGroups && (c.zone === 'graveyard' || c.zone === 'exile') && isSpellCard(spellDefinition(defOf(s,c),adventure)) && castGroupsFor(s,playerId,c).length) return c.zone;
   if (c.zone === 'exile' && c.adventurer === playerId && !adventure) return 'exile';
   // Rebound, or another permission to cast it this turn.
   if (c.zone === 'exile' && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'exile';
@@ -560,7 +571,7 @@ function addCosts(a: ManaCost, b: ManaCost): ManaCost {
 }
 
 /** How a card in a graveyard can be cast: flashback, blitz (Sabin), a permission (Gearhulk, Emet-Selch), or Edgar's static. */
-export type GraveyardWay = 'flashback' | 'blitz' | 'permission' | 'static' | 'adventure';
+export type GraveyardWay = 'flashback' | 'blitz' | 'permission' | 'static' | 'adventure' | 'group';
 
 export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, adventure = false): GraveyardWay | null {
   if (c.zone !== 'graveyard') return null;
@@ -677,13 +688,13 @@ export function spellCost(
   card?: CardInstance,
   alternative = false,
   x = 0,
-  extra: { kicks?: number; mode?: number } = {},
+  extra: { kicks?: number; mode?: number; player?: PlayerId; castGroup?: string; graveyardSource?: InstanceId; adventure?: boolean } = {},
 ): ManaCost {
-  const permission = card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile')
+  const permission = !extra.castGroup && !extra.graveyardSource && card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile')
     ? card.castPermission
     : undefined;
-  const payer = permission?.player ?? card?.owner;
-  const way = from === 'graveyard' && card ? graveyardWay(s, payer!, card) : null;
+  const payer = extra.player ?? permission?.player ?? card?.owner;
+  const way = from === 'graveyard' && card ? extra.castGroup ? 'group' : extra.graveyardSource ? 'static' : graveyardWay(s, payer!, card, extra.adventure) : null;
   const base = permission?.free
     ? undefined
     : alternative
@@ -757,7 +768,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
   const def = spellDefinition(printed, choice.adventure);
   if (castingForbidden(s, playerId)) reject("You can't cast spells during this player's turn (Conqueror's Flail).");
-  const from = playableZone(s, playerId, c, choice.adventure);
+  const naturalFrom = playableZone(s, playerId, c, choice.adventure, false);
+  const group = choice.castGroup !== undefined
+    ? castGroupsFor(s,playerId,c).find(g=>g.id===choice.castGroup) ?? reject('That shared casting permission is no longer available.')
+    : naturalFrom ? undefined : castGroupsFor(s,playerId,c)[0];
+  const from = group ? c.zone as 'graveyard'|'exile' : naturalFrom;
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
@@ -771,12 +786,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     const problem = alternativeCostProblem(s, def, playerId);
     if (problem) reject(problem);
   }
-  // From a graveyard, blitz is the only alternative cost that works, and the only way for Sabin (rule 118.9a).
-  const way = from === 'graveyard' ? (choice.graveyardSource ? 'static' : graveyardWay(s, playerId, c, choice.adventure)) : null;
+  // Native flashback cannot combine alternative costs; native blitz requires its alternative cost.
+  const way = from === 'graveyard' ? (group ? 'group' : choice.graveyardSource ? 'static' : graveyardWay(s, playerId, c, choice.adventure)) : null;
+  if (group && choice.graveyardSource) reject('Choose one casting permission.');
   if (choice.graveyardSource && (from !== 'graveyard' || c.owner !== playerId || !graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure))) reject('That graveyard-casting permission is not available.');
   if (way === 'blitz' && !alternative) reject(`${def.name} can only be cast from your graveyard for its blitz cost.`);
-  if (from === 'graveyard' && alternative && way !== 'blitz') reject("That alternative cost can't be used from the graveyard.");
-  const permission = (from === 'graveyard' || from === 'exile') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
+  if (from === 'graveyard' && alternative && way === 'flashback') reject("That alternative cost can't be used from the graveyard.");
+  const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
   checkTargets(s, spellEffects(def, choice), targets, playerId, id);
@@ -785,6 +801,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   checkDiscardCost(s, playerId, discardCount, costCards, id);
   const x = choice.x ?? 0;
   if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
+  if (alternative && permission?.free) reject('An alternative cost cannot be combined with casting without paying its mana cost.');
   if (x > 0 && permission?.free) reject('X is 0 when a spell is cast without paying its mana cost.');
   const kicks = choice.kicks ?? 0;
   if (!Number.isInteger(kicks) || kicks < 0) reject('Kick a whole number of times.');
@@ -797,7 +814,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (new Set(escalated).size !== escalated.length || escalated.some((k) => !convokeCandidates(s, playerId).includes(k))) {
     reject('Escalate with different untapped creatures you control.');
   }
-  let cost = spellCost(s, def, from, targets, c, alternative, x, { kicks, ...(choice.mode !== undefined ? { mode: choice.mode } : {}) });
+  let cost = spellCost(s, def, from, targets, c, alternative, x, { kicks, player: playerId, ...(group ? { castGroup: group.id } : {}), ...(choice.graveyardSource ? { graveyardSource: choice.graveyardSource } : {}), ...(choice.adventure ? { adventure: true } : {}), ...(choice.mode !== undefined ? { mode: choice.mode } : {}) });
   // Convoke and delve pay part of the cost with creatures and graveyard cards.
   const convoked = (choice.convoke ?? []).map((cid) => card(s, cid));
   if (convoked.length > 0) {
@@ -842,6 +859,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     casts[id] = (casts[id] ?? 0) + 1;
   }
 
+  if (group) s.castGroups = s.castGroups!.filter(g=>g.id!==group.id);
   moveCard(ctx, id, 'stack');
   if (choice.adventure) c.adventureSpell = true;
   if (from === 'graveyard') c.castFromGraveyard = true;
@@ -865,6 +883,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(choice.modes ? { modes: [...choice.modes].sort((a, b) => a - b) } : {}),
     ...(alternative ? { alternative } : {}),
     castFrom: from,
+    ...(way === 'flashback' ? { flashback: true } : {}),
     manaSpent,
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
@@ -1729,7 +1748,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.stack.splice(index, 1);
         ctx.ev.push({ type: 'SpellCountered', card: id, defId: s.cards[id]!.defId, by: source });
         // A flashback spell is exiled instead (rule 702.34a), and so is one cast with a permission that says so.
-        const flashback = countered.castFrom === 'graveyard' && !!defOf(s, s.cards[id]!).flashback;
+        const flashback = !!countered.flashback;
         moveCard(ctx, id, flashback || countered.exileAfter ? 'exile' : 'graveyard');
       }
       return;
@@ -1849,6 +1868,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'AddMana': {
       const recipient = targets.find(t => t.kind === 'player');
       if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount };
+      return;
+    }
+    case 'MillAndGrantOneCast': {
+      const milled: CastGroup['cards'] = [];
+      let land = false;
+      for (const t of targets) {
+        if (t.kind !== 'player') continue;
+        for (const id of topOfLibrary(s,t.player,amount)) {
+          land ||= hasType(s,s.cards[id]!,'land');
+          moveCard(ctx,id,'graveyard');
+          const c=s.cards[id]!;
+          if (c.zone==='graveyard' || c.zone==='exile') milled.push({card:id,object:c.zoneChanges??0,zone:c.zone});
+        }
+      }
+      if (land && effect.token) r.createdTokens.push(createToken(ctx,effect.token,item.controller));
+      if (milled.length) s.castGroups=[...(s.castGroups??[]),{id:newId(s,'cast'),source,player:item.controller,turn:s.turnNumber,cards:milled}];
       return;
     }
     case 'Mill':
@@ -2035,7 +2070,7 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
     if (item.adventure && resolved) {
       moveCard(ctx, item.card, 'exile');
       c.adventurer = item.controller;
-    } else if ((item.castFrom === 'graveyard' && !!defOf(s, c).flashback) || item.exileAfter) moveCard(ctx, item.card, 'exile');
+    } else if (item.flashback || item.exileAfter) moveCard(ctx, item.card, 'exile');
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.
       moveCard(ctx, item.card, 'exile');

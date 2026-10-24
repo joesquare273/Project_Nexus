@@ -278,3 +278,18 @@ Triad's mana recipient chooses the color, including when the recipient differs
 from the activating player. This was cross-checked against the
 [XMage implementation](https://github.com/magefree/mage/blob/master/Mage.Sets/src/mage/cards/t/TheWarringTriad.java).
 A recipient conceding during the choice skips the mana and resumes resolution.
+
+## Shared one-spell allowances (2026-10-24)
+
+GameState.castGroups stores a controller, turn, source and exact card-object
+references for an allowance shared among several cards. A successful cast
+consumes the group; a rejected action leaves it intact. Cleanup expires it.
+This models Locke's Mug without overwriting flashback, Edgar or card-specific
+permissions. CastSpell.castGroup explicitly selects the group; when omitted,
+another available permission is preferred before a group fallback is used.
+The human play helper labels and groups these choices separately.
+
+A stack item records whether the spell was actually cast using flashback.
+The card merely having flashback does not cause exile when another permission
+was used. Cost calculation receives the chosen route and the casting player,
+so borrowed spells use their caster's reductions, ward payments and resources.

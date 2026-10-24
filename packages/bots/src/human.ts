@@ -87,12 +87,15 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const improvised = a.type === 'CastSpell' ? (a.improvise?.length ?? 0) : 0;
     const helped = `${convoked ? `, tapping ${convoked} creature${plural(convoked)} (convoke)` : ''}${delved ? `, exiling ${delved} card${plural(delved)} from your graveyard (delve)` : ''}${improvised ? `, tapping ${improvised} artifact${plural(improvised)} (improvise)` : ''}`;
     const permissionSource = a.type === 'CastSpell' ? a.graveyardSource : undefined;
+    const castGroup = a.type === 'CastSpell' ? a.castGroup : undefined;
+    const card = s.cards[a.card]!;
+    const flashback = !isAbility && !castGroup && !permissionSource && card.zone==='graveyard' && card.owner===player && !(card.castPermission?.player===player && card.castPermission.turn===s.turnNumber) ? s.cardDefs[card.defId]!.flashback : undefined;
     const kicks = a.type === 'CastSpell' ? (a.kicks ?? 0) : 0;
     const kicked = kicks === 0 ? '' : kicks === 1 ? ', kicked' : `, kicked ${kicks} times`;
-    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name})` : ''}`;
+    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}${castGroup ? ' (Mug: one spell from this mill)' : ''}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name})` : ''}`;
     const key = isAbility
       ? `${a.card}#${a.ability}`
-      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${kicks ? `#k${kicks}` : ''}`;
+      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = s.cardDefs[s.cards[a.card]!.defId]!;
@@ -113,6 +116,10 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
                 ? `Cast Adventure: ${def.adventure!.name} (${def.adventure!.manaCost})`
                 : alternative
                 ? def.alternativeCost!.label
+                : castGroup
+                  ? 'Cast using Mug'
+                : flashback
+                  ? 'Flashback (' + flashback + ')'
                 : s.cards[a.card]!.zone === 'hand'
                   ? 'Cast'
                   : `Cast from ${s.cards[a.card]!.zone}`
