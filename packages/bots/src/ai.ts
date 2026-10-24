@@ -367,6 +367,7 @@ function chooseAttacks(s: GameState, me: PlayerId, memory?: Memory): Attack[] {
     }
   }
 
+  const melee = ready.some(c=>!holdBack.has(c.id) && def(s,c).triggers?.some(t=>t.when==='Attacks' && t.effects.some(e=>e.powerFromAmount && typeof e.amount==='object' && 'count' in e.amount && e.amount.count.includes('OpponentsYouAttackedThisCombat'))));
   // 3. Each remaining attacker picks its best defender.
   const maxThreat = Math.max(1, ...threat.values());
   const attacks: Attack[] = [];
@@ -384,6 +385,7 @@ function chooseAttacks(s: GameState, me: PlayerId, memory?: Memory): Attack[] {
         (threat.get(o)! / maxThreat) * 3 + // the biggest threat
         (getsThrough ? hitFor(s, a) / Math.max(1, life) : 0) * 4 + // damage that matters
         (getsThrough ? 1 : 0) +
+        (melee && !attacks.some(a=>a.defender===o) ? 2 : 0) +
         Math.max(0, 10 - life) * 0.15; // finishing off a player who's nearly out
       if (!best || score > best.score) best = { defender: o, score };
     }

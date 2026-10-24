@@ -20,7 +20,10 @@ function fight(s: GameState, attacks: Attack[], blocksBy: Record<string, Block[]
     const who = s.pending.player;
     s = block(s, who, blocksBy[who] ?? []);
   }
-  return passAll(s); // priority in declare blockers -> combat damage
+  const first=passAll(s); // priority in declare blockers -> first damage step
+  if(first.state.combat?.damageStep!=='first')return first;
+  const regular=passAll(first.state);
+  return {state:regular.state,events:[...first.events,...regular.events]};
 }
 
 describe('attacking in pods', () => {

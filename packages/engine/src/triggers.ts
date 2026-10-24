@@ -15,6 +15,7 @@ import type {
   CardInstance,
   GameEvent,
   CardType,
+  DamageSourceSnapshot,
   GameState,
   InstanceId,
   ObjectFilter,
@@ -28,6 +29,7 @@ import type {
 /** One thing that happened that an ability might be waiting for. */
 interface Occurrence {
   lastTypes?: CardType[];
+  damageSource?: DamageSourceSnapshot;
   when: TriggerEvent;
   /** Index of the event, to tell which permanents were on the battlefield at the time. */
   at: number;
@@ -144,9 +146,11 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         if (e.combat && e.target.kind === 'player') {
           out.push({
             when: 'CombatDamageToPlayer',
+            damageSource: e.sourceSnapshot,
+            lastTypes: e.sourceSnapshot?.types,
             at,
             subject: e.source,
-            subjectController: s.cards[e.source]!.controller,
+            subjectController: e.sourceController ?? s.cards[e.source]!.controller,
             defender: e.target.player,
             amount: e.amount,
           });
@@ -181,15 +185,16 @@ function matchesFilter(
 ): boolean {
   if (o.subject === undefined) return false;
   if (!filter) return o.subject === source;
-  const subject=s.cards[o.subject]!;
+  const subject=o.damageSource?.card ?? s.cards[o.subject]!;
+  const viewpoint={controller,source,...(o.damageSource ? {power:o.damageSource.power,toughness:o.damageSource.toughness} : {})};
   const definition=o.lastTypes ? {...defOf(s,subject),types:o.lastTypes} : undefined;
   if (filter.equippedBySource && o.when === 'Dies') {
     // "Whenever equipped creature dies": look back at what was attached when it died (rule 603.10a).
     if (!o.equippedBy?.includes(source)) return false;
     const { equippedBySource: _, ...rest } = filter;
-    return matchesObject(s, rest, subject, { controller, source }, o.subjectController, definition);
+    return matchesObject(s, rest, subject, viewpoint, o.subjectController, definition);
   }
-  return matchesObject(s, filter, subject, { controller, source }, o.subjectController, definition);
+  return matchesObject(s, filter, subject, viewpoint, o.subjectController, definition);
 }
 
 /** Intervening "if" conditions about the game rather than the event (rule 603.4). */
@@ -342,8 +347,9 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       if ((spec.zone ?? 'battlefield') !== zone || !triggersOn(spec, o, s, c.id, controller)) return;
       const key = `${c.id}#${ability}`;
       if (spec.oneOrMore) {
-        if (batched.has(key)) return;
-        batched.add(key);
+        const batchKey=o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key;
+        if (batched.has(batchKey)) return;
+        batched.add(batchKey);
       }
       if (spec.oncePerTurn) {
         if (s.triggeredThisTurn.includes(key)) return;

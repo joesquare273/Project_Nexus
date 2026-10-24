@@ -10,6 +10,9 @@ import type { CardDefinition, CardInstance, GameState, InstanceId, ObjectFilter,
 /** Who is asking: the controller of the spell or ability, and its source card if any. */
 export interface FilterViewpoint {
   controller: PlayerId;
+  /** Combat-damage filters use power/toughness at the instant damage was dealt. */
+  power?: number;
+  toughness?: number;
   source?: InstanceId;
   /** For attack and combat damage triggers: the player attacked or dealt damage. */
   defender?: PlayerId;
@@ -83,9 +86,9 @@ export function matchesObject(
   }
   if (f.powerAtLeast !== undefined || f.powerAtMost !== undefined || f.toughnessAtLeast !== undefined) {
     const ch = characteristics(s, obj);
-    if (f.powerAtLeast !== undefined && ch.power < f.powerAtLeast) return false;
-    if (f.powerAtMost !== undefined && ch.power > f.powerAtMost) return false;
-    if (f.toughnessAtLeast !== undefined && ch.toughness < f.toughnessAtLeast) return false;
+    if (f.powerAtLeast !== undefined && (from.power ?? ch.power) < f.powerAtLeast) return false;
+    if (f.powerAtMost !== undefined && (from.power ?? ch.power) > f.powerAtMost) return false;
+    if (f.toughnessAtLeast !== undefined && (from.toughness ?? ch.toughness) < f.toughnessAtLeast) return false;
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
   if (f.manaValueEqualsSubject) {

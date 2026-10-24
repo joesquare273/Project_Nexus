@@ -182,6 +182,10 @@ export function fight(
   s = nextStep(r.state); // to combat damage
   r = settle(s, opts);
   events.push(...r.events);
+  if(r.state.combat?.damageStep==='first'){
+    s=nextStep(r.state);
+    r=settle(s,opts);events.push(...r.events);
+  }
   return { state: r.state, events };
 }
 

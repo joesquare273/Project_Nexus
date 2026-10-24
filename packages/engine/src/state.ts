@@ -14,6 +14,7 @@ import {
   type CardInstance,
   type CardType,
   type GameEvent,
+  type DamageSourceSnapshot,
   type GameState,
   type InstanceId,
   type ManaPool,
@@ -86,6 +87,9 @@ export function cloneState(s: GameState): GameState {
     triggeredThisTurn: [...s.triggeredThisTurn],
     temporaryEffects: s.temporaryEffects.map((e) => ({ ...e })),
     combat: s.combat && {
+      ...s.combat,
+      ...(s.combat.declaredOpponents ? { declaredOpponents: Object.fromEntries(Object.entries(s.combat.declaredOpponents).map(([pid,ids])=>[pid,[...ids]])) } : {}),
+      ...(s.combat.firstStrikeParticipants ? { firstStrikeParticipants: {...s.combat.firstStrikeParticipants} } : {}),
       attacks: s.combat.attacks.map((a) => ({ ...a })),
       blocks: s.combat.blocks.map((b) => ({ ...b })),
       blockersPending: [...s.combat.blockersPending],
@@ -371,7 +375,12 @@ export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
 }
 
 /** Deals damage from a source, applying deathtouch and lifelink. */
-export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amount: number, combat: boolean): void {
+export function damageSourceSnapshot(s: GameState, source: CardInstance): DamageSourceSnapshot {
+  const ch=characteristics(s,source);
+  return {card:structuredClone(source),types:[...defOf(s,source).types],power:ch.power,toughness:ch.toughness};
+}
+
+export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amount: number, combat: boolean, frozen?: DamageSourceSnapshot): void {
   if (amount <= 0 || target.kind === 'ability') return;
   const s = ctx.s;
   const source = s.cards[sourceId]!;
@@ -395,7 +404,9 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     ? s.temporaryEffects.filter(e => e.affected === sourceId && e.trigger?.when === 'CombatDamageToPlayer').map(e => e.trigger!)
     : [];
   const damagedMonarch = combat && target.kind === 'player' && s.monarch === target.player && hasType(s, source, 'creature') ? target.player : undefined;
+  const sourceSnapshot=combat && target.kind==='player' ? frozen ?? damageSourceSnapshot(s,source) : undefined;
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat,
+    ...(sourceSnapshot ? {sourceSnapshot,sourceController:sourceSnapshot.card.controller} : {}),
     ...(damagedMonarch ? { damagedMonarch } : {}),
     ...(grantedTriggers.length || damagedMonarch ? { grantedTriggers, sourceController: source.controller, sourceObject: source.zoneChanges ?? 0, sourceCounterKinds: allCounters(source).length } : {}),
   });

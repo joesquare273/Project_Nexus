@@ -1666,7 +1666,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'AdditionalCombat':
-      if (effect.onlyFirstCombat && (s.combatsThisTurn ?? 0) !== 1) return;
+      if (effect.onlyFirstCombat && ((s.combatsThisTurn ?? 0) !== 1 || s.activePlayer !== item.controller)) return;
       s.extraCombats = (s.extraCombats ?? 0) + 1;
       return;
     case 'GainControl': {

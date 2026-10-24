@@ -1375,6 +1375,11 @@ export interface Block {
 }
 
 export interface CombatState {
+  /** Declared defenders remain counted after attackers leave or opponents concede. */
+  declaredOpponents?: Record<PlayerId, PlayerId[]>;
+  damageStep?: 'first' | 'regular';
+  /** Objects with first/double strike as the first damage step began. */
+  firstStrikeParticipants?: Record<InstanceId, number>;
   attacks: Attack[];
   /** In declaration order, which is also the damage assignment order for now. */
   blocks: Block[];
@@ -1536,6 +1541,13 @@ export type Action =
 
 export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
 
+export interface DamageSourceSnapshot {
+  card: CardInstance;
+  types: CardType[];
+  power: number;
+  toughness: number;
+}
+
 export type GameEvent =
   | { type: 'CoinFlipped'; player: PlayerId; won: boolean }
   | { type: 'MonarchChanged'; player: PlayerId; previous?: PlayerId }
@@ -1611,7 +1623,7 @@ export type GameEvent =
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }
   | { type: 'AttackersUnblocked'; player: PlayerId; defender: PlayerId; attackers: InstanceId[] }
-  | { type: 'DamageDealt'; damagedMonarch?: PlayerId; source: InstanceId; target: Target; amount: number; combat: boolean; grantedTriggers?: TriggerSpec[]; sourceController?: PlayerId; sourceObject?: number; sourceCounterKinds?: number }
+  | { type: 'DamageDealt'; sourceSnapshot?: DamageSourceSnapshot; damagedMonarch?: PlayerId; source: InstanceId; target: Target; amount: number; combat: boolean; grantedTriggers?: TriggerSpec[]; sourceController?: PlayerId; sourceObject?: number; sourceCounterKinds?: number }
   | { type: 'CreatureDied'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'PermanentDestroyed'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'LifeChanged'; player: PlayerId; from: number; to: number }

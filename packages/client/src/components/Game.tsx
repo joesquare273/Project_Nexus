@@ -190,7 +190,7 @@ export function Game({
   }, [spotlight]);
 
   // Any change of decision clears half-made selections.
-  const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}|${s.nextId}`;
+  const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}|${s.nextId}|${s.combat?.damageStep ?? ''}`;
   const [bottomPicks, setBottomPicks] = useState<InstanceId[]>([]);
   useEffect(() => {
     setBottomPicks([]);
@@ -844,7 +844,7 @@ function PhaseTrack({ view, session, onChange }: { view: GameView; session: Game
             onChange();
           }}
         >
-          {label}
+          {step === 'combatDamage' && view.step === step && view.combat?.damageStep === 'first' ? 'First-strike damage' : label}
           {session.phaseStops.has(step) && <span aria-hidden="true"> ◆</span>}
         </button>
       ))}

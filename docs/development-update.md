@@ -5,6 +5,39 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-24
 
+### Tifa, Martial Artist rules and combat audit
+
+- Checked Tifa against Wizards' FINAL FANTASY release notes. Fixed her grouped
+  combat-damage trigger to produce one trigger per damaged player, while
+  grouping multiple qualifying creatures hitting the same player in that step.
+  Each creature must have power at least seven individually; prevented or
+  noncombat damage does not qualify. Tifa can stay home and still trigger.
+- Melee now remembers distinct opponents at declaration even when attackers
+  leave combat or the opponent concedes. Creatures entering attacking do not
+  add to the count. Added an object-identity check so an old melee trigger
+  cannot boost a Tifa that left and returned.
+- Combat damage snapshots source information before applying simultaneous
+  assignments, preserving trigger eligibility when creatures die or buffs
+  disappear. First-strike/double-strike damage now has a priority window
+  before normal damage. Power is checked anew in each step; Tifa can untap
+  between the hits and create multiple extra combats during the first combat.
+  Initial striker identities preserve correct eligibility if abilities change.
+- Extra combats remain consecutive without an extra main phase. Later-combat
+  hits still untap your creatures but add no new phases. Added an explicit
+  controller-turn check for first-combat-only effects. The phase track labels
+  first-strike damage and selection state resets between damage steps.
+- AI spreads safe attacks for melee while preserving lethal-attack and
+  defensive priorities. Added 50 Tifa scenarios and 15 separate first-strike
+  priority cases across two, three and four players; adapted combat-test
+  helpers to finish both steps when testing complete combat damage.
+- Type-check, all 1,522 tests in 67 files (two workers, 210 seconds), and
+  production build pass. Existing large-bundle warning remains. Card completion
+  remains 303/320 distinct precon cards; 17 remain.
+
+Rules reference: [Wizards' FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes), Tifa, Martial Artist.
+
+
+
 ### AI opening hands and London bottoming
 
 - Basic and random opponents now share a resource-aware opening policy. They

@@ -118,6 +118,7 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     case 'PlayersWhoLostLifeThisTurn':
       return s.turnOrder.filter((pid) => (s.players[pid]!.lifeLostThisTurn ?? 0) > 0).length;
     case 'OpponentsYouAttackedThisCombat': {
+      if (s.combat?.declaredOpponents) return (s.combat.declaredOpponents[player] ?? []).length;
       const attacked = (s.combat?.attacks ?? []).filter((a) => s.cards[a.attacker]?.controller === player).map((a) => a.defender);
       return new Set(attacked).size;
     }

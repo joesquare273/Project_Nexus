@@ -4,12 +4,12 @@
 import { canPayFromPool, payMana } from './stack.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
-import { applyStateBasedActions } from './sba.ts';
 import { enterStep, givePriority } from './turn.ts';
 import { hasFlag, powerOf, staticAffects, toughnessOf } from './characteristics.ts';
 import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
+  damageSourceSnapshot,
   hasKeyword,
   isCreatureOnBattlefield,
   reject,
@@ -118,7 +118,7 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     enterStep(ctx, 'endCombat');
     return;
   }
-  s.combat = { attacks: [...attacks], blocks: [], blockersPending: [] };
+  s.combat = { attacks: [...attacks], blocks: [], blockersPending: [], declaredOpponents: { [playerId]: [...new Set(attacks.map(a=>a.defender))] } };
   givePriority(ctx, playerId);
 }
 
@@ -216,7 +216,7 @@ function dealsDamageIn(s: GameState, c: CardInstance, pass: DamagePass): boolean
   if (pass === 'only') return true;
   const first = hasKeyword(s, c, 'FirstStrike');
   const double = hasKeyword(s, c, 'DoubleStrike');
-  return pass === 'first' ? first || double : !first || double;
+  return pass === 'first' ? first || double : s.combat?.firstStrikeParticipants?.[c.id] !== (c.zoneChanges ?? 0) || double;
 }
 
 /** Damage counted as lethal for assignment: 1 from a deathtouch source, otherwise remaining toughness. */
@@ -277,7 +277,8 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
   }
 
   // All combat damage in a pass is dealt at the same time.
-  for (const a of assignments) dealDamage(ctx, a.source, a.target, a.amount, true);
+  const snapshots = new Map(assignments.map(a=>[a.source,damageSourceSnapshot(s,s.cards[a.source]!)]));
+  for (const a of assignments) dealDamage(ctx, a.source, a.target, a.amount, true, snapshots.get(a.source));
 }
 
 export function dealCombatDamage(ctx: Ctx): void {
@@ -289,14 +290,18 @@ export function dealCombatDamage(ctx: Ctx): void {
     const c = s.cards[id];
     return isCreatureOnBattlefield(s, c) && (hasKeyword(s, c, 'FirstStrike') || hasKeyword(s, c, 'DoubleStrike'));
   });
-  if (!split) {
+  if (!split && !combat.damageStep) {
     damagePass(ctx, 'only');
     return;
   }
-  // Simplification: both passes happen in one step, with state-based actions
-  // between them but no priority window. Rule 510.4 gives a separate step.
-  damagePass(ctx, 'first');
-  applyStateBasedActions(ctx);
-  if (s.pending.kind === 'gameOver' || s.players[s.activePlayer]!.eliminated) return;
-  damagePass(ctx, 'regular');
+  if (!combat.damageStep) {
+    combat.firstStrikeParticipants=Object.fromEntries(involved.filter(id=>{
+      const c=s.cards[id];return isCreatureOnBattlefield(s,c) && (hasKeyword(s,c,'FirstStrike')||hasKeyword(s,c,'DoubleStrike'));
+    }).map(id=>[id,s.cards[id]!.zoneChanges??0]));
+    combat.damageStep='first';
+    damagePass(ctx,'first');
+  } else {
+    combat.damageStep='regular';
+    damagePass(ctx,'regular');
+  }
 }

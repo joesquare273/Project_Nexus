@@ -51,7 +51,7 @@ The repository's decisions document explicitly records simplifications. The most
 
 | Area | Current documented limitation | Rules reference |
 |---|---|---|
-| First strike/double strike | Both damage passes occur in one step without the intervening priority window. | 510.3–510.4 |
+| First strike/double strike | Fixed 2026-10-24: separate damage steps with priority between them; the phase track labels first-strike damage. | 510.3–510.4 |
 | Cleanup | Fixed 2026-10-23: choose discards down to seven, respect Thought Vessel, and grant priority/repeat cleanup when state-based actions or triggers require it. | 514 |
 | Ward | It is implemented as an increased targeting cost rather than a counter-unless-paid trigger. | 702.21 |
 | Proliferate | The engine chooses permanents/counters rather than offering the player's full legal selection. | 701, Proliferate |

@@ -122,6 +122,10 @@ export function enterStep(ctx: Ctx, step: Step): void {
 /** Called when every living player passes in succession with an empty stack. */
 export function advanceStep(ctx: Ctx): void {
   const s = ctx.s;
+  if (s.step === 'combatDamage' && s.combat?.damageStep === 'first') {
+    enterStep(ctx,'combatDamage');
+    return;
+  }
   // "An additional combat phase after this phase" (Tifa): straight into another combat.
   if (s.step === 'endCombat' && (s.extraCombats ?? 0) > 0) {
     s.extraCombats = s.extraCombats! - 1;

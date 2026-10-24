@@ -111,7 +111,7 @@ choices keep opponents' hand identities hidden.
 
 | Area | Engine today | Real rule |
 |---|---|---|
-| First strike | Both damage passes happen in one step, with state-based actions between them but no priority | Rule 510.4: a separate first-strike damage step |
+| First strike | Fixed 2026-10-24: separate first-strike and normal damage steps, state-based actions and priority between them | Rule 510.4 |
 | Damage assignment | Attackers assign lethal damage to blockers in block-declaration order automatically | The attacking player divides damage |
 | Mulligans | London mulligan, first one free in multiplayer (103.5c). Players decide one at a time in turn order, each finishing before the next | Everyone decides, then all mulligans happen at once, repeating (103.5). The PRD's "one free redo" would also make the first one free in duels; the engine follows the official rule |
 | Active player leaves | The rest of their turn is skipped and their spells go to graveyards | Rule 800.4 is more nuanced |
@@ -229,3 +229,22 @@ positions and opposing hidden cards are excluded. This estimates availability
 and does not simulate every intervening turn. Requirements soften for small
 hands, with legal engine mulligan limits controlling the final fallback.
 Normal in-game discard choices continue using their separate evaluator.
+
+## Tifa and combat-event identity (2026-10-24)
+
+Melee counts opponents recorded at attack declaration for the current combat,
+including attackers/opponents that later leave. Entering attacking does not add
+a declared opponent. A source-object check prevents an old melee trigger from
+boosting a returned Tifa. One-or-more combat-damage triggers group by damaged
+player within a damage step. Damage events snapshot source power, toughness,
+types, counters and controller before simultaneous assignments are applied.
+Trigger filters therefore retain the correct source information after deaths
+or changes caused by simultaneous damage.
+
+First-strike and normal combat damage have distinct priority windows. The
+combat retains object identities of initial first/double strikers; gaining or
+losing first/double strike between steps follows normal-damage eligibility.
+First-combat-only extra combat effects also check the active player against
+the ability controller. Tifa untaps in later combats but adds phases only
+during the first combat of her controller's turn. Attack AI rewards a new safe
+defender when melee is present, after its lethal and defensive priorities.
