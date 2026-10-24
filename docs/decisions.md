@@ -217,3 +217,15 @@ set/collector number when provided; a missing exact print falls back to a drawn
 card rather than silently showing another printing. Hidden-card flights do not
 include printing metadata. Public commander IDs/names are available separately
 from hidden card views for damage history, without revealing library positions.
+
+## Opening-hand resource plans (2026-10-24)
+
+Opening keep/bottom decisions are shared by basic and random opponents. The
+policy scores possible London keep subsets, favoring three lands and early
+mana access. Two-land exceptions need a cheap curve or a castable ramp plan.
+The mana planner evaluates colors and conditional sources on a hypothetical
+untapped board. Land searches use unordered remaining deck composition; draw
+positions and opposing hidden cards are excluded. This estimates availability
+and does not simulate every intervening turn. Requirements soften for small
+hands, with legal engine mulligan limits controlling the final fallback.
+Normal in-game discard choices continue using their separate evaluator.

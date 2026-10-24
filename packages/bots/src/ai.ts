@@ -41,6 +41,7 @@ import {
   type PlayerId,
   type Target,
 } from '@nexus/engine';
+import { openingAction } from './opening.ts';
 import { planTaps, tapActions, optionTapPlanner } from './mana.ts';
 import type { Bot } from './index.ts';
 
@@ -485,15 +486,6 @@ function chooseSurveil(s: GameState, me: PlayerId, card: InstanceId): Action {
 
 const isLandCard = (s: GameState, id: InstanceId) => def(s, s.cards[id]!).types.includes('land');
 
-/** Keep a hand with 2-5 lands out of 7; after two mulligans, keep whatever comes. */
-function chooseMulligan(s: GameState, me: PlayerId, taken: number, legal: Action[]): Action {
-  const hand = s.players[me]!.hand;
-  const lands = hand.filter((id) => isLandCard(s, id)).length;
-  const workable = lands >= 2 && lands <= 5;
-  const canMulligan = legal.some((a) => a.type === 'Mulligan' && !a.keep);
-  return { type: 'Mulligan', player: me, keep: workable || taken >= 2 || !canMulligan };
-}
-
 /**
  * Bottoms cards to leave about 40% lands: surplus lands first if the hand is
  * land-heavy, otherwise the most expensive spells.
@@ -606,8 +598,8 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
     // A commander is almost always worth having back in the command zone.
     if (pending.kind === 'commanderZone') return { type: 'CommanderZone', player: pending.player, toCommand: true };
-    if (pending.kind === 'mulligan') return chooseMulligan(s, pending.player, pending.taken, legal);
-    if (pending.kind === 'bottomCards') return chooseBottom(s, pending.player, pending.count);
+    const opening=openingAction(s,legal);
+    if(opening)return opening;
     if (pending.kind === 'chooseCards') return chooseCardsToPick(s, pending.player, legal);
     if (pending.kind !== 'priority') return legal[0]!;
     const me = pending.player;

@@ -1,6 +1,7 @@
 // Bots fill empty seats and drive fuzz tests (PRD 16). They only use the
 // engine's public API, the same way a networked client would.
 
+import { openingAction } from './opening.ts';
 import {
   applyAction,
   createGame,
@@ -36,7 +37,9 @@ export function makeRng(seed: number): () => number {
  */
 export function randomBot(seed: number): Bot {
   const rand = makeRng(seed);
-  return (_state, legal) => {
+  return (state, legal) => {
+    const opening=openingAction(state,legal);
+    if(opening)return opening;
     const nonPass = legal.filter((a) => a.type !== 'PassPriority');
     const pass = legal.find((a) => a.type === 'PassPriority');
     if (pass && (nonPass.length === 0 || rand() < 0.5)) return pass;

@@ -3,6 +3,36 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-24
+
+### AI opening hands and London bottoming
+
+- Basic and random opponents now share a resource-aware opening policy. They
+  prefer three or four lands with accessible early plays or a commander plan.
+  Two-land hands need multiple affordable early spells or castable mana support
+  that enables a follow-up. Color-locked, flooded and very low-land hands are
+  redrawn; taking two mulligans no longer forces an automatic keep.
+- The existing mana planner checks colors, conditional sources, restricted
+  mana and actual land-search targets. Land-search possibilities use the
+  known remaining deck composition, deduplicated and sorted independently of
+  draw order. Opposing hidden hands and future draw positions do not affect
+  the decision. This is a conservative availability heuristic after sources
+  untap, rather than a complete turn-by-turn game search.
+- London decisions assess the cards that would remain after bottoming. The
+  same evaluator selects bottom cards, protecting the land count, cheap plays
+  and ramp plan; surplus lands or expensive spells are removed first where
+  appropriate. Smaller hands relax the keep requirements to limit card loss,
+  and the engine's legal mulligan limit is respected.
+- Added 75 scenarios across two, three and four players covering both bots,
+  land count, color access, mana rocks, land ramp, conditional/restricted mana,
+  available commanders, paid/free mulligans, bottoming and hidden-information
+  independence. A 20-seed four-player precon smoke check finished all 80 hands
+  legally: 17 kept two lands, 34 kept three and 29 kept four; none kept fewer
+  than two. This sample is a regression check, not a guarantee for every seed.
+- Type-check, all 1,457 tests in 65 files (two workers, 248 seconds), and
+  browser production build pass. Existing large-bundle warning remains.
+- Card progress remains 303/320 distinct precon cards built; 17 remain.
+
 ## 2026-10-23
 
 ### Vehicles, exact printings and table readability
