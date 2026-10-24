@@ -655,6 +655,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   if (p.landsPlayedThisTurn >= 1) reject('You have already played a land this turn.');
   if (reveal && !canReveal(s, c, playerId)) reject('You have no card to reveal for that land.');
   p.landsPlayedThisTurn += 1;
+  ctx.ev.push({ type: 'LandPlayed', player: playerId, card: id, from });
   moveCard(ctx, id, 'battlefield');
   c.controller = playerId;
   c.summoningSick = true;
@@ -679,7 +680,8 @@ export function spellCost(
   const permission = card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile')
     ? card.castPermission
     : undefined;
-  const way = from === 'graveyard' && card ? graveyardWay(s, card.owner, card) : null;
+  const payer = permission?.player ?? card?.owner;
+  const way = from === 'graveyard' && card ? graveyardWay(s, payer!, card) : null;
   const base = permission?.free
     ? undefined
     : alternative
@@ -691,7 +693,7 @@ export function spellCost(
           : def.manaCost;
   let cost = parseManaCost(base);
   // Ward on the targets (an additional cost here, see wardCost).
-  if (card) cost = { ...cost, generic: cost.generic + wardCost(s, targets, card.owner) };
+  if (card) cost = { ...cost, generic: cost.generic + wardCost(s, targets, payer!) };
   // {X}: each X symbol costs the chosen value (rule 107.3).
   if (cost.x) cost = { ...cost, generic: cost.generic + x * cost.x };
   // Kicker, multikicker and tiered modes add to the cost (rules 601.2f, 702.33).
@@ -701,7 +703,7 @@ export function spellCost(
   if (tier) cost = addCosts(cost, parseManaCost(tier));
   // Commander tax: {2} more for each earlier cast from the command zone (rule 903.8).
   if (from === 'command' && card) {
-    cost = { ...cost, generic: cost.generic + 2 * (s.players[card.owner]!.commanderCasts[card.id] ?? 0) };
+    cost = { ...cost, generic: cost.generic + 2 * (s.players[payer!]!.commanderCasts[card.id] ?? 0) };
   }
   if (def.costReduction?.ifTargetsTappedCreature) {
     const tapped = targets.some((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) && s.cards[t.card]!.tapped);
@@ -710,27 +712,28 @@ export function spellCost(
   // "Costs {3} less to cast if an opponent has seven or more cards in their graveyard."
   const opponentGraveyard = def.costReduction?.ifOpponentGraveyardAtLeast;
   if (opponentGraveyard !== undefined && card) {
-    const opponents = s.turnOrder.filter((pid) => pid !== card.owner && !s.players[pid]!.eliminated);
+    const opponents = s.turnOrder.filter((pid) => pid !== payer! && !s.players[pid]!.eliminated);
     if (opponents.some((pid) => s.players[pid]!.graveyard.length >= opponentGraveyard)) cost = reduceGeneric(cost, def.costReduction!.generic);
   }
   if (def.costReduction?.perCount && card) {
-    cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, card.owner));
+    cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, payer!));
   }
   // "Noncreature spells you cast cost {1} less" (Lyse Hext).
   if (card) {
     for (const source of battlefield(s)) {
-      if (source.controller !== card.owner) continue;
+      if (source.controller !== payer!) continue;
       for (const spec of defOf(s, source).statics ?? []) {
         const r = spec.spellCostReduction;
-        if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id }, card.owner, def)) continue;
+        if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id }, payer!, def)) continue;
         // "Spells you cast from your graveyard cost {2} less" (Emet-Selch).
         if (r.fromGraveyard && from !== 'graveyard') continue;
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
-        if (r.nthSpell !== undefined && (s.players[card.owner]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
+        if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         cost = reduceGeneric(cost, r.generic);
       }
     }
   }
+  if (permission?.genericReduction) cost = reduceGeneric(cost, permission.genericReduction);
   return cost;
 }
 
@@ -874,7 +877,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     commander.isCommander && commander.owner === playerId && !commander.phasedOut &&
     !['hand', 'library'].includes(commander.zone) &&
     subtypesOf(s, commander).some(type => def.subtypes?.includes(type)));
-  ctx.ev.push({ type: 'SpellCast', player: playerId, card: id, defId: c.defId, targets, manaSpent,
+  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent,
     ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
   });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
@@ -1845,6 +1848,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, t.player, amount)) moveCard(ctx, id, 'graveyard');
       }
       return;
+    case 'LookAndExileTop': {
+      const top = player(s, item.controller).library[0];
+      if (top) s.pending = { kind: 'exileTop', player: item.controller, card: top };
+      return;
+    }
+    case 'PlayLinkedExile': {
+      const source = sourceOf(item);
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      for (const c of Object.values(s.cards)) {
+        if (c.zone !== 'exile' || c.linkedExile?.source !== source || c.linkedExile.sourceObject !== object) continue;
+        c.castPermission = { player: item.controller, turn: s.turnNumber, genericReduction: amount };
+        c.linkedExile = { ...c.linkedExile, lookers: [...new Set([...c.linkedExile.lookers, item.controller])] };
+      }
+      return;
+    }
     case 'Surveil':
     case 'Scry':
       r.surveilQueue.push(...topOfLibrary(s, item.controller, amount));
@@ -2100,7 +2118,7 @@ function continueResolving(ctx: Ctx): void {
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
     }
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
-    if (s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
+    if (s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -2358,5 +2376,20 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     moveCard(ctx, id, 'graveyard');
   }
   ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
+  continueResolving(ctx);
+}
+
+/** Resolve a private look and optional face-down exile without a public zone-move leak. */
+export function exileTop(ctx: Ctx, playerId: PlayerId, exile: boolean): void {
+  const s = ctx.s, pending = s.pending, r = s.resolving;
+  if (pending.kind !== 'exileTop' || pending.player !== playerId || !r) reject('You have no card to exile.');
+  if (exile && player(s, playerId).library[0] === pending.card) {
+    const source = sourceOf(r.item);
+    const sourceObject = r.item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (r.item.sourceObject ?? 0);
+    moveCard(ctx, pending.card, 'exile', { silent: true });
+    s.cards[pending.card]!.linkedExile = { source, sourceObject, lookers: [playerId] };
+    ctx.ev.push({ type: 'FaceDownExiled', player: playerId, card: pending.card });
+  }
+  s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
   continueResolving(ctx);
 }

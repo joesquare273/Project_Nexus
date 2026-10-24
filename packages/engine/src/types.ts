@@ -195,6 +195,10 @@ export const EFFECT_KINDS = [
   /** Exile the top card of your library; you may play it while you control the source. */
   'ExileTopCardToPlay',
   'Mill',
+  /** Privately look at the top card and optionally exile it face down, linked to this source object. */
+  'LookAndExileTop',
+  /** Until end of turn play this source object's linked cards, reducing generic spell costs by amount. */
+  'PlayLinkedExile',
   /** Look at the top `amount` cards and put any into your graveyard (asks the player). */
   'Surveil',
   /** Look at the top `amount` cards and put any on the bottom of your library (asks the player). */
@@ -542,6 +546,7 @@ export const TRIGGER_EVENTS = [
   'EntersBattlefield',
   'Dies',
   'Attacks',
+  'LandPlayed',
   'SpellCast',
   'CombatDamageToPlayer',
   'BeginCombat',
@@ -651,6 +656,8 @@ export interface TriggerSpec {
   /** Support X: target slots are fixed when the entry trigger is queued. */
   supportX?: boolean;
   when: TriggerEvent;
+  /** The zone a spell was cast or a land was played from. */
+  fromZone?: ZoneName;
   /**
    * Subjects that trigger it. Absent means the card itself ("when this
    * creature enters"). Ignored for BeginCombat and Upkeep.
@@ -1085,6 +1092,8 @@ export interface CardInstance {
   enteredTurn?: number;
   /** Foretold: in exile face down since this turn; only its owner sees it. */
   foretoldTurn?: number;
+  /** Face-down cards linked to the source object that exiled them. */
+  linkedExile?: { source: InstanceId; sourceObject: number; lookers: PlayerId[] };
   /** The value of {X} it was cast with, while it's on the battlefield. */
   xPaid?: number;
   /** A commander (Commander format). Stays true whatever zone it's in. */
@@ -1096,7 +1105,7 @@ export interface CardInstance {
    * (`free`: without paying its mana cost); with `exileAfter`, it's exiled
    * instead of going to the graveyard afterwards.
    */
-  castPermission?: { player: PlayerId; turn: number; free?: boolean; exileAfter?: boolean };
+  castPermission?: { player: PlayerId; turn: number; free?: boolean; exileAfter?: boolean; genericReduction?: number };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;
   /** Cast for its blitz cost. Kept as it dies (for "when this creature dies, draw a card") until it enters again. */
@@ -1399,6 +1408,8 @@ export type Pending =
   | { kind: 'chooseTargets'; player: PlayerId; then: PlayerId }
   /** Answer "you may" (and pay any cost) for the ability on top of the stack. */
   | { kind: 'decide'; player: PlayerId; item: string }
+  /** Privately look at a library card and optionally exile it face down. */
+  | { kind: 'exileTop'; player: PlayerId; card: InstanceId }
   /** Surveil: keep `card` on top of your library, or put it into your graveyard. With `scry`, the bottom of the library instead. */
   | { kind: 'surveil'; player: PlayerId; card: InstanceId; scry?: boolean }
   /**
@@ -1524,6 +1535,7 @@ export type Action =
   | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'Decide'; player: PlayerId; accept: boolean }
+  | { type: 'ExileTop'; player: PlayerId; exile: boolean }
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
   | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }
   | { type: 'CommanderZone'; player: PlayerId; toCommand: boolean }
@@ -1560,6 +1572,8 @@ export type GameEvent =
   | { type: 'CardDrawn'; player: PlayerId; card?: InstanceId; defId?: CardDefId; n?: number }
   | {
       type: 'CardMoved';
+      /** Private identity when a face-down card moves to another hidden zone. */
+      visibleTo?: PlayerId[];
       card?: InstanceId;
       defId?: CardDefId;
       owner: PlayerId;
@@ -1580,7 +1594,9 @@ export type GameEvent =
   | { type: 'CardsUntapped'; player: PlayerId; cards: InstanceId[] }
   | { type: 'ManaAdded'; player: PlayerId; mana: ManaType; source: InstanceId }
   | { type: 'ManaSpent'; player: PlayerId; amounts: Partial<ManaPool> }
-  | { type: 'SpellCast'; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[] }
+  | { type: 'FaceDownExiled'; player: PlayerId; card?: InstanceId }
+  | { type: 'LandPlayed'; player: PlayerId; card: InstanceId; from: ZoneName }
+  | { type: 'SpellCast'; castFrom?: ZoneName; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[] }
   | {
       type: 'AbilityTriggered';
       item: string;

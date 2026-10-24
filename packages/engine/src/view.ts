@@ -111,11 +111,11 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
     };
   }
   const stats: Record<InstanceId, PermanentStats> = {};
-  const surveilled = s.pending.kind === 'surveil' && s.pending.player === viewer ? s.pending.card : null;
+  const surveilled = (s.pending.kind === 'surveil' || s.pending.kind === 'exileTop') && s.pending.player === viewer ? s.pending.card : null;
   // Cards being looked at to choose from ("look at the top seven cards of your library").
   const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer && s.pending.purpose === 'hand' ? s.pending.cards : [];
   for (const c of Object.values(s.cards)) {
-    const faceDown = c.zone === 'exile' && c.foretoldTurn !== undefined && c.owner !== viewer;
+    const faceDown = c.zone === 'exile' && ((c.foretoldTurn !== undefined && c.owner !== viewer) || (c.linkedExile !== undefined && !c.linkedExile.lookers.includes(viewer)));
     const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled || lookingAt.includes(c.id));
     if (visible) cards[c.id] = { ...c };
     if (c.zone === 'battlefield') {
@@ -141,7 +141,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
     pending:
       s.pending.kind === 'chooseCards' && s.pending.purpose === 'handSize' && s.pending.player !== viewer
         ? { ...s.pending, cards: [] }
-        : s.pending.kind === 'surveil' && s.pending.player !== viewer
+        : (s.pending.kind === 'surveil' || s.pending.kind === 'exileTop') && s.pending.player !== viewer
         ? { ...s.pending, card: '' }
         : structuredClone(s.pending),
     stack: structuredClone(s.stack),
@@ -157,6 +157,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
 /** Strips card identities that `viewer` must not learn. */
 export function filterEventsFor(events: readonly GameEvent[], viewer: PlayerId): GameEvent[] {
   return events.map((e) => {
+    if (e.type === 'FaceDownExiled' && e.player !== viewer) return { type: 'FaceDownExiled', player: e.player };
+    if (e.type === 'CardMoved' && e.visibleTo && !e.visibleTo.includes(viewer)) return { type: 'CardMoved', owner: e.owner, from: e.from, to: e.to };
     if (e.type === 'CardDrawn' && e.player !== viewer) {
       return { type: 'CardDrawn', player: e.player };
     }

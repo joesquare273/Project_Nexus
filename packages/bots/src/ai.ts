@@ -23,6 +23,7 @@ import {
   manaValue,
   matchesObject,
   parseManaCost,
+  reduceGeneric,
   powerOf,
   spellEffects,
   spellOptions,
@@ -276,6 +277,20 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: 
     if (e.effect === 'DrawCards' && e.target === 'You') score += amount * 1.5;
     if (e.effect === 'CreateToken') score += amount * 2;
     if (e.effect === 'AddCounters' && e.target === 'EachCreatureYouControl') score += creatures(s, me).length;
+    if (e.effect === 'LookAndExileTop') score += s.players[me]!.library.length > 1 ? 0.5 : -100;
+    if (e.effect === 'PlayLinkedExile') {
+      const linked = Object.values(s.cards).filter(c => c.zone === 'exile' && c.linkedExile?.source === card.id && c.linkedExile.sourceObject === (card.zoneChanges ?? 0) && !(c.castPermission?.player === me && c.castPermission.turn === s.turnNumber));
+      const sorceryTime = s.activePlayer === me && ['main1', 'main2'].includes(s.step) && s.stack.length === 0;
+      const useful = linked.some(c => {
+        // Do not consult identities this controller has never been allowed to see.
+        if (!c.linkedExile!.lookers.includes(me)) return true;
+        const d = def(s, c);
+        if (d.types.includes('land')) return sorceryTime && s.players[me]!.landsPlayedThisTurn < 1;
+        if (!sorceryTime && !d.types.includes('instant') && !d.keywords?.includes('Flash')) return false;
+        return planTaps(s, me, reduceGeneric(parseManaCost(d.manaCost), amount)) !== null;
+      });
+      score += useful ? 2 : -100;
+    }
     if (e.effect === 'Surveil' || e.effect === 'Mill') score += 0.2;
     if (e.effect === 'ModifyPT' && e.target === 'EachOpponentCreature') score += opponents(s, me).length;
   }
@@ -596,6 +611,7 @@ export function basicAi(_seed = 0): Bot {
       const choices = legal.filter((a): a is Extract<Action, { type: 'ChooseDefender' }> => a.type === 'ChooseDefender');
       return choices.sort((a, b) => s.players[a.defender]!.life - s.players[b.defender]!.life)[0]!;
     }
+    if (pending.kind === 'exileTop') return { type: 'ExileTop', player: pending.player, exile: s.players[pending.player]!.library.length > 1 };
     if (pending.kind === 'surveil') return chooseSurveil(s, pending.player, pending.card);
     if (pending.kind === 'chooseLegend') return chooseLegendToKeep(s, pending.player, pending.cards);
     // A commander is almost always worth having back in the command zone.

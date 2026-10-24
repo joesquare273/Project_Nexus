@@ -217,6 +217,8 @@ function effectText(e: EffectSpec): string {
       return 'exile the top card of your library; you may play it for as long as you control this';
     case 'Mill':
       return `mill ${n}`;
+    case 'LookAndExileTop': return 'look at the top card of your library; you may exile it face down';
+    case 'PlayLinkedExile': return 'until end of turn, you may play cards exiled with this; spells cast this way cost {' + n + '} less';
     case 'Surveil':
       return `surveil ${n}`;
     case 'Scry':
@@ -343,6 +345,7 @@ function triggerCondition(t: TriggerSpec): string {
     Dies: 'dies',
     Attacks: 'attacks',
     SpellCast: '',
+    LandPlayed: '',
     CombatDamageToPlayer: 'deals combat damage to a player',
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',
@@ -363,6 +366,8 @@ function triggerCondition(t: TriggerSpec): string {
     const who = t.drawer === 'Opponent' ? 'an opponent draws' : t.drawer === 'You' ? 'you draw' : 'a player draws';
     return `Whenever ${who} a card${t.notOnDrawersTurn ? ", if it isn't that player's turn" : ''}`;
   }
+  if (t.when === 'LandPlayed') return 'Whenever you play a land' + (t.fromZone ? ' from ' + t.fromZone : '');
+  if (t.when === 'SpellCast' && t.fromZone) return 'Whenever you cast a spell from ' + t.fromZone;
   if (!t.what) return `When this ${verb}`;
   if (t.when === 'SpellCast') return `Whenever ${t.what.controller === 'You' ? 'you cast' : 'a player casts'} a ${subjectText({ ...t.what, controller: undefined }, 'spell')}`;
   if (t.oneOrMore) {
@@ -520,6 +525,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return `  ${cardName(s, e.card)} gets ${countersText(e.amount, e.counter)}.`;
     case 'CountersRemoved':
       return `  ${cardName(s, e.card)} loses ${countersText(e.amount, e.counter)}.`;
+    case 'LandPlayed': return '';
+    case 'FaceDownExiled': return '  ' + who(e.player) + ' exiles a card face down.';
     case 'Foretold':
       return `  ${who(e.player)} foretold a card.`;
     case 'PhasedOut':

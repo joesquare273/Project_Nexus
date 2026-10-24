@@ -40,7 +40,7 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
-const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand']);
+const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand', 'PlayLinkedExile']);
 const PLAYER_ONLY_EFFECTS = new Set([
   'DrawCards',
   'GainLife',
@@ -358,6 +358,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep' && t.when !== 'EndStep') {
     e('"turn" is only for BeginCombat, Upkeep and EndStep.');
   }
+  if (t.fromZone !== undefined && (!['hand', 'library', 'graveyard', 'exile', 'command', 'battlefield', 'stack', 'void'].includes(t.fromZone) || !['SpellCast', 'LandPlayed'].includes(t.when))) e('fromZone requires a valid zone and a SpellCast or LandPlayed trigger.');
   if (t.fromGraveyard && t.when !== 'EntersBattlefield') e('"fromGraveyard" is only for EntersBattlefield.');
   if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard') e(`unknown zone "${t.zone}".`);
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');

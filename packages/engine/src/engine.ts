@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
-import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
+import { activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -87,6 +87,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         requirePriority(s, action.player);
         activateAbility(ctx, action.player, action.card, action.ability, action.targets, action.costCards);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      case 'ExileTop':
+        exileTop(ctx, action.player, action.exile);
         break;
       case 'Surveil':
         surveil(ctx, action.player, action.toGraveyard);

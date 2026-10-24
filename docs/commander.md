@@ -8,7 +8,7 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 | Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 99/100 |
 | Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 93/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 96/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 95/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 96/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -52,6 +52,13 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
 
 ## Latest card checkpoint
+
+Urianger Augurelt is built (2026-10-24), including private linked face-down
+exile, turn-limited play permission, generic casting discounts, and life gain
+from spells cast and lands played from exile.
+304 of 320 distinct precon cards are built; 16 remain.
+
+### Previous checkpoint
 
 Setzer, Wandering Gambler and The Falcon, Airship Restored are built
 (2026-10-23), including crew, The Blackjack token, seeded coin flips, tapped

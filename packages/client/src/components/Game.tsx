@@ -569,7 +569,7 @@ export function Game({
     onZone: (player, zone) => setZoneView({ player, zone }),
   };
 
-  const surveilCard = pending.kind === 'surveil' && pending.player === YOU ? pending.card : null;
+  const surveilCard = (pending.kind === 'surveil' || pending.kind === 'exileTop') && pending.player === YOU ? pending.card : null;
 
   // The coach panel: the lesson step, the end of the lesson, or a practice-game tip.
   let coach: ReactNode = null;
@@ -1070,6 +1070,12 @@ function PromptBar(p: PromptProps) {
     buttons = [
       { label: `Leave it in your ${pending.zone}`, onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: false }]) },
       { label: 'Command zone', onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: true }]), primary: true },
+    ];
+  } else if (pending.kind === 'exileTop') {
+    text = 'Draw Arcanum: exile ' + cardName(s, pending.card) + ' face down, or leave it on top?';
+    buttons = [
+      { label: 'Exile face down', onClick: () => p.submit([{ type: 'ExileTop', player: YOU, exile: true }]), primary: true },
+      { label: 'Keep on top', onClick: () => p.submit([{ type: 'ExileTop', player: YOU, exile: false }]) },
     ];
   } else if (pending.kind === 'surveil') {
     const scrying = !!pending.scry;

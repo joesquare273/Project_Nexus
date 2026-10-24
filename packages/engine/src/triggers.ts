@@ -132,9 +132,13 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'CardsUntapped':
         for (const card of e.cards) out.push({ when: 'BecomesUntapped', at, subject: card, subjectController: s.cards[card]!.controller });
         break;
+      case 'LandPlayed':
+        out.push({ when: 'LandPlayed', at, subject: e.card, subjectController: e.player, from: e.from });
+        break;
       case 'SpellCast':
         out.push({
           when: 'SpellCast',
+          from: e.castFrom,
           at,
           subject: e.card,
           subjectController: e.player,
@@ -212,6 +216,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
 
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
+  if (spec.fromZone && spec.fromZone !== o.from) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;

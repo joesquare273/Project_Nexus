@@ -278,6 +278,9 @@ export class GameSession {
     };
     if (e.type === 'CardDrawn') {
       add({ ...(e.card ? { card: e.card } : {}), ...(e.defId ? { defId: e.defId } : {}), fromPlayer: e.player, toPlayer: e.player, from: 'library', to: 'hand' });
+    } else if (e.type === 'FaceDownExiled') {
+      const c = e.card ? this.state.cards[e.card] : undefined;
+      add({ ...(e.card ? { card: e.card } : {}), ...(c ? { defId: c.defId } : {}), fromPlayer: e.player, toPlayer: e.player, from: 'library', to: 'exile' });
     } else if (e.type === 'Foretold') {
       // Face down: only its owner sees which card it is.
       const c = this.state.cards[e.card];

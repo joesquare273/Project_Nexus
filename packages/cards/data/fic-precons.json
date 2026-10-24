@@ -2692,13 +2692,8 @@
           "count": 1,
           "set": "fic",
           "number": "96",
-          "implemented": false,
-          "needs": [
-            "draw-arcanum",
-            "play-arcanum",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Archaeomancer's Map",

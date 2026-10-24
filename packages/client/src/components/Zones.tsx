@@ -622,7 +622,9 @@ export function ExileList({
     if (castable.has(id)) {
       const until = c.playableFromExile?.untilTurn;
       const note =
-        c.foretoldTurn !== undefined
+        c.castPermission?.turn === view.turnNumber && c.castPermission.genericReduction !== undefined
+          ? 'Playable until end of turn; spells cost {' + c.castPermission.genericReduction + '} less'
+          : c.foretoldTurn !== undefined
           ? `Foretold: you may cast it for ${foretell}`
           : until !== undefined
             ? until === view.turnNumber
@@ -632,6 +634,10 @@ export function ExileList({
       now.push({ id, note });
     } else if (c.foretoldTurn !== undefined) {
       foretold.push({ id, note: `Foretold this turn: you may cast it from your next turn for ${foretell}` });
+    } else if (c.linkedExile) {
+      rest.push({ id, note: c.castPermission?.player === view.viewer && c.castPermission.turn === view.turnNumber
+        ? 'Playable until end of turn; spells cost {' + (c.castPermission.genericReduction ?? 0) + '} less. Normal costs and timing apply.'
+        : 'Exiled face down; no play permission this turn' });
     } else if (c.exiledUntilLeaves) {
       held.push({ id, note: `Until ${nameOf(c.exiledUntilLeaves)} leaves the battlefield` });
     } else {
@@ -639,9 +645,9 @@ export function ExileList({
     }
   }
   const sections: ExileSection[] = [
-    { title: 'Cast from exile', hint: 'You may cast these now. Click one to cast it.', cards: now, castable: true },
+    { title: 'Play from exile', hint: 'You may play these now. Click one to play it.', cards: now, castable: true },
     { title: 'Foretold', hint: 'Exiled face down; you may cast them on a later turn for their foretell cost.', cards: foretold },
-    { title: 'Face down', hint: 'Foretold cards only their owner can see.', cards: [], faceDown },
+    { title: 'Face down', hint: 'Cards exiled face down; their identities are private.', cards: [], faceDown },
     { title: 'Exiled until a permanent leaves', hint: 'They come back when it leaves the battlefield.', cards: held },
     { title: 'Exiled', hint: '', cards: rest },
   ].filter((sec) => sec.cards.length > 0 || (sec.faceDown ?? 0) > 0);

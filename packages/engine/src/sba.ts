@@ -217,6 +217,7 @@ function repairPending(ctx: Ctx): void {
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else pending.defenders = pending.defenders.filter((id) => !s.players[id]!.eliminated);
       break;
+    case 'exileTop':
     case 'surveil':
       // The resolving spell or ability left with its controller.
       if (!s.resolving) givePriority(ctx, s.activePlayer);

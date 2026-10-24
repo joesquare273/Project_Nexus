@@ -5,6 +5,30 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-24
 
+### Urianger Augurelt
+
+- Built Draw Arcanum with a private top-card preview and a choice to keep it
+  or exile it face down. Exile identities stay private in player views,
+  movement animations and hidden-zone events.
+- Built Play Arcanum: linked cards may be played until end of turn, with
+  spells costing two generic mana less. Normal timing, colored costs, land
+  limits, X and additional costs still apply. Links remember source object
+  identity across removal, blinking and control changes; resolved permission
+  survives the source leaving. New exiles need another activation.
+- Life gain triggers separately when its controller plays any land or casts
+  any spell from exile, including other exile permissions. Added browser and
+  terminal choices, exile notes, narration and AI decisions. AI avoids
+  spending the tap on known cards it cannot currently play.
+- Added 46 focused scenarios across two, three and four players. All 1,568
+  tests across 68 files pass after serial reruns of the two simulation suites
+  that timed out during the initial run. Type-check and browser production
+  build pass; the existing large-bundle warning remains.
+- Progress: 304/320 distinct precon cards built; 16 remain. Scions & Spellcraft
+  is 96/100.
+
+Rules reference: [Wizards FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes), Urianger Augurelt.
+
+
 ### Tifa, Martial Artist rules and combat audit
 
 - Checked Tifa against Wizards' FINAL FANTASY release notes. Fixed her grouped

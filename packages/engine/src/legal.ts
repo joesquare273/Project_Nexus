@@ -419,6 +419,8 @@ export function getLegalActions(s: GameState): Action[] {
         .filter((cards) => !choiceProblem(s, pending, cards))
         .map((cards): Action => ({ type: 'ChooseCards', player: pending.player, cards }));
 
+    case 'exileTop':
+      return [{ type: 'ExileTop', player: pending.player, exile: false }, { type: 'ExileTop', player: pending.player, exile: true }];
     case 'surveil':
       return [
         { type: 'Surveil', player: pending.player, toGraveyard: false },

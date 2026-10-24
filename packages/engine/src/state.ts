@@ -190,6 +190,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   }
   const toList = zoneList(s, c.owner, to);
   if (toList) toList.push(id);
+  const visibleTo = c.linkedExile && (to === 'hand' || to === 'library') ? [...new Set([...c.linkedExile.lookers, c.owner])] : undefined;
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
   const lastPower = from === 'battlefield' && hasType(s, c, 'creature') ? powerOf(s, c) : undefined;
@@ -223,6 +224,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.extraCountersOnEnter;
   delete c.xPaid;
   delete c.foretoldTurn;
+  delete c.linkedExile;
   delete c.crewed;
   delete c.attachedTo;
   delete c.attachedTimestamp;
@@ -254,6 +256,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (!opts.silent) {
     ctx.ev.push({
       type: 'CardMoved',
+      ...(visibleTo ? { visibleTo } : {}),
       card: id,
       defId: c.defId,
       owner: c.owner,
