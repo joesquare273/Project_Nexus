@@ -42,6 +42,7 @@ import { givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
+  COLORS,
   MANA_TYPES,
   type AbilityItem,
   type AnyCounter,
@@ -193,6 +194,7 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): Eff
   if (choice.alternative && def.alternativeCost?.effects) return def.alternativeCost.effects;
   if (def.modes && def.chooseModes) return [...(choice.modes ?? [])].sort((a, b) => a - b).flatMap((m) => def.modes![m] ?? []);
   if (def.modes) return def.modes[choice.mode ?? 0] ?? [];
+  if (def.enchant) return [{ effect: 'Attach', target: 'TargetPermanent', filter: def.enchant }, ...(def.effects ?? [])];
   return def.effects ?? [];
 }
 
@@ -945,6 +947,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
   if (zone === 'graveyard' && (c.zone !== 'graveyard' || c.owner !== playerId)) return 'That card is not in your graveyard.';
   if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';
+  if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
     return 'That can only be activated in your main phase with an empty stack.';
@@ -1094,6 +1097,7 @@ export function activateAbility(
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
   if (spec.cost.tap) tap(ctx, c);
+  for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
   if (spec.cost.crew !== undefined) for (const crew of costCards) tap(ctx,s.cards[crew]!);
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
@@ -1842,6 +1846,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'AddMana': {
+      const recipient = targets.find(t => t.kind === 'player');
+      if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount };
+      return;
+    }
     case 'Mill':
       for (const t of targets) {
         if (t.kind !== 'player') continue;
@@ -2118,7 +2127,7 @@ function continueResolving(ctx: Ctx): void {
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
     }
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
-    if (s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
+    if (s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -2150,15 +2159,19 @@ export function resolveTop(ctx: Ctx): void {
     const c = s.cards[item.card]!;
     const def = defOf(s, c);
     const permanent = isPermanentCard(def);
-    ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: c.id, fizzled: fizzled && !permanent });
+    ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: c.id, fizzled: fizzled && (!permanent || !!def.enchant) });
     if (permanent) {
+      // An Aura spell needs its target to remain legal before it can enter attached.
+      if (def.enchant && fizzled) { moveCard(ctx,c.id,'graveyard'); givePriority(ctx,s.activePlayer); return; }
       const extra = c.extraCountersOnEnter ?? 0;
-      moveCard(ctx, c.id, 'battlefield');
+      moveCard(ctx, c.id, 'battlefield', { controller: item.controller });
       if (item.x) c.xPaid = item.x;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
+      const host = item.targets[0];
+      if (def.enchant && host?.kind === 'card') attach(ctx,c.id,host.card);
       c.summoningSick = true;
       if (entersTapped(s, c) || item.entersTapped) c.tapped = true;
       addCounters(ctx, c.id, extra, item.controller);
@@ -2390,6 +2403,15 @@ export function exileTop(ctx: Ctx, playerId: PlayerId, exile: boolean): void {
     s.cards[pending.card]!.linkedExile = { source, sourceObject, lookers: [playerId] };
     ctx.ev.push({ type: 'FaceDownExiled', player: playerId, card: pending.card });
   }
+  s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
+  continueResolving(ctx);
+}
+
+/** The player instructed to add mana chooses its color while the ability resolves. */
+export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
+  const s = ctx.s, pending = s.pending;
+  if (pending.kind !== 'chooseMana' || pending.player !== playerId || !s.resolving || !COLORS.includes(mana as never)) reject('Choose a color of mana for the resolving ability.');
+  if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
   s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
   continueResolving(ctx);
 }

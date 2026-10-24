@@ -215,6 +215,7 @@ function effectText(e: EffectSpec): string {
       return `exile ${who} until this leaves the battlefield`;
     case 'ExileTopCardToPlay':
       return 'exile the top card of your library; you may play it for as long as you control this';
+    case 'AddMana': return who + ' adds ' + n + ' mana of any color (chosen when this resolves)';
     case 'Mill':
       return `mill ${n}`;
     case 'LookAndExileTop': return 'look at the top card of your library; you may exile it face down';
@@ -280,6 +281,7 @@ export function activatedText(a: ActivatedSpec): string {
   const cost = [
     a.cost.mana,
     a.cost.tap && '{T}',
+    a.cost.mill && 'mill ' + a.cost.mill + ' card(s)',
     a.cost.exileGraveyard && `exile ${a.cost.exileGraveyard.amount} creature cards from your graveyard`,
     a.cost.life && `pay ${a.cost.life} life`,
     a.cost.sacrificeThis && 'sacrifice this',
@@ -401,6 +403,12 @@ export function rulesSummary(def: CardDefinition): string {
   if (def.entersTapped) parts.push('Enters tapped');
   if (def.costReduction?.perCount) {
     parts.push(`Costs {${def.costReduction.generic}} less for each of the ${COUNT_TEXT[def.costReduction.perCount] ?? def.costReduction.perCount}`);
+  }
+  for (const st of def.statics ?? []) {
+    if (st.noncreatureIfGraveyardBelow !== undefined) parts.push('Not a creature while your graveyard has fewer than ' + st.noncreatureIfGraveyardBelow + ' cards');
+    if (st.setCreatureTypes) parts.push('Enchanted creature is a ' + (st.setColors ?? []).join('/') + ' ' + st.setCreatureTypes.join(' '));
+    if (st.basePowerToughness) parts.push('Base power/toughness ' + st.basePowerToughness.join('/'));
+    if (st.goaded) parts.push('Enchanted creature is goaded');
   }
   for (const e of def.effects ?? []) parts.push(capitalize(effectText(e)));
   if (def.modes && def.chooseModes) {

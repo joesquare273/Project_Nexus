@@ -40,7 +40,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
   const stats = view.stats[id];
   const marks = h.markCard(id);
   const note = h.cardNote(id);
-  const creature = isCreature(def) || !!c.crewed;
+  const creature = stats?.types ? stats.types.includes('creature') : isCreature(def) || !!c.crewed;
   const sick = c.summoningSick && creature && !stats?.keywords.includes('Haste');
   const changed = stats && (stats.power !== def.power || stats.toughness !== def.toughness);
   const indestructible = stats?.keywords.includes('Indestructible');

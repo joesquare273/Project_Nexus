@@ -2,6 +2,7 @@
 // defending player declares their own blockers (PRD 7.4).
 
 import { canPayFromPool, payMana } from './stack.ts';
+import { continuousSources, currentDefinition } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
@@ -52,14 +53,14 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   }
   // Intimidate (rule 702.13): only artifact creatures and creatures that share a color with it.
   if (hasKeyword(s, attacker, 'Intimidate') && !s.cardDefs[blocker.defId]!.types.includes('artifact')) {
-    const colors = colorsOf(s.cardDefs[attacker.defId]!);
-    if (!colorsOf(s.cardDefs[blocker.defId]!).some((c) => colors.includes(c))) return false;
+    const colors = colorsOf(currentDefinition(s, attacker));
+    if (!colorsOf(currentDefinition(s, blocker)).some((c) => colors.includes(c))) return false;
   }
   return true;
 }
 
 export function attackersFor(s: GameState, playerId: PlayerId): CardInstance[] {
-  return s.players[playerId]!.battlefield.map((id) => s.cards[id]!).filter((c) => canAttack(s, c, playerId));
+  return battlefield(s).filter((c) => canAttack(s, c, playerId));
 }
 
 export function canAnyAttack(s: GameState, playerId: PlayerId): boolean {
@@ -69,6 +70,62 @@ export function canAnyAttack(s: GameState, playerId: PlayerId): boolean {
 /** A surviving Promise of Loyalty creature cannot attack the spell's controller. */
 export function canAttackPlayer(s: GameState, c: CardInstance, defender: PlayerId): boolean {
   return !c.vowTo?.includes(defender);
+}
+
+/** Each continuous goad effect imposes attack and defender requirements, rather than a restriction. */
+export function hasGoad(s: GameState): boolean {
+  return continuousSources(s).some(source=>!source.phasedOut && s.cardDefs[source.defId]!.statics?.some(st=>st.goaded));
+}
+
+export function goadedBy(s: GameState, c: CardInstance): PlayerId[] {
+  const players = new Set<PlayerId>();
+  for (const source of continuousSources(s)) {
+    if (source.phasedOut) continue;
+    for (const spec of s.cardDefs[source.defId]!.statics ?? []) {
+      if (spec.goaded && staticAffects(s, source, spec, c)) players.add(source.controller);
+    }
+  }
+  return [...players];
+}
+
+function goadScore(goaders: PlayerId[], defender: PlayerId): number {
+  return goaders.length ? 1 + goaders.filter(p=>p!==defender).length : 0;
+}
+
+/** Best free attacks: a player is never required to pay an attack tax to meet a requirement. */
+export function requiredAttackDefenders(s: GameState, c: CardInstance): PlayerId[] {
+  const goaders = goadedBy(s,c);
+  if (!goaders.length || !canAttack(s,c,c.controller)) return [];
+  const free = alivePlayers(s).filter(p=>p!==c.controller && canAttackPlayer(s,c,p) && attackTaxFor(s,p)===0);
+  const best = Math.max(0,...free.map(p=>goadScore(goaders,p)));
+  return free.filter(p=>goadScore(goaders,p)===best);
+}
+
+/** The attacks must satisfy as many requirements as possible (rule 508.1d). */
+export function attackRequirementProblem(s: GameState, player: PlayerId, attacks: readonly Attack[]): string | null {
+  if (!hasGoad(s)) return null;
+  for (const c of attackersFor(s,player)) {
+    const required = requiredAttackDefenders(s,c);
+    if (!required.length) continue;
+    const attack = attacks.find(a=>a.attacker===c.id);
+    if (!attack) return 'A goaded creature must attack this combat if able.';
+    if (goadScore(goadedBy(s,c),attack.defender) < goadScore(goadedBy(s,c),required[0]!)) return 'A goaded creature must attack a player other than its goader if able.';
+  }
+  return null;
+}
+
+/** Complete a sampled or AI attack with obligatory free attacks, preserving valid chosen defenders. */
+export function completeRequiredAttacks(s: GameState, player: PlayerId, attacks: readonly Attack[]): Attack[] {
+  const out = attacks.map(a=>({...a}));
+  if (!hasGoad(s)) return out;
+  for (const c of attackersFor(s,player)) {
+    const required=requiredAttackDefenders(s,c);
+    if (!required.length) continue;
+    const a=out.find(a=>a.attacker===c.id);
+    if (!a) out.push({attacker:c.id,defender:required[0]!});
+    else if(goadScore(goadedBy(s,c),a.defender)<goadScore(goadedBy(s,c),required[0]!)) a.defender=required[0]!;
+  }
+  return out;
 }
 
 /** What attacking this player costs for each creature (Propaganda, Summon: Yojimbo). */
@@ -101,6 +158,8 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     if (!d || d.eliminated || a.defender === playerId) reject(`"${a.defender}" is not a valid defending player.`);
     if (!canAttackPlayer(s, c, a.defender)) reject('A vow prevents that creature from attacking this player.');
   }
+  const required = attackRequirementProblem(s, playerId, attacks);
+  if (required) reject(required);
   // "Creatures can't attack you unless their controller pays {2} for each" (rule 508.1g).
   const tax = attackTax(s, attacks);
   if (tax > 0) {
@@ -188,6 +247,7 @@ export function declareBlockers(ctx: Ctx, playerId: PlayerId, blocks: Block[]): 
   const combat = s.combat;
   const problem = blockProblem(s, playerId, blocks);
   if (problem) reject(problem);
+  combat.blockedAttackers = [...new Set([...(combat.blockedAttackers ?? []), ...blocks.map(b=>b.attacker)])];
   for (const b of blocks) {
     combat.blocks.push(b);
     ctx.ev.push({ type: 'BlockDeclared', blocker: b.blocker, attacker: b.attacker });
@@ -249,7 +309,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
 
     if (participates(attacker)) {
       let remaining = powerOf(s, attacker);
-      if (declared.length === 0) {
+      if (declared.length === 0 && !combat.blockedAttackers?.includes(attacker.id)) {
         if (defenderAlive) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
       } else {
         const trample = hasKeyword(s, attacker, 'Trample');

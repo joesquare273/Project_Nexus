@@ -6,8 +6,8 @@
 // menace attackers, and "everything at one player", which keeps the list
 // small in pods.
 
-import { spellDefinition } from './cardface.ts';
-import { canAttackPlayer } from './combat.ts';
+import { currentDefinition, spellDefinition } from './cardface.ts';
+import { canAttackPlayer, hasGoad, completeRequiredAttacks, attackRequirementProblem } from './combat.ts';
 import { isEquipment } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
@@ -47,7 +47,7 @@ import { alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices } from './typerules.ts';
-import { MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
+import { COLORS, MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
 const MAX_BOTTOM_CHOICES = 8;
@@ -232,7 +232,7 @@ function availableMana(s: GameState, playerId: PlayerId, improvisedSpell?: CardI
   const p = s.players[playerId]!;
   let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
   for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === playerId)) {
-    const d = s.cardDefs[c.defId]!;
+    const d = currentDefinition(s,c);
     if (c.tapped || c.controller !== playerId) continue;
     if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
     if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d);
@@ -240,7 +240,7 @@ function availableMana(s: GameState, playerId: PlayerId, improvisedSpell?: CardI
   }
   if (improvisedSpell && hasImprovise(s, playerId, improvisedSpell)) available += improviseCandidates(s, playerId)
     .filter((a) => {
-      const d = s.cardDefs[a.defId]!;
+      const d = currentDefinition(s,a);
       const sick = d.types.includes('creature') && a.summoningSick && !hasKeyword(s, a, 'Haste');
       return sick || (manaChoices(s, a).length === 0 && !d.manaAbility?.paid);
     }).length;
@@ -419,6 +419,8 @@ export function getLegalActions(s: GameState): Action[] {
         .filter((cards) => !choiceProblem(s, pending, cards))
         .map((cards): Action => ({ type: 'ChooseCards', player: pending.player, cards }));
 
+    case 'chooseMana':
+      return COLORS.map(mana => ({ type: 'ChooseMana', player: pending.player, mana }));
     case 'exileTop':
       return [{ type: 'ExileTop', player: pending.player, exile: false }, { type: 'ExileTop', player: pending.player, exile: true }];
     case 'surveil':
@@ -450,8 +452,14 @@ export function getLegalActions(s: GameState): Action[] {
           });
         }
       }
-      if (taxed) actions.push(...manaAbilities(s, player));
-      return actions;
+      if (!hasGoad(s)) {
+        if (taxed) actions.push(...manaAbilities(s, player));
+        return actions;
+      }
+      const completed: Action[] = actions.map(a => a.type === 'DeclareAttackers' ? { ...a, attacks: completeRequiredAttacks(s,player,a.attacks) } : a)
+        .filter(a => a.type !== 'DeclareAttackers' || !attackRequirementProblem(s,player,a.attacks));
+      if (taxed) completed.push(...manaAbilities(s, player));
+      return [...new Map(completed.map(a=>[JSON.stringify(a),a])).values()];
     }
 
     case 'declareBlockers':

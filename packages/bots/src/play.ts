@@ -564,6 +564,10 @@ async function playOneGame(gameSeed: number): Promise<void> {
       actions = await decideBottom(s, pending.count);
     } else if (pending.kind === 'chooseCards') {
       actions = await decideCards(s, pending);
+    } else if (pending.kind === 'chooseMana') {
+      const answer = (await ask('  Mana color for ' + pending.recipient + ' (W/U/B/R/G): ')).trim().toUpperCase();
+      const mana = (['W','U','B','R','G'].includes(answer) ? answer : 'W') as 'W'|'U'|'B'|'R'|'G';
+      actions = [{type:'ChooseMana',player:YOU,mana}];
     } else if (pending.kind === 'exileTop') {
       const exile = (await ask('  Exile ' + cardName(s, pending.card) + ' face down? (y/N) ')).toLowerCase() === 'y';
       actions = [{ type: 'ExileTop', player: YOU, exile }];

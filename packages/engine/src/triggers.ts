@@ -363,7 +363,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       // "Do this only once each turn": marked when the cost is paid (see decide).
       if (spec.oncePerTurnWhenPaid && s.triggeredThisTurn.includes(key)) return;
       if (spec.supportX) {
-        const slots = Math.min(c.xPaid ?? 0, battlefield(s).filter(x => x.id !== c.id && s.cardDefs[x.defId]!.types.includes('creature')).length);
+        const slots = Math.min(c.xPaid ?? 0, battlefield(s).filter(x => x.id !== c.id && defOf(s,x).types.includes('creature')).length);
         spec = { ...spec, supportX: false, effects: Array.from({ length: slots }, () => ({ effect: 'AddCounters', amount: 1, target: 'TargetCreature', filter: { other: true }, upTo: true, group: 'support' })) };
       }
       found.push({

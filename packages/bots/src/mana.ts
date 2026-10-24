@@ -2,6 +2,7 @@
 // clients' auto-tapper, so nobody has to tap lands one by one.
 
 import {
+  currentDefinition,
   manaAbilityAmount,
   legendaryManaCreatures,
   grantedManaAbilities,
@@ -54,7 +55,7 @@ export interface TapOptions {
 export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions = {}): CardInstance[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === playerId)
     .filter((c) => {
-      const def = s.cardDefs[c.defId]!;
+      const def = currentDefinition(s,c);
       if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
       if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
@@ -67,7 +68,7 @@ export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions =
  * then sources that hurt (pain lands), Treasure (sacrificed) last.
  */
 function reluctance(s: GameState, c: CardInstance): number {
-  const def = s.cardDefs[c.defId]!;
+  const def = currentDefinition(s,c);
   if (def.manaAbility?.sacrifice) return 100;
   return (def.types.includes('land') ? 0 : 10) + (def.manaAbility?.painFor || def.manaAbility?.lifeFor ? 5 : 0) + manaChoices(s, c).length;
 }
@@ -82,7 +83,7 @@ function amountFrom(s: GameState, c: CardInstance & { grantedBy?: InstanceId }):
 export function paidManaSources(s: GameState, playerId: PlayerId): CardInstance[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === playerId)
     .filter((c) => {
-      const def = s.cardDefs[c.defId]!;
+      const def = currentDefinition(s,c);
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !!def.manaAbility?.paid && !c.tapped && c.controller === playerId && !sick;
     });

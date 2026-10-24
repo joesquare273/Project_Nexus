@@ -1038,12 +1038,8 @@
           "count": 1,
           "set": "fic",
           "number": "99",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sun Titan",
@@ -2591,13 +2587,8 @@
           "count": 1,
           "set": "fic",
           "number": "44",
-          "implemented": false,
-          "needs": [
-            "enchant",
-            "goad",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fandaniel, Telophoroi Ascian",

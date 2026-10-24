@@ -5,6 +5,44 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-24
 
+### Eye of Nidhogg and The Warring Triad
+
+- Built Eye of Nidhogg: the enchanted creature becomes a black Dragon with
+  base power/toughness 4/2, flying, deathtouch and continuous goad. Other card
+  types, their subtypes, supertypes, existing abilities and counters remain.
+  Later base setters or subtype additions use their timestamps. Eye returns
+  to its owner's hand after leaving the battlefield for a graveyard.
+- Added normal Aura spell targets and attached entry. An Aura whose target
+  becomes illegal goes directly to its graveyard without entering or firing
+  a battlefield-to-graveyard trigger. Existing non-targeted Aura attachment
+  during reanimation remains supported.
+- Goad now requires eligible creatures to attack while maximizing defender
+  requirements, accounts for multiple goaders and vows, and never forces
+  payment of an attack tax. Sampled legal actions and AI attacks include
+  obligatory attackers, including creatures controlled but not owned.
+- Built The Warring Triad: it is a creature only at eight or more cards in
+  its controller's graveyard while on the battlefield. Its targeted mana
+  ability mills as a cost, uses the stack, and asks its recipient for a color
+  on resolution. It cannot be used as an immediate mana ability when paying.
+- Losing creature status or leaving the battlefield removes the object from
+  combat permanently. An attacker remains blocked after its blocker leaves.
+  Entry replacements use the intended controller, and death information is
+  captured before the move changes graveyard counts.
+- Battlefield P/T and inspector types reflect current creature status;
+  goader labels and mana-color choices are exposed through the browser view.
+- Added 85 focused rules and browser-session/rendering scenarios across
+  two, three and four players. The mulligan fixture explicitly marks its
+  test card unbuilt so future card completion does not invalidate that test.
+- Validation: type-check, 1,653 tests across 70 files, and browser production
+  build pass. The two four-player simulations that timed out concurrently
+  passed serial reruns; all Commander game cases also passed again after the
+  mana-recipient correction. Existing large-bundle warning remains.
+- Progress: 306/320 distinct precon cards built; 14 remain. Revival Trance
+  is 94/100 and Scions & Spellcraft is 97/100.
+
+Rules reference: [Wizards FINAL FANTASY release notes](https://magic.wizards.com/en/news/feature/final-fantasy-release-notes), Eye of Nidhogg and The Warring Triad.
+
+
 ### Urianger Augurelt
 
 - Built Draw Arcanum with a private top-card preview and a choice to keep it

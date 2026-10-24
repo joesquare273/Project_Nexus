@@ -5,6 +5,7 @@
 
 import {
   canAttackPlayer,
+  completeRequiredAttacks,
   currentDefinition,
   spellDefinition,
   queuedTriggerSpec,
@@ -242,6 +243,11 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: 
       const attacking=s.activePlayer===me && ['main1','beginCombat'].includes(s.step) && (!card.summoningSick || has(s,card,'Haste'));
       const defending=s.activePlayer!==me && s.step==='declareAttackers' && s.combat?.attacks.some(a=>a.defender===me);
       return attacking || defending ? 2 + power(s,card)/2 - (a.costCards??[]).reduce((n,id)=>n+value(s,s.cards[id]!)*0.2,0) : -100;
+    }
+    if (effects.some(e=>e.effect==='AddMana')) {
+      if (targets[0]?.kind !== 'player' || targets[0].player !== me) return -100;
+      const canUse = s.players[me]!.hand.some(id=>!def(s,s.cards[id]!).types.includes('land'));
+      return canUse ? 0.25 : -1;
     }
     if (effects.some((e) => e.effect === 'Attach')) return scoreEquip(s, me, card, targets[0]);
     if (effects.some((e) => e.effect === 'SearchLibraryToHand')) return needsLand(s, me) ? 3 : -1;
@@ -588,13 +594,13 @@ export function basicAi(_seed = 0): Bot {
     }
     if (pending.kind === 'declareAttackers') {
       const me = pending.player;
-      let attacks = chooseAttacks(s, me, memory);
+      let attacks = completeRequiredAttacks(s, me, chooseAttacks(s, me, memory));
       // Propaganda and friends: tap for the tax first, or leave out the attacks it can't pay for.
       const tax = attackTax(s, attacks);
       if (tax > 0) {
         const taps = planTaps(s, me, { generic: tax });
         if (taps && taps.length > 0) return tapActions(me, taps)[0]!;
-        if (!taps) attacks = attacks.filter((a) => attackTaxFor(s, a.defender) === 0);
+        if (!taps) attacks = completeRequiredAttacks(s, me, attacks.filter((a) => attackTaxFor(s, a.defender) === 0));
       }
       return { type: 'DeclareAttackers', player: me, attacks };
     }
@@ -607,6 +613,12 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;
     if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
+    if (pending.kind === 'chooseMana') {
+      const recipient = s.players[pending.recipient]!;
+      const want = (pending.recipient === pending.player ? recipient.hand : []).flatMap(id=>{ const cost=parseManaCost(def(s,s.cards[id]!).manaCost); return ['W','U','B','R','G'].filter(k=>(cost[k as 'W']??0)>recipient.manaPool[k as 'W']); });
+      const mana = (want[0] ?? 'W') as 'W'|'U'|'B'|'R'|'G';
+      return { type:'ChooseMana',player:pending.player,mana };
+    }
     if (pending.kind === 'chooseDefender') {
       const choices = legal.filter((a): a is Extract<Action, { type: 'ChooseDefender' }> => a.type === 'ChooseDefender');
       return choices.sort((a, b) => s.players[a.defender]!.life - s.players[b.defender]!.life)[0]!;

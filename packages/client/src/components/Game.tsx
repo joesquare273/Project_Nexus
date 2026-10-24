@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
+  COLORS,
   abilityOptions,
   activatedAbilities,
   attackTax,
@@ -515,7 +516,9 @@ export function Game({
       if (attachedTo) return `⚔ ${cardName(s, attachedTo)}`;
       if (defOf(view.cards[id]!.defId).crew !== undefined) return view.cards[id]!.crewed ? 'Crewed until end of turn' : `Crew ${defOf(view.cards[id]!.defId).crew}`;
       const st = view.stats[id];
+      if (st?.types && !st.types.includes('creature') && defOf(view.cards[id]!.defId).types.includes('creature')) return 'Not a creature';
       if (st?.cantBeBlocked) return "Can't be blocked";
+      if (st?.goadedBy?.length) return 'Goaded by ' + st.goadedBy.join(', ');
       if (st?.mustBeBlocked) return 'Must be blocked';
       return null;
     },
@@ -1071,6 +1074,9 @@ function PromptBar(p: PromptProps) {
       { label: `Leave it in your ${pending.zone}`, onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: false }]) },
       { label: 'Command zone', onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: true }]), primary: true },
     ];
+  } else if (pending.kind === 'chooseMana') {
+    text = 'Choose a color of mana to add.';
+    buttons = COLORS.map(mana=>({label:'Add {' + mana + '}',onClick:()=>p.submit([{type:'ChooseMana',player:YOU,mana}])}));
   } else if (pending.kind === 'exileTop') {
     text = 'Draw Arcanum: exile ' + cardName(s, pending.card) + ' face down, or leave it on top?';
     buttons = [
@@ -1085,8 +1091,10 @@ function PromptBar(p: PromptProps) {
       { label: 'Keep on top', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: false }]), primary: true },
     ];
   } else if (pending.kind === 'declareAttackers') {
+    const goaded = Object.values(p.view.stats).some(st=>st.goadedBy?.length);
     const many = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated).length > 1;
     text = `Declare attackers: click your creatures to attack${many ? ` ${p.currentDefender} (click an opponent to switch)` : ''}.`;
+    if (goaded) text += ' Goaded creatures must attack and avoid their goader when able.';
     const all = new Map([...p.canAttackIds].filter((id) => canAttackPlayer(s, s.cards[id]!, p.attackers.get(id) ?? p.currentDefender)).map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
     const declare = (m: Map<InstanceId, PlayerId>) => {
       const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender }));

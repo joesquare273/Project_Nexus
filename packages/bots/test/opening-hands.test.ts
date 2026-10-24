@@ -29,7 +29,7 @@ for(const players of [2,3,4])describe(players+'-player opening policy',()=>{
  });
  it('does not count uncastable ramp as mana support',()=>expect(keep(fixture(players,[B,B,'rampant-growth','solemn-simulacrum',...BIG.slice(0,3)]))).toBe(false));
  it('does not count conditional lands that cannot yet produce mana',()=>expect(keep(fixture(players,['temple-of-the-false-god','temple-of-the-false-god','temple-of-the-false-god','mind-stone',...BIG.slice(0,3)]))).toBe(false));
- it('does not treat unbuilt noncreature cards as early plays',()=>expect(keep(fixture(players,[B,B,B,'eye-of-nidhogg',...BIG.slice(0,3)]))).toBe(false));
+ it('does not treat unbuilt noncreature cards as early plays',()=>{const s=fixture(players,[B,B,B,'eye-of-nidhogg',...BIG.slice(0,3)]);s.cardDefs={...s.cardDefs,'eye-of-nidhogg':{...s.cardDefs['eye-of-nidhogg']!,notBuilt:true}};expect(keep(s)).toBe(false);});
  it('includes an accessible commander in the opening plan',()=>{
   const s=fixture(players,['plains',U,G,...BIG]);s.format={...s.format,commander:true};put(s,'P1','tidus-yunas-guardian','command',{isCommander:true});expect(keep(s)).toBe(true);
  });

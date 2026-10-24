@@ -3,8 +3,8 @@
 // counters. Every rule that asks about power, toughness, keywords or
 // subtypes goes through here, so a buff only has to be described once.
 //
-// Simplified layers: type changes only add subtypes, ability changes only add
-// keywords; base power/toughness setters use timestamps, then additive
+// Type and color changes use timestamps in cardface.ts. Ability changes add
+// or remove keywords; base power/toughness setters use timestamps, then additive
 // modifiers and counters apply in their own layers.
 
 import { currentDefinition } from './cardface.ts';
@@ -182,14 +182,7 @@ function staticSources(s: GameState): CardInstance[] {
 
 /** Layer 4 subtype additions, independent of ability and power/toughness evaluation. */
 export function subtypesOf(s: GameState, c: CardInstance): string[] {
-  const subtypes = new Set(def(s, c).subtypes ?? []);
-  if (c.zone === 'battlefield') for (const source of staticSources(s)) {
-    for (const spec of def(s, source).statics ?? []) {
-      if (!spec.addSubtypes || spec.affects === 'EachMatching' || (spec.zone ?? 'battlefield') !== source.zone || staticApplies(s, source, spec) !== c.id) continue;
-      for (const subtype of spec.addSubtypes) subtypes.add(subtype);
-    }
-  }
-  return [...subtypes];
+  return [...(def(s, c).subtypes ?? [])];
 }
 
 /** Whether a static ability of `source` applies to `c`. */

@@ -12,11 +12,13 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
   const def = defOf(c.defId);
   const info = scryfallOf(c.defId,c.printing);
   const stats = c.zone === 'battlefield' ? view.stats[c.id] : undefined;
+  const creature = stats?.types ? stats.types.includes('creature') : isCreature(def) || !!c.crewed;
   const indestructible = stats?.keywords.includes('Indestructible');
   const status = [
     c.zone === 'battlefield' && c.tapped && 'Tapped',
     c.zone === 'battlefield' && c.damage > 0 && `${c.damage} damage`,
-    c.zone === 'battlefield' && c.summoningSick && (isCreature(def) || c.crewed) && 'Summoning sick',
+    c.zone === 'battlefield' && c.summoningSick && creature && 'Summoning sick',
+    stats?.goadedBy?.length && 'Goaded by ' + stats.goadedBy.join(', '),
   ].filter(Boolean);
   return (
     <div key={id} className="inspector" aria-live="polite">
@@ -27,7 +29,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
         <div className="inspector-title">
           <strong>{def.name}</strong> <ManaCost cost={def.manaCost} />
         </div>
-        <div className="inspector-type">{info?.typeLine ?? typeLine(def)}</div>
+        <div className="inspector-type">{stats?.types ? typeLine({ ...def, types: stats.types, subtypes: stats.subtypes }) : info?.typeLine ?? typeLine(def)}</div>
         <p className="inspector-rules">{rulesText(def)}</p>
         {def.notBuilt && (
           <p className="inspector-not-built">
@@ -36,7 +38,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
               : "Not built yet: this card can't be cast until its abilities are built."}
           </p>
         )}
-        {(isCreature(def) || c.crewed) && (
+        {creature && (
           <div className="inspector-pt">
             {stats?.power ?? def.power}/{stats?.toughness ?? def.toughness}
           </div>

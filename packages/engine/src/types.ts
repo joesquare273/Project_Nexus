@@ -194,6 +194,7 @@ export const EFFECT_KINDS = [
   'ExileUntilSourceLeaves',
   /** Exile the top card of your library; you may play it while you control the source. */
   'ExileTopCardToPlay',
+  'AddMana',
   'Mill',
   /** Privately look at the top card and optionally exile it face down, linked to this source object. */
   'LookAndExileTop',
@@ -732,6 +733,8 @@ export interface TriggerSpec {
 /** A non-mana activated ability: "[cost]: [effect]" (rule 602). */
 export interface ActivatedSpec {
   cost: {
+    /** Mill this many cards as a cost; a full payment requires that many cards in the library. */
+    mill?: number;
     /** Tap other creatures with at least this much total power (crew). */
     crew?: number;
     /** Exile this many matching cards from your graveyard as a cost. */
@@ -770,6 +773,14 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** Layer 4: this object is not a creature while its controller has fewer graveyard cards. */
+  noncreatureIfGraveyardBelow?: number;
+  /** Replace creature subtypes, preserving subtypes of other card types. */
+  setCreatureTypes?: string[];
+  /** Layer 5: replace all colors. */
+  setColors?: Color[];
+  /** This affected creature is goaded by this source's controller. */
+  goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
   /** The source's controller has no maximum hand size (Thought Vessel). */
@@ -1384,6 +1395,8 @@ export interface Block {
 }
 
 export interface CombatState {
+  /** Being blocked persists even after every blocker leaves combat. */
+  blockedAttackers?: InstanceId[];
   /** Declared defenders remain counted after attackers leave or opponents concede. */
   declaredOpponents?: Record<PlayerId, PlayerId[]>;
   damageStep?: 'first' | 'regular';
@@ -1398,6 +1411,7 @@ export interface CombatState {
 
 /** Whose decision the game is waiting on. */
 export type Pending =
+  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number }
   | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[] }
   | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
@@ -1535,6 +1549,7 @@ export type Action =
   | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'Decide'; player: PlayerId; accept: boolean }
+  | { type: 'ChooseMana'; player: PlayerId; mana: Color }
   | { type: 'ExileTop'; player: PlayerId; exile: boolean }
   | { type: 'Surveil'; player: PlayerId; toGraveyard: boolean }
   | { type: 'ChooseLegend'; player: PlayerId; keep: InstanceId }

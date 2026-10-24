@@ -6,9 +6,9 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
 | Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 99/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 93/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 94/100 |
 | Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 96/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 96/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 97/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -52,6 +52,13 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
 
 ## Latest card checkpoint
+
+Eye of Nidhogg and The Warring Triad are built (2026-10-24), including
+Aura spell targeting, type/color changes, continuous goad, threshold-based
+creature status, and Triad's counterable targeted mana ability with a mill cost.
+306 of 320 distinct precon cards are built; 14 remain.
+
+### Previous checkpoint
 
 Urianger Augurelt is built (2026-10-24), including private linked face-down
 exile, turn-limited play permission, generic casting discounts, and life gain

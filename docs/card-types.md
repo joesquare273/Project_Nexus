@@ -35,7 +35,7 @@ Card abilities name these groupings directly. In a trigger's `what` filter,
 | **Land** | Permanent, not a spell | Played once per turn (305.2). Mana abilities don't use the stack (605). Basic land types (Plains, Island, Swamp, Mountain, Forest) give "{T}: Add [mana]" on their own (305.6). | Built |
 | **Creature** | Permanent spell | Can attack and block. Summoning sickness: can't attack or use {T} abilities until you've controlled it since your most recent turn began (302.6). Dies from lethal damage, deathtouch damage or 0 toughness (704.5f–h). Damage wears off in the cleanup step. | Built |
 | **Artifact** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Artifact creatures are both. Equipment (an artifact subtype) has its own rules, see below. | Built |
-| **Enchantment** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Auras have their own rules (Later). | Built |
+| **Enchantment** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Aura spells target a legal enchanted object and enter attached; illegal targets prevent entry. | Built |
 | **Instant** | Nonpermanent spell | Cast any time you have priority, even on other players' turns and in response to other spells (304). | Built |
 | **Sorcery** | Nonpermanent spell | Cast only in your own main phase with an empty stack (307.1). | Built |
 | **Planeswalker** | Permanent spell | Loyalty abilities; damage removes loyalty (306). | Later |
@@ -59,7 +59,7 @@ you have priority.
 Most subtypes (creature types like Human or Moogle, land types like Town)
 carry no rules themselves; card text refers to them. A few do: Equipment
 (equip, "equipped creature", falls off when the creature leaves; built),
-Treasure ("{T}, Sacrifice: add one mana of any color"; built) and Aura (Later). Subtypes in card data are checked
+Treasure ("{T}, Sacrifice: add one mana of any color"; built) and Aura (targeted casting and legal attachment built). Subtypes in card data are checked
 against Scryfall's official lists (`packages/cards/data/types.json`) to
 catch typos.
 

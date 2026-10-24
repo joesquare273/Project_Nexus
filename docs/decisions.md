@@ -121,7 +121,7 @@ choices keep opponents' hand identities hidden.
 | "One or more" batches | One batch is everything that happened in one action | One batch per simultaneous event |
 | Leaves-the-battlefield look-back | Anything that left the battlefield during the action sees every death in it | Only things that left at the same time (rule 603.10a) |
 | Beatrix, Loyal General | "You may attach any number of Equipment": all of them or none | Any subset |
-| Layers | P/T, keyword and subtype changes are all additive, applied together | Full layer and timestamp order (rule 613) |
+| Layers | Type/color and base P/T setters use timestamps; counters and P/T modifiers apply after base setters. Keyword removal still wins over grants | Full dependency and layer/timestamp order, including ability removal (rule 613) |
 | Sacrifice the greatest power (Crackling Doom) | On a tie, the creature that has been on the battlefield longest is sacrificed | The player chooses among the tied creatures |
 | Path to Exile | The exiled creature's controller always searches for a basic land | Searching is optional ("may") |
 | Explorer's Scope | A land on top of the library is always put onto the battlefield | Optional ("you may") |
@@ -248,3 +248,33 @@ First-combat-only extra combat effects also check the active player against
 the ability controller. Tifa untaps in later combats but adds phases only
 during the first combat of her controller's turn. Attack AI rewards a new safe
 defender when melee is present, after its lethal and defensive priorities.
+
+## Changing creature status, goad and targeted mana (2026-10-24)
+
+Type and color changes are evaluated in cardface.ts from the printed static
+abilities and attachment timestamps; power/toughness and keywords remain in
+characteristics.ts. Creature subtype replacements preserve subtypes associated
+with other types. The creature vocabulary is copied from the cached type list.
+This supports Eye of Nidhogg and Triad, without claiming a full layer-dependency
+engine. Keyword removal ordering remains a documented simplification.
+The per-state source index invalidates on battlefield size, timestamps, and
+definition-map changes; controller, attachment and graveyard conditions are
+read live. Future copy mechanics must also invalidate it when changing which
+objects supply these static abilities.
+
+Goad is an attack requirement rather than a prohibition. The declaration
+validator compares attainable free defender choices and maximizes requirements;
+it never obliges payment of Propaganda or another attack cost. Legal-action
+samples and AI complete obligatory attacks through the same helper. A blocked
+attacker remembers that status even after its blocker leaves combat.
+
+Targeted AddMana effects use ordinary activated abilities and a resolving
+ChooseMana prompt controlled by the player adding the mana. They cannot be used
+inside payment as mana abilities. Mill costs are paid at activation; countering
+an ability does not refund them. This is separate from Millikin's immediate,
+non-targeted mana ability.
+
+Triad's mana recipient chooses the color, including when the recipient differs
+from the activating player. This was cross-checked against the
+[XMage implementation](https://github.com/magefree/mage/blob/master/Mage.Sets/src/mage/cards/t/TheWarringTriad.java).
+A recipient conceding during the choice skips the mana and resumes resolution.

@@ -18,6 +18,8 @@ import {
   emptyManaPool,
   hasKeyword,
   moveCard,
+  removeFromCombat,
+  isCreatureOnBattlefield,
   putIntoGraveyard,
   sacrifice,
   reject,
@@ -85,6 +87,9 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
   let eliminatedAny = false;
   for (;;) {
     let changed = false;
+    if (s.combat) for (const id of new Set([...s.combat.attacks.map(a=>a.attacker), ...s.combat.blocks.map(b=>b.blocker)])) {
+      if (!isCreatureOnBattlefield(s,s.cards[id])) removeFromCombat(s,id);
+    }
     // Toughness and damage are checked all at once, then the permanents leave together (rule 704.3).
     const zeroToughness: string[] = [];
     const lethal: string[] = [];
@@ -216,6 +221,10 @@ function repairPending(ctx: Ctx): void {
     case 'chooseDefender':
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else pending.defenders = pending.defenders.filter((id) => !s.players[id]!.eliminated);
+      break;
+    case 'chooseMana':
+      if (!s.resolving) givePriority(ctx, s.activePlayer);
+      else if (s.players[pending.player]!.eliminated) { givePriority(ctx, s.activePlayer); resumeResolving(ctx); }
       break;
     case 'exileTop':
     case 'surveil':

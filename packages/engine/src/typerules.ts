@@ -168,7 +168,7 @@ export function canReveal(s: GameState, c: CardInstance, controller: string = c.
  */
 export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): boolean {
   // Authority of the Consuls: "Creatures your opponents control enter tapped."
-  if (s.cardDefs[c.defId]!.types.includes('creature')) {
+  if (currentDefinition(s,c).types.includes('creature')) {
     for (const pid of s.turnOrder) {
       if (pid === c.controller) continue;
       for (const id of s.players[pid]!.battlefield) {
@@ -195,7 +195,7 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
 export function legendaryManaCreatures(s: GameState, source: CardInstance): CardInstance[] {
   if (source.zone !== 'battlefield' || source.phasedOut || !s.cardDefs[source.defId]!.manaAbility?.tapLegendaryCreature) return [];
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === source.controller && !c.tapped &&
-    s.cardDefs[c.defId]!.types.includes('creature') && isLegendary(s.cardDefs[c.defId]!));
+    currentDefinition(s,c).types.includes('creature') && isLegendary(s.cardDefs[c.defId]!));
 }
 
 /** Active permanents whose abilities apply to their controller. */
@@ -209,12 +209,12 @@ export function canCastLibraryTop(s: GameState, player: string, c: CardInstance,
   if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id || !definition.types.includes('creature')) return false;
   return librarySources(s, player).some((source) => {
     const host = source.attachedTo ? s.cards[source.attachedTo] : undefined;
-    return s.cardDefs[source.defId]!.castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && s.cardDefs[host.defId]!.types.includes('creature');
+    return s.cardDefs[source.defId]!.castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && currentDefinition(s,host).types.includes('creature');
   });
 }
 /** Each entry is an ability of the equipped creature, distinct from its printed mana abilities. */
 export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[] }[] {
-  if (c.zone !== 'battlefield' || c.phasedOut || !s.cardDefs[c.defId]!.types.includes('creature')) return [];
+  if (c.zone !== 'battlefield' || c.phasedOut || !currentDefinition(s,c).types.includes('creature')) return [];
   return Object.values(s.cards).filter((equipment) => equipment.zone === 'battlefield' && !equipment.phasedOut && equipment.attachedTo === c.id)
     .flatMap((equipment) => (s.cardDefs[equipment.defId]!.statics ?? []).filter((spec) => spec.affects === 'EquippedCreature' && spec.grantsMana)
       .map((spec) => ({ source: equipment.id, mana: spec.grantsMana! })));

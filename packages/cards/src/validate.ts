@@ -40,8 +40,9 @@ const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
-const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand', 'PlayLinkedExile']);
+const AMOUNT_EFFECTS = new Set(['DealDamage', 'DrawCards', 'GainLife', 'LoseLife', 'AddCounters', 'CreateToken', 'Mill', 'Surveil', 'Scry', 'LookAtTopPutInHand', 'PlayLinkedExile', 'AddMana']);
 const PLAYER_ONLY_EFFECTS = new Set([
+  'AddMana',
   'DrawCards',
   'GainLife',
   'LoseLife',
@@ -398,6 +399,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
 function validateActivated(a: ActivatedSpec, err: Err): void {
   const e: Err = (msg) => err(`activated ability: ${msg}`);
   validateCost(a.cost?.mana, e);
+  if (a.cost?.mill !== undefined && (!isNonNegativeInt(a.cost.mill) || a.cost.mill === 0)) e('mill needs a positive whole-number cost.');
   if (a.cost?.exileGraveyard) {
     const cost = a.cost.exileGraveyard;
     if (!isNonNegativeInt(cost.amount) || cost.amount === 0) e('exileGraveyard needs a positive whole-number amount.');
@@ -421,6 +423,10 @@ function validateActivated(a: ActivatedSpec, err: Err): void {
 
 function validateStatic(st: StaticSpec, err: Err): void {
   const e: Err = (msg) => err(`static ability: ${msg}`);
+  if (st.noncreatureIfGraveyardBelow !== undefined && (st.affects !== 'Self' || !isNonNegativeInt(st.noncreatureIfGraveyardBelow) || st.noncreatureIfGraveyardBelow === 0)) e('noncreatureIfGraveyardBelow needs a positive whole number on Self.');
+  if ((st.setColors || st.setCreatureTypes) && (st.affects === 'EachMatching' || st.zone)) e('type/color setters need a battlefield Self or EquippedCreature ability.');
+  for (const color of st.setColors ?? []) if (!COLORS.includes(color)) e('unknown setColors color.');
+  for (const sub of st.setCreatureTypes ?? []) if (!typeLists.creature.includes(sub)) e('unknown creature subtype.');
   if (st.firstFriendlyTargetActivationDiscount !== undefined && (!isNonNegativeInt(st.firstFriendlyTargetActivationDiscount) || st.affects !== 'Self')) e('activation discount needs a whole number on a Self static ability.');
   if (st.affects !== 'Self' && st.affects !== 'EquippedCreature' && st.affects !== 'EachMatching') {
     e('affects must be "Self", "EquippedCreature" or "EachMatching".');

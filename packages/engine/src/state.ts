@@ -174,10 +174,12 @@ function zoneList(s: GameState, owner: PlayerId, zone: ZoneName): InstanceId[] |
  * A card that changes zones becomes a new object, so its per-object state
  * resets. Emits CardMoved unless `silent` is set (draws emit CardDrawn).
  */
-export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean; sacrificed?: boolean } = {}): void {
+export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean; sacrificed?: boolean; controller?: PlayerId } = {}): void {
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
+  const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
+  const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
   delete c.graveyardCastTurn;
   c.zoneChanges = (c.zoneChanges ?? 0) + 1;
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
@@ -193,7 +195,6 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const visibleTo = c.linkedExile && (to === 'hand' || to === 'library') ? [...new Set([...c.linkedExile.lookers, c.owner])] : undefined;
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
-  const lastPower = from === 'battlefield' && hasType(s, c, 'creature') ? powerOf(s, c) : undefined;
   const lastCounters = from === 'battlefield' ? Object.fromEntries(allCounters(c)) : undefined;
   if (from === 'battlefield') {
     for (const item of [...s.stack, ...s.triggerQueue, ...(s.resolving ? [s.resolving.item] : [])]) {
@@ -201,14 +202,13 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       if ('source' in item && item.source === id && (item.sourceObject ?? 0) === c.zoneChanges! - 1) item.lastSourceCounterKinds = allCounters(c).length;
     }
   }
-  const lastTypes = from === 'battlefield' ? [...defOf(s,c).types] : undefined;
   const lastKeywords = from === 'battlefield' ? [...characteristics(s, c).keywords] : undefined;
   if (from === 'graveyard') player(s, c.owner).cardLeftGraveyardTurn = s.turnNumber;
   if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
     s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
   }
-  if (from === 'battlefield' && to === 'graveyard' && hasType(s, c, 'creature')) s.creaturesDiedThisTurn += 1;
+  if (from === 'battlefield' && to === 'graveyard' && lastTypes?.includes('creature')) s.creaturesDiedThisTurn += 1;
   c.zone = to;
   if (to === 'graveyard') c.graveyardArrival = { turn: s.turnNumber, from };
   else delete c.graveyardArrival;
@@ -216,7 +216,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   c.summoningSick = false;
   c.damage = 0;
   c.deathtouched = false;
-  c.controller = c.owner;
+  c.controller = to === 'battlefield' ? (opts.controller ?? c.owner) : c.owner;
   delete c.counters;
   delete c.namedCounters;
   delete c.vowTo;
@@ -325,6 +325,7 @@ export function phaseInFor(ctx: Ctx, controller: PlayerId): void {
 /** Things that happen the moment a permanent leaves the battlefield. */
 function leftBattlefield(ctx: Ctx, id: InstanceId): void {
   const s = ctx.s;
+  removeFromCombat(s,id);
   if (s.temporaryEffects.length > 0) s.temporaryEffects = s.temporaryEffects.filter((e) => e.affected !== id);
   // Phased-out Equipment counts too: it isn't in the battlefield list, but it's still attached.
   const phasedOut = s.turnOrder.flatMap((pid) => (s.players[pid]!.phasedOut ?? []).map((x) => s.cards[x]!));
@@ -612,4 +613,13 @@ export function discard(ctx: Ctx, id: InstanceId): void {
   const c = ctx.s.cards[id]!;
   moveCard(ctx, id, 'graveyard');
   ctx.ev.push({ type: 'Discarded', player: c.owner, card: id });
+}
+
+/** An object leaving combat never rejoins merely by returning or becoming a creature again. */
+export function removeFromCombat(s: GameState, id: InstanceId): void {
+  const combat = s.combat;
+  if (!combat) return;
+  combat.blockedAttackers = [...new Set([...(combat.blockedAttackers ?? []), ...combat.blocks.map(b=>b.attacker)])];
+  combat.attacks = combat.attacks.filter(a=>a.attacker!==id);
+  combat.blocks = combat.blocks.filter(b=>b.attacker!==id && b.blocker!==id);
 }
