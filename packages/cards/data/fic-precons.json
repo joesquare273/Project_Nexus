@@ -868,10 +868,8 @@
           "count": 1,
           "set": "fic",
           "number": "43",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "The Falcon, Airship Restored",
@@ -2485,11 +2483,8 @@
           "count": 1,
           "set": "fic",
           "number": "26",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tataru Taru",
@@ -2520,13 +2515,8 @@
           "count": 1,
           "set": "fic",
           "number": "35",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "job-select",
-            "spirit-of-the-whalaqee",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hermes, Overseer of Elpis",

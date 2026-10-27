@@ -222,6 +222,12 @@ function effectText(e: EffectSpec): string {
     case 'Mill':
       return `mill ${n}`;
     case 'LookAndExileTop': return 'look at the top card of your library; you may exile it face down';
+    case 'ExileGraveyardsCopyCreature':
+      return "exile each opponent's graveyard; you may create a token that's a copy of a creature card exiled this way, except it's an artifact";
+    case 'CreateDelayedTrigger':
+      return 'until end of turn, a delayed triggered ability';
+    case 'ExileAndCopyToCast':
+      return `exile ${who}; you may cast a copy of it${e.castCost ? ` by paying ${e.castCost}` : ''}`;
     case 'ExileUntilFound':
       return `${who} exiles cards from the top of their library until they exile a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; you may cast it without paying its mana cost`;
     case 'ExileRandomFromOpponentGraveyards':

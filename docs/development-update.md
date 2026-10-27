@@ -5,6 +5,27 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-27
 
+### Copies: Espers to Magicite, Summon: Good King Mog XII, Blue Mage's Cane
+
+- Espers to Magicite exiles each opponent's graveyard, then you may choose
+  a creature card exiled this way for a token copy that's only an artifact
+  (it loses the creature type, its creature subtypes and its power and
+  toughness, and keeps its name, abilities and supertypes).
+- Summon: Good King Mog XII (Saga IV): I makes two 1/2 Moogles with
+  lifelink; II and III set up a delayed trigger for the turn ("whenever you
+  cast a noncreature spell this turn, create a token that's a copy of a
+  non-Saga token you control"); IV puts two +1/+1 counters on each other
+  Moogle you control.
+- Blue Mage's Cane: job select, +0/+2 and Wizard. When the equipped creature
+  attacks, up to one instant or sorcery card from the defending player's
+  graveyard is exiled and you may cast a copy of it for {3}, at any time
+  that turn.
+- Engine: real delayed triggered abilities (`delayedTriggers`, rule 603.7)
+  that last until the end of the turn and work after their source leaves;
+  cast permissions can carry a replacement cost.
+- Added 15 focused checks across 2, 3 and 4 players.
+- Progress: 317/320 distinct precon cards built; 3 remain.
+
 ### Casting exiled cards for free: Strago and Relm, Kefka, Esper Valigarmanda, Fight Rigging
 
 - Strago and Relm: target opponent exiles from the top until an instant,

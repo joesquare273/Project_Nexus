@@ -179,6 +179,7 @@ export function cleanupDamage(ctx: Ctx): void {
   }
   // "Until end of turn" effects end at the same time (rule 514.2); "for as long as" effects go on.
   ctx.s.temporaryEffects = ctx.s.temporaryEffects.filter((e) => e.whileControlledBy && effectLasts(ctx.s, e));
+  if (ctx.s.delayedTriggers?.length) ctx.s.delayedTriggers = ctx.s.delayedTriggers.filter((d) => d.turn > ctx.s.turnNumber);
   ctx.s.combat = null;
   emptyAllManaPools(ctx.s);
 }

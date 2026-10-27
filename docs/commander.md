@@ -53,6 +53,14 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 
 ## Latest card checkpoint
 
+Espers to Magicite, Summon: Good King Mog XII and Blue Mage's Cane are built
+(2026-10-27): an artifact token copy of an exiled creature card, token
+copies from a delayed "this turn" trigger, and a copy of an instant or
+sorcery cast for {3}. 317 of 320 distinct precon cards are built; 3 remain:
+Yuffie, Materia Hunter, Sin, Unending Cataclysm and Observed Stasis.
+
+### Previous checkpoint
+
 Strago and Relm, Kefka, Dancing Mad, Summon: Esper Valigarmanda and Fight
 Rigging are built (2026-10-27): each casts or plays an exiled card without
 paying its mana cost (Esper Valigarmanda: with mana of any type). Fight
@@ -166,7 +174,7 @@ needing several groups' pieces waits for the last of them.
 | Extra costs and random choices | **8 built (2026-10-22):** Rite of Replication (kicker), Everflowing Chalice (multikicker), Collective Effort (escalate), Cloud's Limit Break (tiered), Umaro and Summon: Magus Sisters (choose one at random), Thancred Waters, Krile Baldesion. |
 | X costs | **5 built (2026-10-22):** Walking Ballista, Exsanguinate, Pull from Tomorrow, Champions from Beyond, Yuna's Whistle. Blitzball Stadium was built with temporary combat triggers; Altered Ego came with entering as a copy. |
 | Alternate commanders and one-offs | **12 built (2026-10-22):** Tifa, Martial Artist; G'raha Tia, Scion Reborn; Stitcher's Supplier, Authority of the Consuls, Rise of the Dark Realms, Shelinda, Auron, Gyre Sage, Fathom Mage, Path of Discovery, Anger, Vincent. |
-| Sagas | **3 built (2026-10-22):** Summon: Kujata, Summon: Ixion, Summon: Valefor (Yojimbo and Magus Sisters came with later steps). Esper Valigarmanda came with the exile-casting group (2026-10-27); Good King Mog XII still waits. |
+| Sagas | **3 built (2026-10-22):** Summon: Kujata, Summon: Ixion, Summon: Valefor (Yojimbo and Magus Sisters came with later steps). Esper Valigarmanda and Good King Mog XII came with the 2026-10-27 groups. |
 | Counterspells and attack taxes | **3 built (2026-10-22):** An Offer You Can't Refuse, Propaganda, Summon: Yojimbo. |
 | Foretell | **3 built (2026-10-22):** Ultimate Magic: Holy, Ultimate Magic: Meteor, Lifestream's Blessing. |
 | Equipment and one-offs, part 2 | **10 built (2026-10-23):** Wrecking Ball Arm, Conformer Shuriken, Conqueror's Flail, Dancer's Chakrams, Astrologian's Planisphere, Phoenix Down, Yuna's Decision, Cait Sith, Furious Rise, Avalanche of Sector 7. |
@@ -182,5 +190,5 @@ needing several groups' pieces waits for the last of them.
 | Adventures | **3 built (2026-10-23):** Hypnotic Sprite, Murderous Rider, Hildibrand Manderville. Full Adventure casting, exile follow-up, Rider death trigger, and Hildibrand token anthem and graveyard permission. |
 | Battlefield copies | **2 built (2026-10-24):** Gogo, Mysterious Mime and Kimahri, Valiant Guardian. Copiable values, retained exceptions, stacked copy durations, copied abilities and browser choices. |
 | Entering as a copy | **1 built (2026-10-24):** Altered Ego. |
-| Remaining one-offs | 6 distinct cards remain (2026-10-27), including a Saga, an Aura with flash and Equipment. |
+| Remaining one-offs | 3 distinct cards remain (2026-10-27): ninjutsu (Yuffie), counters removed as Sin enters, and an Aura with flash. |
 | Everything else | |

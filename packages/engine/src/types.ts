@@ -203,6 +203,19 @@ export const EFFECT_KINDS = [
    */
   'ExileUntilFound',
   /**
+   * Exile each opponent's graveyard; you may choose a creature card exiled
+   * this way and create a token that's a copy of it, except it's an artifact
+   * and loses its other card types (Espers to Magicite).
+   */
+  'ExileGraveyardsCopyCreature',
+  /** A delayed triggered ability (`trigger`) for the rest of this turn ("whenever you cast a noncreature spell this turn, ..."). */
+  'CreateDelayedTrigger',
+  /**
+   * Exile the target card; you may cast a copy of it this turn by paying
+   * `castCost` rather than its mana cost (Blue Mage's Cane).
+   */
+  'ExileAndCopyToCast',
+  /**
    * Exile a card at random from each opponent's graveyard; you may cast the
    * spells among them this turn without paying their mana costs, at any time
    * you have priority, and each one's owner loses life equal to its mana
@@ -562,6 +575,8 @@ export interface EffectSpec {
   free?: boolean;
   /** AddMana: this type, without a choice ("add {R} for each lore counter"). */
   manaType?: ManaType;
+  /** ExileAndCopyToCast: the cost paid rather than the mana cost ("{3}"). */
+  castCost?: string;
   /** ExileUntilFound: a creature cast this way gains haste and is sacrificed at the beginning of the next end step. */
   hasteSacrifice?: boolean;
   /** GrantLinkedExileCast: mana of any type can be spent to cast it. */
@@ -1192,6 +1207,8 @@ export interface CardInstance {
     ignoreTiming?: boolean;
     hasteSacrifice?: boolean;
     ownerLosesLife?: boolean;
+    /** Paid rather than its mana cost (Blue Mage's Cane: {3}). */
+    manaCost?: string;
   };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;
@@ -1460,7 +1477,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1581,6 +1598,8 @@ export interface GameState {
   triggersHeld?: boolean;
   /** Triggered abilities waiting to go on the stack, in APNAP order. */
   triggerQueue: QueuedTrigger[];
+  /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
+  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec }[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
   triggeredThisTurn: string[];
   /** "Until end of turn" effects. */

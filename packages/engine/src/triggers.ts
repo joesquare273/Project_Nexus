@@ -398,6 +398,22 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       if (sawIt) consider(c, m.controller ?? c.owner, 'battlefield', o);
     }
     for (const c of inGraveyards) consider(c, c.owner, 'graveyard', o);
+    // Delayed triggers work even after their source has left (rule 603.7).
+    for (const d of s.delayedTriggers ?? []) {
+      if (d.turn !== s.turnNumber || s.players[d.controller]!.eliminated || !triggersOn(d.spec, o, s, d.source, d.controller)) continue;
+      found.push({
+        spec: structuredClone(d.spec),
+        source: d.source,
+        sourceObject: d.sourceObject,
+        ability: -1,
+        controller: d.controller,
+        sourceZone: 'battlefield',
+        ...(o.subjectController ? { subjectController: o.subjectController } : {}),
+        ...(o.defender ? { defender: o.defender } : {}),
+        ...(o.subject ? { subject: o.subject } : {}),
+        ...(o.amount !== undefined ? { amount: o.amount } : {}),
+      });
+    }
   }
 
   // APNAP order. Each player's own triggers keep the order they were found in.

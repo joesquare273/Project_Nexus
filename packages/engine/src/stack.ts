@@ -67,6 +67,9 @@ import {
   type TriggerSpec,
 } from './types.ts';
 
+/** Artifact types' subtypes, kept when a copy becomes only an artifact. */
+const ARTIFACT_SUBTYPES = new Set(['Equipment', 'Vehicle', 'Treasure', 'Food', 'Clue', 'Gold', 'Blood', 'Map', 'Powerstone', 'Junk']);
+
 /** Sorcery timing: your own main phase with an empty stack. */
 export function canActAtSorcerySpeed(s: GameState, playerId: PlayerId): boolean {
   return (
@@ -698,6 +701,8 @@ export function spellCost(
   const way = from === 'graveyard' && card ? extra.castGroup ? 'group' : extra.graveyardSource ? 'static' : graveyardWay(s, payer!, card, extra.adventure) : null;
   const base = permission?.free
     ? undefined
+    : permission?.manaCost
+      ? permission.manaCost
     : alternative
       ? def.alternativeCost?.mana
       : way === 'flashback'
@@ -1927,6 +1932,35 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (top) s.pending = { kind: 'exileTop', player: item.controller, card: top };
       return;
     }
+    case 'ExileGraveyardsCopyCreature': {
+      const creatures: InstanceId[] = [];
+      for (const pid of alivePlayers(s)) {
+        if (pid === item.controller) continue;
+        for (const id of [...s.players[pid]!.graveyard]) {
+          moveCard(ctx, id, 'exile');
+          if (defOf(s, s.cards[id]!).types.includes('creature')) creatures.push(id);
+        }
+      }
+      // "When you do, choose up to one target creature card exiled this way."
+      if (creatures.length > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'artifactCopy', cards: creatures, min: 0, max: 1 }];
+      return;
+    }
+    case 'CreateDelayedTrigger': {
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!) }];
+      return;
+    }
+    case 'ExileAndCopyToCast':
+      for (const id of cards) {
+        const c = s.cards[id]!;
+        if (c.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'exile');
+        if (!isSpellCard(defOf(s, c))) continue;
+        // The copy is cast from exile and then ceases to exist; casting the
+        // exiled card and returning it to exile stands in for that.
+        c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ignoreTiming: true, ...(effect.castCost ? { manaCost: effect.castCost } : {}) };
+      }
+      return;
     case 'ExileUntilFound':
       for (const pid of targetPlayers(targets)) {
         const library = s.players[pid]!.library;
@@ -2462,6 +2496,21 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const nonland = cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
       for (const id of r.conniving.slice(0, nonland)) addCounters(ctx, id, 1, pending.player);
       delete r.conniving;
+    }
+  } else if (pending.purpose === 'artifactCopy') {
+    for (const id of cards) {
+      const original = s.cards[id]!;
+      const def = s.cardDefs[original.defId]!;
+      // "Except it's an artifact and it loses all other card types" (and the subtypes that go with them).
+      const definition = structuredClone(def);
+      definition.types = ['artifact'];
+      const artifactSubtypes = (def.subtypes ?? []).filter((t) => ARTIFACT_SUBTYPES.has(t));
+      if (artifactSubtypes.length) definition.subtypes = artifactSubtypes;
+      else delete definition.subtypes;
+      delete definition.power;
+      delete definition.toughness;
+      const printing = original.printing ?? def.printing;
+      createToken(ctx, original.defId, pending.player, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
     }
   } else if (pending.purpose === 'hideaway') {
     const source = sourceOf(r.item);
