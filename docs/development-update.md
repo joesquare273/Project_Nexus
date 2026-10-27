@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-27
 
+### Packs tab: Collector Boosters
+
+- Collector Boosters open in the Packs tab: 15 cards and a foil token with
+  Wizards' slot odds: 3 foil commons, 3 foil uncommons, two Booster Fun
+  commons/uncommons, a foil basic, a foil rare, three Booster Fun rares
+  (including the Commander set's extended-art and borderless cards, at most
+  one foil), a Through the Ages card and a premium foil or surge foil rare
+  with a tiny chance of a Traveling Chocobo. Scene Box cards are a foil
+  outcome of the premium slot (about 3.8%). See [packs.md](packs.md).
+- New binder group: Commander Booster Fun.
+
 ### Packs tab: Final Fantasy Play Boosters
 
 - New **Packs** tab on the menu: open Final Fantasy Play Boosters, flip

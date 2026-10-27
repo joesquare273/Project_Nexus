@@ -22,9 +22,9 @@ const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready:
   {
     kind: 'collector',
     title: 'Collector Booster',
-    blurb: '15 cards packed with foils, extended art, borderless showcases and chase Chocobos.',
+    blurb: '15 cards and a foil token: 8+ foils, extended art, borderless showcases, Through the Ages and chase Chocobos.',
     art: 'Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel',
-    ready: false,
+    ready: true,
   },
 ];
 
@@ -184,6 +184,7 @@ function Odds({ mod, kind, onClose }: { mod: Boosters; kind: PackKind; onClose: 
         ))}
         <p className="fineprint">
           Odds follow Wizards of the Coast's published Final Fantasy booster odds. Scene Box cards aren't in real boosters; they're added here at small odds.
+          {kind === 'collector' && ' At most one of the three Booster Fun rare slots is foil.'}
         </p>
         <button className="primary" onClick={onClose}>
           Close
@@ -386,6 +387,10 @@ const GROUPS: { name: string; test: (c: BoosterCard) => boolean }[] = [
   { name: 'Main set', test: (c) => c.set === 'fin' && !!c.booster },
   { name: 'Booster Fun', test: (c) => c.set === 'fin' && !c.booster && !c.promoTypes?.includes('starterdeck') },
   { name: 'Through the Ages', test: (c) => c.set === 'fca' },
+  {
+    name: 'Commander Booster Fun',
+    test: (c) => c.set === 'fic' && ((parseInt(c.number, 10) >= 101 && parseInt(c.number, 10) <= 219) || (parseInt(c.number, 10) >= 466 && parseInt(c.number, 10) <= 482)) && !c.promoTypes?.includes('buyabox'),
+  },
   { name: 'Scene Box', test: (c) => c.set === 'afic' || (c.set === 'fic' && parseInt(c.number, 10) >= 442 && parseInt(c.number, 10) <= 465) },
   { name: 'Tokens and art cards', test: (c) => c.set === 'tfin' || c.set === 'afin' },
 ];

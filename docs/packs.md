@@ -49,9 +49,33 @@ Our choices, where Wizards' figures don't map directly:
   borderless rare and mythic odds.
 - The wildcard's "rare or mythic 16.7%" is split 7:1 like the rare slot.
 
-## Collector Booster
+## Collector Booster (built 2026-10-27)
 
-Next step (shown as "Coming next" in the tab).
+15 Magic cards and a foil token:
+
+| Slot | Contents |
+|---|---|
+| 3 foil commons | Main-set commons and common dual lands |
+| 3 foil uncommons | Main-set uncommons; the 14 Cid variants together as often as one uncommon |
+| Booster Fun common or uncommon | Extended-art legendary uncommon 66.7%, borderless common 5% or uncommon 26.7%, Secret Rendezvous alternate art 1.6% |
+| Foil Booster Fun common or uncommon | Foil borderless common 13.75% or uncommon 72.75%, foil Secret Rendezvous 4.5%, surge foil borderless uncommon 9% |
+| Foil basic land | A full-art basic |
+| Foil rare or mythic | Rare 87.75%, mythic 12.25% |
+| 3 Booster Fun rares or mythics | Borderless and extended-art FIN cards, and the Commander set's extended-art and borderless cards (about half the time), at Wizards' odds; at most one of the three is foil, and they never repeat |
+| Through the Ages | Uncommon 68.3%, rare 25.7%, mythic 6%; foil half the time |
+| Premium rare or mythic | Foil borderless rare 70% or mythic 11.6%, surge foil borderless rare 15.1% or mythic 3%, Traveling Chocobo or Chocobo track foil 0.29%, serialized golden Traveling Chocobo 0.01%, foil Scene Box card (ours) |
+| Foil token | Foil double-sided token 90%, surge foil token 10% (ours) |
+
+Our choices, where Wizards' figures don't map directly:
+
+- **Scene Box cards** are a foil outcome of the premium slot, weighted 4
+  against the other outcomes' 100 (about 3.8%).
+- Wizards lists the three Booster Fun rare slots as one set of outcomes; each
+  of the three slots uses those odds.
+- The premium slot's "Final Fantasy artist" foils are folded into the foil
+  borderless odds, and the Chocobos' "under 1%" is 0.29% (colorful and track
+  foils) plus 0.01% (golden).
+- Surge foil tokens (10% of token slots) aren't in Wizards' list.
 
 ## The tab
 
@@ -66,7 +90,7 @@ Next step (shown as "Coming next" in the tab).
   foils a rainbow one. "Skip" jumps to the summary.
 - **Summary:** the whole pack, with NEW badges for first copies.
 - **Collection:** a binder by group (main set, Booster Fun, Through the
-  Ages, Scene Box, tokens and art cards) with completion counts; missing
+  Ages, Commander Booster Fun, Scene Box, tokens and art cards) with completion counts; missing
   cards are greyed out.
 - **Saving:** in this browser's local storage (`nexus.packs.collection.v1`).
   It doesn't follow you to the other computer.

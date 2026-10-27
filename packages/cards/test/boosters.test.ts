@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOSTER_CARDS, PLAY_BOOSTER, buildSheets, openPack, packOdds } from '../src/boosters.ts';
+import { BOOSTER_CARDS, COLLECTOR_BOOSTER, PLAY_BOOSTER, buildSheets, openPack, packOdds } from '../src/boosters.ts';
 
 /** A small seeded generator (mulberry32), so the tests are repeatable. */
 function seeded(seed: number) {
@@ -70,5 +70,52 @@ describe('Play Booster', () => {
     const odds = packOdds('play', sheets);
     expect(odds.reduce((n, s) => n + s.count, 0)).toBe(PLAY_BOOSTER.length);
     for (const s of odds) expect(s.outcomes.reduce((n, x) => n + x.percent, 0)).toBeCloseTo(100, 6);
+  });
+});
+
+describe('Collector Booster', () => {
+  it('holds 15 Magic cards and a foil token, at least 8 of them foil, with at most one foil Booster Fun rare', () => {
+    const rng = seeded(3);
+    for (let i = 0; i < 300; i++) {
+      const pack = openPack('collector', rng, sheets);
+      expect(pack.cards).toHaveLength(16);
+      expect(pack.cards.slice(0, 15).filter((p) => p.finish !== 'nonfoil').length).toBeGreaterThanOrEqual(8);
+      const funRares = pack.cards.slice(10, 13);
+      expect(funRares.filter((p) => p.finish !== 'nonfoil').length).toBeLessThanOrEqual(1);
+      expect(new Set(funRares.map((p) => p.card.id)).size).toBe(3);
+      expect(pack.cards.slice(0, 3).every((p) => p.finish === 'foil' && p.card.rarity === 'common')).toBe(true);
+      expect(pack.cards[13]!.card.set).toBe('fca');
+      expect(pack.cards[15]!.card.set).toBe('tfin');
+      expect(pack.cards[15]!.finish).not.toBe('nonfoil');
+    }
+  });
+
+  it('pulls about the printed odds over many packs', () => {
+    const rng = seeded(5);
+    const n = 3000;
+    let surgePremium = 0, foilTta = 0, commanderFun = 0;
+    for (let i = 0; i < n; i++) {
+      const pack = openPack('collector', rng, sheets);
+      if (pack.cards[14]!.finish === 'surge') surgePremium++;
+      if (pack.cards[13]!.finish === 'foil') foilTta++;
+      commanderFun += pack.cards.slice(10, 13).filter((p) => p.card.set === 'fic').length;
+    }
+    // Premium slot: 18.1% surge foil (of 104 weight, with our Scene Box 4).
+    expect(surgePremium / n).toBeGreaterThan(0.14);
+    expect(surgePremium / n).toBeLessThan(0.21);
+    expect(foilTta / n).toBeGreaterThan(0.45);
+    expect(foilTta / n).toBeLessThan(0.55);
+    // Each Booster Fun rare slot is a Commander card about half the time.
+    expect(commanderFun / (3 * n)).toBeGreaterThan(0.4);
+    expect(commanderFun / (3 * n)).toBeLessThan(0.6);
+  });
+
+  it('has no empty outcome, and odds that add up to 100% per slot', () => {
+    const odds = packOdds('collector', sheets);
+    expect(odds.reduce((n, s) => n + s.count, 0)).toBe(COLLECTOR_BOOSTER.length);
+    for (const s of odds) {
+      expect(s.outcomes.reduce((n, x) => n + x.percent, 0)).toBeCloseTo(100, 6);
+      for (const x of s.outcomes) expect(x.cards, x.label).toBeGreaterThan(0);
+    }
   });
 });

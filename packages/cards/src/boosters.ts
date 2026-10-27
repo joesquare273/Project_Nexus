@@ -79,8 +79,9 @@ export interface Sheets {
   /** Surge foil borderless characters: FIN 519–550. */
   surge: Record<'uncommon' | 'rare' | 'mythic', BoosterCard[]>;
   throughTheAges: Record<'uncommon' | 'rare' | 'mythic', BoosterCard[]>;
-  /** The Commander set's Booster Fun cards found in Collector Boosters (extended art and borderless). */
-  commanderFun: Record<'rare' | 'mythic', BoosterCard[]>;
+  /** The Commander set's Booster Fun cards found in Collector Boosters: extended art (101–193) and borderless (194–208). */
+  commanderExtended: Record<'rare' | 'mythic', BoosterCard[]>;
+  commanderBorderless: Record<'rare' | 'mythic', BoosterCard[]>;
   /** The Commander set's surge foil borderless mythics. */
   commanderSurge: BoosterCard[];
   /** Secret Rendezvous alternate arts. */
@@ -114,7 +115,8 @@ export function buildSheets(cards: readonly BoosterCard[] = BOOSTER_CARDS): Shee
     extended: byRarity(fin.filter((c) => c.frameEffects?.includes('extendedart') && num(c) >= 421 && num(c) <= 518), ['uncommon', 'rare', 'mythic'] as const),
     surge: byRarity(fin.filter((c) => num(c) >= 519 && num(c) <= 550 && promo(c, 'surgefoil')), ['uncommon', 'rare', 'mythic'] as const),
     throughTheAges: byRarity(cards.filter((c) => c.set === 'fca'), ['uncommon', 'rare', 'mythic'] as const),
-    commanderFun: byRarity(fic.filter((c) => num(c) >= 101 && num(c) <= 208 && promo(c, 'boosterfun') && !promo(c, 'surgefoil')), ['rare', 'mythic'] as const),
+    commanderExtended: byRarity(fic.filter((c) => num(c) >= 101 && num(c) <= 193 && promo(c, 'boosterfun')), ['rare', 'mythic'] as const),
+    commanderBorderless: byRarity(fic.filter((c) => num(c) >= 194 && num(c) <= 208 && promo(c, 'boosterfun')), ['rare', 'mythic'] as const),
     commanderSurge: fic.filter((c) => num(c) >= 209 && num(c) <= 216),
     rendezvous: fic.filter((c) => num(c) >= 217 && num(c) <= 219),
     chocobo: [
@@ -226,15 +228,100 @@ export const PLAY_BOOSTER: Slot[] = [
   },
 ];
 
-export const BOOSTERS: Record<PackKind, Slot[]> = { play: PLAY_BOOSTER, collector: [] };
+const FOIL_COMMON: Slot = { name: 'Foil common', outcomes: [o('Foil common', 80, (s) => s.commons, 'foil'), o('Foil common dual land', 10, (s) => s.commonLands, 'foil')] };
+// "Each of the 15 Cid variants appears 1/15 as often as any other uncommon": together, as often as one uncommon.
+const FOIL_UNCOMMON: Slot = { name: 'Foil uncommon', outcomes: [o('Foil uncommon', 109, (s) => s.uncommons, 'foil'), o('Foil Cid variant', 1, (s) => s.cid, 'foil', 1)] };
+/** At most one of the three Booster Fun rare slots is foil (see openPack). */
+const BOOSTER_FUN_RARE: Slot = {
+  name: 'Booster Fun rare or mythic',
+  outcomes: [
+    o('Borderless rare', 23.1, (s) => s.borderless.rare, 'nonfoil', 2),
+    o('Borderless mythic', 3.8, (s) => s.borderless.mythic, 'nonfoil', 3),
+    o('Extended-art rare', 18.2, (s) => s.extended.rare, 'nonfoil', 2),
+    o('Extended-art mythic', 2.9, (s) => s.extended.mythic, 'nonfoil', 3),
+    o('Commander borderless rare', 2.9, (s) => s.commanderBorderless.rare, 'nonfoil', 2),
+    o('Commander borderless mythic', 3.3, (s) => s.commanderBorderless.mythic, 'nonfoil', 3),
+    o('Commander extended-art rare', 35.2, (s) => s.commanderExtended.rare, 'nonfoil', 2),
+    o('Commander extended-art mythic', 1.6, (s) => s.commanderExtended.mythic, 'nonfoil', 3),
+    o('Foil borderless rare', 1.4, (s) => s.borderless.rare, 'foil', 2),
+    o('Foil Commander extended-art rare', 5.8, (s) => s.commanderExtended.rare, 'foil', 2),
+    o('Foil Commander extended-art mythic', 0.8, (s) => s.commanderExtended.mythic, 'foil', 3),
+    o('Surge foil Commander mythic', 1, (s) => s.commanderSurge, 'surge', 3),
+  ],
+};
+
+/** Collector Booster: 15 Magic cards and a foil token (Wizards' odds; Scene Box cards and surge tokens are ours). */
+export const COLLECTOR_BOOSTER: Slot[] = [
+  FOIL_COMMON,
+  FOIL_COMMON,
+  FOIL_COMMON,
+  FOIL_UNCOMMON,
+  FOIL_UNCOMMON,
+  FOIL_UNCOMMON,
+  {
+    name: 'Booster Fun common or uncommon',
+    outcomes: [
+      o('Extended-art legendary uncommon', 66.7, (s) => s.extended.uncommon, 'nonfoil', 1),
+      o('Borderless common', 5, (s) => s.borderless.common, 'nonfoil', 1),
+      o('Borderless uncommon', 26.7, (s) => s.borderless.uncommon, 'nonfoil', 1),
+      o('Secret Rendezvous alternate art', 1.6, (s) => s.rendezvous, 'nonfoil', 1),
+    ],
+  },
+  {
+    name: 'Foil Booster Fun common or uncommon',
+    outcomes: [
+      o('Foil borderless common', 13.75, (s) => s.borderless.common, 'foil', 1),
+      o('Foil borderless uncommon', 72.75, (s) => s.borderless.uncommon, 'foil', 1),
+      o('Foil Secret Rendezvous alternate art', 4.5, (s) => s.rendezvous, 'foil', 1),
+      o('Surge foil borderless uncommon', 9, (s) => s.surge.uncommon, 'surge', 2),
+    ],
+  },
+  { name: 'Foil basic land', outcomes: [o('Foil basic land', 1, (s) => s.basics, 'foil')] },
+  {
+    name: 'Foil rare or mythic',
+    outcomes: [o('Foil rare', 87.75, (s) => s.rares, 'foil', 1), o('Foil mythic', 12.25, (s) => s.mythics, 'foil', 2)],
+  },
+  BOOSTER_FUN_RARE,
+  BOOSTER_FUN_RARE,
+  BOOSTER_FUN_RARE,
+  {
+    name: 'Through the Ages',
+    outcomes: [
+      o('Through the Ages uncommon', 34.15, (s) => s.throughTheAges.uncommon, 'nonfoil', 1),
+      o('Foil Through the Ages uncommon', 34.15, (s) => s.throughTheAges.uncommon, 'foil', 1),
+      o('Through the Ages rare', 12.85, (s) => s.throughTheAges.rare, 'nonfoil', 2),
+      o('Foil Through the Ages rare', 12.85, (s) => s.throughTheAges.rare, 'foil', 2),
+      o('Through the Ages mythic', 3, (s) => s.throughTheAges.mythic, 'nonfoil', 3),
+      o('Foil Through the Ages mythic', 3, (s) => s.throughTheAges.mythic, 'foil', 3),
+    ],
+  },
+  {
+    name: 'Premium rare or mythic',
+    outcomes: [
+      o('Foil borderless rare', 70, (s) => s.borderless.rare, 'foil', 2),
+      o('Foil borderless mythic', 11.6, (s) => s.borderless.mythic, 'foil', 3),
+      o('Surge foil borderless rare', 15.1, (s) => s.surge.rare, 'surge', 3),
+      o('Surge foil borderless mythic', 3, (s) => s.surge.mythic, 'surge', 3),
+      o('Traveling Chocobo or Chocobo track foil', 0.29, (s) => s.chocobo, 'foil', 3),
+      o('Serialized golden Traveling Chocobo', 0.01, (s) => s.goldenChocobo, 'foil', 3),
+      o('Foil Scene Box card', 4, (s) => s.scene, 'foil', 3),
+    ],
+  },
+  {
+    name: 'Foil token',
+    outcomes: [o('Foil double-sided token', 90, (s) => s.tokens, 'foil'), o('Surge foil token', 10, (s) => s.surgeTokens, 'surge', 1)],
+  },
+];
+
+export const BOOSTERS: Record<PackKind, Slot[]> = { play: PLAY_BOOSTER, collector: COLLECTOR_BOOSTER };
 
 function pick<T>(rng: Rng, items: readonly T[]): T {
   return items[Math.min(items.length - 1, Math.floor(rng() * items.length))]!;
 }
 
-/** Draws one outcome by weight, skipping outcomes whose sheet is empty. */
-export function rollSlot(slot: Slot, sheets: Sheets, rng: Rng): Pull {
-  const live = slot.outcomes.filter((x) => x.sheet(sheets).length > 0);
+/** Draws one outcome by weight, skipping outcomes whose sheet is empty (and, with `nonfoilOnly`, foil ones). */
+export function rollSlot(slot: Slot, sheets: Sheets, rng: Rng, nonfoilOnly = false): Pull {
+  const live = slot.outcomes.filter((x) => x.sheet(sheets).length > 0 && (!nonfoilOnly || x.finish === 'nonfoil'));
   const total = live.reduce((n, x) => n + x.weight, 0);
   let roll = rng() * total;
   const outcome = live.find((x) => (roll -= x.weight) < 0) ?? live.at(-1)!;
@@ -249,14 +336,21 @@ export function rollSlot(slot: Slot, sheets: Sheets, rng: Rng): Pull {
 
 let cachedSheets: Sheets | undefined;
 
-/** Opens one pack. In a pack, no card repeats within the commons or within the uncommons (as in print). */
+/**
+ * Opens one pack. Slots of the same kind (the commons, the uncommons, the
+ * three Booster Fun rares) never repeat a card, as in print, and at most one
+ * of the Booster Fun rares is foil.
+ */
 export function openPack(kind: PackKind, rng: Rng = Math.random, sheets: Sheets = (cachedSheets ??= buildSheets())): Pack {
+  const slots = BOOSTERS[kind];
   const cards: Pull[] = [];
-  for (const slot of BOOSTERS[kind]) {
-    let pull = rollSlot(slot, sheets, rng);
-    for (let tries = 0; tries < 20 && (slot === COMMON || slot === UNCOMMON) && cards.some((c) => c.card.id === pull.card.id); tries++) pull = rollSlot(slot, sheets, rng);
-    cards.push(pull);
-  }
+  slots.forEach((slot, i) => {
+    const same = cards.filter((_, k) => slots[k] === slot);
+    const nonfoilOnly = slot === BOOSTER_FUN_RARE && same.some((p) => p.finish !== 'nonfoil');
+    let pull = rollSlot(slot, sheets, rng, nonfoilOnly);
+    for (let tries = 0; tries < 20 && same.some((c) => c.card.id === pull.card.id); tries++) pull = rollSlot(slot, sheets, rng, nonfoilOnly);
+    cards[i] = pull;
+  });
   return { kind, cards };
 }
 
