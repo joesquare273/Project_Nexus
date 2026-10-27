@@ -149,6 +149,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = creatures(player);
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
     }
+    case 'LoreCountersOnThis':
+      return source && s.cards[source] ? countersOf(s.cards[source]!, 'lore') : 0;
     case 'SoulCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
     case 'ArtifactsYouControl':

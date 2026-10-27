@@ -195,7 +195,30 @@ export const EFFECT_KINDS = [
   /** Exile the top card of your library; you may play it while you control the source. */
   'ExileTopCardToPlay',
   'AddMana',
-  /** Optionally copy another creature's copiable values. */
+  /**
+   * Each target player exiles cards from the top of their library until they
+   * exile one matching `filter`; you may cast that card this turn without
+   * paying its mana cost (Strago and Relm; with `hasteSacrifice`, a creature
+   * cast this way gains haste and is sacrificed at the next end step).
+   */
+  'ExileUntilFound',
+  /**
+   * Exile a card at random from each opponent's graveyard; you may cast the
+   * spells among them this turn without paying their mana costs, at any time
+   * you have priority, and each one's owner loses life equal to its mana
+   * value as you cast it (Kefka).
+   */
+  'ExileRandomFromOpponentGraveyards',
+  /**
+   * Hideaway N (rule 702.75): look at the top `amount` cards of your library,
+   * exile one face down (linked to this permanent), and put the rest on the
+   * bottom in a random order.
+   */
+  'Hideaway',
+  /** Exile one card matching `filter` from each graveyard, linked to this permanent, face up (Summon: Esper Valigarmanda). */
+  'ExileFromEachGraveyard',
+  /** You may cast one card exiled with this permanent this turn; with `anyManaType`, mana of any type can be spent on it. */
+  'GrantLinkedExileCast',
   'CopyCreature',
   /** Mill players, optionally reward any land with one token, and grant one shared cast this turn. */
   'MillAndGrantOneCast',
@@ -343,6 +366,8 @@ export const COUNT_KINDS = [
   'PlayersWhoLostLifeThisTurn',
   /** Soul counters on the card with the ability (Reaper's Scythe). */
   'SoulCountersOnThis',
+  /** Lore counters on the card with the ability (Summon: Esper Valigarmanda). */
+  'LoreCountersOnThis',
   'SoldiersYouControl',
   /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
   'OpponentsWithPower4Creature',
@@ -535,6 +560,12 @@ export interface EffectSpec {
   keep?: number;
   /** AllowCastFromGraveyard: without paying its mana cost. */
   free?: boolean;
+  /** AddMana: this type, without a choice ("add {R} for each lore counter"). */
+  manaType?: ManaType;
+  /** ExileUntilFound: a creature cast this way gains haste and is sacrificed at the beginning of the next end step. */
+  hasteSacrifice?: boolean;
+  /** GrantLinkedExileCast: mana of any type can be spent to cast it. */
+  anyManaType?: boolean;
   /** Discard: the whole hand, no choice ("discard your hand"). */
   entireHand?: boolean;
   /** GrantKeywords: for as long as you control the source, not until end of turn (Thancred Waters). */
@@ -1145,11 +1176,29 @@ export interface CardInstance {
    * (`free`: without paying its mana cost); with `exileAfter`, it's exiled
    * instead of going to the graveyard afterwards.
    */
-  castPermission?: { player: PlayerId; turn: number; free?: boolean; exileAfter?: boolean; genericReduction?: number };
+  /**
+   * `ignoreTiming`: castable whenever its player has priority, even a sorcery
+   * (it stands for casting while an ability resolves, rule 608.2g).
+   * `hasteSacrifice`: a creature cast this way gains haste and is sacrificed
+   * at the next end step (Strago and Relm). `ownerLosesLife`: its owner loses
+   * life equal to its mana value as it's cast (Kefka).
+   */
+  castPermission?: {
+    player: PlayerId;
+    turn: number;
+    free?: boolean;
+    exileAfter?: boolean;
+    genericReduction?: number;
+    ignoreTiming?: boolean;
+    hasteSacrifice?: boolean;
+    ownerLosesLife?: boolean;
+  };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;
   /** Cast for its blitz cost. Kept as it dies (for "when this creature dies, draw a card") until it enters again. */
   blitzed?: boolean;
+  /** Sacrificed at the beginning of the next end step (a creature cast with Strago and Relm's permission). */
+  sacrificeAtEndStep?: boolean;
   /** Returned with unearth: exiled at the next end step or if it would leave the battlefield. */
   unearthed?: boolean;
   /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */
@@ -1265,6 +1314,8 @@ export interface SpellItem {
   castFrom: 'hand' | 'graveyard' | 'exile' | 'command' | 'library';
   /** Total mana spent to cast it. */
   manaSpent: number;
+  /** Cast with Strago and Relm's permission: as a creature it gains haste and is sacrificed at the next end step. */
+  sacrificeAtEndStep?: true;
   /** The value chosen for {X}. */
   x?: number;
   /** The creatures that convoked it. */
@@ -1409,7 +1460,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1494,6 +1545,8 @@ export interface CastGroup {
   player: PlayerId;
   turn: number;
   cards: { card: InstanceId; object: number; zone: 'graveyard' | 'exile' }[];
+  /** Mana of any type can be spent to cast the spell (Summon: Esper Valigarmanda). */
+  anyManaType?: boolean;
 }
 
 export interface GameState {

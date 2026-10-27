@@ -160,6 +160,9 @@ choices keep opponents' hand identities hidden.
 | Blitz and unearth "at the beginning of the next end step" | Done as the end step begins, without using the stack | A delayed triggered ability |
 | Rebound | Castable without paying its mana cost at any time during your next turn, then it's gone for good | Only while the upkeep trigger resolves (rule 702.88) |
 | "You may cast target card from your graveyard" (Torrential Gearhulk, Emet-Selch) | Castable later that turn, with normal timing rules, instead of during the ability's resolution | Cast while the ability resolves, ignoring timing (rule 608.2g) |
+| "You may cast that card without paying its mana cost" from exile (Strago and Relm, Kefka, Fight Rigging) | Castable later that turn. Kefka's and Fight Rigging's ignore timing; Strago and Relm's use normal timing, and a land found by Fight Rigging still needs a main phase and an unused land play | Cast while the ability resolves (rule 608.2g) |
+| Summon: Esper Valigarmanda's chapter I | The engine exiles the instant or sorcery with the greatest mana value from each graveyard | The Saga's controller chooses |
+| Kefka's life loss | As each spell is cast | After all the spells are cast |
 | Dig Through Time | The cards not taken go on the bottom in the order they were on top | Any order |
 | Emet-Selch's "once each turn" | Counts only when you say yes | Counts whenever you cast a spell this way |
 | Multikicker | Offered up to 6 times, as far as your mana could pay | Any number of times |

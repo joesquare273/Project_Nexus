@@ -706,6 +706,11 @@ export function spellCost(
           ? def.foretell
           : def.manaCost;
   let cost = parseManaCost(base);
+  // "Mana of any type can be spent to cast that spell."
+  if (extra.castGroup && s.castGroups?.find((g) => g.id === extra.castGroup)?.anyManaType) {
+    const colored = MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
+    cost = { generic: cost.generic + colored, ...(cost.x ? { x: cost.x } : {}) };
+  }
   // Ward on the targets (an additional cost here, see wardCost).
   if (card) cost = { ...cost, generic: cost.generic + wardCost(s, targets, payer!) };
   // {X}: each X symbol costs the chosen value (rule 107.3).
@@ -777,7 +782,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
-  if (!hasInstantTiming(def) && !canActAtSorcerySpeed(s, playerId)) {
+  const anyTime = (from === 'exile' || from === 'graveyard') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+  if (!hasInstantTiming(def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }
   const modes = modeProblem(def, choice);
@@ -861,6 +867,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
 
   if (group) s.castGroups = s.castGroups!.filter(g=>g.id!==group.id);
+  // Kefka: "each player who owns a spell you cast this way loses life equal to its mana value".
+  if (permission?.ownerLosesLife) changeLife(ctx, c.owner, -manaValue(parseManaCost(def.manaCost)));
+  const sacrificeLater = !!permission?.hasteSacrifice && def.types.includes('creature');
   moveCard(ctx, id, 'stack');
   if (choice.adventure) c.adventureSpell = true;
   if (from === 'graveyard') c.castFromGraveyard = true;
@@ -891,6 +900,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(kicks > 0 ? { kicks } : {}),
     ...(permission?.exileAfter ? { exileAfter: true } : {}),
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
+    ...(sacrificeLater ? { sacrificeAtEndStep: true as const } : {}),
   };
   s.stack.push(item);
   // Check after the spell is on the stack: a commander cast from a hidden
@@ -1873,6 +1883,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'AddMana': {
       const recipient = targets.find(t => t.kind === 'player');
+      // "Add {R} for each lore counter": no color to choose.
+      if (effect.manaType) {
+        if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source);
+        return;
+      }
       if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount };
       return;
     }
@@ -1912,12 +1927,79 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (top) s.pending = { kind: 'exileTop', player: item.controller, card: top };
       return;
     }
+    case 'ExileUntilFound':
+      for (const pid of targetPlayers(targets)) {
+        const library = s.players[pid]!.library;
+        while (library.length > 0) {
+          const top = library[0]!;
+          moveCard(ctx, top, 'exile');
+          if (!matchesObject(s, effect.filter, s.cards[top]!, { controller: item.controller })) continue;
+          s.cards[top]!.castPermission = {
+            player: item.controller,
+            turn: s.turnNumber,
+            free: true,
+            ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
+          };
+          break;
+        }
+      }
+      return;
+    case 'ExileRandomFromOpponentGraveyards':
+      for (const pid of alivePlayers(s)) {
+        if (pid === item.controller) continue;
+        const yard = s.players[pid]!.graveyard;
+        if (yard.length === 0) continue;
+        const picked = yard[randomInt(s, yard.length)]!;
+        moveCard(ctx, picked, 'exile');
+        if (hasType(s, s.cards[picked]!, 'land')) continue;
+        s.cards[picked]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, ownerLosesLife: true };
+      }
+      return;
+    case 'Hideaway': {
+      const looked = topOfLibrary(s, item.controller, amount);
+      if (looked.length > 0) {
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hideaway', cards: looked, min: 1, max: 1 }];
+      }
+      return;
+    }
+    case 'ExileFromEachGraveyard': {
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      for (const pid of alivePlayers(s)) {
+        const matching = s.players[pid]!.graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+        if (matching.length === 0) continue;
+        // The controller would choose; the engine takes the one with the greatest mana value.
+        const best = matching.reduce((a, b) => (objectManaValue(s, s.cards[b]!) > objectManaValue(s, s.cards[a]!) ? b : a));
+        moveCard(ctx, best, 'exile');
+        // Face up: everyone may look at it.
+        s.cards[best]!.linkedExile = { source, sourceObject: object, lookers: [...s.turnOrder] };
+      }
+      return;
+    }
+    case 'GrantLinkedExileCast': {
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      const linked = Object.values(s.cards).filter(
+        (c) => c.zone === 'exile' && c.linkedExile?.source === source && c.linkedExile.sourceObject === object && isSpellCard(defOf(s, c)),
+      );
+      if (linked.length === 0) return;
+      s.castGroups = [
+        ...(s.castGroups ?? []),
+        {
+          id: newId(s, 'cast'),
+          source,
+          player: item.controller,
+          turn: s.turnNumber,
+          cards: linked.map((c) => ({ card: c.id, object: c.zoneChanges ?? 0, zone: 'exile' as const })),
+          ...(effect.anyManaType ? { anyManaType: true } : {}),
+        },
+      ];
+      return;
+    }
     case 'PlayLinkedExile': {
       const source = sourceOf(item);
       const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
       for (const c of Object.values(s.cards)) {
         if (c.zone !== 'exile' || c.linkedExile?.source !== source || c.linkedExile.sourceObject !== object) continue;
-        c.castPermission = { player: item.controller, turn: s.turnNumber, genericReduction: amount };
+        c.castPermission = { player: item.controller, turn: s.turnNumber, ...(effect.free ? { free: true, ignoreTiming: true } : { genericReduction: amount }) };
         c.linkedExile = { ...c.linkedExile, lookers: [...new Set([...c.linkedExile.lookers, item.controller])] };
       }
       return;
@@ -2236,6 +2318,11 @@ export function resolveTop(ctx: Ctx): void {
       c.summoningSick = true;
       if (entersTapped(s, c) || item.entersTapped) c.tapped = true;
       addCounters(ctx, c.id, extra, item.controller);
+      // Strago and Relm: it gains haste, and is sacrificed at the beginning of the next end step.
+      if (item.sacrificeAtEndStep) {
+        c.sacrificeAtEndStep = true;
+        s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });
+      }
       // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
       if (item.alternative && def.alternativeCost?.blitz) {
         c.blitzed = true;
@@ -2376,6 +2463,19 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       for (const id of r.conniving.slice(0, nonland)) addCounters(ctx, id, 1, pending.player);
       delete r.conniving;
     }
+  } else if (pending.purpose === 'hideaway') {
+    const source = sourceOf(r.item);
+    const sourceObject = r.item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (r.item.sourceObject ?? 0);
+    const library = player(s, pending.player).library;
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile', { silent: true });
+      s.cards[id]!.linkedExile = { source, sourceObject, lookers: [pending.player] };
+      ctx.ev.push({ type: 'FaceDownExiled', player: pending.player, card: id });
+    }
+    const rest = pending.cards.filter((id) => !cards.includes(id) && library.includes(id));
+    for (const id of rest) library.splice(library.indexOf(id), 1);
+    shuffleInPlace(s, rest);
+    library.push(...rest);
   } else if (pending.purpose === 'hand') {
     // The rest go on the bottom of the library, in the order shown.
     const library = player(s, pending.player).library;

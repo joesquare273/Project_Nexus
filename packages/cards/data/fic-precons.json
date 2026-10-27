@@ -950,22 +950,16 @@
           "count": 1,
           "set": "fic",
           "number": "59",
-          "implemented": false,
-          "needs": [
-            "sketch-and-lore",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Summon: Esper Valigarmanda",
           "count": 1,
           "set": "fic",
           "number": "60",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Umaro, Raging Yeti",
@@ -996,11 +990,8 @@
           "count": 1,
           "set": "fic",
           "number": "84",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Locke, Treasure Hunter",
@@ -1948,12 +1939,8 @@
           "count": 1,
           "set": "fic",
           "number": "303",
-          "implemented": false,
-          "needs": [
-            "hideaway",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Forgotten Ancient",

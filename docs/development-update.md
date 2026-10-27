@@ -3,6 +3,31 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-27
+
+### Casting exiled cards for free: Strago and Relm, Kefka, Esper Valigarmanda, Fight Rigging
+
+- Strago and Relm: target opponent exiles from the top until an instant,
+  sorcery or creature card; you may cast it free this turn. A creature cast
+  this way gains haste and is sacrificed as the next end step begins.
+- Kefka, Dancing Mad: indestructible during your turn. At your end step a
+  random card from each opponent's graveyard is exiled; the spells among them
+  can be cast free that turn at any time you have priority (sorceries too),
+  and each one's owner loses life equal to its mana value as it's cast.
+- Summon: Esper Valigarmanda (Saga IV): I exiles an instant or sorcery card
+  from each graveyard (the engine takes the greatest mana value). II-IV add
+  {R} per lore counter and allow one of the exiled cards to be cast, paying
+  any colored symbol with mana of any type.
+- Fight Rigging: hideaway 5 (a private choice; the rest go to the bottom in a
+  random order). At beginning of combat on your turn, a +1/+1 counter on
+  target creature you control; then with a power 7+ creature you may play the
+  hidden card free.
+- Engine: cast permissions can now ignore timing, mark a creature for the
+  end-step sacrifice, and make the owner lose life; cast groups can allow
+  mana of any type; AddMana can add a fixed type; new LoreCountersOnThis count.
+- Added 15 focused checks across 2, 3 and 4 players.
+- Progress: 314/320 distinct precon cards built; 6 remain.
+
 ## 2026-10-24
 
 ### Altered Ego

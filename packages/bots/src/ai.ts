@@ -571,6 +571,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
   // Cards for our hand: the best.
   if (p.purpose === 'hand') return pick(byValue.reverse().slice(0, p.max));
+  // Hideaway: the best spell (a land found this way still needs a land play).
+  if (p.purpose === 'hideaway') return pick([byValue.findLast((id) => !isLandCard(s, id)) ?? byValue.at(-1)!]);
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
   const ours = s.cards[p.cards[0]!]!.controller === me;
   const order = ours ? byValue.reverse() : byValue;

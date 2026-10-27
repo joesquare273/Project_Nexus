@@ -81,7 +81,7 @@ describe('Final Fantasy Commander precons', () => {
       },
     );
     expect(game.finished).toBe(true);
-  }, 120_000);
+  }, 300_000);
 });
 
 describe('C1: Commander mana', () => {

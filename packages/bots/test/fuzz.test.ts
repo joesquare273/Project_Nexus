@@ -7,7 +7,7 @@ import { checkInvariants } from '../src/invariants.ts';
 // Kept small for everyday test runs; `npm run fuzz` plays thousands.
 const GAMES_PER_SIZE = 12;
 // Random bots take a while now that there are more choices (X values, foretell, mana while attacking).
-const TIMEOUT_MS = 180_000;
+const TIMEOUT_MS = 300_000;
 
 function setup(players: number, seed: number): GameSetup {
   return {

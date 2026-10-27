@@ -222,6 +222,16 @@ function effectText(e: EffectSpec): string {
     case 'Mill':
       return `mill ${n}`;
     case 'LookAndExileTop': return 'look at the top card of your library; you may exile it face down';
+    case 'ExileUntilFound':
+      return `${who} exiles cards from the top of their library until they exile a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; you may cast it without paying its mana cost`;
+    case 'ExileRandomFromOpponentGraveyards':
+      return "exile a card at random from each opponent's graveyard; you may cast spells among them without paying their mana costs";
+    case 'Hideaway':
+      return `hideaway ${n}`;
+    case 'ExileFromEachGraveyard':
+      return `exile a ${subjectText({ ...e.filter, controller: undefined }, 'card')} from each graveyard`;
+    case 'GrantLinkedExileCast':
+      return `you may cast a card exiled with this${e.anyManaType ? ', and mana of any type can be spent to cast it' : ''}`;
     case 'PlayLinkedExile': return 'until end of turn, you may play cards exiled with this; spells cast this way cost {' + n + '} less';
     case 'Surveil':
       return `surveil ${n}`;
