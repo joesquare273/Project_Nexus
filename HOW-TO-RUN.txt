@@ -40,6 +40,11 @@ You need Node.js 24 or newer.
   with tips that pop up the first time something new happens. ("Practice
   game with tips" on the menu goes straight there.)
 
+  The "Packs" tab at the top of the menu opens Final Fantasy booster packs
+  just for collecting: drag across the top of a pack to tear it open, click
+  through the cards, and see everything you've pulled under "Collection".
+  Your collection is saved in this browser only.
+
   Otherwise pick a format:
     - Starter Kits: Red-White or Blue-Black, 60 cards, 20 life.
     - Commander: one of the four Final Fantasy Commander precons (Limit

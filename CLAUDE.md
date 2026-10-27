@@ -60,6 +60,7 @@ this repo, not only in local memory.
 - `docs/card-types.md`: card types and categories (permanent, nonpermanent,
   spell), the rules each brings, and whether they are built. Rules tied to a
   type or category live in the engine (`typerules.ts`), not on each card.
+- `docs/packs.md`: the Packs tab (booster odds, card data, collection).
 - `HOW-TO-RUN.txt`: instructions for the user.
 
 ## Checks

@@ -17,7 +17,8 @@
     "sim": "node packages/bots/src/sim.ts",
     "fuzz": "node packages/bots/src/fuzz.ts",
     "play": "node packages/bots/src/play.ts",
-    "scryfall": "node packages/cards/scripts/scryfall.ts"
+    "scryfall": "node packages/cards/scripts/scryfall.ts",
+    "scryfall:boosters": "node packages/cards/scripts/booster-data.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

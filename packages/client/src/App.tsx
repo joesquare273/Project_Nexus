@@ -4,6 +4,7 @@ import { GameSession, type DeckChoice, type SessionOptions } from './game/sessio
 import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
+import { PacksTab } from './packs/PacksTab.tsx';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   {
@@ -39,6 +40,8 @@ export function App() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   /** Changes for each new game so the board starts fresh. */
   const [gameNumber, setGameNumber] = useState(0);
+  /** The menu's tabs: set up a game, or open booster packs. */
+  const [tab, setTab] = useState<'play' | 'packs'>('play');
 
   const quit = () => {
     setSession(null);
@@ -89,10 +92,33 @@ export function App() {
     );
   };
 
+  const tabs = (
+    <div className="menu-tabs" role="tablist">
+      <button role="tab" aria-selected={tab === 'play'} className={tab === 'play' ? 'chosen' : ''} onClick={() => setTab('play')}>
+        Play
+      </button>
+      <button role="tab" aria-selected={tab === 'packs'} className={tab === 'packs' ? 'chosen' : ''} onClick={() => setTab('packs')}>
+        Packs
+      </button>
+    </div>
+  );
+
+  if (tab === 'packs') {
+    return (
+      <div className="menu">
+        <h1>Project Nexus</h1>
+        <p className="tagline">Open Final Fantasy booster packs · for collecting only</p>
+        {tabs}
+        <PacksTab />
+      </div>
+    );
+  }
+
   return (
     <div className="menu">
       <h1>Project Nexus</h1>
       <p className="tagline">Final Fantasy Starter Kits and Commander precons · play against the AI</p>
+      {tabs}
 
       <h2>New to Magic?</h2>
       <div className="menu-learn">

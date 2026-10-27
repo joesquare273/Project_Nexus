@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-27
 
+### Packs tab: Final Fantasy Play Boosters
+
+- New **Packs** tab on the menu: open Final Fantasy Play Boosters, flip
+  through the cards (best at the back, rares face down with a glow), see a
+  summary with NEW badges, and browse a collection binder. Collecting only;
+  decks are unchanged. See [packs.md](packs.md).
+- `npm run scryfall:boosters` saves all 1,263 printings of FIN, FCA, FIC,
+  TFIN, AFIN and AFIC (Scene Box art) to `booster-cards.json`; the game
+  never calls the Scryfall API.
+- Play Booster slots follow Wizards' published odds; Scene Box cards are
+  added at small odds of our own. Collector Boosters come next.
+- Pulls are saved in the browser's local storage.
+
 ### The last precon cards: Yuffie, Sin and Observed Stasis (320/320)
 
 - Yuffie, Materia Hunter: ninjutsu ({1}{R}, return an unblocked attacker
