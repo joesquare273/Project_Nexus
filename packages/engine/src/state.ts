@@ -258,6 +258,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.lastEquippedBy;
   }
   delete c.commanderStays;
+  delete c.controlWhile;
   if (!opts.silent) {
     ctx.ev.push({
       type: 'CardMoved',

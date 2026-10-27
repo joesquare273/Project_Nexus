@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
-import { chooseCopy, chooseEntryCopy, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
+import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -113,6 +113,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       case 'ChooseCards':
         if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'handSize') discardToHandSize(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'copyOnEntry') chooseEntryCopy(ctx, action.player, action.cards);
+        else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'removeCountersOnEntry') chooseEntryCounters(ctx, action.player, action.cards);
         else chooseCards(ctx, action.player, action.cards);
         break;
       case 'BottomCards':

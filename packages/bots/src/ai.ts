@@ -575,6 +575,10 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'hideaway') return pick([byValue.findLast((id) => !isLandCard(s, id)) ?? byValue.at(-1)!]);
   // Espers to Magicite: an artifact copy of the best creature card.
   if (p.purpose === 'artifactCopy') return pick(byValue.slice(-1));
+  // Yuffie: attach the best Equipment.
+  if (p.purpose === 'attachToSource') return pick(byValue.slice(-1));
+  // Sin: take every opponent's counters, and our own only when they aren't +1/+1 counters on our creatures.
+  if (p.purpose === 'removeCountersOnEntry') return pick(p.cards.filter((id) => s.cards[id]!.controller !== me || !s.cards[id]!.counters));
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
   const ours = s.cards[p.cards[0]!]!.controller === me;
   const order = ours ? byValue.reverse() : byValue;

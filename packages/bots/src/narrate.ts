@@ -222,6 +222,14 @@ function effectText(e: EffectSpec): string {
     case 'Mill':
       return `mill ${n}`;
     case 'LookAndExileTop': return 'look at the top card of your library; you may exile it face down';
+    case 'EnterAttacking':
+      return 'put this onto the battlefield tapped and attacking';
+    case 'MayAttachEquipmentToThis':
+      return 'you may attach an Equipment you control to it';
+    case 'RemoveFromCombat':
+      return `remove ${who} from combat`;
+    case 'ShuffleThisIntoLibrary':
+      return "shuffle this card into its owner's library";
     case 'ExileGraveyardsCopyCreature':
       return "exile each opponent's graveyard; you may create a token that's a copy of a creature card exiled this way, except it's an artifact";
     case 'CreateDelayedTrigger':

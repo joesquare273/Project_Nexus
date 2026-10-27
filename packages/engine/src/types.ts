@@ -208,6 +208,14 @@ export const EFFECT_KINDS = [
    * and loses its other card types (Espers to Magicite).
    */
   'ExileGraveyardsCopyCreature',
+  /** Ninjutsu: put this card from your hand onto the battlefield tapped and attacking the returned creature's defender. */
+  'EnterAttacking',
+  /** "You may attach an Equipment you control to [this creature]": chosen as it resolves (Yuffie). */
+  'MayAttachEquipmentToThis',
+  /** Remove the target creature from combat (rule 506.4). */
+  'RemoveFromCombat',
+  /** Shuffle this card from its graveyard into its owner's library (Sin, Unending Cataclysm). */
+  'ShuffleThisIntoLibrary',
   /** A delayed triggered ability (`trigger`) for the rest of this turn ("whenever you cast a noncreature spell this turn, ..."). */
   'CreateDelayedTrigger',
   /**
@@ -381,6 +389,8 @@ export const COUNT_KINDS = [
   'SoulCountersOnThis',
   /** Lore counters on the card with the ability (Summon: Esper Valigarmanda). */
   'LoreCountersOnThis',
+  /** Tapped creatures controlled by the controller of the creature this Aura enchants (Observed Stasis). */
+  'TappedCreaturesOfEnchantedController',
   'SoldiersYouControl',
   /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
   'OpponentsWithPower4Creature',
@@ -816,6 +826,8 @@ export interface ActivatedSpec {
     removeCounter?: { counter?: AnyCounter; from?: ObjectFilter };
     /** "Pay 3 life". */
     life?: number;
+    /** Ninjutsu: return an unblocked attacker you control to its owner's hand (chosen with the action, `costCards`). */
+    returnUnblockedAttacker?: boolean;
   };
   /** Where the card must be. Defaults to the battlefield. */
   zone?: 'battlefield' | 'hand' | 'graveyard';
@@ -887,6 +899,10 @@ export interface StaticSpec {
   ifYouControlSubtype?: string;
   /** Authority of the Consuls: creatures your opponents control enter tapped. */
   opponentCreaturesEnterTapped?: boolean;
+  /** "Enchanted creature loses all abilities" (layer 6; abilities granted by other effects still apply). */
+  losesAllAbilities?: boolean;
+  /** "Can't attack or block." */
+  cantAttackOrBlock?: boolean;
   /** Propaganda: creatures can't attack you unless their controller pays this much generic mana for each. */
   attackTax?: number;
   /**
@@ -1072,6 +1088,12 @@ export interface CardDefinition {
   entersWithXCounters?: boolean;
   /** "You may have this creature enter as a copy of any creature on the battlefield" (Altered Ego). */
   entersAsCopy?: boolean;
+  /**
+   * "As this enters, remove all counters from any number of artifacts,
+   * creatures, and enchantments. It enters with twice that many +1/+1
+   * counters" (Sin): chosen as the spell resolves.
+   */
+  entersRemovingCounters?: boolean;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
   saga?: number;
   /** The kind of those counters, if not +1/+1 ("enters with a page counter on it"). */
@@ -1115,6 +1137,8 @@ export interface BattlefieldCopy {
 
 /** A unique physical card, or a token, in a game. */
 export interface CardInstance {
+  /** "For as long as you control [source]": control returns to `previous` once that ends (Yuffie). */
+  controlWhile?: { source: InstanceId; sourceObject: number; controller: PlayerId; previous: PlayerId };
   /** Copiable values of a battlefield object; counters, damage, control and attachments remain separate. */
   copy?: BattlefieldCopy;
   /** Copied abilities as the object left the battlefield, for death/leave triggers. */
@@ -1317,6 +1341,8 @@ export interface SpellItem {
   controller: PlayerId;
   /** Card-object identities when a spell chose its targets. */
   targetObjects?: (number | null)[];
+  /** entersRemovingCounters: the +1/+1 counters it enters with, once the counters are removed. */
+  entryCounters?: number;
   /** entersAsCopy: the creature chosen to copy as it resolves (null: none). */
   entryCopy?: { card: InstanceId; object: number } | null;
   /** One target per effect that requires a choice, in effect order. */
@@ -1477,7 +1503,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

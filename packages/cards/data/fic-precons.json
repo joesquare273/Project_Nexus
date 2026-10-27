@@ -126,12 +126,8 @@
           "count": 1,
           "set": "fic",
           "number": "65",
-          "implemented": false,
-          "needs": [
-            "ninjutsu",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bugenhagen, Wise Elder",
@@ -1814,11 +1810,8 @@
           "count": 1,
           "set": "fic",
           "number": "95",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Wakka, Devoted Guardian",
@@ -2539,12 +2532,8 @@
           "count": 1,
           "set": "fic",
           "number": "40",
-          "implemented": false,
-          "needs": [
-            "enchant",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Eye of Nidhogg",

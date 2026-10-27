@@ -5,6 +5,26 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-27
 
+### The last precon cards: Yuffie, Sin and Observed Stasis (320/320)
+
+- Yuffie, Materia Hunter: ninjutsu ({1}{R}, return an unblocked attacker
+  you control to hand, once blockers are declared): she enters tapped and
+  attacking the same player. As she enters, gain control of target
+  noncreature artifact for as long as you control her (it returns as soon
+  as she leaves or changes control), then you may attach an Equipment you
+  control to her.
+- Sin, Unending Cataclysm: as it resolves, choose any number of artifacts,
+  creatures and enchantments; all their counters are removed and Sin enters
+  with twice that many +1/+1 counters. When it dies, its counters go on
+  target creature you control and it's shuffled into its owner's library.
+- Observed Stasis: Aura with flash for an opponent's creature. It removes
+  the creature from combat and draws a card per tapped creature that
+  creature's controller controls. The creature loses all abilities (a new
+  layer-6 effect) and can't attack or block.
+- Added 18 focused checks across 2, 3 and 4 players.
+- Progress: **all 320 distinct precon cards built**; every precon deck is
+  100/100.
+
 ### Copies: Espers to Magicite, Summon: Good King Mog XII, Blue Mage's Cane
 
 - Espers to Magicite exiles each opponent's graveyard, then you may choose

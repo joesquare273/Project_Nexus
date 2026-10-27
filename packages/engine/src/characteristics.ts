@@ -149,6 +149,11 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = creatures(player);
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
     }
+    case 'TappedCreaturesOfEnchantedController': {
+      const host = source ? s.cards[s.cards[source]?.attachedTo ?? ''] : undefined;
+      if (!host) return 0;
+      return s.players[host.controller]!.battlefield.map((id) => s.cards[id]!).filter((c) => c.controller === host.controller && c.tapped && !c.phasedOut && currentDefinition(s, c).types.includes('creature')).length;
+    }
     case 'LoreCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'lore') : 0;
     case 'SoulCountersOnThis':

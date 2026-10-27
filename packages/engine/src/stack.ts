@@ -1,7 +1,7 @@
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { copiableDefinition, spellDefinition } from './cardface.ts';
+import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
 import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, subtypesOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
@@ -37,6 +37,7 @@ import {
   tap,
   untap,
   type Ctx,
+  removeFromCombat,
 } from './state.ts';
 import { givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
@@ -1030,6 +1031,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
     return 'There is no counter to remove for that.';
   }
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length === 0) return 'You have nothing to sacrifice for that.';
+  if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   const n = spec.cost.discard ?? 0;
   if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
@@ -1044,6 +1046,15 @@ function checkDiscardCost(s: GameState, playerId: PlayerId, count: number, cards
   if (new Set(cards).size !== cards.length || cards.some((c) => c === source || !hand.includes(c))) {
     reject('The cards to discard must be other cards in your hand.');
   }
+}
+
+/** Ninjutsu: attackers the player controls that weren't blocked, once blockers are declared. */
+export function unblockedAttackers(s: GameState, playerId: PlayerId): InstanceId[] {
+  const combat = s.combat;
+  if (!combat || combat.blockersPending.length > 0 || !['declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)) return [];
+  return combat.attacks
+    .filter((a) => s.cards[a.attacker]?.controller === playerId && !combat.blockedAttackers?.includes(a.attacker))
+    .map((a) => a.attacker);
 }
 
 /** Permanents a player could sacrifice for a "Sacrifice a ..." cost (the source itself counts if it matches). */
@@ -1072,6 +1083,7 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
   }
   if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
   if (spec.cost.sacrifice) return sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]);
+  if (spec.cost.returnUnblockedAttacker) return unblockedAttackers(s, playerId).map((id) => [id]);
   if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
   const n = spec.cost.discard ?? 0;
   if (n === 0) return [[]];
@@ -1116,6 +1128,8 @@ export function activateAbility(
   } else if (spec.cost.exileGraveyard) {
     const available = graveyardCostCandidates(s, playerId, spec, id);
     if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
+  } else if (spec.cost.returnUnblockedAttacker) {
+    if (costCards.length !== 1 || !unblockedAttackers(s, playerId).includes(costCards[0]!)) reject('Choose an unblocked attacker you control to return.');
   } else if (spec.cost.sacrifice) {
     if (costCards.length !== 1 || !sacrificeCandidates(s, playerId, spec.cost.sacrifice, id).includes(costCards[0]!)) {
       reject('Choose one permanent you control to sacrifice for that.');
@@ -1142,7 +1156,10 @@ export function activateAbility(
     moveCard(ctx, card, 'exile');
     return { card, object: s.cards[card]!.zoneChanges ?? 0 };
   }) : undefined;
-  if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
+  // Ninjutsu: the Ninja attacks whoever the returned creature was attacking.
+  const ninjutsuDefender = spec.cost.returnUnblockedAttacker ? s.combat!.attacks.find((a) => a.attacker === costCards[0])!.defender : undefined;
+  if (spec.cost.returnUnblockedAttacker) moveCard(ctx, costCards[0]!, 'hand');
+  else if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
   else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
@@ -1161,6 +1178,7 @@ export function activateAbility(
     sourceZone: c.zone,
     controller: playerId,
     targets,
+    ...(ninjutsuDefender ? { defender: ninjutsuDefender } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets });
@@ -1442,7 +1460,7 @@ function previousManaValue(s: GameState, r: Resolving): number {
 /** Current counter kinds, or the source object's last known count after it leaves. */
 function sourceCounterKinds(s: GameState, item: StackItem): number {
   const c = s.cards[sourceOf(item)]!;
-  if (item.kind === 'ability' && (c.zone !== item.sourceZone || (c.zoneChanges ?? 0) !== (item.sourceObject ?? 0))) {
+  if (item.kind === 'ability' && (c.zone !== item.sourceZone || (c.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0))) {
     return item.lastSourceCounterKinds ?? Object.values(c.lastCounters ?? {}).filter(n => n > 0).length;
   }
   return allCounters(c).length;
@@ -1719,9 +1737,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
         if (c.controller === receiver) continue;
+        const previous = c.controller;
         c.controller = receiver;
         c.summoningSick = true;
         if (c.attachedTo) delete c.attachedTo;
+        if (effect.whileYouControlSource) c.controlWhile = { source, sourceObject: item.kind === 'spell' ? 0 : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0), controller: receiver, previous };
         ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver });
       }
       return;
@@ -1932,6 +1952,36 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (top) s.pending = { kind: 'exileTop', player: item.controller, card: top };
       return;
     }
+    case 'EnterAttacking': {
+      const c = s.cards[source]!;
+      // The Ninja must still be the card in hand that was revealed.
+      if (c.zone !== 'hand' || (c.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0)) return;
+      moveCard(ctx, source, 'battlefield', { controller: item.controller });
+      c.tapped = true;
+      c.summoningSick = true;
+      const defender = item.kind === 'ability' ? item.defender : undefined;
+      if (s.combat && defender && !s.players[defender]!.eliminated) s.combat.attacks.push({ attacker: source, defender });
+      return;
+    }
+    case 'MayAttachEquipmentToThis': {
+      const host = s.cards[source]!;
+      if (host.zone !== 'battlefield' || (host.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0) || !isCreatureOnBattlefield(s, host)) return;
+      const equipment = battlefield(s)
+        .filter((e) => e.controller === item.controller && e.attachedTo !== source && currentDefinition(s, e).subtypes?.includes('Equipment') && !hasType(s, e, 'creature'))
+        .map((e) => e.id);
+      if (equipment.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'attachToSource', cards: equipment, min: 0, max: 1 }];
+      return;
+    }
+    case 'RemoveFromCombat':
+      for (const id of onBattlefield) removeFromCombat(s, id);
+      return;
+    case 'ShuffleThisIntoLibrary': {
+      const c = s.cards[source]!;
+      if (c.zone !== 'graveyard' || (c.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0)) return;
+      moveCard(ctx, source, 'library');
+      shuffleInPlace(s, s.players[c.owner]!.library);
+      return;
+    }
     case 'ExileGraveyardsCopyCreature': {
       const creatures: InstanceId[] = [];
       for (const pid of alivePlayers(s)) {
@@ -1946,7 +1996,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'CreateDelayedTrigger': {
-      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
       s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!) }];
       return;
     }
@@ -1997,7 +2047,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'ExileFromEachGraveyard': {
-      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
       for (const pid of alivePlayers(s)) {
         const matching = s.players[pid]!.graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
         if (matching.length === 0) continue;
@@ -2010,7 +2060,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'GrantLinkedExileCast': {
-      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
       const linked = Object.values(s.cards).filter(
         (c) => c.zone === 'exile' && c.linkedExile?.source === source && c.linkedExile.sourceObject === object && isSpellCard(defOf(s, c)),
       );
@@ -2030,7 +2080,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'PlayLinkedExile': {
       const source = sourceOf(item);
-      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
       for (const c of Object.values(s.cards)) {
         if (c.zone !== 'exile' || c.linkedExile?.source !== source || c.linkedExile.sourceObject !== object) continue;
         c.castPermission = { player: item.controller, turn: s.turnNumber, ...(effect.free ? { free: true, ignoreTiming: true } : { genericReduction: amount }) };
@@ -2331,6 +2381,14 @@ export function resolveTop(ctx: Ctx): void {
       }
       item.entryCopy = null;
     }
+    if (entering.entersRemovingCounters && item.entryCounters === undefined) {
+      const withCounters = battlefield(s).filter((c) => totalCounters(c) > 0 && (['artifact', 'creature', 'enchantment'] as const).some((t) => hasType(s, c, t))).map((c) => c.id);
+      if (withCounters.length) {
+        s.pending = { kind: 'chooseCards', purpose: 'removeCountersOnEntry', player: item.controller, cards: withCounters, min: 0, max: withCounters.length, item: item.id };
+        return;
+      }
+      item.entryCounters = 0;
+    }
     s.stack.pop();
     const c = s.cards[item.card]!;
     const def = defOf(s, c);
@@ -2342,6 +2400,7 @@ export function resolveTop(ctx: Ctx): void {
       const extra = c.extraCountersOnEnter ?? 0;
       moveCard(ctx, c.id, 'battlefield', { controller: item.controller });
       if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
+      if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
@@ -2497,6 +2556,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       for (const id of r.conniving.slice(0, nonland)) addCounters(ctx, id, 1, pending.player);
       delete r.conniving;
     }
+  } else if (pending.purpose === 'attachToSource') {
+    const source = sourceOf(r.item);
+    const host = s.cards[source]!;
+    if (host.zone === 'battlefield' && isCreatureOnBattlefield(s, host)) for (const id of cards) attach(ctx, id, source);
   } else if (pending.purpose === 'artifactCopy') {
     for (const id of cards) {
       const original = s.cards[id]!;
@@ -2636,6 +2699,24 @@ export function chooseEntryCopy(ctx: Ctx, playerId: PlayerId, cards: InstanceId[
   const chosen = cards[0] ? s.cards[cards[0]] : undefined;
   if (chosen && !isCreatureOnBattlefield(s, chosen)) reject('Choose a creature still on the battlefield.');
   item.entryCopy = chosen ? { card: chosen.id, object: chosen.zoneChanges ?? 0 } : null;
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  resolveTop(ctx);
+}
+
+/** The ChooseCards answer for Sin: remove every counter from the chosen permanents; it enters with twice that many +1/+1 counters. */
+export function chooseEntryCounters(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s, p = s.pending, item = s.stack.at(-1);
+  if (p.kind !== 'chooseCards' || p.purpose !== 'removeCountersOnEntry' || p.player !== playerId) reject('You are not choosing counters to remove.');
+  if (item?.kind !== 'spell' || item.id !== p.item) throw new Error('The entering spell is not on top of the stack.');
+  const problem = choiceProblem(s, p, cards);
+  if (problem) reject(problem);
+  let removed = 0;
+  for (const id of cards) {
+    const c = s.cards[id]!;
+    if (c.zone !== 'battlefield') continue;
+    for (const [kind, n] of allCounters(c)) removed += removeCounters(ctx, id, kind, n);
+  }
+  item.entryCounters = removed * 2;
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   resolveTop(ctx);
 }

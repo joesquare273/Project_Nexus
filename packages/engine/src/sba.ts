@@ -87,6 +87,22 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
   let eliminatedAny = false;
   for (;;) {
     let changed = false;
+    for (const c of battlefield(s)) {
+      const w = c.controlWhile;
+      if (!w) continue;
+      const source = s.cards[w.source];
+      if (source?.zone === 'battlefield' && (source.zoneChanges ?? 0) === w.sourceObject && source.controller === w.controller && c.controller === w.controller) continue;
+      delete c.controlWhile;
+      if (c.controller !== w.controller) continue;
+      const back = s.players[w.previous]?.eliminated ? c.owner : w.previous;
+      if (back === c.controller) continue;
+      c.controller = back;
+      c.summoningSick = true;
+      if (c.attachedTo) delete c.attachedTo;
+      removeFromCombat(s, c.id);
+      ctx.ev.push({ type: 'ControlChanged', card: c.id, controller: back });
+      changed = true;
+    }
     if (s.combat) for (const id of new Set([...s.combat.attacks.map(a=>a.attacker), ...s.combat.blocks.map(b=>b.blocker)])) {
       if (!isCreatureOnBattlefield(s,s.cards[id])) removeFromCombat(s,id);
     }
@@ -238,7 +254,7 @@ function repairPending(ctx: Ctx): void {
       // A player who left doesn't choose; the spell or ability carries on without them.
       if (pending.purpose === 'handSize') break;
       // The entering spell left the stack, or its controller left the game.
-      if (pending.purpose === 'copyOnEntry') {
+      if (pending.purpose === 'copyOnEntry' || pending.purpose === 'removeCountersOnEntry') {
         if (s.stack.at(-1)?.id !== pending.item || s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
         break;
       }

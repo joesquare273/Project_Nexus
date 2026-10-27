@@ -19,9 +19,15 @@ import { battlefield, aliveFromActive,
 } from './state.ts';
 import type { Attack, Block, CardInstance, GameState, InstanceId, PlayerId, Target } from './types.ts';
 
+/** "Can't attack or block" from a static ability (Observed Stasis). */
+function cantAttackOrBlock(s: GameState, c: CardInstance): boolean {
+  return battlefield(s).some((source) => (currentDefinition(s, source).statics ?? []).some((spec) => spec.cantAttackOrBlock && staticAffects(s, source, spec, c)));
+}
+
 export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): boolean {
   return (
     isCreatureOnBattlefield(s, c) &&
+    !cantAttackOrBlock(s, c) &&
     c.controller === playerId &&
     !c.tapped &&
     (!c.summoningSick || hasKeyword(s, c, 'Haste'))
@@ -31,7 +37,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
 /** Whether `blocker` could block `attacker` on its own (menace is checked per whole declaration). */
 export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInstance): boolean {
   if (!isCreatureOnBattlefield(s, blocker) || blocker.tapped) return false;
-  if (hasFlag(s, blocker, 'cantBlock')) return false;
+  if (hasFlag(s, blocker, 'cantBlock') || cantAttackOrBlock(s, blocker)) return false;
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   for (const source of battlefield(s)) {
     for (const spec of currentDefinition(s, source).statics ?? []) {

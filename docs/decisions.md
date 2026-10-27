@@ -165,6 +165,8 @@ choices keep opponents' hand identities hidden.
 | Espers to Magicite's "choose up to one target creature card exiled this way" | Chosen as the spell resolves, not by a reflexive trigger | A reflexive triggered ability with a target (rule 603.12) |
 | Good King Mog XII's "a copy of a non-Saga token you control" | The token is targeted | Chosen as the ability resolves, without targeting |
 | Blue Mage's Cane's copy | The exiled card itself is cast for {3}, at any time that turn, and returns to exile afterwards (as if the copy ceased to exist) | A copy is cast while the ability resolves (rules 707.12, 608.2g) |
+| Sin's "as it enters, remove all counters" | Only when Sin is cast (as the spell resolves); put onto the battlefield another way, it enters with no counters | Also when it enters another way (rule 614.1c) |
+| "Loses all abilities" (Observed Stasis) | Removes the abilities in its own definition; abilities granted by other permanents or effects still apply | Also removes abilities granted earlier by timestamp (rule 613.1f) |
 | Kefka's life loss | As each spell is cast | After all the spells are cast |
 | Dig Through Time | The cards not taken go on the bottom in the order they were on top | Any order |
 | Emet-Selch's "once each turn" | Counts only when you say yes | Counts whenever you cast a spell this way |

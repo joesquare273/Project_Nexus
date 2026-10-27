@@ -328,7 +328,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'Counter' && e.target !== 'TargetSpell' && e.target !== 'TargetAbility') err('Counter needs a TargetSpell or TargetAbility target.');
   if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
-  if (e.whileYouControlSource && e.effect !== 'GrantKeywords') err('whileYouControlSource is only for GrantKeywords.');
+  if (e.whileYouControlSource && e.effect !== 'GrantKeywords' && e.effect !== 'GainControl') err('whileYouControlSource is only for GrantKeywords and GainControl.');
   if (e.effect === 'Fight' && !inAbility) err('Fight is only for abilities (the source creature fights).');
   if (e.attachToReturnedTarget !== undefined && (e.effect !== 'ReturnToBattlefield' || e.target !== 'TargetCardInGraveyard' || !isNonNegativeInt(e.attachToReturnedTarget))) err('attachToReturnedTarget needs ReturnToBattlefield targeting a graveyard card and a whole target index.');
   if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');

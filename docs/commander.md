@@ -5,10 +5,10 @@ Commander format (2-4 players, 100-card singleton decks, 40 life):
 
 | Deck | Commander | Game | Fully built |
 |---|---|---|---|
-| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 99/100 |
-| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 96/100 |
-| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 98/100 |
-| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 97/100 |
+| Limit Break | Cloud, Ex-SOLDIER (RGW) | FINAL FANTASY VII | 100/100 |
+| Revival Trance | Terra, Herald of Hope (RWB) | FINAL FANTASY VI | 100/100 |
+| Counter Blitz | Tidus, Yuna's Guardian (GWU) | FINAL FANTASY X | 100/100 |
+| Scions & Spellcraft | Y'shtola, Night's Blessed (WUB) | FINAL FANTASY XIV | 100/100 |
 
 All 320 distinct cards are defined in `packages/cards/data/fic.json`, and the
 decklists with each card's status are in `packages/cards/data/fic-precons.json`.
@@ -52,6 +52,18 @@ Run `node -e` on `fic-precons.json` to list cards by need, or look at the
 `needs` field per card.
 
 ## Latest card checkpoint
+
+**All 320 distinct precon cards are built (2026-10-27).** The last three:
+Yuffie, Materia Hunter (ninjutsu; gains control of a noncreature artifact for
+as long as you control her, then may attach an Equipment), Sin, Unending
+Cataclysm (removes counters as it enters for twice as many +1/+1 counters;
+when it dies its counters move and it's shuffled into its owner's library)
+and Observed Stasis (an Aura with flash: removes the creature from combat,
+draws per tapped creature its controller controls, and the creature loses
+all abilities and can't attack or block). The rules simplifications that
+remain are listed in [decisions.md](decisions.md).
+
+### Previous checkpoint
 
 Espers to Magicite, Summon: Good King Mog XII and Blue Mage's Cane are built
 (2026-10-27): an artifact token copy of an exiled creature card, token
@@ -190,5 +202,5 @@ needing several groups' pieces waits for the last of them.
 | Adventures | **3 built (2026-10-23):** Hypnotic Sprite, Murderous Rider, Hildibrand Manderville. Full Adventure casting, exile follow-up, Rider death trigger, and Hildibrand token anthem and graveyard permission. |
 | Battlefield copies | **2 built (2026-10-24):** Gogo, Mysterious Mime and Kimahri, Valiant Guardian. Copiable values, retained exceptions, stacked copy durations, copied abilities and browser choices. |
 | Entering as a copy | **1 built (2026-10-24):** Altered Ego. |
-| Remaining one-offs | 3 distinct cards remain (2026-10-27): ninjutsu (Yuffie), counters removed as Sin enters, and an Aura with flash. |
+| Remaining one-offs | **None (2026-10-27):** Yuffie, Sin and Observed Stasis were the last. |
 | Everything else | |

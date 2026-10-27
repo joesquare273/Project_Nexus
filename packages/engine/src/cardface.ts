@@ -25,7 +25,7 @@ export function continuousSources(s: GameState): CardInstance[] {
   const cached = sourceCache.get(s);
   if (cached?.version === version && cached.count === count && cached.defs === s.cardDefs) return cached.sources;
   const sources = s.turnOrder.flatMap(p=>s.players[p]!.battlefield.map(id=>s.cards[id]!)).filter(c=>
-    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.noncreatureIfGraveyardBelow !== undefined));
+    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.noncreatureIfGraveyardBelow !== undefined));
   sourceCache.set(s,{version,count,defs:s.cardDefs,sources});
   return sources;
 }
@@ -42,7 +42,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   for (const source of continuousSources(s)) {
     if (source.phasedOut || (source.id !== c.id && source.attachedTo !== c.id)) continue;
     for (const spec of copiableDefinition(s,source).statics ?? []) {
-      if (spec.zone || spec.affects === 'EachMatching' || !(spec.addSubtypes || spec.setCreatureTypes || spec.setColors || spec.noncreatureIfGraveyardBelow !== undefined)) continue;
+      if (spec.zone || spec.affects === 'EachMatching' || !(spec.addSubtypes || spec.setCreatureTypes || spec.setColors || spec.losesAllAbilities || spec.noncreatureIfGraveyardBelow !== undefined)) continue;
       if ((spec.affects === 'Self' ? source.id : source.attachedTo) !== c.id) continue;
       if (spec.conditions?.some(condition =>
         condition === 'yourTurn' ? s.activePlayer !== source.controller :
@@ -60,6 +60,15 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     if (spec.setCreatureTypes && out.types.includes('creature')) { change(); out.subtypes = [...(out.subtypes ?? []).filter(t=>!CREATURE_SUBTYPES.has(t)), ...spec.setCreatureTypes]; }
     if (spec.addSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...spec.addSubtypes])]; }
     if (spec.setColors) { change(); out.colors = [...spec.setColors]; }
+    // Layer 6 (rule 613.1f): only its name, types, mana cost, colors and power/toughness remain.
+    if (spec.losesAllAbilities) {
+      change();
+      const kept: CardDefinition = { id: out.id, name: out.name, types: out.types };
+      for (const key of ['supertypes', 'subtypes', 'manaCost', 'colors', 'colorIdentity', 'power', 'toughness', 'printing', 'token', 'enchant'] as const) {
+        if (out[key] !== undefined) (kept as unknown as Record<string, unknown>)[key] = out[key];
+      }
+      out = kept;
+    }
   }
   return out;
 }
