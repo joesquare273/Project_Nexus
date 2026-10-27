@@ -28,6 +28,9 @@ const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready:
   },
 ];
 
+/** The Magic card back, from Scryfall's image servers. */
+const CARD_BACK = 'https://backs.scryfall.io/large/0/a/0aeebaf5-8c7d-4636-9e82-8c27447861f7.jpg';
+
 type View = { kind: 'shop' } | { kind: 'open'; pack: Pack; fresh: boolean[] } | { kind: 'summary'; pack: Pack; fresh: boolean[] } | { kind: 'collection' };
 
 export function PacksTab() {
@@ -41,6 +44,8 @@ export function PacksTab() {
 
   useEffect(() => {
     import('@nexus/cards/boosters').then(setMod, () => setFailed(true));
+    // Load the card back early so the first face-down card never shows an empty side.
+    new Image().src = CARD_BACK;
   }, []);
 
   const open = (kind: PackKind) => {
@@ -297,7 +302,9 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
           <div className="reveal-face">
             <PullImage pull={current} />
           </div>
-          <div className="reveal-back" />
+          <div className="reveal-back">
+            <img src={CARD_BACK} alt="" draggable={false} />
+          </div>
         </div>
       </button>
       <div className="reveal-caption" aria-live="polite">

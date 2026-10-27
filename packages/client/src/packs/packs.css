@@ -251,9 +251,10 @@
   opacity: 0;
   transition: transform 0.22s ease-in, opacity 0.22s;
 }
+/* Uses `scale`, not `transform`: animating transform would turn a face-down card through its face. */
 @keyframes reveal-in {
   from {
-    transform: scale(0.96);
+    scale: 0.96;
   }
 }
 .reveal-face,
@@ -270,18 +271,16 @@
 }
 .reveal-back {
   transform: rotateY(180deg) translateZ(1px);
-  background: radial-gradient(circle at 50% 50%, #3a5a80, #111a28 70%);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 12px 30px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  border-radius: 4.75% / 3.5%;
+  background: #1a1410;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
 }
-.reveal-back::after {
-  content: '\2726';
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 64px;
-  color: var(--gold);
-  text-shadow: 0 0 30px rgba(108, 203, 235, 0.8);
+.reveal-back img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 /* Face-down specials pulse in their rarity's color. */
 .reveal-card.down.rarity-rare .reveal-back,
