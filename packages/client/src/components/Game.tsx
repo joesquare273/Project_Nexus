@@ -173,6 +173,16 @@ export function Game({
     return () => window.clearTimeout(timer.current);
   }, [run]);
 
+  // Online: the other player moved, or the server answered.
+  useEffect(
+    () =>
+      session.subscribe((err) => {
+        if (err) showError(err);
+        run();
+      }),
+    [session, run],
+  );
+
   // Show each triggering card for 2 seconds, one after another. If many trigger at once, only
   // the last few are shown so the spotlight doesn't fall far behind the game.
   useEffect(() => {

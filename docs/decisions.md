@@ -340,6 +340,13 @@ cards than before. Tests that need a particular random outcome set
   version they were chosen against (an older one is stale). Wrong-player,
   out-of-turn and illegal actions get an `error` message, never a crash.
   Engine error texts are rewritten so they never quote a real card id.
+- Moves are sent as **all-or-nothing batches** of actions (tapping lands
+  and casting a spell is one change, as on the local board): the server tries
+  the whole batch on a copy and applies it as one version, or none of it.
+- **In the browser**, `OnlineSession` gives the board the same interface as a
+  local game. The board calls its player "You", so incoming data renames your
+  seat to "You" and the other seat to their guest name; outgoing actions are
+  renamed back only in player fields (`player`, `opponent`, `defender`).
 - **What a player receives** (engine/src/redact.ts, next to view.ts): their
   `GameView`, their legal actions, their filtered events, and a *redacted
   state*: the board reads more than `GameView` today (costs, attack checks,

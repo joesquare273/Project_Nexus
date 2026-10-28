@@ -77,7 +77,7 @@ class TestClient {
 
   act(action: Action, version = this.lastUpdate()!.version): number {
     this.seq++;
-    this.send({ type: 'action', seq: this.seq, version, action: action as never });
+    this.send({ type: 'actions', seq: this.seq, version, actions: [action as never] });
     return this.seq;
   }
 
@@ -187,7 +187,7 @@ describe('rejected messages', () => {
     const lone = await client(port);
     lone.send({ type: 'join', name: 'Early', room: 'EARLY' });
     await lone.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
-    lone.send({ type: 'action', seq: 1, version: 0, action: { type: 'PassPriority', player: 'P1' } });
+    lone.send({ type: 'actions', seq: 1, version: 0, actions: [{ type: 'PassPriority', player: 'P1' }] });
     expect((await lone.error()).code).toBe('not-started');
 
     const { a, b } = await startedGame(port);
@@ -200,7 +200,7 @@ describe('rejected messages', () => {
 
     a.send('{not json');
     expect((await a.error()).code).toBe('bad-json');
-    a.send(JSON.stringify({ type: 'action', seq: 'one', version: 0, action: {} }));
+    a.send(JSON.stringify({ type: 'actions', seq: 'one', version: 0, actions: [{}] }));
     expect((await a.error()).code).toBe('bad-message');
     a.send(JSON.stringify({ type: 'hack', anything: true }));
     expect((await a.error()).code).toBe('bad-message');
@@ -229,10 +229,33 @@ describe('rejected messages', () => {
     const applied = await mover.next(isUpdate, from);
     expect(applied.version).toBe(1);
     expect(applied.ackSeq).toBe(seq);
-    mover.send({ type: 'action', seq, version: 1, action: legal as never });
+    mover.send({ type: 'actions', seq, version: 1, actions: [legal as never] });
     expect((await mover.error()).code).toBe('duplicate');
     // Errors never name real card ids.
     for (const raw of [...a.raw, ...b.raw]) expect(raw).not.toMatch(/"[ckt]\d+"/);
+  });
+});
+
+describe('action batches', () => {
+  it('applies nothing when one action in a batch is illegal', async () => {
+    const { port, lobby } = await open();
+    const { a, b } = await startedGame(port, 'BATCH');
+    const players = { P1: a, P2: b };
+    const u = a.lastUpdate()!;
+    const seat = (u.update.state.pending as { player: Seat }).player;
+    const mover = players[seat];
+    const before = lobby.rooms.get('BATCH')!.game!.state;
+    const good = mover.lastUpdate()!.update.legal[0]!;
+    mover.seq++;
+    mover.send({ type: 'actions', seq: mover.seq, version: 0, actions: [good as never, { type: 'PlayLand', player: seat, card: '?h0' }] });
+    // Rejected either as illegal or because the first action handed the decision over.
+    expect(['illegal', 'not-your-decision']).toContain((await mover.error()).code);
+    const room = lobby.rooms.get('BATCH')!;
+    expect(room.game!.version).toBe(0);
+    expect(room.game!.state).toBe(before);
+    // The same seq can be used again, since nothing was applied.
+    mover.send({ type: 'actions', seq: mover.seq, version: 0, actions: [good as never] });
+    expect((await mover.next(isUpdate)).version).toBe(1);
   });
 });
 

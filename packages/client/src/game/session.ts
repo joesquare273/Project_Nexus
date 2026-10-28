@@ -48,10 +48,12 @@ export interface SessionOptions {
   coaching?: boolean;
 }
 
-/** A game that starts from a prepared position instead of a fresh shuffle (the tutorial). */
+/** A game that starts from a prepared position instead of a fresh shuffle (the tutorial, online games). */
 export interface Scenario {
   state: GameState;
   bots: Record<PlayerId, Bot>;
+  /** The other players' ids (default: Bot1, Bot2...). */
+  opponents?: PlayerId[];
 }
 
 export type { CardPlay, PlayChoice } from '@nexus/bots';
@@ -103,7 +105,7 @@ export class GameSession {
 
   constructor(options: SessionOptions, scenario?: Scenario) {
     this.options = options;
-    this.opponents = Array.from({ length: options.opponents }, (_, i) => `Bot${i + 1}`);
+    this.opponents = scenario?.opponents ?? Array.from({ length: options.opponents }, (_, i) => `Bot${i + 1}`);
     if (scenario) {
       this.bots = scenario.bots;
       this.state = scenario.state;
@@ -207,8 +209,16 @@ export class GameSession {
     return 'auto';
   }
 
+  /** Calls `listener` when the game changes on its own (an online opponent moved), with an error to show, if any. */
+  subscribe(_listener: (error?: string) => void): () => void {
+    return () => {};
+  }
+
+  /** Ends the session (an online game disconnects). */
+  close(): void {}
+
   /** A decision that is obvious or not worth stopping for, made for you. */
-  private automaticAction(): Action | null {
+  protected automaticAction(): Action | null {
     const s = this.state;
     const pending = s.pending;
     switch (pending.kind) {
@@ -242,7 +252,7 @@ export class GameSession {
     return s.step === 'declareAttackers' || s.step === 'declareBlockers' || s.step === 'end';
   }
 
-  private narrate(events: GameEvent[]): void {
+  protected narrate(events: GameEvent[]): void {
     for (const e of events) if (e.type === 'AbilityTriggered') this.triggered.push({ key: this.nextTriggerKey++, card: e.card });
     let draws = null as { player: PlayerId; names: string[]; hidden: number } | null;
     const flush = () => {
@@ -300,14 +310,14 @@ export class GameSession {
     }
   }
 
-  private push(text: string): void {
+  protected push(text: string): void {
     const heading = text.startsWith('\n=====');
     const clean = text.replace(/^\n/, '').replace(/=====/g, '').trim();
     this.log.push({ id: this.nextLogId++, text: clean, heading });
   }
 }
 
-function applyAll(s: GameState, actions: Action[]): { state: GameState; events: GameEvent[] } | { error: string } {
+export function applyAll(s: GameState, actions: Action[]): { state: GameState; events: GameEvent[] } | { error: string } {
   const events: GameEvent[] = [];
   for (const a of actions) {
     const r = applyAction(s, a);
@@ -319,11 +329,11 @@ function applyAll(s: GameState, actions: Action[]): { state: GameState; events: 
 }
 
 /** Engine errors name cards by instance id; show card names instead. */
-function readable(s: GameState, error: string): string {
+export function readable(s: GameState, error: string): string {
   return error.replace(/"([ct]\d+)"/g, (_, id: string) => (s.cards[id] ? cardName(s, id) : id));
 }
 
-function touchedCards(events: GameEvent[]): Set<InstanceId> {
+export function touchedCards(events: GameEvent[]): Set<InstanceId> {
   const ids = new Set<InstanceId>();
   for (const e of events) {
     if ('card' in e && typeof e.card === 'string') ids.add(e.card);

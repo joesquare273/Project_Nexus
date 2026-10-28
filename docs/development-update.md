@@ -5,6 +5,21 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-28
 
+### Online play in the browser
+
+- New **Online** tab on the menu: enter a guest name and a room code, pick
+  a Starter Kit, wait for the other player, then play on the usual board.
+  `npm run server` and `npm run dev` together; Vite forwards /ws to the
+  server. Steps are in HOW-TO-RUN.txt (section 3).
+- `OnlineSession` (client/src/game/online.ts) fills the board's session from
+  server updates: the redacted state, the server's legal actions and the
+  events. Your seat shows as "You" and the other player by their name.
+- Moves go to the server as all-or-nothing batches (tapping lands and casting
+  a spell is one change): if any action in a batch is illegal, none apply.
+- Checked in the browser with two tabs: lobby, mulligans, lands, casting a
+  creature with auto-pay, the opponent responding, hidden draws ("Alice drew
+  a card"), and the other player leaving.
+
 ### Online play: server and redaction
 
 - New `packages/server`: guest names and room codes, two players, Starter Kit

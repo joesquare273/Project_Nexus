@@ -104,7 +104,33 @@ You need Node.js 24 or newer.
   them. Offline, cards are drawn as simple frames instead.
 
 
-3. PLAY IN THE TERMINAL
+3. PLAY ONLINE (TWO BROWSER TABS)
+---------------------------------
+  Two people can play one Starter Kit game, each in their own browser tab,
+  through the game server on your computer. It needs two terminals:
+
+    npm run server      the game server (leave it running; port 8787)
+    npm run dev         the browser board (leave it running too)
+
+  Then:
+
+    1. Open http://localhost:5173 in a browser tab and choose "Online".
+    2. Enter a name (1-16 letters or digits) and a room code (3-12 letters
+       or digits, for example TABLE7), pick Red-White or Blue-Black, and
+       press "Join room". You'll wait in the room for the other player.
+    3. Open a second tab (or a second browser) at http://localhost:5173,
+       choose "Online", enter a different name and the SAME room code, pick
+       a deck, and press "Join room".
+
+  The game starts when both players are in the room and have picked a deck.
+  Each tab only sees its own hand; the server holds the real game and checks
+  every move. If one tab is closed, the other is told and the game ends.
+
+  If "Join room" says it can't reach the game server, start it with
+  "npm run server" first (the browser board looks for it on port 8787).
+
+
+4. PLAY IN THE TERMINAL
 -----------------------
   npm run play
 
@@ -121,14 +147,14 @@ You need Node.js 24 or newer.
   b = show the board, f = stop at every step, ? = help, q = concede.
 
 
-4. WATCH THE BOTS PLAY
+5. WATCH THE BOTS PLAY
 ----------------------
   npm run sim                                 2 AIs, seed 1, full game log
   npm run sim -- --players 4 --seed 7         a 4-player pod
   npm run sim -- --players 3 --quiet          only the result
 
 
-5. RUN THE TESTS
+6. RUN THE TESTS
 ----------------
   npm test              all automated tests (about 20 seconds)
   npm run typecheck     TypeScript type checking
@@ -140,7 +166,7 @@ You need Node.js 24 or newer.
   went wrong.
 
 
-6. UPDATING CARD DATA FROM SCRYFALL
+7. UPDATING CARD DATA FROM SCRYFALL
 -----------------------------------
   npm run scryfall
 
@@ -150,11 +176,12 @@ You need Node.js 24 or newer.
   "npm run scryfall -- --refresh" to fetch everything again.
 
 
-7. WHERE THINGS ARE
+8. WHERE THINGS ARE
 -------------------
   packages/client   the browser game board
   packages/engine   the rules engine (turns, stack, combat, triggers)
   packages/cards    card definitions and the Starter Kit decklists
   packages/bots     the AI, the terminal game, the simulator, the fuzzer
+  packages/server   the online game server (rooms, the game authority)
   docs/             development log (development-update.md), roadmap
                     (starter-kits.md) and decisions (decisions.md)

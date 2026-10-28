@@ -31,12 +31,16 @@ export const ClientMessage = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('join'), name: GuestName, room: RoomCode }),
   z.strictObject({ type: z.literal('pickDeck'), deck: z.enum(DECKS) }),
   z.strictObject({
-    type: z.literal('action'),
-    /** Increases with every action this client sends; a repeat is a duplicate. */
+    type: z.literal('actions'),
+    /** Increases with every batch this client sends; a repeat is a duplicate. */
     seq: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
-    /** The game version the action was chosen against; an older one is stale. */
+    /** The game version the actions were chosen against; an older one is stale. */
     version: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-    action: ActionPayload,
+    /**
+     * Applied in order, all or nothing, as one change ("tap these lands, then
+     * cast this"): if any is illegal, none is applied.
+     */
+    actions: z.array(ActionPayload).min(1).max(64),
   }),
 ]);
 export type ClientMessage = z.input<typeof ClientMessage>;
@@ -70,7 +74,7 @@ export type ErrorCode =
 export type ServerMessage =
   | { type: 'joined'; room: string; seat: Seat; name: string }
   | { type: 'lobby'; room: string; players: LobbyPlayer[] }
-  /** The game as this player may see it, after every change. `ackSeq`: the last of your actions that was applied. */
+  /** The game as this player may see it, after every change. `ackSeq`: the last of your batches that was applied. */
   | { type: 'update'; version: number; seat: Seat; names: Record<Seat, string>; ackSeq: number; update: PlayerUpdate }
   | { type: 'error'; code: ErrorCode; message: string; seq?: number }
   | { type: 'opponentLeft'; seat: Seat; name: string };

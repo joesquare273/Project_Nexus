@@ -2046,3 +2046,47 @@ button.phase.current {
 .commander-damage-row { display:grid; grid-template-columns:1fr auto; gap:4px 12px; padding:4px 0; font-size:13px; }
 .commander-damage-row meter { grid-column:1 / -1; width:100%; height:8px; }
 .commander-damage-row.danger strong { color:#ff8880; }
+
+/* Online tab */
+.online-form,
+.online-lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 0 auto;
+  max-width: 560px;
+}
+.online-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(320px, 100%);
+  text-align: left;
+  color: var(--muted);
+  font-size: 13px;
+}
+.online-form input {
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.online-form .deck-choices {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.online-error {
+  color: var(--danger);
+}
+.online-players {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.online-players .waiting {
+  color: var(--muted);
+}

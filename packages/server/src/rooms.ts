@@ -122,7 +122,7 @@ export class Client {
     try {
       if (m.type === 'join') this.join(m.name, m.room);
       else if (m.type === 'pickDeck') this.pickDeck(m.deck);
-      else this.act(m.seq, m.version, m.action as unknown as Action);
+      else this.act(m.seq, m.version, m.actions as unknown as Action[]);
     } catch (e) {
       // A bug in the server must not take the room down with it.
       this.error('illegal', `The server could not handle that: ${e instanceof Error ? e.message : String(e)}`);
@@ -172,7 +172,7 @@ export class Client {
     sendUpdates(this.lobby, room, created.events);
   }
 
-  private act(seq: number, version: number, action: Action): void {
+  private act(seq: number, version: number, actions: Action[]): void {
     const room = this.room;
     const seat = this.seat;
     if (!room || !seat) return this.error('not-joined', 'Join a room first.', seq);
@@ -182,18 +182,25 @@ export class Client {
     if (game.state.pending.kind === 'gameOver') return this.error('game-over', 'The game is over.', seq);
     if (seq <= me.lastSeq) return this.error('duplicate', `Action ${seq} was already received.`, seq);
     if (version !== game.version) return this.error('stale', `That action was for version ${version}; the game is at version ${game.version}.`, seq);
-    if (action.player !== seat) return this.error('wrong-player', `You play as ${seat}.`, seq);
-    const pending = game.state.pending;
-    if (action.type !== 'Concede' && (!('player' in pending) || pending.player !== seat)) {
-      return this.error('not-your-decision', 'The game is waiting on the other player.', seq);
-    }
+    if (actions.some((a) => a.player !== seat)) return this.error('wrong-player', `You play as ${seat}.`, seq);
     const book = game.books[seat];
-    const result = applyAction(game.state, resolveAction(action, book));
-    if (!result.ok) return this.error('illegal', aliasedError(game.state, result.error, book), seq);
-    game.state = result.state;
+    // All or nothing: try the whole batch on a copy of the game first.
+    let state = game.state;
+    const events: GameEvent[] = [];
+    for (const action of actions) {
+      const pending = state.pending;
+      if (action.type !== 'Concede' && (!('player' in pending) || pending.player !== seat)) {
+        return this.error('not-your-decision', 'The game is waiting on the other player.', seq);
+      }
+      const result = applyAction(state, resolveAction(action, book));
+      if (!result.ok) return this.error('illegal', aliasedError(state, result.error, book), seq);
+      state = result.state;
+      events.push(...result.events);
+    }
+    game.state = state;
     game.version++;
     me.lastSeq = seq;
-    sendUpdates(this.lobby, room, result.events);
+    sendUpdates(this.lobby, room, events);
   }
 
   /** The browser went away. In a game, the other player is told and the room closes. */

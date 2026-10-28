@@ -5,6 +5,7 @@ import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
+import { OnlineMenu } from './components/OnlineMenu.tsx';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   {
@@ -40,10 +41,11 @@ export function App() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   /** Changes for each new game so the board starts fresh. */
   const [gameNumber, setGameNumber] = useState(0);
-  /** The menu's tabs: set up a game, or open booster packs. */
-  const [tab, setTab] = useState<'play' | 'packs'>('play');
+  /** The menu's tabs: set up a game, play online, or open booster packs. */
+  const [tab, setTab] = useState<'play' | 'online' | 'packs'>('play');
 
   const quit = () => {
+    session?.close();
     setSession(null);
     setLesson(null);
   };
@@ -97,11 +99,31 @@ export function App() {
       <button role="tab" aria-selected={tab === 'play'} className={tab === 'play' ? 'chosen' : ''} onClick={() => setTab('play')}>
         Play
       </button>
+      <button role="tab" aria-selected={tab === 'online'} className={tab === 'online' ? 'chosen' : ''} onClick={() => setTab('online')}>
+        Online
+      </button>
       <button role="tab" aria-selected={tab === 'packs'} className={tab === 'packs' ? 'chosen' : ''} onClick={() => setTab('packs')}>
         Packs
       </button>
     </div>
   );
+
+  if (tab === 'online') {
+    return (
+      <div className="menu">
+        <h1>Project Nexus</h1>
+        <p className="tagline">Starter Kit games against a friend, through the game server</p>
+        {tabs}
+        <OnlineMenu
+          onStart={(online) => {
+            setLesson(null);
+            setGameNumber((n) => n + 1);
+            setSession(online);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (tab === 'packs') {
     return (
