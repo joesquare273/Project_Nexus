@@ -41,6 +41,15 @@ this repo, not only in local memory.
   `npm run dev`) is the main way to play; the terminal client is secondary.
   The application is browser-based; the client talks to the engine only
   through JSON (`GameView`, legal actions, events, `Action`).
+- **Online play (2026-10-28):** `packages/server` (Node + `ws`, many rooms in
+  one process) is the only authority; message types live in
+  `packages/server/src/protocol.ts` and are checked with zod. Each player gets
+  only their own redacted state, view, legal actions and events
+  (`engine/src/redact.ts`, an allowlist with per-player card aliases); keep its
+  field classification and the hidden-information tests up to date when the
+  engine changes. Seed online games from `crypto.randomBytes` only. Later:
+  one Render web service serving the built client too, and Supabase Auth with
+  Discord login (only the server talks to the database). See docs/decisions.md.
 - **Frontend direction (2026-10-23):** an arcane fantasy table, with inspiration
   from Hearthstone, MTG Arena and Dueling Nexus while keeping its own identity.
   Improve layout, controls and animations while following MTG rules. See
@@ -61,6 +70,7 @@ this repo, not only in local memory.
   spell), the rules each brings, and whether they are built. Rules tied to a
   type or category live in the engine (`typerules.ts`), not on each card.
 - `docs/packs.md`: the Packs tab (booster odds, card data, collection).
+- `packages/server`: online play (rooms, protocol, authority); `npm run server`.
 - `HOW-TO-RUN.txt`: instructions for the user.
 
 ## Checks

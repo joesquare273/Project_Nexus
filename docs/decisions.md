@@ -323,3 +323,49 @@ shuffle. It is now **sfc32** (`engine/src/rng.ts`), with four 32-bit words
 This changed every seeded game: the same integer seed now deals different
 cards than before. Tests that need a particular random outcome set
 `rngState` from `seedToState`.
+
+## 2026-10-28: Online play
+
+- **packages/server**: one Node process using the `ws` package hosts many
+  rooms. It will later be deployed as one Render free web service that also
+  serves the built client (the server already serves `packages/client/dist`
+  when it exists). Accounts come later through Supabase Auth with Discord
+  login; only the server will talk to the database.
+- **The server is the only authority.** It holds the real GameState and runs
+  the engine. Players join with a guest name and a room code; the game starts
+  when two players have joined and each has picked a Starter Kit (RW or UB).
+- **Messages** are defined once, in `packages/server/src/protocol.ts`, and
+  shared by the client and server. Every incoming message is checked with zod.
+  Actions carry a sequence number (a repeat is a duplicate) and the game
+  version they were chosen against (an older one is stale). Wrong-player,
+  out-of-turn and illegal actions get an `error` message, never a crash.
+  Engine error texts are rewritten so they never quote a real card id.
+- **What a player receives** (engine/src/redact.ts, next to view.ts): their
+  `GameView`, their legal actions, their filtered events, and a *redacted
+  state*: the board reads more than `GameView` today (costs, attack checks,
+  choice checks), so it gets a copy of the state with only what that player
+  may see. The copy is built from an allowlist: every field of the game, its
+  players and its cards is classified (copy, rewrite references, or drop),
+  and TypeScript fails the build if a new field isn't classified. The view is
+  built from the redacted state, so both follow the same rules.
+- **Card identities can't be tracked.** Real card ids are never sent (they
+  follow library order after the shuffle and survive zone changes). Each
+  player has an AliasBook of random aliases for the cards they can see; a
+  card that goes where they can't see it (a library, another player's hand,
+  face down into exile) loses its alias, and gets a new one if it comes back.
+  Hidden cards are anonymous placeholders, numbered afresh in every message,
+  with no definition. Commanders keep one alias: their identity is public.
+- **Private looks** are covered: surveil and scry, Urianger's look, choices
+  among library cards (hideaway, "look at the top N"), Summoning Materia's
+  library top, foretold and other face-down exile, and pending choices inside
+  `resolving`.
+- **Known limit:** object-change counters (`zoneChanges` and the
+  `...Object` numbers that refer to them) are sent as they are. They can
+  show how many times a visible card has changed zones (for example that it
+  was in a mulliganed hand), but never what a hidden card is.
+- **Option B, a possible later cleanup:** make the board read only
+  `GameView` plus a few server-computed extras (playable cards and costs,
+  attack and choice checks), so no state copy is sent at all. It would
+  shrink messages (a starting update is about 24 KB, mostly placeholder
+  library cards) but rewrites much of the board, which the tutorial and
+  local games also use.

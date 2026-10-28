@@ -54,16 +54,18 @@ packages/
   cards/    card definitions (JSON), Starter Kit decklists, validators
   bots/     AI, terminal client, simulator, fuzzer
   client/   browser game board (React + Vite)
+  server/   online play: WebSocket rooms, the game authority
 docs/       development log, roadmap, card types, decisions
 ```
 
-Planned later: `server` (WebSocket rooms) for online play. The graphical application is browser-based.
+Online play runs through `packages/server` (WebSocket rooms; the server is the only authority). The graphical application is browser-based.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Play against the AI on the browser board |
+| `npm run server` | Start the online game server (port 8787) |
 | `npm run play` | Play against the AI in the terminal |
 | `npm run sim` | Watch bots play a seeded game |
 | `npm test` | Run all tests |

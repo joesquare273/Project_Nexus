@@ -5,6 +5,23 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-28
 
+### Online play: server and redaction
+
+- New `packages/server`: guest names and room codes, two players, Starter Kit
+  decks, the server as the only authority. `npm run server` starts it on
+  port 8787. The browser's Online mode comes in the next step.
+- `engine/src/redact.ts` builds what each player may see from an allowlist,
+  with per-player random card aliases and anonymous placeholders for hidden
+  cards. See [decisions.md](decisions.md).
+- Tests: joining rooms, a whole game between two scripted WebSocket clients,
+  rejected messages (bad JSON or shape, not joined, room full, stale,
+  duplicate, out of turn, wrong player, illegal), and hidden information:
+  every message in fuzzed 2-4 player games with every Starter Kit and precon
+  deck is checked for real card ids and hidden cards' definitions, plus
+  targeted tests for foretell, face-down exile, surveil, hideaway, queued
+  choices and Summoning Materia. Breaking the redaction on purpose makes them
+  fail.
+
 ### 128-bit random number generator (before online play)
 
 - The engine's generator is now sfc32 with 128 bits of state, replacing
