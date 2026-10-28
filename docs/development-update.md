@@ -3,6 +3,23 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-28
+
+### 128-bit random number generator (before online play)
+
+- The engine's generator is now sfc32 with 128 bits of state, replacing
+  mulberry32 (32 bits), whose seed a player could brute-force from their
+  opening hand. Still pure and deterministic; replays are unchanged in
+  behavior and survive a JSON round trip. See [decisions.md](decisions.md).
+- `seedFromBytes` turns 16 bytes from `crypto.randomBytes` into a seed for
+  online games. Integer seeds still work for tests and local games, but
+  deal different games than before.
+- New tests: generator purity, 128-bit seeding, spread of values, and a
+  128-bit-seeded game that replays identically through JSON.
+- The new random sequences exposed an AI bug: it chose attackers with its
+  own check and tried to attack with a creature that had Observed Stasis
+  attached. It now uses the engine's `canAttack`; a regression test covers it.
+
 ## 2026-10-27
 
 ### Packs tab: Collector Boosters

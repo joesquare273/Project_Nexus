@@ -1,5 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { FREE_FOR_ALL, applyAction, createGame, type GameSetup } from '@nexus/engine';
+import { FREE_FOR_ALL, applyAction, createGame, seedFromBytes, type GameSetup, type Seed } from '@nexus/engine';
 import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { basicAi, playGame, randomBot, type Bot } from '../src/index.ts';
 import { checkInvariants } from '../src/invariants.ts';
@@ -9,11 +10,11 @@ const GAMES_PER_SIZE = 12;
 // Random bots take a while now that there are more choices (X values, foretell, mana while attacking).
 const TIMEOUT_MS = 300_000;
 
-function setup(players: number, seed: number): GameSetup {
+function setup(players: number, seed: number, rngSeed: Seed = seed): GameSetup {
   return {
     format: FREE_FOR_ALL,
     cardDefs: CARD_DEFS,
-    seed,
+    seed: rngSeed,
     players: Array.from({ length: players }, (_, i) => ({ id: `P${i + 1}`, deck: starterKitDeck(i % 2 ? 'UB' : 'RW') })),
     mulligans: true,
   };
@@ -53,6 +54,29 @@ describe('replays', () => {
     }
     expect(state).toEqual(original.state);
   });
+
+  it('a 128-bit seed (as online games use) replays identically, also through JSON', () => {
+    const seed = seedFromBytes(randomBytes(16));
+    const original = playGame(setup(2, 0, seed), seats(2, randomBot, 5));
+    // Replaying the action log from the same seed gives the same game.
+    let { state } = createGame(setup(2, 0, seed));
+    const half = Math.floor(original.actions.length / 2);
+    original.actions.forEach((action, i) => {
+      // A saved and reloaded game (as a server might store it) carries on identically.
+      if (i === half) state = JSON.parse(JSON.stringify(state));
+      const r = applyAction(state, action);
+      if (!r.ok) throw new Error(r.error);
+      state = r.state;
+    });
+    expect(state).toEqual(original.state);
+    // Another seed deals a different game.
+    const deal = (s: Seed) => {
+      const g = createGame(setup(2, 0, s)).state;
+      return g.players.P1!.library.map((id) => g.cards[id]!.defId);
+    };
+    expect(deal(seed)).toEqual(deal(seed));
+    expect(deal(seedFromBytes(randomBytes(16)))).not.toEqual(deal(seed));
+  }, TIMEOUT_MS);
 });
 
 describe('basic AI', () => {

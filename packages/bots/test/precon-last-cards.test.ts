@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, currentDefinition, getLegalActions, hasKeyword } from '@nexus/engine';
 import type { GameState } from '@nexus/engine';
+import { basicAi } from '../src/index.ts';
 import { act, card, cast, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
 
 const RAT = 'undercity-dire-rat';
@@ -128,6 +129,20 @@ describe.each([2, 3, 4])('%i players', (n) => {
     s.cards[attacker]!.tapped = false;
     s.activePlayer = 'P2';
     expect(getLegalActions({ ...s, pending: { kind: 'declareAttackers', player: 'P2' } }).some((a) => a.type === 'DeclareAttackers' && a.attacks.some((x) => x.attacker === attacker))).toBe(false);
+  });
+
+  it('Observed Stasis: the AI never tries to attack with the enchanted creature', () => {
+    let s = newGame(n);
+    const blanked = put(s, 'P1', RAT);
+    put(s, 'P1', RAT); // another creature that can attack
+    put(s, 'P2', 'observed-stasis', 'battlefield', { attachedTo: blanked });
+    s = goTo(s, 'declareAttackers');
+    expect(s.pending).toMatchObject({ kind: 'declareAttackers', player: 'P1' });
+    const action = basicAi(1)(s, getLegalActions(s));
+    expect(action.type).toBe('DeclareAttackers');
+    const attackers = action.type === 'DeclareAttackers' ? action.attacks.map((a) => a.attacker) : [];
+    expect(attackers).not.toContain(blanked);
+    expect(applyAction(s, action).ok).toBe(true);
   });
 
   it("Observed Stasis: only on an opponent's creature", () => {

@@ -1640,8 +1640,8 @@ export interface GameState {
   pending: Pending;
   /** Set when the game ends. null means a draw (everyone left at once). */
   winner?: PlayerId | null;
-  /** Seeded generator state. Never sent to clients. */
-  rngState: number;
+  /** Seeded generator state (sfc32: four 32-bit words). Never sent to clients. */
+  rngState: [number, number, number, number];
   nextId: number;
 }
 

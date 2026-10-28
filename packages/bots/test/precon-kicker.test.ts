@@ -4,7 +4,7 @@
 // checked against its Oracle text with the real card data.
 
 import { describe, expect, it } from 'vitest';
-import { getLegalActions, hasKeyword, manaChoices, nextRandom, powerOf, spellOptions, type Action, type GameState } from '@nexus/engine';
+import { getLegalActions, hasKeyword, manaChoices, nextRandom, powerOf, seedToState, spellOptions, type Action, type GameState } from '@nexus/engine';
 import { CARD_IDS_BY_NAME } from '@nexus/cards';
 import { act, card, cast, goTo, mana, newGame, player, put, rejected, settle } from './kit-helpers.ts';
 
@@ -25,7 +25,7 @@ const tokensOf = (s: GameState, defId: string, pid = 'P1') =>
   s.players[pid]!.battlefield.filter((c) => s.cards[c]!.isToken && s.cards[c]!.defId === defId).length;
 /** An RNG state whose first "choose one of `n`" comes up `mode`. */
 const rngFor = (mode: number, n: number) => {
-  for (let r = 0; ; r++) if (Math.floor(nextRandom(r)[0] * n) === mode) return r;
+  for (let r = 0; ; r++) if (Math.floor(nextRandom(seedToState(r))[0] * n) === mode) return seedToState(r);
 };
 
 describe('Kicker and multikicker', () => {

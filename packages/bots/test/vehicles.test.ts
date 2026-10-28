@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {activatedAbilities,currentDefinition,getLegalActions,viewFor,type GameState,type Action,type GameEvent} from '@nexus/engine';
+import {activatedAbilities,currentDefinition,getLegalActions,seedToState,viewFor,type GameState,type Action,type GameEvent} from '@nexus/engine';
 import {dealDamage,moveCard,destroy,phaseOut} from '../../engine/src/state.ts';
 import {cleanupDamage} from '../../engine/src/turn.ts';
 import {stabilize} from '../../engine/src/sba.ts';
@@ -67,7 +67,7 @@ describe.each([2,3,4])('%i-player Vehicles and precons',players=>{
  });
  it('Vehicle combat damage flips a reproducible coin and only a win creates two tapped Treasures',()=>{
   for(const rngState of [0,1,2,3]){
-   let {s}=castSetzer(newGame(players));const ship=put(s,'P1',FALCON,'battlefield',{crewed:true});s.rngState=rngState;
+   let {s}=castSetzer(newGame(players));const ship=put(s,'P1',FALCON,'battlefield',{crewed:true});s.rngState=seedToState(rngState);
    // Decline Falcon sacrifice so this checks the separate Setzer flip trigger.
    const start=hit(s,ship),a=finish(structuredClone(start),false),b=finish(structuredClone(start),false);
    expect(a.events).toEqual(b.events);const flip=a.events.find(e=>e.type==='CoinFlipped')!;expect(flip).toMatchObject({type:'CoinFlipped',player:'P1'});

@@ -4,6 +4,7 @@
 // safe or lethal, and block to trade up or to survive.
 
 import {
+  canAttack,
   canAttackPlayer,
   completeRequiredAttacks,
   copiableDefinition,
@@ -357,9 +358,8 @@ function bestPlay(s: GameState, me: PlayerId, legal: Action[]): Action | null {
  *     how close they are to dying, and any grudge.
  */
 function chooseAttacks(s: GameState, me: PlayerId, memory?: Memory): Attack[] {
-  const ready = creatures(s, me).filter(
-    (c) => !c.tapped && (!c.summoningSick || has(s, c, 'Haste')) && power(s, c) > 0,
-  );
+  // The engine's canAttack also covers "can't attack" effects (Observed Stasis).
+  const ready = creatures(s, me).filter((c) => canAttack(s, c, me) && power(s, c) > 0);
   const opps = opponents(s, me);
   if (ready.length === 0 || opps.length === 0) return [];
   const threat = new Map(opps.map((o) => [o, threatOf(s, me, o, memory)]));

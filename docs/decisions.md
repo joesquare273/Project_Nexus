@@ -301,3 +301,25 @@ A stack item records whether the spell was actually cast using flashback.
 The card merely having flashback does not cause exile when another permission
 was used. Cost calculation receives the chosen route and the casting player,
 so borrowed spells use their caster's reductions, ward payments and resources.
+
+## 2026-10-28: A 128-bit random number generator
+
+The engine's generator was mulberry32, with one 32-bit word of state. The
+code is public, so a player who knows their opening hand could try all 2^32
+seeds until one deals that hand, and then know every library and future
+shuffle. It is now **sfc32** (`engine/src/rng.ts`), with four 32-bit words
+(128 bits) of state in `GameState.rngState`:
+
+- It stays pure and deterministic: `nextRandom` returns the value and the
+  next state without changing its input, so the same seed and actions always
+  replay the same game, including after a JSON round trip.
+- A seed is either an integer (tests, local games, the fuzzer), expanded
+  into four words with splitmix32, or four 32-bit words. Each seed is mixed
+  with 16 warm-up rounds.
+- **Online games must seed from 16 bytes of `crypto.randomBytes`** (via
+  `seedFromBytes`), never `Math.random` or a small integer.
+- `rngState` is never sent to players.
+
+This changed every seeded game: the same integer seed now deals different
+cards than before. Tests that need a particular random outcome set
+`rngState` from `seedToState`.

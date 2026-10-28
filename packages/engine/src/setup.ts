@@ -2,7 +2,7 @@
 
 import { parseManaCost } from './cost.ts';
 import { validateCommander, validateDeck, type FormatConfig } from './format.ts';
-import { randomInt, seedToState, shuffleInPlace } from './rng.ts';
+import { randomInt, seedToState, shuffleInPlace, type Seed } from './rng.ts';
 import { stabilize } from './sba.ts';
 import { drawCards, emptyManaPool, type Ctx } from './state.ts';
 import { beginFirstTurn, startMulligans } from './mulligan.ts';
@@ -24,7 +24,8 @@ export interface GameSetup {
   cardDefs: Record<CardDefId, CardDefinition>;
   /** Seating order. The starting player is chosen at random from the seed. */
   players: PlayerSetup[];
-  seed: number;
+  /** A 128-bit seed (online games: from crypto.randomBytes via seedFromBytes) or an integer (tests, local games). */
+  seed: Seed;
   /** For tests that use tiny decks. */
   skipDeckValidation?: boolean;
   /**
