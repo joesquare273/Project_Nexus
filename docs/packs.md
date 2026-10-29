@@ -96,3 +96,17 @@ Our choices, where Wizards' figures don't map directly:
   It doesn't follow you to the other computer.
 - **Sound:** off by default; a button in the tab turns synthesized tear,
   flip and chime sounds on.
+
+## Sets (planned, user requirement 2026-10-29)
+
+Packs must be split by set: the Packs tab (and the store, drafts and the
+collection) will offer each set's own Play and Collector Boosters. Final
+Fantasy is the only set for now; **Edge of Eternities** cards and precons
+come after Final Fantasy testing is complete.
+
+- Each set gets its own print sheets and slot odds (`boosters.ts` is
+  Final Fantasy-specific today and should become one config per set), its
+  own card data from Scryfall, and its own pack images, named by set code
+  (`public/packs/ff-play-booster.png`, later `eoe-play-booster.png`).
+- The collection already records each card's exact printing (Scryfall id
+  and set), so cards from different sets stay distinct.
