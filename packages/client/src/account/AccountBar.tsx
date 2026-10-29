@@ -1,4 +1,5 @@
-// Sign in with Discord (Supabase Auth) and show your Aether Shards. The
+// Signing in with Discord (Supabase Auth) is required to use the app: there
+// are no guest accounts. The account bar shows your Aether Shards; the
 // balance always comes from the game server (/api/account), which checks the
 // sign-in with Supabase; the browser only displays it.
 
@@ -16,6 +17,57 @@ interface Account {
 }
 
 type Status = { kind: 'loading' } | { kind: 'ready'; account: Account } | { kind: 'error'; message: string };
+
+/** The current sign-in: `ready` once Supabase has said whether there is one. */
+export function useSession(): { ready: boolean; session: Session | null } {
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setReady(true);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  return { ready, session };
+}
+
+const signIn = () => supabase?.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: window.location.origin } });
+
+/** The page shown until you sign in. */
+export function SignInPage() {
+  return (
+    <div className="menu sign-in-page">
+      <h1>Project Nexus</h1>
+      <p className="tagline">Final Fantasy Magic with your friends</p>
+      <div className="sign-in-card">
+        <h2>Sign in</h2>
+        <p>Sign in with your Discord account to play, draft, open packs and keep your Aether Shards.</p>
+        <button className="primary big" onClick={signIn}>
+          Sign in with Discord
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Shown when this computer has no Supabase settings: sign-in can't work yet. */
+export function AccountsSetupPage() {
+  return (
+    <div className="menu sign-in-page">
+      <h1>Project Nexus</h1>
+      <div className="sign-in-card">
+        <h2>Accounts aren't set up on this computer</h2>
+        <p>
+          Copy <code>.env.example</code> to <code>.env</code> in the project folder, fill in the Supabase values, and restart <code>npm run dev</code> and{' '}
+          <code>npm run server</code>. See HOW-TO-RUN.txt, section 1.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function AccountBar() {
   const [session, setSession] = useState<Session | null>(null);
@@ -52,13 +104,7 @@ export function AccountBar() {
 
   if (!supabase || !checked) return null;
 
-  if (!session) {
-    return (
-      <div className="account-bar">
-        <button onClick={() => supabase!.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: window.location.origin } })}>Sign in with Discord</button>
-      </div>
-    );
-  }
+  if (!session) return null;
 
   return (
     <div className="account-bar" aria-live="polite">

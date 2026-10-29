@@ -11,6 +11,9 @@ import './packs.css';
 
 type Boosters = typeof import('@nexus/cards/boosters');
 
+/** Photos of the real packs (packages/client/public/packs). Until they're there, the drawn pack shows. */
+const PACK_PHOTOS: Record<PackKind, string> = { play: '/packs/ff-play-booster.png', collector: '/packs/ff-collector-booster.png' };
+
 const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready: boolean }[] = [
   {
     kind: 'play',
@@ -148,6 +151,15 @@ function packArt(mod: Boosters, kind: PackKind): BoosterCard | undefined {
 }
 
 function PackArt({ kind, art, glow = 0, tear = 0 }: { kind: PackKind; art: BoosterCard | undefined; glow?: number; tear?: number }) {
+  const [photo, setPhoto] = useState(true);
+  if (photo) {
+    return (
+      <div className={`pack-art pack-photo pack-${kind} glow-${glow}`} style={{ ['--tear' as string]: tear }}>
+        <img src={PACK_PHOTOS[kind]} alt={`FINAL FANTASY ${kind === 'play' ? 'Play' : 'Collector'} Booster`} draggable={false} onError={() => setPhoto(false)} />
+        <div className="pack-seam" />
+      </div>
+    );
+  }
   return (
     <div className={`pack-art pack-${kind} glow-${glow}`} style={{ ['--tear' as string]: tear }}>
       <div className="pack-crimp top" />

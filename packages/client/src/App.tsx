@@ -7,7 +7,7 @@ import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { OnlineMenu } from './components/OnlineMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
-import { AccountBar } from './account/AccountBar.tsx';
+import { AccountBar, AccountsSetupPage, SignInPage, supabase, useSession } from './account/AccountBar.tsx';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   {
@@ -29,7 +29,16 @@ function builtCount(p: (typeof FIN_PRECONS)[number]): number {
   return p.cards.filter((c) => c.implemented).reduce((n, c) => n + c.count, 0) + (p.commander.implemented ? 1 : 0);
 }
 
+/** Signing in is required: no guest accounts. */
 export function App() {
+  const { ready, session } = useSession();
+  if (!supabase) return <AccountsSetupPage />;
+  if (!ready) return null;
+  if (!session) return <SignInPage />;
+  return <MainApp />;
+}
+
+function MainApp() {
   const [session, setSession] = useState<GameSession | null>(null);
   const [format, setFormat] = useState<'starter' | 'commander'>('starter');
   const [precon, setPrecon] = useState(FIN_PRECONS[0]!.name);
