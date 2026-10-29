@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import type { Action, GameState, PlayerUpdate } from '@nexus/engine';
 import { startServer, type RunningServer } from '../src/server.ts';
+import { MemoryAccounts } from '../src/accounts.ts';
 import type { Room } from '../src/rooms.ts';
 import type { ClientMessage, Seat, ServerMessage } from '../src/protocol.ts';
 
@@ -100,8 +101,16 @@ afterEach(async () => {
   server = null;
 });
 
+/** Signed-in test players: their tokens. */
+function testAccounts(): MemoryAccounts {
+  const accounts = new MemoryAccounts();
+  for (const name of ['Alice', 'Bob', 'Cid', 'Early', 'You']) accounts.tokens.set(`token-${name}`, { id: `id-${name}`, name });
+  accounts.tokens.set('token-Alice2', { id: 'id-Alice2', name: 'Alice' });
+  return accounts;
+}
+
 async function open(observe?: (room: Room, seat: Seat, m: ServerMessage) => void, seed = 1): Promise<RunningServer> {
-  server = await startServer({ port: 0, host: '127.0.0.1', randomBytes: seededBytes(seed), ...(observe ? { observe } : {}) });
+  server = await startServer({ port: 0, host: '127.0.0.1', randomBytes: seededBytes(seed), accounts: testAccounts(), ...(observe ? { observe } : {}) });
   return server;
 }
 async function client(port: number): Promise<TestClient> {
@@ -114,9 +123,9 @@ async function client(port: number): Promise<TestClient> {
 async function startedGame(port: number, room = 'TABLE1') {
   const a = await client(port);
   const b = await client(port);
-  a.send({ type: 'join', name: 'Alice', room });
+  a.send({ type: 'join', token: 'token-Alice', room });
   await a.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
-  b.send({ type: 'join', name: 'Bob', room });
+  b.send({ type: 'join', token: 'token-Bob', room });
   await b.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
   a.send({ type: 'pickDeck', deck: 'RW' });
   b.send({ type: 'pickDeck', deck: 'UB' });
@@ -130,9 +139,9 @@ describe('joining a room', () => {
     const { port } = await open();
     const a = await client(port);
     const b = await client(port);
-    a.send({ type: 'join', name: 'Alice', room: 'abc123' });
+    a.send({ type: 'join', token: 'token-Alice', room: 'abc123' });
     expect(await a.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined')).toMatchObject({ room: 'ABC123', seat: 'P1', name: 'Alice' });
-    b.send({ type: 'join', name: 'Bob', room: 'ABC123' });
+    b.send({ type: 'join', token: 'token-Bob', room: 'ABC123' });
     expect(await b.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined')).toMatchObject({ seat: 'P2' });
     const lobby = await a.next((m): m is Extract<ServerMessage, { type: 'lobby' }> => m.type === 'lobby' && m.players.length === 2);
     expect(lobby.players.map((p) => p.name)).toEqual(['Alice', 'Bob']);
@@ -152,25 +161,51 @@ describe('joining a room', () => {
   it('refuses a third player, a taken name, a bad name or code, and a second join', async () => {
     const { port } = await open();
     const a = await client(port);
-    a.send({ type: 'join', name: 'You', room: 'ROOM1' });
+    a.send({ type: 'join', token: 'not-a-real-token', room: 'ROOM1' });
+    expect((await a.error()).code).toBe('not-signed-in');
+    a.send(JSON.stringify({ type: 'join', name: 'Alice', room: 'ROOM1' }));
     expect((await a.error()).code).toBe('bad-message');
-    a.send({ type: 'join', name: 'Alice', room: 'no' });
+    a.send({ type: 'join', token: 'token-Alice', room: 'no' });
     expect((await a.error()).code).toBe('bad-message');
-    a.send({ type: 'join', name: 'Alice', room: 'ROOM1' });
+    a.send({ type: 'join', token: 'token-Alice', room: 'ROOM1' });
     await a.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
-    a.send({ type: 'join', name: 'Alice', room: 'ROOM2' });
+    a.send({ type: 'join', token: 'token-Alice', room: 'ROOM2' });
     expect((await a.error()).code).toBe('already-joined');
     const b = await client(port);
-    b.send({ type: 'join', name: 'alice', room: 'ROOM1' });
-    expect((await b.error()).code).toBe('name-taken');
-    b.send({ type: 'join', name: 'Bob', room: 'room1' });
+    // The same account on another tab can't take the second seat.
+    b.send({ type: 'join', token: 'token-Alice', room: 'ROOM1' });
+    expect((await b.error()).code).toBe('same-player');
+    b.send({ type: 'join', token: 'token-Bob', room: 'room1' });
     await b.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
     const c = await client(port);
-    c.send({ type: 'join', name: 'Cid', room: 'ROOM1' });
+    c.send({ type: 'join', token: 'token-Cid', room: 'ROOM1' });
     expect((await c.error()).code).toBe('room-full');
     const d = await client(port);
     d.send({ type: 'pickDeck', deck: 'RW' });
     expect((await d.error()).code).toBe('not-joined');
+  });
+
+  it('players are named from their Discord account; "You" and duplicate names are adjusted', async () => {
+    const { port } = await open();
+    const a = await client(port);
+    const b = await client(port);
+    a.send({ type: 'join', token: 'token-You', room: 'NAMES' });
+    expect(await a.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined')).toMatchObject({ name: 'You.' });
+    b.send({ type: 'join', token: 'token-Alice', room: 'NAMES' });
+    await b.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
+    const c = await client(port);
+    const d = await client(port);
+    c.send({ type: 'join', token: 'token-Alice', room: 'DUPES' });
+    await c.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
+    d.send({ type: 'join', token: 'token-Alice2', room: 'DUPES' });
+    expect(await d.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined')).toMatchObject({ name: 'Alice (2)' });
+  });
+
+  it('nobody can join when accounts are not set up', async () => {
+    server = await startServer({ port: 0, host: '127.0.0.1' });
+    const a = await client(server.port);
+    a.send({ type: 'join', token: 'token-Alice', room: 'ROOM1' });
+    expect((await a.error()).code).toBe('not-signed-in');
   });
 
   it('when a player leaves mid-game, the other is told', async () => {
@@ -185,7 +220,7 @@ describe('rejected messages', () => {
   it('bad, stale, duplicate, out-of-turn and illegal messages get an error, and the game carries on', async () => {
     const { port } = await open();
     const lone = await client(port);
-    lone.send({ type: 'join', name: 'Early', room: 'EARLY' });
+    lone.send({ type: 'join', token: 'token-Early', room: 'EARLY' });
     await lone.next((m): m is Extract<ServerMessage, { type: 'joined' }> => m.type === 'joined');
     lone.send({ type: 'actions', seq: 1, version: 0, actions: [{ type: 'PassPriority', player: 'P1' }] });
     expect((await lone.error()).code).toBe('not-started');
@@ -204,7 +239,7 @@ describe('rejected messages', () => {
     expect((await a.error()).code).toBe('bad-message');
     a.send(JSON.stringify({ type: 'hack', anything: true }));
     expect((await a.error()).code).toBe('bad-message');
-    a.send(JSON.stringify({ type: 'join', name: 'Alice', room: 'TABLE1', extra: 1 }));
+    a.send(JSON.stringify({ type: 'join', token: 'token-Alice', room: 'TABLE1', extra: 1 }));
     expect((await a.error()).code).toBe('bad-message');
 
     // The player the game isn't waiting on.

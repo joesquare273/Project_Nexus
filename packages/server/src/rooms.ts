@@ -22,6 +22,7 @@ import {
 } from '@nexus/engine';
 import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { ClientMessage, type Deck, type ErrorCode, type LobbyPlayer, type Seat, type ServerMessage } from './protocol.ts';
+import type { AccountService } from './accounts.ts';
 
 const SEATS: Seat[] = ['P1', 'P2'];
 
@@ -30,6 +31,8 @@ export interface Connection {
 }
 
 interface SeatState {
+  /** The player's account (Supabase user id). */
+  userId: string;
   name: string;
   deck: Deck | null;
   conn: Connection;
@@ -68,6 +71,8 @@ export interface LobbyOptions {
   randomBytes?: (n: number) => Uint8Array;
   /** Called with each update as it's sent, while the real game is still in that state (tests check for leaks). */
   observe?: (room: Room, seat: Seat, message: ServerMessage) => void;
+  /** Player accounts: joining a room needs a valid sign-in. Without them nobody can join (no guests). */
+  accounts?: AccountService | null;
 }
 
 /** Every room on this server. */
@@ -75,9 +80,11 @@ export class Lobby {
   readonly rooms = new Map<string, Room>();
   readonly randomBytes: (n: number) => Uint8Array;
   readonly observe: LobbyOptions['observe'];
+  readonly accounts: AccountService | null;
   constructor(opts: LobbyOptions = {}) {
     this.randomBytes = opts.randomBytes ?? ((n) => cryptoBytes(n));
     this.observe = opts.observe;
+    this.accounts = opts.accounts ?? null;
   }
   connect(conn: Connection): Client {
     return new Client(this, conn);
@@ -96,6 +103,8 @@ export class Client {
   private readonly conn: Connection;
   private room: Room | null = null;
   private seat: Seat | null = null;
+  /** Messages are handled one at a time, in order (checking a sign-in takes a moment). */
+  private queue: Promise<void> = Promise.resolve();
   constructor(lobby: Lobby, conn: Connection) {
     this.lobby = lobby;
     this.conn = conn;
@@ -105,8 +114,13 @@ export class Client {
     this.conn.send({ type: 'error', code, message, ...(seq !== undefined ? { seq } : {}) });
   }
 
-  /** Handles one raw message from the browser. Never throws. */
-  handle(raw: string): void {
+  /** Handles one raw message from the browser, after any before it. Never rejects. */
+  handle(raw: string): Promise<void> {
+    this.queue = this.queue.then(() => this.process(raw));
+    return this.queue;
+  }
+
+  private async process(raw: string): Promise<void> {
     let json: unknown;
     try {
       json = JSON.parse(raw);
@@ -120,7 +134,7 @@ export class Client {
     }
     const m = parsed.data;
     try {
-      if (m.type === 'join') this.join(m.name, m.room);
+      if (m.type === 'join') await this.join(m.token, m.room);
       else if (m.type === 'pickDeck') this.pickDeck(m.deck);
       else this.act(m.seq, m.version, m.actions as unknown as Action[]);
     } catch (e) {
@@ -129,20 +143,28 @@ export class Client {
     }
   }
 
-  private join(name: string, code: string): void {
+  private async join(token: string, code: string): Promise<void> {
     if (this.room) return this.error('already-joined', `You are already in room ${this.room.code}.`);
+    const accounts = this.lobby.accounts;
+    if (!accounts) return this.error('not-signed-in', 'Accounts are not set up on this server, so nobody can join.');
+    const user = await accounts.verify(token);
+    if (!user) return this.error('not-signed-in', 'Your sign-in has expired. Sign in with Discord again.');
+    if (this.room) return this.error('already-joined', `You are already in room ${(this.room as Room).code}.`);
     let room = this.lobby.rooms.get(code);
     if (room?.game) return this.error('already-started', `Room ${code} is already playing.`);
     if (room && room.seats.size >= SEATS.length) return this.error('room-full', `Room ${code} is full.`);
-    if (room && [...room.seats.values()].some((p) => p.name.toLowerCase() === name.toLowerCase())) {
-      return this.error('name-taken', `Someone in room ${code} is already called ${name}.`);
+    if (room && [...room.seats.values()].some((p) => p.userId === user.id)) {
+      return this.error('same-player', `You are already in room ${code} on another tab.`);
     }
+    // The board calls you "You", and two players can't share a name on it.
+    let name = user.name.toLowerCase() === 'you' ? `${user.name}.` : user.name;
+    if (room && [...room.seats.values()].some((p) => p.name === name)) name = `${name} (2)`;
     if (!room) {
       room = new Room(code);
       this.lobby.rooms.set(code, room);
     }
     const seat = SEATS.find((s) => !room.seats.has(s))!;
-    room.seats.set(seat, { name, deck: null, conn: this.conn, connected: true, lastSeq: 0 });
+    room.seats.set(seat, { userId: user.id, name, deck: null, conn: this.conn, connected: true, lastSeq: 0 });
     this.room = room;
     this.seat = seat;
     this.conn.send({ type: 'joined', room: code, seat, name });

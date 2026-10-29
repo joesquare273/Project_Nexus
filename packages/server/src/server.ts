@@ -68,7 +68,7 @@ async function accountRoute(req: IncomingMessage, res: ServerResponse, accounts:
 }
 
 export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
-  const lobby = new Lobby(opts);
+  const lobby = new Lobby({ ...opts, accounts: opts.accounts ?? null });
   // Only a real build (with index.html) is served.
   const root = opts.staticDir && existsSync(join(opts.staticDir, 'index.html')) ? resolve(opts.staticDir) : null;
   const http: Server = createServer((req, res) => {

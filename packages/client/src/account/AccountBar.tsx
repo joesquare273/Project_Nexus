@@ -69,6 +69,13 @@ export function AccountsSetupPage() {
   );
 }
 
+/** The Aether Shard icon (public/icons/aether-shard.png), or a plain diamond until it's there. */
+export function ShardIcon({ size = 22 }: { size?: number }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return <span aria-hidden="true">◆</span>;
+  return <img className="shard-icon" src="/icons/aether-shard.png" alt="" width={size} height={size} onError={() => setOk(false)} />;
+}
+
 export function AccountBar() {
   const [session, setSession] = useState<Session | null>(null);
   const [checked, setChecked] = useState(false);
@@ -114,7 +121,7 @@ export function AccountBar() {
         <>
           <span className="account-name">{status.account.name}</span>
           <span className="account-shards" title="Aether Shards">
-            ◆ {status.account.shards.toLocaleString()} Aether Shards
+            <ShardIcon /> {status.account.shards.toLocaleString()} Aether Shards
           </span>
         </>
       )}

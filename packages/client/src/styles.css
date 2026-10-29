@@ -2132,3 +2132,9 @@ button.phase.current {
 .sign-in-card .big {
   margin-top: 10px;
 }
+
+.shard-icon {
+  vertical-align: middle;
+  border-radius: 4px;
+  margin-right: 2px;
+}

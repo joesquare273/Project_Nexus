@@ -135,12 +135,12 @@ You need Node.js 24 or newer.
   Then:
 
     1. Open http://localhost:5173 in a browser tab and choose "Online".
-    2. Enter a name (1-16 letters or digits) and a room code (3-12 letters
-       or digits, for example TABLE7), pick Red-White or Blue-Black, and
-       press "Join room". You'll wait in the room for the other player.
+    2. Enter a room code (3-12 letters or digits, for example TABLE7), pick
+       Red-White or Blue-Black, and press "Join room". You play under your
+       Discord name (sign-in is required). You'll wait for the other player.
     3. Open a second tab (or a second browser) at http://localhost:5173,
-       choose "Online", enter a different name and the SAME room code, pick
-       a deck, and press "Join room".
+       signed in with a different Discord account, choose "Online", enter the
+       SAME room code, pick a deck, and press "Join room".
 
   The game starts when both players are in the room and have picked a deck.
   Each tab only sees its own hand; the server holds the real game and checks

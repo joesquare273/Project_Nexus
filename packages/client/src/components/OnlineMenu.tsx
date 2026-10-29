@@ -1,4 +1,5 @@
-// The Online tab: a guest name, a room code and a Starter Kit, then a short
+// The Online tab: a room code and a Starter Kit (you play under your Discord
+// name, from your sign-in), then a short
 // wait for the other player. The game itself is the usual board, fed by the
 // game server (see game/online.ts).
 
@@ -6,26 +7,16 @@ import { useEffect, useRef, useState } from 'react';
 import { SCRYFALL } from '@nexus/cards';
 import type { Deck, LobbyPlayer, ServerMessage } from '@nexus/server/protocol';
 import { OnlineConnection, OnlineSession } from '../game/online.ts';
+import { supabase } from '../account/AccountBar.tsx';
 
 const DECKS: { id: Deck; name: string; art: string }[] = [
   { id: 'RW', name: 'Red-White', art: 'cloud-planets-champion' },
   { id: 'UB', name: 'Blue-Black', art: 'sephiroth-planets-heir' },
 ];
 
-const NAME_KEY = 'nexus.online.name';
-
-function savedName(): string {
-  try {
-    return localStorage.getItem(NAME_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
 type Phase = { kind: 'form' } | { kind: 'connecting' } | { kind: 'lobby'; room: string; players: LobbyPlayer[] };
 
 export function OnlineMenu({ onStart }: { onStart: (session: OnlineSession) => void }) {
-  const [name, setName] = useState(savedName);
   const [room, setRoom] = useState('');
   const [deck, setDeck] = useState<Deck>('RW');
   const [phase, setPhase] = useState<Phase>({ kind: 'form' });
@@ -49,12 +40,6 @@ export function OnlineMenu({ onStart }: { onStart: (session: OnlineSession) => v
 
   const join = () => {
     setError(null);
-    const trimmed = name.trim();
-    try {
-      localStorage.setItem(NAME_KEY, trimmed);
-    } catch {
-      // Not remembered; that's fine.
-    }
     const c = new OnlineConnection();
     connection.current = c;
     setPhase({ kind: 'connecting' });
@@ -77,7 +62,16 @@ export function OnlineMenu({ onStart }: { onStart: (session: OnlineSession) => v
         onStart(new OnlineSession(c, m, deck));
       }
     });
-    c.send({ type: 'join', name: trimmed, room: room.trim() });
+    // You play under your Discord name: the server reads it from your sign-in.
+    void supabase?.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        setError('Your sign-in has expired. Sign in with Discord again.');
+        c.close();
+        setPhase({ kind: 'form' });
+        return;
+      }
+      c.send({ type: 'join', token: data.session.access_token, room: room.trim() });
+    });
   };
 
   if (phase.kind !== 'form') {
@@ -99,14 +93,10 @@ export function OnlineMenu({ onStart }: { onStart: (session: OnlineSession) => v
     );
   }
 
-  const canJoin = /^[A-Za-z0-9](?:[A-Za-z0-9 ]{0,14}[A-Za-z0-9])?$/.test(name.trim()) && name.trim().toLowerCase() !== 'you' && /^[A-Za-z0-9]{3,12}$/.test(room.trim());
+  const canJoin = /^[A-Za-z0-9]{3,12}$/.test(room.trim());
   return (
     <div className="online-form">
-      <p className="fineprint">Play a Starter Kit game against a friend. Both of you enter the same room code.</p>
-      <label>
-        Your name
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="1-16 letters or digits" />
-      </label>
+      <p className="fineprint">Play a Starter Kit game against a friend under your Discord name. Both of you enter the same room code.</p>
       <label>
         Room code
         <input value={room} onChange={(e) => setRoom(e.target.value)} maxLength={12} placeholder="for example TABLE7" />

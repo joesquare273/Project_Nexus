@@ -9,12 +9,6 @@ import type { PlayerUpdate } from '@nexus/engine';
 export const DECKS = ['RW', 'UB'] as const;
 export type Deck = (typeof DECKS)[number];
 
-/** A guest name: 1-16 letters, digits or spaces, not starting or ending with a space. "You" is reserved for the board. */
-export const GuestName = z
-  .string()
-  .regex(/^[A-Za-z0-9](?:[A-Za-z0-9 ]{0,14}[A-Za-z0-9])?$/, 'Use 1-16 letters, digits or spaces.')
-  .refine((n) => n.toLowerCase() !== 'you', 'That name is reserved.');
-
 /** A room code: 3-12 letters or digits (not case-sensitive). */
 export const RoomCode = z
   .string()
@@ -28,7 +22,8 @@ export const ActionPayload = z.looseObject({
 });
 
 export const ClientMessage = z.discriminatedUnion('type', [
-  z.strictObject({ type: z.literal('join'), name: GuestName, room: RoomCode }),
+  /** Players join with their Discord sign-in (a Supabase access token); the server takes their name from it. No guests. */
+  z.strictObject({ type: z.literal('join'), token: z.string().min(1).max(8192), room: RoomCode }),
   z.strictObject({ type: z.literal('pickDeck'), deck: z.enum(DECKS) }),
   z.strictObject({
     type: z.literal('actions'),
@@ -61,7 +56,8 @@ export type ErrorCode =
   | 'not-joined'
   | 'already-joined'
   | 'room-full'
-  | 'name-taken'
+  | 'not-signed-in'
+  | 'same-player'
   | 'already-started'
   | 'not-started'
   | 'game-over'

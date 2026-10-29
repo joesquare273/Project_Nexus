@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Sign-in required; Discord names online; real pack images
+
+- The app requires signing in with Discord: a sign-in page, no guest
+  accounts. Online rooms use your Discord name from your sign-in (the server
+  checks it with Supabase); the same account can't take both seats.
+- The Packs tab shows the real Final Fantasy Play and Collector Booster
+  packs (public/packs/ff-*.png, named by set for future sets). The shard
+  balance uses the Aether Shard icon (public/icons/aether-shard.png).
+
 ### Economy step E1: accounts and Aether Shards balances
 
 - Sign in with Discord (Supabase Auth): the menu's account bar shows your
