@@ -38,6 +38,22 @@ export const FREE_FOR_ALL: FormatConfig = {
 };
 
 /**
+ * Limited (draft and sealed): 40-card minimum, any number of copies of what
+ * you drafted (plus unlimited basic lands), 20 life, 2-4 players. 99 stands
+ * for "no limit" so the format stays plain JSON.
+ */
+export const LIMITED: FormatConfig = {
+  name: 'limited',
+  minPlayers: 2,
+  maxPlayers: 4,
+  minDeckSize: 40,
+  maxCopies: 99,
+  startingLife: 20,
+  startingHandSize: 7,
+  commander: false,
+};
+
+/**
  * Commander (rule 903): 100-card singleton decks including the commander,
  * 40 life, and 21 combat damage from one commander knocks a player out.
  */

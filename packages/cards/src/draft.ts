@@ -9,7 +9,7 @@
 // The state is plain JSON (for the server later): nothing here touches the
 // game engine's rules, only the cards' definitions (for the AI's picks).
 
-import { nextRandom, seedToState, type RngState, type Seed } from '@nexus/engine';
+import { colorsOf, nextRandom, seedToState, type CardDefinition, type RngState, type Seed } from '@nexus/engine';
 import { CARD_DEFS, CARD_IDS_BY_NAME } from './index.ts';
 import { openPack, type BoosterCard, type Pull } from './boosters.ts';
 
@@ -167,6 +167,15 @@ export function draftView(s: DraftState, seat: string): DraftView {
   };
 }
 
+/**
+ * A card's colors for drafting and deckbuilding: its color identity, or, for
+ * cards defined without one (the Starter Kit cards), the colors of its cost.
+ */
+export function cardColors(def: CardDefinition | undefined): string[] {
+  if (!def) return [];
+  return def.colorIdentity?.length ? [...def.colorIdentity] : colorsOf(def);
+}
+
 /** The engine card a drafted printing plays as. */
 export function defIdOf(card: BoosterCard): string | undefined {
   return CARD_IDS_BY_NAME[card.name];
@@ -197,10 +206,10 @@ export function aiScore(card: DraftCard, picks: readonly DraftCard[]): number {
     const counts: Record<string, number> = {};
     for (const p of picks) {
       const d = CARD_DEFS[defIdOf(p.card) ?? ''];
-      for (const c of d?.colorIdentity ?? []) counts[c] = (counts[c] ?? 0) + 1;
+      for (const c of cardColors(d)) counts[c] = (counts[c] ?? 0) + 1;
     }
     const main = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c]) => c);
-    const colors = def.colorIdentity ?? [];
+    const colors = cardColors(def);
     if (colors.length > 0) score += colors.every((c) => main.includes(c)) ? 2 : -1.5;
   }
   return score;

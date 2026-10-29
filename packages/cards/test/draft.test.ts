@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_DEFS } from '../src/index.ts';
-import { PACKS_PER_PLAYER, aiPick, createDraft, defIdOf, draftView, lockPick, nextSeat, pickProblem, type DraftState } from '../src/draft.ts';
+import { PACKS_PER_PLAYER, aiPick, cardColors, createDraft, defIdOf, draftView, lockPick, nextSeat, pickProblem, type DraftState } from '../src/draft.ts';
 
 /** One pick for everyone: each seat locks in the AI's choice. */
 function everyonePicks(s: DraftState): DraftState {
@@ -97,7 +97,7 @@ describe('the AI drafter', () => {
     for (const seat of s.seats) {
       const defs = s.picks[seat]!.map((c) => CARD_DEFS[defIdOf(c.card)!]!);
       const counts: Record<string, number> = {};
-      for (const d of defs.slice(20)) for (const c of d.colorIdentity ?? []) counts[c] = (counts[c] ?? 0) + 1;
+      for (const d of defs.slice(20)) for (const c of cardColors(d)) counts[c] = (counts[c] ?? 0) + 1;
       const top2 = Object.values(counts).sort((a, b) => b - a).slice(0, 2).reduce((n, k) => n + k, 0);
       const all = Object.values(counts).reduce((n, k) => n + k, 0);
       // Most colored picks after the first twenty are in its two main colors.

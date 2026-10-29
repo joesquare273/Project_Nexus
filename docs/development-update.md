@@ -5,6 +5,26 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Draft step S2b: the deckbuilder and Limited games
+
+- After a draft, **Build your deck**: your 84 picks plus unlimited basic
+  lands, at least 40 cards, with a 20-minute timer (5-minute warning; when
+  time runs out, basics fill the deck to 40 and it's locked in). Filters by
+  color and type, deck columns by mana value, a mana curve, colored-symbol
+  counts, **Suggest lands**, **Auto-build**, and a warning for cards that
+  can't be cast yet. **Ready**, then play against one of the AI drafters,
+  whose deck is built from its own picks (two colors, 23 spells, 17 lands).
+- New `LIMITED` format in the engine (40-card minimum, 20 life, 2-4
+  players, no copy limit) and `cards/src/limited.ts` (deck checks, land
+  suggestions, the AI's deck).
+- The draft and your deck are kept in this browser, so you can return to
+  them after a game.
+- Fixed: the Starter Kit cards have no color identity in their definitions,
+  so the draft AI and deck tools now fall back to a card's mana-cost colors
+  (`cardColors`).
+- Tests: deck rules, land suggestions and the AI's deck; drafted decks play
+  Limited games at 2-4 players with every invariant checked.
+
 ### Draft step S2a: booster drafts against AI drafters
 
 - New **Draft** tab: you and 1-3 AI drafters each open a Final Fantasy Play

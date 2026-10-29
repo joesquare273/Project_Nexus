@@ -8,6 +8,7 @@ import { actionDelay, type AiPace } from './pacing.ts';
 import {
   COMMANDER,
   FREE_FOR_ALL,
+  LIMITED,
   applyAction,
   createGame,
   filterEventsFor,
@@ -16,6 +17,7 @@ import {
   triggerSpec,
   viewFor,
   type Action,
+  type CardDefId,
   type GameEvent,
   type GameState,
   type GameView,
@@ -33,8 +35,12 @@ export const YOU: PlayerId = 'You';
 export type DeckChoice = 'RW' | 'UB';
 
 export interface SessionOptions {
-  /** Starter Kit games (60 cards, 20 life) or Commander with the precons (100 cards, 40 life). */
-  format?: 'starter' | 'commander';
+  /** Starter Kit games (60 cards, 20 life), Commander with the precons (100 cards, 40 life), or Limited with drafted decks (40+ cards, 20 life). */
+  format?: 'starter' | 'commander' | 'limited';
+  /** Limited: every player's deck, yours first. */
+  decks?: CardDefId[][];
+  /** Limited: the opponents' names (the AI drafters). */
+  opponentNames?: string[];
   /** Starter Kit deck. */
   deck: DeckChoice;
   /** Commander: your precon's name. Opponents get the others. */
@@ -105,7 +111,7 @@ export class GameSession {
 
   constructor(options: SessionOptions, scenario?: Scenario) {
     this.options = options;
-    this.opponents = scenario?.opponents ?? Array.from({ length: options.opponents }, (_, i) => `Bot${i + 1}`);
+    this.opponents = scenario?.opponents ?? options.opponentNames ?? Array.from({ length: options.opponents }, (_, i) => `Bot${i + 1}`);
     if (scenario) {
       this.bots = scenario.bots;
       this.state = scenario.state;
@@ -113,6 +119,18 @@ export class GameSession {
     }
     const makeBot = options.bot === 'random' ? randomBot : basicAi;
     this.bots = Object.fromEntries(this.opponents.map((id, i) => [id, makeBot(options.seed + i)]));
+    if (options.format === 'limited') {
+      const created = createGame({
+        format: LIMITED,
+        cardDefs: CARD_DEFS,
+        seed: options.seed,
+        players: [YOU, ...this.opponents].map((id, i) => ({ id, deck: options.decks![i]! })),
+        mulligans: true,
+      });
+      this.state = created.state;
+      this.narrate(created.events);
+      return;
+    }
     if (options.format === 'commander') {
       const mine = FIN_PRECONS.find((p) => p.name === options.precon) ?? FIN_PRECONS[0]!;
       const others = FIN_PRECONS.filter((p) => p !== mine);

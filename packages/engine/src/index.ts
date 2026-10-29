@@ -60,6 +60,7 @@ export {
   manaProduced,
   manaAbilityAmount,
   objectManaValue,
+  colorsOf,
 } from './typerules.ts';
 
 export { maximumHandSize } from './turn.ts';

@@ -1,18 +1,51 @@
 // The Draft tab: a booster draft against AI drafters. Everyone opens a Final
 // Fantasy Play Booster and chooses a card, then confirms it to lock it in;
 // once everyone has, the packs rotate clockwise. Six packs each. You see only
-// the pack in front of you and your own picks.
+// the pack in front of you and your own picks. Then you build a deck from your
+// picks (Deckbuilder.tsx) and play it against one of the AI drafters' decks.
+// The draft and your deck are kept in this browser, so you can come back to
+// them after a game.
 
 import { useEffect, useMemo, useState } from 'react';
 import { CARD_DEFS } from '@nexus/cards';
 import type { DraftCard, DraftState } from '@nexus/cards/draft';
+import type { LimitedDeck } from '@nexus/cards/limited';
+import { GameSession } from '../game/session.ts';
+import { Deckbuilder } from './Deckbuilder.tsx';
 import '../packs/packs.css';
 import './draft.css';
 
 type DraftModule = typeof import('@nexus/cards/draft');
+type Limited = typeof import('@nexus/cards/limited');
 
 const YOU = 'You';
-const POOL_KEY = 'nexus.draft.pool.v1';
+const SAVE_KEY = 'nexus.draft.v1';
+
+/** The draft, your deck and how far you are, as kept in this browser. */
+interface Saved {
+  state: DraftState;
+  deck: LimitedDeck | null;
+  endsAt: number;
+  ready: boolean;
+}
+
+function load(): Saved | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? (JSON.parse(raw) as Saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+function save(s: Saved | null): void {
+  try {
+    if (s) localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+    else localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Not kept; the draft still works for this visit.
+  }
+}
 const COLOR_GROUPS: { key: string; label: string }[] = [
   { key: 'W', label: 'White' },
   { key: 'U', label: 'Blue' },
@@ -24,25 +57,45 @@ const COLOR_GROUPS: { key: string; label: string }[] = [
   { key: 'land', label: 'Lands' },
 ];
 
-export function DraftTab() {
+export function DraftTab({ onPlay }: { onPlay: (session: GameSession) => void }) {
   const [mod, setMod] = useState<DraftModule | null>(null);
+  const [limited, setLimited] = useState<Limited | null>(null);
   const [failed, setFailed] = useState(false);
   const [ais, setAis] = useState(3);
-  const [state, setState] = useState<DraftState | null>(null);
+  const [saved] = useState(load);
+  const [state, setState] = useState<DraftState | null>(saved?.state ?? null);
+  const [deck, setDeck] = useState<LimitedDeck | null>(saved?.deck ?? null);
+  const [endsAt, setEndsAt] = useState(saved?.endsAt ?? 0);
+  const [ready, setReady] = useState(saved?.ready ?? false);
   const [selected, setSelected] = useState<string | null>(null);
   const [preview, setPreview] = useState<DraftCard | null>(null);
 
   useEffect(() => {
-    import('@nexus/cards/draft').then(setMod, () => setFailed(true));
+    Promise.all([import('@nexus/cards/draft'), import('@nexus/cards/limited')]).then(
+      ([d, l]) => {
+        setMod(d);
+        setLimited(l);
+      },
+      () => setFailed(true),
+    );
   }, []);
+  useEffect(() => save(state ? { state, deck, endsAt, ready } : null), [state, deck, endsAt, ready]);
 
   if (failed) return <p className="packs-loading">The draft couldn't be loaded.</p>;
-  if (!mod) return <p className="packs-loading">Sorting the print sheets…</p>;
+  if (!mod || !limited) return <p className="packs-loading">Sorting the print sheets…</p>;
+
+  const newDraft = () => {
+    setState(null);
+    setDeck(null);
+    setReady(false);
+  };
 
   const start = () => {
     const seats = [YOU, ...Array.from({ length: ais }, (_, i) => `AI ${i + 1}`)];
     // The AI drafters lock in straight away; the packs pass when you confirm.
     setState(aisLockIn(mod, mod.createDraft(seats, Math.floor(Math.random() * 2 ** 31))));
+    setDeck(null);
+    setReady(false);
     setSelected(null);
   };
 
@@ -77,7 +130,56 @@ export function DraftTab() {
     setPreview(null);
   };
 
-  if (view.done) return <DraftDone picks={view.picks} onAgain={() => setState(null)} />;
+  if (view.done && !deck) {
+    return (
+      <DraftDone
+        picks={view.picks}
+        onBuild={() => {
+          setDeck({ cards: [], basics: limited.noBasics() });
+          setEndsAt(Date.now() + limited.DECKBUILDING_MINUTES * 60_000);
+        }}
+        onAgain={newDraft}
+      />
+    );
+  }
+  if (view.done && deck && !ready) {
+    return <Deckbuilder limited={limited} draft={mod} pool={view.picks} deck={deck} endsAt={endsAt} onChange={setDeck} onReady={() => setReady(true)} />;
+  }
+  if (view.done && deck) {
+    const play = (seat: string) => {
+      const theirPool = state.picks[seat]!;
+      onPlay(
+        new GameSession({
+          format: 'limited',
+          deck: 'RW',
+          opponents: 1,
+          bot: 'ai',
+          seed: Math.floor(Math.random() * 1_000_000),
+          decks: [limited.deckList(deck, view.picks), limited.deckList(limited.aiDeck(theirPool), theirPool)],
+          opponentNames: [seat],
+        }),
+      );
+    };
+    return (
+      <div className="draft-setup">
+        <h2>Your deck is ready</h2>
+        <p>{limited.deckSize(deck)} cards. Play it against one of the AI drafters; each builds a deck from its own picks.</p>
+        <div className="format-choices">
+          {state.seats
+            .filter((s) => s !== YOU)
+            .map((s) => (
+              <button key={s} className="primary" onClick={() => play(s)}>
+                Play against {s}
+              </button>
+            ))}
+        </div>
+        <div className="format-choices">
+          {endsAt > Date.now() && <button onClick={() => setReady(false)}>Back to deckbuilding</button>}
+          <button onClick={newDraft}>New draft</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="draft">
@@ -158,7 +260,7 @@ function groupOf(mod: DraftModule, c: DraftCard): string {
   const def = CARD_DEFS[mod.defIdOf(c.card) ?? ''];
   if (!def) return 'colorless';
   if (def.types.includes('land')) return 'land';
-  const colors = def.colorIdentity ?? [];
+  const colors = mod.cardColors(def);
   return colors.length === 0 ? 'colorless' : colors.length > 1 ? 'multi' : colors[0]!;
 }
 
@@ -190,19 +292,19 @@ function PicksPanel({ picks, mod, onPreview }: { picks: DraftCard[]; mod: DraftM
   );
 }
 
-function DraftDone({ picks, onAgain }: { picks: DraftCard[]; onAgain: () => void }) {
-  // Kept for the deckbuilder (the next step).
-  useEffect(() => {
-    try {
-      localStorage.setItem(POOL_KEY, JSON.stringify(picks));
-    } catch {
-      // Not saved; the pool is still shown below.
-    }
-  }, [picks]);
+function DraftDone({ picks, onBuild, onAgain }: { picks: DraftCard[]; onBuild: () => void; onAgain: () => void }) {
   return (
     <div className="draft-done">
       <h2>Draft complete: {picks.length} cards</h2>
-      <p className="fineprint">The deckbuilder comes next; your pool is saved in this browser for it.</p>
+      <p className="fineprint">You'll have 20 minutes to build a deck of at least 40 cards, with as many basic lands as you like.</p>
+      <div className="format-choices">
+        <button className="primary big" onClick={onBuild}>
+          Build your deck
+        </button>
+        <button className="big" onClick={onAgain}>
+          New draft
+        </button>
+      </div>
       <div className="summary-grid">
         {picks.map((c) => (
           <div key={c.uid} className="summary-card">
@@ -213,9 +315,6 @@ function DraftDone({ picks, onAgain }: { picks: DraftCard[]; onAgain: () => void
           </div>
         ))}
       </div>
-      <button className="primary big" onClick={onAgain}>
-        Draft again
-      </button>
     </div>
   );
 }

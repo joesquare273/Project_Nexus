@@ -155,3 +155,149 @@
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
+
+/* ---------------------------------------------------------------- deckbuilder */
+.builder {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 0 16px 40px;
+  text-align: left;
+}
+.builder-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 10px 0;
+  background: rgba(8, 13, 22, 0.92);
+}
+.builder-timer {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  color: #f0dfb4;
+}
+.builder-timer.warning {
+  color: var(--danger);
+}
+.builder-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.builder-problem {
+  color: #ffb4a8;
+  margin: 4px 0;
+}
+.builder-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 12px 0;
+}
+.builder-curve {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 110px;
+}
+.curve-bar {
+  width: 28px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+.curve-fill {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#e7c56a, #a8853a);
+}
+.curve-bar span {
+  color: var(--text);
+}
+.builder-basics {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.basic-row {
+  display: grid;
+  grid-template-columns: 80px 30px 26px 30px auto;
+  align-items: center;
+  gap: 6px;
+}
+.basic-row strong {
+  text-align: center;
+}
+.basic-row small {
+  color: var(--muted);
+}
+.builder-title {
+  margin: 18px 0 8px;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #d6c49b;
+  letter-spacing: 1px;
+}
+.builder-columns {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.builder-column-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+}
+/* Cards in a column overlap, showing each one's name bar. */
+.builder-column .builder-card + .builder-card {
+  margin-top: -118%;
+}
+.builder-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.builder-card img {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.builder-card:hover img,
+.builder-card:focus-visible img {
+  outline: 2px solid var(--gold);
+}
+.builder-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.builder-filters button.chosen {
+  border-color: var(--gold);
+}
+.builder-filter-gap {
+  width: 14px;
+}
+.builder-pool {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+@media (max-width: 760px) {
+  .builder-columns {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

@@ -135,7 +135,13 @@ export function App() {
         <h1>Project Nexus</h1>
         <p className="tagline">Draft Final Fantasy Play Boosters · pick a card, pass the rest</p>
         {tabs}
-        <DraftTab />
+        <DraftTab
+          onPlay={(game) => {
+            setLesson(null);
+            setGameNumber((n) => n + 1);
+            setSession(game);
+          }}
+        />
       </div>
     );
   }

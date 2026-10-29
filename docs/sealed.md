@@ -38,7 +38,7 @@ first called it "sealed"; the format they described is a booster draft.)
 |---|---|---|
 | S1 | **Import the set:** every Final Fantasy main-set (FIN 1-309) and Through the Ages (FCA) card gets a definition (`cards/scripts/import-sets.ts`, `data/fin-set.json`). Cards the engine already covers are built; the rest are `notBuilt` (creatures play as their body and keywords). | **Done (2026-10-29):** 320 new definitions, 12 built |
 | S2a | **The draft**, locally against 1-3 AI drafters: choose, confirm, rotate clockwise; six packs; the Draft tab. | **Done (2026-10-29)** |
-| S2b | **The deckbuilder**, then playing your drafted deck against an AI drafter's deck: sort and filter (color, type, cost), mana curve, land suggestions, unlimited basics, the 20-minute timer, Ready. | Next |
+| S2b | **The deckbuilder**, then playing your drafted deck against an AI drafter's deck: filters by color and type, deck columns by mana value, mana curve, land suggestions, unlimited basics, Auto-build, the 20-minute timer (5-minute warning; at zero, basics fill the deck to 40 and it locks), Ready. | **Done (2026-10-29)** |
 | S3 | **Online events:** rooms of up to 4, the draft run by the server (it holds the packs and waits for every player to lock in), the deckbuilding timer enforced by the server, Swiss pairings, best-of-3 matches with sideboarding, standings, and pools kept on players' accounts once accounts exist. | |
 | S4 | **Build the set's cards** in shared-mechanic groups, like the precons, until all of them work. | 12 of 320 imported cards built |
 

@@ -405,6 +405,14 @@ cards than before. Tests that need a particular random outcome set
 - Ragnarok, Divine Deliverance (Fang and Vanille's melded result, "99b") is
   a Scryfall printing but never a pack card; it's removed from every print
   sheet. The main set has 109 uncommons, as Wizards lists.
+- **Limited** is a FormatConfig (`LIMITED`): 40-card minimum, 20 life, 2-4
+  players; 99 copies stands for "no limit" so the format stays JSON. A deck is
+  pool cards (by draft uid) plus basic-land counts.
+- **Deckbuilding time:** 20 minutes. When it runs out, basic lands (split by
+  the deck's colored symbols) fill the deck to 40, and it's locked in.
+- Draft and deck tools read a card's colors with `cardColors`: its color
+  identity, or its mana-cost colors for the hand-written Starter Kit cards,
+  which have no color identity.
 - The AI drafter favors rarer cards and cards the engine can fully play,
   avoids unbuilt spells (they can't be cast), and settles into its two most
   picked colors after five picks.
