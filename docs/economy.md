@@ -49,6 +49,7 @@ five bot matches a day ≈ 2,200 a week (about 22).
 |---|---|
 | E1 | **Done (2026-10-29):** accounts (Supabase Auth, Discord login) and the database: balances, the ledger, owned cards and packs (`supabase/migrations/20261029000000_accounts.sql`); the welcome grant; the balance in the menu. All values in `packages/server/src/economy.ts`. |
 | E1b | **Collections and decks per account** (user requirement, 2026-10-29): each account owns its own cards with their finish (non-foil, foil, surge foil; more treatments as sets need them) and counts (`owned_cards`), and its own saved decks: Commander, draft/sealed (Limited) and 60-card constructed, each a named list of owned cards. Opened packs and drafted cards go into the collection; the Packs tab and decks read it from the server instead of the browser. |
+| E1c | **First sign-in** (user requirement, 2026-10-29): a guided tour of the app that pops up step by step on a player's first sign-in (menu tabs, account and shards, Packs, Draft, Online, deckbuilding), skippable and replayable; and a free starter: the new player picks one of the four Final Fantasy Commander precons, granted once to their collection and saved as a deck (idempotent, server-side, like the welcome grant). Needs E1b. |
 | E2 | Bot games on the server, so their results can be rewarded. |
 | E3 | Match rewards and daily/weekly quests, with the reward breakdown after each match. |
 | E4 | The booster store: Play and Collector Boosters, bulk bonus, confirmation, shortfall message; opened packs go to the account's collection. |
