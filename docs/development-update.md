@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Saved decks (E1b)
+
+- The Packs tab has a **Decks** view: your account's saved decks (Limited
+  40+, 60-card, Commander 100), each with a note on what it still needs to
+  be legal. The editor builds from the cards in your collection (finish
+  shown with ✦), plus any number of basic lands; Commander decks choose a
+  legendary creature as commander. Saving goes to `/api/decks`, which
+  checks you own the cards.
+- Not yet: playing a game with a saved deck (games still use the Starter
+  Kits, precons and draft decks), and drafted cards going to the account
+  (that needs drafts on the server, S3).
+
 ### Packs cost shards and go to your account (E1b)
 
 - The Packs tab's buttons say "Buy and open" with the price (100 Play,

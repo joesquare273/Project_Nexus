@@ -50,3 +50,40 @@ export async function buyPack(token: string, kind: PackKind): Promise<{ pack: Pa
   if (!res.ok) throw await failure(res, 'The pack could not be opened. Try again.');
   return (await res.json()) as { pack: Pack; balance: number };
 }
+
+export type DeckFormat = 'commander' | 'limited' | 'constructed';
+export type Basics = { W: number; U: number; B: number; R: number; G: number };
+
+/** A deck saved on the account (GET/POST /api/decks). */
+export interface SavedDeck {
+  id: string;
+  name: string;
+  format: DeckFormat;
+  cards: { id: string; finish: Finish; count: number }[];
+  basics: Basics;
+  commander: string | null;
+  updatedAt: string;
+}
+
+export type DeckDraft = Omit<SavedDeck, 'id' | 'updatedAt'> & { id?: string };
+
+export async function fetchDecks(token: string): Promise<SavedDeck[]> {
+  const res = await fetch('/api/decks', { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw await failure(res, 'Your decks could not be loaded.');
+  return ((await res.json()) as { decks: SavedDeck[] }).decks;
+}
+
+export async function saveDeck(token: string, deck: DeckDraft): Promise<SavedDeck> {
+  const res = await fetch('/api/decks', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(deck),
+  });
+  if (!res.ok) throw await failure(res, 'The deck could not be saved.');
+  return (await res.json()) as SavedDeck;
+}
+
+export async function deleteDeck(token: string, id: string): Promise<void> {
+  const res = await fetch(`/api/decks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw await failure(res, 'The deck could not be deleted.');
+}

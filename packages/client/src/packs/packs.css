@@ -564,6 +564,116 @@
   color: rgba(255, 255, 255, 0.7);
   text-shadow: 0 1px 2px #000;
 }
+/* ---------------------------------------------------------------- saved decks */
+.decks-head {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.decks-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.deck-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.deck-tile img,
+.deck-tile-blank {
+  width: 72px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.deck-tile-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.deck-tile-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.deck-note {
+  color: var(--rare);
+  font-size: 12px;
+}
+.deck-ok {
+  color: #8fd18f;
+  font-size: 12px;
+}
+.deck-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.deck-editor-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+}
+.deck-editor-body h3 {
+  margin: 0 0 8px;
+}
+.deck-editor-body input[type='search'] {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.deck-pick {
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.deck-pick:disabled {
+  cursor: default;
+}
+.deck-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.deck-cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.deck-cards li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.deck-cards button {
+  padding: 0 8px;
+}
+.deck-basics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  font-size: 13px;
+}
+.deck-basics input {
+  width: 56px;
+  margin-left: 6px;
+}
+@media (max-width: 720px) {
+  .deck-editor-body {
+    grid-template-columns: 1fr;
+  }
+}
 .menu-tabs {
   display: flex;
   justify-content: center;

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BoosterCard, Pack, PackKind, Pull } from '@nexus/cards/boosters';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
+import { DecksView } from './DecksView.tsx';
 import { addPack, buyPack, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
@@ -38,7 +39,7 @@ const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready:
 /** The Magic card back, from Scryfall's image servers. */
 const CARD_BACK = 'https://backs.scryfall.io/large/0/a/0aeebaf5-8c7d-4636-9e82-8c27447861f7.jpg';
 
-type View = { kind: 'shop' } | { kind: 'open'; pack: Pack; fresh: boolean[] } | { kind: 'summary'; pack: Pack; fresh: boolean[] } | { kind: 'collection' };
+type View = { kind: 'shop' } | { kind: 'open'; pack: Pack; fresh: boolean[] } | { kind: 'summary'; pack: Pack; fresh: boolean[] } | { kind: 'collection' } | { kind: 'decks' };
 
 export function PacksTab() {
   const [mod, setMod] = useState<Boosters | null>(null);
@@ -93,6 +94,9 @@ export function PacksTab() {
         <button className={view.kind === 'collection' ? 'chosen' : ''} onClick={() => setView({ kind: 'collection' })}>
           Collection
         </button>
+        <button className={view.kind === 'decks' ? 'chosen' : ''} onClick={() => setView({ kind: 'decks' })}>
+          Decks
+        </button>
         <button
           className="packs-mute"
           aria-pressed={!muted}
@@ -122,6 +126,7 @@ export function PacksTab() {
         />
       )}
       {view.kind === 'collection' && <Binder mod={mod} collection={collection} onPreview={setPreview} />}
+      {view.kind === 'decks' && <DecksView mod={mod} collection={collection} onPreview={setPreview} />}
 
       {odds && <Odds mod={mod} kind={odds} onClose={() => setOdds(null)} />}
       {preview && (
