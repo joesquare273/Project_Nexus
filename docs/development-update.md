@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### S4 group 1: Job select Equipment (first four)
+
+- Built Bard's Bow, Monk's Fist, Paladin's Arms (ward {1}) and Thief's
+  Knife (draws when the equipped creature deals combat damage to a
+  player), from the existing Job select pattern (Dragoon's Lance).
+- With these castable, the AI drafts differently; when a pool has fewer
+  than 23 playable spells in its two colors, its deck runs more than 17
+  lands (the test now allows that).
+
 ### First sign-in tour (E1c, part 2)
 
 - After the free precon pick, a short tour points at the account bar and

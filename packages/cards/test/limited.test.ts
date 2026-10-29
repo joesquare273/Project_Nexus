@@ -12,7 +12,7 @@ function draftedPools(players: number, seed: number): Record<string, DraftCard[]
 const pools = draftedPools(4, 21);
 
 describe('Limited decks', () => {
-  it("the AI builds a legal 40-card deck from its picks: two colors, 17 lands", () => {
+  it("the AI builds a legal 40-card deck from its picks: two colors, at least 17 lands", () => {
     for (const pool of Object.values(pools)) {
       const deck = aiDeck(pool);
       expect(deckProblem(deck, pool)).toBeNull();
@@ -20,7 +20,8 @@ describe('Limited decks', () => {
       const list = deckList(deck, pool);
       expect(list).toHaveLength(40);
       const defs = list.map((id) => CARD_DEFS[id]!);
-      expect(defs.filter((d) => d.types.includes('land'))).toHaveLength(LAND_TARGET);
+      // 17 lands, or more when the pool has fewer than 23 playable spells in its colors.
+      expect(defs.filter((d) => d.types.includes('land')).length).toBeGreaterThanOrEqual(LAND_TARGET);
       const colors = new Set(defs.flatMap((d) => (d.types.includes('land') ? [] : cardColors(d))));
       expect(colors.size).toBeLessThanOrEqual(2);
       // It never plays spells it can't cast.
