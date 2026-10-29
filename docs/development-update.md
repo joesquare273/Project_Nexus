@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Collection browser
+
+- The Packs tab's Collection now has set tabs (Final Fantasy; Edge of
+  Eternities greyed out as Coming soon), All / Owned / Unowned, and sorting
+  by collector number, mana value, name, or color in WUBRG order
+  (multicolor, colorless, then lands). A "Commander decks" group shows the
+  precons' printings, so the free starter precon appears there. Hovering a
+  card shows how many of each finish you own.
+
 ### Transforming: The Emperor of Palamecia and Exdeath
 
 - The Emperor of Palamecia // The Lord Master of Hell and Exdeath // Neo

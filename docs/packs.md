@@ -117,12 +117,14 @@ come after Final Fantasy testing is complete.
 - The collection already records each card's exact printing (Scryfall id
   and set), so cards from different sets stay distinct.
 
-## Collection browser (planned, user requirement 2026-10-29)
+## Collection browser (built 2026-10-29, user requirement)
 
 - See your collection by set (Final Fantasy now; each set added later gets
   its own tab, unfinished ones greyed out as Coming soon).
 - Filters: owned, unowned, all.
 - Sort by mana value, alphabetical, or color in WUBRG order (then
   multicolor and colorless).
-- Includes every card the account owns, precon printings too, with counts
-  per finish.
+- Includes every card the account owns, precon printings too (the
+  "Commander decks" group), with counts per finish on hover.
+- Code: `packages/client/src/packs/browse.ts` (filtering and sorting,
+  tested in `packages/client/test/collection-browse.test.ts`).

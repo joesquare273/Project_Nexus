@@ -505,6 +505,32 @@
   gap: 12px;
   margin-bottom: 18px;
 }
+.binder-sets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.binder-sets button.chosen {
+  border-color: var(--gold);
+  color: #f0dfb4;
+}
+.binder-sets button.soon {
+  opacity: 0.45;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.binder-sets .tag {
+  margin-left: 6px;
+  font-size: 11px;
+}
+.binder-show {
+  display: inline-flex;
+  gap: 4px;
+}
+.binder-show button.chosen {
+  border-color: var(--gold);
+}
 .binder-groups {
   display: flex;
   flex-wrap: wrap;

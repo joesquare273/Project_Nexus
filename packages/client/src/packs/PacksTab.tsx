@@ -8,6 +8,7 @@ import type { BoosterCard, Pack, PackKind, Pull } from '@nexus/cards/boosters';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
 import { DecksView } from './DecksView.tsx';
+import { browse, finishText, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
 import { addPack, buyPack, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
@@ -430,7 +431,7 @@ function Summary({
   );
 }
 
-const GROUPS: { name: string; test: (c: BoosterCard) => boolean }[] = [
+const GROUPS: { name: string; test: (c: BoosterCard) => boolean; precons?: true }[] = [
   { name: 'Main set', test: (c) => c.set === 'fin' && !!c.booster },
   { name: 'Booster Fun', test: (c) => c.set === 'fin' && !c.booster && !c.promoTypes?.includes('starterdeck') },
   { name: 'Through the Ages', test: (c) => c.set === 'fca' },
@@ -438,23 +439,40 @@ const GROUPS: { name: string; test: (c: BoosterCard) => boolean }[] = [
     name: 'Commander Booster Fun',
     test: (c) => c.set === 'fic' && ((parseInt(c.number, 10) >= 101 && parseInt(c.number, 10) <= 219) || (parseInt(c.number, 10) >= 466 && parseInt(c.number, 10) <= 482)) && !c.promoTypes?.includes('buyabox'),
   },
+  { name: 'Commander decks', test: () => true, precons: true },
   { name: 'Scene Box', test: (c) => c.set === 'afic' || (c.set === 'fic' && parseInt(c.number, 10) >= 442 && parseInt(c.number, 10) <= 465) },
   { name: 'Tokens and art cards', test: (c) => c.set === 'tfin' || c.set === 'afin' },
 ];
 
+const SHOWS: { show: Show; label: string }[] = [
+  { show: 'all', label: 'All' },
+  { show: 'owned', label: 'Owned' },
+  { show: 'unowned', label: 'Unowned' },
+];
+
 function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Collection; onPreview: (c: BoosterCard | null) => void }) {
   const [group, setGroup] = useState(0);
-  const [onlyOwned, setOnlyOwned] = useState(false);
-  const cards = useMemo(() => mod.BOOSTER_CARDS.filter(GROUPS[group]!.test), [mod, group]);
+  const [show, setShow] = useState<Show>('all');
+  const [sort, setSort] = useState<SortBy>('number');
+  const g = GROUPS[group]!;
+  const cards = useMemo(() => (g.precons ? PRECON_CARDS : mod.BOOSTER_CARDS.filter(g.test)), [mod, g]);
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;
-  const shown = onlyOwned ? cards.filter((c) => owned(collection, c.id) > 0) : cards;
+  const shown = useMemo(() => browse(cards, collection, show, sort), [cards, collection, show, sort]);
   return (
     <div className="binder">
       <div className="binder-head">
+        <div className="binder-sets" role="tablist" aria-label="Sets">
+          {SETS.map((set) => (
+            <button key={set.name} role="tab" aria-selected={set.ready} className={set.ready ? 'chosen' : 'soon'} disabled={!set.ready} title={set.ready ? undefined : 'Coming soon'}>
+              {set.name}
+              {!set.ready && <span className="tag">Coming soon</span>}
+            </button>
+          ))}
+        </div>
         <div className="binder-groups">
-          {GROUPS.map((g, i) => (
-            <button key={g.name} className={i === group ? 'chosen' : ''} onClick={() => setGroup(i)}>
-              {g.name}
+          {GROUPS.map((x, i) => (
+            <button key={x.name} className={i === group ? 'chosen' : ''} onClick={() => setGroup(i)}>
+              {x.name}
             </button>
           ))}
         </div>
@@ -463,8 +481,22 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
             {have} / {cards.length} collected
           </span>
           <progress value={have} max={cards.length} />
+          <div className="binder-show" role="radiogroup" aria-label="Show">
+            {SHOWS.map((x) => (
+              <button key={x.show} role="radio" aria-checked={show === x.show} className={show === x.show ? 'chosen' : ''} onClick={() => setShow(x.show)}>
+                {x.label}
+              </button>
+            ))}
+          </div>
           <label>
-            <input type="checkbox" checked={onlyOwned} onChange={(e) => setOnlyOwned(e.target.checked)} /> Only cards I own
+            Sort{' '}
+            <select value={sort} onChange={(e) => setSort(e.target.value as SortBy)}>
+              {SORTS.map((x) => (
+                <option key={x.by} value={x.by}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
       </div>
@@ -473,7 +505,13 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
           const n = collection.cards[c.id] ?? {};
           const total = owned(collection, c.id);
           return (
-            <div key={c.id} className={`binder-card ${total ? 'have' : 'missing'}`} onMouseEnter={() => total && onPreview(c)} onMouseLeave={() => onPreview(null)}>
+            <div
+              key={c.id}
+              className={`binder-card ${total ? 'have' : 'missing'}`}
+              title={total ? `${c.name}: ${finishText(collection, c.id)}` : `${c.name}: not owned`}
+              onMouseEnter={() => total && onPreview(c)}
+              onMouseLeave={() => onPreview(null)}
+            >
               <img src={c.images[0]!.small} alt={c.name} loading="lazy" />
               {total > 0 && (
                 <span className="binder-count">
@@ -485,7 +523,7 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
             </div>
           );
         })}
-        {shown.length === 0 && <p className="fineprint">No cards from this group yet. Open some packs!</p>}
+        {shown.length === 0 && <p className="fineprint">{show === 'unowned' ? 'You have every card in this group!' : 'No cards from this group yet. Open some packs!'}</p>}
       </div>
     </div>
   );
