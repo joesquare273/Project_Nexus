@@ -54,7 +54,7 @@ interface Occurrence {
   spellNumber?: number;
   /** YouAttack: how many creatures attacked. */
   attackers?: number;
-  /** CombatDamageToPlayer: how much; CountersAdded: which kind (undefined for +1/+1). */
+  /** CombatDamageToPlayer: how much; SpellCast: the mana spent to cast it. */
   amount?: number;
   counter?: string;
   /** Chapter: the lore counters before and after. */
@@ -143,6 +143,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           subject: e.card,
           subjectController: e.player,
           manaSpent: e.manaSpent,
+          amount: e.manaSpent,
           spellNumber: s.players[e.player]!.spellsCastThisTurn ?? 0,
         });
         break;

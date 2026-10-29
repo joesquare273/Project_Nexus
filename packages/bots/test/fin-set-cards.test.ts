@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { activatedAbilities, countersOf, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { activatedAbilities, countersOf, currentDefinition, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -225,5 +225,58 @@ describe('S4 group 2: noncreature spells', () => {
     put(s, 'P1', 'black-waltz-no-3');
     s = castCheap(s);
     expect([s.players.P2!.life, s.players.P3!.life]).toEqual([18, 18]);
+  });
+});
+
+describe('S4 group 2: mana spent on noncreature spells', () => {
+  const castWith = (s: GameState, defId: string, pool: Parameters<typeof mana>[2], x?: number) => {
+    const spell = put(s, 'P1', defId, 'hand');
+    mana(s, 'P1', pool);
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell, ...(x === undefined ? {} : { x }) }).state;
+  };
+
+  it('Shantotto gets +X/+0 for the mana spent, and draws a card when that’s four or more', () => {
+    let s = newGame();
+    const shantotto = put(s, 'P1', 'shantotto-tactician-magician');
+    const hand = () => s.players.P1!.hand.length;
+    let before = hand();
+    s = castWith(s, 'nights-whisper', { B: 2 });
+    expect(stats(s, shantotto)).toEqual([2, 4]);
+    expect(hand()).toBe(before + 2);
+    before = hand();
+    s = castWith(s, 'harmonize', { G: 4 });
+    expect(stats(s, shantotto)).toEqual([6, 4]);
+    expect(hand()).toBe(before + 3 + 1);
+  });
+
+  it('Tellah makes a Hero for each spell, draws two for four mana, and at eight mana sacrifices himself for that much damage', () => {
+    let s = newGame(3);
+    const tellah = put(s, 'P1', 'tellah-great-sage');
+    const heroCount = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'hero-token').length;
+    let before = s.players.P1!.hand.length;
+    s = castWith(s, 'nights-whisper', { B: 2 });
+    expect(heroCount()).toBe(1);
+    expect(s.players.P1!.hand.length).toBe(before + 2);
+    before = s.players.P1!.hand.length;
+    s = castWith(s, 'harmonize', { G: 4 });
+    expect(heroCount()).toBe(2);
+    expect(s.players.P1!.hand.length).toBe(before + 3 + 2);
+    expect(s.cards[tellah]!.zone).toBe('battlefield');
+    s = castWith(s, 'pull-from-tomorrow', { U: 8 }, 6);
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, s.pending.min) })).state;
+    expect(s.cards[tellah]!.zone).toBe('graveyard');
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([12, 12]);
+  });
+
+  it('The Prima Vista becomes a 5/3 flying artifact creature for a four-mana noncreature spell', () => {
+    let s = newGame();
+    const ship = put(s, 'P1', 'the-prima-vista');
+    s = castWith(s, 'nights-whisper', { B: 2 });
+    expect(s.cards[ship]!.crewed ?? false).toBe(false);
+    s = castWith(s, 'harmonize', { G: 4 });
+    expect(s.cards[ship]!.crewed).toBe(true);
+    expect(currentDefinition(s, s.cards[ship]!).types).toContain('creature');
+    expect(stats(s, ship)).toEqual([5, 3]);
+    expect(hasKeyword(s, s.cards[ship]!, 'Flying')).toBe(true);
   });
 });

@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### S4 group 2: mana spent on spells
+
+- Shantotto (+X/+0 for the mana spent, a card at four or more), Tellah
+  (a Hero each spell, two cards at four mana, sacrifice and that much
+  damage at eight) and The Prima Vista (becomes a creature for a four-mana
+  spell; crew 2), each with a test.
+- Engine: spell-cast triggers carry the mana spent (`amount`), read with
+  the `subjectManaSpent` amount; an effect can need
+  `ifSubjectManaSpentAtLeast`.
+- The engine has no transforming double-faced cards yet (rule 712); 27 set
+  cards need them, so they're the next big group.
+
 ### S4 group 2 (noncreature spells), first seven
 
 - Ultros, Obnoxious Octopus; Cornered by Black Mages; Blazing Bomb;

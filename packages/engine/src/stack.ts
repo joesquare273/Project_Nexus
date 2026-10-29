@@ -1346,7 +1346,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                         ? subjectManaValue(s, r.item)
                         : a.of === 'previousTargetPowerOverSubject'
                           ? powerOver(s, r)
-                        : a.of === 'damageDealt'
+                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
@@ -2356,6 +2356,7 @@ function continueResolving(ctx: Ctx): void {
       const src = s.cards[sourceOf(item)]!;
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
     }
+    if (effect.ifSubjectManaSpentAtLeast !== undefined && (item.kind !== 'ability' || (item.amount ?? 0) < effect.ifSubjectManaSpentAtLeast)) continue;
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
     if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
   }

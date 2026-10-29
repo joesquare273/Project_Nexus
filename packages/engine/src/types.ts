@@ -455,7 +455,9 @@ export type Amount =
         /** How much more power the previous target has than the triggering creature (none if less). */
         | 'previousTargetPowerOverSubject'
         /** The damage dealt in the triggering event ("it deals that much damage"). */
-        | 'damageDealt';
+        | 'damageDealt'
+        /** SpellCast triggers: the mana spent to cast the triggering spell ("where X is the amount of mana spent"). */
+        | 'subjectManaSpent';
       plus?: number;
     };
 
@@ -541,6 +543,8 @@ export interface EffectSpec {
   if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
+  /** SpellCast triggers: only happens if at least this much mana was spent on the triggering spell ("if four or more mana was spent"). */
+  ifSubjectManaSpentAtLeast?: number;
   /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
   attacking?: boolean;
   /** PutFromHand in an attack trigger: a chosen enchantment card enters tapped and attacking the player the triggering creature attacked (Summoner's Grimoire). */
@@ -1415,7 +1419,7 @@ export interface AbilityItem {
   defender?: PlayerId;
   /** Triggered abilities: the object the trigger event happened to. */
   subject?: InstanceId;
-  /** Damage triggers: how much damage was dealt. */
+  /** Damage triggers: how much damage was dealt; SpellCast triggers: the mana spent on the spell. */
   amount?: number;
   /** "Choose one at random": which of `randomModes` came up. */
   mode?: number;

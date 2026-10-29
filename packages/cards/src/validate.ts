@@ -120,6 +120,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectManaValue',
       'previousTargetPowerOverSubject',
       'damageDealt',
+      'subjectManaSpent',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
