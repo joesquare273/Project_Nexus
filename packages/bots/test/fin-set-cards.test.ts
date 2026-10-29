@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { activatedAbilities, countersOf, currentDefinition, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { type Target, activatedAbilities, countersOf, currentDefinition, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -402,5 +402,98 @@ describe('Transforming: The Emperor of Palamecia and Exdeath', () => {
     expect(s.cards[exdeath]!.transformed).toBe(true);
     expect(stats(s, exdeath)).toEqual([6, 3]);
     expect(hasKeyword(s, s.cards[exdeath]!, 'Trample')).toBe(true);
+  });
+});
+
+describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
+  /** Passes turns until it's P1's precombat main phase again, settling chapters on the way. */
+  type Opts = Parameters<typeof settle>[1];
+  /** Settles, answering card choices (discard, sacrifice) with the first cards offered. */
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState, opts: Opts = {}) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = settleAll(goTo(settleAll(s, opts), 'end', opts), opts);
+      s = settleAll(goTo(s, 'main1', opts), opts);
+    }
+    if (s.activePlayer !== 'P1' || s.turnNumber <= turn) throw new Error("never reached P1's next turn");
+    return s;
+  };
+  const lore = (s: GameState, id: string) => s.cards[id]!.namedCounters?.lore ?? 0;
+  const knights = (s: GameState) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'knight-token');
+
+  it('Dion makes a Knight; he and other Knights fly during your turn; he becomes Bahamut, whose chapters grow your team and end by destroying a permanent and flipping back', () => {
+    let s = newGame();
+    const dion = put(s, 'P1', 'dion-bahamuts-dominant-bahamut-warden-of-light', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dion }).state;
+    const [knight] = knights(s);
+    const bear = put(s, 'P1', 'coeurl');
+    expect(hasKeyword(s, s.cards[dion]!, 'Flying') && hasKeyword(s, s.cards[knight!]!, 'Flying')).toBe(true);
+    expect(hasKeyword(s, s.cards[bear]!, 'Flying')).toBe(false);
+    s.cards[dion]!.summoningSick = false;
+    mana(s, 'P1', { W: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: dion, ability: 0 }).state;
+    expect(currentDefinition(s, s.cards[dion]!).name).toBe('Bahamut, Warden of Light');
+    expect(lore(s, dion)).toBe(1);
+    // Chapter I: a +1/+1 counter and flying for each other creature you control.
+    expect(countersOf(s.cards[bear]!, '+1/+1')).toBe(1);
+    expect(hasKeyword(s, s.cards[bear]!, 'Flying')).toBe(true);
+    expect(countersOf(s.cards[dion]!, '+1/+1')).toBe(0);
+    s = nextTurnOfP1(s);
+    expect(lore(s, dion)).toBe(2);
+    expect(countersOf(s.cards[bear]!, '+1/+1')).toBe(2);
+    const target = put(s, 'P2', 'coeurl');
+    const pick = (options: Target[][]) => options.find((o) => o.some((x) => x.kind === 'card' && x.card === target)) ?? options[0]!;
+    s = nextTurnOfP1(s, { targets: pick });
+    // Chapter III: destroy target permanent, then Bahamut returns as Dion (with a new Knight token).
+    expect(s.cards[target]!.zone).toBe('graveyard');
+    expect(knights(s)).toHaveLength(2);
+    expect(s.cards[dion]!.zone).toBe('battlefield');
+    expect(s.cards[dion]!.transformed ?? false).toBe(false);
+    expect(lore(s, dion)).toBe(0);
+    expect(currentDefinition(s, s.cards[dion]!).name).toContain('Dion');
+  });
+
+  it('Jill bounces a nonland permanent as she enters and becomes Shiva, who ends by tapping opponents’ lands', () => {
+    let s = newGame();
+    const other = put(s, 'P2', 'coeurl');
+    const jill = put(s, 'P1', 'jill-shivas-dominant-shiva-warden-of-ice', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: jill }).state;
+    expect(s.cards[other]!.zone).toBe('hand');
+    s.cards[jill]!.summoningSick = false;
+    mana(s, 'P1', { U: 2, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: jill, ability: 0 }).state;
+    expect(currentDefinition(s, s.cards[jill]!).name).toBe('Shiva, Warden of Ice');
+    expect(stats(s, jill)).toEqual([4, 5]);
+    const land = put(s, 'P2', 'island');
+    s = nextTurnOfP1(s);
+    s = nextTurnOfP1(s);
+    expect(s.cards[land]!.tapped).toBe(true);
+    expect(s.cards[jill]!.transformed ?? false).toBe(false);
+  });
+
+  it('Jecht may become Braska’s Final Aeon after combat damage; its chapters make opponents discard and sacrifice, then it’s sacrificed', () => {
+    let s = newGame();
+    const jecht = put(s, 'P1', 'jecht-reluctant-guardian-braskas-final-aeon');
+    put(s, 'P2', 'coeurl', 'hand');
+    s = settleAll(fight(s, [{ attacker: jecht, defender: 'P2' }]).state);
+    expect(currentDefinition(s, s.cards[jecht]!).name).toBe("Braska's Final Aeon");
+    expect(stats(s, jecht)).toEqual([7, 7]);
+    // Chapter I: P2 discarded (its only card) and P1 drew.
+    expect(s.players.P2!.hand).toHaveLength(0);
+    const victims = [put(s, 'P2', 'coeurl'), put(s, 'P2', 'coeurl'), put(s, 'P2', 'coeurl')];
+    s = nextTurnOfP1(s);
+    s = nextTurnOfP1(s);
+    expect(victims.filter((id) => s.cards[id]!.zone === 'graveyard')).toHaveLength(2);
+    // After chapter III, the Saga is sacrificed.
+    expect(s.cards[jecht]!.zone).toBe('graveyard');
   });
 });

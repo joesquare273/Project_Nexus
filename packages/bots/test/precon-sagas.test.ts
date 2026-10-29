@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { GameState } from '@nexus/engine';
-import { cast, goTo, mana, newGame, put } from './kit-helpers.ts';
+import { act, cast, goTo, mana, newGame, put } from './kit-helpers.ts';
 
 const RAT = 'undercity-dire-rat';
 const lore = (s: GameState, id: string) => s.cards[id]!.namedCounters?.lore ?? 0;
@@ -18,6 +18,26 @@ const nextOwnMain = (s: GameState) => {
 };
 
 describe('Sagas', () => {
+  it('the final chapter ability goes on the stack before the Saga is sacrificed (rule 714.4)', () => {
+    let s = newGame();
+    const ixion = put(s, 'P1', 'summon-ixion', 'battlefield', { namedCounters: { lore: 2 } });
+    s = goTo(s, 'end');
+    s = goTo(s, 'main1'); // P2's turn
+    s = goTo(s, 'end');
+    // P1's next precombat main phase begins: the third lore counter, chapter III triggers.
+    for (let guard = 0; guard < 20 && !(s.activePlayer === 'P1' && s.step === 'main1'); guard++) {
+      const p = s.pending;
+      if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else if (p.kind === 'declareAttackers') s = act(s, { type: 'DeclareAttackers', player: p.player, attacks: [] });
+      else break;
+    }
+    expect(lore(s, ixion)).toBe(3);
+    expect(s.stack.some((i) => i.kind === 'ability' && i.source === ixion) || s.triggerQueue.some((t) => t.source === ixion)).toBe(true);
+    expect(s.cards[ixion]!.zone).toBe('battlefield');
+    s = goTo(s, 'beginCombat');
+    expect(s.cards[ixion]!.zone).toBe('graveyard');
+  });
+
   it('Summon: Ixion: I exiles until it leaves; II and III grow your creatures; then it is sacrificed and the exile ends', () => {
     let s = newGame();
     const theirs = put(s, 'P2', RAT);

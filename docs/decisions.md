@@ -445,6 +445,10 @@ cards than before. Tests that need a particular random outcome set
 - A copy of a double-faced permanent doesn't transform (the effect does
   nothing), and the board shows the back image from Scryfall's `/back/`
   path.
-- Not yet: "when this transforms into ..." triggers, transforming Sagas,
-  and transforming lands (Balamb Garden). Modal double-faced cards are a
+- "Exile it, then return it to the battlefield transformed" is the
+  `ExileAndReturn` effect (a new object; front face up without
+  `transformed`). A card that enters transformed uses its back face's
+  "as this enters" rules, so a Saga back face gets its lore counter.
+- Not yet: "when this transforms into ..." triggers and transforming lands
+  (Balamb Garden). Modal double-faced cards are a
   different layout and aren't in the Final Fantasy set.

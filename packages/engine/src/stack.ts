@@ -1864,6 +1864,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         ctx.ev.push({ type: 'Transformed', card: id, toBack: c.transformed });
       }
       return;
+    case 'ExileAndReturn':
+      for (const id of onBattlefield) {
+        const c = s.cards[id]!;
+        if (c.phasedOut) continue;
+        moveCard(ctx, id, 'exile');
+        // A token ceases to exist in exile; a card returns as a new object.
+        if (c.zone !== 'exile') continue;
+        moveCard(ctx, id, 'battlefield', { controller: c.owner, transformed: effect.transformed ?? false });
+        c.summoningSick = true;
+        if (entersTapped(s, c)) c.tapped = true;
+      }
+      return;
     case 'AnimateVehicle':
       for(const id of onBattlefield) if(!s.cards[id]!.phasedOut) s.cards[id]!.crewed=true;
       return;
@@ -2141,8 +2153,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           return;
         }
         const defender = r.attackingDefender ?? defenders[0];
-        moveCard(ctx, id, 'battlefield');
-        if (effect.transformed && s.cardDefs[c.defId]?.backFace) c.transformed = true;
+        moveCard(ctx, id, 'battlefield', { transformed: effect.transformed ?? false });
         r.returnedObjects ??= {};
         r.returnedObjects[id] = c.zoneChanges ?? 0;
         if (effect.underYourControl) c.controller = item.controller;

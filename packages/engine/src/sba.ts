@@ -28,7 +28,7 @@ import {
 import { shuffleInPlace } from './rng.ts';
 import { isLegendary } from './typerules.ts';
 import { resumeResolving } from './stack.ts';
-import type { EliminationReason, PlayerId } from './types.ts';
+import type { EliminationReason, GameEvent, PlayerId } from './types.ts';
 
 /**
  * A player leaving a multiplayer game takes everything they own with them
@@ -82,8 +82,10 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
 /**
  * Applies state-based actions until nothing changes, then ends the game if
  * one player or fewer remains. Returns true if anyone was eliminated.
+ * `unscanned`: events not yet checked for triggers; a lore counter among
+ * them means that Saga's chapter ability has already triggered.
  */
-export function applyStateBasedActions(ctx: Ctx): boolean {
+export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[] = []): boolean {
   const s = ctx.s;
   let eliminatedAny = false;
   for (;;) {
@@ -138,6 +140,7 @@ export function applyStateBasedActions(ctx: Ctx): boolean {
       const final = defOf(s, c).saga;
       if (!final || (c.namedCounters?.lore ?? 0) < final) continue;
       const waiting =
+        unscanned.some((e) => e.type === 'CountersAdded' && e.card === c.id && e.counter === 'lore') ||
         s.stack.some((i) => i.kind === 'ability' && i.source === c.id) ||
         s.triggerQueue.some((t) => t.source === c.id) ||
         (s.resolving?.item.kind === 'ability' && s.resolving.item.source === c.id);
@@ -361,7 +364,7 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
   // The guard protects against a failure to settle.
   for (let guard = 0; guard < 64; guard++) {
     const beforeSba = ctx.ev.length;
-    const eliminated = applyStateBasedActions(ctx);
+    const eliminated = applyStateBasedActions(ctx, ctx.ev.slice(scanned));
     if (s.cleanupCheck && ctx.ev.length > beforeSba) s.cleanupNeedsPriority = true;
     if (s.pending.kind === 'gameOver') return;
     if (isMulliganing(s)) {

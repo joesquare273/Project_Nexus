@@ -5459,6 +5459,28 @@
     "scryfallId": "e141f975-945e-4e2c-ac04-6083b5bdaf16",
     "relatedTokens": []
   },
+  "knight-token": {
+    "name": "Knight",
+    "typeLine": "Token Creature — Knight",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "10",
+    "artist": "Joshua Raphael",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/7/a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad.jpg?1783906135",
+      "normal": "https://cards.scryfall.io/normal/front/a/7/a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad.jpg?1783906135",
+      "large": "https://cards.scryfall.io/large/front/a/7/a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad.jpg?1783906135",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/7/a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad.jpg?1783906135"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/10/knight?utm_source=api",
+    "scryfallId": "a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad",
+    "relatedTokens": [
+      {
+        "name": "Knight",
+        "scryfallId": "a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad"
+      }
+    ]
+  },
   "kraum-ludevics-opus": {
     "name": "Kraum, Ludevic's Opus",
     "typeLine": "Legendary Creature — Zombie Horror",

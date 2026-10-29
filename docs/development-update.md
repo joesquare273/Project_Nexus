@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Transforming into Sagas; a Saga timing fix
+
+- Dion // Bahamut, Jill // Shiva and Jecht // Braska's Final Aeon, each
+  with tests. New: the `ExileAndReturn` effect, `moveCard` putting a card
+  onto the battlefield transformed, and the Knight token (tfin 10).
+- Fixed for every Saga: the state-based check sacrificed a Saga with its
+  final lore counter before that chapter's ability was collected, so the
+  chapter resolved after the Saga had already left. Now the Saga stays
+  until the chapter ability leaves the stack (rule 714.4); a regression
+  test is in precon-sagas.test.ts.
+
 ### Collection browser
 
 - The Packs tab's Collection now has set tabs (Final Fantasy; Edge of

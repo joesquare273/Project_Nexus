@@ -156,6 +156,12 @@ export const EFFECT_KINDS = [
   'AnimateVehicle',
   /** Turn this double-faced permanent over (rule 701.28); "you may" with `optional`. Nothing happens without a back face. */
   'Transform',
+  /**
+   * "Exile it, then return it to the battlefield under its owner's control":
+   * a new object. With `transformed`, it returns back face up; otherwise
+   * front face up.
+   */
+  'ExileAndReturn',
   'FlipCoin',
   'ReflexiveTrigger',
   /** Choose up to amount matching permanents on resolution; put a +1/+1 counter on each. */
@@ -589,7 +595,7 @@ export interface EffectSpec {
   groupOwnersDiffer?: boolean;
   /** ReturnToBattlefield: under your control instead of its owner's. */
   underYourControl?: boolean;
-  /** ReturnToBattlefield: the card enters with its back face up ("return it to the battlefield transformed"). */
+  /** ReturnToBattlefield, ExileAndReturn: the card enters with its back face up ("return it to the battlefield transformed"). */
   transformed?: boolean;
   /** ReturnToBattlefield: unearth (rule 702.84): it gains haste, and is exiled at the next end step or if it would leave. */
   unearth?: boolean;

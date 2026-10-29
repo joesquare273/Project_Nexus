@@ -2,7 +2,7 @@
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { currentDefinition as defOf } from './cardface.ts';
+import { backFaceDefinition, currentDefinition as defOf } from './cardface.ts';
 import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, staticAffects, powerOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped } from './typerules.ts';
@@ -175,7 +175,7 @@ function zoneList(s: GameState, owner: PlayerId, zone: ZoneName): InstanceId[] |
  * A card that changes zones becomes a new object, so its per-object state
  * resets. Emits CardMoved unless `silent` is set (draws emit CardDrawn).
  */
-export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean; sacrificed?: boolean; controller?: PlayerId } = {}): void {
+export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?: boolean; sacrificed?: boolean; controller?: PlayerId; transformed?: boolean } = {}): void {
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
@@ -278,8 +278,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     });
   }
   if (from === 'battlefield') leftBattlefield(ctx, id);
+  // A double-faced card put onto the battlefield transformed enters back face up (rule 712.14a),
+  // so its back face's "as this enters" rules apply (a Saga back face gets its lore counter).
+  if (to === 'battlefield' && opts.transformed && s.cardDefs[c.defId]!.backFace) c.transformed = true;
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
-  const d = s.cardDefs[c.defId]!;
+  const d = c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
   if (to === 'battlefield') { c.enteredTurn = s.turnNumber; c.enteredTimestamp = newTimestamp(s); }
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
   // "As this Saga enters, add a lore counter" (rule 714.3a).
