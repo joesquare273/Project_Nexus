@@ -77,6 +77,8 @@ this repo, not only in local memory.
   type or category live in the engine (`typerules.ts`), not on each card.
 - `docs/packs.md`: the Packs tab (booster odds, card data, collection).
 - `docs/sealed.md`: draft events and the Final Fantasy set roadmap (S1-S4).
+- `docs/economy.md`: the Aether Shards currency plan (E1-E5): prices, rewards,
+  quests, and the server-side rules that keep it safe.
 - `packages/server`: online play (rooms, protocol, authority); `npm run server`.
 - `HOW-TO-RUN.txt`: instructions for the user.
 
