@@ -207,6 +207,7 @@ const PLAYER_FIELDS = {
   creatureScryMana: 'refs',
   manaPool: 'copy',
   equipmentMana: 'copy',
+  noncreatureSpellMana: 'copy',
   landsPlayedThisTurn: 'copy',
   eliminated: 'copy',
   drewFromEmptyLibrary: 'copy',

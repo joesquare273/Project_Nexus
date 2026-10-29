@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Transforming: The Emperor of Palamecia and Exdeath
+
+- The Emperor of Palamecia // The Lord Master of Hell and Exdeath // Neo
+  Exdeath, each with tests.
+- Engine: a second restricted mana pool, `noncreatureSpellMana` ("spend
+  this mana only to cast a noncreature spell"), paid like the
+  Equipment-only pool and shown beside it on the board; the AI's mana
+  planner knows it. Also `ifSourceCountersAtLeast` on effects, the
+  `PermanentCardsInYourGraveyard` count, and `ifCount` intervening-if
+  conditions on triggers.
+- Next after this group's commit: the collection browser (docs/packs.md).
+
 ### Transforming double-faced cards (S4 group 3)
 
 - The engine can transform: a `backFace` on the card data, the

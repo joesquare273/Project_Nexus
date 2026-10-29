@@ -376,6 +376,8 @@ export const COUNT_KINDS = [
   'CreaturesYouControl',
   'EquippedCreaturesYouControl',
   'NoncreatureNonlandCardsInYourGraveyard',
+  /** Artifact, creature, enchantment, land, planeswalker and battle cards in your graveyard. */
+  'PermanentCardsInYourGraveyard',
   'CreaturesDiedThisTurn',
   /** Every creature on the battlefield, whoever controls it. */
   'CreaturesOnBattlefield',
@@ -545,6 +547,8 @@ export interface EffectSpec {
   if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked';
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
+  /** Only happens if the source has at least this many +1/+1 counters ("then if it has three or more +1/+1 counters on it"). */
+  ifSourceCountersAtLeast?: number;
   /** SpellCast triggers: only happens if at least this much mana was spent on the triggering spell ("if four or more mana was spent"). */
   ifSubjectManaSpentAtLeast?: number;
   /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
@@ -769,6 +773,8 @@ export interface TriggerSpec {
   ifYouPutCounterOnCreatureThisTurn?: boolean;
   /** Intervening "if": you control at least `atLeast` (default 1) permanents matching `filter` ("if you control a creature with power 7 or greater"). */
   ifYouControl?: { filter: ObjectFilter; atLeast?: number };
+  /** Intervening "if": a count is at least this ("if there are six or more permanent cards in your graveyard"). */
+  ifCount?: { count: CountKind; atLeast: number };
   /** Intervening "if": "if you gained life this turn". */
   ifYouGainedLifeThisTurn?: boolean;
   /** Intervening "if": "if a card left your graveyard this turn". */
@@ -962,6 +968,8 @@ export interface CardDefinition {
     tapLegendaryCreature?: boolean;
     /** "Spend this mana only to cast an Equipment spell or activate an equip ability." */
     onlyForEquipment?: boolean;
+    /** "Spend this mana only to cast a noncreature spell" (The Emperor of Palamecia). */
+    onlyForNoncreatureSpells?: boolean;
     /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
     amount?: number;
     /** Producing one of these deals 1 damage to you (pain lands, Talismans). */
@@ -1310,6 +1318,8 @@ export interface PlayerState {
   manaPool: ManaPool;
   /** Mana that can only be spent on Equipment spells and equip abilities. */
   equipmentMana: ManaPool;
+  /** Mana that can only be spent to cast noncreature spells. */
+  noncreatureSpellMana: ManaPool;
   landsPlayedThisTurn: number;
   eliminated: boolean;
   drewFromEmptyLibrary: boolean;

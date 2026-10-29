@@ -345,3 +345,62 @@ describe('Transforming double-faced cards', () => {
     expect(s.players.P1!.library.at(-1)).toBe(garland);
   });
 });
+
+describe('Transforming: The Emperor of Palamecia and Exdeath', () => {
+  const castBig = (s: GameState) => {
+    const spell = put(s, 'P1', 'harmonize', 'hand');
+    mana(s, 'P1', { G: 4 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+  };
+
+  it('The Emperor’s mana pays only for noncreature spells', () => {
+    let s = newGame();
+    const emperor = put(s, 'P1', 'the-emperor-of-palamecia-the-lord-master-of-hell');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: emperor, mana: 'U' });
+    expect(s.players.P1!.noncreatureSpellMana.U).toBe(1);
+    expect(s.players.P1!.manaPool.U).toBe(0);
+    // Ultros costs {1}{U}: the Emperor's {U} can't pay for a creature spell.
+    const creature = put(s, 'P1', 'ultros-obnoxious-octopus', 'hand');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/mana/);
+    const whisper = put(s, 'P1', 'nights-whisper', 'hand');
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: whisper }).state;
+    expect(s.cards[whisper]!.zone).toBe('graveyard');
+    expect(s.players.P1!.noncreatureSpellMana.U).toBe(0);
+  });
+
+  it('The Emperor gets a counter for each 4-mana noncreature spell and transforms at three; The Lord Master of Hell burns for noncreature, nonland cards', () => {
+    let s = newGame(3);
+    const emperor = put(s, 'P1', 'the-emperor-of-palamecia-the-lord-master-of-hell');
+    s = castBig(s);
+    s = castBig(s);
+    expect(countersOf(s.cards[emperor]!, '+1/+1')).toBe(2);
+    expect(s.cards[emperor]!.transformed ?? false).toBe(false);
+    s = castBig(s);
+    expect(s.cards[emperor]!.transformed).toBe(true);
+    expect(currentDefinition(s, s.cards[emperor]!).name).toBe('The Lord Master of Hell');
+    expect(stats(s, emperor)).toEqual([6, 6]);
+    // Three Harmonizes in the graveyard: 3 damage to each opponent as it attacks.
+    s = fight(s, [{ attacker: emperor, defender: 'P2' }]).state;
+    expect(s.players.P3!.life).toBe(17);
+    expect(s.players.P2!.life).toBe(20 - 3 - 6);
+  });
+
+  it('Exdeath gains 3 life as it enters and transforms at your end step with six permanent cards in your graveyard; Neo Exdeath’s power is that count', () => {
+    let s = newGame();
+    const exdeath = put(s, 'P1', 'exdeath-void-warlock-neo-exdeath-dimensions-end', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: exdeath }).state;
+    expect(s.players.P1!.life).toBe(23);
+    for (let i = 0; i < 5; i++) put(s, 'P1', 'coeurl', 'graveyard');
+    // A sorcery isn't a permanent card: five permanent cards, so not yet.
+    put(s, 'P1', 'nights-whisper', 'graveyard');
+    const notYet = settle(goTo(structuredClone(s), 'end')).state;
+    expect(notYet.cards[exdeath]!.transformed ?? false).toBe(false);
+    put(s, 'P1', 'coeurl', 'graveyard');
+    s = settle(goTo(s, 'end')).state;
+    expect(s.cards[exdeath]!.transformed).toBe(true);
+    expect(stats(s, exdeath)).toEqual([6, 3]);
+    expect(hasKeyword(s, s.cards[exdeath]!, 'Trample')).toBe(true);
+  });
+});

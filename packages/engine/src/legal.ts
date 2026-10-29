@@ -84,6 +84,8 @@ export interface CostedOption {
   cost: ManaCost;
   /** Mana that can only be spent on Equipment can pay for it. */
   forEquipment: boolean;
+  /** Mana that can only be spent on noncreature spells can pay for it. */
+  forNoncreatureSpell?: boolean;
 }
 
 /**
@@ -173,6 +175,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
                 action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra },
                 cost: pay.cost,
                 forEquipment: isEquipment(s, c),
+                forNoncreatureSpell: !def.types.includes('creature'),
               });
             }
           }
@@ -502,7 +505,7 @@ export function getLegalActions(s: GameState): Action[] {
         }
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
-        if (canPayFromPool(s, player, o.cost, o.forEquipment)) actions.push(o.action);
+        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false })) actions.push(o.action);
       }
       for (const id of s.players[player]!.hand) {
         if (!foretellProblem(s, player, s.cards[id]!)) actions.push({ type: 'Foretell', player, card: id });

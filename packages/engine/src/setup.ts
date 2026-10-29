@@ -101,6 +101,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       commanderDamage: {},
       manaPool: emptyManaPool(),
       equipmentMana: emptyManaPool(),
+      noncreatureSpellMana: emptyManaPool(),
       landsPlayedThisTurn: 0,
       eliminated: false,
       drewFromEmptyLibrary: false,

@@ -415,27 +415,37 @@ function allTargetsIllegal(s: GameState, item: StackItem): boolean {
 // Mana
 // ---------------------------------------------------------------------------
 
-function poolFor(s: GameState, playerId: PlayerId, forEquipment: boolean) {
+/** What a payment is for, which decides whether restricted mana can pay it. */
+export interface ManaUse {
+  /** An Equipment spell or an equip ability. */
+  equipment?: boolean;
+  /** A noncreature spell being cast. */
+  noncreatureSpell?: boolean;
+}
+
+function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
   const p = s.players[playerId]!;
   const pool = { ...p.manaPool };
-  if (forEquipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
+  if (use.equipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
+  if (use.noncreatureSpell) for (const t of MANA_TYPES) pool[t] += p.noncreatureSpellMana[t];
   return pool;
 }
 
 /**
- * Pays a cost from the player's mana pool, or rejects the action. Mana that
- * can only be spent on Equipment is used first when `forEquipment` is set.
- * Returns how much mana was spent.
+ * Pays a cost from the player's mana pool, or rejects the action. Restricted
+ * mana that can pay for this (`use`) is spent first. Returns how much mana
+ * was spent.
  */
-export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, forEquipment = false, spentScryMana?: CreatureScryMana[]): number {
+export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}, spentScryMana?: CreatureScryMana[]): number {
   const p = player(ctx.s, playerId);
-  const spent = planPayment(poolFor(ctx.s, playerId, forEquipment), cost);
+  const spent = planPayment(poolFor(ctx.s, playerId, use), cost);
   if (!spent) reject('Not enough mana in your mana pool.');
   for (const t of MANA_TYPES) {
     let n = spent[t] ?? 0;
-    if (forEquipment) {
-      const restricted = Math.min(n, p.equipmentMana[t]);
-      p.equipmentMana[t] -= restricted;
+    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana]] as const) {
+      if (!allowed) continue;
+      const restricted = Math.min(n, pool[t]);
+      pool[t] -= restricted;
       n -= restricted;
     }
     // The existing automatic payment planner chooses mana types. Within one
@@ -454,9 +464,9 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, forEquipme
   return totalMana(spent);
 }
 
-/** Whether the pool can pay a cost (counting Equipment-only mana when it's allowed). */
-export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, forEquipment = false): boolean {
-  return planPayment(poolFor(s, playerId, forEquipment), cost) !== null;
+/** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
+export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
+  return planPayment(poolFor(s, playerId, use), cost) !== null;
 }
 
 /**
@@ -523,7 +533,7 @@ export function activateManaAbility(
   const ability = def.manaAbility;
   if (ability?.sacrifice) sacrifice(ctx, id);
   const amount = manaAbilityAmount(c, def);
-  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ?? false);
+  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : undefined);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
     const p = player(s, playerId);
@@ -866,7 +876,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = { ...cost, generic: cost.generic - delved.length };
   }
   const spentScryMana: CreatureScryMana[] = [];
-  const manaSpent = payMana(ctx, playerId, cost, isEquipment(s, c), spentScryMana);
+  const manaSpent = payMana(ctx, playerId, cost, { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature') }, spentScryMana);
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   for (const discarded of costCards) discard(ctx, discarded);
   for (const k of convoked) tap(ctx, k);
@@ -1152,7 +1162,7 @@ export function activateAbility(
     checkDiscardCost(s, playerId, spec.cost.discard ?? 0, costCards, id);
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
-  payMana(ctx, playerId, abilityCost(s, spec, targets, c), spec.equip ?? false);
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c), { equipment: spec.equip ?? false });
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
@@ -2364,6 +2374,10 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifSourcePowerAtLeast !== undefined) {
       const src = s.cards[sourceOf(item)]!;
       if (src.zone !== 'battlefield' || powerOf(s, src) < effect.ifSourcePowerAtLeast) continue;
+    }
+    if (effect.ifSourceCountersAtLeast !== undefined) {
+      const src = s.cards[sourceOf(item)]!;
+      if (src.zone !== 'battlefield' || countersOf(src, '+1/+1') < effect.ifSourceCountersAtLeast) continue;
     }
     if (effect.ifSubjectManaSpentAtLeast !== undefined && (item.kind !== 'ability' || (item.amount ?? 0) < effect.ifSubjectManaSpentAtLeast)) continue;
     applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));

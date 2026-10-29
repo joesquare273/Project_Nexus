@@ -57,6 +57,7 @@ const COUNT_TEXT: Record<string, string> = {
   CreaturesYouControl: 'creatures you control',
   EquippedCreaturesYouControl: 'equipped creatures you control',
   NoncreatureNonlandCardsInYourGraveyard: 'noncreature, nonland cards in your graveyard',
+  PermanentCardsInYourGraveyard: 'permanent cards in your graveyard',
   CreaturesDiedThisTurn: 'creatures that died this turn',
   CreaturesOnBattlefield: 'creatures on the battlefield',
   EquippedAttackingCreaturesYouControl: 'equipped attacking creatures you control',

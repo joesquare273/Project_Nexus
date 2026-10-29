@@ -9,7 +9,7 @@
 
 import { currentDefinition } from './cardface.ts';
 import { matchesObject } from './filters.ts';
-import { colorsOf } from './typerules.ts';
+import { colorsOf, isPermanentCard } from './typerules.ts';
 import { objectManaValue } from './typerules.ts';
 import type {
   AnyCounter,
@@ -95,6 +95,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter(creature).length;
     case 'EquippedCreaturesYouControl':
       return yours().filter((c) => creature(c) && isEquipped(s, c)).length;
+    case 'PermanentCardsInYourGraveyard':
+      return s.players[player]!.graveyard.filter((id) => isPermanentCard(def(s, s.cards[id]!))).length;
     case 'NoncreatureNonlandCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => {
         const types = def(s, s.cards[id]!).types;

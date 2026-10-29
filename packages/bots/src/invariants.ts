@@ -64,6 +64,7 @@ export function checkInvariants(s: GameState): string[] {
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     for (const t of MANA_TYPES) if (p.equipmentMana[t] < 0) problems.push(`${pid} has negative Equipment-only ${t} mana`);
+    for (const t of MANA_TYPES) if (p.noncreatureSpellMana[t] < 0) problems.push(`${pid} has negative noncreature-only ${t} mana`);
   }
   for (const c of Object.values(s.cards)) {
     const n = seen.get(c.id) ?? 0;

@@ -6,7 +6,7 @@
 
 import { checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
 import { randomInt } from './rng.ts';
-import { characteristics } from './characteristics.ts';
+import { characteristics, countOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
 import { givePriority } from './turn.ts';
@@ -212,6 +212,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
     const n = battlefield(s).filter((c) => c.controller === controller && matchesObject(s, filter, c, { controller, source })).length;
     if (n < atLeast) return false;
   }
+  if (spec.ifCount && countOf(s, spec.ifCount.count, controller, source) < spec.ifCount.atLeast) return false;
   return true;
 }
 

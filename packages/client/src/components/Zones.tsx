@@ -305,17 +305,23 @@ function Battlefield({
   );
 }
 
-function ManaPool({ pool, equipment }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool'] }) {
+function ManaPool({ pool, equipment, noncreature }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool']; noncreature?: GameView['players'][string]['manaPool'] }) {
   const symbols = (p: typeof pool) => Object.entries(p).flatMap(([t, n]) => Array.from({ length: n }, () => `{${t}}`));
   const normal = symbols(pool);
   const restricted = symbols(equipment);
-  if (normal.length + restricted.length === 0) return null;
+  const forNoncreature = noncreature ? symbols(noncreature) : [];
+  if (normal.length + restricted.length + forNoncreature.length === 0) return null;
   return (
     <span className="pool" title="Mana pool">
       <ManaCost cost={normal.join('')} size={13} />
       {restricted.length > 0 && (
         <span className="pool-restricted" title="Only for Equipment spells and equip abilities">
           <ManaCost cost={restricted.join('')} size={13} />
+        </span>
+      )}
+      {forNoncreature.length > 0 && (
+        <span className="pool-restricted" title="Only for noncreature spells">
+          <ManaCost cost={forNoncreature.join('')} size={13} />
         </span>
       )}
     </span>
@@ -365,7 +371,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
         </div>
         <div className="counts">
           <span title={p.maximumHandSize === null ? "Cards in hand: no maximum hand size" : `Cards in hand: discard down to ${p.maximumHandSize} during your cleanup step`}>✋ {p.handCount}/{p.maximumHandSize ?? "∞"}</span>
-          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} />
+          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} />
           {Object.entries(p.commanderDamage)
             .filter(([, n]) => n > 0)
             .map(([cmd, n]) => (

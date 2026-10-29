@@ -54,6 +54,8 @@ export interface PlayerView {
   manaPool: ManaPool;
   /** Mana that can only be spent on Equipment spells and equip abilities. */
   equipmentMana: ManaPool;
+  /** Mana that can only be spent to cast noncreature spells. */
+  noncreatureSpellMana: ManaPool;
   eliminated: boolean;
 }
 
@@ -118,6 +120,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       commanderDamage: { ...p.commanderDamage },
       manaPool: { ...p.manaPool },
       equipmentMana: { ...p.equipmentMana },
+      noncreatureSpellMana: { ...p.noncreatureSpellMana },
       eliminated: p.eliminated,
     };
   }

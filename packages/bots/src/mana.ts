@@ -27,8 +27,8 @@ export function optionTapPlanner(s: GameState, playerId: PlayerId): (option: Cos
   const plans = new Map<string, ManaTap[] | null>();
   return (o) => {
     const exclude = o.action.type === 'CastSpell' ? [...(o.action.improvise ?? []), ...(o.action.convoke ?? []), ...(o.action.tapCreatures ?? [])].sort() : [];
-    const key = JSON.stringify([o.cost, o.forEquipment, exclude]);
-    if (!plans.has(key)) plans.set(key, planTaps(s, playerId, o.cost, { forEquipment: o.forEquipment, exclude }));
+    const key = JSON.stringify([o.cost, o.forEquipment, o.forNoncreatureSpell, exclude]);
+    if (!plans.has(key)) plans.set(key, planTaps(s, playerId, o.cost, { forEquipment: o.forEquipment, forNoncreatureSpell: o.forNoncreatureSpell ?? false, exclude }));
     return plans.get(key)!;
   };
 }
@@ -49,6 +49,8 @@ export interface TapOptions {
   exclude?: InstanceId[];
   /** The mana is for an Equipment spell or an equip ability, so Equipment-only mana counts. */
   forEquipment?: boolean;
+  /** The mana is for a noncreature spell, so noncreature-only mana counts. */
+  forNoncreatureSpell?: boolean;
 }
 
 /** Untapped permanents this player can tap for mana right now. */
@@ -58,6 +60,7 @@ export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions =
       const def = currentDefinition(s,c);
       if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
       if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
+      if (def.manaAbility?.onlyForNoncreatureSpells && !opts.forNoncreatureSpell) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick;
     });
@@ -129,6 +132,7 @@ export function planTaps(
   const p = s.players[playerId]!;
   const pool = { ...p.manaPool };
   if (opts.forEquipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
+  if (opts.forNoncreatureSpell) for (const t of MANA_TYPES) pool[t] += p.noncreatureSpellMana[t];
   const sources: TapSource[] = [...manaSources(s, playerId, opts), ...legendarySources(s, playerId, opts), ...grantedSources(s, playerId, opts)].sort((a, b) => reluctance(s, a) - reluctance(s, b));
   // Paid abilities spend the normal pool, so they're left out when Equipment-only mana is in play.
   const paid = opts.forEquipment ? [] : paidManaSources(s, playerId).filter((c) => !opts.exclude?.includes(c.id));
