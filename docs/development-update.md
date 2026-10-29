@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Cards that aren't built yet can't be used
+
+- User decision: unbuilt cards keep their images everywhere but can't be
+  cast or played, creatures and lands included. They're marked "Not built"
+  in the Collection, the deck editor and the draft; the deckbuilder and the
+  Decks view say how many cards in a deck can't be used. The AI drafter
+  leaves them out of its decks.
+- This lets a set open for packs and collecting before all its cards are
+  built (CLAUDE.md, decisions.md).
+- Answered: the draft system so far is local against AI drafters, with one
+  game against an AI drafter's deck. Still to build: best-of-3 with
+  sideboarding, Swiss pairings and standings (for bots too), online drafts
+  run by the server (S3), and drafted cards saved to accounts.
+
 ### Transforming into Sagas; a Saga timing fix
 
 - Dion // Bahamut, Jill // Shiva and Jecht // Braska's Final Aeon, each

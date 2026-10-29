@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BoosterCard, Finish } from '@nexus/cards/boosters';
 import { accessToken } from '../account/AccountBar.tsx';
-import { PRINTING_CARDS } from './browse.ts';
+import { isUnbuilt, PRINTING_CARDS } from './browse.ts';
 import { deleteDeck, fetchDecks, saveDeck, type Basics, type Collection, type DeckDraft, type DeckFormat, type SavedDeck } from './collection.ts';
 
 type Boosters = typeof import('@nexus/cards/boosters');
@@ -22,8 +22,10 @@ const FINISH_MARK: Record<Finish, string> = { nonfoil: '', foil: ' ✦', surge: 
 
 const deckSize = (d: DeckDraft) => d.cards.reduce((n, c) => n + c.count, 0) + Object.values(d.basics).reduce((n, k) => n + k, 0);
 
-/** What the deck still needs to be legal to play, or null. */
-export function deckNote(d: DeckDraft, names: Map<string, string>): string | null {
+/** What the deck still needs to be legal to play, or null. `unbuilt` says which cards can't be used in games yet. */
+export function deckNote(d: DeckDraft, names: Map<string, string>, unbuilt: (id: string) => boolean = () => false): string | null {
+  const notBuilt = d.cards.filter((c) => unbuilt(c.id)).reduce((n, c) => n + c.count, 0);
+  if (notBuilt > 0) return `${notBuilt} ${notBuilt === 1 ? "card isn't" : "cards aren't"} built yet and can't be used in games.`;
   const size = deckSize(d);
   const copies = new Map<string, number>();
   for (const c of d.cards) {
@@ -51,6 +53,7 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
   const [busy, setBusy] = useState(false);
   const byId = useMemo(() => new Map([...PRINTING_CARDS, ...mod.BOOSTER_CARDS].map((c) => [c.id, c])), [mod]);
   const names = useMemo(() => new Map([...byId].map(([id, c]) => [id, c.name])), [byId]);
+  const unbuiltId = (id: string) => { const c = byId.get(id); return !!c && isUnbuilt(c); };
 
   useEffect(() => {
     accessToken()
@@ -110,7 +113,7 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
       {decks?.length === 0 && <p className="fineprint">No decks yet. Build one from the cards in your collection.</p>}
       <div className="decks-list">
         {decks?.map((d) => {
-          const note = deckNote(d, names);
+          const note = deckNote(d, names, unbuiltId);
           const face = byId.get(d.commander ?? d.cards[0]?.id ?? '');
           return (
             <div key={d.id} className="deck-tile">
@@ -188,7 +191,7 @@ function DeckEditor({
     onChange({ ...deck, cards, commander });
   };
   const legends = deck.cards.filter((c) => /Legendary/.test(byId.get(c.id)?.typeLine ?? '') && /Creature/.test(byId.get(c.id)?.typeLine ?? ''));
-  const note = deckNote(deck, names);
+  const note = deckNote(deck, names, (id) => { const c = byId.get(id); return !!c && isUnbuilt(c); });
 
   return (
     <div className="deck-editor">
@@ -231,6 +234,7 @@ function DeckEditor({
                     {free}
                     {FINISH_MARK[e.finish]}
                   </span>
+                  {isUnbuilt(e.card) && <span className="binder-unbuilt">Not built</span>}
                 </button>
               );
             })}

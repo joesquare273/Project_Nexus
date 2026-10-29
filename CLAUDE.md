@@ -23,8 +23,11 @@ this repo, not only in local memory.
 - **The Final Fantasy Starter Kits are the testbed.** Every game uses the
   exact Red-White and Blue-Black kit decklists. Don't add placeholder cards
   or filler from other sets. All kit cards are built (2026-10-21); a new
-  card that isn't fully built yet can be marked `notBuilt: true` (creatures
-  play as their body and keywords, other cards can't be cast).
+  card that isn't fully built yet can be marked `notBuilt: true`: it shows
+  everywhere with its real image (packs, collection, drafts, decks, marked
+  "Not built") but can't be cast or played, creatures and lands included
+  (user decision 2026-10-29). A set can open for packs and collecting once
+  its cards and images are imported, before every card is built.
 - **The Commander precons are the next card target** (`docs/commander.md`):
   all four Final Fantasy precons are imported (`scripts/import-precons.ts`);
   build their cards step by step (C2-C5), keeping the exact decklists.

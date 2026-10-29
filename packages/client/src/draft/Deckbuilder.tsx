@@ -102,7 +102,7 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
   const creatures = deckCards.filter((c) => typeKey(c) === 'Creatures').length;
   const unplayable = deckCards.filter((c) => {
     const d = defOf(c);
-    return d?.uncastable || (d?.notBuilt && !d.types.includes('creature') && !d.types.includes('land'));
+    return d?.uncastable || d?.notBuilt;
   }).length;
   const curve = [0, 1, 2, 3, 4, 5, 6].map((n) => deckCards.filter((c) => typeKey(c) !== 'Lands' && (n === 6 ? mv(c) >= 6 : mv(c) === n)).length);
   const pips = limited.colorPips(deck, pool);
@@ -151,7 +151,7 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
       {problem && <p className="fineprint builder-problem">{problem}</p>}
       {unplayable > 0 && (
         <p className="fineprint builder-problem">
-          {unplayable} {unplayable === 1 ? 'card' : 'cards'} in your deck can't be cast yet (not built in the engine).
+          {unplayable} {unplayable === 1 ? 'card' : 'cards'} in your deck can't be used yet (not built in the engine).
         </p>
       )}
 

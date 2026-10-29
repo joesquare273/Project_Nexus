@@ -252,8 +252,7 @@ function aisLockIn(mod: DraftModule, s: DraftState): DraftState {
 function BuildBadge({ card, mod }: { card: DraftCard; mod: DraftModule }) {
   const def = CARD_DEFS[mod.defIdOf(card.card) ?? ''];
   if (!def || !def.notBuilt) return null;
-  const body = def.types.includes('creature') && !def.uncastable;
-  return <span className={`build-badge ${body ? 'body' : 'blocked'}`}>{body ? 'Plays as body only' : "Can't be cast yet"}</span>;
+  return <span className="build-badge blocked">Not built yet</span>;
 }
 
 function groupOf(mod: DraftModule, c: DraftCard): string {

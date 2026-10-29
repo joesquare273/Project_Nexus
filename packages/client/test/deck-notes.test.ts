@@ -39,3 +39,12 @@ describe('deck notes', () => {
     expect(deckNote(deck({ format: 'commander', cards: [{ ...cards[0]!, count: 2 }], basics: basics(98), commander: 'b' }), names)).toMatch(/one copy/);
   });
 });
+
+describe('cards that aren’t built yet', () => {
+  it('a deck with unbuilt cards says so, before anything else', () => {
+    const cards = [{ id: 'a', finish: 'nonfoil' as const, count: 2 }, { id: 'b', finish: 'nonfoil' as const, count: 1 }];
+    const unbuilt = (id: string) => id === 'a';
+    expect(deckNote(deck({ cards, basics: basics(37) }), names, unbuilt)).toBe("2 cards aren't built yet and can't be used in games.");
+    expect(deckNote(deck({ cards: cards.slice(1), basics: basics(39) }), names, unbuilt)).toBeNull();
+  });
+});

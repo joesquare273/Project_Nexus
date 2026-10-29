@@ -25,7 +25,7 @@ interface Assessment {score:number;workable:boolean;lands:number;plays:number}
 function assess(s:GameState,me:string,hand:InstanceId[]):Assessment {
   const def=(id:string)=>currentDefinition(s,s.cards[id]!);
   const lands=hand.filter(id=>def(id).types.includes('land'));
-  const spells=hand.filter(id=>!lands.includes(id) && !def(id).token && (!def(id).notBuilt||def(id).types.includes('creature')));
+  const spells=hand.filter(id=>!lands.includes(id) && !def(id).token && !def(id).notBuilt);
   const commanders=s.format.commander?Object.values(s.cards).filter(c=>c.owner===me&&c.isCommander).map(c=>c.id):[];
   const candidates=[...spells,...commanders];
   let best:Assessment={score:-1000,workable:false,lands:lands.length,plays:0};

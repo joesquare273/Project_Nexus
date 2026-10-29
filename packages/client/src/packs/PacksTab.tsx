@@ -8,7 +8,7 @@ import type { BoosterCard, Pack, PackKind, Pull } from '@nexus/cards/boosters';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
 import { DecksView } from './DecksView.tsx';
-import { browse, finishText, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
+import { browse, finishText, isUnbuilt, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
 import { addPack, buyPack, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
@@ -520,6 +520,7 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
                 </span>
               )}
               <span className="binder-number">#{c.number}</span>
+              {isUnbuilt(c) && <span className="binder-unbuilt" title="Not built yet: it can't be used in games until its abilities are built.">Not built</span>}
             </div>
           );
         })}

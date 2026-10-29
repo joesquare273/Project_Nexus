@@ -100,7 +100,7 @@ export function aiDeck(pool: readonly DraftCard[]): LimitedDeck {
   const castable = pool.filter((c) => {
     const def = defOf(c);
     if (!def || def.supertypes?.includes('Basic') || def.uncastable) return false;
-    if (def.notBuilt && !def.types.includes('creature') && !def.types.includes('land')) return false;
+    if (def.notBuilt) return false;
     return cardColors(def).every((color) => main.includes(color));
   });
   const ranked = [...castable].sort((a, b) => aiScore(b, pool) - aiScore(a, pool));

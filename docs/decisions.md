@@ -432,6 +432,19 @@ cards than before. Tests that need a particular random outcome set
   avoids unbuilt spells (they can't be cast), and settles into its two most
   picked colors after five picks.
 
+## 2026-10-29: Cards that aren't built yet
+
+- User decision: a card marked `notBuilt` shows everywhere with its real
+  image (packs, the collection, drafts, the deckbuilder, saved decks),
+  marked "Not built", but can't be used in games: it can't be cast or
+  played, creatures and lands included. (Before, unbuilt creatures played as
+  their body and keywords.)
+- A deck may still hold unbuilt cards; the deckbuilder and the Decks view say
+  how many can't be used. The AI drafter values them low and leaves them
+  out of its decks.
+- So a set can open for packs and collecting once its cards and images are
+  imported, without waiting for every card to be built.
+
 ## 2026-10-29: Transforming double-faced cards
 
 - A transforming card's definition has a `backFace` (rule 712); a

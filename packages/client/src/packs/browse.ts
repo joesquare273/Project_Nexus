@@ -41,6 +41,11 @@ export const PRECON_CARDS: BoosterCard[] = (() => {
   return [...out.values()];
 })();
 
+/** A card that isn't built in the engine yet: shown, but it can't be used in games. Tokens and art cards are never "unbuilt". */
+export function isUnbuilt(c: BoosterCard): boolean {
+  return !!CARD_DEFS[CARD_IDS_BY_NAME[c.name] ?? '']?.notBuilt;
+}
+
 /** A card's mana value, from its engine definition (tokens, art cards and lands are 0). */
 export function manaValueOf(c: BoosterCard): number {
   const def = CARD_DEFS[CARD_IDS_BY_NAME[c.name] ?? ''];

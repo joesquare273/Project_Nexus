@@ -36,9 +36,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
         <p className="inspector-rules">{c.copy ? rulesSummary(def).replace(/^\d+\/\d+\s*/, '') : rulesText(def)}</p>
         {def.notBuilt && (
           <p className="inspector-not-built">
-            {isCreature(def)
-              ? 'Not built yet: this creature plays with its power, toughness and keywords, but its other abilities do nothing yet.'
-              : "Not built yet: this card can't be cast until its abilities are built."}
+            {def.types.includes('land') ? "Not built yet: this land can't be played until its abilities are built." : "Not built yet: this card can't be cast until its abilities are built."}
           </p>
         )}
         {creature && (

@@ -112,8 +112,11 @@ come after Final Fantasy testing is complete.
   Final Fantasy-specific today and should become one config per set), its
   own card data from Scryfall, and its own pack images, named by set code
   (`public/packs/ff-play-booster.png`, later `eoe-play-booster.png`).
-- A set that isn't finished yet is shown greyed out with **Coming soon**
-  (not openable or draftable), so players can see what's next.
+- A set that isn't imported yet is shown greyed out with **Coming soon**
+  (not openable or draftable), so players can see what's next. Once its
+  cards and images are imported it can open, even before every card is
+  built: unbuilt cards are collectable but marked "Not built" and can't be
+  used in games (decisions.md).
 - The collection already records each card's exact printing (Scryfall id
   and set), so cards from different sets stay distinct.
 

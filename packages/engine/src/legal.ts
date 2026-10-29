@@ -492,7 +492,7 @@ export function getLegalActions(s: GameState): Action[] {
         const lands = [...p.hand, ...s.turnOrder.flatMap((pid) => s.players[pid]!.exile)].filter((id) => {
           const c = s.cards[id]!;
           const zone = playableZone(s, player, c);
-          return (zone === 'hand' || zone === 'exile') && currentDefinition(s, c).types.includes('land');
+          return (zone === 'hand' || zone === 'exile') && currentDefinition(s, c).types.includes('land') && !currentDefinition(s, c).notBuilt;
         });
         for (const card of lands) {
           // Snarls: reveal to enter untapped, or play it tapped anyway.

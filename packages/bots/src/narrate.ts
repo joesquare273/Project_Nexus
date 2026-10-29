@@ -469,8 +469,8 @@ export function rulesSummary(def: CardDefinition): string {
   if (def.unearth) parts.push(`Unearth ${def.unearth}`);
   if (def.notBuilt) {
     parts.push(
-      def.types.includes('creature')
-        ? 'Not built yet: only its power, toughness and keywords work'
+      def.types.includes('land')
+        ? "Not built yet: can't be played"
         : "Not built yet: can't be cast",
     );
   }

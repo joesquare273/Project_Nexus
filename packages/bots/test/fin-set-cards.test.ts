@@ -497,3 +497,18 @@ describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
     expect(s.cards[jecht]!.zone).toBe('graveyard');
   });
 });
+
+describe('cards that aren’t built yet', () => {
+  it('can’t be cast (creatures included) or played, and aren’t offered', () => {
+    const s = newGame();
+    expect(s.cardDefs['summon-bahamut']!.notBuilt).toBe(true);
+    const creature = put(s, 'P1', 'summon-bahamut', 'hand');
+    mana(s, 'P1', { C: 9 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
+    expect(s.cardDefs['lindblum-industrial-regency-mage-siege']!.notBuilt).toBe(true);
+    const land = put(s, 'P1', 'lindblum-industrial-regency-mage-siege', 'hand');
+    expect(rejected(s, { type: 'PlayLand', player: 'P1', card: land })).toMatch(/isn't built yet/);
+    const offered = getLegalActions(s).filter((a) => (a.type === 'CastSpell' || a.type === 'PlayLand') && (a.card === creature || a.card === land));
+    expect(offered).toEqual([]);
+  });
+});

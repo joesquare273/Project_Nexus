@@ -196,9 +196,8 @@ export function aiScore(card: DraftCard, picks: readonly DraftCard[]): number {
   const basic = !!def.supertypes?.includes('Basic');
   if (basic) return 0;
   let score = RARITY_VALUE[card.card.rarity] ?? 1;
-  // Cards the engine can play fully are worth much more; unbuilt spells can't be cast at all.
+  // Cards that aren't built yet can't be used in games, so they're worth little to a drafter.
   if (!def.notBuilt) score += 3;
-  else if (def.types.includes('creature') && !def.uncastable) score += 0.5;
   else score -= 3;
   if (isLand) score -= 1;
   // After a few picks, stick to the two colors picked most.

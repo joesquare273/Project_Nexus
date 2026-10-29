@@ -78,9 +78,9 @@ export function canActAtSorcerySpeed(s: GameState, playerId: PlayerId): boolean 
   );
 }
 
-/** Unbuilt creatures can be cast as their body; other unbuilt cards can't be cast yet. */
+/** Cards that aren't built yet can't be used at all: shown (images) but never cast or played. */
 export function canEverCast(def: CardDefinition): boolean {
-  return isSpellCard(def) && !def.uncastable && (!def.notBuilt || def.types.includes('creature'));
+  return isSpellCard(def) && !def.uncastable && !def.notBuilt;
 }
 
 export function hasInstantTiming(def: CardDefinition): boolean {
@@ -688,6 +688,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   const from = playableZone(s, playerId, c);
   if (from !== 'hand' && from !== 'exile') reject('That card is not in your hand.');
   if (!hasType(s, c, 'land')) reject('Only lands are played this way; cast spells with CastSpell.');
+  if (defOf(s, c).notBuilt) reject(`${defOf(s, c).name} isn't built yet.`);
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
   if (p.landsPlayedThisTurn >= 1) reject('You have already played a land this turn.');
   if (reveal && !canReveal(s, c, playerId)) reject('You have no card to reveal for that land.');

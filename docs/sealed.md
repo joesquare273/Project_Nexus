@@ -17,7 +17,7 @@ first called it "sealed"; the format they described is a booster draft.)
   Box extras are left out of drafts.)
 - **Deckbuilding:** 20 minutes, with a 5-minute warning; it ends early once
   every player presses Ready.
-  - At least 40 cards.
+  - 40 to 60 cards.
   - Any cards from your pool, lands included, plus unlimited basic lands.
   - Everything not in the deck is your sideboard.
 - **Matches are best of 3.** The first game's play/draw is random; afterwards
@@ -36,7 +36,7 @@ first called it "sealed"; the format they described is a booster draft.)
 
 | Step | What | Status |
 |---|---|---|
-| S1 | **Import the set:** every Final Fantasy main-set (FIN 1-309) and Through the Ages (FCA) card gets a definition (`cards/scripts/import-sets.ts`, `data/fin-set.json`). Cards the engine already covers are built; the rest are `notBuilt` (creatures play as their body and keywords). | **Done (2026-10-29):** 320 new definitions, 12 built |
+| S1 | **Import the set:** every Final Fantasy main-set (FIN 1-309) and Through the Ages (FCA) card gets a definition (`cards/scripts/import-sets.ts`, `data/fin-set.json`). Cards the engine already covers are built; the rest are `notBuilt` (shown with their images, but they can't be cast or played until built). | **Done (2026-10-29):** 320 new definitions, 12 built |
 | S2a | **The draft**, locally against 1-3 AI drafters: choose, confirm, rotate clockwise; six packs; the Draft tab. | **Done (2026-10-29)** |
 | S2b | **The deckbuilder**, then playing your drafted deck against an AI drafter's deck: filters by color and type, deck columns by mana value, mana curve, land suggestions, unlimited basics, Auto-build, the 20-minute timer (5-minute warning; at zero, basics fill the deck to 40 and it locks), Ready. | **Done (2026-10-29)** |
 | S3 | **Online events:** rooms of up to 4, the draft run by the server (it holds the packs and waits for every player to lock in), the deckbuilding timer enforced by the server, Swiss pairings, best-of-3 matches with sideboarding, standings, and pools kept on players' accounts once accounts exist. | |

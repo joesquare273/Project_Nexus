@@ -104,7 +104,7 @@ export interface CommanderChoice {
   name: string;
   defId: CardDefId;
   colorIdentity: string[];
-  /** Its abilities are built (unbuilt creatures play as their body and keywords). */
+  /** Its abilities are built (unbuilt cards can't be cast or played). */
   built: boolean;
   /** The precon's printed commander. */
   printed: boolean;

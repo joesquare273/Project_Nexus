@@ -236,7 +236,7 @@ function MainApp() {
         <p className="fineprint">
           Commander rules are on: 40 life, your commander starts in the command zone (cast it from there; it costs
           {' {2}'} more each time), and 21 combat damage from one commander knocks a player out. Cards marked “not
-          built yet” are still being built: creatures play as their body and keywords, other cards can’t be cast.
+          built yet” are still being built and can’t be cast or played until they are.
         </p>
       )}
 

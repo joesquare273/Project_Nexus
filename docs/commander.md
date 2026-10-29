@@ -22,8 +22,8 @@ npm run scryfall
 
 The importer builds a card automatically when the engine already covers all
 of its rules text, and marks the rest `notBuilt` with what they need. Until a
-card is built, a creature plays as its body and keywords, a land or mana
-source makes the mana the importer recognized, and other cards can't be cast.
+card is built it can't be cast or played (since 2026-10-29; all precon
+cards are built).
 The Starter Kit cards that also appear in the precons are shared.
 
 ## Commander rules (built)
