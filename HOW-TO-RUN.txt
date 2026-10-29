@@ -26,6 +26,19 @@ You need Node.js 24 or newer.
   https://nodejs.org
 
 
+   Accounts (optional; sign in with Discord, Aether Shards). Once per
+   Supabase project:
+     a. In Supabase: SQL Editor -> New query, paste the whole file
+        packages/server/supabase/0001_accounts.sql, and press Run.
+   On each computer:
+     b. Copy .env.example to .env in this folder and fill in the four
+        values from Supabase (Project Settings -> API). Keep .env private:
+        git ignores it. The service role key is secret.
+     c. Start the game server (npm run server) as well as the browser board
+        (npm run dev). The server prints "Accounts: on" when .env is right.
+   Without .env, everything else works as before, with no sign-in.
+
+
 2. PLAY IN YOUR BROWSER
 -----------------------
   npm run dev

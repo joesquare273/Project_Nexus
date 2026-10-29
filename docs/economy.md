@@ -1,7 +1,7 @@
 # Aether Shards: the in-game economy (plan)
 
 An earnable virtual currency for booster packs and events. No real money and
-no paid currency. Agreed with the user on 2026-10-29; nothing is built yet.
+no paid currency. Agreed with the user on 2026-10-29. E1 (accounts) is built.
 
 ## Numbers
 
@@ -47,7 +47,7 @@ five bot matches a day ≈ 2,200 a week (about 22).
 
 | Step | What |
 |---|---|
-| E1 | Accounts (Supabase Auth, Discord login) and the database: balances, the ledger, owned cards and packs; the welcome grant. The user sets up the Supabase project. |
+| E1 | **Done (2026-10-29):** accounts (Supabase Auth, Discord login) and the database: balances, the ledger, owned cards and packs (`packages/server/supabase/0001_accounts.sql`); the welcome grant; the balance in the menu. All values in `packages/server/src/economy.ts`. |
 | E2 | Bot games on the server, so their results can be rewarded. |
 | E3 | Match rewards and daily/weekly quests, with the reward breakdown after each match. |
 | E4 | The booster store: Play and Collector Boosters, bulk bonus, confirmation, shortfall message; opened packs go to the account's collection. |

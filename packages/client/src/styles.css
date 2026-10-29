@@ -2090,3 +2090,24 @@ button.phase.current {
 .online-players .waiting {
   color: var(--muted);
 }
+
+/* Account bar: sign in with Discord, Aether Shards */
+.account-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.account-name {
+  color: #f0dfb4;
+}
+.account-shards {
+  color: #9fe7ff;
+  font-weight: 600;
+}
+.account-error {
+  color: var(--danger);
+}

@@ -392,6 +392,21 @@ cards than before. Tests that need a particular random outcome set
   rather than being given a made-up cost.
 - Double-faced cards show their front face's image from Scryfall.
 
+## 2026-10-29: Accounts and the shard ledger (E1)
+
+- Accounts are Supabase Auth with Discord login. The browser holds only the
+  public anon key; the game server holds the service role key (from `.env`)
+  and is the only writer.
+- Balances live in `profiles.shards` (never negative). Every change goes
+  through `apply_shards(user, amount, kind, ref)`, which locks the player's
+  row, records a `shard_ledger` row with the balance after, and does nothing
+  for a (user, kind, ref) it has seen: retries can't pay or charge twice.
+  The welcome grant is `ensure_profile`, with the fixed ref "welcome".
+- Row-level security lets players read only their own rows; the functions
+  can't be called from browsers.
+- Tests use `MemoryAccounts`, which follows the same rules; the SQL itself
+  is checked when it runs in Supabase.
+
 ## 2026-10-29: Booster drafts
 
 - `cards/src/draft.ts` is plain JSON state, ready for the server: packs,

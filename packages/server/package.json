@@ -13,6 +13,7 @@
   "dependencies": {
     "@nexus/cards": "*",
     "@nexus/engine": "*",
+    "@supabase/supabase-js": "^2.118.0",
     "ws": "^8.22.0",
     "zod": "^4.6.7"
   },

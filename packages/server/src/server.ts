@@ -3,11 +3,12 @@
 // server serves it, so one web service can host both (Render, later).
 
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { createServer, type Server } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { Lobby, type LobbyOptions } from './rooms.ts';
+import type { AccountService } from './accounts.ts';
 
 /** Biggest message a browser may send. Actions are small. */
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -31,6 +32,8 @@ export interface ServerOptions extends LobbyOptions {
   host?: string;
   /** The built client to serve, if any. */
   staticDir?: string;
+  /** Player accounts (Supabase); without them, /api/account answers that accounts aren't set up. */
+  accounts?: AccountService | null;
 }
 
 export interface RunningServer {
@@ -39,11 +42,40 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
+function json(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(body));
+}
+
+/**
+ * GET /api/account with "Authorization: Bearer <Supabase access token>": the
+ * player's name and shard balance, creating the account (with the welcome
+ * grant, once) the first time. The token is checked with Supabase; the
+ * browser never sends a balance.
+ */
+async function accountRoute(req: IncomingMessage, res: ServerResponse, accounts: AccountService | null): Promise<void> {
+  if (req.method !== 'GET') return json(res, 405, { error: 'Use GET.' });
+  if (!accounts) return json(res, 503, { error: 'Accounts are not set up on this server.' });
+  const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
+  if (!token) return json(res, 401, { error: 'Sign in first.' });
+  try {
+    const user = await accounts.verify(token);
+    if (!user) return json(res, 401, { error: 'Your sign-in has expired. Sign in again.' });
+    return json(res, 200, await accounts.ensure(user));
+  } catch {
+    return json(res, 500, { error: 'The account could not be loaded. Try again.' });
+  }
+}
+
 export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
   const lobby = new Lobby(opts);
   // Only a real build (with index.html) is served.
   const root = opts.staticDir && existsSync(join(opts.staticDir, 'index.html')) ? resolve(opts.staticDir) : null;
   const http: Server = createServer((req, res) => {
+    if ((req.url ?? '').split('?')[0] === '/api/account') {
+      void accountRoute(req, res, opts.accounts ?? null);
+      return;
+    }
     if (!root) {
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Project Nexus game server. Connect a client to /ws.');

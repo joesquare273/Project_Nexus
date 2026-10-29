@@ -7,6 +7,7 @@ import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { OnlineMenu } from './components/OnlineMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
+import { AccountBar } from './account/AccountBar.tsx';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   {
@@ -96,6 +97,8 @@ export function App() {
   };
 
   const tabs = (
+    <>
+    <AccountBar />
     <div className="menu-tabs" role="tablist">
       <button role="tab" aria-selected={tab === 'play'} className={tab === 'play' ? 'chosen' : ''} onClick={() => setTab('play')}>
         Play
@@ -110,6 +113,7 @@ export function App() {
         Packs
       </button>
     </div>
+    </>
   );
 
   if (tab === 'online') {

@@ -5,6 +5,25 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Economy step E1: accounts and Aether Shards balances
+
+- Sign in with Discord (Supabase Auth): the menu's account bar shows your
+  name and your Aether Shards. New players get the 1,000-shard welcome
+  grant, once.
+- The database schema is `packages/server/supabase/0001_accounts.sql`
+  (profiles, a shard ledger, owned cards and packs). Players can read only
+  their own rows; only the game server writes, through one function that
+  changes a balance and records it in the ledger together, never below
+  zero, and once per reference (so retries never pay twice).
+- The server checks each sign-in with Supabase (`GET /api/account`); the
+  browser never sends a balance. Settings live in `.env` (git ignores it;
+  `.env.example` shows what goes in it). Without them, accounts are off and
+  guest play works as before.
+- Every economy value is in `packages/server/src/economy.ts`.
+- Tests: the welcome grant once (also with retries at once), refused
+  sign-ins, ignored client values, ledger references, no negative balances,
+  and the bulk-bonus rule.
+
 ### Draft step S2b: the deckbuilder and Limited games
 
 - After a draft, **Build your deck**: your 84 picks plus unlimited basic

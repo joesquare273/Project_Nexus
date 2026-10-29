@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@nexus/engine": "*",
-    "@nexus/cards": "*",
     "@nexus/bots": "*",
+    "@nexus/cards": "*",
+    "@nexus/engine": "*",
     "@nexus/server": "*",
+    "@supabase/supabase-js": "^2.118.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
