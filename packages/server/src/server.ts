@@ -13,6 +13,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { openPack, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
 import { ECONOMY } from './economy.ts';
+import { STARTER_CHOICES, STARTER_REF, claimStarter } from './starter.ts';
 
 /** Biggest message a browser may send. Actions are small. */
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -96,6 +97,8 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/account: name and shards (creating the account, with the welcome grant once).
  * - GET /api/collection: the cards the player owns.
  * - GET /api/decks, POST /api/decks (new, or changed by id), DELETE /api/decks/<id>.
+ * - GET /api/starter: whether the free starter precon is still to pick, and the choices;
+ *   POST /api/starter {precon}: grants it (once per account) and saves it as a deck.
  * - POST /api/packs/open {kind}: buys one booster, opens it on the server and
  *   adds its cards to the collection, all at once.
  */
@@ -116,12 +119,23 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
       if (!saved) return json(res, parsed.data.id ? 404 : 400, { error: parsed.data.id ? 'That deck was not found.' : 'You have too many decks. Delete one first.' });
       return json(res, 200, saved);
     }
+    if (path === '/api/starter' && method === 'GET') {
+      await accounts.ensure(user);
+      return json(res, 200, { claimed: await accounts.hasGrant(user.id, 'starter_precon', STARTER_REF), choices: STARTER_CHOICES });
+    }
+    if (path === '/api/starter' && method === 'POST') {
+      const name = (await readJson(req) as { precon?: unknown } | undefined)?.precon;
+      const result = typeof name === 'string' ? await claimStarter(accounts, user, name) : null;
+      if (!result) return json(res, 400, { error: 'Choose one of the four precons.' });
+      if (!result.granted) return json(res, 409, { error: 'You already have your free precon.' });
+      return json(res, 200, { deck: result.deck });
+    }
     if (path === '/api/packs/open' && method === 'POST') return openPackRoute(res, user, accounts, await readJson(req));
     const deckId = /^\/api\/decks\/([0-9a-f-]{36})$/.exec(path)?.[1];
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
-    if (['/api/account', '/api/collection', '/api/decks', '/api/packs/open'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    if (['/api/account', '/api/collection', '/api/decks', '/api/packs/open', '/api/starter'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });

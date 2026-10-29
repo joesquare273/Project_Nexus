@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Free starter precon (E1c, part 1)
+
+- A new account sees a window offering the four Final Fantasy Commander
+  precons. The chosen one is granted once per account (`card_grants` ref
+  `starter`, whichever precon): its 100 exact printings go into the
+  collection and it's saved as a Commander deck. `GET /api/starter` says
+  whether it's still to pick; `POST /api/starter {precon}` grants it, and
+  a second claim (any precon) gets 409 and changes nothing.
+- The Decks view now knows the precon printings, so the starter deck shows
+  with its cards. The Packs tab's binder still lists the main set only.
+- Next: the first sign-in guided tour.
+
 ### Limited decks are 40 to 60 cards
 
 - Draft and sealed decks must have 40 to 60 cards (user rule, 2026-10-29):

@@ -31,6 +31,8 @@ export interface AccountService {
    * the same step (nothing changes if the player can't afford it).
    */
   grantCards(userId: string, grant: CardGrant): Promise<{ balance: number; applied: boolean }>;
+  /** Whether that grant has happened (the free starter precon, say). */
+  hasGrant(userId: string, kind: CardGrant['kind'], ref: string): Promise<boolean>;
   decks(userId: string): Promise<SavedDeck[]>;
   /** Saves a new deck, or changes one of the player's own (by id); null if that deck isn't theirs or they have too many. */
   saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null>;
@@ -87,6 +89,12 @@ export class SupabaseAccounts implements AccountService {
       .single<{ balance: number; applied: boolean }>();
     if (error || !data) throw new Error(`Could not add the cards: ${error?.message ?? 'no data'}`);
     return data;
+  }
+
+  async hasGrant(userId: string, kind: CardGrant['kind'], ref: string): Promise<boolean> {
+    const { count, error } = await this.db.from('card_grants').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('kind', kind).eq('ref', ref);
+    if (error) throw new Error(`Could not check the account: ${error.message}`);
+    return (count ?? 0) > 0;
   }
 
   async decks(userId: string): Promise<SavedDeck[]> {
@@ -173,6 +181,10 @@ export class MemoryAccounts implements AccountService {
     if (!this.owned.has(userId)) this.owned.set(userId, []);
     addCards(this.owned.get(userId)!, grant.cards);
     return { balance: account.shards, applied: true };
+  }
+
+  async hasGrant(userId: string, kind: CardGrant['kind'], ref: string): Promise<boolean> {
+    return this.grants.has(`${userId}|${kind}|${ref}`);
   }
 
   async decks(userId: string): Promise<SavedDeck[]> {

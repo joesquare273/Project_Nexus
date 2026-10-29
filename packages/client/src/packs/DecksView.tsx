@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { BoosterCard, Finish } from '@nexus/cards/boosters';
+import { SCRYFALL_PRINTINGS } from '@nexus/cards';
 import { accessToken } from '../account/AccountBar.tsx';
 import { deleteDeck, fetchDecks, saveDeck, type Basics, type Collection, type DeckDraft, type DeckFormat, type SavedDeck } from './collection.ts';
 
@@ -18,6 +19,11 @@ const FORMATS: { format: DeckFormat; label: string }[] = [
 const BASIC_NAMES: Record<keyof Basics, string> = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
 const NO_BASICS: Basics = { W: 0, U: 0, B: 0, R: 0, G: 0 };
 const FINISH_MARK: Record<Finish, string> = { nonfoil: '', foil: ' ✦', surge: ' ✦✦' };
+
+/** Precon printings (the free starter's cards) shown like booster cards. */
+const PRECON_CARDS: BoosterCard[] = Object.values(SCRYFALL_PRINTINGS)
+  .filter((p) => p.scryfallId)
+  .map((p) => ({ id: p.scryfallId!, name: p.name, set: p.set, number: p.number, rarity: 'common', typeLine: p.typeLine, colors: [], border: 'black', finishes: ['nonfoil'], layout: 'normal', images: [p.image] }));
 
 const deckSize = (d: DeckDraft) => d.cards.reduce((n, c) => n + c.count, 0) + Object.values(d.basics).reduce((n, k) => n + k, 0);
 
@@ -48,8 +54,8 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
   const [editing, setEditing] = useState<DeckDraft | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const byId = useMemo(() => new Map(mod.BOOSTER_CARDS.map((c) => [c.id, c])), [mod]);
-  const names = useMemo(() => new Map(mod.BOOSTER_CARDS.map((c) => [c.id, c.name])), [mod]);
+  const byId = useMemo(() => new Map([...PRECON_CARDS, ...mod.BOOSTER_CARDS].map((c) => [c.id, c])), [mod]);
+  const names = useMemo(() => new Map([...byId].map(([id, c]) => [id, c.name])), [byId]);
 
   useEffect(() => {
     accessToken()

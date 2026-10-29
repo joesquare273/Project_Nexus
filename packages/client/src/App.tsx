@@ -7,6 +7,7 @@ import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { OnlineMenu } from './components/OnlineMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
+import { StarterPick } from './account/StarterPick.tsx';
 import { AccountBar, AccountsSetupPage, SignInPage, supabase, useSession } from './account/AccountBar.tsx';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
@@ -108,6 +109,7 @@ function MainApp() {
   const tabs = (
     <>
     <AccountBar />
+    <StarterPick />
     <div className="menu-tabs" role="tablist">
       <button role="tab" aria-selected={tab === 'play'} className={tab === 'play' ? 'chosen' : ''} onClick={() => setTab('play')}>
         Play

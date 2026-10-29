@@ -132,3 +132,35 @@ describe('buying packs', () => {
     expect((await call('nobody', '/api/packs/open', 'POST', { kind: 'play' })).status).toBe(401);
   });
 });
+
+describe('the free starter precon', () => {
+  it('grants the chosen precon once, as cards and a Commander deck', async () => {
+    const { accounts, call } = await withAccounts();
+    const before = await (await call('token-alice', '/api/starter')).json();
+    expect(before.claimed).toBe(false);
+    expect(before.choices).toHaveLength(4);
+    const name = before.choices[1].name;
+    const r = await call('token-alice', '/api/starter', 'POST', { precon: name });
+    expect(r.status).toBe(200);
+    const { deck } = await r.json();
+    expect(deck).toMatchObject({ format: 'commander' });
+    expect(deck.cards.reduce((n: number, c: { count: number }) => n + c.count, 0)).toBe(100);
+    expect(deck.cards.some((c: { id: string }) => c.id === deck.commander)).toBe(true);
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
+    // Free, and only once: asking again, even for another precon, adds nothing.
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+    const again = await Promise.all(before.choices.map((c: { name: string }) => call('token-alice', '/api/starter', 'POST', { precon: c.name })));
+    expect(again.map((x) => x.status)).toEqual([409, 409, 409, 409]);
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
+    expect((await (await call('token-alice', '/api/decks')).json()).decks).toHaveLength(1);
+    expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(true);
+    // Another player still has theirs to pick.
+    expect((await (await call('token-bob', '/api/starter')).json()).claimed).toBe(false);
+  });
+
+  it('refuses anything but one of the four precons', async () => {
+    const { call } = await withAccounts();
+    for (const precon of ['Cloud', '', 5, undefined]) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
+    expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(false);
+  });
+});
