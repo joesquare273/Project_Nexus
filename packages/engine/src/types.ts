@@ -1106,6 +1106,11 @@ export interface CardDefinition {
    * cast until they're built.
    */
   notBuilt?: boolean;
+  /**
+   * Its printed mana cost uses symbols the engine can't pay yet (Phyrexian or
+   * hybrid mana), so it has no `manaCost` and can't be cast at all.
+   */
+  uncastable?: boolean;
   /** Short rules summary for placeholder cards. Real card text comes from Scryfall at build time. */
   text?: string;
   /** Scryfall set code and collector number, for real cards. */

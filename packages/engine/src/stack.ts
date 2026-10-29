@@ -80,7 +80,7 @@ export function canActAtSorcerySpeed(s: GameState, playerId: PlayerId): boolean 
 
 /** Unbuilt creatures can be cast as their body; other unbuilt cards can't be cast yet. */
 export function canEverCast(def: CardDefinition): boolean {
-  return isSpellCard(def) && (!def.notBuilt || def.types.includes('creature'));
+  return isSpellCard(def) && !def.uncastable && (!def.notBuilt || def.types.includes('creature'));
 }
 
 export function hasInstantTiming(def: CardDefinition): boolean {

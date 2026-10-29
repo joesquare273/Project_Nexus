@@ -41,6 +41,11 @@ this repo, not only in local memory.
   `npm run dev`) is the main way to play; the terminal client is secondary.
   The application is browser-based; the client talks to the engine only
   through JSON (`GameView`, legal actions, events, `Action`).
+- **Sealed events (2026-10-29):** sealed with the whole Final Fantasy set for
+  2-4 players: six Play Boosters each, a 20-minute deckbuilder (40+ cards,
+  unlimited basics), Swiss best-of-3 matches, and players keep what they open
+  on their accounts. Roadmap S1-S4 in `docs/sealed.md`; the set's 320 imported
+  cards (`data/fin-set.json`) are the next card target after the precons.
 - **Online play (2026-10-28):** `packages/server` (Node + `ws`, many rooms in
   one process) is the only authority; message types live in
   `packages/server/src/protocol.ts` and are checked with zod. Each player gets
@@ -70,6 +75,7 @@ this repo, not only in local memory.
   spell), the rules each brings, and whether they are built. Rules tied to a
   type or category live in the engine (`typerules.ts`), not on each card.
 - `docs/packs.md`: the Packs tab (booster odds, card data, collection).
+- `docs/sealed.md`: sealed events and the Final Fantasy set roadmap (S1-S4).
 - `packages/server`: online play (rooms, protocol, authority); `npm run server`.
 - `HOW-TO-RUN.txt`: instructions for the user.
 

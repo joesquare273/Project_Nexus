@@ -376,3 +376,18 @@ cards than before. Tests that need a particular random outcome set
   shrink messages (a starting update is about 24 KB, mostly placeholder
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
+
+## 2026-10-29: The Final Fantasy set for sealed
+
+- The main set (FIN 1-309) and Through the Ages (FCA 1-64) are imported from
+  MTGJSON by `cards/scripts/import-sets.ts` into `data/fin-set.json`, with
+  the same recognizer as the precons (`scripts/recognize.ts`, now shared).
+  Cards already defined elsewhere keep their definitions; cards built by hand
+  in fin-set.json survive a re-import.
+- A meld card is named by its own face ("Fang, Fearless l'Cie"), as on
+  Scryfall and the card, not "Face // Melded result" as in MTGJSON.
+- **Uncastable cards:** a printed cost with mana the engine can't pay yet
+  (Phyrexian or hybrid; only K'rrik, Son of Yawgmoth so far) leaves the card
+  without a `manaCost` and marks it `uncastable`: it can't be cast at all,
+  rather than being given a made-up cost.
+- Double-faced cards show their front face's image from Scryfall.

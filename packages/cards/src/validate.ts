@@ -178,7 +178,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   const isLand = c.types.includes('land');
   const isSpell = c.types.includes('instant') || c.types.includes('sorcery');
   if (isLand && c.manaCost !== undefined) err('lands have no mana cost.');
-  if (!isLand && !c.token && c.manaCost === undefined) err('nonland cards need a manaCost (use "{0}" for free).');
+  if (!isLand && !c.token && !c.uncastable && c.manaCost === undefined) err('nonland cards need a manaCost (use "{0}" for free).');
   if (c.token && c.manaCost !== undefined) err('tokens have no mana cost.');
   validateCost(c.manaCost, err);
   if (c.adventure) {
@@ -214,6 +214,7 @@ export function validateCardDefinition(raw: unknown): string[] {
     err('creatures need non-negative integer power and toughness.');
   }
   if (c.notBuilt !== undefined && typeof c.notBuilt !== 'boolean') err('notBuilt must be true or false.');
+  if (c.uncastable && (!c.notBuilt || c.manaCost !== undefined)) err('an uncastable card is notBuilt and has no manaCost.');
   const hasEffects = !!(c.effects?.length || c.modes?.length);
   if (isSpell && !c.notBuilt && !hasEffects) err('instants and sorceries need at least one effect (or modes).');
   if (c.notBuilt && (hasEffects || c.triggers?.length || c.activated?.length || c.statics?.length)) {

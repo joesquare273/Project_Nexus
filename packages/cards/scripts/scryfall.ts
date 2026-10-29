@@ -43,7 +43,7 @@ interface ScryfallCard {
   name: string;
   all_parts?: { id: string; component: string; name: string }[];
   oracle_text?: string;
-  card_faces?: { name: string; oracle_text?: string }[];
+  card_faces?: { name: string; oracle_text?: string; image_uris?: { small: string; normal: string; large: string; art_crop: string } }[];
   type_line: string;
   set: string;
   collector_number: string;
@@ -74,7 +74,9 @@ async function fetchCollection(identifiers: Identifier[]): Promise<CollectionRes
 }
 
 function toInfo(card: ScryfallCard): ScryfallInfo {
-  if (!card.image_uris) throw new Error(`${card.name} has no single-faced image.`);
+  // Double-faced cards (transform, meld) show their front face.
+  const image = card.image_uris ?? card.card_faces?.[0]?.image_uris;
+  if (!image) throw new Error(`${card.name} has no image.`);
   return {
     name: card.name,
     typeLine: card.type_line,
@@ -83,10 +85,10 @@ function toInfo(card: ScryfallCard): ScryfallInfo {
     number: card.collector_number,
     ...(card.artist ? { artist: card.artist } : {}),
     image: {
-      small: card.image_uris.small,
-      normal: card.image_uris.normal,
-      large: card.image_uris.large,
-      artCrop: card.image_uris.art_crop,
+      small: image.small,
+      normal: image.normal,
+      large: image.large,
+      artCrop: image.art_crop,
     },
     scryfallUri: card.scryfall_uri,
     scryfallId: card.id,

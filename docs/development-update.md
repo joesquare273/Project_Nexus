@@ -3,6 +3,24 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-29
+
+### Sealed step S1: the Final Fantasy set imported
+
+- Every Final Fantasy main-set and Through the Ages card now has a
+  definition: 320 new cards in `data/fin-set.json`
+  (`node packages/cards/scripts/import-sets.ts`), 12 of them fully built on
+  import, the rest `notBuilt` (creatures play as their body and keywords).
+  Images and Oracle text are cached (`npm run scryfall`).
+- The precon importer's card recognizer moved to `scripts/recognize.ts`,
+  shared by both importers.
+- New `uncastable` flag for costs the engine can't pay yet (K'rrik's
+  Phyrexian mana).
+- Tests: every set card is defined, K'rrik can't be cast, and random
+  sealed-style decks (23 set cards, 17 basics) play 2-4 player games with
+  every invariant checked.
+- Roadmap and format decisions: [sealed.md](sealed.md).
+
 ## 2026-10-28
 
 ### Online play in the browser
