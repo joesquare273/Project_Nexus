@@ -431,3 +431,20 @@ cards than before. Tests that need a particular random outcome set
 - The AI drafter favors rarer cards and cards the engine can fully play,
   avoids unbuilt spells (they can't be cast), and settles into its two most
   picked colors after five picks.
+
+## 2026-10-29: Transforming double-faced cards
+
+- A transforming card's definition has a `backFace` (rule 712); a
+  permanent with `transformed` set uses it as its copiable values. The
+  back face keeps the front's mana value (712.8e) and takes its colors from
+  its color indicator. The `Transform` effect turns it over; a returned
+  card can enter `transformed` ("return it ... transformed").
+- Anywhere but the battlefield a double-faced card is front face up, so the
+  flag clears when it leaves (712.14); its "dies" triggers still use the
+  back face it had (last known information).
+- A copy of a double-faced permanent doesn't transform (the effect does
+  nothing), and the board shows the back image from Scryfall's `/back/`
+  path.
+- Not yet: "when this transforms into ..." triggers, transforming Sagas,
+  and transforming lands (Balamb Garden). Modal double-faced cards are a
+  different layout and aren't in the Final Fantasy set.

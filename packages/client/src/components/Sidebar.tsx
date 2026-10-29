@@ -26,7 +26,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
   return (
     <div key={id} className="inspector" aria-live="polite">
       <div className="inspector-card">
-        <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="large" />
+        <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="large" backFace={!!c.transformed && !c.copy} />
       </div>
       <div className="inspector-text">
         <div className="inspector-title">

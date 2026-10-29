@@ -280,3 +280,68 @@ describe('S4 group 2: mana spent on noncreature spells', () => {
     expect(hasKeyword(s, s.cards[ship]!, 'Flying')).toBe(true);
   });
 });
+
+describe('Transforming double-faced cards', () => {
+  const kill = (s: GameState, target: string) => {
+    const spell = put(s, 'P1', 'sephiroths-intervention', 'hand');
+    mana(s, 'P1', { B: 4 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(target)] }).state;
+  };
+  const name = (s: GameState, id: string) => currentDefinition(s, s.cards[id]!).name;
+
+  it('Vincent Valentine grows when an opponent’s creature dies, and may transform into Galian Beast as he attacks', () => {
+    let s = newGame();
+    const vincent = put(s, 'P1', 'vincent-valentine-galian-beast');
+    const victim = put(s, 'P2', 'coeurl');
+    const power = powerOf(s, s.cards[victim]!);
+    s = kill(s, victim);
+    expect(countersOf(s.cards[vincent]!, '+1/+1')).toBe(power);
+    s = fight(s, [{ attacker: vincent, defender: 'P2' }]).state;
+    expect(s.cards[vincent]!.transformed).toBe(true);
+    expect(name(s, vincent)).toBe('Galian Beast');
+    expect(stats(s, vincent)).toEqual([3 + power, 2 + power]);
+    expect(hasKeyword(s, s.cards[vincent]!, 'Trample') && hasKeyword(s, s.cards[vincent]!, 'Lifelink')).toBe(true);
+    // Lifelink: Galian Beast's combat damage gained P1 that much life (Sephiroth's Intervention gained 2 more).
+    expect(s.players.P1!.life).toBe(20 + 2 + 3 + power);
+  });
+
+  it('declining the transform keeps Vincent front face up', () => {
+    let s = newGame();
+    const vincent = put(s, 'P1', 'vincent-valentine-galian-beast');
+    s = fight(s, [{ attacker: vincent, defender: 'P2' }], {}, { accept: false }).state;
+    expect(s.cards[vincent]!.transformed ?? false).toBe(false);
+    expect(name(s, vincent)).toBe('Vincent Valentine // Galian Beast');
+  });
+
+  it('when Galian Beast dies, it returns to the battlefield tapped, front face up', () => {
+    let s = newGame();
+    const beast = put(s, 'P1', 'vincent-valentine-galian-beast', 'battlefield', { transformed: true });
+    expect(name(s, beast)).toBe('Galian Beast');
+    s = kill(s, beast);
+    expect(s.cards[beast]!.zone).toBe('battlefield');
+    expect(s.cards[beast]!.tapped).toBe(true);
+    expect(s.cards[beast]!.transformed ?? false).toBe(false);
+    expect(stats(s, beast)).toEqual([2, 2]);
+  });
+
+  it('Garland surveils for noncreature spells, and returns from the graveyard transformed into Chaos, which goes to the library bottom when it dies', () => {
+    let s = newGame();
+    const garland = put(s, 'P1', 'garland-knight-of-cornelia-chaos-the-endless');
+    const top = put(s, 'P1', 'coeurl', 'library');
+    const whisper = put(s, 'P1', 'nights-whisper', 'hand');
+    mana(s, 'P1', { B: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: whisper }, { surveilToGraveyard: true }).state;
+    expect(s.cards[top]!.zone).toBe('graveyard');
+    s = kill(s, garland);
+    expect(s.cards[garland]!.zone).toBe('graveyard');
+    mana(s, 'P1', { B: 2, R: 2, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: garland, ability: 0 }).state;
+    expect(s.cards[garland]!.zone).toBe('battlefield');
+    expect(name(s, garland)).toBe('Chaos, the Endless');
+    expect(stats(s, garland)).toEqual([5, 5]);
+    expect(hasKeyword(s, s.cards[garland]!, 'Flying')).toBe(true);
+    s = kill(s, garland);
+    expect(s.cards[garland]!.zone).toBe('library');
+    expect(s.players.P1!.library.at(-1)).toBe(garland);
+  });
+});

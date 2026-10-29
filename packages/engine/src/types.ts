@@ -154,6 +154,8 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 
 export const EFFECT_KINDS = [
   'AnimateVehicle',
+  /** Turn this double-faced permanent over (rule 701.28); "you may" with `optional`. Nothing happens without a back face. */
+  'Transform',
   'FlipCoin',
   'ReflexiveTrigger',
   /** Choose up to amount matching permanents on resolution; put a +1/+1 counter on each. */
@@ -583,6 +585,8 @@ export interface EffectSpec {
   groupOwnersDiffer?: boolean;
   /** ReturnToBattlefield: under your control instead of its owner's. */
   underYourControl?: boolean;
+  /** ReturnToBattlefield: the card enters with its back face up ("return it to the battlefield transformed"). */
+  transformed?: boolean;
   /** ReturnToBattlefield: unearth (rule 702.84): it gains haste, and is exiled at the next end step or if it would leave. */
   unearth?: boolean;
   /** LookAtTopPutInHand: how many go to your hand. */
@@ -1032,6 +1036,12 @@ export interface CardDefinition {
   /** Alternative characteristics used only when casting/resolving the Adventure (rule 715). */
   adventure?: { name: string; manaCost: string; types: ('instant' | 'sorcery')[]; effects: EffectSpec[] };
   /**
+   * Transforming double-faced cards (rule 712): the back face's
+   * characteristics. Its colors come from its color indicator; its mana value
+   * is the front face's (rule 712.8e).
+   */
+  backFace?: Omit<CardDefinition, 'id' | 'manaCost' | 'backFace'>;
+  /**
    * Foretell cost (rule 702.143): during your turn, pay {2} and exile this
    * card from your hand face down; cast it on a later turn for this cost.
    */
@@ -1162,6 +1172,8 @@ export interface CardInstance {
   printing?: CardDefinition['printing'];
   /** Crew animation lasts until cleanup, and ends when this object changes zones. */
   crewed?: boolean;
+  /** A double-faced permanent with its back face up (rule 712); cleared when it leaves the battlefield. */
+  transformed?: boolean;
   enteredTimestamp?: number;
   attachedTimestamp?: number;
   graveyardArrival?: { turn: number; from: ZoneName };
@@ -1751,6 +1763,7 @@ export type GameEvent =
   | { type: 'MonarchChanged'; player: PlayerId; previous?: PlayerId }
   | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }
   | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }
+  | { type: 'Transformed'; card: InstanceId; toBack: boolean }
   | { type: 'AbilityTargeted'; card: InstanceId; controller: PlayerId; source: InstanceId }
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
   | { type: 'LibraryShuffled'; player: PlayerId }

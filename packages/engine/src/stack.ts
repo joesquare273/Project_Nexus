@@ -1846,6 +1846,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       p.attackTaxes = [...(p.attackTaxes ?? []), amount];
       return;
     }
+    case 'Transform':
+      for (const id of onBattlefield) {
+        const c = s.cards[id]!;
+        if (c.phasedOut || !s.cardDefs[c.defId]?.backFace || c.copy) continue;
+        c.transformed = !c.transformed;
+        ctx.ev.push({ type: 'Transformed', card: id, toBack: c.transformed });
+      }
+      return;
     case 'AnimateVehicle':
       for(const id of onBattlefield) if(!s.cards[id]!.phasedOut) s.cards[id]!.crewed=true;
       return;
@@ -2124,6 +2132,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
         const defender = r.attackingDefender ?? defenders[0];
         moveCard(ctx, id, 'battlefield');
+        if (effect.transformed && s.cardDefs[c.defId]?.backFace) c.transformed = true;
         r.returnedObjects ??= {};
         r.returnedObjects[id] = c.zoneChanges ?? 0;
         if (effect.underYourControl) c.controller = item.controller;

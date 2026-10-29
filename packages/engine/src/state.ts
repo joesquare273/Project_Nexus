@@ -178,11 +178,13 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
-  const lastDefinition = from === 'battlefield' && c.copy ? defOf(s,c) : undefined;
+  const lastDefinition = from === 'battlefield' && (c.copy || c.transformed) ? defOf(s,c) : undefined;
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
   delete c.graveyardCastTurn;
   delete c.activatedTurns;
+  // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).
+  delete c.transformed;
   c.zoneChanges = (c.zoneChanges ?? 0) + 1;
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';

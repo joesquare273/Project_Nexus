@@ -152,6 +152,7 @@ const CARD_FIELDS = {
   lastDefinition: 'refs',
   printing: 'copy',
   crewed: 'copy',
+  transformed: 'copy',
   enteredTimestamp: 'copy',
   attachedTimestamp: 'copy',
   graveyardArrival: 'copy',

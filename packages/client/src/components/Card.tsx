@@ -37,20 +37,25 @@ function DrawnCard({ def }: { def: CardDefinition }) {
 
 export type CardSize = 'small' | 'normal' | 'large';
 
-/** A card face: the real Scryfall image when there is one, otherwise a drawn frame. */
-export function CardFace({ defId, printing, size = 'normal' }: { defId: string; printing?: CardDefinition['printing']; size?: CardSize }) {
+/**
+ * A card face: the real Scryfall image when there is one, otherwise a drawn
+ * frame. `backFace`: a transformed double-faced permanent, whose back image
+ * Scryfall serves at the same path under /back/.
+ */
+export function CardFace({ defId, printing, size = 'normal', backFace = false }: { defId: string; printing?: CardDefinition['printing']; size?: CardSize; backFace?: boolean }) {
   const def = defOf(defId);
   const info = scryfallOf(defId,printing);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  if (!info || failedSrc === info.image[size]) return <DrawnCard def={def} />;
+  const src = info && (backFace ? info.image[size].replace('/front/', '/back/') : info.image[size]);
+  if (!info || !src || failedSrc === src) return <DrawnCard def={backFace && def.backFace ? { ...def, ...def.backFace } : def} />;
   return (
     <img
       className="card-img"
-      src={info.image[size]}
+      src={src}
       alt={def.name}
       draggable={false}
       loading="lazy"
-      onError={() => setFailedSrc(info.image[size])}
+      onError={() => setFailedSrc(src)}
     />
   );
 }

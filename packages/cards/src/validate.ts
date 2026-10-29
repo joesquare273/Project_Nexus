@@ -469,7 +469,12 @@ function validateStatic(st: StaticSpec, err: Err): void {
 
 /** Validates a whole card list: each card, duplicate ids, and tokens that cards create. */
 export function validateCardList(cards: readonly unknown[]): string[] {
-  const errors = cards.flatMap(validateCardDefinition);
+  // A transforming card's back face is checked like a card of its own.
+  const backFaces = cards.flatMap((raw) => {
+    const c = raw as Partial<CardDefinition>;
+    return c.backFace ? [{ ...c.backFace, id: `${c.id}-back`, ...(c.manaCost ? { manaCost: c.manaCost } : {}) }] : [];
+  });
+  const errors = [...cards, ...backFaces].flatMap(validateCardDefinition);
   const seen = new Set<string>();
   const tokens = new Set<string>();
   for (const c of cards) {
@@ -488,6 +493,8 @@ export function validateCardList(cards: readonly unknown[]): string[] {
       ...(c.alternativeCost?.effects ?? []),
       ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat(), ...(t.modes ?? []).flat()]),
       ...(c.activated ?? []).flatMap((a) => a.effects ?? []),
+      ...(c.backFace?.triggers ?? []).flatMap((t) => t.effects ?? []),
+      ...(c.backFace?.activated ?? []).flatMap((a) => a.effects ?? []),
     ];
     for (const e of effects) {
       if (e.effect === 'CreateToken' && e.token && !tokens.has(e.token)) {

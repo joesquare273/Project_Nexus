@@ -257,6 +257,7 @@ function effectText(e: EffectSpec): string {
       }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'AnimateVehicle': return 'become an artifact creature until end of turn';
+    case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;
     case 'FlipCoin': return 'flip a coin';
     case 'ReflexiveTrigger': return 'when you do, return a target creature card from your graveyard';
     case 'ReturnToBattlefield':
@@ -592,6 +593,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       if (e.from === 'library' && e.to === 'exile') return `  ${cardName(s, e.card)} is exiled from the top of the library.`;
       if (e.from === 'library' && e.to === 'graveyard') return `  ${cardName(s, e.card)} is milled.`;
       return null;
+    case 'Transformed':
+      return `  ${cardName(s, e.card)} transforms.`;
     case 'CreatureEnteredAttacking':
       return `  ${cardName(s, e.card)} enters tapped and attacking ${e.defender === viewer ? 'you' : e.defender}.`;
     case 'AttackDeclared':

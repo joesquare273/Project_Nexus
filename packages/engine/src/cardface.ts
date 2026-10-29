@@ -12,7 +12,20 @@ export function spellDefinition(def: CardDefinition, adventure = false): CardDef
 export function copiableDefinition(s: GameState, c: CardInstance): CardDefinition {
   let copy = c.zone === 'battlefield' ? c.copy : undefined;
   while (copy?.untilTurn !== undefined && copy.untilTurn < s.turnNumber) copy = copy.previous;
-  return copy?.definition ?? s.cardDefs[c.defId]!;
+  if (copy) return copy.definition;
+  const def = s.cardDefs[c.defId]!;
+  return c.transformed && c.zone === 'battlefield' && def?.backFace ? backFaceDefinition(def) : def;
+}
+
+const backFaces = new WeakMap<CardDefinition, CardDefinition>();
+/** A transformed permanent's characteristics: the back face, with the front face's mana value (rule 712.8e). */
+export function backFaceDefinition(def: CardDefinition): CardDefinition {
+  let back = backFaces.get(def);
+  if (!back) {
+    back = { id: def.id, ...def.backFace!, ...(def.manaCost ? { manaCost: def.manaCost } : {}), colors: def.backFace!.colors ?? [] };
+    backFaces.set(def, back);
+  }
+  return back;
 }
 
 // A state is cloned for each action. Within that action, index only sources

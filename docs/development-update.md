@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Transforming double-faced cards (S4 group 3)
+
+- The engine can transform: a `backFace` on the card data, the
+  `Transform` effect, returning a card transformed, and the board showing
+  the back image (decisions.md has the rules details).
+- First cards: Vincent Valentine // Galian Beast (may transform as he
+  attacks; Galian Beast returns tapped, front face up, when it dies) and
+  Garland // Chaos (returns from the graveyard transformed; Chaos goes to
+  the bottom of its owner's library when it dies), each with tests.
+- The card validator now checks back faces like cards.
+
 ### S4 group 2: mana spent on spells
 
 - Shantotto (+X/+0 for the mana spent, a card at four or more), Tellah
