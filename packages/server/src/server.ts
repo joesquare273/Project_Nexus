@@ -8,7 +8,8 @@ import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { Lobby, type LobbyOptions } from './rooms.ts';
-import type { AccountService } from './accounts.ts';
+import type { AccountService, AccountUser } from './accounts.ts';
+import { DeckInput, deckProblem } from './collection.ts';
 
 /** Biggest message a browser may send. Actions are small. */
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -47,23 +48,77 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-/**
- * GET /api/account with "Authorization: Bearer <Supabase access token>": the
- * player's name and shard balance, creating the account (with the welcome
- * grant, once) the first time. The token is checked with Supabase; the
- * browser never sends a balance.
- */
-async function accountRoute(req: IncomingMessage, res: ServerResponse, accounts: AccountService | null): Promise<void> {
-  if (req.method !== 'GET') return json(res, 405, { error: 'Use GET.' });
-  if (!accounts) return json(res, 503, { error: 'Accounts are not set up on this server.' });
+/** The signed-in player, from "Authorization: Bearer <Supabase access token>"; answers the request itself if there isn't one. */
+async function signedIn(req: IncomingMessage, res: ServerResponse, accounts: AccountService | null): Promise<AccountUser | null> {
+  if (!accounts) {
+    json(res, 503, { error: 'Accounts are not set up on this server.' });
+    return null;
+  }
   const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
-  if (!token) return json(res, 401, { error: 'Sign in first.' });
+  if (!token) {
+    json(res, 401, { error: 'Sign in first.' });
+    return null;
+  }
+  const user = await accounts.verify(token);
+  if (!user) json(res, 401, { error: 'Your sign-in has expired. Sign in again.' });
+  return user;
+}
+
+/** A small JSON request body, or undefined if it's too big or not JSON. */
+function readJson(req: IncomingMessage): Promise<unknown> {
+  return new Promise((done) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => {
+      size += c.length;
+      if (size > MAX_MESSAGE_BYTES) {
+        done(undefined);
+        req.destroy();
+      } else chunks.push(c);
+    });
+    req.on('end', () => {
+      try {
+        done(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        done(undefined);
+      }
+    });
+    req.on('error', () => done(undefined));
+  });
+}
+
+/**
+ * The account API. Every route needs a Supabase access token, checked with
+ * Supabase; the browser never sends a balance or says what it owns.
+ * - GET /api/account: name and shards (creating the account, with the welcome grant once).
+ * - GET /api/collection: the cards the player owns.
+ * - GET /api/decks, POST /api/decks (new, or changed by id), DELETE /api/decks/<id>.
+ */
+async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string, accounts: AccountService | null): Promise<void> {
   try {
-    const user = await accounts.verify(token);
-    if (!user) return json(res, 401, { error: 'Your sign-in has expired. Sign in again.' });
-    return json(res, 200, await accounts.ensure(user));
+    const user = await signedIn(req, res, accounts);
+    if (!user || !accounts) return;
+    const method = req.method ?? 'GET';
+    if (path === '/api/account' && method === 'GET') return json(res, 200, await accounts.ensure(user));
+    if (path === '/api/collection' && method === 'GET') return json(res, 200, { cards: await accounts.collection(user.id) });
+    if (path === '/api/decks' && method === 'GET') return json(res, 200, { decks: await accounts.decks(user.id) });
+    if (path === '/api/decks' && method === 'POST') {
+      const parsed = DeckInput.safeParse(await readJson(req));
+      if (!parsed.success) return json(res, 400, { error: 'That deck could not be read.' });
+      const problem = deckProblem(parsed.data, await accounts.collection(user.id));
+      if (problem) return json(res, 400, { error: problem });
+      const saved = await accounts.saveDeck(user.id, parsed.data);
+      if (!saved) return json(res, parsed.data.id ? 404 : 400, { error: parsed.data.id ? 'That deck was not found.' : 'You have too many decks. Delete one first.' });
+      return json(res, 200, saved);
+    }
+    const deckId = /^\/api\/decks\/([0-9a-f-]{36})$/.exec(path)?.[1];
+    if (deckId && method === 'DELETE') {
+      return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
+    }
+    if (['/api/account', '/api/collection', '/api/decks'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    return json(res, 404, { error: 'Unknown request.' });
   } catch {
-    return json(res, 500, { error: 'The account could not be loaded. Try again.' });
+    if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });
   }
 }
 
@@ -72,8 +127,9 @@ export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
   // Only a real build (with index.html) is served.
   const root = opts.staticDir && existsSync(join(opts.staticDir, 'index.html')) ? resolve(opts.staticDir) : null;
   const http: Server = createServer((req, res) => {
-    if ((req.url ?? '').split('?')[0] === '/api/account') {
-      void accountRoute(req, res, opts.accounts ?? null);
+    const apiPath = (req.url ?? '').split('?')[0]!;
+    if (apiPath.startsWith('/api/')) {
+      void apiRoute(req, res, apiPath, opts.accounts ?? null);
       return;
     }
     if (!root) {

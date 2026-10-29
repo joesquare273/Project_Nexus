@@ -4,7 +4,9 @@
 // The server is the only writer: the browser never sends a balance or amount.
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { randomUUID } from 'node:crypto';
 import { ECONOMY } from './economy.ts';
+import { MAX_DECKS, addCards, type DeckInput, type OwnedCard, type SavedDeck } from './collection.ts';
 
 export interface AccountUser {
   id: string;
@@ -22,7 +24,29 @@ export interface AccountService {
   verify(token: string): Promise<AccountUser | null>;
   /** The player's account, created with the welcome grant the first time. */
   ensure(user: AccountUser): Promise<Account>;
+  /** The cards the player owns. */
+  collection(userId: string): Promise<OwnedCard[]>;
+  /**
+   * Adds cards to the collection once per (kind, ref), paying `cost` shards in
+   * the same step (nothing changes if the player can't afford it).
+   */
+  grantCards(userId: string, grant: CardGrant): Promise<{ balance: number; applied: boolean }>;
+  decks(userId: string): Promise<SavedDeck[]>;
+  /** Saves a new deck, or changes one of the player's own (by id); null if that deck isn't theirs or they have too many. */
+  saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null>;
+  /** True if the player had that deck. */
+  deleteDeck(userId: string, id: string): Promise<boolean>;
 }
+
+export interface CardGrant {
+  kind: 'pack_open' | 'draft' | 'starter_precon' | 'admin_adjustment';
+  ref: string;
+  cost: number;
+  cards: OwnedCard[];
+}
+
+type DeckRow = { id: string; name: string; format: SavedDeck['format']; cards: SavedDeck['cards']; basics: SavedDeck['basics']; commander: string | null; updated_at: string };
+const fromRow = (r: DeckRow): SavedDeck => ({ id: r.id, name: r.name, format: r.format, cards: r.cards, basics: r.basics, commander: r.commander, updatedAt: r.updated_at });
 
 /** A display name from Discord's profile data, trimmed to something sensible. */
 export function displayName(meta: Record<string, unknown> | undefined, fallback: string): string {
@@ -50,6 +74,47 @@ export class SupabaseAccounts implements AccountService {
     if (error || !data) throw new Error(`Could not load the account: ${error?.message ?? 'no data'}`);
     return { name: data.display_name, shards: data.shards };
   }
+
+  async collection(userId: string): Promise<OwnedCard[]> {
+    const { data, error } = await this.db.from('owned_cards').select('scryfall_id, finish, count').eq('user_id', userId);
+    if (error) throw new Error(`Could not load the collection: ${error.message}`);
+    return data.map((r) => ({ id: r.scryfall_id as string, finish: r.finish as OwnedCard['finish'], count: r.count as number }));
+  }
+
+  async grantCards(userId: string, grant: CardGrant): Promise<{ balance: number; applied: boolean }> {
+    const { data, error } = await this.db
+      .rpc('grant_cards', { p_user: userId, p_kind: grant.kind, p_ref: grant.ref, p_cost: grant.cost, p_cards: grant.cards })
+      .single<{ balance: number; applied: boolean }>();
+    if (error || !data) throw new Error(`Could not add the cards: ${error?.message ?? 'no data'}`);
+    return data;
+  }
+
+  async decks(userId: string): Promise<SavedDeck[]> {
+    const { data, error } = await this.db.from('decks').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+    if (error) throw new Error(`Could not load the decks: ${error.message}`);
+    return (data as DeckRow[]).map(fromRow);
+  }
+
+  async saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null> {
+    const row = { name: deck.name, format: deck.format, cards: deck.cards, basics: deck.basics, commander: deck.commander ?? null, updated_at: new Date().toISOString() };
+    if (deck.id) {
+      const { data, error } = await this.db.from('decks').update(row).eq('id', deck.id).eq('user_id', userId).select('*');
+      if (error) throw new Error(`Could not save the deck: ${error.message}`);
+      return data.length ? fromRow(data[0] as DeckRow) : null;
+    }
+    const { count, error: countError } = await this.db.from('decks').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    if (countError) throw new Error(`Could not save the deck: ${countError.message}`);
+    if ((count ?? 0) >= MAX_DECKS) return null;
+    const { data, error } = await this.db.from('decks').insert({ ...row, user_id: userId }).select('*').single<DeckRow>();
+    if (error || !data) throw new Error(`Could not save the deck: ${error?.message ?? 'no data'}`);
+    return fromRow(data);
+  }
+
+  async deleteDeck(userId: string, id: string): Promise<boolean> {
+    const { data, error } = await this.db.from('decks').delete().eq('id', id).eq('user_id', userId).select('id');
+    if (error) throw new Error(`Could not delete the deck: ${error.message}`);
+    return data.length > 0;
+  }
 }
 
 /** Accounts from the environment, or null when this server has none set up (guest play still works). */
@@ -68,6 +133,9 @@ export class MemoryAccounts implements AccountService {
   readonly tokens = new Map<string, AccountUser>();
   readonly accounts = new Map<string, Account>();
   readonly ledger = new Map<string, { amount: number; balanceAfter: number }>();
+  readonly owned = new Map<string, OwnedCard[]>();
+  readonly grants = new Set<string>();
+  readonly savedDecks = new Map<string, SavedDeck[]>();
 
   async verify(token: string): Promise<AccountUser | null> {
     return this.tokens.get(token) ?? null;
@@ -89,5 +157,44 @@ export class MemoryAccounts implements AccountService {
     account.shards += amount;
     this.ledger.set(key, { amount, balanceAfter: account.shards });
     return { balance: account.shards, applied: true };
+  }
+
+  async collection(userId: string): Promise<OwnedCard[]> {
+    return (this.owned.get(userId) ?? []).map((c) => ({ ...c }));
+  }
+
+  async grantCards(userId: string, grant: CardGrant): Promise<{ balance: number; applied: boolean }> {
+    const account = this.accounts.get(userId);
+    if (!account) throw new Error(`no profile for ${userId}`);
+    const key = `${userId}|${grant.kind}|${grant.ref}`;
+    if (this.grants.has(key)) return { balance: account.shards, applied: false };
+    if (grant.cost > 0) this.apply(userId, -grant.cost, 'pack_purchase', grant.ref);
+    this.grants.add(key);
+    if (!this.owned.has(userId)) this.owned.set(userId, []);
+    addCards(this.owned.get(userId)!, grant.cards);
+    return { balance: account.shards, applied: true };
+  }
+
+  async decks(userId: string): Promise<SavedDeck[]> {
+    return structuredClone(this.savedDecks.get(userId) ?? []);
+  }
+
+  async saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null> {
+    const list = this.savedDecks.get(userId) ?? [];
+    this.savedDecks.set(userId, list);
+    const saved: SavedDeck = { id: deck.id ?? randomUUID(), name: deck.name, format: deck.format, cards: deck.cards, basics: deck.basics, commander: deck.commander ?? null, updatedAt: new Date().toISOString() };
+    const at = list.findIndex((d) => d.id === deck.id);
+    if (deck.id && at < 0) return null;
+    if (at >= 0) list[at] = saved;
+    else if (list.length >= MAX_DECKS) return null;
+    else list.unshift(saved);
+    return structuredClone(saved);
+  }
+
+  async deleteDeck(userId: string, id: string): Promise<boolean> {
+    const list = this.savedDecks.get(userId) ?? [];
+    const at = list.findIndex((d) => d.id === id);
+    if (at >= 0) list.splice(at, 1);
+    return at >= 0;
   }
 }

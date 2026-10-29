@@ -5,6 +5,21 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Economy step E1b (server): collections and saved decks
+
+- New migration `supabase/migrations/20261029120000_collections.sql`: a
+  `card_grants` record (each opened pack, draft or starter precon adds its
+  cards once per reference) and a `decks` table. One function,
+  `grant_cards`, adds cards to `owned_cards` and, when there's a price,
+  pays the shards in the same transaction.
+- Server API (sign-in required): `GET /api/collection`, `GET /api/decks`,
+  `POST /api/decks` (new, or changed by id) and `DELETE /api/decks/<id>`.
+  The server checks a deck against the player's collection before saving
+  it (basic lands are free); legality (size, copies) is checked when a game
+  starts, so unfinished decks can be saved. Players see only their own.
+- Next: the browser side (collection view, deck list, packs and drafts
+  saved to the account).
+
 ### Sign-in required; Discord names online; real pack images
 
 - The app requires signing in with Discord: a sign-in page, no guest
