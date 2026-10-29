@@ -5,11 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
-### S4 group 1: Job select Equipment (first four)
+### S4 group 1: Job select Equipment (first six)
 
 - Built Bard's Bow, Monk's Fist, Paladin's Arms (ward {1}) and Thief's
   Knife (draws when the equipped creature deals combat damage to a
   player), from the existing Job select pattern (Dragoon's Lance).
+- Black Mage's Rod and Red Mage's Rapier: whenever you cast a noncreature
+  spell, 1 damage to each opponent / +2/+0 until end of turn. Known
+  simplification: the Rod's damage comes from the Equipment rather than
+  the equipped creature, so that creature's lifelink or deathtouch doesn't
+  apply to it.
 - With these castable, the AI drafts differently; when a pool has fewer
   than 23 playable spells in its two colors, its deck runs more than 17
   lands (the test now allows that).
