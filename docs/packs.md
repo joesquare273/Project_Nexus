@@ -1,8 +1,9 @@
 # Packs tab: Final Fantasy booster packs
 
 The menu's **Packs** tab opens Final Fantasy booster packs for collecting.
-Pulled cards go into a collection binder; they never change the decks you
-play with (those stay the exact Starter Kits and Commander precons).
+Each pack costs Aether Shards (100 for a Play Booster, 500 for a Collector
+Booster); the game server opens it and adds the cards to your account's
+collection. Pulled cards don't change the Starter Kit and precon games.
 
 ## Card data
 
@@ -92,8 +93,11 @@ Our choices, where Wizards' figures don't map directly:
 - **Collection:** a binder by group (main set, Booster Fun, Through the
   Ages, Commander Booster Fun, Scene Box, tokens and art cards) with completion counts; missing
   cards are greyed out.
-- **Saving:** in this browser's local storage (`nexus.packs.collection.v1`).
-  It doesn't follow you to the other computer.
+- **Saving:** on your account (`owned_cards`, through `POST /api/packs/open`
+  and `GET /api/collection`), so it follows you to every computer. The
+  server rolls the pack with a cryptographic random source and charges the
+  price and adds the cards in one database transaction. Cards opened before
+  this (2026-10-29) were only in the browser and aren't carried over.
 - **Sound:** off by default; a button in the tab turns synthesized tear,
   flip and chime sounds on.
 

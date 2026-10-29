@@ -103,3 +103,32 @@ describe('decks', () => {
     expect(deckProblem(deck({ cards, commander: TIFA }), owned)).toMatch(/Commander/);
   });
 });
+
+describe('buying packs', () => {
+  it('opens a pack on the server, charges its price and adds every card', async () => {
+    const { accounts, call } = await withAccounts();
+    const r = await call('token-alice', '/api/packs/open', 'POST', { kind: 'play' });
+    expect(r.status).toBe(200);
+    const { pack, balance } = await r.json();
+    expect(balance).toBe(ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(balance);
+    const owned = await accounts.collection('alice-id');
+    expect(owned.reduce((n, c) => n + c.count, 0)).toBe(pack.cards.length);
+    for (const p of pack.cards) expect(owned.some((c) => c.id === p.card.id && c.finish === p.finish)).toBe(true);
+    // Each purchase is its own: a second pack is charged and added too.
+    await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector' });
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice - ECONOMY.collectorBoosterPrice);
+  });
+
+  it('refuses when the player cannot afford it, and ignores prices from the browser', async () => {
+    const { accounts, call } = await withAccounts();
+    expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector', price: 0 })).status).toBe(200);
+    expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector' })).status).toBe(200);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant - 2 * ECONOMY.collectorBoosterPrice);
+    const before = (await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0);
+    expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play' })).status).toBe(402);
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(before);
+    expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'starter' })).status).toBe(400);
+    expect((await call('nobody', '/api/packs/open', 'POST', { kind: 'play' })).status).toBe(401);
+  });
+});

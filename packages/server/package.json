@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./protocol": "./src/protocol.ts"
+    "./protocol": "./src/protocol.ts",
+    "./economy": "./src/economy.ts"
   },
   "scripts": {
     "start": "node src/main.ts"

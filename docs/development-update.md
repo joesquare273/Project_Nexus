@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Packs cost shards and go to your account (E1b)
+
+- The Packs tab's buttons say "Buy and open" with the price (100 Play,
+  500 Collector). The server opens the pack, charges the shards and adds
+  the cards to your collection together; the account bar updates. Without
+  enough shards, nothing changes and the tab says how many you need.
+- The Collection binder reads your account's collection, so it's the same
+  on every computer. The old browser-only collection and its Reset button
+  are gone.
+- Opening packs needs the collections migration
+  (`20261029120000_collections.sql`) on Supabase, which the GitHub
+  integration applies when it's pushed.
+
 ### Economy step E1b (server): collections and saved decks
 
 - New migration `supabase/migrations/20261029120000_collections.sql`: a

@@ -9,7 +9,10 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { Lobby, type LobbyOptions } from './rooms.ts';
 import type { AccountService, AccountUser } from './accounts.ts';
+import { randomInt, randomUUID } from 'node:crypto';
+import { openPack, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
+import { ECONOMY } from './economy.ts';
 
 /** Biggest message a browser may send. Actions are small. */
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -93,6 +96,8 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/account: name and shards (creating the account, with the welcome grant once).
  * - GET /api/collection: the cards the player owns.
  * - GET /api/decks, POST /api/decks (new, or changed by id), DELETE /api/decks/<id>.
+ * - POST /api/packs/open {kind}: buys one booster, opens it on the server and
+ *   adds its cards to the collection, all at once.
  */
 async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string, accounts: AccountService | null): Promise<void> {
   try {
@@ -111,14 +116,36 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
       if (!saved) return json(res, parsed.data.id ? 404 : 400, { error: parsed.data.id ? 'That deck was not found.' : 'You have too many decks. Delete one first.' });
       return json(res, 200, saved);
     }
+    if (path === '/api/packs/open' && method === 'POST') return openPackRoute(res, user, accounts, await readJson(req));
     const deckId = /^\/api\/decks\/([0-9a-f-]{36})$/.exec(path)?.[1];
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
-    if (['/api/account', '/api/collection', '/api/decks'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    if (['/api/account', '/api/collection', '/api/decks', '/api/packs/open'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });
+  }
+}
+
+const PACK_PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };
+
+/** A random number in [0, 1) from the operating system's cryptographic source, never Math.random. */
+const cryptoRandom = () => randomInt(2 ** 48 - 1) / 2 ** 48;
+
+async function openPackRoute(res: ServerResponse, user: AccountUser, accounts: AccountService, body: unknown): Promise<void> {
+  const kind = (body as { kind?: unknown } | undefined)?.kind;
+  if (kind !== 'play' && kind !== 'collector') return json(res, 400, { error: 'Choose a Play or Collector Booster.' });
+  await accounts.ensure(user);
+  // The same pack as the Packs tab has always opened, Scene Box extras included.
+  const pack = openPack(kind, cryptoRandom);
+  const cards = pack.cards.map((p) => ({ id: p.card.id, finish: p.finish, count: 1 }));
+  try {
+    const { balance } = await accounts.grantCards(user.id, { kind: 'pack_open', ref: randomUUID(), cost: PACK_PRICES[kind], cards });
+    return json(res, 200, { pack, balance });
+  } catch (e) {
+    if (/insufficient/.test(String(e))) return json(res, 402, { error: `You need ${PACK_PRICES[kind]} Aether Shards for this pack.` });
+    throw e;
   }
 }
 

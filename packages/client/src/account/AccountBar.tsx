@@ -16,6 +16,16 @@ interface Account {
   shards: number;
 }
 
+/** The signed-in player's access token for the game server, or null. */
+export async function accessToken(): Promise<string | null> {
+  return (await supabase?.auth.getSession())?.data.session?.access_token ?? null;
+}
+
+/** Tells the account bar the server's new balance (after buying a pack, say). */
+export function showShards(balance: number): void {
+  window.dispatchEvent(new CustomEvent<number>('nexus:shards', { detail: balance }));
+}
+
 type Status = { kind: 'loading' } | { kind: 'ready'; account: Account } | { kind: 'error'; message: string };
 
 /** The current sign-in: `ready` once Supabase has said whether there is one. */
@@ -108,6 +118,15 @@ export function AccountBar() {
       stale = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    const update = (e: Event) => {
+      const shards = (e as CustomEvent<number>).detail;
+      setStatus((s) => (s.kind === 'ready' ? { kind: 'ready', account: { ...s.account, shards } } : s));
+    };
+    window.addEventListener('nexus:shards', update);
+    return () => window.removeEventListener('nexus:shards', update);
+  }, []);
 
   if (!supabase || !checked) return null;
 

@@ -1,11 +1,13 @@
 // The Packs tab: choose a Final Fantasy booster, tear it open, flip through
 // the cards (the best one waits at the back), see what was new, and browse
-// the collection. Opening packs is for collecting only; it never changes the
-// decks you play with.
+// the collection. Packs cost Aether Shards: the game server opens them and
+// adds the cards to your account's collection (packs/collection.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BoosterCard, Pack, PackKind, Pull } from '@nexus/cards/boosters';
-import { addPack, loadCollection, owned, resetCollection, type Collection } from './collection.ts';
+import { ECONOMY } from '@nexus/server/economy';
+import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
+import { addPack, buyPack, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
 
@@ -13,6 +15,8 @@ type Boosters = typeof import('@nexus/cards/boosters');
 
 /** Photos of the real packs (packages/client/public/packs). Until they're there, the drawn pack shows. */
 const PACK_PHOTOS: Record<PackKind, string> = { play: '/packs/ff-play-booster.png', collector: '/packs/ff-collector-booster.png' };
+
+const PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };
 
 const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready: boolean }[] = [
   {
@@ -39,7 +43,9 @@ type View = { kind: 'shop' } | { kind: 'open'; pack: Pack; fresh: boolean[] } | 
 export function PacksTab() {
   const [mod, setMod] = useState<Boosters | null>(null);
   const [failed, setFailed] = useState(false);
-  const [collection, setCollection] = useState<Collection>(loadCollection);
+  const [collection, setCollection] = useState<Collection | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [view, setView] = useState<View>({ kind: 'shop' });
   const [odds, setOdds] = useState<PackKind | null>(null);
   const [preview, setPreview] = useState<BoosterCard | null>(null);
@@ -49,18 +55,34 @@ export function PacksTab() {
     import('@nexus/cards/boosters').then(setMod, () => setFailed(true));
     // Load the card back early so the first face-down card never shows an empty side.
     new Image().src = CARD_BACK;
+    accessToken()
+      .then((token) => (token ? fetchCollection(token) : Promise.reject(new Error('Sign in first.'))))
+      .then(setCollection, (e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server. Is it running (npm run server)?' : e.message));
   }, []);
 
-  const open = (kind: PackKind) => {
-    if (!mod) return;
-    const pack = mod.openPack(kind);
-    const { collection: next, fresh } = addPack(collection, pack);
-    setCollection(next);
-    setView({ kind: 'open', pack, fresh });
+  const open = async (kind: PackKind) => {
+    if (!collection || busy) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const token = await accessToken();
+      if (!token) throw new Error('Sign in first.');
+      const { pack, balance } = await buyPack(token, kind);
+      showShards(balance);
+      const { collection: next, fresh } = addPack(collection, pack);
+      setCollection(next);
+      setView({ kind: 'open', pack, fresh });
+    } catch (e) {
+      setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server.');
+      setView({ kind: 'shop' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (failed) return <p className="packs-loading">The pack data couldn't be loaded.</p>;
-  if (!mod) return <p className="packs-loading">Shuffling the print sheets…</p>;
+  if (!collection && problem) return <p className="packs-loading">{problem}</p>;
+  if (!mod || !collection) return <p className="packs-loading">Shuffling the print sheets…</p>;
 
   return (
     <div className="packs">
@@ -84,7 +106,8 @@ export function PacksTab() {
         </button>
       </div>
 
-      {view.kind === 'shop' && <Shop mod={mod} onOpen={open} onOdds={setOdds} />}
+      {problem && view.kind === 'shop' && <p className="account-error">{problem}</p>}
+      {view.kind === 'shop' && <Shop mod={mod} busy={busy} onOpen={(k) => void open(k)} onOdds={setOdds} />}
       {view.kind === 'open' && (
         <Opening pack={view.pack} fresh={view.fresh} art={packArt(mod, view.pack.kind)} onDone={() => setView({ kind: 'summary', pack: view.pack, fresh: view.fresh })} />
       )}
@@ -93,12 +116,12 @@ export function PacksTab() {
           pack={view.pack}
           fresh={view.fresh}
           onPreview={setPreview}
-          onAgain={() => open(view.pack.kind)}
+          onAgain={() => void open(view.pack.kind)}
           onCollection={() => setView({ kind: 'collection' })}
           onShop={() => setView({ kind: 'shop' })}
         />
       )}
-      {view.kind === 'collection' && <Binder mod={mod} collection={collection} onPreview={setPreview} onReset={() => setCollection(resetCollection())} />}
+      {view.kind === 'collection' && <Binder mod={mod} collection={collection} onPreview={setPreview} />}
 
       {odds && <Odds mod={mod} kind={odds} onClose={() => setOdds(null)} />}
       {preview && (
@@ -115,7 +138,7 @@ export function PacksTab() {
 // Choosing a pack
 // ---------------------------------------------------------------------------
 
-function Shop({ mod, onOpen, onOdds }: { mod: Boosters; onOpen: (k: PackKind) => void; onOdds: (k: PackKind) => void }) {
+function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onOpen: (k: PackKind) => void; onOdds: (k: PackKind) => void }) {
   return (
     <div className="pack-shop">
       {PACKS.map((p) => {
@@ -128,8 +151,8 @@ function Shop({ mod, onOpen, onOdds }: { mod: Boosters; onOpen: (k: PackKind) =>
             <div className="pack-tile-buttons">
               {p.ready ? (
                 <>
-                  <button className="primary" onClick={() => onOpen(p.kind)}>
-                    Open a pack
+                  <button className="primary" disabled={busy} onClick={() => onOpen(p.kind)}>
+                    Buy and open <ShardIcon size={16} /> {PRICES[p.kind]}
                   </button>
                   <button onClick={() => onOdds(p.kind)}>Pack odds</button>
                 </>
@@ -414,13 +437,12 @@ const GROUPS: { name: string; test: (c: BoosterCard) => boolean }[] = [
   { name: 'Tokens and art cards', test: (c) => c.set === 'tfin' || c.set === 'afin' },
 ];
 
-function Binder({ mod, collection, onPreview, onReset }: { mod: Boosters; collection: Collection; onPreview: (c: BoosterCard | null) => void; onReset: () => void }) {
+function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Collection; onPreview: (c: BoosterCard | null) => void }) {
   const [group, setGroup] = useState(0);
   const [onlyOwned, setOnlyOwned] = useState(false);
   const cards = useMemo(() => mod.BOOSTER_CARDS.filter(GROUPS[group]!.test), [mod, group]);
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;
   const shown = onlyOwned ? cards.filter((c) => owned(collection, c.id) > 0) : cards;
-  const opened = (collection.packsOpened.play ?? 0) + (collection.packsOpened.collector ?? 0);
   return (
     <div className="binder">
       <div className="binder-head">
@@ -439,15 +461,6 @@ function Binder({ mod, collection, onPreview, onReset }: { mod: Boosters; collec
           <label>
             <input type="checkbox" checked={onlyOwned} onChange={(e) => setOnlyOwned(e.target.checked)} /> Only cards I own
           </label>
-          <span className="fineprint">{opened} packs opened</span>
-          <button
-            className="binder-reset"
-            onClick={() => {
-              if (window.confirm('Clear your whole collection?')) onReset();
-            }}
-          >
-            Reset
-          </button>
         </div>
       </div>
       <div className="binder-grid">
