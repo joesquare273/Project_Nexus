@@ -28,6 +28,7 @@ export {
   characteristics,
   staticAffects,
   countOf,
+  countersOf,
   equipmentOn,
   hasFlag,
   hasKeyword,

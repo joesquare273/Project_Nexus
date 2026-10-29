@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { activatedAbilities, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { activatedAbilities, countersOf, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -132,5 +132,98 @@ describe('Machinist’s Arsenal', () => {
     put(s, 'P1', 'monks-fist');
     put(s, 'P2', 'monks-fist');
     expect(stats(s, body)).toEqual([base[0]! + 4, base[1]! + 4]);
+  });
+});
+
+describe('S4 group 2: noncreature spells', () => {
+  /** P1 casts Night's Whisper (2 mana) or Harmonize (4 mana). */
+  const castCheap = (s: GameState) => {
+    const spell = put(s, 'P1', 'nights-whisper', 'hand');
+    mana(s, 'P1', { B: 2 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+  };
+  const castBig = (s: GameState) => {
+    const spell = put(s, 'P1', 'harmonize', 'hand');
+    mana(s, 'P1', { G: 4 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+  };
+  const counters = (s: GameState, id: string) => countersOf(s.cards[id]!, '+1/+1');
+
+  it('Ultros taps and stuns an opponent’s creature for a 4-mana spell; eight +1/+1 counters for an 8-mana one', () => {
+    let s = newGame();
+    const ultros = put(s, 'P1', 'ultros-obnoxious-octopus');
+    const target = put(s, 'P2', 'coeurl');
+    s = castCheap(s);
+    expect(s.cards[target]!.tapped).toBe(false);
+    s = castBig(s);
+    expect(s.cards[target]!.tapped).toBe(true);
+    expect(countersOf(s.cards[target]!, 'stun')).toBe(1);
+    expect(counters(s, ultros)).toBe(0);
+    const pull = put(s, 'P1', 'pull-from-tomorrow', 'hand');
+    mana(s, 'P1', { U: 8 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: pull, x: 6 }).state;
+    expect(counters(s, ultros)).toBe(8);
+  });
+
+  it('Cornered by Black Mages: the opponent sacrifices a creature, and you get a Wizard that pings', () => {
+    let s = newGame();
+    const victim = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'cornered-by-black-mages', 'hand');
+    mana(s, 'P1', { B: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [victim] })).state;
+    expect(s.cards[victim]!.zone).toBe('graveyard');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'wizard-token')).toBe(true);
+    s = castCheap(s);
+    expect(s.players.P2!.life).toBe(19);
+  });
+
+  it('Blazing Bomb grows for 4-mana spells and blows up for damage equal to its power', () => {
+    let s = newGame();
+    const bomb = put(s, 'P1', 'blazing-bomb');
+    const target = put(s, 'P2', 'coeurl');
+    s = castCheap(s);
+    expect(counters(s, bomb)).toBe(0);
+    s = castBig(s);
+    expect(counters(s, bomb)).toBe(1);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: bomb, ability: 0, targets: [card(target)] }).state;
+    expect(s.cards[bomb]!.zone).toBe('graveyard');
+    // It had power 2 (1 plus its counter) as it was sacrificed: 2 damage, or the creature died of it.
+    const hit = s.cards[target]!;
+    expect(hit.zone === 'graveyard' || hit.damage === 2).toBe(true);
+  });
+
+  it('Mysidian Elder makes a Wizard token as it enters', () => {
+    let s = newGame();
+    const elder = put(s, 'P1', 'mysidian-elder', 'hand');
+    mana(s, 'P1', { R: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: elder }).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'wizard-token')).toHaveLength(1);
+  });
+
+  it('Prompto Argentum makes a Treasure only for spells with four or more mana spent', () => {
+    let s = newGame();
+    put(s, 'P1', 'prompto-argentum');
+    const treasures = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token').length;
+    s = castCheap(s);
+    expect(treasures()).toBe(0);
+    s = castBig(s);
+    expect(treasures()).toBe(1);
+  });
+
+  it('Queen Brahne has prowess and makes a Wizard when she attacks', () => {
+    let s = newGame();
+    const queen = put(s, 'P1', 'queen-brahne');
+    s = castCheap(s);
+    expect(stats(s, queen)).toEqual([3, 2]);
+    s = fight(s, [{ attacker: queen, defender: 'P2' }]).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'wizard-token')).toBe(true);
+  });
+
+  it('Black Waltz No. 3 deals 2 damage to each opponent for every noncreature spell', () => {
+    let s = newGame(3);
+    put(s, 'P1', 'black-waltz-no-3');
+    s = castCheap(s);
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([18, 18]);
   });
 });

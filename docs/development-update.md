@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### S4 group 2 (noncreature spells), first seven
+
+- Ultros, Obnoxious Octopus; Cornered by Black Mages; Blazing Bomb;
+  Mysidian Elder; Prompto Argentum; Queen Brahne (prowess as a trigger);
+  Black Waltz No. 3. All from existing engine features (the "if at least
+  four mana was spent" condition, the Wizard token), each with a test.
+- Still in this group: Shantotto, Tellah, Vivi Ornitier, The Prima Vista,
+  The Emperor of Palamecia, Garland, Kuja and Lindblum (they need "mana
+  spent" amounts, transforming or Vehicle animation).
+
 ### S4 group 1 done: all ten Job select Equipment
 
 - Ninja's Blades (draw, discard, the damaged player loses life equal to the
