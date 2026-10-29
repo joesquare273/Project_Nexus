@@ -97,7 +97,9 @@ export interface Sheets {
   artCards: BoosterCard[];
 }
 
-export function buildSheets(cards: readonly BoosterCard[] = BOOSTER_CARDS): Sheets {
+export function buildSheets(all: readonly BoosterCard[] = BOOSTER_CARDS): Sheets {
+  // A meld card's melded result ("99b") is listed as its own printing but is never in a pack.
+  const cards = all.filter((c) => !(c.layout === 'meld' && /b$/.test(c.number)));
   const fin = cards.filter((c) => c.set === 'fin');
   const main = fin.filter((c) => c.booster && num(c) <= 309);
   const byRarity = <R extends string>(list: BoosterCard[], rarities: readonly R[]) =>
@@ -140,6 +142,8 @@ export interface Outcome {
   finish: Finish;
   hype: Pull['hype'];
   stamped?: true;
+  /** Not in real boosters: our own addition for the Packs tab (Scene Box cards, surge foil tokens). Drafts leave these out. */
+  unofficial?: true;
 }
 export interface Slot {
   name: string;
@@ -191,7 +195,7 @@ export const PLAY_BOOSTER: Slot[] = [
       o('Mythic', 10, (s) => s.mythics, 'nonfoil', 2),
       o('Borderless rare', 8.5, (s) => s.borderless.rare, 'nonfoil', 2),
       o('Borderless mythic', 1.5, (s) => s.borderless.mythic, 'nonfoil', 3),
-      o('Scene Box card', 1, (s) => s.scene, 'nonfoil', 3),
+      o('Scene Box card', 1, (s) => s.scene, 'nonfoil', 3, { unofficial: true }),
     ],
   },
   {
@@ -222,7 +226,7 @@ export const PLAY_BOOSTER: Slot[] = [
     outcomes: [
       o('Double-sided token', 65, (s) => s.tokens),
       o('Art card', 25, (s) => s.artCards),
-      o('Scene Box art card', 5, (s) => s.sceneArt, 'nonfoil', 1),
+      o('Scene Box art card', 5, (s) => s.sceneArt, 'nonfoil', 1, { unofficial: true }),
       o('Gold-stamped art card', 5, (s) => s.artCards, 'nonfoil', 1, { stamped: true }),
     ],
   },
@@ -304,12 +308,12 @@ export const COLLECTOR_BOOSTER: Slot[] = [
       o('Surge foil borderless mythic', 3, (s) => s.surge.mythic, 'surge', 3),
       o('Traveling Chocobo or Chocobo track foil', 0.29, (s) => s.chocobo, 'foil', 3),
       o('Serialized golden Traveling Chocobo', 0.01, (s) => s.goldenChocobo, 'foil', 3),
-      o('Foil Scene Box card', 4, (s) => s.scene, 'foil', 3),
+      o('Foil Scene Box card', 4, (s) => s.scene, 'foil', 3, { unofficial: true }),
     ],
   },
   {
     name: 'Foil token',
-    outcomes: [o('Foil double-sided token', 90, (s) => s.tokens, 'foil'), o('Surge foil token', 10, (s) => s.surgeTokens, 'surge', 1)],
+    outcomes: [o('Foil double-sided token', 90, (s) => s.tokens, 'foil'), o('Surge foil token', 10, (s) => s.surgeTokens, 'surge', 1, { unofficial: true })],
   },
 ];
 
@@ -320,8 +324,8 @@ function pick<T>(rng: Rng, items: readonly T[]): T {
 }
 
 /** Draws one outcome by weight, skipping outcomes whose sheet is empty (and, with `nonfoilOnly`, foil ones). */
-export function rollSlot(slot: Slot, sheets: Sheets, rng: Rng, nonfoilOnly = false): Pull {
-  const live = slot.outcomes.filter((x) => x.sheet(sheets).length > 0 && (!nonfoilOnly || x.finish === 'nonfoil'));
+export function rollSlot(slot: Slot, sheets: Sheets, rng: Rng, nonfoilOnly = false, officialOnly = false): Pull {
+  const live = slot.outcomes.filter((x) => x.sheet(sheets).length > 0 && (!nonfoilOnly || x.finish === 'nonfoil') && (!officialOnly || !x.unofficial));
   const total = live.reduce((n, x) => n + x.weight, 0);
   let roll = rng() * total;
   const outcome = live.find((x) => (roll -= x.weight) < 0) ?? live.at(-1)!;
@@ -341,14 +345,20 @@ let cachedSheets: Sheets | undefined;
  * three Booster Fun rares) never repeat a card, as in print, and at most one
  * of the Booster Fun rares is foil.
  */
-export function openPack(kind: PackKind, rng: Rng = Math.random, sheets: Sheets = (cachedSheets ??= buildSheets())): Pack {
+export function openPack(
+  kind: PackKind,
+  rng: Rng = Math.random,
+  sheets: Sheets = (cachedSheets ??= buildSheets()),
+  /** Only what real boosters contain (FIN and Through the Ages): drafts use this. */
+  { officialOnly = false }: { officialOnly?: boolean } = {},
+): Pack {
   const slots = BOOSTERS[kind];
   const cards: Pull[] = [];
   slots.forEach((slot, i) => {
     const same = cards.filter((_, k) => slots[k] === slot);
     const nonfoilOnly = slot === BOOSTER_FUN_RARE && same.some((p) => p.finish !== 'nonfoil');
-    let pull = rollSlot(slot, sheets, rng, nonfoilOnly);
-    for (let tries = 0; tries < 20 && same.some((c) => c.card.id === pull.card.id); tries++) pull = rollSlot(slot, sheets, rng, nonfoilOnly);
+    let pull = rollSlot(slot, sheets, rng, nonfoilOnly, officialOnly);
+    for (let tries = 0; tries < 20 && same.some((c) => c.card.id === pull.card.id); tries++) pull = rollSlot(slot, sheets, rng, nonfoilOnly, officialOnly);
     cards[i] = pull;
   });
   return { kind, cards };

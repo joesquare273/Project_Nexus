@@ -21,7 +21,8 @@ describe('Final Fantasy booster data', () => {
   });
 
   it('sorts the printings into sheets that match the printed set', () => {
-    expect(sheets.uncommons).toHaveLength(110);
+    // 109, as Wizards lists: the Ragnarok meld result ("99b") is not a pack card.
+    expect(sheets.uncommons).toHaveLength(109);
     expect(sheets.rares).toHaveLength(75);
     expect(sheets.mythics).toHaveLength(20);
     expect(sheets.cid).toHaveLength(14);

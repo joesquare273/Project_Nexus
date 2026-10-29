@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Draft step S2a: booster drafts against AI drafters
+
+- New **Draft** tab: you and 1-3 AI drafters each open a Final Fantasy Play
+  Booster, choose a card and press **Confirm pick** to lock it in; once all
+  have locked in, the packs pass clockwise. Six packs each, 84 cards. Your
+  picks are listed by color; cards the engine can't fully play yet are
+  marked ("Plays as body only", "Can't be cast yet").
+- Drafted packs are real Play Boosters (Wizards' contents, FIN and Through
+  the Ages only). The Ragnarok meld result no longer appears in packs.
+- Your drafted pool is saved in the browser for the deckbuilder (next step).
+
 ### Sealed step S1: the Final Fantasy set imported
 
 - Every Final Fantasy main-set and Through the Ages card now has a

@@ -391,3 +391,20 @@ cards than before. Tests that need a particular random outcome set
   without a `manaCost` and marks it `uncastable`: it can't be cast at all,
   rather than being given a made-up cost.
 - Double-faced cards show their front face's image from Scryfall.
+
+## 2026-10-29: Booster drafts
+
+- `cards/src/draft.ts` is plain JSON state, ready for the server: packs,
+  per-seat lock-ins and picks. A player locks in a card from the pack in
+  front of them; packs move only when every player has locked in, all
+  together, one seat clockwise. A player's view holds their pack and picks,
+  and whether the others have locked in, never what they chose.
+- Drafts use real Play Boosters only (`openPack(..., { officialOnly: true })`):
+  the Packs tab's own additions (Scene Box cards, surge foil tokens) are
+  marked `unofficial` and left out. Tokens and art cards aren't drafted.
+- Ragnarok, Divine Deliverance (Fang and Vanille's melded result, "99b") is
+  a Scryfall printing but never a pack card; it's removed from every print
+  sheet. The main set has 109 uncommons, as Wizards lists.
+- The AI drafter favors rarer cards and cards the engine can fully play,
+  avoids unbuilt spells (they can't be cast), and settles into its two most
+  picked colors after five picks.

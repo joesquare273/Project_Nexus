@@ -6,6 +6,7 @@ import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { OnlineMenu } from './components/OnlineMenu.tsx';
+import { DraftTab } from './draft/DraftTab.tsx';
 
 const DECKS: { id: DeckChoice; name: string; blurb: string; art: string }[] = [
   {
@@ -42,7 +43,7 @@ export function App() {
   /** Changes for each new game so the board starts fresh. */
   const [gameNumber, setGameNumber] = useState(0);
   /** The menu's tabs: set up a game, play online, or open booster packs. */
-  const [tab, setTab] = useState<'play' | 'online' | 'packs'>('play');
+  const [tab, setTab] = useState<'play' | 'online' | 'draft' | 'packs'>('play');
 
   const quit = () => {
     session?.close();
@@ -102,6 +103,9 @@ export function App() {
       <button role="tab" aria-selected={tab === 'online'} className={tab === 'online' ? 'chosen' : ''} onClick={() => setTab('online')}>
         Online
       </button>
+      <button role="tab" aria-selected={tab === 'draft'} className={tab === 'draft' ? 'chosen' : ''} onClick={() => setTab('draft')}>
+        Draft
+      </button>
       <button role="tab" aria-selected={tab === 'packs'} className={tab === 'packs' ? 'chosen' : ''} onClick={() => setTab('packs')}>
         Packs
       </button>
@@ -121,6 +125,17 @@ export function App() {
             setSession(online);
           }}
         />
+      </div>
+    );
+  }
+
+  if (tab === 'draft') {
+    return (
+      <div className="menu">
+        <h1>Project Nexus</h1>
+        <p className="tagline">Draft Final Fantasy Play Boosters · pick a card, pass the rest</p>
+        {tabs}
+        <DraftTab />
       </div>
     );
   }
