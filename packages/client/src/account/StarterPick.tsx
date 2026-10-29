@@ -6,6 +6,10 @@ import { useEffect, useState } from 'react';
 import { CARD_IDS_BY_NAME, SCRYFALL } from '@nexus/cards';
 import { accessToken } from './AccountBar.tsx';
 
+let settled = false;
+/** True once the account is known to have its precon (or the check failed), so the tour can start. */
+export const starterSettled = () => settled;
+
 interface Choice {
   name: string;
   commander: string;
@@ -23,11 +27,12 @@ export function StarterPick() {
     accessToken()
       .then((token) => (token ? fetch('/api/starter', { headers: { Authorization: `Bearer ${token}` } }) : null))
       .then(async (res) => {
-        if (!res?.ok) return;
+        if (!res?.ok) return void (settled = true);
         const body = (await res.json()) as { claimed: boolean; choices: Choice[] };
         if (!body.claimed) setChoices(body.choices);
+        else settled = true;
       })
-      .catch(() => undefined);
+      .catch(() => void (settled = true));
   }, []);
 
   if (done) {
@@ -36,7 +41,13 @@ export function StarterPick() {
         <div className="starter-box">
           <h2>{done} is yours!</h2>
           <p>Its 100 cards are in your collection, and it's saved as a Commander deck (Packs → Decks).</p>
-          <button className="primary" onClick={() => setDone(null)}>
+          <button
+            className="primary"
+            onClick={() => {
+              settled = true;
+              setDone(null);
+            }}
+          >
             Let's play
           </button>
         </div>
@@ -59,6 +70,7 @@ export function StarterPick() {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok && res.status !== 409) throw new Error(body.error ?? 'The precon could not be granted. Try again.');
       setChoices(null);
+      if (!res.ok) settled = true;
       if (res.ok) setDone(picked.replace(/\s*\(.*\)$/, ''));
     } catch (e) {
       setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server.');

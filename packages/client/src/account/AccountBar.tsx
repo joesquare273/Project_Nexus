@@ -144,6 +144,7 @@ export function AccountBar() {
           </span>
         </>
       )}
+      <button onClick={() => window.dispatchEvent(new Event('nexus:tour'))}>Tour</button>
       <button onClick={() => supabase!.auth.signOut()}>Sign out</button>
     </div>
   );

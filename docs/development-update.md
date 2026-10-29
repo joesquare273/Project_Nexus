@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### First sign-in tour (E1c, part 2)
+
+- After the free precon pick, a short tour points at the account bar and
+  each menu tab (Play, Online, Draft, Packs), one step at a time, with
+  Skip, Back and Next. It shows once per account in each browser
+  (`nexus.tour.v1.<user id>` in local storage); the account bar's
+  **Tour** button replays it.
+
 ### Free starter precon (E1c, part 1)
 
 - A new account sees a window offering the four Final Fantasy Commander
