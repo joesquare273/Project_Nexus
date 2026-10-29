@@ -108,5 +108,7 @@ come after Final Fantasy testing is complete.
   Final Fantasy-specific today and should become one config per set), its
   own card data from Scryfall, and its own pack images, named by set code
   (`public/packs/ff-play-booster.png`, later `eoe-play-booster.png`).
+- A set that isn't finished yet is shown greyed out with **Coming soon**
+  (not openable or draftable), so players can see what's next.
 - The collection already records each card's exact printing (Scryfall id
   and set), so cards from different sets stay distinct.
