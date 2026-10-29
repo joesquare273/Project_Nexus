@@ -7,6 +7,8 @@ import { CARD_DEFS } from './index.ts';
 import { aiScore, cardColors, defIdOf, type DraftCard } from './draft.ts';
 
 export const MIN_DECK_SIZE = 40;
+/** Draft and sealed decks are 40 to 60 cards. */
+export const MAX_DECK_SIZE = 60;
 /** Typical land count for a 40-card deck. */
 export const LAND_TARGET = 17;
 export const DECKBUILDING_MINUTES = 20;
@@ -43,6 +45,7 @@ export function deckProblem(deck: LimitedDeck, pool: readonly DraftCard[]): stri
   if (COLORS.some((c) => !Number.isInteger(deck.basics[c]) || deck.basics[c] < 0)) return 'Basic land counts must be whole numbers.';
   const size = deckSize(deck);
   if (size < MIN_DECK_SIZE) return `The deck needs at least ${MIN_DECK_SIZE} cards (it has ${size}).`;
+  if (size > MAX_DECK_SIZE) return `The deck can have at most ${MAX_DECK_SIZE} cards (it has ${size}).`;
   return null;
 }
 

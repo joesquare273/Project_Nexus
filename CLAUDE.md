@@ -44,7 +44,7 @@ this repo, not only in local memory.
 - **Draft events (2026-10-29):** booster drafts with the whole Final Fantasy
   set for 2-4 players: six real Play Boosters each, choose a card and confirm
   it, and packs pass clockwise once everyone has locked in; then a 20-minute
-  deckbuilder (40+ cards, unlimited basics), Swiss best-of-3 matches, and
+  deckbuilder (40-60 cards, unlimited basics), Swiss best-of-3 matches, and
   players keep what they draft on their accounts. Roadmap S1-S4 in `docs/sealed.md`; the set's 320 imported
   cards (`data/fin-set.json`) are the next card target after the precons.
 - **Online play (2026-10-28):** `packages/server` (Node + `ws`, many rooms in

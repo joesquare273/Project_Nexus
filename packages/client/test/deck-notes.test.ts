@@ -16,6 +16,8 @@ describe('deck notes', () => {
   it('counts toward each format’s size', () => {
     expect(deckNote(deck({ basics: basics(39) }), names)).toBe('39 / 40 cards.');
     expect(deckNote(deck({ basics: basics(40) }), names)).toBeNull();
+    expect(deckNote(deck({ basics: basics(60) }), names)).toBeNull();
+    expect(deckNote(deck({ basics: basics(61) }), names)).toMatch(/at most 60/);
     expect(deckNote(deck({ format: 'constructed', basics: basics(59) }), names)).toBe('59 / 60 cards.');
   });
 

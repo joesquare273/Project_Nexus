@@ -50,9 +50,22 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
   const timeUp = left === 0;
   const warning = left <= limited.DECKBUILDING_WARNING_MINUTES * 60_000;
 
-  // Time's up: fill the deck to 40 with basic lands; the deck is then locked.
+  // Time's up: fill the deck to 40 with basic lands, or trim it to 60 (basic
+  // lands first, then the last cards added); the deck is then locked.
   useEffect(() => {
-    if (!timeUp || limited.deckSize(deck) >= limited.MIN_DECK_SIZE) return;
+    if (!timeUp) return;
+    let over = limited.deckSize(deck) - limited.MAX_DECK_SIZE;
+    if (over > 0) {
+      const basics = { ...deck.basics };
+      for (const c of limited.COLORS) {
+        const cut = Math.min(over, basics[c]);
+        basics[c] -= cut;
+        over -= cut;
+      }
+      onChange({ cards: over > 0 ? deck.cards.slice(0, deck.cards.length - over) : deck.cards, basics });
+      return;
+    }
+    if (limited.deckSize(deck) >= limited.MIN_DECK_SIZE) return;
     const extra = limited.suggestBasics({ cards: deck.cards, basics: limited.noBasics() }, pool);
     const basics = { ...deck.basics };
     let missing = limited.MIN_DECK_SIZE - limited.deckSize(deck);
@@ -116,7 +129,7 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
         </div>
         <div className="builder-count">
           <strong>
-            {size} / {limited.MIN_DECK_SIZE}
+            {size} / {limited.MIN_DECK_SIZE}–{limited.MAX_DECK_SIZE}
           </strong>{' '}
           cards · {creatures} creatures · {lands} lands
         </div>

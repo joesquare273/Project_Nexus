@@ -35,7 +35,7 @@ export const YOU: PlayerId = 'You';
 export type DeckChoice = 'RW' | 'UB';
 
 export interface SessionOptions {
-  /** Starter Kit games (60 cards, 20 life), Commander with the precons (100 cards, 40 life), or Limited with drafted decks (40+ cards, 20 life). */
+  /** Starter Kit games (60 cards, 20 life), Commander with the precons (100 cards, 40 life), or Limited with drafted decks (40-60 cards, 20 life). */
   format?: 'starter' | 'commander' | 'limited';
   /** Limited: every player's deck, yours first. */
   decks?: CardDefId[][];

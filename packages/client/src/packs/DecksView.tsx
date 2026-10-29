@@ -11,7 +11,7 @@ import { deleteDeck, fetchDecks, saveDeck, type Basics, type Collection, type De
 type Boosters = typeof import('@nexus/cards/boosters');
 
 const FORMATS: { format: DeckFormat; label: string }[] = [
-  { format: 'limited', label: 'Limited (40+)' },
+  { format: 'limited', label: 'Limited (40-60)' },
   { format: 'constructed', label: '60-card' },
   { format: 'commander', label: 'Commander (100)' },
 ];
@@ -37,6 +37,7 @@ export function deckNote(d: DeckDraft, names: Map<string, string>): string | nul
   } else {
     const min = d.format === 'limited' ? 40 : 60;
     if (size < min) return `${size} / ${min} cards.`;
+    if (d.format === 'limited' && size > 60) return `${size} cards; Limited decks have at most 60.`;
     if (d.format === 'constructed' && most > 4) return 'At most four copies of each card (except basic lands).';
   }
   return null;

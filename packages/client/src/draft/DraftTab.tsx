@@ -296,7 +296,7 @@ function DraftDone({ picks, onBuild, onAgain }: { picks: DraftCard[]; onBuild: (
   return (
     <div className="draft-done">
       <h2>Draft complete: {picks.length} cards</h2>
-      <p className="fineprint">You'll have 20 minutes to build a deck of at least 40 cards, with as many basic lands as you like.</p>
+      <p className="fineprint">You'll have 20 minutes to build a deck of 40 to 60 cards, with as many basic lands as you like.</p>
       <div className="format-choices">
         <button className="primary big" onClick={onBuild}>
           Build your deck

@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### Limited decks are 40 to 60 cards
+
+- Draft and sealed decks must have 40 to 60 cards (user rule, 2026-10-29):
+  the engine's `LIMITED` format, the draft deckbuilder (which trims extra
+  basic lands, then the last cards added, if time runs out over 60) and
+  the saved-deck notes.
+
 ### Saved decks (E1b)
 
 - The Packs tab has a **Decks** view: your account's saved decks (Limited

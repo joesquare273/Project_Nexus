@@ -40,14 +40,16 @@ describe('Limited decks', () => {
     expect(suggestBasics({ cards: [], basics: noBasics() }, pool)).toMatchObject({ W: 40 });
   });
 
-  it('checks the deck: at least 40 cards, only cards from your pool, each once', () => {
+  it('checks the deck: 40 to 60 cards, only cards from your pool, each once', () => {
     const pool = pools.P2!;
     const ok = aiDeck(pool);
     expect(deckProblem({ ...ok, cards: ok.cards.slice(5) }, pool)).toMatch(/at least 40/);
     expect(deckProblem({ ...ok, cards: [...ok.cards, ok.cards[0]!] }, pool)).toMatch(/twice/);
     expect(deckProblem({ ...ok, cards: [...ok.cards, pools.P3![0]!.uid] }, pool)).toMatch(/not in your pool/);
     expect(deckProblem({ ...ok, basics: { ...ok.basics, U: -1 } }, pool)).toMatch(/whole numbers/);
-    // Any number of basic lands.
-    expect(deckProblem({ ...ok, basics: { ...ok.basics, G: ok.basics.G + 30 } }, pool)).toBeNull();
+    // Any number of basic lands, up to 60 cards in all.
+    const room = 60 - ok.cards.length - Object.values(ok.basics).reduce((n, k) => n + k, 0);
+    expect(deckProblem({ ...ok, basics: { ...ok.basics, G: ok.basics.G + room } }, pool)).toBeNull();
+    expect(deckProblem({ ...ok, basics: { ...ok.basics, G: ok.basics.G + room + 1 } }, pool)).toMatch(/at most 60/);
   });
 });

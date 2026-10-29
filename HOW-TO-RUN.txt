@@ -55,7 +55,7 @@ You need Node.js 24 or newer.
 
   The "Draft" tab runs a booster draft against 1-3 AI drafters: choose a
   card, press "Confirm pick", and the packs pass clockwise once everyone has
-  picked; six packs each. Then build a deck of at least 40 cards from your
+  picked; six packs each. Then build a deck of 40 to 60 cards from your
   picks (plus any basic lands) within 20 minutes, press "Ready", and play it
   against one of the AI drafters. Cards marked "Can't be cast yet" aren't
   built in the game yet.
