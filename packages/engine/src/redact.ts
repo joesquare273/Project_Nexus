@@ -156,6 +156,7 @@ const CARD_FIELDS = {
   attachedTimestamp: 'copy',
   graveyardArrival: 'copy',
   graveyardCastTurn: 'copy',
+  activatedTurns: 'copy',
   zoneChanges: 'copy',
   vowTo: 'copy',
   counters: 'copy',

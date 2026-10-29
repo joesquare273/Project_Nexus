@@ -286,7 +286,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
   const cards = [...battlefield(s).filter(c=>c.controller===playerId), ...[...p.hand,...p.graveyard].map(id=>s.cards[id]!)];
   for (const c of cards) {
     activatedAbilities(currentDefinition(s, c)).forEach((spec, ability) => {
-      if (activationProblem(s, playerId, c, spec)) return;
+      if (activationProblem(s, playerId, c, spec, ability)) return;
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
           out.push({

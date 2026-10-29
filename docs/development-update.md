@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-29
 
+### S4 group 1 done: all ten Job select Equipment
+
+- Ninja's Blades (draw, discard, the damaged player loses life equal to the
+  discarded card's mana value), Summoner's Grimoire, Dark Knight's
+  Greatsword and Machinist's Arsenal finish the group; every one has a test
+  in `packages/bots/test/fin-set-cards.test.ts`.
+- Engine: `PutFromHand` can have a chosen enchantment card enter tapped and
+  attacking (`enchantmentsEnterAttacking`); activated abilities can be
+  limited to once each turn (`oncePerTurn`, tracked per object in
+  `activatedTurns`, classified in redact.ts); `equipPayLife` makes an
+  "Equip—Pay N life, once each turn" ability.
+- Simplification: Summoner's Grimoire's enchantment attacks the player the
+  equipped creature attacked (rule 506.3 lets its controller choose).
+
 ### S4 group 1: Job select Equipment (first six)
 
 - Built Bard's Bow, Monk's Fist, Paladin's Arms (ward {1}) and Thief's

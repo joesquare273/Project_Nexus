@@ -182,6 +182,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
   delete c.graveyardCastTurn;
+  delete c.activatedTurns;
   c.zoneChanges = (c.zoneChanges ?? 0) + 1;
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';

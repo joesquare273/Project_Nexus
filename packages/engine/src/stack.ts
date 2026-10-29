@@ -104,6 +104,15 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
       effects: [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'], controller: 'You' } }],
     });
   }
+  if (def.equipPayLife !== undefined) {
+    out.push({
+      cost: { life: def.equipPayLife },
+      sorcerySpeed: true,
+      equip: true,
+      oncePerTurn: true,
+      effects: [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'], controller: 'You' } }],
+    });
+  }
   // "Equip legendary creature {3}" (Wrecking Ball Arm).
   if (def.equipLegendary) {
     out.push({
@@ -975,7 +984,7 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
 }
 
 /** Why this ability can't be activated right now, ignoring mana and targets, or null if it can. */
-export function activationProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec): string | null {
+export function activationProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec, index?: number): string | null {
   const zone = spec.zone ?? 'battlefield';
   if (zone === 'battlefield' && (c.zone !== 'battlefield' || c.controller !== playerId)) {
     return 'You do not control that permanent.';
@@ -985,6 +994,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';
   if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
+  if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
@@ -1116,7 +1126,7 @@ export function activateAbility(
   const sourceObject = c.zoneChanges ?? 0;
   const spec = activatedAbilities(defOf(s, c))[index];
   if (!spec) reject('That card has no such ability.');
-  const problem = activationProblem(s, playerId, c, spec);
+  const problem = activationProblem(s, playerId, c, spec, index);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
@@ -1145,6 +1155,7 @@ export function activateAbility(
   payMana(ctx, playerId, abilityCost(s, spec, targets, c), spec.equip ?? false);
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
+  if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
   if (spec.cost.crew !== undefined) for (const crew of costCards) tap(ctx,s.cards[crew]!);
@@ -1358,6 +1369,9 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
   const source = sourceOf(r.item);
   for (const pid of order) {
     if (effect.effect === 'PutFromHand') {
+      const defender = effect.enchantmentsEnterAttacking && r.item.kind === 'ability' ? r.item.defender : undefined;
+      if (defender) r.putAttackingDefender = defender;
+      else delete r.putAttackingDefender;
       const cards = s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
       if (cards.length === 0) continue;
       const max = Math.min(Math.max(1, amount), cards.length);
@@ -2605,7 +2619,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.controller = pending.player;
       c.summoningSick = true;
       if (entersTapped(s, c)) c.tapped = true;
+      const defender = r.putAttackingDefender;
+      if (defender && s.combat && !s.players[defender]!.eliminated && defOf(s, c).types.includes('enchantment')) {
+        c.tapped = true;
+        s.combat.attacks.push({ attacker: id, defender });
+        ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });
+      }
     }
+    delete r.putAttackingDefender;
   }
   else if (pending.purpose === 'sacrifice') {
     for (const id of cards) sacrifice(ctx, id);

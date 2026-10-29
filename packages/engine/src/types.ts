@@ -101,7 +101,7 @@ export const TARGET_KINDS = [
   'PreviousTarget',
   /** The controller of the previous chosen target ("that creature's controller"). */
   'PreviousTargetController',
-  /** The player the triggering creature attacked. Attack triggers only. */
+  /** The player the triggering creature attacked, or the player it dealt combat damage to (attack and combat damage triggers). */
   'DefendingPlayer',
   /** Tokens created earlier in the same spell or ability ("then attach this to it"). */
   'CreatedTokens',
@@ -543,6 +543,8 @@ export interface EffectSpec {
   ifSourcePowerAtLeast?: number;
   /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
   attacking?: boolean;
+  /** PutFromHand in an attack trigger: a chosen enchantment card enters tapped and attacking the player the triggering creature attacked (Summoner's Grimoire). */
+  enchantmentsEnterAttacking?: boolean;
   /** SearchLibraryToBattlefield or ReturnToBattlefield: the card enters tapped. */
   entersTapped?: boolean;
   /** Exile: also exile every token that player controls with the same name (Legions to Ashes). */
@@ -713,7 +715,7 @@ export interface ObjectFilter {
   /** Has (or, with false, hasn't) counters of any kind on it, or had as it left the battlefield. */
   hasAnyCounters?: boolean;
   /** Has none of these keywords (as it last was, if it left the battlefield: "a creature without flying dies"). */
-  withoutKeywords?: Keyword[];
+  withoutKeywords?: Keyword[];
   /** Has the same mana value as the triggering spell (Krile: "with mana value equal to that spell's mana value"). */
   manaValueEqualsSubject?: boolean;
   /** Is (or, with false, isn't) a token ("nontoken creature"). */
@@ -837,6 +839,8 @@ export interface ActivatedSpec {
   ifYouControl?: ObjectFilter;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
   equip?: boolean;
+  /** "Activate only once each turn." */
+  oncePerTurn?: boolean;
   effects: EffectSpec[];
 }
 
@@ -1009,6 +1013,8 @@ export interface CardDefinition {
   crew?: number;
   /** Equipment: the equip cost. */
   equip?: string;
+  /** "Equip—Pay N life. Activate only once each turn." (Dark Knight's Greatsword), instead of a mana equip cost. */
+  equipPayLife?: number;
   /** "Equip legendary creature {3}": a second, cheaper equip ability for legendary creatures. */
   equipLegendary?: string;
   /** "Equip abilities you activate that target this cost {N} less." */
@@ -1157,6 +1163,8 @@ export interface CardInstance {
   graveyardArrival?: { turn: number; from: ZoneName };
   /** This object's once-per-turn permission to cast from the graveyard was used. */
   graveyardCastTurn?: number;
+  /** Once-each-turn activated abilities: the turn each was last activated, by ability index. */
+  activatedTurns?: Record<number, number>;
   /** Distinguishes successive objects represented by this physical card. */
   zoneChanges?: number;
   /** Players this creature cannot attack while its uninterrupted vow counter remains. */
@@ -1463,6 +1471,8 @@ export interface Resolving {
   returnedObjects?: Record<InstanceId, number>;
   /** The non-target defending-player choice for entering attacking. */
   attackingDefender?: PlayerId;
+  /** PutFromHand with enchantmentsEnterAttacking: the player a chosen enchantment card attacks. */
+  putAttackingDefender?: PlayerId;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
   distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number> };
   item: StackItem;
