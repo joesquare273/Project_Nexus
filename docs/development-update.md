@@ -19,7 +19,7 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 - Sign in with Discord (Supabase Auth): the menu's account bar shows your
   name and your Aether Shards. New players get the 1,000-shard welcome
   grant, once.
-- The database schema is `packages/server/supabase/0001_accounts.sql`
+- The database schema is `supabase/migrations/20261029000000_accounts.sql`
   (profiles, a shard ledger, owned cards and packs). Players can read only
   their own rows; only the game server writes, through one function that
   changes a balance and records it in the ledger together, never below

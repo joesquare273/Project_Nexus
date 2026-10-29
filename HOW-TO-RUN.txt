@@ -29,7 +29,7 @@ You need Node.js 24 or newer.
    Accounts (optional; sign in with Discord, Aether Shards). Once per
    Supabase project:
      a. In Supabase: SQL Editor -> New query, paste the whole file
-        packages/server/supabase/0001_accounts.sql, and press Run.
+        supabase/migrations/20261029000000_accounts.sql, and press Run.
    On each computer:
      b. Copy .env.example to .env in this folder and fill in the four
         values from Supabase (Project Settings -> API). Keep .env private:

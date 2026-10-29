@@ -56,6 +56,8 @@ this repo, not only in local memory.
   engine changes. Seed online games from `crypto.randomBytes` only. Later:
   one Render web service serving the built client too, and Supabase Auth with
   Discord login (only the server talks to the database). See docs/decisions.md.
+  Database changes go in `supabase/migrations/` as new timestamped SQL files
+  (never edit an applied one); the Supabase GitHub integration applies them.
 - **Frontend direction (2026-10-23):** an arcane fantasy table, with inspiration
   from Hearthstone, MTG Arena and Dueling Nexus while keeping its own identity.
   Improve layout, controls and animations while following MTG rules. See

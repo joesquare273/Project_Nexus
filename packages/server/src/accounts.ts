@@ -1,6 +1,6 @@
 // Player accounts (economy step E1). Players sign in with Discord through
 // Supabase Auth in the browser and send their access token; the server checks
-// it with Supabase and keeps balances in the database (supabase/0001_accounts.sql).
+// it with Supabase and keeps balances in the database (supabase/migrations/20261029000000_accounts.sql).
 // The server is the only writer: the browser never sends a balance or amount.
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';

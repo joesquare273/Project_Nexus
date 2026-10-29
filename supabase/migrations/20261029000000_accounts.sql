@@ -1,5 +1,6 @@
 -- Project Nexus accounts and Aether Shards (economy step E1).
--- Run once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
+-- Applied by the Supabase GitHub integration when pushed (supabase/migrations),
+-- or by hand: Supabase dashboard -> SQL Editor -> New query -> paste -> Run.
 -- Safe to run again: everything is "if not exists" / "or replace".
 --
 -- Players sign in with Discord (Supabase Auth). Only the game server writes
