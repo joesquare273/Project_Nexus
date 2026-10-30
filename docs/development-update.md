@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair cards: Gilded Lotus, Damn, Cyclonic Rift
+
+- Built with tests (Damn and Cyclonic Rift with their overload costs).
+- Still to build, each needing an engine feature first: Sword of Truth and
+  Justice (protection), Umezawa's Jitte (combat damage to creatures as a
+  trigger), Silence (can't cast spells this turn), Toxic Deluge (pay X
+  life), Temporal Extortion (extra turns), Praetor's Grasp, Staff of the
+  Storyteller, Blade of Selves (myriad), Forge Anew, Prismatic Ending
+  (converge), and the five Elemental Incarnations (evoke).
+
 ### Commander games use your own decks
 
 - The Play tab's Commander setup lists your saved Commander decks instead

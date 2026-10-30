@@ -1156,3 +1156,39 @@ describe('Secret Lair cards built so far', () => {
     expect(s.players.P1!.life).toBe(20 - 7);
   });
 });
+
+describe('Secret Lair cards: Gilded Lotus, Damn, Cyclonic Rift', () => {
+  it('Gilded Lotus taps for three mana of one color', () => {
+    let s = newGame();
+    const lotus = put(s, 'P1', 'gilded-lotus');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: lotus, mana: 'G' });
+    expect(s.players.P1!.manaPool.G).toBe(3);
+  });
+
+  it('Damn destroys a target creature, or every creature when overloaded', () => {
+    let s = newGame();
+    const a = put(s, 'P2', 'coeurl');
+    const b = put(s, 'P2', 'coeurl');
+    let spell = put(s, 'P1', 'damn', 'hand');
+    mana(s, 'P1', { B: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(a)] }).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['graveyard', 'battlefield']);
+    const mine = put(s, 'P1', 'coeurl');
+    spell = put(s, 'P1', 'damn', 'hand');
+    mana(s, 'P1', { W: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, alternative: true }).state;
+    expect([s.cards[b]!.zone, s.cards[mine]!.zone]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Cyclonic Rift bounces a nonland permanent you don’t control, or all of them when overloaded', () => {
+    let s = newGame(3);
+    const a = put(s, 'P2', 'coeurl');
+    const b = put(s, 'P3', 'magic-pot');
+    const land = put(s, 'P2', 'forest');
+    const mine = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'cyclonic-rift', 'hand');
+    mana(s, 'P1', { U: 1, C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, alternative: true }).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone, s.cards[land]!.zone, s.cards[mine]!.zone]).toEqual(['hand', 'hand', 'battlefield', 'battlefield']);
+  });
+});
