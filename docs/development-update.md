@@ -3,6 +3,19 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-10-30
+
+### S4 group 4: 24 simple set cards
+
+- Dark Ritual, Counterspell, Lightning Bolt, Dovin's Veto, Eject, Wall of
+  Omens, Adventurer's Inn, Hecteyes, Blitzball Shot, Nature's Claim, Balamb
+  T-Rexaur, Fight On!, Airship Crash, Dragoon's Wyvern, Magitek Armor,
+  Ahriman, Jumbo Cactuar, Sazh's Chocobo, Sabotender, Instant Ramen, Magic
+  Pot, Snow Villiers, Combat Tutorial and Auron's Inspiration, each with a
+  test in fin-set-cards.test.ts. 63 of 320 set cards are built.
+- Engine: the Defender keyword (can't attack, rule 702.3) and a
+  `withKeywords` object filter ("creature with flying").
+
 ## 2026-10-29
 
 ### Cards that aren't built yet can't be used

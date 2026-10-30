@@ -60,6 +60,8 @@ export const KEYWORDS = [
   'Intimidate',
   /** Can't be blocked as long as the defending player controls an Island (rule 702.14). */
   'Islandwalk',
+  /** Can't attack (rule 702.3). */
+  'Defender',
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
@@ -733,7 +735,9 @@ export interface ObjectFilter {
   /** Has (or, with false, hasn't) counters of any kind on it, or had as it left the battlefield. */
   hasAnyCounters?: boolean;
   /** Has none of these keywords (as it last was, if it left the battlefield: "a creature without flying dies"). */
-  withoutKeywords?: Keyword[];
+  withoutKeywords?: Keyword[];
+  /** Has all of these keywords ("creature with flying"). */
+  withKeywords?: Keyword[];
   /** Has the same mana value as the triggering spell (Krile: "with mana value equal to that spell's mana value"). */
   manaValueEqualsSubject?: boolean;
   /** Is (or, with false, isn't) a token ("nontoken creature"). */

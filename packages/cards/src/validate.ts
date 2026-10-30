@@ -146,6 +146,7 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
   for (const color of [...(f.colors ?? []), ...(f.nonColors ?? [])]) if (!COLORS.includes(color)) err(`unknown color "${color}" in a filter.`);
   for (const sub of f.nonSubtypes ?? []) if (!ALL_SUBTYPES.has(sub)) err(`unknown subtype "${sub}" in a filter.`);
   for (const k of f.withoutKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}" in a filter.`);
+  for (const k of f.withKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}" in a filter.`);
   for (const alt of f.anyOf ?? []) validateFilter(alt, err);
   if (f.self && f.other) err('a filter can\'t be both "self" and "other".');
   for (const key of ['powerAtLeast', 'powerAtMost', 'toughnessAtLeast', 'manaValueAtMost', 'manaValueAtLeast'] as const) {

@@ -109,6 +109,10 @@ export function matchesObject(
     const keywords = obj.zone === 'battlefield' ? [...characteristics(s, obj).keywords] : (obj.lastKeywords ?? def.keywords ?? []);
     if (f.withoutKeywords.some((k) => keywords.includes(k))) return false;
   }
+  if (f.withKeywords) {
+    const keywords = obj.zone === 'battlefield' ? [...characteristics(s, obj).keywords] : (obj.lastKeywords ?? def.keywords ?? []);
+    if (!f.withKeywords.every((k) => keywords.includes(k))) return false;
+  }
   if (f.token !== undefined && !!obj.isToken !== f.token) return false;
   return true;
 }

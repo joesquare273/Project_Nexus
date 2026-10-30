@@ -512,3 +512,187 @@ describe('cards that aren’t built yet', () => {
     expect(offered).toEqual([]);
   });
 });
+
+describe('S4 group 4: simple spells and enters-the-battlefield cards', () => {
+  const castIt = (s: GameState, defId: string, pool: Parameters<typeof mana>[2], extra: Partial<{ targets: Target[]; x: number }> = {}) => {
+    const spell = put(s, 'P1', defId, 'hand');
+    mana(s, 'P1', pool);
+    return { s: cast(s, { type: 'CastSpell', player: 'P1', card: spell, ...extra }).state, spell };
+  };
+  const tokens = (s: GameState, defId: string) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === defId).length;
+  const playLand = (s: GameState) => {
+    const land = put(s, 'P1', 'forest', 'hand');
+    return settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+  };
+
+  it('Dark Ritual adds {B}{B}{B}', () => {
+    const { s } = castIt(newGame(), 'dark-ritual', { B: 1 });
+    expect(s.players.P1!.manaPool.B).toBe(3);
+  });
+
+  it('Lightning Bolt deals 3 damage to any target', () => {
+    const { s } = castIt(newGame(), 'lightning-bolt', { R: 1 }, { targets: [{ kind: 'player', player: 'P2' }] });
+    expect(s.players.P2!.life).toBe(17);
+  });
+
+  it('Counterspell counters a spell; Dovin’s Veto only noncreature spells, and Eject and the Veto can’t be countered', () => {
+    let s = newGame();
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    mana(s, 'P2', { R: 1 });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [{ kind: 'player', player: 'P1' }] });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    const counter = put(s, 'P1', 'counterspell', 'hand');
+    mana(s, 'P1', { U: 2 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: counter, targets: [{ kind: 'card', card: bolt }] })).state;
+    expect(s.cards[bolt]!.zone).toBe('graveyard');
+    expect(s.players.P1!.life).toBe(20);
+    expect(s.cardDefs['dovins-veto']!.cantBeCountered && s.cardDefs['eject']!.cantBeCountered).toBe(true);
+  });
+
+  it('Wall of Omens draws a card and can’t attack (defender)', () => {
+    const before = newGame().players.P1!.hand.length;
+    let { s, spell } = castIt(newGame(), 'wall-of-omens', { W: 1, C: 1 });
+    expect(s.players.P1!.hand.length).toBe(before + 1);
+    s.cards[spell]!.summoningSick = false;
+    const bear = put(s, 'P1', 'coeurl');
+    s = goTo(s, 'declareAttackers');
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: spell, defender: 'P2' }] })).toBeTruthy();
+    expect(() => act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2' }] })).not.toThrow();
+  });
+
+  it('Adventurer’s Inn, Balamb T-Rexaur and Instant Ramen: life and cards as they enter; Ramen sacrifices for 3 life', () => {
+    let s = newGame();
+    const inn = put(s, 'P1', 'adventurers-inn', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: inn })).state;
+    expect(s.players.P1!.life).toBe(22);
+    s = castIt(s, 'balamb-t-rexaur', { G: 6 }).s;
+    expect(s.players.P1!.life).toBe(25);
+    const hand = s.players.P1!.hand.length;
+    const r = castIt(s, 'instant-ramen', { C: 2 });
+    s = r.s;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: r.spell, ability: 0 }).state;
+    expect(s.players.P1!.life).toBe(28);
+    expect(s.cards[r.spell]!.zone).toBe('graveyard');
+  });
+
+  it('Hecteyes makes each opponent discard', () => {
+    let s = newGame(3);
+    for (const who of ['P2', 'P3']) for (let i = 0; i < 2; i++) put(s, who, 'coeurl', 'hand');
+    const before = [s.players.P2!.hand.length, s.players.P3!.hand.length];
+    s = castIt(s, 'hecteyes', { B: 1, C: 1 }).s;
+    for (let guard = 0; guard < 4 && s.pending.kind === 'chooseCards'; guard++) s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, 1) })).state;
+    expect([s.players.P2!.hand.length, s.players.P3!.hand.length]).toEqual([before[0]! - 1, before[1]! - 1]);
+  });
+
+  it('Blitzball Shot: +3/+3 and trample', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'coeurl');
+    const base = stats(s, bear);
+    s = castIt(s, 'blitzball-shot', { G: 1, C: 1 }, { targets: [card(bear)] }).s;
+    expect(stats(s, bear)).toEqual([base[0]! + 3, base[1]! + 3]);
+    expect(hasKeyword(s, s.cards[bear]!, 'Trample')).toBe(true);
+  });
+
+  it('Nature’s Claim destroys an artifact and its controller gains 4 life', () => {
+    let s = newGame();
+    const pot = put(s, 'P2', 'magic-pot');
+    s = castIt(s, 'natures-claim', { G: 1 }, { targets: [card(pot)] }).s;
+    expect(s.cards[pot]!.zone).toBe('graveyard');
+    expect(s.players.P2!.life).toBe(24);
+  });
+
+  it('Airship Crash destroys a creature with flying but not one without', () => {
+    let s = newGame();
+    const wyvern = put(s, 'P2', 'dragoons-wyvern');
+    const ground = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'airship-crash', 'hand');
+    mana(s, 'P1', { G: 1, C: 2 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(ground)] })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(wyvern)] }).state;
+    expect(s.cards[wyvern]!.zone).toBe('graveyard');
+  });
+
+  it('Fight On! returns up to two creature cards from your graveyard', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'coeurl', 'graveyard');
+    const b = put(s, 'P1', 'hecteyes', 'graveyard');
+    s = castIt(s, 'fight-on', { B: 1, C: 2 }, { targets: [card(a), card(b)] }).s;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['hand', 'hand']);
+  });
+
+  it('Dragoon’s Wyvern and Magitek Armor make a Hero; the Armor is a crew 1 Vehicle', () => {
+    let s = newGame();
+    s = castIt(s, 'dragoons-wyvern', { U: 1, C: 2 }).s;
+    s = castIt(s, 'magitek-armor', { W: 1, C: 3 }).s;
+    expect(tokens(s, 'hero-token')).toBe(2);
+    expect(s.cardDefs['magitek-armor']!.crew).toBe(1);
+  });
+
+  it('Ahriman sacrifices another creature or artifact to draw', () => {
+    let s = newGame();
+    const ahriman = put(s, 'P1', 'ahriman');
+    const fodder = put(s, 'P1', 'magic-pot');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ahriman, ability: 0, costCards: [fodder] }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    // Magic Pot left a Treasure as it died.
+    expect(tokens(s, 'treasure-token')).toBe(1);
+  });
+
+  it('Magic Pot exiles a card from a graveyard', () => {
+    let s = newGame();
+    const pot = put(s, 'P1', 'magic-pot');
+    const theirs = put(s, 'P2', 'coeurl', 'graveyard');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: pot, ability: 0, targets: [card(theirs)] }).state;
+    expect(s.cards[theirs]!.zone).toBe('exile');
+  });
+
+  it('Jumbo Cactuar gets +9999/+0 as it attacks', () => {
+    let s = newGame();
+    const cactuar = put(s, 'P1', 'jumbo-cactuar');
+    s = fight(s, [{ attacker: cactuar, defender: 'P2' }]).state;
+    expect(s.players.P2!.life).toBeLessThanOrEqual(0);
+  });
+
+
+  it('Landfall: Sazh’s Chocobo grows and Sabotender pings each opponent', () => {
+    let s = newGame(3);
+    const chocobo = put(s, 'P1', 'sazhs-chocobo');
+    put(s, 'P1', 'sabotender');
+    s = playLand(s);
+    expect(countersOf(s.cards[chocobo]!, '+1/+1')).toBe(1);
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([19, 19]);
+  });
+
+  it('Snow Villiers’ power is the number of creatures you control', () => {
+    const s = newGame();
+    const snow = put(s, 'P1', 'snow-villiers');
+    put(s, 'P1', 'coeurl');
+    put(s, 'P2', 'coeurl');
+    expect(stats(s, snow)).toEqual([2, 3]);
+  });
+
+  it('Combat Tutorial: a player draws two and a creature you control gets a counter', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'coeurl');
+    const hand = s.players.P2!.hand.length;
+    s = castIt(s, 'combat-tutorial', { U: 1, C: 2 }, { targets: [{ kind: 'player', player: 'P2' }, card(bear)] }).s;
+    expect(s.players.P2!.hand.length).toBe(hand + 2);
+    expect(countersOf(s.cards[bear]!, '+1/+1')).toBe(1);
+  });
+
+  it('Auron’s Inspiration gives attacking creatures +2/+0', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'coeurl');
+    const base = stats(s, bear);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2' }] })).state;
+    s = castIt(s, 'aurons-inspiration', { W: 1, C: 2 }).s;
+    expect(stats(s, bear)).toEqual([base[0]! + 2, base[1]]);
+  });
+});

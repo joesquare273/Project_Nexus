@@ -28,6 +28,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
   return (
     isCreatureOnBattlefield(s, c) &&
     !cantAttackOrBlock(s, c) &&
+    !hasKeyword(s, c, 'Defender') &&
     c.controller === playerId &&
     !c.tapped &&
     (!c.summoningSick || hasKeyword(s, c, 'Haste'))
