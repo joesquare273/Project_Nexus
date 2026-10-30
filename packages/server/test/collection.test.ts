@@ -189,48 +189,74 @@ describe('buying ten packs', () => {
 });
 
 describe('the Store', () => {
-  const prices = ECONOMY.storePrices as { chocoboTrackFoil: number | null };
-  afterEach(() => {
-    prices.chocoboTrackFoil = null;
-  });
+  type Prices = { chocoboTrackLegendary: number | null; chocoboTrackOther: number | null; chocoboTrackLandBundle: number | null };
+  const prices = ECONOMY.storePrices as Prices;
+  const saved = { ...prices };
+  afterEach(() => Object.assign(prices, saved));
+  type Item = { key: string; name: string; line: string; price: number | null; cards: { id: string; finish: string }[] };
 
-  it('lists each set’s items; a set that isn’t ready has none', async () => {
+  it('lists each set’s items: 20 Chocobo Track foils on their own and the 5 lands as one bundle', async () => {
     const { call } = await withAccounts();
     const { sets } = await (await call('token-alice', '/api/store')).json();
     expect(sets.map((s: { name: string; ready: boolean }) => [s.name, s.ready])).toEqual([
       ['Final Fantasy', true],
       ['Edge of Eternities', false],
     ]);
-    const ff = sets[0];
-    expect(ff.items).toHaveLength(25);
-    expect(ff.items.every((i: { finish: string; line: string }) => i.finish === 'foil' && i.line === 'Chocobo Track foil')).toBe(true);
-    expect(ff.items.filter((i: { name: string }) => ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(i.name))).toHaveLength(5);
+    const items: Item[] = sets[0].items;
+    const singles = items.filter((i) => i.cards.length === 1);
+    expect(singles).toHaveLength(20);
+    expect(singles.every((i) => i.line === 'Chocobo Track foil' && i.cards[0]!.finish === 'foil')).toBe(true);
+    expect(singles.find((i) => i.name === 'Cloud, Midgar Mercenary')!.price).toBe(prices.chocoboTrackLegendary);
+    expect(singles.find((i) => i.name === 'Traveling Chocobo')!.price).toBe(prices.chocoboTrackOther);
+    const bundle = items.find((i) => i.cards.length > 1)!;
+    expect(bundle.cards).toHaveLength(5);
+    expect(bundle.price).toBe(prices.chocoboTrackLandBundle);
     expect(sets[1].items).toEqual([]);
   });
 
-  it('nothing can be bought before it has a price', async () => {
+  it('buying charges once and adds the card; the bundle adds all five lands', async () => {
     const { accounts, call } = await withAccounts();
     const { sets } = await (await call('token-alice', '/api/store')).json();
-    expect(sets[0].items[0].price).toBeNull();
-    expect((await call('token-alice', '/api/store/buy', 'POST', { id: sets[0].items[0].id })).status).toBe(400);
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+    const items: Item[] = sets[0].items;
+    const bundle = items.find((i) => i.cards.length > 1)!;
+    const r = await call('token-alice', '/api/store/buy', 'POST', { key: bundle.key, price: 1 });
+    expect(r.status).toBe(200);
+    expect((await r.json()).balance).toBe(ECONOMY.welcomeGrant - bundle.price!);
+    expect((await accounts.collection('alice-id')).map((c) => c.id).sort()).toEqual(bundle.cards.map((c) => c.id).sort());
+    // Not enough left for a legendary: refused, nothing added.
+    const legend = items.find((i) => i.price === prices.chocoboTrackLegendary)!;
+    expect((await call('token-alice', '/api/store/buy', 'POST', { key: legend.key })).status).toBe(402);
+    expect(await accounts.collection('alice-id')).toHaveLength(5);
+    expect((await call('token-alice', '/api/store/buy', 'POST', { key: 'not-for-sale' })).status).toBe(400);
   });
 
-  it('with a price, buying charges once and adds that foil printing', async () => {
-    prices.chocoboTrackFoil = 300;
+  it('nothing can be bought without a price', async () => {
+    prices.chocoboTrackOther = null;
     const { accounts, call } = await withAccounts();
     const { sets } = await (await call('token-alice', '/api/store')).json();
-    const item = sets[0].items[0];
-    const r = await call('token-alice', '/api/store/buy', 'POST', { id: item.id, price: 1 });
-    expect(r.status).toBe(200);
-    expect((await r.json()).balance).toBe(ECONOMY.welcomeGrant - 300);
-    expect(await accounts.collection('alice-id')).toEqual([{ id: item.id, finish: 'foil', count: 1 }]);
-    // Three more would cost 900 with 700 left: the last is refused and adds nothing.
-    expect((await call('token-alice', '/api/store/buy', 'POST', { id: item.id })).status).toBe(200);
-    expect((await call('token-alice', '/api/store/buy', 'POST', { id: item.id })).status).toBe(200);
-    expect((await call('token-alice', '/api/store/buy', 'POST', { id: item.id })).status).toBe(402);
-    expect(await accounts.collection('alice-id')).toEqual([{ id: item.id, finish: 'foil', count: 3 }]);
-    // Something that isn't in the Store can't be bought.
-    expect((await call('token-alice', '/api/store/buy', 'POST', { id: '00000000-0000-4000-8000-000000000001' })).status).toBe(400);
+    const item = (sets[0].items as Item[]).find((i) => i.name === 'Traveling Chocobo')!;
+    expect(item.price).toBeNull();
+    expect((await call('token-alice', '/api/store/buy', 'POST', { key: item.key })).status).toBe(400);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+  });
+});
+
+describe('basic land printings in decks', () => {
+  it('a deck may use any number of a basic land printing you own one copy of, and only of that land type', async () => {
+    const { BOOSTER_CARDS } = await import('@nexus/cards/boosters');
+    const track = (name: string) => BOOSTER_CARDS.find((c) => c.name === name && c.promoTypes?.includes('chocobotrackfoil'))!.id;
+    const plains = track('Plains');
+    const island = track('Island');
+    const { accounts, call } = await withAccounts();
+    await accounts.grantCards('alice-id', { kind: 'store_purchase', ref: 'lands', cost: 0, cards: [{ id: plains, finish: 'foil', count: 1 }] });
+    const base = { name: 'Lands', format: 'limited', cards: [], basics: { W: 40, U: 0, B: 0, R: 0, G: 0 } };
+    expect((await call('token-alice', '/api/decks', 'POST', { ...base, basics: { ...base.basics, printings: { W: { id: plains, finish: 'foil' } } } })).status).toBe(200);
+    // Not owned (the Island), not owned in that finish, or the wrong land type: refused.
+    expect((await call('token-alice', '/api/decks', 'POST', { ...base, basics: { ...base.basics, printings: { U: { id: island, finish: 'foil' } } } })).status).toBe(400);
+    expect((await call('token-alice', '/api/decks', 'POST', { ...base, basics: { ...base.basics, printings: { W: { id: plains, finish: 'nonfoil' } } } })).status).toBe(400);
+    await accounts.grantCards('alice-id', { kind: 'store_purchase', ref: 'island', cost: 0, cards: [{ id: island, finish: 'foil', count: 1 }] });
+    const wrong = await call('token-alice', '/api/decks', 'POST', { ...base, basics: { ...base.basics, printings: { W: { id: island, finish: 'foil' } } } });
+    expect(wrong.status).toBe(400);
+    expect((await wrong.json()).error).toMatch(/not a basic Plains/);
   });
 });

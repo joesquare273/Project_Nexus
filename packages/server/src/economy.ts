@@ -19,9 +19,15 @@ export const ECONOMY = {
   eventEntry: 600,
   /** Event prizes in Play Boosters, by place, for a 4-player event. */
   eventPrizes: [2, 1],
-  /** Store tab prices per item kind, set by the user; null shows "Price coming soon" and can't be bought. */
+  /**
+   * Store tab prices per item kind (null shows "Price coming soon" and can't
+   * be bought). Proposed 2026-10-30: a Collector Booster is 500, so the
+   * legendary Chocobo Track foils cost more than two.
+   */
   storePrices: {
-    chocoboTrackFoil: null as number | null,
+    chocoboTrackLegendary: 1200 as number | null,
+    chocoboTrackOther: 800 as number | null,
+    chocoboTrackLandBundle: 500 as number | null,
   },
 } as const;
 

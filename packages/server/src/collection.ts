@@ -6,6 +6,8 @@
 // can be saved.
 
 import { z } from 'zod';
+import { SCRYFALL_PRINTINGS } from '@nexus/cards';
+import { BOOSTER_CARDS } from '@nexus/cards/boosters';
 
 export const FINISHES = ['nonfoil', 'foil', 'surge'] as const;
 export type Finish = (typeof FINISHES)[number];
@@ -23,6 +25,16 @@ export const MAX_DECKS = 100;
 
 const ScryfallId = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 const Basic = z.number().int().min(0).max(99);
+const Printing = z.strictObject({ id: ScryfallId, finish: z.enum(FINISHES) });
+
+/** Each basic land type's subtype, for checking a chosen printing is that land. */
+export const BASIC_TYPES = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' } as const;
+
+/** Type lines of every printing the game knows, by Scryfall id (boosters, precons, Starter Kits). */
+const typeLines = new Map<string, string>([
+  ...Object.values(SCRYFALL_PRINTINGS).flatMap((p): [string, string][] => (p.scryfallId ? [[p.scryfallId, p.typeLine]] : [])),
+  ...BOOSTER_CARDS.map((c): [string, string] => [c.id, c.typeLine]),
+]);
 
 export const DeckInput = z.strictObject({
   /** Present when changing a saved deck. */
@@ -30,7 +42,23 @@ export const DeckInput = z.strictObject({
   name: z.string().trim().min(1).max(40),
   format: z.enum(DECK_FORMATS),
   cards: z.array(z.strictObject({ id: ScryfallId, finish: z.enum(FINISHES), count: z.number().int().min(1).max(99) })).max(250),
-  basics: z.strictObject({ W: Basic, U: Basic, B: Basic, R: Basic, G: Basic }),
+  basics: z.strictObject({
+    W: Basic,
+    U: Basic,
+    B: Basic,
+    R: Basic,
+    G: Basic,
+    /** Which owned printing each basic type uses (any number of them); without one, the default art. */
+    printings: z
+      .strictObject({
+        W: Printing.optional(),
+        U: Printing.optional(),
+        B: Printing.optional(),
+        R: Printing.optional(),
+        G: Printing.optional(),
+      })
+      .optional(),
+  }),
   /** Commander decks: the commander's printing id, which must be in `cards`. */
   commander: ScryfallId.nullable().optional(),
 });
@@ -51,6 +79,13 @@ export function deckProblem(deck: DeckInput, owned: readonly OwnedCard[]): strin
   for (const c of deck.cards) want.set(key(c), (want.get(key(c)) ?? 0) + c.count);
   for (const [k, n] of want) {
     if (n > (have.get(k) ?? 0)) return 'The deck uses cards you do not own.';
+  }
+  // Basic lands are free and unlimited in any printing the player owns at least one copy of.
+  for (const [color, printing] of Object.entries(deck.basics.printings ?? {})) {
+    if (!printing) continue;
+    if (!(have.get(key(printing)) ?? 0)) return 'The deck uses a basic land printing you do not own.';
+    const subtype = BASIC_TYPES[color as keyof typeof BASIC_TYPES];
+    if (!typeLines.get(printing.id)?.startsWith(`Basic Land — ${subtype}`)) return `That printing is not a basic ${subtype}.`;
   }
   if (deck.commander) {
     if (deck.format !== 'commander') return 'Only Commander decks have a commander.';

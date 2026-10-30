@@ -9,7 +9,7 @@ import { finishLook, finishName } from '@nexus/cards/boosters';
 import { accessToken } from '../account/AccountBar.tsx';
 import { CardShine } from '../components/Card.tsx';
 import { isUnbuilt, PRINTING_CARDS } from './browse.ts';
-import { deleteDeck, fetchDecks, saveDeck, type Basics, type Collection, type DeckDraft, type DeckFormat, type SavedDeck } from './collection.ts';
+import { deleteDeck, fetchDecks, saveDeck, type BasicColor, type Basics, type Collection, type DeckDraft, type DeckFormat, type SavedDeck } from './collection.ts';
 
 type Boosters = typeof import('@nexus/cards/boosters');
 
@@ -18,10 +18,11 @@ const FORMATS: { format: DeckFormat; label: string }[] = [
   { format: 'constructed', label: '60-card' },
   { format: 'commander', label: 'Commander (100)' },
 ];
-const BASIC_NAMES: Record<keyof Basics, string> = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
+const BASIC_NAMES: Record<BasicColor, string> = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
 const NO_BASICS: Basics = { W: 0, U: 0, B: 0, R: 0, G: 0 };
 
-const deckSize = (d: DeckDraft) => d.cards.reduce((n, c) => n + c.count, 0) + Object.values(d.basics).reduce((n, k) => n + k, 0);
+const COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
+const deckSize = (d: DeckDraft) => d.cards.reduce((n, c) => n + c.count, 0) + COLORS.reduce((n, k) => n + d.basics[k], 0);
 
 /** What the deck still needs to be legal to play, or null. `unbuilt` says which cards can't be used in games yet. */
 export function deckNote(d: DeckDraft, names: Map<string, string>, unbuilt: (id: string) => boolean = () => false): string | null {
@@ -191,6 +192,32 @@ function DeckEditor({
     const commander = deck.commander && cards.some((c) => c.id === deck.commander) ? deck.commander : null;
     onChange({ ...deck, cards, commander });
   };
+  // Basic land printings you own (at least one copy): each can be used any number of times.
+  const basicPrintings = useMemo(() => {
+    const out: Record<string, { id: string; finish: Finish; card: BoosterCard }[]> = {};
+    for (const [id, finishes] of Object.entries(collection.cards)) {
+      const card = byId.get(id);
+      const subtype = card && /^Basic Land — (\w+)/.exec(card.typeLine)?.[1];
+      if (!card || !subtype) continue;
+      for (const [finish, count] of Object.entries(finishes) as [Finish, number][]) if (count > 0) (out[subtype] ??= []).push({ id, finish, card });
+    }
+    return out;
+  }, [collection, byId]);
+  /** Other printings (art or finish) of a deck card's name that still have free copies. */
+  const otherArts = (c: { id: string; finish: Finish }) => {
+    const name = byId.get(c.id)?.name;
+    return pool.filter((e) => e.card.name === name && !(e.id === c.id && e.finish === c.finish) && e.count - inDeck(e.id, e.finish) > 0);
+  };
+  /** Moves as many copies as possible from one printing to another. */
+  const switchArt = (from: { id: string; finish: Finish; count: number }, to: { id: string; finish: Finish; count: number }) => {
+    const moved = Math.min(from.count, to.count - inDeck(to.id, to.finish));
+    const cards = deck.cards
+      .map((c) => (c.id === from.id && c.finish === from.finish ? { ...c, count: c.count - moved } : c.id === to.id && c.finish === to.finish ? { ...c, count: c.count + moved } : c))
+      .filter((c) => c.count > 0);
+    if (!cards.some((c) => c.id === to.id && c.finish === to.finish)) cards.push({ id: to.id, finish: to.finish, count: moved });
+    const commander = deck.commander === from.id && !cards.some((c) => c.id === from.id) ? to.id : deck.commander;
+    onChange({ ...deck, cards, commander });
+  };
   const legends = deck.cards.filter((c) => /Legendary/.test(byId.get(c.id)?.typeLine ?? '') && /Creature/.test(byId.get(c.id)?.typeLine ?? ''));
   const note = deckNote(deck, names, (id) => { const c = byId.get(id); return !!c && isUnbuilt(c); });
 
@@ -272,23 +299,65 @@ function DeckEditor({
                       <span className={`finish-tag chip-${finishLook(byId.get(c.id)!, c.finish)}`}> {finishName(byId.get(c.id)!, c.finish)}</span>
                     )}
                   </span>
+                  {otherArts(c).length > 0 && (
+                    <select
+                      className="deck-art"
+                      aria-label="Art"
+                      value=""
+                      onChange={(e) => {
+                        const to = otherArts(c)[Number(e.target.value)];
+                        if (to) switchArt(c, to);
+                      }}
+                    >
+                      <option value="">Art…</option>
+                      {otherArts(c).map((o, i) => (
+                        <option key={`${o.id}|${o.finish}`} value={i}>
+                          #{o.card.number} {o.card.set.toUpperCase()} · {finishName(o.card, o.finish)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </li>
               ))}
           </ul>
           <h3>Basic lands</h3>
           <div className="deck-basics">
-            {(Object.keys(BASIC_NAMES) as (keyof Basics)[]).map((k) => (
-              <label key={k}>
-                {BASIC_NAMES[k]}
-                <input
-                  type="number"
-                  min={0}
-                  max={99}
-                  value={deck.basics[k]}
-                  onChange={(e) => onChange({ ...deck, basics: { ...deck.basics, [k]: Math.max(0, Math.min(99, Math.floor(Number(e.target.value) || 0))) } })}
-                />
-              </label>
-            ))}
+            {COLORS.map((k) => {
+              const chosen = deck.basics.printings?.[k];
+              const options = basicPrintings[BASIC_NAMES[k]] ?? [];
+              return (
+                <label key={k}>
+                  {BASIC_NAMES[k]}
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    value={deck.basics[k]}
+                    onChange={(e) => onChange({ ...deck, basics: { ...deck.basics, [k]: Math.max(0, Math.min(99, Math.floor(Number(e.target.value) || 0))) } })}
+                  />
+                  {options.length > 0 && (
+                    <select
+                      aria-label={`${BASIC_NAMES[k]} art`}
+                      value={chosen ? `${chosen.id}|${chosen.finish}` : ''}
+                      onChange={(e) => {
+                        const pick = options.find((o) => `${o.id}|${o.finish}` === e.target.value);
+                        const printings = { ...deck.basics.printings };
+                        if (pick) printings[k] = { id: pick.id, finish: pick.finish };
+                        else delete printings[k];
+                        onChange({ ...deck, basics: { ...deck.basics, printings } });
+                      }}
+                    >
+                      <option value="">Default art</option>
+                      {options.map((o) => (
+                        <option key={`${o.id}|${o.finish}`} value={`${o.id}|${o.finish}`}>
+                          {o.card.set.toUpperCase()} #{o.card.number} · {finishName(o.card, o.finish)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+              );
+            })}
           </div>
         </section>
       </div>

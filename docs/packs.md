@@ -64,7 +64,7 @@ Our choices, where Wizards' figures don't map directly:
 | Foil rare or mythic | Rare 87.75%, mythic 12.25% |
 | 3 Booster Fun rares or mythics | Borderless and extended-art FIN cards, and the Commander set's extended-art and borderless cards (about half the time), at Wizards' odds; at most one of the three is foil, and they never repeat |
 | Through the Ages | Uncommon 68.3%, rare 25.7%, mythic 6%; foil half the time |
-| Premium rare or mythic | Foil borderless rare 70% or mythic 11.6%, surge foil borderless rare 15.1% or mythic 3%, Traveling Chocobo or Chocobo track foil 0.29%, serialized golden Traveling Chocobo 0.01%, foil Scene Box card (ours) |
+| Premium rare or mythic | Foil borderless rare 70% or mythic 11.6%, surge foil borderless rare 15.1% or mythic 3%, Traveling Chocobo variant 0.29% (Chocobo Track foils are sold in the Store instead, user decision 2026-10-30), serialized golden Traveling Chocobo 0.01%, foil Scene Box card (ours) |
 | Foil token | Foil double-sided token 90%, surge foil token 10% (ours) |
 
 Our choices, where Wizards' figures don't map directly:
@@ -148,3 +148,14 @@ come after Final Fantasy testing is complete.
   `commanderFinish` in the engine's game setup and `finish` on each card
   (public in redaction). Saved decks can't start games yet, so no game
   sets finishes until they can.
+
+## Art choices in decks (built 2026-10-30, user requirement)
+
+- **Basic lands:** a deck can use any number of a basic land printing the
+  player owns at least one copy of (in that finish); each basic type picks
+  its printing in the deck editor, or the default art. The server checks
+  the player owns it and that it really is that basic land
+  (`basics.printings` in a saved deck).
+- **Any card:** when the player owns more than one printing of a card
+  (different art or finish), the deck list's Art menu switches copies to
+  another owned printing.

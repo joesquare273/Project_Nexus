@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Store: single Chocobo Track foils, a land bundle; art choices in decks
+
+- Chocobo Track foils are Store-only now (taken out of Collector Boosters),
+  sold one at a time: legendary creatures 1,200 shards, the others 800. The
+  five Chocobo Track basic lands are one bundle for 500.
+- Decks: any basic land printing you own one copy of can be used any number
+  of times (pick it per land type, or the default art), and any card you
+  own in several printings can switch art from the deck list.
+- Next: build the 8 Store cards that aren't built yet (Cloud, Midgar
+  Mercenary; Stiltzkin; A Realm Reborn; Traveling Chocobo; Choco; Vivi
+  Ornitier; Yuna, Hope of Spira; Snapcaster Mage), then the Secret Lairs.
+
 ### S4 group 5: 18 more set cards
 
 - Valkyrie Aerial Unit, Adventurer's Airship, Summon: Choco/Mog, Summon:

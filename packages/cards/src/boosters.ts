@@ -111,7 +111,7 @@ export interface Sheets {
   commanderSurge: BoosterCard[];
   /** Secret Rendezvous alternate arts. */
   rendezvous: BoosterCard[];
-  /** Traveling Chocobo variants and Chocobo track foils. */
+  /** Traveling Chocobo variants. (Chocobo Track foils are Store-only here, by the user's choice.) */
   chocobo: BoosterCard[];
   goldenChocobo: BoosterCard[];
   /** Scene Box cards (not in real boosters; our addition). */
@@ -147,8 +147,7 @@ export function buildSheets(all: readonly BoosterCard[] = BOOSTER_CARDS): Sheets
     commanderSurge: fic.filter((c) => num(c) >= 209 && num(c) <= 216),
     rendezvous: fic.filter((c) => num(c) >= 217 && num(c) <= 219),
     chocobo: [
-      ...fin.filter((c) => /^551[a-d]$/.test(c.number) || (promo(c, 'chocobotrackfoil') && num(c) >= 564)),
-      ...fic.filter((c) => promo(c, 'chocobotrackfoil') && num(c) >= 466 && num(c) <= 477),
+      ...fin.filter((c) => /^551[a-d]$/.test(c.number)),
     ],
     goldenChocobo: fin.filter((c) => promo(c, 'serialized')),
     scene: fic.filter((c) => num(c) >= 442 && num(c) <= 465),
@@ -331,7 +330,7 @@ export const COLLECTOR_BOOSTER: Slot[] = [
       o('Foil borderless mythic', 11.6, (s) => s.borderless.mythic, 'foil', 3),
       o('Surge foil borderless rare', 15.1, (s) => s.surge.rare, 'surge', 3),
       o('Surge foil borderless mythic', 3, (s) => s.surge.mythic, 'surge', 3),
-      o('Traveling Chocobo or Chocobo track foil', 0.29, (s) => s.chocobo, 'foil', 3),
+      o('Traveling Chocobo variant', 0.29, (s) => s.chocobo, 'foil', 3),
       o('Serialized golden Traveling Chocobo', 0.01, (s) => s.goldenChocobo, 'foil', 3),
       o('Foil Scene Box card', 4, (s) => s.scene, 'foil', 3, { unofficial: true }),
     ],

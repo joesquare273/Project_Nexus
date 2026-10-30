@@ -1,5 +1,6 @@
-// The Store tab (economy step E4): exclusive printings bought one at a time,
-// divided by set (Final Fantasy: every Chocobo Track foil, lands included).
+// The Store tab (economy step E4): exclusive printings, divided by set (Final
+// Fantasy: each Chocobo Track foil on its own, and the five Chocobo Track
+// basic lands as a bundle).
 // The game server holds the catalog and prices; an item without a price yet
 // says "Price coming soon". Buying asks first, then the server charges the
 // shards and adds the card to the collection together.
@@ -14,11 +15,11 @@ import './packs.css';
 type Boosters = typeof import('@nexus/cards/boosters');
 
 interface StoreItem {
-  id: string;
+  key: string;
   name: string;
-  finish: Finish;
   line: string;
   price: number | null;
+  cards: { id: string; finish: Finish }[];
 }
 interface StoreSet {
   name: string;
@@ -60,13 +61,14 @@ export function StoreTab() {
       const res = await fetch('/api/store/buy', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id }),
+        body: JSON.stringify({ key: item.key }),
       });
       const body = (await res.json().catch(() => ({}))) as { balance?: number; error?: string };
       if (!res.ok || body.balance === undefined) throw new Error(body.error ?? 'That could not be bought. Try again.');
       showShards(body.balance);
-      const n = collection.cards[item.id] ?? {};
-      setCollection({ cards: { ...collection.cards, [item.id]: { ...n, [item.finish]: (n[item.finish] ?? 0) + 1 } } });
+      const cards = { ...collection.cards };
+      for (const c of item.cards) cards[c.id] = { ...cards[c.id], [c.finish]: (cards[c.id]?.[c.finish] ?? 0) + 1 };
+      setCollection({ cards });
       setBought(item.name);
     } catch (e) {
       setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server.');
@@ -93,15 +95,21 @@ export function StoreTab() {
       {bought && <p className="store-bought">{bought} is in your collection.</p>}
       <div className="store-grid">
         {shown.items.map((item) => {
-          const card: BoosterCard | undefined = byId.get(item.id);
-          const look = card ? finishLook(card, item.finish) : undefined;
-          const have = owned(collection, item.id);
+          const cards = item.cards.map((c) => ({ ...c, card: byId.get(c.id) as BoosterCard | undefined }));
+          const have = Math.min(...item.cards.map((c) => owned(collection, c.id)));
           return (
-            <div key={item.id} className="store-item">
-              <div className="binder-card have store-card">
-                {card && <img src={card.images[0]!.normal} alt={item.name} loading="lazy" />}
-                {look && <CardShine finish={look} />}
-                {have > 0 && <span className="finish-chip store-owned">Owned: {have}</span>}
+            <div key={item.key} className="store-item">
+              <div className={`store-cards ${cards.length > 1 ? 'bundle' : ''}`}>
+                {cards.map(({ id, finish, card }) => {
+                  const look = card ? finishLook(card, finish) : undefined;
+                  return (
+                    <div key={id} className="binder-card have store-card">
+                      {card && <img src={card.images[0]![cards.length > 1 ? 'small' : 'normal']} alt={card.name} loading="lazy" />}
+                      {look && <CardShine finish={look} />}
+                    </div>
+                  );
+                })}
+                {have > 0 && <span className="finish-chip store-owned">Owned{cards.length > 1 ? '' : `: ${have}`}</span>}
               </div>
               <div className="store-name">{item.name}</div>
               <div className="fineprint">{item.line}</div>

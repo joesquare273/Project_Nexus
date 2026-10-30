@@ -101,7 +101,7 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/starter: whether the free starter precon is still to pick, and the choices;
  *   POST /api/starter {precon}: grants it (once per account) and saves it as a deck.
  * - GET /api/store: the Store's sets and items with prices;
- *   POST /api/store/buy {id}: buys one copy of an item, paid and added at once.
+ *   POST /api/store/buy {key}: buys an item (a card or a bundle), paid and added at once.
  * - POST /api/packs/open {kind, count}: buys 1 or 10 boosters (10 come with a
  *   free bonus pack), opens them on the server and adds their cards to the
  *   collection, all at once.
@@ -136,13 +136,13 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
     }
     if (path === '/api/store' && method === 'GET') return json(res, 200, { sets: storeSets() });
     if (path === '/api/store/buy' && method === 'POST') {
-      const id = (await readJson(req) as { id?: unknown } | undefined)?.id;
-      const item = typeof id === 'string' ? storeItem(id) : undefined;
+      const key = (await readJson(req) as { key?: unknown } | undefined)?.key;
+      const item = typeof key === 'string' ? storeItem(key) : undefined;
       if (!item) return json(res, 400, { error: 'That isn’t for sale.' });
       if (item.price === null) return json(res, 400, { error: 'That doesn’t have a price yet.' });
       await accounts.ensure(user);
       try {
-        const { balance } = await accounts.grantCards(user.id, { kind: 'store_purchase', ref: randomUUID(), cost: item.price, cards: [{ id: item.id, finish: item.finish, count: 1 }] });
+        const { balance } = await accounts.grantCards(user.id, { kind: 'store_purchase', ref: randomUUID(), cost: item.price, cards: item.cards.map((c) => ({ ...c, count: 1 })) });
         return json(res, 200, { balance, item });
       } catch (e) {
         if (/insufficient/.test(String(e))) return json(res, 402, { error: `You need ${item.price} Aether Shards for that.` });

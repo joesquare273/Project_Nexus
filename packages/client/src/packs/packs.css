@@ -836,3 +836,22 @@
 .store-buy {
   margin-top: 2px;
 }
+.store-cards {
+  position: relative;
+}
+.store-cards.bundle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.deck-art {
+  margin-left: auto;
+  max-width: 120px;
+  font-size: 11px;
+}
+.deck-basics select {
+  display: block;
+  margin-top: 3px;
+  max-width: 100%;
+  font-size: 11px;
+}

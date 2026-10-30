@@ -52,7 +52,9 @@ export async function buyPacks(token: string, kind: PackKind, count: 1 | 10): Pr
 }
 
 export type DeckFormat = 'commander' | 'limited' | 'constructed';
-export type Basics = { W: number; U: number; B: number; R: number; G: number };
+export type BasicColor = 'W' | 'U' | 'B' | 'R' | 'G';
+/** How many of each basic land a deck has, and which owned printing each type uses (default art without one). */
+export type Basics = Record<BasicColor, number> & { printings?: Partial<Record<BasicColor, { id: string; finish: Finish }>> };
 
 /** A deck saved on the account (GET/POST /api/decks). */
 export interface SavedDeck {
