@@ -33,7 +33,7 @@ import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
 import { LifeTotals } from './LifeTotals.tsx';
-import { CardFace } from './Card.tsx';
+import { CardFace, ManaText } from './Card.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
@@ -709,6 +709,23 @@ export function Game({
           actions={<button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}>Put on bottom</button>}
         />
       )}
+      {(choosing?.purpose === 'search' || choosing?.purpose === 'digLands') && (
+        <CardList
+          view={view}
+          title={
+            choosing.purpose === 'search'
+              ? `Search your library: choose up to ${choosing.max} (${bottomPicks.length} chosen)`
+              : `Choose any lands to put onto the battlefield tapped (${bottomPicks.length} chosen)`
+          }
+          ids={choosing.cards}
+          h={h}
+          actions={
+            <button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}>
+              {choosing.purpose === 'search' ? (bottomPicks.length ? 'Take these' : 'Find nothing') : 'Done'}
+            </button>
+          }
+        />
+      )}
       {choosing?.purpose === 'hand' && (
         <CardList
           view={view}
@@ -1030,6 +1047,10 @@ function PromptBar(p: PromptProps) {
             ? 'to sacrifice'
             : c.purpose === 'battlefield'
               ? 'to put onto the battlefield (in your hand)'
+              : c.purpose === 'search'
+                ? `to find in your library (${c.searchTo === 'hand' ? 'into your hand' : 'onto the battlefield'}); then it's shuffled`
+              : c.purpose === 'digLands'
+                ? 'land cards to put onto the battlefield tapped; the rest go to your graveyard'
               : c.purpose === 'hand'
                 ? 'to put into your hand; the rest go on the bottom of your library'
                 : c.purpose === 'fateBottom' ? 'to put on the bottom of the caster’s library; the other returns to the battlefield tapped'
@@ -1185,7 +1206,7 @@ function PromptBar(p: PromptProps) {
       <div className="prompt-buttons">
         {buttons.map((b) => (
           <button key={b.label} className={b.primary ? 'primary' : ''} onClick={b.onClick}>
-            {b.label}
+            <ManaText text={b.label} />
           </button>
         ))}
       </div>

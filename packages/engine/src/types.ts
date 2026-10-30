@@ -1590,7 +1590,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1603,6 +1603,8 @@ export interface CardChoice {
   item?: string;
   /** digLands: every card looked at; those still in the library afterwards go to the graveyard. */
   looked?: InstanceId[];
+  /** search: where the found cards go (hand, or the battlefield, tapped or not); the library is shuffled afterwards. */
+  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped';
 }
 
 export interface Attack {

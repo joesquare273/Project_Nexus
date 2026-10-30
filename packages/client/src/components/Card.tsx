@@ -12,6 +12,16 @@ export function ManaCost({ cost, size = 14 }: { cost: string | undefined; size?:
   );
 }
 
+/** Text with mana symbols: every "{W}", "{2}" or "{R}{G}" in it is drawn as its symbol ("Add {G}", "Pay {1}: add {R}{G}"). */
+export function ManaText({ text, size = 15 }: { text: string; size?: number }) {
+  const parts = text.split(/((?:{[^}]+})+)/);
+  return (
+    <span className="mana-text">
+      {parts.map((part, i) => (/^{/.test(part) ? <ManaCost key={i} cost={part} size={size} /> : part))}
+    </span>
+  );
+}
+
 /** A drawn card frame, for when Scryfall's image can't load (offline, or a card not fetched yet). */
 function DrawnCard({ def }: { def: CardDefinition }) {
   const text = rulesText(def);

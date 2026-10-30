@@ -2263,3 +2263,10 @@ button.phase.current {
 .inspector-card {
   position: relative;
 }
+
+/* Mana symbols inside button and menu text ("Add {G}"). */
+.mana-text .mana-cost {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 0 2px;
+}

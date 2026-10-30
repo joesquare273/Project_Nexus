@@ -122,6 +122,9 @@ export function settle(
       action = { type: 'ChooseLegend', player: p.player, keep: p.cards[0]! };
     } else if (p.kind === 'commanderZone') {
       action = { type: 'CommanderZone', player: p.player, toCommand: true };
+    } else if (p.kind === 'chooseCards' && p.purpose === 'search') {
+      // A library search: the first matching cards, as many as allowed.
+      action = { type: 'ChooseCards', player: p.player, cards: p.cards.slice(0, p.max) };
     } else if (p.kind === 'surveil') {
       action = { type: 'Surveil', player: p.player, toGraveyard: opts.surveilToGraveyard ?? false };
     } else if (p.kind === 'priority' && s.stack.length > 0) {

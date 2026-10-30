@@ -445,6 +445,14 @@ cards than before. Tests that need a particular random outcome set
 - So a set can open for packs and collecting once its cards and images are
   imported, without waiting for every card to be built.
 
+## 2026-10-30: Library searches are choices
+
+- "Search your library for ..." (to the hand or the battlefield, Path to
+  Exile's search, landcycling) offers the searcher every matching card and
+  lets them take up to the number allowed, or none (rule 701.19b); the
+  library is shuffled afterwards. Only the searcher sees the cards. Before,
+  the engine took the first matches itself.
+
 ## 2026-10-30: Store cards (simplifications)
 
 - **Vivi Ornitier's {0} mana ability** is an activated ability that uses the

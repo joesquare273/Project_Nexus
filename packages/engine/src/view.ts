@@ -126,8 +126,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   }
   const stats: Record<InstanceId, PermanentStats> = {};
   const surveilled = (s.pending.kind === 'surveil' || s.pending.kind === 'exileTop') && s.pending.player === viewer ? s.pending.card : null;
-  // Cards being looked at to choose from ("look at the top seven cards of your library").
-  const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer && s.pending.purpose === 'hand' ? s.pending.cards : [];
+  // Cards being looked at to choose from ("look at the top seven cards of your library", a library search).
+  const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer && ['hand', 'search', 'digLands'].includes(s.pending.purpose) ? s.pending.cards : [];
   for (const c of Object.values(s.cards)) {
     const faceDown = c.zone === 'exile' && ((c.foretoldTurn !== undefined && c.owner !== viewer) || (c.linkedExile !== undefined && !c.linkedExile.lookers.includes(viewer)));
     const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled || lookingAt.includes(c.id));

@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### You choose what a library search finds; mana symbols on buttons
+
+- Library searches (Cloud, landcycling, ramp spells, Path to Exile) let the
+  searcher pick from every matching card, or find nothing; then the
+  library is shuffled. The board lists the cards to choose from, only for
+  the searcher. The AI takes its best matches; the test helper takes the
+  first, as the engine used to.
+- Choco's land choice also lists its cards, with its own prompt.
+- Buttons and menus draw mana as symbols ("Add {G}" shows the green
+  symbol) instead of text.
+
 ### Every Store card is built: Cloud, Traveling Chocobo, Choco
 
 - Cloud, Midgar Mercenary; Traveling Chocobo; Choco, Seeker of Paradise,

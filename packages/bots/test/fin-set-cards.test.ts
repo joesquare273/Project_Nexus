@@ -3,8 +3,8 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, activatedAbilities, countersOf, currentDefinition, getLegalActions, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
+import { type Target, activatedAbilities, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
 const heroes = (s: GameState, who: string) => s.players[who]!.battlefield.filter((id) => s.cards[id]!.defId === 'hero-token');
@@ -1079,5 +1079,41 @@ describe('Store cards: Cloud, Traveling Chocobo, Choco', () => {
     s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: choco, defender: 'P2' }] });
     s = answer(settle(s).state, []);
     expect(s.cards[bolt]!.zone).toBe('graveyard');
+  });
+});
+
+describe('library searches are the player’s choice', () => {
+  it('Cloud’s search offers every Equipment in the library; the player picks one or none, then the library is shuffled', () => {
+    let s = newGame();
+    const fist = put(s, 'P1', 'monks-fist', 'library');
+    const bow = put(s, 'P1', 'bards-bow', 'library');
+    put(s, 'P1', 'coeurl', 'library');
+    const cloud = put(s, 'P1', 'cloud-midgar-mercenary', 'hand');
+    mana(s, 'P1', { W: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cloud });
+    for (let guard = 0; guard < 10 && s.pending.kind === 'priority' && s.stack.length > 0; guard++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect(s.pending.purpose).toBe('search');
+    expect([...s.pending.cards].sort()).toEqual([fist, bow].sort());
+    expect([s.pending.min, s.pending.max]).toEqual([0, 1]);
+    // The second Equipment, not the first one found.
+    const r = actWithEvents(s, { type: 'ChooseCards', player: 'P1', cards: [bow] });
+    expect(r.state.cards[bow]!.zone).toBe('hand');
+    expect(r.state.cards[fist]!.zone).toBe('library');
+    expect(r.events.some((e) => e.type === 'LibraryShuffled' && e.player === 'P1')).toBe(true);
+  });
+
+  it('a player may find nothing, and only the searcher sees the choices', () => {
+    let s = newGame();
+    const fist = put(s, 'P1', 'monks-fist', 'library');
+    const cloud = put(s, 'P1', 'cloud-midgar-mercenary', 'hand');
+    mana(s, 'P1', { W: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cloud });
+    for (let guard = 0; guard < 10 && s.pending.kind === 'priority' && s.stack.length > 0; guard++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(viewFor(s, 'P1').cards[fist]).toBeDefined();
+    expect(viewFor(s, 'P2').cards[fist]).toBeUndefined();
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect(s.cards[fist]!.zone).toBe('library');
   });
 });

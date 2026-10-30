@@ -2269,38 +2269,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'SearchLibraryToBattlefield':
       // Usually "you search"; Path to Exile has the exiled creature's controller search.
-      for (const searcher of targetPlayers(targets)) {
-        const p = s.players[searcher]!;
-        // One card, or up to `amount` ("up to X basic land cards"; simplified: as many as possible).
-        const howMany = effect.amount === undefined ? 1 : amount;
-        const found = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher })).slice(0, howMany);
-        for (const id of found) {
-          moveCard(ctx, id, 'battlefield');
-          const c = s.cards[id]!;
-          c.controller = searcher;
-          c.summoningSick = true;
-          if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
-        }
-        shuffleInPlace(s, p.library);
-        ctx.ev.push({ type: 'LibraryShuffled', player: searcher });
-      }
+      for (const searcher of targetPlayers(targets)) queueSearch(s, r, searcher, effect, amount, effect.entersTapped ? 'battlefieldTapped' : 'battlefield');
       return;
     case 'SearchLibraryToHand': {
-      const p = s.players[item.controller]!;
-      const howMany = effect.amount === undefined ? 1 : amount;
-      const found = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })).slice(0, howMany);
       const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && hasType(s, c, 'land')).length;
       const behind = effect.toBattlefieldIfBehindOnLands && alivePlayers(s).some((pid) => lands(pid) > lands(item.controller));
-      for (const id of found) {
-        moveCard(ctx, id, behind ? 'battlefield' : 'hand');
-        if (!behind) continue;
-        const c = s.cards[id]!;
-        c.controller = item.controller;
-        c.summoningSick = true;
-        c.tapped = true;
-      }
-      shuffleInPlace(s, p.library);
-      ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
+      queueSearch(s, r, item.controller, effect, amount, behind ? 'battlefieldTapped' : 'hand');
       return;
     }
   }
@@ -2348,6 +2322,14 @@ function continueResolving(ctx: Ctx): void {
         continue;
       }
       r.choiceQueue![0] = { ...dig, cards: left, max: left.length };
+    }
+    // A search that finds nothing to choose: just the shuffle.
+    const empty = r.choiceQueue?.[0];
+    if (empty?.purpose === 'search' && empty.cards.length === 0) {
+      shuffleInPlace(s, player(s, empty.player).library);
+      ctx.ev.push({ type: 'LibraryShuffled', player: empty.player });
+      r.choiceQueue = r.choiceQueue!.slice(1);
+      continue;
     }
     // Players still to choose cards (discard, sacrifice) for the last effect.
     const choice = (r.choiceQueue ?? []).find((c) => !s.players[c.player]!.eliminated);
@@ -2655,6 +2637,20 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const printing = original.printing ?? def.printing;
       createToken(ctx, original.defId, pending.player, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
     }
+  } else if (pending.purpose === 'search') {
+    for (const id of cards) {
+      if (pending.searchTo === 'hand') {
+        moveCard(ctx, id, 'hand');
+        continue;
+      }
+      moveCard(ctx, id, 'battlefield');
+      const c = s.cards[id]!;
+      c.controller = pending.player;
+      c.summoningSick = true;
+      if (pending.searchTo === 'battlefieldTapped' || entersTapped(s, c)) c.tapped = true;
+    }
+    shuffleInPlace(s, player(s, pending.player).library);
+    ctx.ev.push({ type: 'LibraryShuffled', player: pending.player });
   } else if (pending.purpose === 'digLands') {
     for (const id of cards) {
       moveCard(ctx, id, 'battlefield');
@@ -2783,6 +2779,18 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
   if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
   s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
   continueResolving(ctx);
+}
+
+/**
+ * "Search your library for ...": the searcher chooses from the matching
+ * cards (one, or up to `amount`), and may find none (rule 701.19b); the
+ * library is shuffled after the choice.
+ */
+function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped'): void {
+  const p = s.players[searcher]!;
+  const cards = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
+  const max = Math.min(effect.amount === undefined ? 1 : amount, cards.length);
+  r.choiceQueue = [...(r.choiceQueue ?? []), { player: searcher, purpose: 'search', cards, min: 0, max, searchTo }];
 }
 
 /** The ChooseCards answer for "enter as a copy": none, or one creature still on the battlefield. */

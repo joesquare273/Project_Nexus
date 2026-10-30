@@ -571,6 +571,10 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
   // Cards for our hand: the best.
   if (p.purpose === 'hand') return pick(byValue.reverse().slice(0, p.max));
+  // A library search: the best matching cards, as many as allowed.
+  if (p.purpose === 'search') return pick(byValue.reverse().slice(0, p.max));
+  // Choco: every land.
+  if (p.purpose === 'digLands') return pick([...p.cards]);
   // Hideaway: the best spell (a land found this way still needs a land play).
   if (p.purpose === 'hideaway') return pick([byValue.findLast((id) => !isLandCard(s, id)) ?? byValue.at(-1)!]);
   // Espers to Magicite: an artifact copy of the best creature card.
