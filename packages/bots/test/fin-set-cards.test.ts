@@ -905,3 +905,92 @@ describe('S4 group 5: more enters, attacks and chapters', () => {
     expect(s.cards[target]!.tapped).toBe(true);
   });
 });
+
+describe('Store cards: Vivi, Yuna, A Realm Reborn, Stiltzkin, Snapcaster Mage', () => {
+  const castIt = (s: GameState, defId: string, pool: Parameters<typeof mana>[2]) => {
+    const spell = put(s, 'P1', defId, 'hand');
+    mana(s, 'P1', pool);
+    return { s: cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state, spell };
+  };
+
+  it('Vivi Ornitier: {0} adds X blue or red mana (X = his power), once each turn on your turn; noncreature spells grow him and ping', () => {
+    let s = newGame(3);
+    const vivi = put(s, 'P1', 'vivi-ornitier', 'battlefield', { counters: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: vivi, ability: 0 }).state;
+    expect(s.pending.kind).toBe('chooseMana');
+    expect(rejected(s, { type: 'ChooseMana', player: 'P1', mana: 'G' })).toMatch(/U, R/);
+    s = settle(act(s, { type: 'ChooseMana', player: 'P1', mana: 'R' })).state;
+    expect(s.players.P1!.manaPool.R).toBe(2);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: vivi, ability: 0 })).toMatch(/once each turn/);
+    // A noncreature spell (Night's Whisper, its {1} paid with Vivi's red): a counter and 1 damage to each opponent.
+    s = castIt(s, 'nights-whisper', { B: 1 }).s;
+    expect(countersOf(s.cards[vivi]!, '+1/+1')).toBe(3);
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([19, 19]);
+  });
+
+  it('Vivi’s mana ability works only during your turn', () => {
+    let s = newGame();
+    const vivi = put(s, 'P2', 'vivi-ornitier', 'battlefield', { counters: 1 });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P2', card: vivi, ability: 0 })).toMatch(/during your turn/);
+  });
+
+  it('Yuna gives herself and your enchantment creatures trample, lifelink and ward 2 on your turn', () => {
+    const s = newGame();
+    const yuna = put(s, 'P1', 'yuna-hope-of-spira');
+    const summon = put(s, 'P1', 'summon-choco-mog');
+    const plain = put(s, 'P1', 'coeurl');
+    for (const id of [yuna, summon]) expect(hasKeyword(s, s.cards[id]!, 'Trample') && hasKeyword(s, s.cards[id]!, 'Lifelink')).toBe(true);
+    expect(hasKeyword(s, s.cards[plain]!, 'Trample')).toBe(false);
+  });
+
+  it('Yuna returns an enchantment card at your end step with a finality counter, which exiles it instead of dying', () => {
+    let s = newGame();
+    put(s, 'P1', 'yuna-hope-of-spira');
+    const summon = put(s, 'P1', 'summon-choco-mog', 'graveyard');
+    s = settle(goTo(s, 'end'), { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === summon)) ?? o[0]! }).state;
+    expect(s.cards[summon]!.zone).toBe('battlefield');
+    expect(countersOf(s.cards[summon]!, 'finality')).toBe(1);
+    s.players.P1!.manaPool.R = 1;
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(summon)] })).state;
+    expect(s.cards[summon]!.zone).toBe('exile');
+  });
+
+  it('A Realm Reborn gives your other permanents "{T}: Add one mana of any color"', () => {
+    let s = newGame();
+    put(s, 'P1', 'a-realm-reborn');
+    const pot = put(s, 'P1', 'magic-pot');
+    const theirs = put(s, 'P2', 'magic-pot');
+    const offered = getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility' && a.card === pot);
+    expect(offered.map((a) => a.type === 'ActivateManaAbility' && a.mana).sort()).toEqual(['B', 'G', 'R', 'U', 'W']);
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === theirs)).toBe(false);
+    const action = offered.find((a) => a.type === 'ActivateManaAbility' && a.mana === 'G')!;
+    s = act(s, action);
+    expect(s.players.P1!.manaPool.G).toBe(1);
+    expect(s.cards[pot]!.tapped).toBe(true);
+  });
+
+  it('Stiltzkin gives an opponent another permanent of yours, and you draw if they get it', () => {
+    let s = newGame(3);
+    const stiltzkin = put(s, 'P1', 'stiltzkin-moogle-merchant');
+    const gift = put(s, 'P1', 'magic-pot');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: stiltzkin, ability: 0, targets: [{ kind: 'player', player: 'P3' }, card(gift)] }).state;
+    expect(s.cards[gift]!.controller).toBe('P3');
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Snapcaster Mage lets you cast an instant from your graveyard this turn, then it’s exiled', () => {
+    let s = newGame();
+    const bolt = put(s, 'P1', 'lightning-bolt', 'graveyard');
+    const mage = put(s, 'P1', 'snapcaster-mage', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mage }, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === bolt)) ?? o[0]! }).state;
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(17);
+    expect(s.cards[bolt]!.zone).toBe('exile');
+  });
+});

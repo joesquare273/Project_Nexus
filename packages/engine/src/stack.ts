@@ -1006,6 +1006,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
+  if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
@@ -1757,7 +1758,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       s.extraCombats = (s.extraCombats ?? 0) + 1;
       return;
     case 'GainControl': {
-      const receiver = effect.giveTo === 'SubjectController' ? (item.kind === 'ability' ? item.subjectController : undefined) : item.controller;
+      const chosen = effect.giveTo === 'TargetPlayer' ? item.targets[effect.from ?? 0] : undefined;
+      const receiver =
+        effect.giveTo === 'SubjectController'
+          ? item.kind === 'ability' ? item.subjectController : undefined
+          : effect.giveTo === 'TargetPlayer'
+            ? chosen?.kind === 'player' ? chosen.player : undefined
+            : item.controller;
       if (!receiver || s.players[receiver]!.eliminated) return;
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
@@ -1768,6 +1775,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (c.attachedTo) delete c.attachedTo;
         if (effect.whileYouControlSource) c.controlWhile = { source, sourceObject: item.kind === 'spell' ? 0 : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0), controller: receiver, previous };
         ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver });
+        r.controlChanged = true;
       }
       return;
     }
@@ -1958,7 +1966,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source);
         return;
       }
-      if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount };
+      if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(effect.manaTypes ? { options: [...effect.manaTypes] } : {}) };
       return;
     }
     case 'CopyCreature': {
@@ -2345,6 +2353,7 @@ function continueResolving(ctx: Ctx): void {
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
     if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
     if (effect.if === 'castFromHand' && !(item.kind === 'spell' && item.castFrom === 'hand')) continue;
+    if (effect.if === 'controlChanged' && !r.controlChanged) continue;
     const kicked = item.kind === 'spell' && (item.kicks ?? 0) > 0;
     if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
@@ -2741,6 +2750,7 @@ export function exileTop(ctx: Ctx, playerId: PlayerId, exile: boolean): void {
 export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
   const s = ctx.s, pending = s.pending;
   if (pending.kind !== 'chooseMana' || pending.player !== playerId || !s.resolving || !COLORS.includes(mana as never)) reject('Choose a color of mana for the resolving ability.');
+  if (pending.options && !pending.options.includes(mana as never)) reject(`Choose one of: ${pending.options.join(', ')}.`);
   if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
   s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
   continueResolving(ctx);

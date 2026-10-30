@@ -445,6 +445,18 @@ cards than before. Tests that need a particular random outcome set
 - So a set can open for packs and collecting once its cards and images are
   imported, without waiting for every card to be built.
 
+## 2026-10-30: Store cards (simplifications)
+
+- **Vivi Ornitier's {0} mana ability** is an activated ability that uses the
+  stack (the engine's mana abilities all tap), and each activation adds its
+  X mana in one chosen color (blue or red) rather than any combination. Its
+  limits (your turn, once each turn) are enforced.
+- **Snapcaster Mage** uses the engine's "may cast it from your graveyard
+  this turn, then exile it" permission, which is what flashback until end
+  of turn does (paying the card's mana cost).
+- **Finality counters** exile a permanent instead of putting it into a
+  graveyard from the battlefield (rule 122.1h).
+
 ## 2026-10-29: Transforming double-faced cards
 
 - A transforming card's definition has a `backFace` (rule 712); a

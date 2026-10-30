@@ -11,6 +11,7 @@ import ficPrecons from '../data/fic-precons.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import preconPrintings from '../data/precon-printings.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
+import storeCards from '../data/store-cards.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 import { validateCardList } from './validate.ts';
 
@@ -23,7 +24,8 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
  * set and Through the Ages are in fin-set.json (scripts/import-sets.ts, for
  * sealed play); tokens are in tokens.json.
  */
-const all = [...lands, ...fin, ...fic, ...finSet, ...tokens];
+// store-cards.json: cards sold only in the Store that no set file defines (Snapcaster Mage).
+const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...tokens];
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 

@@ -280,7 +280,7 @@ export function validateCardDefinition(raw: unknown): string[] {
 }
 
 function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
-  if (e.giveTo && (e.effect !== 'GainControl' || e.giveTo !== 'SubjectController')) err('giveTo is only for GainControl to SubjectController.');
+  if (e.giveTo && (e.effect !== 'GainControl' || !['SubjectController', 'TargetPlayer'].includes(e.giveTo))) err('giveTo is only for GainControl (SubjectController or TargetPlayer).');
   if (e.attacking && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This' || !inAbility)) err('attacking is only for ReturnToBattlefield on This in an ability.');
   if (e.sameObject && (!inAbility || (e.target !== 'This' && e.effect !== 'CopyCreature' && !(e.effect === 'Sacrifice' && e.target === 'You' && e.filter?.self)))) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
@@ -329,7 +329,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   if (e.effect === 'Counter' && e.target !== 'TargetSpell' && e.target !== 'TargetAbility') err('Counter needs a TargetSpell or TargetAbility target.');
-  if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
+  if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked', 'controlChanged'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
   if (e.whileYouControlSource && e.effect !== 'GrantKeywords' && e.effect !== 'GainControl') err('whileYouControlSource is only for GrantKeywords and GainControl.');
   if (e.effect === 'Fight' && !inAbility) err('Fight is only for abilities (the source creature fights).');
@@ -460,7 +460,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
   for (const cond of st.conditions ?? []) {
     if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'attached'].includes(cond)) e(`unknown condition "${cond}".`);
   }
-  if (st.grantsMana && (st.affects !== 'EquippedCreature' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types on EquippedCreature.');
+  if (st.grantsMana && (st.affects === 'Self' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types, on EquippedCreature or EachMatching.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
   validateAmount(st.power, e);
   validateAmount(st.toughness, e);

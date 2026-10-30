@@ -628,7 +628,8 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'chooseMana') {
       const recipient = s.players[pending.recipient]!;
       const want = (pending.recipient === pending.player ? recipient.hand : []).flatMap(id=>{ const cost=parseManaCost(def(s,s.cards[id]!).manaCost); return ['W','U','B','R','G'].filter(k=>(cost[k as 'W']??0)>recipient.manaPool[k as 'W']); });
-      const mana = (want[0] ?? 'W') as 'W'|'U'|'B'|'R'|'G';
+      const options = pending.options ?? ['W','U','B','R','G'];
+      const mana = (want.find((k) => options.includes(k as never)) ?? options[0]) as 'W'|'U'|'B'|'R'|'G';
       return { type:'ChooseMana',player:pending.player,mana };
     }
     if (pending.kind === 'chooseDefender') {

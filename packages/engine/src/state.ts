@@ -189,6 +189,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   c.zoneChanges = (c.zoneChanges ?? 0) + 1;
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';
+  // A finality counter: "if it would be put into a graveyard from the battlefield, exile it instead" (rule 122.1h).
+  if (from === 'battlefield' && to === 'graveyard' && (c.namedCounters?.finality ?? 0) > 0) to = 'exile';
   if (c.phasedOut) phaseIn(ctx, c, true);
   const fromList = zoneList(s, c.owner, from);
   if (fromList) {

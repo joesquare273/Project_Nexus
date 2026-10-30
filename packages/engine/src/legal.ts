@@ -438,7 +438,7 @@ export function getLegalActions(s: GameState): Action[] {
         .map((cards): Action => ({ type: 'ChooseCards', player: pending.player, cards }));
 
     case 'chooseMana':
-      return COLORS.map(mana => ({ type: 'ChooseMana', player: pending.player, mana }));
+      return (pending.options ?? COLORS).map(mana => ({ type: 'ChooseMana', player: pending.player, mana }));
     case 'exileTop':
       return [{ type: 'ExileTop', player: pending.player, exile: false }, { type: 'ExileTop', player: pending.player, exile: true }];
     case 'surveil':

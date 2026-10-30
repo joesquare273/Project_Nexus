@@ -8961,6 +8961,23 @@
     "scryfallId": "d0e53c71-6a58-4ea1-a550-f3cbd749eafd",
     "relatedTokens": []
   },
+  "snapcaster-mage": {
+    "name": "Snapcaster Mage",
+    "typeLine": "Creature — Human Wizard",
+    "oracleText": "Flash\nWhen this creature enters, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost. (You may cast that card from your graveyard for its flashback cost. Then exile it.)",
+    "set": "fic",
+    "number": "469",
+    "artist": "Canata Katana",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/7/4790a887-26dd-4a5f-9b85-10346cb6328b.jpg?1783904647",
+      "normal": "https://cards.scryfall.io/normal/front/4/7/4790a887-26dd-4a5f-9b85-10346cb6328b.jpg?1783904647",
+      "large": "https://cards.scryfall.io/large/front/4/7/4790a887-26dd-4a5f-9b85-10346cb6328b.jpg?1783904647",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/7/4790a887-26dd-4a5f-9b85-10346cb6328b.jpg?1783904647"
+    },
+    "scryfallUri": "https://scryfall.com/card/fic/469/snapcaster-mage?utm_source=api",
+    "scryfallId": "4790a887-26dd-4a5f-9b85-10346cb6328b",
+    "relatedTokens": []
+  },
   "snort": {
     "name": "Snort",
     "typeLine": "Sorcery",

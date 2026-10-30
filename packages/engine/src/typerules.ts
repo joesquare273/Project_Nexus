@@ -214,8 +214,17 @@ export function canCastLibraryTop(s: GameState, player: string, c: CardInstance,
 }
 /** Each entry is an ability of the equipped creature, distinct from its printed mana abilities. */
 export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[] }[] {
-  if (c.zone !== 'battlefield' || c.phasedOut || !currentDefinition(s,c).types.includes('creature')) return [];
-  return Object.values(s.cards).filter((equipment) => equipment.zone === 'battlefield' && !equipment.phasedOut && equipment.attachedTo === c.id)
-    .flatMap((equipment) => (currentDefinition(s, equipment).statics ?? []).filter((spec) => spec.affects === 'EquippedCreature' && spec.grantsMana)
-      .map((spec) => ({ source: equipment.id, mana: spec.grantsMana! })));
+  if (c.zone !== 'battlefield' || c.phasedOut) return [];
+  const sources = Object.values(s.cards).filter((source) => source.zone === 'battlefield' && !source.phasedOut);
+  // An Equipment's "equipped creature has ..." (Summoning Materia).
+  const fromEquipment = !currentDefinition(s, c).types.includes('creature')
+    ? []
+    : sources.filter((equipment) => equipment.attachedTo === c.id).flatMap((equipment) =>
+        (currentDefinition(s, equipment).statics ?? []).filter((spec) => spec.affects === 'EquippedCreature' && spec.grantsMana).map((spec) => ({ source: equipment.id, mana: spec.grantsMana! })));
+  // "Other permanents you control have '{T}: Add one mana of any color'" (A Realm Reborn).
+  const fromStatics = sources.flatMap((source) =>
+    (currentDefinition(s, source).statics ?? [])
+      .filter((spec) => spec.affects === 'EachMatching' && spec.grantsMana && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id }))
+      .map((spec) => ({ source: source.id, mana: spec.grantsMana! })));
+  return [...fromEquipment, ...fromStatics];
 }

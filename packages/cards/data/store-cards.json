@@ -1,0 +1,3 @@
+[
+  {"id":"snapcaster-mage","name":"Snapcaster Mage","types":["creature"],"subtypes":["Human","Wizard"],"manaCost":"{1}{U}","power":2,"toughness":1,"colorIdentity":["U"],"keywords":["Flash"],"printing":{"set":"fic","number":"469"},"triggers":[{"when":"EntersBattlefield","effects":[{"effect":"AllowCastFromGraveyard","target":"TargetCardInGraveyard","filter":{"types":["instant","sorcery"],"controller":"You"},"upTo":true}]}]}
+]

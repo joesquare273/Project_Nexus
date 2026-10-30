@@ -1094,7 +1094,7 @@ function PromptBar(p: PromptProps) {
     ];
   } else if (pending.kind === 'chooseMana') {
     text = 'Choose a color of mana to add.';
-    buttons = COLORS.map(mana=>({label:'Add {' + mana + '}',onClick:()=>p.submit([{type:'ChooseMana',player:YOU,mana}])}));
+    buttons = (pending.options ?? COLORS).map(mana=>({label:'Add {' + mana + '}',onClick:()=>p.submit([{type:'ChooseMana',player:YOU,mana}])}));
   } else if (pending.kind === 'exileTop') {
     text = 'Draw Arcanum: exile ' + cardName(s, pending.card) + ' face down, or leave it on top?';
     buttons = [

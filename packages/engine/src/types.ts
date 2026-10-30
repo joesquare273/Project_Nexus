@@ -78,7 +78,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow', 'cell'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -505,8 +505,8 @@ export interface EffectSpec {
   copyBuffBoth?: boolean;
   /** GrantTrigger: the combat damage ability to grant until cleanup. */
   trigger?: TriggerSpec;
-  /** GainControl: give the permanent to the player captured by the trigger. */
-  giveTo?: 'SubjectController';
+  /** GainControl: give the permanent to the player captured by the trigger, or to the player chosen as target `from` ("target opponent gains control"). */
+  giveTo?: 'SubjectController' | 'TargetPlayer';
   /** Affect the source only if it is still the same object as when it triggered. */
   sameObject?: boolean;
   effect: EffectKind;
@@ -560,7 +560,10 @@ export interface EffectSpec {
   /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
   toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
-  if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked';
+  /** `controlChanged`: only if an earlier GainControl of the same ability changed a permanent's controller ("if they do"). */
+  if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked' | 'controlChanged';
+  /** AddMana without manaType: the colors the player may choose from (default any color). */
+  manaTypes?: Color[];
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
   /** Only happens if the source has at least this many +1/+1 counters ("then if it has three or more +1/+1 counters on it"). */
@@ -873,6 +876,8 @@ export interface ActivatedSpec {
   equip?: boolean;
   /** "Activate only once each turn." */
   oncePerTurn?: boolean;
+  /** "Activate only during your turn." */
+  yourTurn?: boolean;
   effects: EffectSpec[];
 }
 
@@ -1517,6 +1522,8 @@ export interface Resolving {
   returnedObjects?: Record<InstanceId, number>;
   /** The non-target defending-player choice for entering attacking. */
   attackingDefender?: PlayerId;
+  /** A GainControl of this ability changed a permanent's controller. */
+  controlChanged?: boolean;
   /** PutFromHand with enchantmentsEnterAttacking: the player a chosen enchantment card attacks. */
   putAttackingDefender?: PlayerId;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
@@ -1605,7 +1612,7 @@ export interface CombatState {
 /** Whose decision the game is waiting on. */
 export type Pending =
   | { kind: 'copyCreature'; player: PlayerId; source: InstanceId; target: InstanceId; sourceObject: number; targetObject: number; effect: EffectSpec }
-  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number }
+  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[] }
   | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[] }
   | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }

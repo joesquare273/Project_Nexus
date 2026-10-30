@@ -5,6 +5,21 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Store cards built: Vivi, Yuna, A Realm Reborn, Stiltzkin, Snapcaster Mage
+
+- Vivi Ornitier, Yuna, Hope of Spira, A Realm Reborn and Stiltzkin, Moogle
+  Merchant are built; Snapcaster Mage gets its first definition
+  (`data/store-cards.json`, for Store-only cards no set file defines), each
+  with a test.
+- Engine: finality counters; GainControl to a targeted player, with "if
+  they do" (`if: 'controlChanged'`); "activate only during your turn";
+  AddMana limited to some colors (`manaTypes`, shown as the only buttons);
+  "other permanents you control have '{T}: Add ...'" (`grantsMana` on
+  EachMatching statics).
+- Still unbuilt in the Store: Cloud, Midgar Mercenary; Traveling Chocobo;
+  Choco, Seeker of Paradise (they need "triggers an additional time" and
+  casting from the top of the library). Then the Secret Lairs.
+
 ### Store: single Chocobo Track foils, a land bundle; art choices in decks
 
 - Chocobo Track foils are Store-only now (taken out of Collector Boosters),
