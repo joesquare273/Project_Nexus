@@ -102,6 +102,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     if (!Number.isInteger(a)) err('amounts must be whole numbers.');
     return;
   }
+  if ('matching' in a) return;
   if ('of' in a) {
     const kinds = [
       'previousTargetPower',

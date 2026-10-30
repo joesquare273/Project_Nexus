@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Every Store card is built: Cloud, Traveling Chocobo, Choco
+
+- Cloud, Midgar Mercenary; Traveling Chocobo; Choco, Seeker of Paradise,
+  each with tests. All 25 Chocobo Track foils in the Store now work in
+  games.
+- Engine: "triggers an additional time" (`extraTriggers` statics: a
+  permanent's own and its Equipment's triggers while equipped, or triggers
+  caused by a matching permanent entering), playing lands and casting
+  matching spells from the top of the library (`playFromLibraryTop`), the
+  `DigForLands` effect, and a "number of matching permanents" amount.
+- Next: the Final Fantasy Secret Lairs.
+
 ### Store cards built: Vivi, Yuna, A Realm Reborn, Stiltzkin, Snapcaster Mage
 
 - Vivi Ornitier, Yuna, Hope of Spira, A Realm Reborn and Stiltzkin, Moogle

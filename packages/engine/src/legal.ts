@@ -489,10 +489,10 @@ export function getLegalActions(s: GameState): Action[] {
       const p = s.players[player]!;
       const actions: Action[] = [{ type: 'PassPriority', player }, ...manaAbilities(s, player)];
       if (canActAtSorcerySpeed(s, player) && p.landsPlayedThisTurn < 1) {
-        const lands = [...p.hand, ...s.turnOrder.flatMap((pid) => s.players[pid]!.exile)].filter((id) => {
+        const lands = [...p.hand, ...s.turnOrder.flatMap((pid) => s.players[pid]!.exile), ...p.library.slice(0, 1)].filter((id) => {
           const c = s.cards[id]!;
           const zone = playableZone(s, player, c);
-          return (zone === 'hand' || zone === 'exile') && currentDefinition(s, c).types.includes('land') && !currentDefinition(s, c).notBuilt;
+          return (zone === 'hand' || zone === 'exile' || zone === 'library') && currentDefinition(s, c).types.includes('land') && !currentDefinition(s, c).notBuilt;
         });
         for (const card of lands) {
           // Snarls: reveal to enter untapped, or play it tapped anyway.

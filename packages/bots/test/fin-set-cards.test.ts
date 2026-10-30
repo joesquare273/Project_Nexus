@@ -994,3 +994,90 @@ describe('Store cards: Vivi, Yuna, A Realm Reborn, Stiltzkin, Snapcaster Mage', 
     expect(s.cards[bolt]!.zone).toBe('exile');
   });
 });
+
+describe('Store cards: Cloud, Traveling Chocobo, Choco', () => {
+  /** Answers each card choice with the given picks (by id), or the minimum. */
+  const answer = (s: GameState, picks: string[] = []): GameState => {
+    for (let guard = 0; guard < 6 && s.pending.kind === 'chooseCards'; guard++) {
+      const p = s.pending;
+      const wanted = p.cards.filter((id) => picks.includes(id)).slice(0, p.max);
+      s = settle(act(s, { type: 'ChooseCards', player: p.player, cards: wanted.length >= p.min ? wanted : p.cards.slice(0, p.min) })).state;
+    }
+    return s;
+  };
+
+  it('Cloud, Midgar Mercenary finds an Equipment as he enters', () => {
+    let s = newGame();
+    const fist = put(s, 'P1', 'monks-fist', 'library');
+    const cloud = put(s, 'P1', 'cloud-midgar-mercenary', 'hand');
+    mana(s, 'P1', { W: 2 });
+    s = answer(cast(s, { type: 'CastSpell', player: 'P1', card: cloud }).state, [fist]);
+    expect(s.cards[fist]!.zone).toBe('hand');
+  });
+
+  it('while Cloud is equipped, his Equipment’s triggers trigger an additional time', () => {
+    let s = newGame();
+    const cloud = put(s, 'P1', 'cloud-midgar-mercenary');
+    put(s, 'P1', 'thiefs-knife', 'battlefield', { attachedTo: cloud });
+    const hand = s.players.P1!.hand.length;
+    s = fight(s, [{ attacker: cloud, defender: 'P2' }]).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+    // The same Knife on another creature draws once.
+    let t = newGame();
+    const other = put(t, 'P1', 'coeurl');
+    put(t, 'P1', 'cloud-midgar-mercenary');
+    put(t, 'P1', 'thiefs-knife', 'battlefield', { attachedTo: other });
+    const before = t.players.P1!.hand.length;
+    t = fight(t, [{ attacker: other, defender: 'P2' }]).state;
+    expect(t.players.P1!.hand.length).toBe(before + 1);
+  });
+
+  it('Traveling Chocobo: play a land and cast a Bird from the top of your library', () => {
+    let s = newGame();
+    put(s, 'P1', 'traveling-chocobo');
+    const bird = put(s, 'P1', 'sazhs-chocobo', 'library');
+    const land = put(s, 'P1', 'forest', 'library');
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === land)).toBe(true);
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(s.cards[land]!.zone).toBe('battlefield');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bird }).state;
+    expect(s.cards[bird]!.zone).toBe('battlefield');
+  });
+
+  it('Traveling Chocobo: a land entering makes your landfall abilities trigger an additional time', () => {
+    let s = newGame();
+    put(s, 'P1', 'traveling-chocobo');
+    const sazh = put(s, 'P1', 'sazhs-chocobo');
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(countersOf(s.cards[sazh]!, '+1/+1')).toBe(2);
+  });
+
+  it('Choco looks at one card per attacking Bird: one to your hand, lands onto the battlefield tapped, the rest to the graveyard', () => {
+    let s = newGame();
+    const choco = put(s, 'P1', 'choco-seeker-of-paradise');
+    const sazh = put(s, 'P1', 'sazhs-chocobo', 'battlefield', { counters: 1 });
+    const spell = put(s, 'P1', 'lightning-bolt', 'library');
+    const land = put(s, 'P1', 'forest', 'library');
+    const keep = put(s, 'P1', 'coeurl', 'library');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: choco, defender: 'P2' }, { attacker: sazh, defender: 'P2' }] });
+    s = answer(settle(s).state, [keep, land]);
+    // Two Birds attacked: the top two (the Coeurl and the Forest) were looked at; the Bolt stays on top.
+    expect(s.cards[keep]!.zone).toBe('hand');
+    expect(s.cards[land]!.zone).toBe('battlefield');
+    expect(s.cards[land]!.tapped).toBe(true);
+    expect(s.cards[spell]!.zone).toBe('library');
+  });
+
+  it('Choco: cards not taken go to the graveyard', () => {
+    let s = newGame();
+    const choco = put(s, 'P1', 'choco-seeker-of-paradise');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: choco, defender: 'P2' }] });
+    s = answer(settle(s).state, []);
+    expect(s.cards[bolt]!.zone).toBe('graveyard');
+  });
+});

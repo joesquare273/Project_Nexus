@@ -203,10 +203,16 @@ function librarySources(s: GameState, player: string): CardInstance[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player);
 }
 export function visibleLibraryTop(s: GameState, player: string): string | undefined {
-  return librarySources(s, player).some((c) => currentDefinition(s, c).lookAtLibraryTop) ? s.players[player]?.library[0] : undefined;
+  return librarySources(s, player).some((c) => currentDefinition(s, c).lookAtLibraryTop || currentDefinition(s, c).playFromLibraryTop) ? s.players[player]?.library[0] : undefined;
 }
 export function canCastLibraryTop(s: GameState, player: string, c: CardInstance, definition = currentDefinition(s, c)): boolean {
-  if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id || !definition.types.includes('creature')) return false;
+  if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id) return false;
+  // "You may play lands and cast Bird spells from the top of your library" (Traveling Chocobo).
+  if (librarySources(s, player).some((source) => {
+    const filter = currentDefinition(s, source).playFromLibraryTop;
+    return !!filter && matchesObject(s, filter, c, { controller: player, source: source.id });
+  })) return true;
+  if (!definition.types.includes('creature')) return false;
   return librarySources(s, player).some((source) => {
     const host = source.attachedTo ? s.cards[source.attachedTo] : undefined;
     return currentDefinition(s, source).castCreaturesFromLibraryTopWhileAttached && !!host && host.zone === 'battlefield' && !host.phasedOut && currentDefinition(s,host).types.includes('creature');

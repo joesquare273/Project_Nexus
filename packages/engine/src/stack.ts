@@ -686,7 +686,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   const c = card(s, id);
   const p = player(s, playerId);
   const from = playableZone(s, playerId, c);
-  if (from !== 'hand' && from !== 'exile') reject('That card is not in your hand.');
+  if (from !== 'hand' && from !== 'exile' && from !== 'library') reject('That card is not in your hand.');
   if (!hasType(s, c, 'land')) reject('Only lands are played this way; cast spells with CastSpell.');
   if (defOf(s, c).notBuilt) reject(`${defOf(s, c).name} isn't built yet.`);
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
@@ -2092,6 +2092,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.cards[picked]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, ownerLosesLife: true };
       }
       return;
+    case 'DigForLands': {
+      const looked = topOfLibrary(s, item.controller, amount);
+      if (looked.length === 0) return;
+      r.choiceQueue = [
+        ...(r.choiceQueue ?? []),
+        { player: item.controller, purpose: 'hand', cards: looked, min: 0, max: 1 },
+        { player: item.controller, purpose: 'digLands', cards: looked.filter((id) => hasType(s, s.cards[id]!, 'land')), min: 0, max: looked.length, looked },
+      ];
+      return;
+    }
     case 'Hideaway': {
       const looked = topOfLibrary(s, item.controller, amount);
       if (looked.length > 0) {
@@ -2327,6 +2337,17 @@ function continueResolving(ctx: Ctx): void {
       r.choiceQueue = r.choiceQueue.map((choice) => choice.purpose === 'reanimate'
         ? { ...choice, cards: choice.cards.filter((id) => s.cards[id]?.zone === 'graveyard' && !reserved.has(id)) }
         : choice).filter((choice) => choice.purpose !== 'reanimate' || choice.cards.length > 0);
+    }
+    // Choco: the lands are chosen from the looked-at cards still in the library; with none, the rest go straight to the graveyard.
+    const dig = r.choiceQueue?.[0];
+    if (dig?.purpose === 'digLands') {
+      const left = dig.cards.filter((id) => s.cards[id]?.zone === 'library');
+      if (left.length === 0) {
+        for (const id of dig.looked ?? []) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+        r.choiceQueue = r.choiceQueue!.slice(1);
+        continue;
+      }
+      r.choiceQueue![0] = { ...dig, cards: left, max: left.length };
     }
     // Players still to choose cards (discard, sacrifice) for the last effect.
     const choice = (r.choiceQueue ?? []).find((c) => !s.players[c.player]!.eliminated);
@@ -2634,6 +2655,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const printing = original.printing ?? def.printing;
       createToken(ctx, original.defId, pending.player, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
     }
+  } else if (pending.purpose === 'digLands') {
+    for (const id of cards) {
+      moveCard(ctx, id, 'battlefield');
+      const c = s.cards[id]!;
+      c.controller = pending.player;
+      c.tapped = true;
+    }
+    for (const id of pending.looked ?? []) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
   } else if (pending.purpose === 'hideaway') {
     const source = sourceOf(r.item);
     const sourceObject = r.item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (r.item.sourceObject ?? 0);

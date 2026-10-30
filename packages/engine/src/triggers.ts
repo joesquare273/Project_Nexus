@@ -418,10 +418,38 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     }
   }
 
+  // "... triggers an additional time" (Cloud, Midgar Mercenary; Traveling Chocobo): one more copy per applicable ability.
+  const doubled = found.flatMap((t) => [t, ...Array.from({ length: extraTriggerCount(s, t) }, () => structuredClone(t))]);
+  found.length = 0;
+  found.push(...doubled);
   // APNAP order. Each player's own triggers keep the order they were found in.
   const order = aliveFromActive(s);
   const rank = (t: QueuedTrigger) => order.indexOf(t.controller);
   s.triggerQueue.push(...found.filter((t) => rank(t) >= 0).sort((a, b) => rank(a) - rank(b)));
+}
+
+/** How many extra times a found trigger triggers, from "triggers an additional time" abilities its controller has. */
+function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
+  if (t.rule || t.ability < 0) return 0;
+  const source = s.cards[t.source];
+  const spec = t.spec;
+  let extra = 0;
+  for (const p of battlefield(s)) {
+    if (p.phasedOut || p.controller !== t.controller) continue;
+    for (const st of defOf(s, p).statics ?? []) {
+      const more = st.extraTriggers;
+      if (!more) continue;
+      if (more.selfAndEquipment) {
+        const equipped = battlefield(s).some((e) => e.attachedTo === p.id && defOf(s, e).subtypes?.includes('Equipment'));
+        if (equipped && (t.source === p.id || source?.attachedTo === p.id)) extra++;
+      }
+      if (more.entering && spec?.when === 'EntersBattlefield' && t.subject) {
+        const subject = s.cards[t.subject];
+        if (subject && source?.controller === p.controller && matchesObject(s, more.entering, subject, { controller: p.controller, source: p.id })) extra++;
+      }
+    }
+  }
+  return extra;
 }
 
 function specOf(s: GameState, t: QueuedTrigger): TriggerSpec {

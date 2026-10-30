@@ -254,6 +254,12 @@ export const EFFECT_KINDS = [
    * bottom in a random order.
    */
   'Hideaway',
+  /**
+   * Look at the top `amount` cards: you may put one into your hand, then put
+   * any number of land cards from among them onto the battlefield tapped and
+   * the rest into your graveyard (Choco, Seeker of Paradise).
+   */
+  'DigForLands',
   /** Exile one card matching `filter` from each graveyard, linked to this permanent, face up (Summon: Esper Valigarmanda). */
   'ExileFromEachGraveyard',
   /** You may cast one card exiled with this permanent this turn; with `anyManaType`, mana of any type can be spent on it. */
@@ -443,6 +449,8 @@ export type Amount =
   | number
   /** `times` multiplies the total ("twice the number of creature cards in your graveyard"). */
   | { count: CountKind[]; times?: number }
+  /** How many permanents match, from the controller's point of view ("look at that many cards", one per attacking Bird). */
+  | { matching: ObjectFilter }
   /**
    * From earlier in the same spell or ability: the previous target's power,
    * permanents destroyed, or the cards chosen in the last choice (how many,
@@ -917,6 +925,15 @@ export interface StaticSpec {
    * turn ("the second spell you cast each turn costs {2} less").
    */
   spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean };
+  /**
+   * "... triggers an additional time": a triggered ability of a permanent
+   * this one's controller controls triggers once more. `selfAndEquipment`:
+   * abilities of this permanent and Equipment attached to it, while it's
+   * equipped (Cloud, Midgar Mercenary); `entering`: abilities triggered by
+   * a permanent matching this filter entering (Traveling Chocobo: a land or
+   * Bird you control).
+   */
+  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter };
   /** Ward (rule 702.21): each affected permanent has ward with this cost (Bronze Guardian). */
   ward?: number;
   /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
@@ -967,6 +984,8 @@ export interface CardDefinition {
   lookAtLibraryTop?: boolean;
   /** While attached to a creature, its controller may cast creature spells from their library's top. */
   castCreaturesFromLibraryTopWhileAttached?: boolean;
+  /** Its controller may play cards matching this from the top of their library: lands and spells (Traveling Chocobo: lands and Birds). */
+  playFromLibraryTop?: ObjectFilter;
   id: CardDefId;
   name: string;
   /** Mana cost in standard notation, e.g. "{2}{R}{W}". Absent for lands and tokens. */
@@ -1571,7 +1590,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1582,6 +1601,8 @@ export interface CardChoice {
   onePerType?: CardType[];
   /** copyOnEntry: the permanent spell waiting on the stack for the choice. */
   item?: string;
+  /** digLands: every card looked at; those still in the library afterwards go to the graveyard. */
+  looked?: InstanceId[];
 }
 
 export interface Attack {

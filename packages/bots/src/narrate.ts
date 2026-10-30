@@ -85,6 +85,7 @@ function amountText(a: Amount | undefined): string {
     if (a.of === 'subjectCounters') return 'that many';
     return 'the number of permanents destroyed this way';
   }
+  if ('matching' in a) return 'that many';
   const times = a.times && a.times !== 1 ? `${a.times === 2 ? 'twice' : `${a.times} times`} ` : '';
   return `X (${times}the number of ${a.count.map((k) => COUNT_TEXT[k] ?? k).join(' plus ')})`;
 }
@@ -241,6 +242,8 @@ function effectText(e: EffectSpec): string {
       return `${who} exiles cards from the top of their library until they exile a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; you may cast it without paying its mana cost`;
     case 'ExileRandomFromOpponentGraveyards':
       return "exile a card at random from each opponent's graveyard; you may cast spells among them without paying their mana costs";
+    case 'DigForLands':
+      return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
     case 'ExileFromEachGraveyard':
