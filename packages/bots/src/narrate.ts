@@ -261,6 +261,7 @@ function effectText(e: EffectSpec): string {
       }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'AnimateVehicle': return 'become an artifact creature until end of turn';
+    case 'CantCastSpellsThisTurn': return "they can't cast spells this turn";
     case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;
     case 'ExileAndReturn': return `exile it, then return it to the battlefield ${e.transformed ? 'transformed' : '(front face up)'}`;
     case 'FlipCoin': return 'flip a coin';

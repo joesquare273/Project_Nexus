@@ -784,6 +784,7 @@ export function spellCost(
 
 /** Conqueror's Flail: whether an opponent's attached Flail stops this player casting spells right now. */
 export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
+  if (s.players[playerId]?.cantCastTurn === s.turnNumber) return true;
   if (s.activePlayer === playerId) return false;
   return battlefield(s).some(
     (source) =>
@@ -799,7 +800,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const printed = defOf(s, c);
   if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
   const def = spellDefinition(printed, choice.adventure);
-  if (castingForbidden(s, playerId)) reject("You can't cast spells during this player's turn (Conqueror's Flail).");
+  if (castingForbidden(s, playerId)) reject("You can't cast spells right now (Silence, Conqueror's Flail).");
   const naturalFrom = playableZone(s, playerId, c, choice.adventure, false);
   const group = choice.castGroup !== undefined
     ? castGroupsFor(s,playerId,c).find(g=>g.id===choice.castGroup) ?? reject('That shared casting permission is no longer available.')
@@ -835,7 +836,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const x = choice.x ?? 0;
   if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
   if (alternative && permission?.free) reject('An alternative cost cannot be combined with casting without paying its mana cost.');
-  if (x > 0 && permission?.free) reject('X is 0 when a spell is cast without paying its mana cost.');
+  if (x > 0 && permission?.free && !def.additionalCost?.lifeX) reject('X is 0 when a spell is cast without paying its mana cost.');
+  if (def.additionalCost?.lifeX && player(s, playerId).life < x) reject(`You need ${x} life to pay for X.`);
   const kicks = choice.kicks ?? 0;
   if (!Number.isInteger(kicks) || kicks < 0) reject('Kick a whole number of times.');
   if (kicks > 0 && !def.kicker && !def.multikicker) reject(`${def.name} has no kicker.`);
@@ -879,6 +881,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const spentScryMana: CreatureScryMana[] = [];
   const manaSpent = payMana(ctx, playerId, cost, { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature') }, spentScryMana);
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
+  // "As an additional cost, pay X life" (Toxic Deluge).
+  if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const discarded of costCards) discard(ctx, discarded);
   for (const k of convoked) tap(ctx, k);
   for (const k of escalated) tap(ctx, k);
@@ -1854,6 +1858,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ...(effect.free ? { free: true } : {}) };
       }
       return;
+    case 'CantCastSpellsThisTurn':
+      for (const pid of targetPlayers(targets)) player(s, pid).cantCastTurn = s.turnNumber;
+      return;
     case 'PreventDamageToYouThisTurn':
       player(s, item.controller).preventDamageTurn = s.turnNumber;
       return;
@@ -1921,10 +1928,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           source,
           affected: id,
           ...(effect.power !== undefined || effect.powerFromAmount
-            ? { power: (effect.power ?? 0) + (effect.powerFromAmount ? amount : 0) }
+            ? { power: (effect.power ?? 0) + (effect.powerFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
             : {}),
           ...(effect.toughness !== undefined || effect.toughnessFromAmount
-            ? { toughness: (effect.toughness ?? 0) + (effect.toughnessFromAmount ? amount : 0) }
+            ? { toughness: (effect.toughness ?? 0) + (effect.toughnessFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
             : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),

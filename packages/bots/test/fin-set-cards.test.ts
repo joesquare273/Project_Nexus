@@ -1192,3 +1192,38 @@ describe('Secret Lair cards: Gilded Lotus, Damn, Cyclonic Rift', () => {
     expect([s.cards[a]!.zone, s.cards[b]!.zone, s.cards[land]!.zone, s.cards[mine]!.zone]).toEqual(['hand', 'hand', 'battlefield', 'battlefield']);
   });
 });
+
+describe('Secret Lair: Silence', () => {
+  it('your opponents can’t cast spells this turn', () => {
+    let s = newGame();
+    const silence = put(s, 'P1', 'silence', 'hand');
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: silence }).state;
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    mana(s, 'P2', { R: 1 });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [{ kind: 'player', player: 'P1' }] })).toMatch(/can't cast spells/);
+  });
+});
+
+describe('Secret Lair: Toxic Deluge', () => {
+  it('pay X life as you cast it; all creatures get -X/-X until end of turn', () => {
+    let s = newGame();
+    const small = put(s, 'P2', 'coeurl');
+    const big = put(s, 'P2', 'jumbo-cactuar');
+    const deluge = put(s, 'P1', 'toxic-deluge', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    const toughness = stats(s, small)[1]!;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: deluge, x: toughness }).state;
+    expect(s.players.P1!.life).toBe(20 - toughness);
+    expect(s.cards[small]!.zone).toBe('graveyard');
+    expect(s.cards[big]!.zone).toBe('battlefield');
+  });
+
+  it('can’t pay more life than you have', () => {
+    const s = newGame();
+    const deluge = put(s, 'P1', 'toxic-deluge', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: deluge, x: 25 })).toMatch(/life/);
+  });
+});

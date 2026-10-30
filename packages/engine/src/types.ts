@@ -332,6 +332,8 @@ export const EFFECT_KINDS = [
   'Counter',
   /** "Prevent all damage that would be dealt to you this turn." */
   'PreventDamageToYouThisTurn',
+  /** The target players can't cast spells this turn (Silence: "your opponents"). */
+  'CantCastSpellsThisTurn',
   /** For each target player, you choose `amount` permanents matching `filter` they control, then destroy them (Ultimate Magic: Meteor). */
   'ChooseAndDestroy',
   /** "Until your next turn, creatures can't attack you unless their controller pays {amount} for each of those creatures." */
@@ -526,6 +528,8 @@ export interface EffectSpec {
   token?: CardDefId;
   /** ModifyPT. */
   power?: number;
+  /** ModifyPT: subtract `amount` instead of adding it ("-X/-X"). */
+  subtractAmount?: boolean;
   /** ModifyPT: `amount` is added to `power` ("+X/+0, where X is the number of Soldiers you control"). */
   powerFromAmount?: boolean;
   /** ModifyPT: `amount` is added to `toughness` too ("+1/+1 for each opponent you attacked"). */
@@ -1129,7 +1133,8 @@ export interface CardDefinition {
   /** "This spell can't be countered." */
   cantBeCountered?: boolean;
   /** "As an additional cost to cast this spell, discard a card": chosen with the action (`costCards`). */
-  additionalCost?: { discard: number };
+  /** Additional costs: discard cards, or pay X life (Toxic Deluge: X chosen as the spell is cast). */
+  additionalCost?: { discard?: number; lifeX?: boolean };
   /** Ward {N} (rule 702.21). */
   ward?: number;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
@@ -1387,6 +1392,8 @@ export interface PlayerState {
   attackTaxes?: number[];
   /** "Prevent all damage that would be dealt to you this turn": the turn it applies to. */
   preventDamageTurn?: number;
+  /** Can't cast spells during this turn (Silence). */
+  cantCastTurn?: number;
   /** Cards drawn this turn. Reset as each turn begins. */
   cardsDrawnThisTurn?: number;
   conceded: boolean;

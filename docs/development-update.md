@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair cards: Silence and Toxic Deluge
+
+- Silence: a new effect, `CantCastSpellsThisTurn`, marks each opponent
+  (`cantCastTurn`, redacted as a copy) so they can't cast spells for the rest
+  of the turn.
+- Toxic Deluge: an additional cost of X life (`additionalCost.lifeX`), paid
+  after the mana and refused when the caster has less life than X; ModifyPT
+  can now subtract the amount (`subtractAmount`) for -X/-X.
+
 ### Starting balance 2,000 and a daily login reward
 
 - Every account starts with 2,000 Aether Shards: the 1,000 welcome grant

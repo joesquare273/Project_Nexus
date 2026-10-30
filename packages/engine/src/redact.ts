@@ -223,6 +223,7 @@ const PLAYER_FIELDS = {
   lostToEffect: 'copy',
   attackTaxes: 'copy',
   preventDamageTurn: 'copy',
+  cantCastTurn: 'copy',
   cardsDrawnThisTurn: 'copy',
   conceded: 'copy',
   phasedOut: 'refs',
