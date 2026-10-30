@@ -292,3 +292,21 @@ describe('Secret Lairs in the Store', () => {
     expect((await accounts.collection('alice-id')).length).toBe(6);
   });
 });
+
+describe('precons in the Store', () => {
+  it('sells the four precons; buying one adds its 100 cards and saves it as a Commander deck', async () => {
+    const { accounts, call } = await withAccounts();
+    accounts.apply('alice-id', 5000, 'admin_adjustment', 'test-shards');
+    type Item = { key: string; price: number | null; deck?: { name: string; commander: string } };
+    const items: Item[] = (await (await call('token-alice', '/api/store')).json()).sets[0].items;
+    const precons = items.filter((i) => i.deck);
+    expect(precons).toHaveLength(4);
+    expect(precons.every((p) => p.price === ECONOMY.storePrices.precon)).toBe(true);
+    const r = await call('token-alice', '/api/store/buy', 'POST', { key: precons[0]!.key });
+    expect(r.status).toBe(200);
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
+    const decks = (await (await call('token-alice', '/api/decks')).json()).decks;
+    expect(decks).toHaveLength(1);
+    expect(decks[0]).toMatchObject({ format: 'commander', commander: precons[0]!.deck!.commander });
+  });
+});

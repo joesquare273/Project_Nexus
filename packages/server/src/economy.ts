@@ -31,6 +31,8 @@ export const ECONOMY = {
     /** A whole Secret Lair drop (5 cards and its foil bonus card): cheaper than its cards one by one. */
     secretLairDrop: 3500 as number | null,
     secretLairSingle: 1000 as number | null,
+    /** A FINAL FANTASY Commander precon (100 cards, saved as a deck): about two Collector Boosters' worth. */
+    precon: 2000 as number | null,
   },
 } as const;
 

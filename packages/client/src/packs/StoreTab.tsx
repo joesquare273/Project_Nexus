@@ -19,7 +19,9 @@ interface StoreItem {
   name: string;
   line: string;
   price: number | null;
-  cards: { id: string; finish: Finish }[];
+  cards: { id: string; finish: Finish; count?: number }[];
+  cover?: string;
+  deck?: { name: string; commander: string };
 }
 interface StoreSet {
   name: string;
@@ -67,9 +69,9 @@ export function StoreTab() {
       if (!res.ok || body.balance === undefined) throw new Error(body.error ?? 'That could not be bought. Try again.');
       showShards(body.balance);
       const cards = { ...collection.cards };
-      for (const c of item.cards) cards[c.id] = { ...cards[c.id], [c.finish]: (cards[c.id]?.[c.finish] ?? 0) + 1 };
+      for (const c of item.cards) cards[c.id] = { ...cards[c.id], [c.finish]: (cards[c.id]?.[c.finish] ?? 0) + (c.count ?? 1) };
       setCollection({ cards });
-      setBought(item.name);
+      setBought(item.deck ? `${item.name}: its 100 cards and a saved Commander deck (Packs → Decks)` : item.name);
     } catch (e) {
       setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server.');
     } finally {
@@ -95,8 +97,9 @@ export function StoreTab() {
       {bought && <p className="store-bought">{bought} is in your collection.</p>}
       <div className="store-grid">
         {shown.items.map((item) => {
-          const cards = item.cards.map((c) => ({ ...c, card: byId.get(c.id) as BoosterCard | undefined }));
-          const have = Math.min(...item.cards.map((c) => owned(collection, c.id)));
+          const shownCards = item.cover ? item.cards.filter((c) => c.id === item.cover) : item.cards;
+          const cards = shownCards.map((c) => ({ ...c, card: byId.get(c.id) as BoosterCard | undefined }));
+          const have = item.deck ? 0 : Math.min(...item.cards.map((c) => owned(collection, c.id)));
           return (
             <div key={item.key} className="store-item">
               <div className={`store-cards ${cards.length > 1 ? 'bundle' : ''}`}>

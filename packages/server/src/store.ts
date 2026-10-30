@@ -5,6 +5,7 @@
 
 import { BOOSTER_CARDS, SECRET_LAIR_CARDS, SECRET_LAIR_DROPS, type BoosterCard, type Finish } from '@nexus/cards/boosters';
 import { ECONOMY } from './economy.ts';
+import { STARTER_CHOICES, preconCards } from './starter.ts';
 
 export interface StoreItem {
   /** Stable id for buying: a card's Scryfall id, or a bundle's name. */
@@ -14,8 +15,12 @@ export interface StoreItem {
   line: string;
   /** Shards, or null until a price is set. */
   price: number | null;
-  /** The cards it adds, one copy each. */
-  cards: { id: string; finish: Finish }[];
+  /** The cards it adds (one copy each unless `count` says more). */
+  cards: { id: string; finish: Finish; count?: number }[];
+  /** The printing shown for it, when it's too many cards to show them all (a precon's commander). */
+  cover?: string;
+  /** A precon: also saved to the buyer's decks as a Commander deck with this commander. */
+  deck?: { name: string; commander: string };
 }
 
 export interface StoreSet {
@@ -70,6 +75,20 @@ export function storeSets(): StoreSet[] {
           price: prices.secretLairSingle,
           cards: [{ id: c.id, finish: secretLairFinish(c) }],
         })),
+        // The four FINAL FANTASY Commander precons, each saved as a deck when bought.
+        ...STARTER_CHOICES.map((choice) => {
+          const precon = preconCards(choice.name)!;
+          const name = choice.name.replace(/\s*\(.*\)$/, '');
+          return {
+            key: `precon-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+            name: choice.name,
+            line: `Commander precon (${choice.commander}): 100 cards, saved as a deck`,
+            price: prices.precon,
+            cards: precon.cards,
+            cover: precon.commander,
+            deck: { name, commander: precon.commander },
+          };
+        }),
         // The five Chocobo Track basic lands, sold together.
         {
           key: 'fin-chocobo-track-lands',

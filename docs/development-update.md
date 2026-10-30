@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Precons in the Store
+
+- The Store sells the four FINAL FANTASY Commander precons for 2,000 shards
+  each: the 100 cards go to the collection and the deck is saved, ready to
+  play, like the free starter. Buying one again adds more copies.
+- Next (user requirement): Commander games use only decks the player owns;
+  the precon picker goes away, and saved decks start games.
+
 ### FINAL FANTASY Secret Lairs in the Store
 
 - Imported the 24 FINAL FANTASY Secret Lair printings from Scryfall

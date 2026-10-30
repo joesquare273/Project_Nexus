@@ -142,8 +142,13 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
       if (item.price === null) return json(res, 400, { error: 'That doesn’t have a price yet.' });
       await accounts.ensure(user);
       try {
-        const { balance } = await accounts.grantCards(user.id, { kind: 'store_purchase', ref: randomUUID(), cost: item.price, cards: item.cards.map((c) => ({ ...c, count: 1 })) });
-        return json(res, 200, { balance, item });
+        const cards = item.cards.map((c) => ({ id: c.id, finish: c.finish, count: c.count ?? 1 }));
+        const { balance } = await accounts.grantCards(user.id, { kind: 'store_purchase', ref: randomUUID(), cost: item.price, cards });
+        // A precon is also saved as a ready-to-play Commander deck.
+        if (item.deck) {
+          await accounts.saveDeck(user.id, { name: item.deck.name, format: 'commander', cards, basics: { W: 0, U: 0, B: 0, R: 0, G: 0 }, commander: item.deck.commander });
+        }
+        return json(res, 200, { balance, item: { ...item, cards: item.deck ? [] : item.cards } });
       } catch (e) {
         if (/insufficient/.test(String(e))) return json(res, 402, { error: `You need ${item.price} Aether Shards for that.` });
         throw e;
