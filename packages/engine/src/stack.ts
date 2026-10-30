@@ -2,7 +2,7 @@
 // stack (PRD 7.2).
 
 import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, subtypesOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { randomInt, shuffleInPlace } from './rng.ts';
@@ -313,6 +313,8 @@ export function isLegalTarget(
   // Shroud: nobody can target it. Hexproof: its controller's opponents can't (rules 702.11, 702.18).
   if (hasKeyword(s, c, 'Shroud')) return false;
   if (hasKeyword(s, c, 'Hexproof') && c.controller !== controller) return false;
+  // Protection: not the target of anything of that color (rule 702.16b).
+  if (source && protectedFrom(s, c, s.cards[source])) return false;
   if (kind === 'TargetPermanent') return matchesObject(s, effect.filter, c, viewpoint);
   if (!isCreatureOnBattlefield(s, c)) return false;
   if (kind === 'AnyTarget' || kind === 'TargetCreature') return matchesObject(s, effect.filter, c, viewpoint);

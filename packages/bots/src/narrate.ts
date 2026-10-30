@@ -301,7 +301,7 @@ function effectText(e: EffectSpec): string {
 
 /** How a keyword is written on cards: "first strike", "nonbasic landwalk". */
 export function keywordName(k: string): string {
-  return k === 'FirstStrike' ? 'first strike' : k === 'DoubleStrike' ? 'double strike' : k === 'NonbasicLandwalk' ? 'nonbasic landwalk' : k.toLowerCase();
+  return k === 'FirstStrike' ? 'first strike' : k === 'DoubleStrike' ? 'double strike' : k === 'NonbasicLandwalk' ? 'nonbasic landwalk' : k.startsWith('ProtectionFrom') ? `protection from ${k.slice(14).toLowerCase()}` : k.toLowerCase();
 }
 
 function keywordText(keywords: readonly string[]): string {
@@ -383,6 +383,7 @@ function triggerCondition(t: TriggerSpec): string {
     SpellCast: '',
     LandPlayed: '',
     CombatDamageToPlayer: 'deals combat damage to a player',
+    CombatDamage: 'deals combat damage',
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',
     LeavesBattlefield: 'leaves the battlefield',

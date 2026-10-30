@@ -6,7 +6,7 @@ import { continuousSources, currentDefinition } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { hasFlag, powerOf, staticAffects, toughnessOf } from './characteristics.ts';
+import { hasFlag, powerOf, protectedFrom, staticAffects, toughnessOf } from './characteristics.ts';
 import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
@@ -59,6 +59,8 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
     const defenderLands = s.players[blocker.controller]!.battlefield.map((id) => s.cards[id]!);
     if (defenderLands.some((c) => currentDefinition(s, c).subtypes?.includes('Island'))) return false;
   }
+  // Protection: can't be blocked by creatures of that color (rule 702.16f).
+  if (protectedFrom(s, attacker, blocker)) return false;
   // Intimidate (rule 702.13): only artifact creatures and creatures that share a color with it.
   if (hasKeyword(s, attacker, 'Intimidate') && !currentDefinition(s, blocker).types.includes('artifact')) {
     const colors = colorsOf(currentDefinition(s, attacker));

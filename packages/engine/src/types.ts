@@ -62,6 +62,16 @@ export const KEYWORDS = [
   'Islandwalk',
   /** Can't attack (rule 702.3). */
   'Defender',
+  /**
+   * Protection from a color (rule 702.16): damage from sources of that color
+   * is prevented, and it can't be blocked by, targeted by, or enchanted or
+   * equipped by anything of that color.
+   */
+  'ProtectionFromWhite',
+  'ProtectionFromBlue',
+  'ProtectionFromBlack',
+  'ProtectionFromRed',
+  'ProtectionFromGreen',
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
@@ -662,6 +672,8 @@ export const TRIGGER_EVENTS = [
   'LandPlayed',
   'SpellCast',
   'CombatDamageToPlayer',
+  /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
+  'CombatDamage',
   'BeginCombat',
   'Upkeep',
   /** "At the beginning of your end step". */
@@ -760,7 +772,8 @@ export interface ObjectFilter {
   /** Has none of these keywords (as it last was, if it left the battlefield: "a creature without flying dies"). */
   withoutKeywords?: Keyword[];
   /** Has all of these keywords ("creature with flying"). */
-  withKeywords?: Keyword[];
+  withKeywords?: Keyword[];
+
   /** Has the same mana value as the triggering spell (Krile: "with mana value equal to that spell's mana value"). */
   manaValueEqualsSubject?: boolean;
   /** Is (or, with false, isn't) a token ("nontoken creature"). */

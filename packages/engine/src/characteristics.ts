@@ -289,6 +289,14 @@ export function hasKeyword(s: GameState, c: CardInstance, keyword: Keyword): boo
   return characteristics(s, c).keywords.has(keyword);
 }
 
+const PROTECTION = { W: 'ProtectionFromWhite', U: 'ProtectionFromBlue', B: 'ProtectionFromBlack', R: 'ProtectionFromRed', G: 'ProtectionFromGreen' } as const;
+
+/** Protection (rule 702.16): `c` has protection from one of `source`'s colors. */
+export function protectedFrom(s: GameState, c: CardInstance, source: CardInstance | undefined): boolean {
+  if (!source) return false;
+  return colorsOf(currentDefinition(s, source)).some((color) => hasKeyword(s, c, PROTECTION[color]));
+}
+
 /** Whether an "until end of turn" flag such as "can't be blocked" applies to this object. */
 export function hasFlag(s: GameState, c: CardInstance, flag: TemporaryFlag): boolean {
   return s.temporaryEffects.some((e) => e.affected === c.id && e.flags?.includes(flag) && effectLasts(s, e));

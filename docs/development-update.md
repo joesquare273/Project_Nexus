@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair cards: Umezawa's Jitte and Sword of Truth and Justice
+
+- Protection from a color is a keyword now (`ProtectionFromWhite` …
+  `ProtectionFromGreen`): damage from sources of that color is prevented,
+  and it can't be blocked by, targeted by, or enchanted or equipped by
+  anything of that color.
+- A new trigger, `CombatDamage`, for "whenever equipped creature deals combat
+  damage" (to a creature or a player; once per damage step with `oneOrMore`).
+- Umezawa's Jitte gets two charge counters each time; Sword of Truth and
+  Justice gives +2/+2, protection from white and blue, and a +1/+1 counter
+  then proliferate on combat damage to a player.
+
 ### Secret Lair cards: Silence and Toxic Deluge
 
 - Silence: a new effect, `CantCastSpellsThisTurn`, marks each opponent

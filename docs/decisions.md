@@ -464,6 +464,13 @@ cards than before. Tests that need a particular random outcome set
   of turn does (paying the card's mana cost).
 - **Finality counters** exile a permanent instead of putting it into a
   graveyard from the battlefield (rule 122.1h).
+- **Umezawa's Jitte's "choose one"** is three activated abilities, each
+  costing a charge counter, which plays the same way.
+- **Sword of Truth and Justice** targets the creature that gets the +1/+1
+  counter (the card says "a creature you control", chosen on resolution).
+- **Protection from a color** (rule 702.16) covers damage, blocking,
+  targeting, and Auras and Equipment of that color; protection from other
+  qualities (from creatures, from everything) isn't built.
 
 ## 2026-10-29: Transforming double-faced cards
 

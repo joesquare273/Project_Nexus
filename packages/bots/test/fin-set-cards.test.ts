@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, activatedAbilities, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { type Target, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -1225,5 +1225,57 @@ describe('Secret Lair: Toxic Deluge', () => {
     const deluge = put(s, 'P1', 'toxic-deluge', 'hand');
     mana(s, 'P1', { B: 1, C: 2 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: deluge, x: 25 })).toMatch(/life/);
+  });
+});
+
+describe('Secret Lair: Sword of Truth and Justice', () => {
+  it('+2/+2 and protection from white and blue: no white blockers, white removal or white damage', () => {
+    const s = newGame();
+    const { body } = equipped(s, 'sword-of-truth-and-justice', 'hill-gigas');
+    expect(stats(s, body)).toEqual([7, 6]);
+    const white = put(s, 'P2', 'coeurl');
+    expect(canBlock(s, s.cards[white]!, s.cards[body]!)).toBe(false);
+    const red = put(s, 'P2', 'hill-gigas');
+    expect(canBlock(s, s.cards[red]!, s.cards[body]!)).toBe(true);
+    const swords = put(s, 'P2', 'swords-to-plowshares', 'hand');
+    mana(s, 'P2', { W: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: swords, targets: [card(body)] })).toBeTruthy();
+  });
+
+  it('combat damage to a player: a +1/+1 counter on a creature you control, then proliferate', () => {
+    let s = newGame();
+    const { body } = equipped(s, 'sword-of-truth-and-justice', 'hill-gigas');
+    const other = put(s, 'P1', 'coeurl', 'battlefield', { counters: 1 });
+    s = fight(s, [{ attacker: body, defender: 'P2' }], {}, { targets: () => [card(body)] }).state;
+    expect(s.players.P2!.life).toBe(13);
+    expect(countersOf(s.cards[body]!, '+1/+1')).toBe(2);
+    expect(countersOf(s.cards[other]!, '+1/+1')).toBe(2);
+  });
+});
+
+describe('Secret Lair: Umezawa’s Jitte', () => {
+  it('combat damage puts two charge counters on it; remove one for +2/+2, -1/-1 or 2 life', () => {
+    let s = newGame();
+    const { body, gear } = equipped(s, 'umezawas-jitte', 'hill-gigas');
+    const blocker = put(s, 'P2', 'coeurl');
+    s = fight(s, [{ attacker: body, defender: 'P2' }], { P2: [{ blocker, attacker: body }] }).state;
+    expect(countersOf(s.cards[gear]!, 'charge')).toBe(2);
+    expect(activatedAbilities(currentDefinition(s, s.cards[gear]!))).toHaveLength(4); // three modes and equip
+    const target = put(s, 'P2', 'stiltzkin-moogle-merchant');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: gear, ability: 1, targets: [card(target)] }).state;
+    expect(s.cards[target]!.zone).toBe('battlefield');
+    expect(stats(s, target)).toEqual([0, 1]);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: gear, ability: 2 }).state;
+    expect(s.players.P1!.life).toBe(22);
+    expect(countersOf(s.cards[gear]!, 'charge')).toBe(0);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: gear, ability: 0 })).toBeTruthy();
+  });
+
+  it('+2/+2 goes to the equipped creature', () => {
+    let s = newGame();
+    const { body, gear } = equipped(s, 'umezawas-jitte', 'hill-gigas');
+    s.cards[gear]!.namedCounters = { charge: 1 };
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: gear, ability: 0 }).state;
+    expect(stats(s, body)).toEqual([7, 6]);
   });
 });
