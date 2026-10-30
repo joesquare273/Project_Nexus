@@ -474,6 +474,8 @@ cards than before. Tests that need a particular random outcome set
 - **Grief** shows the opponent's nonland cards only to its controller (the
   card reveals the whole hand to everyone).
 - **Subtlety** can choose creature spells (the engine has no planeswalkers).
+- **Converge** counts the mana the engine's payment actually used; with a
+  floating pool it spends new colors on generic mana first.
 - **Protection from a color** (rule 702.16) covers damage, blocking,
   targeting, and Auras and Equipment of that color; protection from other
   qualities (from creatures, from everything) isn't built.

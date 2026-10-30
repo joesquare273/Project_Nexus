@@ -387,6 +387,7 @@ function triggerCondition(t: TriggerSpec): string {
     LandPlayed: '',
     CombatDamageToPlayer: 'deals combat damage to a player',
     CombatDamage: 'deals combat damage',
+    TokensCreated: 'you create tokens',
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',
     LeavesBattlefield: 'leaves the battlefield',

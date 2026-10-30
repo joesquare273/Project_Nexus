@@ -431,6 +431,8 @@ export interface ManaUse {
   equipment?: boolean;
   /** A noncreature spell being cast. */
   noncreatureSpell?: boolean;
+  /** Filled with the mana of each type that was spent (converge). */
+  spentOut?: Partial<Record<ManaType, number>>;
 }
 
 function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
@@ -471,6 +473,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
     p.manaPool[t] -= n;
   }
   if (Object.keys(spent).length > 0) ctx.ev.push({ type: 'ManaSpent', player: playerId, amounts: spent });
+  if (use.spentOut) Object.assign(use.spentOut, spent);
   return totalMana(spent);
 }
 
@@ -894,7 +897,17 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = { ...cost, generic: cost.generic - delved.length };
   }
   const spentScryMana: CreatureScryMana[] = [];
-  const manaSpent = payMana(ctx, playerId, cost, { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature') }, spentScryMana);
+  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), spentOut: {} };
+  // Converge: pay generic mana with colors not spent yet, while the pool still covers the cost.
+  if (def.converge) {
+    for (const color of COLORS) {
+      if (cost.generic === 0 || (cost[color] ?? 0) > 0) continue;
+      const tried = { ...cost, generic: cost.generic - 1, [color]: 1 };
+      if (canPayFromPool(s, playerId, tried, use)) cost = tried;
+    }
+  }
+  const manaSpent = payMana(ctx, playerId, cost, use, spentScryMana);
+  const colorsSpent = COLORS.filter((color) => (use.spentOut![color] ?? 0) > 0).length;
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   // "As an additional cost, pay X life" (Toxic Deluge).
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
@@ -943,6 +956,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     castFrom: from,
     ...(way === 'flashback' ? { flashback: true } : {}),
     manaSpent,
+    ...(def.converge ? { colorsSpent } : {}),
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
     ...(kicks > 0 ? { kicks } : {}),
@@ -987,6 +1001,11 @@ export function foretell(ctx: Ctx, playerId: PlayerId, id: InstanceId): void {
   ctx.ev.push({ type: 'Foretold', player: playerId, card: id });
 }
 
+/** Forge Anew: whether the player may equip at any time during their own turn. */
+function equipAnyTime(s: GameState, playerId: PlayerId): boolean {
+  return s.activePlayer === playerId && battlefield(s).some((c) => c.controller === playerId && (defOf(s, c).statics ?? []).some((st) => st.equipAnyTimeYourTurn));
+}
+
 /** What activating an ability costs with these targets (equip discounts depend on the target). */
 export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[], source?: CardInstance): ManaCost {
   let cost = parseManaCost(spec.cost.mana);
@@ -1002,6 +1021,11 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
   const t = targets[0];
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
+  }
+  // Forge Anew: the first equip ability you activate during each of your turns costs {0}.
+  if (spec.equip && source && s.activePlayer === source.controller && player(s, source.controller).equipActivatedTurn !== s.turnNumber &&
+      battlefield(s).some((c) => c.controller === source.controller && (defOf(s, c).statics ?? []).some((st) => st.firstEquipFreeEachTurn))) {
+    cost = { generic: 0 };
   }
   if (source) {
     const who = source.controller;
@@ -1029,7 +1053,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
   if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
-  if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId)) {
+  if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId) && !(spec.equip && equipAnyTime(s, playerId))) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
   if (spec.ifYouControl) {
@@ -1187,6 +1211,7 @@ export function activateAbility(
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
   payMana(ctx, playerId, abilityCost(s, spec, targets, c), { equipment: spec.equip ?? false });
+  if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
@@ -2454,7 +2479,13 @@ function continueResolving(ctx: Ctx): void {
       if (src.zone !== 'battlefield' || countersOf(src, '+1/+1') < effect.ifSourceCountersAtLeast) continue;
     }
     if (effect.ifSubjectManaSpentAtLeast !== undefined && (item.kind !== 'ability' || (item.amount ?? 0) < effect.ifSubjectManaSpentAtLeast)) continue;
-    applyEffect(ctx, effect, r, resolveTargets(s, effect, r, chosen));
+    let targets = resolveTargets(s, effect, r, chosen);
+    // Converge (Prismatic Ending): only if its mana value is at most the colors spent.
+    if (effect.ifTargetManaValueAtMostColorsSpent) {
+      const colors = item.kind === 'spell' ? (item.colorsSpent ?? 0) : 0;
+      targets = targets.filter((t) => t.kind === 'card' && objectManaValue(s, s.cards[t.card]!) <= colors);
+    }
+    applyEffect(ctx, effect, r, targets);
     if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
   }
   s.resolving = null;

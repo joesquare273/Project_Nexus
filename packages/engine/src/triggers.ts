@@ -95,6 +95,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'TokenCreated':
         out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
+        out.push({ when: 'TokensCreated', at, subject: e.card, subjectController: e.controller });
         break;
       case 'CardDrawn':
         out.push({ when: 'Draws', at, drawer: e.player, ...(e.n !== undefined ? { drawNumber: e.n } : {}) });

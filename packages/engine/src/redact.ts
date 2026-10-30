@@ -214,6 +214,7 @@ const PLAYER_FIELDS = {
   eliminated: 'copy',
   drewFromEmptyLibrary: 'copy',
   friendlyTargetAbilityTurn: 'copy',
+  equipActivatedTurn: 'copy',
   lifeLostThisTurn: 'copy',
   nextCreatureCounters: 'copy',
   counterOnCreatureTurn: 'copy',

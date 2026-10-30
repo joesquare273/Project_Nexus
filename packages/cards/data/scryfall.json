@@ -9440,6 +9440,28 @@
       }
     ]
   },
+  "spirit-token-sld": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "Flying",
+    "set": "sld",
+    "number": "1341",
+    "artist": "Scott M. Fischer",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/d/1d9b18e5-d842-4114-b395-ff5dd42c94d9.jpg?1783915197",
+      "normal": "https://cards.scryfall.io/normal/front/1/d/1d9b18e5-d842-4114-b395-ff5dd42c94d9.jpg?1783915197",
+      "large": "https://cards.scryfall.io/large/front/1/d/1d9b18e5-d842-4114-b395-ff5dd42c94d9.jpg?1783915197",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/d/1d9b18e5-d842-4114-b395-ff5dd42c94d9.jpg?1783915197"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1341/spirit?utm_source=api",
+    "scryfallId": "1d9b18e5-d842-4114-b395-ff5dd42c94d9",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "1d9b18e5-d842-4114-b395-ff5dd42c94d9"
+      }
+    ]
+  },
   "squall-seed-mercenary": {
     "name": "Squall, SeeD Mercenary",
     "typeLine": "Legendary Creature — Human Knight Mercenary",

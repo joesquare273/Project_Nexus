@@ -1364,3 +1364,59 @@ describe('Secret Lair: the Elemental Incarnations (evoke)', () => {
     expect(s.players.P2!.library.at(-1)).toBe(spell);
   });
 });
+
+describe('Secret Lair: Prismatic Ending (converge)', () => {
+  it('exiles a nonland permanent with mana value up to the number of colors spent', () => {
+    let s = newGame();
+    const target = put(s, 'P2', 'snow-villiers');
+    const ending = put(s, 'P1', 'prismatic-ending', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ending, x: 2, targets: [card(target)] }).state;
+    expect(s.cards[target]!.zone).toBe('exile');
+  });
+
+  it('does nothing if too few colors were spent', () => {
+    let s = newGame();
+    const target = put(s, 'P2', 'snow-villiers');
+    const ending = put(s, 'P1', 'prismatic-ending', 'hand');
+    mana(s, 'P1', { W: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ending, x: 2, targets: [card(target)] }).state;
+    expect(s.cards[target]!.zone).toBe('battlefield');
+    expect(s.cards[ending]!.zone).toBe('graveyard');
+  });
+});
+
+describe('Secret Lair: Staff of the Storyteller', () => {
+  it('makes a 1/1 flying Spirit, gets a story counter for it, and draws for {W}, {T} and a story counter', () => {
+    let s = newGame();
+    const staff = put(s, 'P1', 'staff-of-the-storyteller', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: staff }).state;
+    const spirits = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'spirit-token-sld');
+    expect(spirits).toHaveLength(1);
+    expect(hasKeyword(s, s.cards[spirits[0]!]!, 'Flying')).toBe(true);
+    expect(countersOf(s.cards[staff]!, 'story')).toBe(1);
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: staff, ability: 0 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    expect(countersOf(s.cards[staff]!, 'story')).toBe(0);
+  });
+});
+
+describe('Secret Lair: Forge Anew', () => {
+  it('returns an Equipment from your graveyard; on your turn the first equip is free and works at instant speed', () => {
+    let s = newGame();
+    const plate = put(s, 'P1', 'darksteel-plate', 'graveyard');
+    const body = put(s, 'P1', 'coeurl');
+    const other = put(s, 'P1', 'hill-gigas');
+    const forge = put(s, 'P1', 'forge-anew', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: forge, targets: [] }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === plate)! }).state;
+    expect(s.cards[plate]!.zone).toBe('battlefield');
+    s = goTo(s, 'beginCombat');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: plate, ability: 0, targets: [card(body)] }).state;
+    expect(s.cards[plate]!.attachedTo).toBe(body);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: plate, ability: 0, targets: [card(other)] })).toMatch(/mana/i);
+  });
+});

@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair cards: Prismatic Ending, Staff of the Storyteller, Forge Anew
+
+- Converge: a spell records how many colors of mana were spent on it
+  (`colorsSpent`); generic mana is paid with colors not spent yet when the
+  pool allows. Prismatic Ending exiles only if the target's mana value fits.
+- A `TokensCreated` trigger ("whenever you create one or more creature
+  tokens") and story counters for Staff of the Storyteller; its Spirit token
+  is the Secret Lair printing (sld 1341, `spirit-token-sld`).
+- Forge Anew: during your turn equip abilities work at instant speed, and the
+  first one each turn costs {0} (`equipActivatedTurn`, redacted as a copy).
+
 ### Secret Lair cards: the five Elemental Incarnations (evoke)
 
 - Evoke: an alternative cost can exile a card of a color from your hand

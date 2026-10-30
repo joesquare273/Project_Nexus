@@ -88,7 +88,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -603,6 +603,8 @@ export interface EffectSpec {
   ifSourceCountersAtLeast?: number;
   /** SpellCast triggers: only happens if at least this much mana was spent on the triggering spell ("if four or more mana was spent"). */
   ifSubjectManaSpentAtLeast?: number;
+  /** Converge: only targets with mana value at most the colors spent on this spell (Prismatic Ending). */
+  ifTargetManaValueAtMostColorsSpent?: boolean;
   /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
   attacking?: boolean;
   /** PutFromHand in an attack trigger: a chosen enchantment card enters tapped and attacking the player the triggering creature attacked (Summoner's Grimoire). */
@@ -683,6 +685,8 @@ export const TRIGGER_EVENTS = [
   'LandPlayed',
   'SpellCast',
   'CombatDamageToPlayer',
+  /** A token was created (subject: the token; use with `oneOrMore` for "whenever you create one or more creature tokens"). */
+  'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
   'CombatDamage',
   'BeginCombat',
@@ -937,6 +941,10 @@ export interface StaticSpec {
   grantImprovise?: ObjectFilter;
   /** Professor Hojo: your first activated ability targeting your creature on your turn costs less. */
   firstFriendlyTargetActivationDiscount?: number;
+  /** Forge Anew: during your turn, equip abilities can be activated any time you have priority. */
+  equipAnyTimeYourTurn?: boolean;
+  /** Forge Anew: the first equip ability you activate during each of your turns costs {0}. */
+  firstEquipFreeEachTurn?: boolean;
   /**
    * Which permanents it changes: this card, the creature this Equipment is
    * attached to, or each permanent matching `filter` ("each creature you
@@ -1183,6 +1191,12 @@ export interface CardDefinition {
   improvise?: boolean;
   /** Delve (rule 702.66): each card exiled from your graveyard while casting it pays for {1}. */
   delve?: boolean;
+  /**
+   * Converge: the spell counts the colors of mana spent to cast it
+   * (`colorsSpent`); generic mana is paid with new colors first when the
+   * pool allows.
+   */
+  converge?: boolean;
   /** Rebound (rule 702.88): cast from your hand, it's exiled as it resolves and can be cast free during your next turn. */
   rebound?: boolean;
   /** Unearth cost (rule 702.84): an ability that works from the graveyard. */
@@ -1380,6 +1394,8 @@ export interface CreatureScryMana {
 export interface PlayerState {
   /** Last turn this player activated an ability targeting a creature they controlled. */
   friendlyTargetAbilityTurn?: number;
+  /** Last turn of their own this player activated an equip ability (Forge Anew). */
+  equipActivatedTurn?: number;
   id: PlayerId;
   life: number;
   /** Index 0 is the top of the library. */
@@ -1479,6 +1495,8 @@ export interface SpellItem {
   castFrom: 'hand' | 'graveyard' | 'exile' | 'command' | 'library';
   /** Total mana spent to cast it. */
   manaSpent: number;
+  /** Converge: how many colors of mana were spent to cast it. */
+  colorsSpent?: number;
   /** Cast with Strago and Relm's permission: as a creature it gains haste and is sacrificed at the next end step. */
   sacrificeAtEndStep?: true;
   /** The value chosen for {X}. */
