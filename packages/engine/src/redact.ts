@@ -259,6 +259,7 @@ const GAME_FIELDS = {
   creaturesDiedThisTurn: 'copy',
   combatsThisTurn: 'copy',
   extraCombats: 'copy',
+  extraTurns: 'copy',
   combat: 'refs',
   pending: 'refs',
   winner: 'copy',

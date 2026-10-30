@@ -364,13 +364,14 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
     return;
   }
   validateFilter(t.what, e);
-  if (t.when === 'SpellCast' && !t.what) e('say which spells with "what".');
+  if (t.when === 'SpellCast' && !t.what && t.zone !== 'stack') e('say which spells with "what".');
   if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep' && t.when !== 'EndStep') {
     e('"turn" is only for BeginCombat, Upkeep and EndStep.');
   }
   if (t.fromZone !== undefined && (!['hand', 'library', 'graveyard', 'exile', 'command', 'battlefield', 'stack', 'void'].includes(t.fromZone) || !['SpellCast', 'LandPlayed'].includes(t.when))) e('fromZone requires a valid zone and a SpellCast or LandPlayed trigger.');
   if (t.fromGraveyard && t.when !== 'EntersBattlefield') e('"fromGraveyard" is only for EntersBattlefield.');
-  if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard') e(`unknown zone "${t.zone}".`);
+  if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard' && t.zone !== 'stack') e(`unknown zone "${t.zone}".`);
+  if (t.zone === 'stack' && t.when !== 'SpellCast') e('only "when you cast this spell" triggers work from the stack.');
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');
   if (t.attacksYou && t.when !== 'Attacks') e('attacksYou is only for Attacks.');
   if (t.ifYouControl) validateFilter(t.ifYouControl.filter, e);

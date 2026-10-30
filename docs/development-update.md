@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair cards: Temporal Extortion and Praetor's Grasp
+
+- Extra turns (`extraTurns` on the game, redacted as a copy): the newest is
+  taken first, before the normal next turn (rule 500.7).
+- "When you cast this spell" triggers (`zone: 'stack'` on a SpellCast
+  trigger). Temporal Extortion's asks each opponent in turn order whether to
+  pay half their life, rounded up; the first who pays counters it.
+- Praetor's Grasp searches an opponent's library (`libraryOf` on the search
+  choice) and exiles the card face down; only you can see it, and you may
+  play it for as long as it stays exiled (`playableFromExile.whileExiled`).
+
 ### Secret Lair cards: Prismatic Ending, Staff of the Storyteller, Forge Anew
 
 - Converge: a spell records how many colors of mana were spent on it

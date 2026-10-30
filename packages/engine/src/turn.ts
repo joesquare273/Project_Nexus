@@ -188,7 +188,13 @@ export function startNextTurn(ctx: Ctx): void {
   const s = ctx.s;
   delete s.cleanupCheck;
   delete s.cleanupNeedsPriority;
-  s.activePlayer = nextAlive(s, s.activePlayer);
+  // An extra turn comes before the normal next turn; the newest is taken first (rule 500.7).
+  let extra: PlayerId | undefined;
+  while (s.extraTurns?.length && !extra) {
+    const pid = s.extraTurns.pop()!;
+    if (!s.players[pid]!.eliminated) extra = pid;
+  }
+  s.activePlayer = extra ?? nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
   for (const c of Object.values(s.cards)) {
     const permission = c.adventureGraveyard;

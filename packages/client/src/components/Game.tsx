@@ -714,7 +714,9 @@ export function Game({
           view={view}
           title={
             choosing.purpose === 'search'
-              ? `Search your library: choose up to ${choosing.max} (${bottomPicks.length} chosen)`
+              ? choosing.searchTo === 'exileFaceDown'
+                ? `Search their library: choose a card to exile face down; you may play it while it stays exiled (${bottomPicks.length} chosen)`
+                : `Search your library: choose up to ${choosing.max} (${bottomPicks.length} chosen)`
               : `Choose any lands to put onto the battlefield tapped (${bottomPicks.length} chosen)`
           }
           ids={choosing.cards}
@@ -1039,7 +1041,14 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseCards') {
     const c = pending;
     const picks = p.bottomPicks;
-    if (c.purpose === 'offerDraw' || c.purpose === 'library') {
+    if (c.purpose === 'payHalfLife') {
+      const half = Math.ceil((s.players[YOU]?.life ?? 0) / 2);
+      text = `Pay half your life (${half}) to counter ${cardName(s, c.cards[0]!)}?`;
+      buttons = [
+        { label: `Pay ${half} life`, onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]) },
+        { label: 'Don’t pay', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]), primary: true },
+      ];
+    } else if (c.purpose === 'offerDraw' || c.purpose === 'library') {
       text = c.purpose === 'offerDraw' ? 'Let your opponent draw three cards, or have them mill three and deal their total mana value in damage to you?'
         : 'Put the targeted card on the top or bottom of your library?';
       buttons = [

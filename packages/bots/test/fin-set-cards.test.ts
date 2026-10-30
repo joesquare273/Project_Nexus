@@ -1420,3 +1420,62 @@ describe('Secret Lair: Forge Anew', () => {
     expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: plate, ability: 0, targets: [card(other)] })).toMatch(/mana/i);
   });
 });
+
+describe('Secret Lair: Temporal Extortion', () => {
+  const answer = (s: GameState, pay: boolean) => {
+    if (s.pending.kind !== 'chooseCards' || s.pending.purpose !== 'payHalfLife') throw new Error('expected the pay-half-life choice');
+    return settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: pay ? [...s.pending.cards] : [] })).state;
+  };
+
+  it('if nobody pays half their life, you take an extra turn after this one', () => {
+    let s = newGame();
+    const extortion = put(s, 'P1', 'temporal-extortion', 'hand');
+    mana(s, 'P1', { B: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: extortion }).state;
+    s = answer(s, false);
+    expect(s.cards[extortion]!.zone).toBe('graveyard');
+    expect(s.extraTurns).toEqual(['P1']);
+    const turn = s.turnNumber;
+    s = goTo(s, 'upkeep');
+    expect(s.turnNumber).toBe(turn + 1);
+    expect(s.activePlayer).toBe('P1');
+    expect(s.extraTurns).toEqual([]);
+  });
+
+  it('an opponent may pay half their life, rounded up, to counter it', () => {
+    let s = newGame();
+    s.players.P2!.life = 15;
+    const extortion = put(s, 'P1', 'temporal-extortion', 'hand');
+    mana(s, 'P1', { B: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: extortion }).state;
+    s = answer(s, true);
+    expect(s.players.P2!.life).toBe(7);
+    expect(s.cards[extortion]!.zone).toBe('graveyard');
+    expect(s.extraTurns ?? []).toEqual([]);
+  });
+});
+
+describe('Secret Lair: Praetor’s Grasp', () => {
+  it('exiles a card from an opponent’s library face down; you may look at it and play it while it stays exiled', () => {
+    let s = newGame();
+    const bolt = put(s, 'P2', 'lightning-bolt', 'library');
+    s.players.P2!.library = [bolt, ...s.players.P2!.library.filter((id) => id !== bolt)];
+    const grasp = put(s, 'P1', 'praetors-grasp', 'hand');
+    mana(s, 'P1', { B: 2, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: grasp, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    expect(viewFor(s, 'P1').cards[bolt]?.defId).toBe('lightning-bolt');
+    expect(viewFor(s, 'P2').cards[bolt]?.defId).not.toBe('lightning-bolt');
+    // A later turn: still playable.
+    s = goTo(s, 'upkeep');
+    s = goTo(s, 'main1');
+    s = goTo(s, 'upkeep');
+    s = goTo(s, 'main1');
+    expect(s.activePlayer).toBe('P1');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(17);
+    expect(s.cards[bolt]!.zone).toBe('graveyard');
+    expect(s.players.P2!.graveyard).toContain(bolt);
+  });
+});

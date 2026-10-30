@@ -174,6 +174,20 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 
 export const EFFECT_KINDS = [
   'AnimateVehicle',
+  /** Each target player takes an extra turn after this one (rule 500.7: the most recent extra turn is taken first). */
+  'ExtraTurn',
+  /**
+   * "Any player may pay half their life, rounded up. If a player does,
+   * counter this spell": each opponent in turn order may pay, for the spell
+   * that triggered it (Temporal Extortion).
+   */
+  'PayHalfLifeToCounter',
+  /**
+   * Search the target opponent's library for a card matching `filter` and
+   * exile it face down; you may look at it and play it for as long as it
+   * stays exiled. Then that player shuffles (Praetor's Grasp).
+   */
+  'SearchLibraryToExileFaceDown',
   /** "Sacrifice it": the object (`This`, with `sameObject`) is sacrificed by its controller (evoke). */
   'SacrificeIt',
   /** Turn this double-faced permanent over (rule 701.28); "you may" with `optional`. Nothing happens without a back face. */
@@ -847,7 +861,8 @@ export interface TriggerSpec {
   /** Intervening "if": the player who controls the entering permanent controls more lands than you. */
   ifSubjectControllerHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
-  zone?: 'battlefield' | 'graveyard';
+  /** `stack`: "When you cast this spell" (SpellCast only), from the spell itself. */
+  zone?: 'battlefield' | 'graveyard' | 'stack';
   /** "Whenever one or more ...": triggers once per batch of simultaneous events. */
   oneOrMore?: boolean;
   /** "This ability triggers only once each turn." */
@@ -1321,7 +1336,7 @@ export interface CardInstance {
   /** In exile, and `player` may play it as long as they control `source`. */
   /** `untilTurn`: playable until the end of that turn ("until end of turn", "until the end of your next turn") instead of while `player` controls `source`. */
   /** `untilReplaced`: playable until `source` exiles another card this way, whether or not `player` still controls it (Furious Rise). */
-  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean };
+  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -1647,7 +1662,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'divideDamage' | 'addCounters';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'distributeCounter' | 'divideDamage' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1661,7 +1676,9 @@ export interface CardChoice {
   /** digLands: every card looked at; those still in the library afterwards go to the graveyard. */
   looked?: InstanceId[];
   /** search: where the found cards go (hand, or the battlefield, tapped or not); the library is shuffled afterwards. */
-  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped';
+  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped' | 'exileFaceDown';
+  /** search: whose library is searched, when it isn't the searcher's (Praetor's Grasp). */
+  libraryOf?: PlayerId;
 }
 
 export interface Attack {
@@ -1784,6 +1801,8 @@ export interface GameState {
   combatsThisTurn?: number;
   /** Additional combat phases still to come this turn (each after the current one). */
   extraCombats?: number;
+  /** Extra turns still to come, taken from the end of the list first (rule 500.7). */
+  extraTurns?: PlayerId[];
   combat: CombatState | null;
   pending: Pending;
   /** Set when the game ends. null means a draw (everyone left at once). */

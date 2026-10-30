@@ -262,6 +262,9 @@ function effectText(e: EffectSpec): string {
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'AnimateVehicle': return 'become an artifact creature until end of turn';
     case 'SacrificeIt': return 'sacrifice it';
+    case 'ExtraTurn': return 'take an extra turn after this one';
+    case 'PayHalfLifeToCounter': return 'any player may pay half their life, rounded up, to counter this spell';
+    case 'SearchLibraryToExileFaceDown': return "search that player's library for a card and exile it face down; you may look at and play it while it stays exiled";
     case 'DivideDamage': return `deal ${n} damage divided as you choose among any number of target creatures`;
     case 'GraveyardToLibraryBottom': return 'put all the cards from their graveyard on the bottom of their library in a random order';
     case 'CantCastSpellsThisTurn': return "they can't cast spells this turn";

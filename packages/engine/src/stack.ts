@@ -595,6 +595,8 @@ export function playableZone(
     if (p.untilTurn !== undefined) return s.turnNumber <= p.untilTurn ? 'exile' : null;
     // "Until you exile another card with this enchantment" (Furious Rise).
     if (p.untilReplaced) return 'exile';
+    // "For as long as that card remains exiled, you may play it" (Praetor's Grasp).
+    if (p.whileExiled) return 'exile';
     const source = s.cards[p.source];
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
@@ -1675,6 +1677,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
       }
       return;
+    case 'ExtraTurn':
+      for (const pid of targetPlayers(targets)) s.extraTurns = [...(s.extraTurns ?? []), pid];
+      return;
+    case 'PayHalfLifeToCounter': {
+      const spell = item.kind === 'ability' ? item.subject : undefined;
+      if (!spell || !s.stack.some((i) => i.kind === 'spell' && i.card === spell)) return;
+      const order = aliveFromActive(s).filter((pid) => pid !== item.controller);
+      r.choiceQueue = order.map((pid) => ({ player: pid, purpose: 'payHalfLife', cards: [spell], min: 0, max: 1 }));
+      return;
+    }
+    case 'SearchLibraryToExileFaceDown':
+      for (const pid of targetPlayers(targets)) {
+        const cardsThere = player(s, pid).library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'search', cards: cardsThere, min: 0, max: Math.min(1, cardsThere.length), searchTo: 'exileFaceDown', libraryOf: pid }];
+      }
+      return;
     case 'SacrificeIt':
       for (const id of onBattlefield) sacrifice(ctx, id);
       return;
@@ -2730,6 +2748,31 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       delete definition.toughness;
       const printing = original.printing ?? def.printing;
       createToken(ctx, original.defId, pending.player, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
+    }
+  } else if (pending.purpose === 'search' && pending.searchTo === 'exileFaceDown') {
+    const source = sourceOf(r.item);
+    const sourceObject = r.item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (r.item.sourceObject ?? 0);
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile', { silent: true });
+      s.cards[id]!.linkedExile = { source, sourceObject, lookers: [pending.player] };
+      s.cards[id]!.playableFromExile = { player: pending.player, source, whileExiled: true };
+      ctx.ev.push({ type: 'FaceDownExiled', player: pending.player, card: id });
+    }
+    const owner = pending.libraryOf ?? pending.player;
+    shuffleInPlace(s, player(s, owner).library);
+    ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+  } else if (pending.purpose === 'payHalfLife') {
+    // The first player who pays counters the spell; nobody else is asked.
+    const spell = pending.cards[0]!;
+    const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === spell);
+    if (cards.length > 0 && index >= 0) {
+      const p = player(s, pending.player);
+      changeLife(ctx, pending.player, -Math.ceil(p.life / 2));
+      const countered = s.stack[index] as SpellItem;
+      s.stack.splice(index, 1);
+      ctx.ev.push({ type: 'SpellCountered', card: spell, defId: s.cards[spell]!.defId, by: sourceOf(r.item) });
+      moveCard(ctx, spell, countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
+      r.choiceQueue = (r.choiceQueue ?? []).filter((q) => q.purpose !== 'payHalfLife');
     }
   } else if (pending.purpose === 'search') {
     for (const id of cards) {

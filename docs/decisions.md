@@ -476,6 +476,8 @@ cards than before. Tests that need a particular random outcome set
 - **Subtlety** can choose creature spells (the engine has no planeswalkers).
 - **Converge** counts the mana the engine's payment actually used; with a
   floating pool it spends new colors on generic mana first.
+- **Temporal Extortion** asks only the caster's opponents (the caster
+  could pay too, but never would).
 - **Protection from a color** (rule 702.16) covers damage, blocking,
   targeting, and Auras and Equipment of that color; protection from other
   qualities (from creatures, from everything) isn't built.

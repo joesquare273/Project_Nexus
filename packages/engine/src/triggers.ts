@@ -337,6 +337,14 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         spec: { when: 'CombatDamageToPlayer', effects: [{ effect: 'BecomeMonarch', target: 'SubjectController' }] } });
     }
     if (e.type === 'SpellCast') {
+      // "When you cast this spell": a trigger of the spell itself.
+      const cast = s.cards[e.card];
+      if (cast?.zone === 'stack') {
+        defOf(s, cast).triggers?.forEach((spec, ability) => {
+          if (spec.zone !== 'stack' || spec.when !== 'SpellCast') return;
+          found.push({ source: cast.id, sourceObject: cast.zoneChanges ?? 0, controller: e.player, sourceZone: 'stack', ability, spec: structuredClone(spec), subject: cast.id });
+        });
+      }
       for (const unit of e.scryMana ?? []) {
         found.push({ source: unit.source, sourceObject: unit.sourceObject, controller: e.player,
           sourceZone: 'battlefield', ability: -1,
