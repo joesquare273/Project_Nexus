@@ -14,6 +14,7 @@ import { openPack, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
 import { ECONOMY, packsForPurchase } from './economy.ts';
 import { STARTER_CHOICES, STARTER_REF, claimStarter } from './starter.ts';
+import { storeItem, storeSets } from './store.ts';
 
 /** Biggest message a browser may send. Actions are small. */
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -99,6 +100,8 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/decks, POST /api/decks (new, or changed by id), DELETE /api/decks/<id>.
  * - GET /api/starter: whether the free starter precon is still to pick, and the choices;
  *   POST /api/starter {precon}: grants it (once per account) and saves it as a deck.
+ * - GET /api/store: the Store's sets and items with prices;
+ *   POST /api/store/buy {id}: buys one copy of an item, paid and added at once.
  * - POST /api/packs/open {kind, count}: buys 1 or 10 boosters (10 come with a
  *   free bonus pack), opens them on the server and adds their cards to the
  *   collection, all at once.
@@ -131,12 +134,27 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
       if (!result.granted) return json(res, 409, { error: 'You already have your free precon.' });
       return json(res, 200, { deck: result.deck });
     }
+    if (path === '/api/store' && method === 'GET') return json(res, 200, { sets: storeSets() });
+    if (path === '/api/store/buy' && method === 'POST') {
+      const id = (await readJson(req) as { id?: unknown } | undefined)?.id;
+      const item = typeof id === 'string' ? storeItem(id) : undefined;
+      if (!item) return json(res, 400, { error: 'That isn’t for sale.' });
+      if (item.price === null) return json(res, 400, { error: 'That doesn’t have a price yet.' });
+      await accounts.ensure(user);
+      try {
+        const { balance } = await accounts.grantCards(user.id, { kind: 'store_purchase', ref: randomUUID(), cost: item.price, cards: [{ id: item.id, finish: item.finish, count: 1 }] });
+        return json(res, 200, { balance, item });
+      } catch (e) {
+        if (/insufficient/.test(String(e))) return json(res, 402, { error: `You need ${item.price} Aether Shards for that.` });
+        throw e;
+      }
+    }
     if (path === '/api/packs/open' && method === 'POST') return openPackRoute(res, user, accounts, await readJson(req));
     const deckId = /^\/api\/decks\/([0-9a-f-]{36})$/.exec(path)?.[1];
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
-    if (['/api/account', '/api/collection', '/api/decks', '/api/packs/open', '/api/starter'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    if (['/api/account', '/api/collection', '/api/decks', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });

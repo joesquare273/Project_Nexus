@@ -800,3 +800,39 @@
 .finish-tag.chip-chocobotrack {
   color: #ffd75a;
 }
+
+/* ---------------------------------------------------------------- store */
+.store-intro {
+  text-align: center;
+}
+.store-bought {
+  text-align: center;
+  color: #8fd18f;
+}
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.store-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+.store-card {
+  border-radius: 8px;
+}
+.store-owned {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.store-name {
+  font-weight: 700;
+  font-size: 13px;
+}
+.store-buy {
+  margin-top: 2px;
+}

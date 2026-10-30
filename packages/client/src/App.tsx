@@ -5,6 +5,7 @@ import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
+import { StoreTab } from './packs/StoreTab.tsx';
 import { OnlineMenu } from './components/OnlineMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
 import { StarterPick } from './account/StarterPick.tsx';
@@ -55,7 +56,7 @@ function MainApp() {
   /** Changes for each new game so the board starts fresh. */
   const [gameNumber, setGameNumber] = useState(0);
   /** The menu's tabs: set up a game, play online, or open booster packs. */
-  const [tab, setTab] = useState<'play' | 'online' | 'draft' | 'packs'>('play');
+  const [tab, setTab] = useState<'play' | 'online' | 'draft' | 'packs' | 'store'>('play');
 
   const quit = () => {
     session?.close();
@@ -125,6 +126,9 @@ function MainApp() {
       <button role="tab" aria-selected={tab === 'packs'} className={tab === 'packs' ? 'chosen' : ''} onClick={() => setTab('packs')}>
         Packs
       </button>
+      <button role="tab" aria-selected={tab === 'store'} className={tab === 'store' ? 'chosen' : ''} onClick={() => setTab('store')}>
+        Store
+      </button>
     </div>
     </>
   );
@@ -167,9 +171,20 @@ function MainApp() {
     return (
       <div className="menu">
         <h1>Project Nexus</h1>
-        <p className="tagline">Open Final Fantasy booster packs · for collecting only</p>
+        <p className="tagline">Open Final Fantasy booster packs, collect and build decks</p>
         {tabs}
         <PacksTab />
+      </div>
+    );
+  }
+
+  if (tab === 'store') {
+    return (
+      <div className="menu">
+        <h1>Project Nexus</h1>
+        <p className="tagline">Exclusive printings, by set</p>
+        {tabs}
+        <StoreTab />
       </div>
     );
   }

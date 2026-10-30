@@ -41,7 +41,7 @@ export interface AccountService {
 }
 
 export interface CardGrant {
-  kind: 'pack_open' | 'draft' | 'starter_precon' | 'admin_adjustment';
+  kind: 'pack_open' | 'draft' | 'starter_precon' | 'store_purchase' | 'admin_adjustment';
   ref: string;
   cost: number;
   cards: OwnedCard[];
@@ -176,7 +176,7 @@ export class MemoryAccounts implements AccountService {
     if (!account) throw new Error(`no profile for ${userId}`);
     const key = `${userId}|${grant.kind}|${grant.ref}`;
     if (this.grants.has(key)) return { balance: account.shards, applied: false };
-    if (grant.cost > 0) this.apply(userId, -grant.cost, 'pack_purchase', grant.ref);
+    if (grant.cost > 0) this.apply(userId, -grant.cost, grant.kind === 'store_purchase' ? 'store_purchase' : 'pack_purchase', grant.ref);
     this.grants.add(key);
     if (!this.owned.has(userId)) this.owned.set(userId, []);
     addCards(this.owned.get(userId)!, grant.cards);

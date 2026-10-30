@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Store tab
+
+- A new **Store** tab, divided by set: Final Fantasy sells every Chocobo
+  Track foil printing (25, the Commander basic lands included); Edge of
+  Eternities shows as Coming soon. Each item shows its gold shine, how
+  many you own, and its price, or "Price coming soon" until the price is
+  set in `economy.ts` (`storePrices`). Buying asks first; the server
+  charges and adds the card together (`POST /api/store/buy`), recorded as
+  `store_purchase` (new migration `20261030120000_store.sql`).
+- The first sign-in tour has a Store step.
+
 ### Card finishes you can see
 
 - The Collection marks every finish you own on each card (a chip per

@@ -21,6 +21,7 @@ const STEPS: Step[] = [
   { target: '.menu-tabs button:nth-child(2)', title: 'Online', text: 'Play a friend: both of you enter the same room code.' },
   { target: '.menu-tabs button:nth-child(3)', title: 'Draft', text: 'Open six Play Boosters, pick a card from each pack as they pass around the table, then build a 40 to 60 card deck.' },
   { target: '.menu-tabs button:nth-child(4)', title: 'Packs', text: 'Buy and open boosters, browse your collection, and build your own decks (your free precon is there too).' },
+  { target: '.menu-tabs button:nth-child(5)', title: 'Store', text: 'Buy exclusive printings one at a time, such as the Chocobo Track foils, set by set.' },
 ];
 
 const KEY = 'nexus.tour.v1.';

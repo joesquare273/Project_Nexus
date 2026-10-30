@@ -187,3 +187,50 @@ describe('buying ten packs', () => {
     for (const count of [0, 2, 11, -10, '10']) expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play', count })).status).toBe(400);
   });
 });
+
+describe('the Store', () => {
+  const prices = ECONOMY.storePrices as { chocoboTrackFoil: number | null };
+  afterEach(() => {
+    prices.chocoboTrackFoil = null;
+  });
+
+  it('lists each set’s items; a set that isn’t ready has none', async () => {
+    const { call } = await withAccounts();
+    const { sets } = await (await call('token-alice', '/api/store')).json();
+    expect(sets.map((s: { name: string; ready: boolean }) => [s.name, s.ready])).toEqual([
+      ['Final Fantasy', true],
+      ['Edge of Eternities', false],
+    ]);
+    const ff = sets[0];
+    expect(ff.items).toHaveLength(25);
+    expect(ff.items.every((i: { finish: string; line: string }) => i.finish === 'foil' && i.line === 'Chocobo Track foil')).toBe(true);
+    expect(ff.items.filter((i: { name: string }) => ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(i.name))).toHaveLength(5);
+    expect(sets[1].items).toEqual([]);
+  });
+
+  it('nothing can be bought before it has a price', async () => {
+    const { accounts, call } = await withAccounts();
+    const { sets } = await (await call('token-alice', '/api/store')).json();
+    expect(sets[0].items[0].price).toBeNull();
+    expect((await call('token-alice', '/api/store/buy', 'POST', { id: sets[0].items[0].id })).status).toBe(400);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+  });
+
+  it('with a price, buying charges once and adds that foil printing', async () => {
+    prices.chocoboTrackFoil = 300;
+    const { accounts, call } = await withAccounts();
+    const { sets } = await (await call('token-alice', '/api/store')).json();
+    const item = sets[0].items[0];
+    const r = await call('token-alice', '/api/store/buy', 'POST', { id: item.id, price: 1 });
+    expect(r.status).toBe(200);
+    expect((await r.json()).balance).toBe(ECONOMY.welcomeGrant - 300);
+    expect(await accounts.collection('alice-id')).toEqual([{ id: item.id, finish: 'foil', count: 1 }]);
+    // Three more would cost 900 with 700 left: the last is refused and adds nothing.
+    expect((await call('token-alice', '/api/store/buy', 'POST', { id: item.id })).status).toBe(200);
+    expect((await call('token-alice', '/api/store/buy', 'POST', { id: item.id })).status).toBe(200);
+    expect((await call('token-alice', '/api/store/buy', 'POST', { id: item.id })).status).toBe(402);
+    expect(await accounts.collection('alice-id')).toEqual([{ id: item.id, finish: 'foil', count: 3 }]);
+    // Something that isn't in the Store can't be bought.
+    expect((await call('token-alice', '/api/store/buy', 'POST', { id: '00000000-0000-4000-8000-000000000001' })).status).toBe(400);
+  });
+});

@@ -19,6 +19,10 @@ export const ECONOMY = {
   eventEntry: 600,
   /** Event prizes in Play Boosters, by place, for a 4-player event. */
   eventPrizes: [2, 1],
+  /** Store tab prices per item kind, set by the user; null shows "Price coming soon" and can't be bought. */
+  storePrices: {
+    chocoboTrackFoil: null as number | null,
+  },
 } as const;
 
 /** Packs granted for a purchase: you pay for `bought`, and get a bonus pack for each full ten. */
