@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### S4 group 5: 18 more set cards
+
+- Valkyrie Aerial Unit, Adventurer's Airship, Summon: Choco/Mog, Summon:
+  G.F. Ifrit, Magic Damper, Loporrit Scout, Lunatic Pandora, Rook Turret,
+  Lion Heart, Tifa Lockhart, Coliseum Behemoth, Locke Cole, Judge Magister
+  Gabranth, Ice Flan, Loran of the Third Path, You're Not Alone, Tonberry
+  and Tidus, Blitzball Star, each with a test. 81 of 320 set cards built.
+
 ### Store tab
 
 - A new **Store** tab, divided by set: Final Fantasy sells every Chocobo

@@ -696,3 +696,212 @@ describe('S4 group 4: simple spells and enters-the-battlefield cards', () => {
     expect(stats(s, bear)).toEqual([base[0]! + 2, base[1]]);
   });
 });
+
+describe('S4 group 5: more enters, attacks and chapters', () => {
+  const castIt = (s: GameState, defId: string, pool: Parameters<typeof mana>[2], extra: Partial<{ targets: Target[] }> = {}) => {
+    const spell = put(s, 'P1', defId, 'hand');
+    mana(s, 'P1', pool);
+    return { s: cast(s, { type: 'CastSpell', player: 'P1', card: spell, ...extra }).state, spell };
+  };
+  /** Answers card choices (discard, optional costs) with the first cards offered. */
+  const answer = (s: GameState): GameState => {
+    for (let guard = 0; guard < 6 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) })).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = answer(settle(goTo(answer(s), 'end')).state);
+      s = answer(settle(goTo(s, 'main1')).state);
+    }
+    return s;
+  };
+
+  it('Valkyrie Aerial Unit costs {1} less per artifact you control and surveils 2', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'magic-pot');
+    // {5}{U}{U} with three artifacts: {2}{U}{U}.
+    const { s: after, spell } = castIt(s, 'valkyrie-aerial-unit', { U: 2, C: 2 }, {});
+    s = after;
+    expect(s.cards[spell]!.zone).toBe('battlefield');
+  });
+
+  it('Adventurer’s Airship loots as it attacks (crewed)', () => {
+    let s = newGame();
+    const ship = put(s, 'P1', 'adventurers-airship', 'battlefield', { crewed: true });
+    put(s, 'P1', 'coeurl', 'hand');
+    const hand = s.players.P1!.hand.length;
+    s = answer(fight(s, [{ attacker: ship, defender: 'P2' }]).state);
+    expect(s.players.P1!.hand.length).toBe(hand);
+    expect(s.players.P1!.graveyard.length).toBe(1);
+  });
+
+  it('Summon: Choco/Mog gives other creatures you control +1/+0 for each chapter', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'coeurl');
+    const base = stats(s, bear);
+    s = castIt(s, 'summon-choco-mog', { W: 1, C: 2 }).s;
+    expect(stats(s, bear)).toEqual([base[0]! + 1, base[1]]);
+  });
+
+  it('Summon: G.F. Ifrit loots on I and II, then adds {R} on III and IV', () => {
+    let s = newGame();
+    put(s, 'P1', 'coeurl', 'hand');
+    const hand = s.players.P1!.hand.length;
+    const r = castIt(s, 'summon-g-f-ifrit', { R: 1, C: 2 });
+    s = answer(r.s);
+    expect(s.players.P1!.hand.length).toBe(hand);
+    s = nextTurnOfP1(s);
+    s = nextTurnOfP1(s);
+    // Chapter III resolved at the start of this main phase: {R} is in the pool.
+    expect(s.cards[r.spell]!.namedCounters?.lore).toBe(3);
+    expect(s.players.P1!.manaPool.R).toBe(1);
+  });
+
+  it('Magic Damper: +1/+1, hexproof and untap', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'coeurl', 'battlefield', { tapped: true });
+    const base = stats(s, bear);
+    s = castIt(s, 'magic-damper', { U: 1 }, { targets: [card(bear)] }).s;
+    expect(stats(s, bear)).toEqual([base[0]! + 1, base[1]! + 1]);
+    expect(hasKeyword(s, s.cards[bear]!, 'Hexproof')).toBe(true);
+    expect(s.cards[bear]!.tapped).toBe(false);
+  });
+
+  it('Loporrit Scout grows when another creature enters; Tidus grows for artifacts', () => {
+    let s = newGame();
+    const scout = put(s, 'P1', 'loporrit-scout');
+    const tidus = put(s, 'P1', 'tidus-blitzball-star');
+    s = castIt(s, 'magic-pot', { C: 3 }).s;
+    expect(stats(s, scout)).toEqual([4, 3]);
+    expect(countersOf(s.cards[tidus]!, '+1/+1')).toBe(1);
+  });
+
+  it('Lunatic Pandora surveils, and sacrifices to destroy a nonland permanent', () => {
+    let s = newGame();
+    const pandora = put(s, 'P1', 'lunatic-pandora');
+    const target = put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { C: 6 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: pandora, ability: 1, targets: [card(target)] }).state;
+    expect(s.cards[target]!.zone).toBe('graveyard');
+    expect(s.cards[pandora]!.zone).toBe('graveyard');
+  });
+
+  it('Lion Heart deals 2 damage as it enters and gives +2/+1', () => {
+    let s = newGame();
+    const heart = put(s, 'P1', 'lion-heart', 'hand');
+    mana(s, 'P1', { C: 4 });
+    const toP2 = (options: Target[][]) => options.find((o) => o.some((x) => x.kind === 'player' && x.player === 'P2'))!;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: heart }, { targets: toP2 }).state;
+    expect(s.players.P2!.life).toBe(18);
+    const bear = put(s, 'P1', 'coeurl');
+    const gear = put(s, 'P1', 'lion-heart', 'battlefield', { attachedTo: bear });
+    expect(gear).toBeTruthy();
+    const plain = put(s, 'P2', 'coeurl');
+    expect(stats(s, bear)).toEqual([stats(s, plain)[0]! + 2, stats(s, plain)[1]! + 1]);
+  });
+
+  it('Tifa Lockhart doubles her power on landfall', () => {
+    let s = newGame();
+    const tifa = put(s, 'P1', 'tifa-lockhart', 'battlefield', { counters: 2 });
+    expect(stats(s, tifa)[0]).toBe(3);
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(stats(s, tifa)[0]).toBe(6);
+  });
+
+  it('Coliseum Behemoth chooses: destroy an artifact or enchantment, or draw', () => {
+    let s = newGame();
+    const pot = put(s, 'P2', 'magic-pot');
+    const beast = put(s, 'P1', 'coliseum-behemoth', 'hand');
+    mana(s, 'P1', { G: 2, C: 5 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: beast });
+    for (let guard = 0; guard < 10 && s.cards[pot]!.zone === 'battlefield'; guard++) {
+      if (s.pending.kind === 'chooseModes') s = act(s, { type: 'ChooseModes', player: 'P1', modes: [0] });
+      else if (s.pending.kind === 'chooseTargets') s = act(s, { type: 'ChooseTargets', player: 'P1', targets: [card(pot)] });
+      else if (s.pending.kind === 'priority') s = act(s, { type: 'PassPriority', player: s.pending.player });
+      else break;
+    }
+    expect(s.cards[pot]!.zone).toBe('graveyard');
+  });
+
+  it('Locke Cole loots after combat damage to a player', () => {
+    let s = newGame();
+    const locke = put(s, 'P1', 'locke-cole');
+    put(s, 'P1', 'coeurl', 'hand');
+    const hand = s.players.P1!.hand.length;
+    s = answer(fight(s, [{ attacker: locke, defender: 'P2' }]).state);
+    expect(s.players.P1!.hand.length).toBe(hand);
+    expect(s.players.P1!.graveyard.length).toBe(1);
+  });
+
+  it('Judge Magister Gabranth grows when another creature or artifact you control dies', () => {
+    let s = newGame();
+    const judge = put(s, 'P1', 'judge-magister-gabranth');
+    const pot = put(s, 'P1', 'magic-pot');
+    s = castIt(s, 'lightning-bolt', { R: 1 }, { targets: [card(pot)] }).s;
+    s = castIt(s, 'lightning-bolt', { R: 1 }, { targets: [card(pot)] }).s;
+    expect(s.cards[pot]!.zone).toBe('graveyard');
+    expect(countersOf(s.cards[judge]!, '+1/+1')).toBe(1);
+  });
+
+  it('Ice Flan taps and stuns an opponent’s artifact or creature as it enters', () => {
+    let s = newGame();
+    const target = put(s, 'P2', 'coeurl');
+    const flan = put(s, 'P1', 'ice-flan', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: flan }, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === target))! }).state;
+    expect(s.cards[target]!.tapped).toBe(true);
+    expect(countersOf(s.cards[target]!, 'stun')).toBe(1);
+  });
+
+  it('Loran destroys an artifact as she enters; tapping her draws a card for you and an opponent', () => {
+    let s = newGame();
+    const pot = put(s, 'P2', 'magic-pot');
+    const r = castIt(s, 'loran-of-the-third-path', { W: 1, C: 2 }, {});
+    s = r.s;
+    if (s.pending.kind === 'chooseTargets') s = settle(act(s, { type: 'ChooseTargets', player: 'P1', targets: [card(pot)] })).state;
+    expect(s.cards[pot]!.zone).toBe('graveyard');
+    s.cards[r.spell]!.summoningSick = false;
+    const hands = [s.players.P1!.hand.length, s.players.P2!.hand.length];
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: r.spell, ability: 0, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect([s.players.P1!.hand.length, s.players.P2!.hand.length]).toEqual([hands[0]! + 1, hands[1]! + 1]);
+  });
+
+  it('You’re Not Alone: +2/+2, or +4/+4 with three or more creatures', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'coeurl');
+    const base = stats(s, bear);
+    s = castIt(s, 'youre-not-alone', { W: 1 }, { targets: [card(bear)] }).s;
+    expect(stats(s, bear)).toEqual([base[0]! + 2, base[1]! + 2]);
+    let t = newGame();
+    const big = put(t, 'P1', 'coeurl');
+    put(t, 'P1', 'coeurl');
+    put(t, 'P1', 'coeurl');
+    t = castIt(t, 'youre-not-alone', { W: 1 }, { targets: [card(big)] }).s;
+    expect(stats(t, big)).toEqual([base[0]! + 4, base[1]! + 4]);
+  });
+
+  it('Tonberry enters tapped and stunned, and has first strike and deathtouch only on your turn', () => {
+    let s = newGame();
+    const r = castIt(s, 'tonberry', { B: 1 });
+    s = r.s;
+    expect(s.cards[r.spell]!.tapped).toBe(true);
+    expect(countersOf(s.cards[r.spell]!, 'stun')).toBe(1);
+    expect(hasKeyword(s, s.cards[r.spell]!, 'Deathtouch') && hasKeyword(s, s.cards[r.spell]!, 'FirstStrike')).toBe(true);
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    expect(s.activePlayer).toBe('P2');
+    expect(hasKeyword(s, s.cards[r.spell]!, 'Deathtouch')).toBe(false);
+  });
+
+  it('Tidus taps an opponent’s creature as he attacks', () => {
+    let s = newGame();
+    const tidus = put(s, 'P1', 'tidus-blitzball-star');
+    const target = put(s, 'P2', 'coeurl');
+    s = fight(s, [{ attacker: tidus, defender: 'P2' }], {}, { targets: (options) => options.find((o) => o.some((x) => x.kind === 'card' && x.card === target)) ?? options[0]! }).state;
+    expect(s.cards[target]!.tapped).toBe(true);
+  });
+});
