@@ -132,7 +132,7 @@ come after Final Fantasy testing is complete.
 - Code: `packages/client/src/packs/browse.ts` (filtering and sorting,
   tested in `packages/client/test/collection-browse.test.ts`).
 
-## Finishes everywhere (planned, user requirement 2026-10-30)
+## Finishes everywhere (built 2026-10-30, user requirement)
 
 - The collection and the deck editor show each card's finish visibly:
   non-foil, foil, surge foil, Chocobo Track foil (and later sets' own,
@@ -142,3 +142,9 @@ come after Final Fantasy testing is complete.
   a game's finishes come from the player's saved deck, which the server
   checks against their collection. Local drafts (not saved to accounts
   yet) and the Starter Kits play non-foil.
+- Code: finish names and looks in `cards/src/boosters.ts` (`SPECIAL_FOILS`,
+  `finishName`, `finishLook`; add a later set's special foils there), the
+  shared `.card-shine` in the client's styles.css, `deckFinishes` /
+  `commanderFinish` in the engine's game setup and `finish` on each card
+  (public in redaction). Saved decks can't start games yet, so no game
+  sets finishes until they can.

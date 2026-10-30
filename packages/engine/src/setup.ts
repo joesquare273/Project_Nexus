@@ -6,7 +6,7 @@ import { randomInt, seedToState, shuffleInPlace, type Seed } from './rng.ts';
 import { stabilize } from './sba.ts';
 import { drawCards, emptyManaPool, type Ctx } from './state.ts';
 import { beginFirstTurn, startMulligans } from './mulligan.ts';
-import type { CardDefId, CardDefinition, GameEvent, GameState, PlayerId } from './types.ts';
+import type { CardDefId, CardDefinition, CardFinish, GameEvent, GameState, PlayerId } from './types.ts';
 
 export interface PlayerSetup {
   id: PlayerId;
@@ -15,6 +15,9 @@ export interface PlayerSetup {
   /** Parallel to deck, preserving different basic-land and shared-card printings. */
   deckPrintings?: CardDefinition['printing'][];
   commanderPrinting?: CardDefinition['printing'];
+  /** Parallel to deck: each card's finish (undefined for non-foil). Only finishes the player owns. */
+  deckFinishes?: (CardFinish | undefined)[];
+  commanderFinish?: CardFinish;
   /** Commander format: the commander, which starts in the command zone. */
   commander?: CardDefId;
 }
@@ -108,14 +111,15 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       conceded: false,
     };
     // Shuffle before assigning instance ids so ids reveal nothing about library order.
-    const order = p.deck.map((defId,i)=>({defId,printing:p.deckPrintings?.[i]}));
+    const order = p.deck.map((defId,i)=>({defId,printing:p.deckPrintings?.[i],finish:p.deckFinishes?.[i]}));
     shuffleInPlace(s, order);
-    for (const {defId,printing} of order) {
+    for (const {defId,printing,finish} of order) {
       const id = `c${s.nextId++}`;
       s.cards[id] = {
         id,
         defId,
         ...(printing ? { printing: { ...printing } } : {}),
+        ...(finish ? { finish } : {}),
         owner: p.id,
         controller: p.id,
         zone: 'library',
@@ -133,6 +137,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
         id,
         defId: p.commander,
         ...(p.commanderPrinting ? { printing: { ...p.commanderPrinting } } : {}),
+        ...(p.commanderFinish ? { finish: p.commanderFinish } : {}),
         owner: p.id,
         controller: p.id,
         zone: 'command',

@@ -4,11 +4,12 @@
 // adds the cards to your account's collection (packs/collection.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BoosterCard, Pack, PackKind, Pull } from '@nexus/cards/boosters';
+import { finishLook, type BoosterCard, type Pack, type PackKind, type Pull } from '@nexus/cards/boosters';
+import { CardShine } from '../components/Card.tsx';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
 import { DecksView } from './DecksView.tsx';
-import { browse, finishText, isUnbuilt, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
+import { bestLook, browse, finishChips, finishText, isUnbuilt, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
 import { addPack, buyPacks, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
@@ -405,7 +406,7 @@ function PullImage({ pull, size = 'normal' }: { pull: Pull; size?: 'small' | 'no
   return (
     <div className={`pull-image finish-${pull.finish} ${pull.stamped ? 'stamped' : ''}`}>
       <img src={pull.card.images[0]![size]} alt={pull.card.name} draggable={false} />
-      {pull.finish !== 'nonfoil' && <div className="pull-shine" />}
+      {finishLook(pull.card, pull.finish) && <CardShine finish={finishLook(pull.card, pull.finish)!} />}
       {pull.stamped && <div className="pull-stamp">✦</div>}
     </div>
   );
@@ -543,15 +544,20 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
             <div
               key={c.id}
               className={`binder-card ${total ? 'have' : 'missing'}`}
-              title={total ? `${c.name}: ${finishText(collection, c.id)}` : `${c.name}: not owned`}
+              title={total ? `${c.name}: ${finishText(collection, c)}` : `${c.name}: not owned`}
               onMouseEnter={() => total && onPreview(c)}
               onMouseLeave={() => onPreview(null)}
             >
               <img src={c.images[0]!.small} alt={c.name} loading="lazy" />
+              {bestLook(collection, c) && <CardShine finish={bestLook(collection, c)!} />}
               {total > 0 && (
-                <span className="binder-count">
-                  {total}
-                  {(n.foil ?? 0) + (n.surge ?? 0) > 0 ? ' ✦' : ''}
+                <span className="finish-chips">
+                  {finishChips(collection, c).map((chip) => (
+                    <span key={chip.finish} className={`finish-chip chip-${chip.look ?? 'nonfoil'}`} title={`${chip.count} ${chip.name}`}>
+                      {chip.look ? '✦' : ''}
+                      {chip.count}
+                    </span>
+                  ))}
                 </span>
               )}
               <span className="binder-number">#{c.number}</span>

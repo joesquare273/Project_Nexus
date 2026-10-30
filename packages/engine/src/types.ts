@@ -66,6 +66,14 @@ export const KEYWORDS = [
 export type Keyword = (typeof KEYWORDS)[number];
 
 /**
+ * How a physical card looks (it has no effect on the rules): plain foil,
+ * surge foil, or a set's special foil (Final Fantasy's Chocobo Track foil).
+ * Non-foil cards have none.
+ */
+export const CARD_FINISHES = ['foil', 'surge', 'chocobotrack'] as const;
+export type CardFinish = (typeof CARD_FINISHES)[number];
+
+/**
  * Counters other than +1/+1 counters, which are `counters` (rule 122). A
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
@@ -1188,6 +1196,8 @@ export interface CardInstance {
   lastDefinition?: CardDefinition;
   /** Physical printing selected by the deck, independent of shared rules identity. */
   printing?: CardDefinition['printing'];
+  /** Its finish, from the player's deck (only finishes they own); none is non-foil. */
+  finish?: CardFinish;
   /** Crew animation lasts until cleanup, and ends when this object changes zones. */
   crewed?: boolean;
   /** A double-faced permanent with its back face up (rule 712); cleared when it leaves the battlefield. */

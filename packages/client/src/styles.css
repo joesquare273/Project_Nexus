@@ -2224,3 +2224,42 @@ button.phase.current {
 .tour-buttons .fineprint {
   margin-right: auto;
 }
+
+/* A foil card's shine: plain foil, surge foil (rainbow) or Chocobo Track foil (gold).
+   Sits over a card image inside a positioned container. */
+.card-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: color-dodge;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.35) 35%, rgba(160, 220, 255, 0.25) 45%, transparent 60%);
+  background-size: 250% 250%;
+  animation: card-shine 3.2s linear infinite;
+}
+.card-shine.look-surge {
+  background: linear-gradient(115deg, rgba(255, 80, 80, 0.3), rgba(255, 220, 80, 0.3), rgba(80, 255, 140, 0.3), rgba(80, 160, 255, 0.35), rgba(200, 90, 255, 0.3), rgba(255, 80, 80, 0.3));
+  background-size: 300% 300%;
+  animation-duration: 2s;
+}
+.card-shine.look-chocobotrack {
+  background: linear-gradient(115deg, transparent 15%, rgba(255, 215, 90, 0.45) 32%, rgba(255, 245, 190, 0.4) 42%, rgba(230, 160, 40, 0.35) 52%, transparent 66%);
+  background-size: 250% 250%;
+  animation-duration: 2.6s;
+}
+@keyframes card-shine {
+  from {
+    background-position: 100% 100%;
+  }
+  to {
+    background-position: 0% 0%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-shine {
+    animation: none;
+  }
+}
+.inspector-card {
+  position: relative;
+}

@@ -2,7 +2,8 @@
 // what order (collector number, mana value, name, or color in WUBRG order).
 // Pure functions, so the binder and its tests share them.
 
-import type { BoosterCard } from '@nexus/cards/boosters';
+import { finishLook, finishName, type BoosterCard, type Finish } from '@nexus/cards/boosters';
+import type { CardFinish } from '@nexus/engine';
 import { CARD_DEFS, CARD_IDS_BY_NAME, FIN_PRECONS, SCRYFALL_PRINTINGS } from '@nexus/cards';
 import { manaValue, parseManaCost } from '@nexus/engine';
 import { owned, type Collection } from './collection.ts';
@@ -89,11 +90,24 @@ export function browse(cards: readonly BoosterCard[], collection: Collection, sh
   return [...shown].sort(compare);
 }
 
-/** "2 nonfoil, 1 foil" for a card's finishes. */
-export function finishText(collection: Collection, id: string): string {
-  const n = collection.cards[id] ?? {};
-  return (['nonfoil', 'foil', 'surge'] as const)
-    .filter((f) => (n[f] ?? 0) > 0)
-    .map((f) => `${n[f]} ${f === 'surge' ? 'surge foil' : f}`)
+const FINISHES: Finish[] = ['nonfoil', 'foil', 'surge'];
+
+/** Each finish of a card the player owns: how many, its name and its look. */
+export function finishChips(collection: Collection, card: BoosterCard): { finish: Finish; count: number; name: string; look: CardFinish | undefined }[] {
+  const n = collection.cards[card.id] ?? {};
+  return FINISHES.filter((f) => (n[f] ?? 0) > 0).map((f) => ({ finish: f, count: n[f]!, name: finishName(card, f), look: finishLook(card, f) }));
+}
+
+/** "2 Non-foil, 1 Chocobo Track foil" for a card's finishes. */
+export function finishText(collection: Collection, card: BoosterCard): string {
+  return finishChips(collection, card)
+    .map((c) => `${c.count} ${c.name}`)
     .join(', ');
+}
+
+/** The shiniest finish owned, for the binder's shine: surge, then a special foil, then foil. */
+export function bestLook(collection: Collection, card: BoosterCard): CardFinish | undefined {
+  const n = collection.cards[card.id] ?? {};
+  if (n.surge) return 'surge';
+  return n.foil ? finishLook(card, 'foil') : undefined;
 }

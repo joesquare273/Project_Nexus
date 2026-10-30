@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CardDefinition } from '@nexus/engine';
+import type { CardDefinition, CardFinish } from '@nexus/engine';
 import { costSymbols, defOf, frameClass, isCreature, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
 
 export function ManaCost({ cost, size = 14 }: { cost: string | undefined; size?: number }) {
@@ -42,13 +42,34 @@ export type CardSize = 'small' | 'normal' | 'large';
  * frame. `backFace`: a transformed double-faced permanent, whose back image
  * Scryfall serves at the same path under /back/.
  */
-export function CardFace({ defId, printing, size = 'normal', backFace = false }: { defId: string; printing?: CardDefinition['printing']; size?: CardSize; backFace?: boolean }) {
+export function CardFace({
+  defId,
+  printing,
+  size = 'normal',
+  backFace = false,
+  finish,
+}: {
+  defId: string;
+  printing?: CardDefinition['printing'];
+  size?: CardSize;
+  backFace?: boolean;
+  /** A foil card's shine (only finishes the player owns reach the board). */
+  finish?: CardFinish;
+}) {
   const def = defOf(defId);
   const info = scryfallOf(defId,printing);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const src = info && (backFace ? info.image[size].replace('/front/', '/back/') : info.image[size]);
-  if (!info || !src || failedSrc === src) return <DrawnCard def={backFace && def.backFace ? { ...def, ...def.backFace } : def} />;
+  const shine = finish && <CardShine finish={finish} />;
+  if (!info || !src || failedSrc === src)
+    return (
+      <>
+        <DrawnCard def={backFace && def.backFace ? { ...def, ...def.backFace } : def} />
+        {shine}
+      </>
+    );
   return (
+    <>
     <img
       className="card-img"
       src={src}
@@ -57,7 +78,14 @@ export function CardFace({ defId, printing, size = 'normal', backFace = false }:
       loading="lazy"
       onError={() => setFailedSrc(src)}
     />
+    {shine}
+    </>
   );
+}
+
+/** The foil shine over a card image (its container must be positioned). */
+export function CardShine({ finish }: { finish: CardFinish }) {
+  return <div className={`card-shine look-${finish}`} aria-hidden="true" />;
 }
 
 /** The back of a card, for hidden cards and library piles. */

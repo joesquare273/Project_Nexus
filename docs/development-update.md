@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Card finishes you can see
+
+- The Collection marks every finish you own on each card (a chip per
+  finish with its count, and the card shines in its best finish); the deck
+  editor shows each pick's finish name and shine, and the deck list names
+  foils. Shines: blue-white for foil, rainbow for surge foil, gold for
+  Chocobo Track foil (also in the pack opening now).
+- Games: the engine's setup takes each deck card's finish
+  (`deckFinishes`), cards keep it (`finish`, public in redaction), and
+  the board, hand and inspector show the shine. Only finishes the player
+  owns come in (from saved decks, once those can start games).
+
 ### Buy 10 packs; cut-out pack images
 
 - The Packs tab has "Buy 10 (+1 free)" for each booster: ten packs' price

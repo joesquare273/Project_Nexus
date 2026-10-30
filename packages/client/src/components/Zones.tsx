@@ -58,7 +58,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
       onMouseLeave={() => h.onHover(null)}
     >
       <div className="bf-inner">
-        <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="small" backFace={!!c.transformed && !c.copy} />
+        <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="small" backFace={!!c.transformed && !c.copy} {...(c.finish && !c.copy ? { finish: c.finish } : {})} />
         {c.copy && <div className="badge" title={"Copying " + c.copy.copiedName}>Copy</div>}
         {c.isToken && <div className="badge token">token</div>}
         {(c.counters ?? 0) > 0 && (
@@ -488,7 +488,7 @@ function HandCard({
       onMouseEnter={() => h.onHover(id)}
       onMouseLeave={() => h.onHover(null)}
     >
-      <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" />
+      <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" {...(view.cards[id]!.finish ? { finish: view.cards[id]!.finish } : {})} />
       {tag && <div className="badge from-zone">{tag}</div>}
     </div>
   );

@@ -5,7 +5,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { BoosterCard, Finish } from '@nexus/cards/boosters';
+import { finishLook, finishName } from '@nexus/cards/boosters';
 import { accessToken } from '../account/AccountBar.tsx';
+import { CardShine } from '../components/Card.tsx';
 import { isUnbuilt, PRINTING_CARDS } from './browse.ts';
 import { deleteDeck, fetchDecks, saveDeck, type Basics, type Collection, type DeckDraft, type DeckFormat, type SavedDeck } from './collection.ts';
 
@@ -18,7 +20,6 @@ const FORMATS: { format: DeckFormat; label: string }[] = [
 ];
 const BASIC_NAMES: Record<keyof Basics, string> = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
 const NO_BASICS: Basics = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-const FINISH_MARK: Record<Finish, string> = { nonfoil: '', foil: ' ✦', surge: ' ✦✦' };
 
 const deckSize = (d: DeckDraft) => d.cards.reduce((n, c) => n + c.count, 0) + Object.values(d.basics).reduce((n, k) => n + k, 0);
 
@@ -224,16 +225,18 @@ function DeckEditor({
                   key={`${e.id}|${e.finish}`}
                   className={`binder-card deck-pick ${free > 0 ? 'have' : 'missing'}`}
                   disabled={free <= 0}
-                  title={`${e.card.name}${FINISH_MARK[e.finish]}: ${free} left`}
+                  title={`${e.card.name} (${finishName(e.card, e.finish)}): ${free} left`}
                   onClick={() => setCount(e.id, e.finish, inDeck(e.id, e.finish) + 1)}
                   onMouseEnter={() => onPreview(e.card)}
                   onMouseLeave={() => onPreview(null)}
                 >
                   <img src={e.card.images[0]!.small} alt={e.card.name} loading="lazy" />
-                  <span className="binder-count">
+                  {finishLook(e.card, e.finish) && <CardShine finish={finishLook(e.card, e.finish)!} />}
+                  <span className={`finish-chip chip-${finishLook(e.card, e.finish) ?? 'nonfoil'} deck-pick-count`}>
+                    {finishLook(e.card, e.finish) ? '✦' : ''}
                     {free}
-                    {FINISH_MARK[e.finish]}
                   </span>
+                  <span className="deck-pick-finish">{finishName(e.card, e.finish)}</span>
                   {isUnbuilt(e.card) && <span className="binder-unbuilt">Not built</span>}
                 </button>
               );
@@ -265,7 +268,9 @@ function DeckEditor({
                   </button>
                   <span>
                     {c.count} {names.get(c.id) ?? 'Unknown card'}
-                    {FINISH_MARK[c.finish]}
+                    {c.finish !== 'nonfoil' && byId.get(c.id) && (
+                      <span className={`finish-tag chip-${finishLook(byId.get(c.id)!, c.finish)}`}> {finishName(byId.get(c.id)!, c.finish)}</span>
+                    )}
                   </span>
                 </li>
               ))}

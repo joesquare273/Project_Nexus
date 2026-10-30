@@ -7,6 +7,7 @@
 // Packs are only for collecting: opening them never changes the playable
 // card pool. The client loads this module on demand (it holds every printing).
 
+import type { CardFinish } from '@nexus/engine';
 import data from '../data/booster-cards.json' with { type: 'json' };
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'special' | 'bonus';
@@ -38,6 +39,30 @@ export const BOOSTER_CARDS = data as BoosterCard[];
 
 export type PackKind = 'play' | 'collector';
 export type Finish = 'nonfoil' | 'foil' | 'surge';
+
+/**
+ * Special foil treatments, by Scryfall promo type: a foil copy of such a
+ * printing shows that treatment's look and name. Later sets add theirs here
+ * (and to CARD_FINISHES in the engine when they need their own shine).
+ */
+export const SPECIAL_FOILS: Record<string, { name: string; look: CardFinish }> = {
+  chocobotrackfoil: { name: 'Chocobo Track foil', look: 'chocobotrack' },
+};
+
+/** How a copy looks, for the shine: undefined for non-foil. */
+export function finishLook(card: Pick<BoosterCard, 'promoTypes'>, finish: Finish): CardFinish | undefined {
+  if (finish === 'nonfoil') return undefined;
+  if (finish === 'surge') return 'surge';
+  const special = card.promoTypes?.map((p) => SPECIAL_FOILS[p]).find(Boolean);
+  return special?.look ?? 'foil';
+}
+
+/** "Non-foil", "Foil", "Surge foil", "Chocobo Track foil". */
+export function finishName(card: Pick<BoosterCard, 'promoTypes'>, finish: Finish): string {
+  if (finish === 'nonfoil') return 'Non-foil';
+  if (finish === 'surge') return 'Surge foil';
+  return card.promoTypes?.map((p) => SPECIAL_FOILS[p]?.name).find(Boolean) ?? 'Foil';
+}
 
 /** One card pulled from a pack. */
 export interface Pull {

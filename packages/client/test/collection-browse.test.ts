@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { BOOSTER_CARDS } from '@nexus/cards/boosters';
-import { browse, colorRank, finishText, manaValueOf, PRECON_CARDS } from '../src/packs/browse.ts';
+import { finishLook, finishName } from '@nexus/cards/boosters';
+import { bestLook, browse, colorRank, finishText, manaValueOf, PRECON_CARDS } from '../src/packs/browse.ts';
 import type { Collection } from '../src/packs/collection.ts';
 
 const main = BOOSTER_CARDS.filter((c) => c.set === 'fin' && c.booster);
@@ -31,8 +32,18 @@ describe('collection browser', () => {
   });
 
   it('describes the finishes owned', () => {
-    expect(finishText(collection, first!.id)).toBe('2 nonfoil, 1 foil');
-    expect(finishText(collection, second!.id)).toBe('1 surge foil');
+    expect(finishText(collection, first!)).toBe('2 Non-foil, 1 Foil');
+    expect(finishText(collection, second!)).toBe('1 Surge foil');
+    expect(bestLook(collection, first!)).toBe('foil');
+    expect(bestLook(collection, second!)).toBe('surge');
+  });
+
+  it('a foil Chocobo Track printing is named and shines as Chocobo Track foil', () => {
+    const track = BOOSTER_CARDS.find((c) => c.promoTypes?.includes('chocobotrackfoil'))!;
+    expect(finishName(track, 'foil')).toBe('Chocobo Track foil');
+    expect(finishLook(track, 'foil')).toBe('chocobotrack');
+    expect(finishLook(track, 'nonfoil')).toBeUndefined();
+    expect(bestLook({ cards: { [track.id]: { foil: 1 } } }, track)).toBe('chocobotrack');
   });
 
   it('lists the precons’ printings, with colors and mana values from their definitions', () => {
