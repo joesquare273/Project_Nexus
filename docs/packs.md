@@ -2,7 +2,7 @@
 
 The menu's **Packs** tab opens Final Fantasy booster packs for collecting.
 Each pack costs Aether Shards (100 for a Play Booster, 500 for a Collector
-Booster); the game server opens it and adds the cards to your account's
+Booster; buying 10 at once adds an 11th free); the game server opens it and adds the cards to your account's
 collection. Pulled cards don't change the Starter Kit and precon games.
 
 ## Card data
@@ -131,3 +131,14 @@ come after Final Fantasy testing is complete.
   "Commander decks" group), with counts per finish on hover.
 - Code: `packages/client/src/packs/browse.ts` (filtering and sorting,
   tested in `packages/client/test/collection-browse.test.ts`).
+
+## Finishes everywhere (planned, user requirement 2026-10-30)
+
+- The collection and the deck editor show each card's finish visibly:
+  non-foil, foil, surge foil, Chocobo Track foil (and later sets' own,
+  such as fracture foil), with the pack opening's shine: rainbow for surge,
+  gold for Chocobo Track.
+- The same shine shows during games, but only for a finish the player owns:
+  a game's finishes come from the player's saved deck, which the server
+  checks against their collection. Local drafts (not saved to accounts
+  yet) and the Starter Kits play non-foil.

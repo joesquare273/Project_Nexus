@@ -9,7 +9,7 @@ import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
 import { DecksView } from './DecksView.tsx';
 import { browse, finishText, isUnbuilt, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
-import { addPack, buyPack, fetchCollection, owned, type Collection } from './collection.ts';
+import { addPack, buyPacks, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
 
@@ -40,7 +40,13 @@ const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready:
 /** The Magic card back, from Scryfall's image servers. */
 const CARD_BACK = 'https://backs.scryfall.io/large/0/a/0aeebaf5-8c7d-4636-9e82-8c27447861f7.jpg';
 
-type View = { kind: 'shop' } | { kind: 'open'; pack: Pack; fresh: boolean[] } | { kind: 'summary'; pack: Pack; fresh: boolean[] } | { kind: 'collection' } | { kind: 'decks' };
+/** One opened pack and which of its pulls were new printings. */
+interface Opened {
+  pack: Pack;
+  fresh: boolean[];
+}
+
+type View = { kind: 'shop' } | { kind: 'open'; opened: Opened[]; index: number } | { kind: 'summary'; opened: Opened[] } | { kind: 'collection' } | { kind: 'decks' };
 
 export function PacksTab() {
   const [mod, setMod] = useState<Boosters | null>(null);
@@ -62,18 +68,24 @@ export function PacksTab() {
       .then(setCollection, (e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server. Is it running (npm run server)?' : e.message));
   }, []);
 
-  const open = async (kind: PackKind) => {
+  const open = async (kind: PackKind, count: 1 | 10 = 1) => {
     if (!collection || busy) return;
     setBusy(true);
     setProblem(null);
     try {
       const token = await accessToken();
       if (!token) throw new Error('Sign in first.');
-      const { pack, balance } = await buyPack(token, kind);
+      const { packs, balance } = await buyPacks(token, kind, count);
       showShards(balance);
-      const { collection: next, fresh } = addPack(collection, pack);
+      // Each pack's NEW badges count the packs opened before it.
+      let next = collection;
+      const opened = packs.map((pack) => {
+        const r = addPack(next, pack);
+        next = r.collection;
+        return { pack, fresh: r.fresh };
+      });
       setCollection(next);
-      setView({ kind: 'open', pack, fresh });
+      setView({ kind: 'open', opened, index: 0 });
     } catch (e) {
       setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server.');
       setView({ kind: 'shop' });
@@ -112,16 +124,31 @@ export function PacksTab() {
       </div>
 
       {problem && view.kind === 'shop' && <p className="account-error">{problem}</p>}
-      {view.kind === 'shop' && <Shop mod={mod} busy={busy} onOpen={(k) => void open(k)} onOdds={setOdds} />}
+      {view.kind === 'shop' && <Shop mod={mod} busy={busy} onOpen={(k, n) => void open(k, n)} onOdds={setOdds} />}
       {view.kind === 'open' && (
-        <Opening pack={view.pack} fresh={view.fresh} art={packArt(mod, view.pack.kind)} onDone={() => setView({ kind: 'summary', pack: view.pack, fresh: view.fresh })} />
+        <>
+          {view.opened.length > 1 && (
+            <div className="pack-queue">
+              <span>
+                Pack {view.index + 1} of {view.opened.length}
+              </span>
+              <button onClick={() => setView({ kind: 'summary', opened: view.opened })}>Skip to summary</button>
+            </div>
+          )}
+          <Opening
+            key={view.index}
+            pack={view.opened[view.index]!.pack}
+            fresh={view.opened[view.index]!.fresh}
+            art={packArt(mod, view.opened[view.index]!.pack.kind)}
+            onDone={() => setView(view.index + 1 < view.opened.length ? { ...view, index: view.index + 1 } : { kind: 'summary', opened: view.opened })}
+          />
+        </>
       )}
       {view.kind === 'summary' && (
         <Summary
-          pack={view.pack}
-          fresh={view.fresh}
+          opened={view.opened}
           onPreview={setPreview}
-          onAgain={() => void open(view.pack.kind)}
+          onAgain={() => void open(view.opened[0]!.pack.kind)}
           onCollection={() => setView({ kind: 'collection' })}
           onShop={() => setView({ kind: 'shop' })}
         />
@@ -144,7 +171,7 @@ export function PacksTab() {
 // Choosing a pack
 // ---------------------------------------------------------------------------
 
-function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onOpen: (k: PackKind) => void; onOdds: (k: PackKind) => void }) {
+function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onOpen: (k: PackKind, count: 1 | 10) => void; onOdds: (k: PackKind) => void }) {
   return (
     <div className="pack-shop">
       {PACKS.map((p) => {
@@ -157,8 +184,11 @@ function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onO
             <div className="pack-tile-buttons">
               {p.ready ? (
                 <>
-                  <button className="primary" disabled={busy} onClick={() => onOpen(p.kind)}>
+                  <button className="primary" disabled={busy} onClick={() => onOpen(p.kind, 1)}>
                     Buy and open <ShardIcon size={16} /> {PRICES[p.kind]}
+                  </button>
+                  <button disabled={busy} title="Ten packs and one more free" onClick={() => onOpen(p.kind, 10)}>
+                    Buy 10 (+1 free) <ShardIcon size={16} /> {(PRICES[p.kind] * 10).toLocaleString()}
                   </button>
                   <button onClick={() => onOdds(p.kind)}>Pack odds</button>
                 </>
@@ -386,36 +416,41 @@ function PullImage({ pull, size = 'normal' }: { pull: Pull; size?: 'small' | 'no
 // ---------------------------------------------------------------------------
 
 function Summary({
-  pack,
-  fresh,
+  opened,
   onPreview,
   onAgain,
   onCollection,
   onShop,
 }: {
-  pack: Pack;
-  fresh: boolean[];
+  opened: Opened[];
   onPreview: (c: BoosterCard | null) => void;
   onAgain: () => void;
   onCollection: () => void;
   onShop: () => void;
 }) {
-  const order = revealOrder(pack);
+  const name = opened[0]!.pack.kind === 'play' ? 'Play Booster' : 'Collector Booster';
+  const newCount = opened.reduce((n, o) => n + o.fresh.filter(Boolean).length, 0);
   return (
     <div className="pack-summary">
-      <h2>Your {pack.kind === 'play' ? 'Play Booster' : 'Collector Booster'}</h2>
-      <div className="summary-grid">
-        {order.map((i) => {
-          const p = pack.cards[i]!;
-          return (
-            <div key={i} className={`summary-card hype-${p.hype}`} onMouseEnter={() => onPreview(p.card)} onMouseLeave={() => onPreview(null)}>
-              <PullImage pull={p} />
-              {fresh[i] && <span className="new-badge">NEW</span>}
-              <span className="summary-slot">{p.finish === 'nonfoil' || p.slot.toLowerCase().includes(p.finish) ? p.slot : `${p.slot} (${p.finish})`}</span>
-            </div>
-          );
-        })}
-      </div>
+      <h2>{opened.length === 1 ? `Your ${name}` : `Your ${opened.length} ${name}s`}</h2>
+      {opened.length > 1 && <p className="fineprint">{newCount} new {newCount === 1 ? 'card' : 'cards'} for your collection.</p>}
+      {opened.map(({ pack, fresh }, n) => (
+        <div key={n} className="summary-pack">
+          {opened.length > 1 && <h3>Pack {n + 1}</h3>}
+          <div className="summary-grid">
+            {revealOrder(pack).map((i) => {
+              const p = pack.cards[i]!;
+              return (
+                <div key={i} className={`summary-card hype-${p.hype}`} onMouseEnter={() => onPreview(p.card)} onMouseLeave={() => onPreview(null)}>
+                  <PullImage pull={p} />
+                  {fresh[i] && <span className="new-badge">NEW</span>}
+                  <span className="summary-slot">{p.finish === 'nonfoil' || p.slot.toLowerCase().includes(p.finish) ? p.slot : `${p.slot} (${p.finish})`}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
       <div className="summary-buttons">
         <button className="primary big" onClick={onAgain}>
           Open another

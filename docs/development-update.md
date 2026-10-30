@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Buy 10 packs; cut-out pack images
+
+- The Packs tab has "Buy 10 (+1 free)" for each booster: ten packs' price
+  for eleven packs (the bulk bonus), charged and added to the collection in
+  one server transaction (`POST /api/packs/open {kind, count: 10}`). The
+  packs open one after another (Skip to summary jumps ahead), then one
+  summary shows every pack with the NEW cards marked.
+- The two pack photos had a white box around them. They're now cut out
+  (the white background flood-filled away from the edges, so the packs' own
+  white wrappers stay) and saved as transparent PNGs; the shadow follows the
+  pack's outline.
+
 ### S4 group 4: 24 simple set cards
 
 - Dark Ritual, Counterspell, Lightning Bolt, Dovin's Veto, Eject, Wall of

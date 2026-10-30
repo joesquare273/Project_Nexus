@@ -109,7 +109,9 @@ describe('buying packs', () => {
     const { accounts, call } = await withAccounts();
     const r = await call('token-alice', '/api/packs/open', 'POST', { kind: 'play' });
     expect(r.status).toBe(200);
-    const { pack, balance } = await r.json();
+    const { packs, balance } = await r.json();
+    expect(packs).toHaveLength(1);
+    const pack = packs[0];
     expect(balance).toBe(ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice);
     expect(accounts.accounts.get('alice-id')!.shards).toBe(balance);
     const owned = await accounts.collection('alice-id');
@@ -162,5 +164,26 @@ describe('the free starter precon', () => {
     const { call } = await withAccounts();
     for (const precon of ['Cloud', '', 5, undefined]) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(false);
+  });
+});
+
+describe('buying ten packs', () => {
+  it('charges for ten, opens eleven (one free) and adds every card at once', async () => {
+    const { accounts, call } = await withAccounts();
+    const r = await call('token-alice', '/api/packs/open', 'POST', { kind: 'play', count: 10 });
+    expect(r.status).toBe(200);
+    const { packs, balance } = await r.json();
+    expect(packs).toHaveLength(11);
+    expect(balance).toBe(ECONOMY.welcomeGrant - 10 * ECONOMY.playBoosterPrice);
+    const total = packs.reduce((n: number, p: { cards: unknown[] }) => n + p.cards.length, 0);
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(total);
+  });
+
+  it('refuses ten Collector Boosters it can’t afford, and other counts', async () => {
+    const { accounts, call } = await withAccounts();
+    expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector', count: 10 })).status).toBe(402);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+    expect(await accounts.collection('alice-id')).toEqual([]);
+    for (const count of [0, 2, 11, -10, '10']) expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play', count })).status).toBe(400);
   });
 });

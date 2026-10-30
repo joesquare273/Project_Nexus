@@ -12,7 +12,7 @@ import type { AccountService, AccountUser } from './accounts.ts';
 import { randomInt, randomUUID } from 'node:crypto';
 import { openPack, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
-import { ECONOMY } from './economy.ts';
+import { ECONOMY, packsForPurchase } from './economy.ts';
 import { STARTER_CHOICES, STARTER_REF, claimStarter } from './starter.ts';
 
 /** Biggest message a browser may send. Actions are small. */
@@ -99,8 +99,9 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/decks, POST /api/decks (new, or changed by id), DELETE /api/decks/<id>.
  * - GET /api/starter: whether the free starter precon is still to pick, and the choices;
  *   POST /api/starter {precon}: grants it (once per account) and saves it as a deck.
- * - POST /api/packs/open {kind}: buys one booster, opens it on the server and
- *   adds its cards to the collection, all at once.
+ * - POST /api/packs/open {kind, count}: buys 1 or 10 boosters (10 come with a
+ *   free bonus pack), opens them on the server and adds their cards to the
+ *   collection, all at once.
  */
 async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string, accounts: AccountService | null): Promise<void> {
   try {
@@ -148,17 +149,20 @@ const PACK_PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, 
 const cryptoRandom = () => randomInt(2 ** 48 - 1) / 2 ** 48;
 
 async function openPackRoute(res: ServerResponse, user: AccountUser, accounts: AccountService, body: unknown): Promise<void> {
-  const kind = (body as { kind?: unknown } | undefined)?.kind;
+  const { kind, count = 1 } = (body ?? {}) as { kind?: unknown; count?: unknown };
   if (kind !== 'play' && kind !== 'collector') return json(res, 400, { error: 'Choose a Play or Collector Booster.' });
+  if (count !== 1 && count !== 10) return json(res, 400, { error: 'Buy 1 or 10 packs at a time.' });
   await accounts.ensure(user);
-  // The same pack as the Packs tab has always opened, Scene Box extras included.
-  const pack = openPack(kind, cryptoRandom);
-  const cards = pack.cards.map((p) => ({ id: p.card.id, finish: p.finish, count: 1 }));
+  const { paid, total } = packsForPurchase(count);
+  const price = paid * PACK_PRICES[kind];
+  // The same packs as the Packs tab has always opened, Scene Box extras included.
+  const packs = Array.from({ length: total }, () => openPack(kind, cryptoRandom));
+  const cards = packs.flatMap((pack) => pack.cards.map((p) => ({ id: p.card.id, finish: p.finish, count: 1 })));
   try {
-    const { balance } = await accounts.grantCards(user.id, { kind: 'pack_open', ref: randomUUID(), cost: PACK_PRICES[kind], cards });
-    return json(res, 200, { pack, balance });
+    const { balance } = await accounts.grantCards(user.id, { kind: 'pack_open', ref: randomUUID(), cost: price, cards });
+    return json(res, 200, { packs, balance });
   } catch (e) {
-    if (/insufficient/.test(String(e))) return json(res, 402, { error: `You need ${PACK_PRICES[kind]} Aether Shards for this pack.` });
+    if (/insufficient/.test(String(e))) return json(res, 402, { error: `You need ${price} Aether Shards for ${count === 1 ? 'this pack' : 'these packs'}.` });
     throw e;
   }
 }

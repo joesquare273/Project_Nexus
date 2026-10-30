@@ -52,7 +52,7 @@ five bot matches a day ≈ 2,200 a week (about 22).
 | E1c | **Done (2026-10-29):** the free precon (`/api/starter`, `StarterPick.tsx`) and the guided tour (`Tour.tsx`). **First sign-in** (user requirement, 2026-10-29): a guided tour of the app that pops up step by step on a player's first sign-in (menu tabs, account and shards, Packs, Draft, Online, deckbuilding), skippable and replayable; and a free starter: the new player picks one of the four Final Fantasy Commander precons, granted once to their collection and saved as a deck (idempotent, server-side, like the welcome grant). Needs E1b. |
 | E2 | Bot games on the server, so their results can be rewarded. |
 | E3 | Match rewards and daily/weekly quests, with the reward breakdown after each match. |
-| E4 | The booster store: Play and Collector Boosters, bulk bonus, confirmation, shortfall message; opened packs go to the account's collection. |
+| E4 | **Boosters done (2026-10-30)** in the Packs tab: 1 or 10 (+1 free), shortfall message, opened packs go to the account's collection. **Store tab (user requirement 2026-10-30):** a separate Store tab, divided by set, where players buy exclusive printings directly: for Final Fantasy, every Chocobo Track foil card (lands included). Prices are set by the user later (until then the store shows the cards and "Price coming soon"). Bought printings go to the collection in the chosen finish, charged in one server transaction like packs. |
 | E5 | Paid event entry and prizes, with the online draft events (sealed.md, S3). |
 
 ## Hosting (free tiers, checked 2026-10-29)

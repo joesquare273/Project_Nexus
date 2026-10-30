@@ -40,15 +40,15 @@ export async function fetchCollection(token: string): Promise<Collection> {
   return c;
 }
 
-/** Buys and opens one booster on the server. */
-export async function buyPack(token: string, kind: PackKind): Promise<{ pack: Pack; balance: number }> {
+/** Buys and opens 1 or 10 boosters on the server (10 come with a free one). */
+export async function buyPacks(token: string, kind: PackKind, count: 1 | 10): Promise<{ packs: Pack[]; balance: number }> {
   const res = await fetch('/api/packs/open', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind }),
+    body: JSON.stringify({ kind, count }),
   });
-  if (!res.ok) throw await failure(res, 'The pack could not be opened. Try again.');
-  return (await res.json()) as { pack: Pack; balance: number };
+  if (!res.ok) throw await failure(res, 'The packs could not be opened. Try again.');
+  return (await res.json()) as { packs: Pack[]; balance: number };
 }
 
 export type DeckFormat = 'commander' | 'limited' | 'constructed';
