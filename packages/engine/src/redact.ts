@@ -185,6 +185,7 @@ const CARD_FIELDS = {
   castPermission: 'copy',
   phasedOut: 'copy',
   blitzed: 'copy',
+  evoked: 'copy',
   sacrificeAtEndStep: 'copy',
   unearthed: 'copy',
   rebounding: 'copy',

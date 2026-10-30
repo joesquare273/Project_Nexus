@@ -241,7 +241,7 @@ export function modeProblem(def: CardDefinition, choice: SpellChoice): string | 
 }
 
 /** Why a player can't use a card's alternative cost right now, or null if they can. */
-export function alternativeCostProblem(s: GameState, def: CardDefinition, playerId: PlayerId): string | null {
+export function alternativeCostProblem(s: GameState, def: CardDefinition, playerId: PlayerId, cardId?: InstanceId): string | null {
   const alt = def.alternativeCost;
   if (!alt) return `${def.name} has no alternative cost.`;
   const meets = (c: CardInstance) => c.controller === playerId && matchesObject(s, alt.ifControls, c, { controller: playerId });
@@ -249,7 +249,15 @@ export function alternativeCostProblem(s: GameState, def: CardDefinition, player
     return `You don't meet the condition for ${def.name}'s alternative cost.`;
   }
   if (alt.life !== undefined && s.players[playerId]!.life < alt.life) return "You don't have enough life to pay.";
+  if (alt.exileFromHand && exileFromHandChoices(s, def, playerId, cardId).length === 0) return `You have no card in hand to exile for ${def.name}.`;
   return null;
+}
+
+/** The other cards in hand that can be exiled to pay an "exile a [color] card from your hand" cost. */
+export function exileFromHandChoices(s: GameState, def: CardDefinition, playerId: PlayerId, cardId?: InstanceId): InstanceId[] {
+  const filter = def.alternativeCost?.exileFromHand;
+  if (!filter) return [];
+  return player(s, playerId).hand.filter((id) => id !== cardId && matchesObject(s, filter, s.cards[id]!, { controller: playerId }));
 }
 
 // ---------------------------------------------------------------------------
@@ -819,7 +827,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (modes) reject(modes);
   const alternative = choice.alternative ?? false;
   if (alternative) {
-    const problem = alternativeCostProblem(s, def, playerId);
+    const problem = alternativeCostProblem(s, def, playerId, id);
     if (problem) reject(problem);
   }
   // Native flashback cannot combine alternative costs; native blitz requires its alternative cost.
@@ -833,8 +841,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     : undefined;
   checkTargets(s, spellEffects(def, choice), targets, playerId, id);
   const costCards = choice.costCards ?? [];
-  const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
-  checkDiscardCost(s, playerId, discardCount, costCards, id);
+  const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
+  if (exileCost) {
+    if (costCards.length !== 1 || !exileFromHandChoices(s, def, playerId, id).includes(costCards[0]!)) reject(`Choose a card in your hand to exile for ${def.name}.`);
+  } else {
+    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
+    checkDiscardCost(s, playerId, discardCount, costCards, id);
+  }
   const x = choice.x ?? 0;
   if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
   if (alternative && permission?.free) reject('An alternative cost cannot be combined with casting without paying its mana cost.');
@@ -885,7 +898,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
   // "As an additional cost, pay X life" (Toxic Deluge).
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
-  for (const discarded of costCards) discard(ctx, discarded);
+  for (const paid of costCards) {
+    if (exileCost) moveCard(ctx, paid, 'exile');
+    else discard(ctx, paid);
+  }
   for (const k of convoked) tap(ctx, k);
   for (const k of escalated) tap(ctx, k);
   for (const a of improvised) tap(ctx, a);
@@ -1396,6 +1412,13 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'battlefield', cards, min: effect.optional ? 0 : max, max }];
       continue;
     }
+    if (effect.effect === 'Discard' && effect.chooser === 'You') {
+      // "Reveals their hand. You choose a nonland card from it" (Grief).
+      const able = s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
+      const n = Math.min(Math.max(1, amount), able.length);
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: r.item.controller, purpose: 'discard', cards: able, min: n, max: n }];
+      continue;
+    }
     if (effect.effect === 'Discard') {
       const hand = s.players[pid]!.hand;
       if (hand.length === 0) continue;
@@ -1436,7 +1459,7 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
 
 /** Why a set of chosen cards doesn't fit a choice, or null if it does. */
 export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceId[]): string | null {
-  if (choice.purpose === 'distributeCounter' && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
+  if ((choice.purpose === 'distributeCounter' || choice.purpose === 'divideDamage') && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
   if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
   if (choice.allOrNothing) return cards.length === 0 || cards.length === choice.cards.length ? null : 'Choose all of them or none.';
   if (cards.length < choice.min || cards.length > choice.max) {
@@ -1561,6 +1584,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       r.choiceQueue = [{ player: item.controller, purpose: 'distributeCounter', cards: candidates, min: 0, max: 1, counterCount: from.counters }];
       return;
     }
+    case 'DivideDamage': {
+      const candidates = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c) && matchesObject(s, effect.filter, c, { controller: item.controller, source })
+        && isLegalTarget(s, { effect: 'DealDamage', target: 'AnyTarget' }, { kind: 'card', card: c.id }, item.controller, source)).map((c) => c.id);
+      if (!candidates.length || amount <= 0) return;
+      r.distribution = { source, remaining: amount, assigned: {}, damage: true };
+      r.choiceQueue = [{ player: item.controller, purpose: 'divideDamage', cards: candidates, min: 0, max: 1, counterCount: amount }];
+      return;
+    }
+    case 'GraveyardToLibraryBottom':
+      for (const pid of targetPlayers(targets)) {
+        const cardsThere = [...player(s, pid).graveyard];
+        shuffleInPlace(s, cardsThere);
+        for (const id of cardsThere) moveCard(ctx, id, 'library');
+      }
+      return;
     case 'ChooseGraveyardCards': {
       r.chosen = [];
       const order = alivePlayers(s);
@@ -1611,6 +1649,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         changeLife(ctx, t.player, -amount);
         r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
       }
+      return;
+    case 'SacrificeIt':
+      for (const id of onBattlefield) sacrifice(ctx, id);
       return;
     case 'Destroy':
       for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
@@ -2488,6 +2529,7 @@ export function resolveTop(ctx: Ctx): void {
         s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });
       }
       // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
+      if (item.alternative && def.alternativeCost?.evoke) c.evoked = true;
       if (item.alternative && def.alternativeCost?.blitz) {
         c.blitzed = true;
         s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });
@@ -2598,6 +2640,18 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         addCounters(ctx, to, movedToRecipient, r.item.controller);
         available -= movedToRecipient;
       }
+      delete r.distribution;
+    }
+  } else if (pending.purpose === 'divideDamage') {
+    // Every point must be assigned once the first one is (rule 601.2d); then it's all dealt at once.
+    const distribution = r.distribution!;
+    const recipient = cards[0];
+    const assigned = recipient ? { ...distribution.assigned, [recipient]: (distribution.assigned[recipient] ?? 0) + 1 } : distribution.assigned;
+    const remaining = distribution.remaining - (recipient ? 1 : 0);
+    r.distribution = { ...distribution, assigned, remaining };
+    if (recipient && remaining > 0) r.choiceQueue = [{ ...pending, cards: [...pending.cards], min: 1, counterCount: remaining }, ...(r.choiceQueue ?? [])];
+    else {
+      for (const [to, n] of Object.entries(assigned)) if (s.cards[to]!.zone === 'battlefield') dealDamage(ctx, distribution.source, { kind: 'card', card: to }, n, false);
       delete r.distribution;
     }
   } else if (pending.purpose === 'reanimate') {

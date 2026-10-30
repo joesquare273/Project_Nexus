@@ -174,6 +174,8 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 
 export const EFFECT_KINDS = [
   'AnimateVehicle',
+  /** "Sacrifice it": the object (`This`, with `sameObject`) is sacrificed by its controller (evoke). */
+  'SacrificeIt',
   /** Turn this double-faced permanent over (rule 701.28); "you may" with `optional`. Nothing happens without a back face. */
   'Transform',
   /**
@@ -190,6 +192,15 @@ export const EFFECT_KINDS = [
   'ExileUntilOpponentMonarch',
   'ChooseFate',
   'DistributeCounters',
+  /**
+   * "Deals `amount` damage divided as you choose among any number of target
+   * creatures": the controller assigns it one point at a time on resolution
+   * among creatures matching `filter` that the source could target (the
+   * engine has no planeswalkers), then it's dealt all at once.
+   */
+  'DivideDamage',
+  /** Each target player puts all the cards from their graveyard on the bottom of their library in a random order. */
+  'GraveyardToLibraryBottom',
   'ChooseGraveyardCards',
   'ReturnChosenToBattlefield',
   'PutIntoLibrary',
@@ -606,7 +617,7 @@ export interface EffectSpec {
   wholeHand?: boolean;
   /** Discard/Sacrifice: up to amount. AddCounters: may put one counter on the chosen target. */
   optional?: boolean;
-  /** KeepAndSacrificeRest: the spell's controller chooses for each player (Tragic Arrogance). */
+  /** KeepAndSacrificeRest: the spell's controller chooses for each player (Tragic Arrogance). Discard: they reveal their hand and you choose a card matching `filter` (Grief). */
   chooser?: 'You';
   /** KeepAndSacrificeRest: keep at most one of each of these types. */
   onePerType?: CardType[];
@@ -848,6 +859,8 @@ export interface TriggerSpec {
   oncePerTurnWhenPaid?: boolean;
   /** Dies: only if it was cast for its blitz cost (rule 702.152). */
   ifBlitzed?: boolean;
+  /** Intervening "if": it was cast for its evoke cost (rule 702.74a). */
+  ifEvoked?: boolean;
   /**
    * "Choose one at random": one of these is picked as it triggers, and its
    * effects are used instead of `effects` (which stays empty).
@@ -1142,6 +1155,10 @@ export interface CardDefinition {
     blitz?: boolean;
     /** "You may cast this card from your graveyard using its blitz ability" (Sabin): this way only. */
     fromGraveyard?: boolean;
+    /** "Exile a white card from your hand": another card in hand matching this, chosen with the action (`costCards`). */
+    exileFromHand?: ObjectFilter;
+    /** Evoke (rule 702.74): the permanent remembers it was evoked (`ifEvoked` triggers sacrifice it). */
+    evoke?: boolean;
   };
   /** "This spell can't be countered." */
   cantBeCountered?: boolean;
@@ -1337,6 +1354,8 @@ export interface CardInstance {
   phasedOut?: boolean;
   /** Cast for its blitz cost. Kept as it dies (for "when this creature dies, draw a card") until it enters again. */
   blitzed?: boolean;
+  /** Cast for its evoke cost; cleared when it next enters. */
+  evoked?: boolean;
   /** Sacrificed at the beginning of the next end step (a creature cast with Strago and Relm's permission). */
   sacrificeAtEndStep?: boolean;
   /** Returned with unearth: exiled at the next end step or if it would leave the battlefield. */
@@ -1566,7 +1585,7 @@ export interface Resolving {
   /** PutFromHand with enchantmentsEnterAttacking: the player a chosen enchantment card attacks. */
   putAttackingDefender?: PlayerId;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
-  distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number> };
+  distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number>; damage?: true };
   item: StackItem;
   /** Index of the next effect to apply. */
   next: number;
@@ -1610,7 +1629,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'addCounters';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'distributeCounter' | 'divideDamage' | 'addCounters';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

@@ -233,6 +233,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
   // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
   if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
+  if (spec.ifEvoked && !s.cards[source]!.evoked) return false;
   if (o.when === 'YouAttack') return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".

@@ -246,7 +246,8 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (c.alternativeCost) {
     const alt = c.alternativeCost;
     if (typeof alt.label !== 'string' || alt.label === '') err('alternativeCost needs a label.');
-    if (alt.mana === undefined && alt.life === undefined) err('alternativeCost needs mana or life.');
+    if (alt.mana === undefined && alt.life === undefined && !alt.exileFromHand) err('alternativeCost needs mana, life or a card to exile.');
+    if (alt.evoke && !c.triggers?.some((t) => t.ifEvoked)) err('Evoke needs an ifEvoked trigger that sacrifices it.');
     validateCost(alt.mana, (m) => err(`alternativeCost: ${m}`));
     if (alt.life !== undefined && (!isNonNegativeInt(alt.life) || alt.life === 0)) err('alternativeCost life must be positive.');
     validateFilter(alt.ifControls, (m) => err(`alternativeCost: ${m}`));

@@ -468,6 +468,12 @@ cards than before. Tests that need a particular random outcome set
   costing a charge counter, which plays the same way.
 - **Sword of Truth and Justice** targets the creature that gets the +1/+1
   counter (the card says "a creature you control", chosen on resolution).
+- **Fury's divided damage** is assigned one point at a time as the trigger
+  resolves (not announced with the targets), among creatures Fury could
+  target; once the first point is assigned, all 4 must be.
+- **Grief** shows the opponent's nonland cards only to its controller (the
+  card reveals the whole hand to everyone).
+- **Subtlety** can choose creature spells (the engine has no planeswalkers).
 - **Protection from a color** (rule 702.16) covers damage, blocking,
   targeting, and Auras and Equipment of that color; protection from other
   qualities (from creatures, from everything) isn't built.

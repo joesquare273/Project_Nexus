@@ -18,6 +18,7 @@ import {
   activatedAbilities,
   activationProblem,
   alternativeCostProblem,
+  exileFromHandChoices,
   canActAtSorcerySpeed,
   canEverCast,
   canPayFromPool,
@@ -143,7 +144,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const alternatives = way === 'blitz' ? [true] : [false];
     // Cast without paying its mana cost: X is 0 and alternative costs cannot be combined.
     const free = !permission.castGroup && !permission.graveyardSource && (from === 'graveyard' || from === 'exile') && c.castPermission?.player===playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.free;
-    if (def.alternativeCost && way !== 'flashback' && way !== 'blitz' && !free && !alternativeCostProblem(s, def, playerId)) alternatives.push(true);
+    if (def.alternativeCost && way !== 'flashback' && way !== 'blitz' && !free && !alternativeCostProblem(s, def, playerId, c.id)) alternatives.push(true);
     for (const modes of modeChoices(def)) {
       for (const alternative of alternatives) {
        for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative, c)) {
@@ -164,7 +165,9 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         };
         // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
-        const discards = discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
+        const discards = alternative && def.alternativeCost?.exileFromHand
+          ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
+          : discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
           const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           const paymentKey = JSON.stringify([cost, tapCreatures]);

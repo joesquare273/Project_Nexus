@@ -548,11 +548,25 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'library') return pick([]);
   if (p.purpose === 'addCounters' && p.counter === 'cell' && p.cards.every(id => s.cards[id]!.controller !== me)) return pick([]);
   if (p.purpose === 'addCounters') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, p.max));
+  if (p.purpose === 'divideDamage') {
+    // Opponents' creatures first: the best one the damage assigned so far doesn't already kill.
+    const assigned = s.resolving?.distribution?.assigned ?? {};
+    const alive = (id: string) => toughness(s, s.cards[id]!) - s.cards[id]!.damage - (assigned[id] ?? 0) > 0;
+    const theirs = p.cards.filter((id) => s.cards[id]!.controller !== me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));
+    const target = theirs.find(alive) ?? theirs[0];
+    if (target) return pick([target]);
+    return pick(p.min === 0 ? [] : [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
+  }
   if (p.purpose === 'distributeCounter') {
     const recipients = p.cards.filter((id) => s.cards[id]!.controller === me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));
     return pick(recipients.slice(0, 1));
   }
   if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
+  // Grief: choose the opponent's most expensive card for them to discard.
+  if (p.purpose === 'discard' && p.cards.some((id) => s.cards[id]!.owner !== me)) {
+    const mv = (id: string) => manaValue(parseManaCost(def(s, s.cards[id]!).manaCost));
+    return pick([...p.cards].sort((a, b) => mv(b) - mv(a)).slice(0, p.min));
+  }
   if (p.purpose === 'discard' || p.purpose === 'handSize') {
     if (p.max === 0) return pick([]);
     // "Any number": only cards we'd rather not have (surplus lands).

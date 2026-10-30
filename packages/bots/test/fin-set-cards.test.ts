@@ -1279,3 +1279,88 @@ describe('Secret Lair: Umezawa’s Jitte', () => {
     expect(stats(s, body)).toEqual([7, 6]);
   });
 });
+
+describe('Secret Lair: the Elemental Incarnations (evoke)', () => {
+  const choose = (s: GameState, cards: string[]) => settle(act(s, { type: 'ChooseCards', player: s.pending.kind === 'chooseCards' ? s.pending.player : 'P1', cards })).state;
+
+  it('Solitude, evoked: exile a white card instead of paying mana; exiles a creature, its controller gains life equal to its power, then Solitude is sacrificed', () => {
+    let s = newGame();
+    const solitude = put(s, 'P1', 'solitude', 'hand');
+    const pitched = put(s, 'P1', 'coeurl', 'hand');
+    const gigas = put(s, 'P2', 'hill-gigas');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: solitude, alternative: true, costCards: [pitched] }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === gigas)! }).state;
+    expect(s.cards[pitched]!.zone).toBe('exile');
+    expect(s.cards[gigas]!.zone).toBe('exile');
+    expect(s.players.P2!.life).toBe(25);
+    expect(s.cards[solitude]!.zone).toBe('graveyard');
+  });
+
+  it('evoke needs a card of the right color in hand', () => {
+    const s = newGame();
+    const solitude = put(s, 'P1', 'solitude', 'hand');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: solitude, alternative: true, costCards: [bolt] })).toMatch(/no card in hand to exile/);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: solitude, alternative: true, costCards: [solitude] })).toBeTruthy();
+  });
+
+  it('Grief, evoked: you choose a nonland card from the opponent’s hand for them to discard', () => {
+    let s = newGame();
+    const grief = put(s, 'P1', 'grief', 'hand');
+    const pitched = put(s, 'P1', 'feed-the-swarm', 'hand');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: grief, alternative: true, costCards: [pitched] }).state;
+    expect(s.pending.kind === 'chooseCards' && s.pending.player === 'P1' && s.pending.cards.includes(bolt)).toBe(true);
+    expect(s.pending.kind === 'chooseCards' && s.pending.cards.every((id) => s.cards[id]!.owner === 'P2' && s.cards[id]!.defId !== 'plains')).toBe(true);
+    expect(viewFor(s, 'P1').cards[bolt]).toBeTruthy();
+    s = choose(s, [bolt]);
+    expect(s.cards[bolt]!.zone).toBe('graveyard');
+    expect(s.cards[grief]!.zone).toBe('graveyard');
+  });
+
+  it('Fury, hard-cast: 4 damage divided among any number of creatures, dealt at once; Fury stays', () => {
+    let s = newGame();
+    const fury = put(s, 'P1', 'fury', 'hand');
+    const a = put(s, 'P2', 'coeurl');
+    const b = put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fury }).state;
+    expect(s.pending.kind === 'chooseCards' && s.pending.purpose).toBe('divideDamage');
+    s = choose(s, [a]);
+    s = choose(s, [a]);
+    expect(s.cards[a]!.zone).toBe('battlefield'); // nothing is dealt until all 4 are divided
+    s = choose(s, [b]);
+    s = choose(s, [b]);
+    expect(s.cards[a]!.zone).toBe('graveyard');
+    expect(s.cards[b]!.zone).toBe('graveyard');
+    expect(s.cards[fury]!.zone).toBe('battlefield');
+    expect(hasKeyword(s, s.cards[fury]!, 'DoubleStrike')).toBe(true);
+  });
+
+  it('Endurance: a player puts their whole graveyard on the bottom of their library', () => {
+    let s = newGame();
+    const endurance = put(s, 'P1', 'endurance', 'hand');
+    const dead = [put(s, 'P2', 'coeurl', 'graveyard'), put(s, 'P2', 'lightning-bolt', 'graveyard')];
+    mana(s, 'P1', { G: 2, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: endurance }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.players.P2!.graveyard).toEqual([]);
+    expect(s.players.P2!.library.slice(-2).sort()).toEqual([...dead].sort());
+  });
+
+  it('Subtlety: a creature spell goes to the top or bottom of its owner’s library', () => {
+    let s = newGame();
+    const subtlety = put(s, 'P1', 'subtlety', 'hand');
+    const spell = put(s, 'P2', 'coeurl', 'hand');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2' } as GameState['pending'];
+    mana(s, 'P2', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: spell });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: subtlety });
+    s = settle(s, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === spell)! }).state;
+    expect(s.pending.kind === 'chooseCards' && s.pending.player).toBe('P2');
+    s = choose(s, [spell]); // chosen: the bottom
+    expect(s.cards[spell]!.zone).toBe('library');
+    expect(s.players.P2!.library.at(-1)).toBe(spell);
+  });
+});

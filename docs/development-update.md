@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair cards: the five Elemental Incarnations (evoke)
+
+- Evoke: an alternative cost can exile a card of a color from your hand
+  (`exileFromHand`, chosen with `costCards`); an evoked permanent is
+  marked (`evoked`, redacted as a copy) and its `ifEvoked` trigger
+  sacrifices it (`SacrificeIt`).
+- Solitude exiles a creature (its controller gains life equal to its power);
+  Subtlety puts a creature spell on the top or bottom of its owner's library;
+  Grief makes an opponent discard the nonland card you choose (`Discard` with
+  `chooser: 'You'`); Fury divides 4 damage (`DivideDamage`); Endurance puts a
+  player's graveyard on the bottom of their library (`GraveyardToLibraryBottom`).
+- The board prompts for divided damage and shows the opponent's revealed
+  cards for Grief; the bots handle both choices.
+
 ### Secret Lair cards: Umezawa's Jitte and Sword of Truth and Justice
 
 - Protection from a color is a keyword now (`ProtectionFromWhite` …

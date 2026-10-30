@@ -249,7 +249,10 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.adventureSpell;
   delete c.adventurer;
   delete c.adventureGraveyard;
-  if (to === 'battlefield') delete c.blitzed;
+  if (to === 'battlefield') {
+    delete c.blitzed;
+    delete c.evoked;
+  }
   if (from === 'battlefield') delete c.sacrificeAtEndStep;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;

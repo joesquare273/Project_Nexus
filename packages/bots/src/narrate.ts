@@ -261,6 +261,9 @@ function effectText(e: EffectSpec): string {
       }
       return `search your library for a ${e.filter?.supertypes?.includes('Basic') ? 'basic land' : (e.filter?.subtypes?.join(' or ') ?? '')} card and put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'AnimateVehicle': return 'become an artifact creature until end of turn';
+    case 'SacrificeIt': return 'sacrifice it';
+    case 'DivideDamage': return `deal ${n} damage divided as you choose among any number of target creatures`;
+    case 'GraveyardToLibraryBottom': return 'put all the cards from their graveyard on the bottom of their library in a random order';
     case 'CantCastSpellsThisTurn': return "they can't cast spells this turn";
     case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;
     case 'ExileAndReturn': return `exile it, then return it to the battlefield ${e.transformed ? 'transformed' : '(front face up)'}`;
