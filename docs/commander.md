@@ -204,3 +204,13 @@ needing several groups' pieces waits for the last of them.
 | Entering as a copy | **1 built (2026-10-24):** Altered Ego. |
 | Remaining one-offs | **None (2026-10-27):** Yuffie, Sin and Observed Stasis were the last. |
 | Everything else | |
+
+## Playing your own decks (user rule, 2026-10-30)
+
+- Players play Commander only with decks they own: the Play tab lists the
+  player's saved Commander decks (the free starter precon, precons bought in
+  the Store, decks built in Packs → Decks); there is no precon picker. The
+  AI opponents play the four precons.
+- A saved deck becomes a game deck with `gameDeck` (`cards/src/decks.ts`):
+  each card's definition, printing and finish, the chosen basic land art,
+  and the commander in the command zone.

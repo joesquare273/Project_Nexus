@@ -26,6 +26,7 @@ import {
   type Step,
 } from '@nexus/engine';
 import { CARD_DEFS, FIN_PRECONS, preconDeck, preconDeckWithCommander, starterKitDeck } from '@nexus/cards';
+import type { GameDeck } from '@nexus/cards/decks';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
 import type { CardMove } from '../components/Flights.tsx';
 import { cardName, describe } from '@nexus/bots/narrate';
@@ -45,6 +46,8 @@ export interface SessionOptions {
   deck: DeckChoice;
   /** Commander: your precon's name. Opponents get the others. */
   precon?: string;
+  /** Commander: your own saved deck (only decks the player owns, user rule 2026-10-30); opponents play the precons. */
+  ownDeck?: GameDeck;
   /** Commander: which legend from your precon leads it (default: the printed commander). */
   commander?: string;
   opponents: number;
@@ -133,8 +136,8 @@ export class GameSession {
     }
     if (options.format === 'commander') {
       const mine = FIN_PRECONS.find((p) => p.name === options.precon) ?? FIN_PRECONS[0]!;
-      const others = FIN_PRECONS.filter((p) => p !== mine);
-      const decks = [preconDeckWithCommander(mine.name, options.commander), ...others.map((p) => preconDeck(p.name))];
+      const others = options.ownDeck ? FIN_PRECONS : FIN_PRECONS.filter((p) => p !== mine);
+      const decks = [options.ownDeck ?? preconDeckWithCommander(mine.name, options.commander), ...others.map((p) => preconDeck(p.name))];
       const created = createGame({
         format: COMMANDER,
         cardDefs: CARD_DEFS,

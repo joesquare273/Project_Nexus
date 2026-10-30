@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./boosters": "./src/boosters.ts",
     "./draft": "./src/draft.ts",
-    "./limited": "./src/limited.ts"
+    "./limited": "./src/limited.ts",
+    "./decks": "./src/decks.ts"
   },
   "dependencies": { "@nexus/engine": "*" }
 }

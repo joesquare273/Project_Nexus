@@ -1,5 +1,10 @@
-import { useState } from 'react';
-import { CARD_IDS_BY_NAME, FIN_PRECONS, SCRYFALL, preconCommanders } from '@nexus/cards';
+import { useEffect, useState } from 'react';
+import { FIN_PRECONS, SCRYFALL } from '@nexus/cards';
+import { gameDeck, type GameDeck } from '@nexus/cards/decks';
+import { BOOSTER_CARDS } from '@nexus/cards/boosters';
+import { accessToken } from './account/AccountBar.tsx';
+import { fetchDecks, type SavedDeck } from './packs/collection.ts';
+import { PRINTING_CARDS } from './packs/browse.ts';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
 import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
@@ -46,7 +51,8 @@ function MainApp() {
   const [format, setFormat] = useState<'starter' | 'commander'>('starter');
   const [precon, setPrecon] = useState(FIN_PRECONS[0]!.name);
   /** Which legend leads your precon; undefined means its printed commander. */
-  const [commander, setCommander] = useState<string | undefined>(undefined);
+  /** Commander: the saved deck you play (yours only), converted for the game. */
+  const [ownDeck, setOwnDeck] = useState<GameDeck | null>(null);
   const [deck, setDeck] = useState<DeckChoice>('UB');
   const [opponents, setOpponents] = useState(1);
   const [bot, setBot] = useState<SessionOptions['bot']>('ai');
@@ -99,7 +105,7 @@ function MainApp() {
         format,
         deck,
         precon,
-        ...(format === 'commander' && commander ? { commander } : {}),
+        ...(format === 'commander' && ownDeck ? { ownDeck } : {}),
         opponents,
         bot,
         seed: Number.isFinite(chosenSeed) ? chosenSeed : 1,
@@ -227,26 +233,8 @@ function MainApp() {
           ))}
         </div>
       ) : (
-        <div className="deck-choices precons">
-          {FIN_PRECONS.map((p) => (
-            <button
-              key={p.name}
-              className={`deck ${precon === p.name ? 'chosen' : ''}`}
-              onClick={() => {
-                setPrecon(p.name);
-                setCommander(undefined);
-              }}
-            >
-              <img src={SCRYFALL[CARD_IDS_BY_NAME[p.commander.name]!]?.image.artCrop} alt="" />
-              <span className="deck-name">{p.name.replace(/ \(.*\)$/, '')}</span>
-              <span className="deck-blurb">
-                {p.commander.name} · {p.name.match(/\((.*)\)/)?.[1]} · {builtCount(p)}/100 cards fully built
-              </span>
-            </button>
-          ))}
-        </div>
+        <OwnCommanderDecks onChoose={setOwnDeck} />
       )}
-      {format === 'commander' && <CommanderPicker precon={precon} chosen={commander} onChoose={setCommander} />}
       {format === 'commander' && (
         <p className="fineprint">
           Commander rules are on: 40 life, your commander starts in the command zone (cast it from there; it costs
@@ -283,7 +271,7 @@ function MainApp() {
         </label>
       </div>
 
-      <button className="primary big" onClick={start}>
+      <button className="primary big" disabled={format === 'commander' && !ownDeck} title={format === 'commander' && !ownDeck ? 'Choose one of your Commander decks first' : undefined} onClick={start}>
         Start game
       </button>
       <p className="fineprint">
@@ -297,33 +285,47 @@ function MainApp() {
 }
 
 /**
- * Choose which card leads your precon: the printed commander or another
- * legendary creature (or Vehicle) in all of the deck's colors.
+ * Commander: the player's own saved Commander decks (only decks they own,
+ * user rule 2026-10-30). Picking one converts it for the game; a deck with
+ * a card the game doesn't know yet can't be picked.
  */
-function CommanderPicker({ precon, chosen, onChoose }: { precon: string; chosen: string | undefined; onChoose: (name: string | undefined) => void }) {
-  const choices = preconCommanders(precon);
-  const current = chosen ?? choices.find((c) => c.printed)?.name;
+function OwnCommanderDecks({ onChoose }: { onChoose: (deck: GameDeck | null) => void }) {
+  const [decks, setDecks] = useState<SavedDeck[] | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    accessToken()
+      .then((token) => (token ? fetchDecks(token) : Promise.reject(new Error('Sign in first.'))))
+      .then((all) => setDecks(all.filter((d) => d.format === 'commander' && d.commander)), (e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server.' : e.message));
+  }, []);
+  const art = (id: string) => [...PRINTING_CARDS, ...BOOSTER_CARDS].find((c) => c.id === id)?.images[0]?.artCrop;
+  if (problem) return <p className="account-error">{problem}</p>;
+  if (!decks) return <p className="fineprint">Loading your decks…</p>;
+  if (decks.length === 0) {
+    return <p className="fineprint">You don't own a Commander deck yet. Pick your free precon, buy one in the Store, or build one in Packs → Decks.</p>;
+  }
   return (
-    <div className="commander-picker">
-      <div className="commander-picker-title">Your commander</div>
-      <div className="commander-choices">
-        {choices.map((c) => (
+    <div className="deck-choices precons">
+      {decks.map((d) => {
+        const converted = gameDeck(d);
+        const playable = !('problem' in converted);
+        return (
           <button
-            key={c.name}
-            className={`commander-choice ${current === c.name ? 'chosen' : ''}`}
-            aria-pressed={current === c.name}
-            onClick={() => onChoose(c.printed ? undefined : c.name)}
+            key={d.id}
+            className={`deck ${chosen === d.id ? 'chosen' : ''}`}
+            disabled={!playable}
+            title={playable ? undefined : converted.problem}
+            onClick={() => {
+              setChosen(d.id);
+              onChoose(playable ? converted : null);
+            }}
           >
-            <img src={SCRYFALL[c.defId]?.image.artCrop} alt="" />
-            <span className="commander-name">{c.name}</span>
-            <span className="commander-tags">
-              <ManaCost cost={c.colorIdentity.map((k) => `{${k}}`).join('')} size={12} />
-              {c.printed && <span className="tag">printed commander</span>}
-              {!c.built && <span className="tag">not built yet</span>}
-            </span>
+            {d.commander && art(d.commander) && <img src={art(d.commander)} alt="" />}
+            <span className="deck-name">{d.name}</span>
+            <span className="deck-blurb">{playable ? 'Your deck' : converted.problem}</span>
           </button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }

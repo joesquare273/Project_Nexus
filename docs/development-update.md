@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Commander games use your own decks
+
+- The Play tab's Commander setup lists your saved Commander decks instead
+  of the four precons (user rule: players only play decks they own); the
+  AI opponents still play the precons. Start waits until you pick one.
+- Saved decks start games: `gameDeck` turns one into card definitions with
+  each card's printing and finish, the chosen basic land art, and the
+  commander (tested in `packages/cards/test/decks.test.ts`), so owned foils
+  shine in games.
+
 ### Precons in the Store
 
 - The Store sells the four FINAL FANTASY Commander precons for 2,000 shards
