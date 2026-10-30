@@ -3,7 +3,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryAccounts, displayName } from '../src/accounts.ts';
-import { ECONOMY, packsForPurchase } from '../src/economy.ts';
+import { ECONOMY, FIRST_DAY_SHARDS, packsForPurchase } from '../src/economy.ts';
 import { startServer, type RunningServer } from '../src/server.ts';
 
 let server: RunningServer | null = null;
@@ -27,13 +27,14 @@ describe('accounts', () => {
     const { accounts, get } = await withAccounts();
     const first = await get('token-alice');
     expect(first.status).toBe(200);
-    expect(await first.json()).toEqual({ name: 'Alice', shards: ECONOMY.welcomeGrant });
+    expect(await first.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS });
     // Signing in again, or many retries at once, never pays it twice.
     const again = await Promise.all(Array.from({ length: 5 }, () => get('token-alice')));
-    for (const r of again) expect(await r.json()).toEqual({ name: 'Alice', shards: ECONOMY.welcomeGrant });
-    expect([...accounts.ledger.keys()].filter((k) => k.startsWith('alice-id|welcome_grant'))).toHaveLength(1);
+    for (const r of again) expect(await r.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS });
+    expect([...accounts.ledger.keys()].filter((k) => k === 'alice-id|welcome_grant|welcome' || k === 'alice-id|welcome_grant|welcome-bonus')).toHaveLength(2);
+    expect([...accounts.ledger.keys()].filter((k) => k.startsWith('alice-id|login_reward|'))).toHaveLength(1);
     // Each player has their own account.
-    expect(await (await get('token-bob')).json()).toEqual({ name: 'Bob', shards: ECONOMY.welcomeGrant });
+    expect(await (await get('token-bob')).json()).toEqual({ name: 'Bob', shards: FIRST_DAY_SHARDS });
   });
 
   it('refuses a missing or invalid sign-in, and anything but GET', async () => {
@@ -46,7 +47,7 @@ describe('accounts', () => {
   it('ignores anything the browser says about its balance', async () => {
     const { get } = await withAccounts();
     const r = await get('token-alice', '/api/account?shards=999999&welcome=50000');
-    expect(await r.json()).toEqual({ name: 'Alice', shards: ECONOMY.welcomeGrant });
+    expect(await r.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS });
   });
 
   it('says so when accounts are not set up, and guest play still works', async () => {
@@ -58,11 +59,11 @@ describe('accounts', () => {
   it('balance changes happen once per reference and never go below zero', async () => {
     const accounts = new MemoryAccounts();
     await accounts.ensure({ id: 'u', name: 'U' });
-    expect(accounts.apply('u', -600, 'event_entry', 'event-1')).toEqual({ balance: ECONOMY.welcomeGrant - 600, applied: true });
+    expect(accounts.apply('u', -600, 'event_entry', 'event-1')).toEqual({ balance: FIRST_DAY_SHARDS - 600, applied: true });
     // A retry of the same entry changes nothing.
-    expect(accounts.apply('u', -600, 'event_entry', 'event-1')).toEqual({ balance: ECONOMY.welcomeGrant - 600, applied: false });
+    expect(accounts.apply('u', -600, 'event_entry', 'event-1')).toEqual({ balance: FIRST_DAY_SHARDS - 600, applied: false });
     expect(() => accounts.apply('u', -10_000, 'pack_purchase', 'buy-1')).toThrow(/insufficient/);
-    expect(accounts.accounts.get('u')!.shards).toBe(ECONOMY.welcomeGrant - 600);
+    expect(accounts.accounts.get('u')!.shards).toBe(FIRST_DAY_SHARDS - 600);
   });
 
   it('takes the player name from Discord, with a fallback', () => {

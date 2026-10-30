@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
-import { ECONOMY } from './economy.ts';
+import { ECONOMY, loginRef } from './economy.ts';
 import { MAX_DECKS, addCards, type DeckInput, type OwnedCard, type SavedDeck } from './collection.ts';
 
 export interface AccountUser {
@@ -74,7 +74,17 @@ export class SupabaseAccounts implements AccountService {
   async ensure(user: AccountUser): Promise<Account> {
     const { data, error } = await this.db.rpc('ensure_profile', { p_user: user.id, p_name: user.name, p_welcome: ECONOMY.welcomeGrant }).single<{ display_name: string; shards: number }>();
     if (error || !data) throw new Error(`Could not load the account: ${error?.message ?? 'no data'}`);
-    return { name: data.display_name, shards: data.shards };
+    // The welcome bonus (once per account) and today's login reward (once per day); repeats change nothing.
+    let shards = data.shards;
+    for (const [amount, kind, ref] of [
+      [ECONOMY.welcomeBonus, 'welcome_grant', 'welcome-bonus'],
+      [ECONOMY.dailyLoginReward, 'login_reward', loginRef()],
+    ] as const) {
+      const paid = await this.db.rpc('apply_shards', { p_user: user.id, p_amount: amount, p_kind: kind, p_ref: ref }).single<{ balance: number }>();
+      if (paid.error || !paid.data) throw new Error(`Could not pay the ${kind}: ${paid.error?.message ?? 'no data'}`);
+      shards = paid.data.balance;
+    }
+    return { name: data.display_name, shards };
   }
 
   async collection(userId: string): Promise<OwnedCard[]> {
@@ -152,6 +162,8 @@ export class MemoryAccounts implements AccountService {
   async ensure(user: AccountUser): Promise<Account> {
     if (!this.accounts.has(user.id)) this.accounts.set(user.id, { name: user.name, shards: 0 });
     this.apply(user.id, ECONOMY.welcomeGrant, 'welcome_grant', 'welcome');
+    this.apply(user.id, ECONOMY.welcomeBonus, 'welcome_grant', 'welcome-bonus');
+    this.apply(user.id, ECONOMY.dailyLoginReward, 'login_reward', loginRef());
     return { ...this.accounts.get(user.id)! };
   }
 

@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Starting balance 2,000 and a daily login reward
+
+- Every account starts with 2,000 Aether Shards: the 1,000 welcome grant
+  and a 1,000 welcome bonus, each paid once (accounts made before get the
+  bonus on their next sign-in). Signing in also pays 50 shards once a day.
+  New migration: `20261030180000_login_reward.sql` (the `login_reward`
+  ledger kind).
+- Planned with the rewards step (E2/E3): 250 for finishing the tutorial,
+  100 for a first win, daily quests 100-200, weekly quests 300-500
+  (docs/economy.md).
+
 ### Secret Lair cards: Gilded Lotus, Damn, Cyclonic Rift
 
 - Built with tests (Damn and Cyclonic Rift with their overload costs).

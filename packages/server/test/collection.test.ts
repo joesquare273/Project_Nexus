@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryAccounts } from '../src/accounts.ts';
 import { deckProblem, type DeckInput } from '../src/collection.ts';
-import { ECONOMY } from '../src/economy.ts';
+import { ECONOMY, FIRST_DAY_SHARDS } from '../src/economy.ts';
 import { startServer, type RunningServer } from '../src/server.ts';
 
 const CLOUD = '00000000-0000-4000-8000-000000000001';
@@ -39,8 +39,8 @@ describe('collections', () => {
   it('grants cards once per reference, paying shards in the same step', async () => {
     const { accounts, call } = await withAccounts();
     const grant = { kind: 'pack_open' as const, ref: 'pack-1', cost: ECONOMY.playBoosterPrice, cards: [{ id: CLOUD, finish: 'nonfoil' as const, count: 2 }, { id: CLOUD, finish: 'foil' as const, count: 1 }] };
-    expect(await accounts.grantCards('alice-id', grant)).toEqual({ balance: ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice, applied: true });
-    expect(await accounts.grantCards('alice-id', grant)).toEqual({ balance: ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice, applied: false });
+    expect(await accounts.grantCards('alice-id', grant)).toEqual({ balance: FIRST_DAY_SHARDS - ECONOMY.playBoosterPrice, applied: true });
+    expect(await accounts.grantCards('alice-id', grant)).toEqual({ balance: FIRST_DAY_SHARDS - ECONOMY.playBoosterPrice, applied: false });
     await accounts.grantCards('alice-id', { ...grant, ref: 'pack-2', cost: 0 });
     const r = await call('token-alice', '/api/collection');
     expect((await r.json()).cards).toEqual([
@@ -112,21 +112,23 @@ describe('buying packs', () => {
     const { packs, balance } = await r.json();
     expect(packs).toHaveLength(1);
     const pack = packs[0];
-    expect(balance).toBe(ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice);
+    expect(balance).toBe(FIRST_DAY_SHARDS - ECONOMY.playBoosterPrice);
     expect(accounts.accounts.get('alice-id')!.shards).toBe(balance);
     const owned = await accounts.collection('alice-id');
     expect(owned.reduce((n, c) => n + c.count, 0)).toBe(pack.cards.length);
     for (const p of pack.cards) expect(owned.some((c) => c.id === p.card.id && c.finish === p.finish)).toBe(true);
     // Each purchase is its own: a second pack is charged and added too.
     await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector' });
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant - ECONOMY.playBoosterPrice - ECONOMY.collectorBoosterPrice);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS - ECONOMY.playBoosterPrice - ECONOMY.collectorBoosterPrice);
   });
 
   it('refuses when the player cannot afford it, and ignores prices from the browser', async () => {
     const { accounts, call } = await withAccounts();
+    // Exactly two Collector Boosters' worth.
+    accounts.apply('alice-id', 2 * ECONOMY.collectorBoosterPrice - FIRST_DAY_SHARDS, 'admin_adjustment', 'set-balance');
     expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector', price: 0 })).status).toBe(200);
     expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector' })).status).toBe(200);
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant - 2 * ECONOMY.collectorBoosterPrice);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(0);
     const before = (await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0);
     expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play' })).status).toBe(402);
     expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(before);
@@ -150,7 +152,7 @@ describe('the free starter precon', () => {
     expect(deck.cards.some((c: { id: string }) => c.id === deck.commander)).toBe(true);
     expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
     // Free, and only once: asking again, even for another precon, adds nothing.
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS);
     const again = await Promise.all(before.choices.map((c: { name: string }) => call('token-alice', '/api/starter', 'POST', { precon: c.name })));
     expect(again.map((x) => x.status)).toEqual([409, 409, 409, 409]);
     expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
@@ -174,7 +176,7 @@ describe('buying ten packs', () => {
     expect(r.status).toBe(200);
     const { packs, balance } = await r.json();
     expect(packs).toHaveLength(11);
-    expect(balance).toBe(ECONOMY.welcomeGrant - 10 * ECONOMY.playBoosterPrice);
+    expect(balance).toBe(FIRST_DAY_SHARDS - 10 * ECONOMY.playBoosterPrice);
     const total = packs.reduce((n: number, p: { cards: unknown[] }) => n + p.cards.length, 0);
     expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(total);
   });
@@ -182,7 +184,7 @@ describe('buying ten packs', () => {
   it('refuses ten Collector Boosters it can’t afford, and other counts', async () => {
     const { accounts, call } = await withAccounts();
     expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector', count: 10 })).status).toBe(402);
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS);
     expect(await accounts.collection('alice-id')).toEqual([]);
     for (const count of [0, 2, 11, -10, '10']) expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play', count })).status).toBe(400);
   });
@@ -216,12 +218,14 @@ describe('the Store', () => {
 
   it('buying charges once and adds the card; the bundle adds all five lands', async () => {
     const { accounts, call } = await withAccounts();
+    // Enough for the bundle but not a legendary afterwards.
+    accounts.apply('alice-id', 1000 - FIRST_DAY_SHARDS, 'admin_adjustment', 'set-balance');
     const { sets } = await (await call('token-alice', '/api/store')).json();
     const items: Item[] = sets[0].items;
     const bundle = items.find((i) => i.key === 'fin-chocobo-track-lands')!;
     const r = await call('token-alice', '/api/store/buy', 'POST', { key: bundle.key, price: 1 });
     expect(r.status).toBe(200);
-    expect((await r.json()).balance).toBe(ECONOMY.welcomeGrant - bundle.price!);
+    expect((await r.json()).balance).toBe(1000 - bundle.price!);
     expect((await accounts.collection('alice-id')).map((c) => c.id).sort()).toEqual(bundle.cards.map((c) => c.id).sort());
     // Not enough left for a legendary: refused, nothing added.
     const legend = items.find((i) => i.price === prices.chocoboTrackLegendary)!;
@@ -237,7 +241,7 @@ describe('the Store', () => {
     const item = (sets[0].items as Item[]).find((i) => i.name === 'Traveling Chocobo')!;
     expect(item.price).toBeNull();
     expect((await call('token-alice', '/api/store/buy', 'POST', { key: item.key })).status).toBe(400);
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(ECONOMY.welcomeGrant);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS);
   });
 });
 

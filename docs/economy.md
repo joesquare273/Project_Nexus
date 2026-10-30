@@ -16,9 +16,12 @@ live in one server-side configuration module.
 | Bulk bonus | +1 pack per 10 bought | Same type; pay for the packs requested, not the bonus. `bonus = floor(n / 10)` |
 | Commander or draft vs. bots | 25, +10 for the winner | |
 | Commander or draft vs. friends | 50, +25 for the winner | Only the actual winner gets the bonus; a draw gets the base only |
-| Daily quest: finish 1 eligible match | 100 | Once per daily reset |
-| Weekly quest: finish 5 eligible matches | 250 | Bot and friend matches both count |
-| Welcome grant | 1,000 | Once per account: enough for a first event (600) plus four packs |
+| Daily quest | 100–200 | Once per daily reset; the amount depends on the quest (user, 2026-10-30) |
+| Weekly quest | 300–500 | Bot and friend matches both count; the amount depends on the quest (user, 2026-10-30) |
+| Starting balance | 2,000 | Built 2026-10-30 (user): the 1,000 welcome grant plus a 1,000 welcome bonus, each once per account; accounts made before also get the bonus. 20 Play Boosters, 4 Collector Boosters, or a mix |
+| Daily login reward | 50 | Built 2026-10-30: the first sign-in of each UTC day (ledger kind `login_reward`, ref `login-YYYY-MM-DD`) |
+| Complete the tutorial | 250 | Planned (user, 2026-10-30): once, when the server can check the tutorial was finished |
+| First win | 100 | Planned (user, 2026-10-30): once, from a game the server ran (E2) |
 | Event entry (draft or sealed) | 600 | Six Play Boosters; the player keeps every card. Six owned Play Boosters can be used instead |
 | Event prizes (4 players) | 1st: 2 Play Boosters, 2nd: 1 | Gives the Swiss rounds stakes; scaled for 2-3 players |
 

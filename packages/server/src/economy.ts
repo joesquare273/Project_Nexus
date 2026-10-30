@@ -15,6 +15,10 @@ export const ECONOMY = {
   weeklyQuestReward: 250,
   weeklyQuestMatches: 5,
   welcomeGrant: 1000,
+  /** Once per account on top of the welcome grant, so every account (old and new) starts with 2,000 (user, 2026-10-30). */
+  welcomeBonus: 1000,
+  /** The first sign-in of each day (UTC). */
+  dailyLoginReward: 50,
   /** Six Play Boosters' worth. */
   eventEntry: 600,
   /** Event prizes in Play Boosters, by place, for a 4-player event. */
@@ -35,6 +39,12 @@ export const ECONOMY = {
     precon: 2000 as number | null,
   },
 } as const;
+
+/** A new account's balance after its first sign-in: the welcome grant and bonus, and that day's login reward. */
+export const FIRST_DAY_SHARDS = ECONOMY.welcomeGrant + ECONOMY.welcomeBonus + ECONOMY.dailyLoginReward;
+
+/** Today's login reward reference ("login-2026-10-30", UTC): paid once per account per day. */
+export const loginRef = (now = new Date()) => `login-${now.toISOString().slice(0, 10)}`;
 
 /** Packs granted for a purchase: you pay for `bought`, and get a bonus pack for each full ten. */
 export function packsForPurchase(bought: number): { paid: number; bonus: number; total: number } {
