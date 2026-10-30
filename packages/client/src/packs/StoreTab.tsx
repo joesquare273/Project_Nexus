@@ -49,7 +49,7 @@ export function StoreTab() {
       .catch((e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server.' : e.message));
   }, []);
 
-  const byId = useMemo(() => new Map((mod?.BOOSTER_CARDS ?? []).map((c) => [c.id, c])), [mod]);
+  const byId = useMemo(() => new Map([...(mod?.BOOSTER_CARDS ?? []), ...(mod?.SECRET_LAIR_CARDS ?? [])].map((c) => [c.id, c])), [mod]);
 
   const buy = async (item: StoreItem) => {
     if (item.price === null || busy || !collection) return;

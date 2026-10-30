@@ -1117,3 +1117,42 @@ describe('library searches are the player’s choice', () => {
     expect(s.cards[fist]!.zone).toBe('library');
   });
 });
+
+describe('Secret Lair cards built so far', () => {
+  const castIt = (s: GameState, defId: string, pool: Parameters<typeof mana>[2], targets?: Target[]) => {
+    const spell = put(s, 'P1', defId, 'hand');
+    mana(s, 'P1', pool);
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell, ...(targets ? { targets } : {}) }).state;
+  };
+
+  it('Day of Judgment destroys all creatures; Star of Extinction deals 20 to each', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'coeurl');
+    const b = put(s, 'P2', 'jumbo-cactuar');
+    s = castIt(s, 'day-of-judgment', { W: 2, C: 2 });
+    expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['graveyard', 'graveyard']);
+    let t = newGame();
+    const c = put(t, 'P2', 'jumbo-cactuar');
+    t = castIt(t, 'star-of-extinction', { R: 2, C: 5 });
+    expect(t.cards[c]!.zone).toBe('graveyard');
+  });
+
+  it('Heroic Intervention makes your permanents indestructible and hexproof this turn', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'coeurl');
+    const theirs = put(s, 'P2', 'coeurl');
+    s = castIt(s, 'heroic-intervention', { G: 1, C: 1 });
+    expect(hasKeyword(s, s.cards[mine]!, 'Indestructible') && hasKeyword(s, s.cards[mine]!, 'Hexproof')).toBe(true);
+    expect(hasKeyword(s, s.cards[theirs]!, 'Indestructible')).toBe(false);
+    s = castIt(s, 'day-of-judgment', { W: 2, C: 2 });
+    expect([s.cards[mine]!.zone, s.cards[theirs]!.zone]).toEqual(['battlefield', 'graveyard']);
+  });
+
+  it('Feed the Swarm destroys an opponent’s creature or enchantment and you lose life equal to its mana value', () => {
+    let s = newGame();
+    const target = put(s, 'P2', 'jumbo-cactuar');
+    s = castIt(s, 'feed-the-swarm', { B: 1, C: 1 }, [card(target)]);
+    expect(s.cards[target]!.zone).toBe('graveyard');
+    expect(s.players.P1!.life).toBe(20 - 7);
+  });
+});

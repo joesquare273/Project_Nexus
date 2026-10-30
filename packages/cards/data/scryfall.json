@@ -1140,6 +1140,28 @@
     "scryfallId": "fe86e41b-b0f6-4aa1-8827-c095c721f304",
     "relatedTokens": []
   },
+  "blade-of-selves": {
+    "name": "Blade of Selves",
+    "typeLine": "Artifact — Equipment",
+    "oracleText": "Equipped creature has myriad. (Whenever it attacks, for each opponent other than defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at end of combat.)\nEquip {4}",
+    "set": "sld",
+    "number": "1864",
+    "artist": "Joshua Raphael",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/1/1138ab11-ab70-44df-9691-ddee39c3ae45.jpg?1789283977",
+      "normal": "https://cards.scryfall.io/normal/front/1/1/1138ab11-ab70-44df-9691-ddee39c3ae45.jpg?1789283977",
+      "large": "https://cards.scryfall.io/large/front/1/1/1138ab11-ab70-44df-9691-ddee39c3ae45.jpg?1789283977",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/1/1138ab11-ab70-44df-9691-ddee39c3ae45.jpg?1789283977"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1864/blade-of-selves?utm_source=api",
+    "scryfallId": "1138ab11-ab70-44df-9691-ddee39c3ae45",
+    "relatedTokens": [
+      {
+        "name": "Copy",
+        "scryfallId": "2115c141-f2fb-4bfd-a8b5-2943bad9f418"
+      }
+    ]
+  },
   "blazing-bomb": {
     "name": "Blazing Bomb",
     "typeLine": "Creature — Elemental",
@@ -2521,6 +2543,40 @@
     "scryfallId": "a1e779b4-32dd-406b-8b68-48f6df458005",
     "relatedTokens": []
   },
+  "cyclonic-rift": {
+    "name": "Cyclonic Rift",
+    "typeLine": "Instant",
+    "oracleText": "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")",
+    "set": "sld",
+    "number": "1869",
+    "artist": "Kasia 'Kafis' Zielińska",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/5/45617b0f-fdac-4747-b2d3-d571b717008f.jpg?1789283269",
+      "normal": "https://cards.scryfall.io/normal/front/4/5/45617b0f-fdac-4747-b2d3-d571b717008f.jpg?1789283269",
+      "large": "https://cards.scryfall.io/large/front/4/5/45617b0f-fdac-4747-b2d3-d571b717008f.jpg?1789283269",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/5/45617b0f-fdac-4747-b2d3-d571b717008f.jpg?1789283269"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1869/cyclonic-rift?utm_source=api",
+    "scryfallId": "45617b0f-fdac-4747-b2d3-d571b717008f",
+    "relatedTokens": []
+  },
+  "damn": {
+    "name": "Damn",
+    "typeLine": "Sorcery",
+    "oracleText": "Destroy target creature. A creature destroyed this way can't be regenerated.\nOverload {2}{W}{W} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")",
+    "set": "sld",
+    "number": "1870",
+    "artist": "Magali Villeneuve",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/8/483b64f7-bec5-4800-bdd4-6b303c5ec20e.jpg?1789284389",
+      "normal": "https://cards.scryfall.io/normal/front/4/8/483b64f7-bec5-4800-bdd4-6b303c5ec20e.jpg?1789284389",
+      "large": "https://cards.scryfall.io/large/front/4/8/483b64f7-bec5-4800-bdd4-6b303c5ec20e.jpg?1789284389",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/8/483b64f7-bec5-4800-bdd4-6b303c5ec20e.jpg?1789284389"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1870/damn?utm_source=api",
+    "scryfallId": "483b64f7-bec5-4800-bdd4-6b303c5ec20e",
+    "relatedTokens": []
+  },
   "damning-verdict": {
     "name": "Damning Verdict",
     "typeLine": "Sorcery",
@@ -2665,6 +2721,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fic/384/darkwater-catacombs?utm_source=api",
     "scryfallId": "bcb5a670-7c8f-4b76-82c6-c89abffbb4bd",
+    "relatedTokens": []
+  },
+  "day-of-judgment": {
+    "name": "Day of Judgment",
+    "typeLine": "Sorcery",
+    "oracleText": "Destroy all creatures.",
+    "set": "sld",
+    "number": "1858",
+    "artist": "Néstor Ossandón Leal",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/a/7ac9e188-ee9c-424b-8216-2f851d8165e5.jpg?1789283558",
+      "normal": "https://cards.scryfall.io/normal/front/7/a/7ac9e188-ee9c-424b-8216-2f851d8165e5.jpg?1789283558",
+      "large": "https://cards.scryfall.io/large/front/7/a/7ac9e188-ee9c-424b-8216-2f851d8165e5.jpg?1789283558",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/a/7ac9e188-ee9c-424b-8216-2f851d8165e5.jpg?1789283558"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1858/day-of-judgment?utm_source=api",
+    "scryfallId": "7ac9e188-ee9c-424b-8216-2f851d8165e5",
     "relatedTokens": []
   },
   "deadly-dispute": {
@@ -3202,6 +3275,23 @@
     "scryfallId": "33a37435-bd6c-4330-8138-98a2afa36e54",
     "relatedTokens": []
   },
+  "endurance": {
+    "name": "Endurance",
+    "typeLine": "Creature — Elemental Incarnation",
+    "oracleText": "Flash\nReach\nWhen this creature enters, up to one target player puts all the cards from their graveyard on the bottom of their library in a random order.\nEvoke—Exile a green card from your hand.",
+    "set": "sld",
+    "number": "7008",
+    "artist": "Christina Kraus",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/a/0a454b43-27a0-4c9d-b317-c17e6c639287.jpg?1783906661",
+      "normal": "https://cards.scryfall.io/normal/front/0/a/0a454b43-27a0-4c9d-b317-c17e6c639287.jpg?1783906661",
+      "large": "https://cards.scryfall.io/large/front/0/a/0a454b43-27a0-4c9d-b317-c17e6c639287.jpg?1783906661",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/a/0a454b43-27a0-4c9d-b317-c17e6c639287.jpg?1783906661"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7008/endurance?utm_source=api",
+    "scryfallId": "0a454b43-27a0-4c9d-b317-c17e6c639287",
+    "relatedTokens": []
+  },
   "esper-origins-summon-esper-maduin": {
     "name": "Esper Origins // Summon: Esper Maduin",
     "typeLine": "Sorcery // Enchantment Creature — Saga Elemental",
@@ -3547,6 +3637,23 @@
     "scryfallId": "4bb9c7e1-46a6-4acf-8415-221d9c9d9d23",
     "relatedTokens": []
   },
+  "feed-the-swarm": {
+    "name": "Feed the Swarm",
+    "typeLine": "Sorcery",
+    "oracleText": "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.",
+    "set": "sld",
+    "number": "7001",
+    "artist": "Stanislav Sherbakov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/f/1fd9c17b-0cbb-49b7-8fb8-6a6f319f6a05.jpg?1783906661",
+      "normal": "https://cards.scryfall.io/normal/front/1/f/1fd9c17b-0cbb-49b7-8fb8-6a6f319f6a05.jpg?1783906661",
+      "large": "https://cards.scryfall.io/large/front/1/f/1fd9c17b-0cbb-49b7-8fb8-6a6f319f6a05.jpg?1783906661",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/f/1fd9c17b-0cbb-49b7-8fb8-6a6f319f6a05.jpg?1783906661"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7001/feed-the-swarm?utm_source=api",
+    "scryfallId": "1fd9c17b-0cbb-49b7-8fb8-6a6f319f6a05",
+    "relatedTokens": []
+  },
   "fetid-heath": {
     "name": "Fetid Heath",
     "typeLine": "Land",
@@ -3739,6 +3846,23 @@
     "scryfallId": "be72862d-d71e-4b18-98a6-59019399f631",
     "relatedTokens": []
   },
+  "forge-anew": {
+    "name": "Forge Anew",
+    "typeLine": "Enchantment",
+    "oracleText": "When this enchantment enters, return target Equipment card from your graveyard to the battlefield.\nDuring your turn, you may activate equip abilities any time you could cast an instant.\nYou may pay {0} rather than pay the equip cost of the first equip ability you activate during each of your turns.",
+    "set": "sld",
+    "number": "7002",
+    "artist": "Yongjae Choi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/f/7ff1d69b-53fe-469c-945b-ecb23c426cce.jpg?1783996761",
+      "normal": "https://cards.scryfall.io/normal/front/7/f/7ff1d69b-53fe-469c-945b-ecb23c426cce.jpg?1783996761",
+      "large": "https://cards.scryfall.io/large/front/7/f/7ff1d69b-53fe-469c-945b-ecb23c426cce.jpg?1783996761",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/f/7ff1d69b-53fe-469c-945b-ecb23c426cce.jpg?1783996761"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7002/forge-anew?utm_source=api",
+    "scryfallId": "7ff1d69b-53fe-469c-945b-ecb23c426cce",
+    "relatedTokens": []
+  },
   "forge-of-heroes": {
     "name": "Forge of Heroes",
     "typeLine": "Land",
@@ -3839,6 +3963,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fic/294/furious-rise?utm_source=api",
     "scryfallId": "a886ed1a-d6a4-46d2-8b97-ee4a533773fb",
+    "relatedTokens": []
+  },
+  "fury": {
+    "name": "Fury",
+    "typeLine": "Creature — Elemental Incarnation",
+    "oracleText": "Double strike\nWhen this creature enters, it deals 4 damage divided as you choose among any number of target creatures and/or planeswalkers.\nEvoke—Exile a red card from your hand.",
+    "set": "sld",
+    "number": "7007",
+    "artist": "Joshua Raphael",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/9/d9193de8-4169-45d7-8b66-c2a416a92929.jpg?1783906664",
+      "normal": "https://cards.scryfall.io/normal/front/d/9/d9193de8-4169-45d7-8b66-c2a416a92929.jpg?1783906664",
+      "large": "https://cards.scryfall.io/large/front/d/9/d9193de8-4169-45d7-8b66-c2a416a92929.jpg?1783906664",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/9/d9193de8-4169-45d7-8b66-c2a416a92929.jpg?1783906664"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7007/fury?utm_source=api",
+    "scryfallId": "d9193de8-4169-45d7-8b66-c2a416a92929",
     "relatedTokens": []
   },
   "furycalm-snarl": {
@@ -4094,6 +4235,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/187/gigantoad?utm_source=api",
     "scryfallId": "bc10d648-4053-460f-bc52-9c20477bf6de",
+    "relatedTokens": []
+  },
+  "gilded-lotus": {
+    "name": "Gilded Lotus",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add three mana of any one color.",
+    "set": "sld",
+    "number": "909",
+    "artist": "Kasia 'Kafis' Zielińska",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/1/e1ffa2cd-38d3-4ba5-98aa-8cd790a3aa2e.jpg?1783906672",
+      "normal": "https://cards.scryfall.io/normal/front/e/1/e1ffa2cd-38d3-4ba5-98aa-8cd790a3aa2e.jpg?1783906672",
+      "large": "https://cards.scryfall.io/large/front/e/1/e1ffa2cd-38d3-4ba5-98aa-8cd790a3aa2e.jpg?1783906672",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/1/e1ffa2cd-38d3-4ba5-98aa-8cd790a3aa2e.jpg?1783906672"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/909/gilded-lotus?utm_source=api",
+    "scryfallId": "e1ffa2cd-38d3-4ba5-98aa-8cd790a3aa2e",
     "relatedTokens": []
   },
   "gilgamesh-master-at-arms": {
@@ -4390,6 +4548,23 @@
     "scryfallId": "7f33cce1-1484-43da-a825-b090eb5403a4",
     "relatedTokens": []
   },
+  "grief": {
+    "name": "Grief",
+    "typeLine": "Creature — Elemental Incarnation",
+    "oracleText": "Menace\nWhen this creature enters, target opponent reveals their hand. You choose a nonland card from it. That player discards that card.\nEvoke—Exile a black card from your hand.",
+    "set": "sld",
+    "number": "7006",
+    "artist": "Anna Pavleeva",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/9/89f5fdc1-1067-4140-bd0c-1a584eb8e036.jpg?1783989479",
+      "normal": "https://cards.scryfall.io/normal/front/8/9/89f5fdc1-1067-4140-bd0c-1a584eb8e036.jpg?1783989479",
+      "large": "https://cards.scryfall.io/large/front/8/9/89f5fdc1-1067-4140-bd0c-1a584eb8e036.jpg?1783989479",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/9/89f5fdc1-1067-4140-bd0c-1a584eb8e036.jpg?1783989479"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7006/grief?utm_source=api",
+    "scryfallId": "89f5fdc1-1067-4140-bd0c-1a584eb8e036",
+    "relatedTokens": []
+  },
   "guadosalam-farplane-gateway": {
     "name": "Guadosalam, Farplane Gateway",
     "typeLine": "Land — Town",
@@ -4613,6 +4788,23 @@
         "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
       }
     ]
+  },
+  "heroic-intervention": {
+    "name": "Heroic Intervention",
+    "typeLine": "Instant",
+    "oracleText": "Permanents you control gain hexproof and indestructible until end of turn.",
+    "set": "sld",
+    "number": "1872",
+    "artist": "Justyna Dura",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/6/e65a0c1e-97f7-440c-be96-0adf5003bc52.jpg?1789284384",
+      "normal": "https://cards.scryfall.io/normal/front/e/6/e65a0c1e-97f7-440c-be96-0adf5003bc52.jpg?1789284384",
+      "large": "https://cards.scryfall.io/large/front/e/6/e65a0c1e-97f7-440c-be96-0adf5003bc52.jpg?1789284384",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/6/e65a0c1e-97f7-440c-be96-0adf5003bc52.jpg?1789284384"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1872/heroic-intervention?utm_source=api",
+    "scryfallId": "e65a0c1e-97f7-440c-be96-0adf5003bc52",
+    "relatedTokens": []
   },
   "heros-blade": {
     "name": "Hero's Blade",
@@ -7033,6 +7225,23 @@
     "scryfallId": "f1ac3b7f-a1db-49df-ba02-fc80cb2f70af",
     "relatedTokens": []
   },
+  "praetors-grasp": {
+    "name": "Praetor's Grasp",
+    "typeLine": "Sorcery",
+    "oracleText": "Search target opponent's library for a card and exile it face down. Then that player shuffles. You may play that card for as long as it remains exiled.",
+    "set": "sld",
+    "number": "1861",
+    "artist": "Néstor Ossandón Leal",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/4/740b8085-7459-49fc-ab89-601136408f2e.jpg?1789283568",
+      "normal": "https://cards.scryfall.io/normal/front/7/4/740b8085-7459-49fc-ab89-601136408f2e.jpg?1789283568",
+      "large": "https://cards.scryfall.io/large/front/7/4/740b8085-7459-49fc-ab89-601136408f2e.jpg?1789283568",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/4/740b8085-7459-49fc-ab89-601136408f2e.jpg?1789283568"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1861/praetors-grasp?utm_source=api",
+    "scryfallId": "740b8085-7459-49fc-ab89-601136408f2e",
+    "relatedTokens": []
+  },
   "prairie-stream": {
     "name": "Prairie Stream",
     "typeLine": "Land — Plains Island",
@@ -7099,6 +7308,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/193/prishes-wanderings?utm_source=api",
     "scryfallId": "d6e1dee0-e2cd-4899-a3ea-7d0df717c9ab",
+    "relatedTokens": []
+  },
+  "prismatic-ending": {
+    "name": "Prismatic Ending",
+    "typeLine": "Sorcery",
+    "oracleText": "Converge — Exile target nonland permanent if its mana value is less than or equal to the number of colors of mana spent to cast this spell.",
+    "set": "sld",
+    "number": "1868",
+    "artist": "Anna Steinbauer",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/4/944db708-6b7d-4dc0-b3c0-2ddf130e4be3.jpg?1789284402",
+      "normal": "https://cards.scryfall.io/normal/front/9/4/944db708-6b7d-4dc0-b3c0-2ddf130e4be3.jpg?1789284402",
+      "large": "https://cards.scryfall.io/large/front/9/4/944db708-6b7d-4dc0-b3c0-2ddf130e4be3.jpg?1789284402",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/4/944db708-6b7d-4dc0-b3c0-2ddf130e4be3.jpg?1789284402"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1868/prismatic-ending?utm_source=api",
+    "scryfallId": "944db708-6b7d-4dc0-b3c0-2ddf130e4be3",
     "relatedTokens": []
   },
   "professional-face-breaker": {
@@ -8803,6 +9029,23 @@
     "scryfallId": "69dadb0c-413e-4658-9cdc-23a65df7a800",
     "relatedTokens": []
   },
+  "silence": {
+    "name": "Silence",
+    "typeLine": "Instant",
+    "oracleText": "Your opponents can't cast spells this turn.",
+    "set": "sld",
+    "number": "7003",
+    "artist": "Evyn Fong",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/5/159882aa-b596-4195-9b2e-983eee28d1bc.jpg?1783906660",
+      "normal": "https://cards.scryfall.io/normal/front/1/5/159882aa-b596-4195-9b2e-983eee28d1bc.jpg?1783906660",
+      "large": "https://cards.scryfall.io/large/front/1/5/159882aa-b596-4195-9b2e-983eee28d1bc.jpg?1783906660",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/5/159882aa-b596-4195-9b2e-983eee28d1bc.jpg?1783906660"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7003/silence?utm_source=api",
+    "scryfallId": "159882aa-b596-4195-9b2e-983eee28d1bc",
+    "relatedTokens": []
+  },
   "sin-spiras-punishment": {
     "name": "Sin, Spira's Punishment",
     "typeLine": "Legendary Creature — Leviathan Avatar",
@@ -9107,6 +9350,23 @@
     "scryfallId": "64d2d473-9157-408a-b088-1489306c1912",
     "relatedTokens": []
   },
+  "solitude": {
+    "name": "Solitude",
+    "typeLine": "Creature — Elemental Incarnation",
+    "oracleText": "Flash\nLifelink\nWhen this creature enters, exile up to one other target creature. That creature's controller gains life equal to its power.\nEvoke—Exile a white card from your hand.",
+    "set": "sld",
+    "number": "7004",
+    "artist": "Alexander Mokhov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/1/0150e5a9-99d8-4d81-be9c-3a8e98a41758.jpg?1783906663",
+      "normal": "https://cards.scryfall.io/normal/front/0/1/0150e5a9-99d8-4d81-be9c-3a8e98a41758.jpg?1783906663",
+      "large": "https://cards.scryfall.io/large/front/0/1/0150e5a9-99d8-4d81-be9c-3a8e98a41758.jpg?1783906663",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/1/0150e5a9-99d8-4d81-be9c-3a8e98a41758.jpg?1783906663"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7004/solitude?utm_source=api",
+    "scryfallId": "0150e5a9-99d8-4d81-be9c-3a8e98a41758",
+    "relatedTokens": []
+  },
   "sorceresss-schemes": {
     "name": "Sorceress's Schemes",
     "typeLine": "Sorcery",
@@ -9234,6 +9494,45 @@
     },
     "scryfallUri": "https://scryfall.com/card/fca/3/sram-senior-edificer?utm_source=api",
     "scryfallId": "084d7a61-ef18-42e3-8485-76ae9a36ef7b",
+    "relatedTokens": []
+  },
+  "staff-of-the-storyteller": {
+    "name": "Staff of the Storyteller",
+    "typeLine": "Artifact",
+    "oracleText": "When this artifact enters, create a 1/1 white Spirit creature token with flying.\nWhenever you create one or more creature tokens, put a story counter on this artifact.\n{W}, {T}, Remove a story counter from this artifact: Draw a card.",
+    "set": "sld",
+    "number": "1863",
+    "artist": "Luisa J. Preissler",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/f/6f4ad71f-14e6-4b1e-9558-1400a36f27a9.jpg?1789283989",
+      "normal": "https://cards.scryfall.io/normal/front/6/f/6f4ad71f-14e6-4b1e-9558-1400a36f27a9.jpg?1789283989",
+      "large": "https://cards.scryfall.io/large/front/6/f/6f4ad71f-14e6-4b1e-9558-1400a36f27a9.jpg?1789283989",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/f/6f4ad71f-14e6-4b1e-9558-1400a36f27a9.jpg?1789283989"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1863/staff-of-the-storyteller?utm_source=api",
+    "scryfallId": "6f4ad71f-14e6-4b1e-9558-1400a36f27a9",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "1d9b18e5-d842-4114-b395-ff5dd42c94d9"
+      }
+    ]
+  },
+  "star-of-extinction": {
+    "name": "Star of Extinction",
+    "typeLine": "Sorcery",
+    "oracleText": "Destroy target land. Star of Extinction deals 20 damage to each creature and each planeswalker.",
+    "set": "sld",
+    "number": "1862",
+    "artist": "Joshua Raphael",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/f/4fdb466a-0a48-424a-b835-43c7980a95b4.jpg?1789283569",
+      "normal": "https://cards.scryfall.io/normal/front/4/f/4fdb466a-0a48-424a-b835-43c7980a95b4.jpg?1789283569",
+      "large": "https://cards.scryfall.io/large/front/4/f/4fdb466a-0a48-424a-b835-43c7980a95b4.jpg?1789283569",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/f/4fdb466a-0a48-424a-b835-43c7980a95b4.jpg?1789283569"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1862/star-of-extinction?utm_source=api",
+    "scryfallId": "4fdb466a-0a48-424a-b835-43c7980a95b4",
     "relatedTokens": []
   },
   "starting-town": {
@@ -9415,6 +9714,23 @@
         "scryfallId": "81c9d442-d7d5-4911-b0b9-c3206faeab1d"
       }
     ]
+  },
+  "subtlety": {
+    "name": "Subtlety",
+    "typeLine": "Creature — Elemental Incarnation",
+    "oracleText": "Flash\nFlying\nWhen this creature enters, choose up to one target creature spell or planeswalker spell. Its owner puts it on their choice of the top or bottom of their library.\nEvoke—Exile a blue card from your hand.",
+    "set": "sld",
+    "number": "7005",
+    "artist": "Luisa J. Preissler",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/d/ada19c3f-2f74-4ec9-a8a7-ebc69965c832.jpg?1783906662",
+      "normal": "https://cards.scryfall.io/normal/front/a/d/ada19c3f-2f74-4ec9-a8a7-ebc69965c832.jpg?1783906662",
+      "large": "https://cards.scryfall.io/large/front/a/d/ada19c3f-2f74-4ec9-a8a7-ebc69965c832.jpg?1783906662",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/d/ada19c3f-2f74-4ec9-a8a7-ebc69965c832.jpg?1783906662"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/7005/subtlety?utm_source=api",
+    "scryfallId": "ada19c3f-2f74-4ec9-a8a7-ebc69965c832",
+    "relatedTokens": []
   },
   "sulfurous-springs": {
     "name": "Sulfurous Springs",
@@ -10113,6 +10429,23 @@
     "scryfallId": "a822129c-0699-40e2-8639-c1a609a5ba3b",
     "relatedTokens": []
   },
+  "sword-of-truth-and-justice": {
+    "name": "Sword of Truth and Justice",
+    "typeLine": "Artifact — Equipment",
+    "oracleText": "Equipped creature gets +2/+2 and has protection from white and from blue.\nWhenever equipped creature deals combat damage to a player, put a +1/+1 counter on a creature you control, then proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nEquip {2}",
+    "set": "sld",
+    "number": "1867",
+    "artist": "Yongjae Choi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/5/f5208aff-a33e-48d9-94eb-98a517099741.jpg?1787892359",
+      "normal": "https://cards.scryfall.io/normal/front/f/5/f5208aff-a33e-48d9-94eb-98a517099741.jpg?1787892359",
+      "large": "https://cards.scryfall.io/large/front/f/5/f5208aff-a33e-48d9-94eb-98a517099741.jpg?1787892359",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/5/f5208aff-a33e-48d9-94eb-98a517099741.jpg?1787892359"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1867/sword-of-truth-and-justice?utm_source=api",
+    "scryfallId": "f5208aff-a33e-48d9-94eb-98a517099741",
+    "relatedTokens": []
+  },
   "swords-to-plowshares": {
     "name": "Swords to Plowshares",
     "typeLine": "Instant",
@@ -10410,6 +10743,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fic/438/temple-of-the-false-god?utm_source=api",
     "scryfallId": "f1cb4775-8e14-4c83-a417-40d1432ac90a",
+    "relatedTokens": []
+  },
+  "temporal-extortion": {
+    "name": "Temporal Extortion",
+    "typeLine": "Sorcery",
+    "oracleText": "When you cast this spell, any player may pay half their life, rounded up. If a player does, counter Temporal Extortion.\nTake an extra turn after this one.",
+    "set": "sld",
+    "number": "1859",
+    "artist": "Aurore Folny",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/3/33da3281-1cf1-41ac-841a-e01521642779.jpg?1788710716",
+      "normal": "https://cards.scryfall.io/normal/front/3/3/33da3281-1cf1-41ac-841a-e01521642779.jpg?1788710716",
+      "large": "https://cards.scryfall.io/large/front/3/3/33da3281-1cf1-41ac-841a-e01521642779.jpg?1788710716",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/3/33da3281-1cf1-41ac-841a-e01521642779.jpg?1788710716"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1859/temporal-extortion?utm_source=api",
+    "scryfallId": "33da3281-1cf1-41ac-841a-e01521642779",
     "relatedTokens": []
   },
   "terra-herald-of-hope": {
@@ -11081,6 +11431,23 @@
     "scryfallId": "49cd4efa-4df4-4257-9a42-60330f7781e2",
     "relatedTokens": []
   },
+  "toxic-deluge": {
+    "name": "Toxic Deluge",
+    "typeLine": "Sorcery",
+    "oracleText": "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn.",
+    "set": "sld",
+    "number": "1860",
+    "artist": "Evyn Fong",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/f/bf5666e6-e1bf-4f8e-acc0-d14df7362873.jpg?1789283954",
+      "normal": "https://cards.scryfall.io/normal/front/b/f/bf5666e6-e1bf-4f8e-acc0-d14df7362873.jpg?1789283954",
+      "large": "https://cards.scryfall.io/large/front/b/f/bf5666e6-e1bf-4f8e-acc0-d14df7362873.jpg?1789283954",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/f/bf5666e6-e1bf-4f8e-acc0-d14df7362873.jpg?1789283954"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1860/toxic-deluge?utm_source=api",
+    "scryfallId": "bf5666e6-e1bf-4f8e-acc0-d14df7362873",
+    "relatedTokens": []
+  },
   "tragic-arrogance": {
     "name": "Tragic Arrogance",
     "typeLine": "Sorcery",
@@ -11441,6 +11808,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fic/63/umaro-raging-yeti?utm_source=api",
     "scryfallId": "31aed8e9-44be-4e7c-85ac-a084eaecaea7",
+    "relatedTokens": []
+  },
+  "umezawas-jitte": {
+    "name": "Umezawa's Jitte",
+    "typeLine": "Legendary Artifact — Equipment",
+    "oracleText": "Whenever equipped creature deals combat damage, put two charge counters on Umezawa's Jitte.\nRemove a charge counter from Umezawa's Jitte: Choose one —\n• Equipped creature gets +2/+2 until end of turn.\n• Target creature gets -1/-1 until end of turn.\n• You gain 2 life.\nEquip {2}",
+    "set": "sld",
+    "number": "1865",
+    "artist": "Magali Villeneuve",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/2/32a46d1d-df85-4388-acd6-91818aa9af80.jpg?1789284357",
+      "normal": "https://cards.scryfall.io/normal/front/3/2/32a46d1d-df85-4388-acd6-91818aa9af80.jpg?1789284357",
+      "large": "https://cards.scryfall.io/large/front/3/2/32a46d1d-df85-4388-acd6-91818aa9af80.jpg?1789284357",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/2/32a46d1d-df85-4388-acd6-91818aa9af80.jpg?1789284357"
+    },
+    "scryfallUri": "https://scryfall.com/card/sld/1865/umezawas-jitte?utm_source=api",
+    "scryfallId": "32a46d1d-df85-4388-acd6-91818aa9af80",
     "relatedTokens": []
   },
   "undercity-dire-rat": {

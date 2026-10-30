@@ -9,6 +9,7 @@
 
 import type { CardFinish } from '@nexus/engine';
 import data from '../data/booster-cards.json' with { type: 'json' };
+import secretLair from '../data/secret-lair.json' with { type: 'json' };
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'special' | 'bonus';
 
@@ -36,6 +37,11 @@ export interface BoosterCard {
 }
 
 export const BOOSTER_CARDS = data as BoosterCard[];
+
+/** FINAL FANTASY Secret Lair printings (scripts/import-secret-lairs.ts), each with its drop if it belongs to one. */
+export const SECRET_LAIR_CARDS = secretLair.printings as (BoosterCard & { drop?: string })[];
+/** The Secret Lair drops: Scryfall collector numbers and the bonus card's. */
+export const SECRET_LAIR_DROPS = secretLair.drops;
 
 export type PackKind = 'play' | 'collector';
 export type Finish = 'nonfoil' | 'foil' | 'surge';

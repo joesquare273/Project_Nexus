@@ -3,7 +3,7 @@
 // an item without a price shows "Price coming soon" and can't be bought.
 // Sets that aren't ready show as Coming soon.
 
-import { BOOSTER_CARDS, type BoosterCard, type Finish } from '@nexus/cards/boosters';
+import { BOOSTER_CARDS, SECRET_LAIR_CARDS, SECRET_LAIR_DROPS, type BoosterCard, type Finish } from '@nexus/cards/boosters';
 import { ECONOMY } from './economy.ts';
 
 export interface StoreItem {
@@ -28,6 +28,9 @@ const chocoboTrack = (c: BoosterCard) => !!c.promoTypes?.includes('chocobotrackf
 const isBasic = (c: BoosterCard) => c.typeLine.startsWith('Basic Land');
 const isLegendaryCreature = (c: BoosterCard) => /\bLegendary\b/.test(c.typeLine) && /\bCreature\b/.test(c.typeLine);
 
+/** A Secret Lair card's finish when bought: non-foil if it's printed that way, else foil (the bonus cards). */
+const secretLairFinish = (c: BoosterCard): Finish => (c.finishes.includes('nonfoil') ? 'nonfoil' : 'foil');
+
 /** Every set in the Store, in the order the tabs show them. */
 export function storeSets(): StoreSet[] {
   const prices = ECONOMY.storePrices;
@@ -48,6 +51,25 @@ export function storeSets(): StoreSet[] {
             price: isLegendaryCreature(c) ? prices.chocoboTrackLegendary : prices.chocoboTrackOther,
             cards: [{ id: c.id, finish: 'foil' as const }],
           })),
+        // The Secret Lair drops: five cards non-foil and the bonus card (foil only).
+        ...SECRET_LAIR_DROPS.map((drop) => ({
+          key: `sld-drop-${drop.numbers[0]}`,
+          name: drop.name,
+          line: 'Secret Lair drop: 5 cards and a foil bonus card',
+          price: prices.secretLairDrop,
+          cards: [...drop.numbers, drop.bonus].map((n) => {
+            const c = SECRET_LAIR_CARDS.find((p) => p.number === n)!;
+            return { id: c.id, finish: secretLairFinish(c) };
+          }),
+        })),
+        // Every Secret Lair card on its own.
+        ...SECRET_LAIR_CARDS.map((c) => ({
+          key: c.id,
+          name: c.name,
+          line: c.drop ? `Secret Lair (${c.drop.replace('Secret Lair x FINAL FANTASY: ', '')})` : 'Secret Lair',
+          price: prices.secretLairSingle,
+          cards: [{ id: c.id, finish: secretLairFinish(c) }],
+        })),
         // The five Chocobo Track basic lands, sold together.
         {
           key: 'fin-chocobo-track-lands',

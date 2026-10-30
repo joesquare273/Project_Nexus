@@ -467,7 +467,7 @@ function Summary({
   );
 }
 
-const GROUPS: { name: string; test: (c: BoosterCard) => boolean; precons?: true }[] = [
+const GROUPS: { name: string; test: (c: BoosterCard) => boolean; precons?: true; secretLair?: true }[] = [
   { name: 'Main set', test: (c) => c.set === 'fin' && !!c.booster },
   { name: 'Booster Fun', test: (c) => c.set === 'fin' && !c.booster && !c.promoTypes?.includes('starterdeck') },
   { name: 'Through the Ages', test: (c) => c.set === 'fca' },
@@ -476,6 +476,7 @@ const GROUPS: { name: string; test: (c: BoosterCard) => boolean; precons?: true 
     test: (c) => c.set === 'fic' && ((parseInt(c.number, 10) >= 101 && parseInt(c.number, 10) <= 219) || (parseInt(c.number, 10) >= 466 && parseInt(c.number, 10) <= 482)) && !c.promoTypes?.includes('buyabox'),
   },
   { name: 'Commander decks', test: () => true, precons: true },
+  { name: 'Secret Lair', test: () => true, secretLair: true },
   { name: 'Scene Box', test: (c) => c.set === 'afic' || (c.set === 'fic' && parseInt(c.number, 10) >= 442 && parseInt(c.number, 10) <= 465) },
   { name: 'Tokens and art cards', test: (c) => c.set === 'tfin' || c.set === 'afin' },
 ];
@@ -491,7 +492,7 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
   const [show, setShow] = useState<Show>('all');
   const [sort, setSort] = useState<SortBy>('number');
   const g = GROUPS[group]!;
-  const cards = useMemo(() => (g.precons ? PRECON_CARDS : mod.BOOSTER_CARDS.filter(g.test)), [mod, g]);
+  const cards = useMemo(() => (g.precons ? PRECON_CARDS : g.secretLair ? mod.SECRET_LAIR_CARDS : mod.BOOSTER_CARDS.filter(g.test)), [mod, g]);
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;
   const shown = useMemo(() => browse(cards, collection, show, sort), [cards, collection, show, sort]);
   return (

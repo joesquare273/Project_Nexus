@@ -28,6 +28,9 @@ export const ECONOMY = {
     chocoboTrackLegendary: 1200 as number | null,
     chocoboTrackOther: 800 as number | null,
     chocoboTrackLandBundle: 500 as number | null,
+    /** A whole Secret Lair drop (5 cards and its foil bonus card): cheaper than its cards one by one. */
+    secretLairDrop: 3500 as number | null,
+    secretLairSingle: 1000 as number | null,
   },
 } as const;
 

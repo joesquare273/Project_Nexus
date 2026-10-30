@@ -53,7 +53,7 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
   const [editing, setEditing] = useState<DeckDraft | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const byId = useMemo(() => new Map([...PRINTING_CARDS, ...mod.BOOSTER_CARDS].map((c) => [c.id, c])), [mod]);
+  const byId = useMemo(() => new Map([...PRINTING_CARDS, ...mod.BOOSTER_CARDS, ...mod.SECRET_LAIR_CARDS].map((c) => [c.id, c])), [mod]);
   const names = useMemo(() => new Map([...byId].map(([id, c]) => [id, c.name])), [byId]);
   const unbuiltId = (id: string) => { const c = byId.get(id); return !!c && isUnbuilt(c); };
 

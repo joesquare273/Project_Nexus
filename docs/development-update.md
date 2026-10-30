@@ -5,6 +5,23 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### FINAL FANTASY Secret Lairs in the Store
+
+- Imported the 24 FINAL FANTASY Secret Lair printings from Scryfall
+  (`scripts/import-secret-lairs.ts`, one request): the Game Over, Weapons
+  and Grimoire drops with their bonus cards, plus the Elemental Incarnations
+  and Gilded Lotus. The Store sells each drop (5 cards non-foil and the foil
+  bonus) for 3,500 and every card on its own for 1,000; the Collection has a
+  Secret Lair group.
+- Built now: Day of Judgment, Star of Extinction (creatures only: the engine
+  has no planeswalkers), Heroic Intervention and Feed the Swarm, with tests.
+  Lightning Bolt and Colossus Hammer were already built.
+- Still to build (marked Not built, collectable): Temporal Extortion, Toxic
+  Deluge, Praetor's Grasp, Staff of the Storyteller, Blade of Selves,
+  Umezawa's Jitte, Sword of Truth and Justice, Forge Anew, Prismatic Ending,
+  Cyclonic Rift, Damn, Silence, Gilded Lotus, Solitude, Subtlety, Grief, Fury
+  and Endurance.
+
 ### You choose what a library search finds; mana symbols on buttons
 
 - Library searches (Cloud, landcycling, ramp spells, Path to Exile) let the

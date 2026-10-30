@@ -203,12 +203,12 @@ describe('the Store', () => {
       ['Edge of Eternities', false],
     ]);
     const items: Item[] = sets[0].items;
-    const singles = items.filter((i) => i.cards.length === 1);
+    const singles = items.filter((i) => i.line === 'Chocobo Track foil');
     expect(singles).toHaveLength(20);
     expect(singles.every((i) => i.line === 'Chocobo Track foil' && i.cards[0]!.finish === 'foil')).toBe(true);
     expect(singles.find((i) => i.name === 'Cloud, Midgar Mercenary')!.price).toBe(prices.chocoboTrackLegendary);
     expect(singles.find((i) => i.name === 'Traveling Chocobo')!.price).toBe(prices.chocoboTrackOther);
-    const bundle = items.find((i) => i.cards.length > 1)!;
+    const bundle = items.find((i) => i.key === 'fin-chocobo-track-lands')!;
     expect(bundle.cards).toHaveLength(5);
     expect(bundle.price).toBe(prices.chocoboTrackLandBundle);
     expect(sets[1].items).toEqual([]);
@@ -218,7 +218,7 @@ describe('the Store', () => {
     const { accounts, call } = await withAccounts();
     const { sets } = await (await call('token-alice', '/api/store')).json();
     const items: Item[] = sets[0].items;
-    const bundle = items.find((i) => i.cards.length > 1)!;
+    const bundle = items.find((i) => i.key === 'fin-chocobo-track-lands')!;
     const r = await call('token-alice', '/api/store/buy', 'POST', { key: bundle.key, price: 1 });
     expect(r.status).toBe(200);
     expect((await r.json()).balance).toBe(ECONOMY.welcomeGrant - bundle.price!);
@@ -258,5 +258,37 @@ describe('basic land printings in decks', () => {
     const wrong = await call('token-alice', '/api/decks', 'POST', { ...base, basics: { ...base.basics, printings: { W: { id: island, finish: 'foil' } } } });
     expect(wrong.status).toBe(400);
     expect((await wrong.json()).error).toMatch(/not a basic Plains/);
+  });
+});
+
+describe('Secret Lairs in the Store', () => {
+  type Item = { key: string; name: string; line: string; price: number | null; cards: { id: string; finish: string }[] };
+  it('sells the three FINAL FANTASY drops (5 cards and a foil bonus) and every Secret Lair card on its own', async () => {
+    const { call } = await withAccounts();
+    const items: Item[] = (await (await call('token-alice', '/api/store')).json()).sets[0].items;
+    const drops = items.filter((i) => i.key.startsWith('sld-drop-'));
+    expect(drops.map((d) => d.name)).toEqual([
+      'Secret Lair x FINAL FANTASY: Game Over',
+      'Secret Lair x FINAL FANTASY: Weapons',
+      'Secret Lair x FINAL FANTASY: Grimoire',
+    ]);
+    for (const d of drops) {
+      expect(d.cards).toHaveLength(6);
+      expect(d.cards.slice(0, 5).every((c) => c.finish === 'nonfoil')).toBe(true);
+      expect(d.cards[5]!.finish).toBe('foil');
+      expect(d.price).toBe(ECONOMY.storePrices.secretLairDrop);
+    }
+    const singles = items.filter((i) => i.line.startsWith('Secret Lair') && !i.key.startsWith('sld-drop-'));
+    expect(singles).toHaveLength(24);
+    expect(singles.every((i) => i.price === ECONOMY.storePrices.secretLairSingle)).toBe(true);
+  });
+
+  it('buying a drop adds all six cards at once', async () => {
+    const { accounts, call } = await withAccounts();
+    accounts.apply('alice-id', 5000, 'admin_adjustment', 'test-shards');
+    const items: Item[] = (await (await call('token-alice', '/api/store')).json()).sets[0].items;
+    const drop = items.find((i) => i.key.startsWith('sld-drop-'))!;
+    expect((await call('token-alice', '/api/store/buy', 'POST', { key: drop.key })).status).toBe(200);
+    expect((await accounts.collection('alice-id')).length).toBe(6);
   });
 });
