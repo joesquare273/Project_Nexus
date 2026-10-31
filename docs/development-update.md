@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-10-30
 
+### Secret Lair card: Blade of Selves (myriad); every Store card is built
+
+- Myriad (`Myriad` effect): when the equipped creature attacks, a token copy
+  of it enters tapped and attacking each opponent other than the defending
+  player. The copies are marked `exileAtEndOfCombat` (redacted as a copy) and
+  exiled as the end of combat step begins. Equip {4}.
+- With this, all 24 FINAL FANTASY Secret Lair printings and every Store-only
+  card are built. Tests in `fin-set-cards.test.ts` cover 2, 3 and 4 players.
+
 ### Secret Lair cards: Temporal Extortion and Praetor's Grasp
 
 - Extra turns (`extraTurns` on the game, redacted as a copy): the newest is

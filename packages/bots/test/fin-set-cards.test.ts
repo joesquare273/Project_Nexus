@@ -1479,3 +1479,43 @@ describe('Secret Lair: Praetor’s Grasp', () => {
     expect(s.players.P2!.graveyard).toContain(bolt);
   });
 });
+
+describe('Secret Lair: Blade of Selves (myriad)', () => {
+  it('a token copy attacks each other opponent, and the copies are exiled at end of combat (3 players)', () => {
+    let s = newGame(3);
+    const { body } = equipped(s, 'blade-of-selves', 'hill-gigas');
+    const hit = powerOf(s, s.cards[body]!);
+    const played = fight(s, [{ attacker: body, defender: 'P2' }]);
+    s = played.state;
+    const copies = s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken);
+    expect(copies).toHaveLength(1);
+    expect(s.cards[copies[0]!]!.copy?.copiedName).toBe('Hill Gigas');
+    expect(s.cards[copies[0]!]!.attachedTo).toBeUndefined();
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([20 - hit, 20 - hit]);
+    s = goTo(s, 'main2');
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken)).toEqual([]);
+    expect(s.cards[body]!.zone).toBe('battlefield');
+  });
+
+  it('with four players, one copy for each of the two other opponents; a duel makes none', () => {
+    let s = newGame(4);
+    const { body } = equipped(s, 'blade-of-selves', 'hill-gigas');
+    s = fight(s, [{ attacker: body, defender: 'P3' }]).state;
+    const defenders = s.combat!.attacks.filter((a) => a.attacker !== body).map((a) => a.defender).sort();
+    expect(defenders).toEqual(['P2', 'P4']);
+
+    let duel = newGame();
+    const gigas = equipped(duel, 'blade-of-selves', 'hill-gigas').body;
+    duel = fight(duel, [{ attacker: gigas, defender: 'P2' }]).state;
+    expect(duel.players.P1!.battlefield.filter((id) => duel.cards[id]!.isToken)).toEqual([]);
+  });
+
+  it('the copies are optional, and equip costs {4}', () => {
+    let s = newGame(3);
+    const { body, gear } = equipped(s, 'blade-of-selves', 'hill-gigas');
+    s = fight(s, [{ attacker: body, defender: 'P2' }], {}, { accept: false }).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken)).toEqual([]);
+    expect(s.players.P3!.life).toBe(20);
+    expect(currentDefinition(s, s.cards[gear]!).equip).toBe('{4}');
+  });
+});

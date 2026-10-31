@@ -233,6 +233,12 @@ export const EFFECT_KINDS = [
   'CreateToken',
   /** Create a token that's a copy of the target permanent. */
   'CreateTokenCopy',
+  /**
+   * Myriad (rule 702.116): for each opponent other than the defending player, a
+   * token copy of the attacking creature enters tapped and attacking that player,
+   * and is exiled at end of combat.
+   */
+  'Myriad',
   /** "+X/+Y until end of turn" (negative for -X/-Y). */
   'ModifyPT',
   /** Set affected creatures' base power/toughness until end of turn. */
@@ -1389,6 +1395,8 @@ export interface CardInstance {
   sacrificeAtEndStep?: boolean;
   /** Returned with unearth: exiled at the next end step or if it would leave the battlefield. */
   unearthed?: boolean;
+  /** A myriad token: exiled at end of combat. */
+  exileAtEndOfCombat?: boolean;
   /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */
   rebounding?: boolean;
   /** Only on the stack: use the Adventure's characteristics instead of the creature's. */

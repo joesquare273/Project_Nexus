@@ -1990,14 +1990,26 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'CreateTokenCopy':
-      // Copy effects and their exceptions are themselves copiable (rule 707.2).
       for (const id of onBattlefield) {
-        const original=s.cards[id]!, definition=structuredClone(copiableDefinition(s,original));
-        const printing=original.copy?.printing??original.printing??definition.printing;
-        const copy={definition,artDefId:original.copy?.artDefId??original.defId,copiedName:definition.name,...(printing?{printing}:{})};
-        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createToken(ctx, original.defId, item.controller, copy));
+        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createTokenCopy(ctx, id, item.controller));
       }
       return;
+    case 'Myriad': {
+      const defender = item.kind === 'ability' ? item.defender : undefined;
+      if (!s.combat) return;
+      for (const id of onBattlefield) {
+        for (const opponent of alivePlayers(s).filter((p) => p !== item.controller && p !== defender)) {
+          const token = createTokenCopy(ctx, id, item.controller);
+          const c = s.cards[token]!;
+          c.tapped = true;
+          c.exileAtEndOfCombat = true;
+          s.combat.attacks.push({ attacker: token, defender: opponent });
+          ctx.ev.push({ type: 'CreatureEnteredAttacking', card: token, defender: opponent });
+          r.createdTokens.push(token);
+        }
+      }
+      return;
+    }
     case 'GrantTrigger':
       for (const id of onBattlefield) s.temporaryEffects.push({ source, affected: id, trigger: effect.trigger! });
       return;
@@ -3003,4 +3015,11 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
   }
   s.pending={kind:'priority',player:playerId,passes:0};
   continueResolving(ctx);
+}
+
+/** A token that's a copy of `original`; copy effects and their exceptions are themselves copiable (rule 707.2). */
+function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId): InstanceId {
+  const c = ctx.s.cards[original]!, definition = structuredClone(copiableDefinition(ctx.s, c));
+  const printing = c.copy?.printing ?? c.printing ?? definition.printing;
+  return createToken(ctx, c.defId, controller, { definition, artDefId: c.copy?.artDefId ?? c.defId, copiedName: definition.name, ...(printing ? { printing } : {}) });
 }

@@ -188,6 +188,7 @@ const CARD_FIELDS = {
   evoked: 'copy',
   sacrificeAtEndStep: 'copy',
   unearthed: 'copy',
+  exileAtEndOfCombat: 'copy',
   rebounding: 'copy',
   adventureSpell: 'copy',
   adventurer: 'copy',

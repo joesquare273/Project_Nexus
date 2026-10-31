@@ -254,6 +254,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.evoked;
   }
   if (from === 'battlefield') delete c.sacrificeAtEndStep;
+  if (from === 'battlefield') delete c.exileAtEndOfCombat;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;
   // What it was like as it left, for abilities that look back (rule 608.2h). Kept until it enters again.

@@ -188,6 +188,8 @@ function effectText(e: EffectSpec): string {
       return `create ${plural(`${e.token?.replace(/-token$/, '').replace(/-/g, ' ')} token`)}`;
     case 'CreateTokenCopy':
       return `create a token that's a copy of ${who}`;
+    case 'Myriad':
+      return `create a token copy of ${who} attacking each other opponent`;
     case 'SetBasePT':
       return `set the base power and toughness of ${who}${e.filter?.modified ? ' that are modified' : ''} to ${e.power}/${e.toughness} until end of turn`;
     case 'ModifyPT': {
