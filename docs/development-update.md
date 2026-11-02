@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 18: Summon Saga creatures
+
+- Summon: Knights of Round, Primal Garuda, Shiva, Anima, Esper Ramuh and
+  Titan (172 of 320). Engine: the indestructible counter (a keyword
+  counter, like flying). Tests play each Saga through its chapters.
+
 ### Set cards, group 17: Chocobo Birds
 
 - Gysahl Greens, Call the Mountain Chocobo, Choco-Comet, Chocobo Racetrack

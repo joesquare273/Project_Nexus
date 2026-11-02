@@ -281,6 +281,8 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     for (const k of e.keywords ?? []) out.keywords.add(k);
   }
   if (countersOf(c, 'flying') > 0) out.keywords.add('Flying');
+  // Keyword counters (rule 122.1b).
+  if (countersOf(c, 'indestructible') > 0) out.keywords.add('Indestructible');
   // "Loses flying" wins over grants (a simplification of layer 6 timestamps).
   for (const k of removed) out.keywords.delete(k);
   out.power += c.counters ?? 0;

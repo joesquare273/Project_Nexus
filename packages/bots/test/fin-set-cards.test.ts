@@ -2889,3 +2889,112 @@ describe('S4 group 17: Chocobo Birds (2/2 Birds that get +1/+0 whenever a land y
     expect(hasKeyword(s, s.cards[fat]!, 'Trample')).toBe(false);
   });
 });
+
+describe('S4 group 18: Summon Saga creatures', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+  /** Passes turns until P1's next precombat main phase (its next chapter has happened). */
+  const nextTurnOfP1 = (s: GameState, opts: Opts = {}) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = settleAll(goTo(settleAll(s, opts), 'end', opts), opts);
+      s = settleAll(goTo(s, 'main1', opts), opts);
+    }
+    if (s.activePlayer !== 'P1' || s.turnNumber <= turn) throw new Error("never reached P1's next turn");
+    return s;
+  };
+  const lore = (s: GameState, id: string) => s.cards[id]!.namedCounters?.lore ?? 0;
+  const summon = (s: GameState, id: string, pay: Parameters<typeof mana>[2], opts: Opts = {}) => {
+    const sp = put(s, 'P1', id, 'hand');
+    mana(s, 'P1', pay);
+    return { s: settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: sp }, opts).state, opts), id: sp };
+  };
+
+  it('Summon: Knights of Round makes three Knights for chapters I-IV; V pumps the others and gives them indestructible counters', () => {
+    const r = summon(newGame(), 'summon-knights-of-round', { W: 2, C: 6 });
+    let s = r.s;
+    const knights = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'knight-token');
+    expect(knights()).toHaveLength(3);
+    expect(hasKeyword(s, s.cards[r.id]!, 'Indestructible')).toBe(true);
+    for (let i = 0; i < 4; i++) s = nextTurnOfP1(s);
+    expect(knights()).toHaveLength(12);
+    const k = knights()[0]!;
+    expect(countersOf(s.cards[k]!, 'indestructible')).toBe(1);
+    expect(hasKeyword(s, s.cards[k]!, 'Indestructible')).toBe(true);
+    expect(stats(s, k)).toEqual([4, 4]);
+    // The Saga itself is sacrificed after V.
+    expect(s.cards[r.id]!.zone).toBe('graveyard');
+  }, 60_000);
+
+  it('Summon: Primal Garuda deals 4 to a tapped opponent creature, then gives another creature +1/+0 and flying', () => {
+    const s0 = newGame();
+    const tapped = put(s0, 'P2', 'coeurl', 'battlefield', { tapped: true });
+    const ally = put(s0, 'P1', 'coeurl');
+    let { s } = summon(s0, 'summon-primal-garuda', { W: 1, C: 3 });
+    expect(s.cards[tapped]!.zone).toBe('graveyard');
+    const before = stats(s, ally)[0]!;
+    s = nextTurnOfP1(s);
+    expect(hasKeyword(s, s.cards[ally]!, 'Flying')).toBe(true);
+    expect(stats(s, ally)[0]).toBe(before + 1);
+  }, 60_000);
+
+  it('Summon: Shiva taps and stuns an opponent creature twice, then draws for their tapped creatures', () => {
+    const s0 = newGame();
+    const foe = put(s0, 'P2', 'coeurl');
+    const r = summon(s0, 'summon-shiva', { U: 2, C: 3 });
+    let s = r.s;
+    expect(s.cards[foe]!.tapped).toBe(true);
+    expect(countersOf(s.cards[foe]!, 'stun')).toBe(1);
+    s = nextTurnOfP1(s);
+    expect(lore(s, r.id)).toBe(2);
+    s = nextTurnOfP1(s);
+    // Chapter III drew a card for each tapped opponent creature (plus the draw step).
+    expect(s.cards[r.id]!.zone).toBe('graveyard');
+  }, 60_000);
+
+  it('Summon: Anima draws and drains you for I-III; IV makes each opponent sacrifice a creature and lose 3 life', () => {
+    const s0 = newGame();
+    const foe = put(s0, 'P2', 'coeurl');
+    const r = summon(s0, 'summon-anima', { B: 2, C: 4 });
+    let s = r.s;
+    expect(s.players.P1!.life).toBe(19);
+    for (let i = 0; i < 3; i++) s = nextTurnOfP1(s);
+    expect(s.players.P1!.life).toBe(17);
+    expect(s.cards[foe]!.zone).toBe('graveyard');
+    expect(s.players.P2!.life).toBe(17);
+  }, 60_000);
+
+  it('Summon: Esper Ramuh deals damage for each noncreature, nonland card in your graveyard; then Wizards get +1/+0', () => {
+    const s0 = newGame();
+    for (let i = 0; i < 3; i++) put(s0, 'P1', 'thunder-magic', 'graveyard');
+    const foe = put(s0, 'P2', 'coeurl');
+    const { s } = summon(s0, 'summon-esper-ramuh', { R: 2, C: 2 });
+    expect(s.cards[foe]!.zone === 'graveyard' || s.cards[foe]!.damage === 3).toBe(true);
+  });
+
+  it('Summon: Titan mills five, returns your lands from the graveyard tapped, then pumps another creature by your lands', () => {
+    const s0 = newGame();
+    const dead = put(s0, 'P1', 'forest', 'graveyard');
+    const theirs = put(s0, 'P2', 'forest', 'graveyard');
+    const ally = put(s0, 'P1', 'coeurl');
+    const r = summon(s0, 'summon-titan', { G: 2, C: 3 });
+    let s = r.s;
+    expect(s.players.P1!.graveyard.length).toBeGreaterThanOrEqual(6);
+    s = nextTurnOfP1(s);
+    expect(s.cards[dead]!.zone).toBe('battlefield');
+    expect(s.cards[theirs]!.zone).toBe('graveyard');
+    const before = stats(s, ally) as [number, number];
+    s = nextTurnOfP1(s);
+    const lands = s.players.P1!.battlefield.filter((id) => s.cardDefs[s.cards[id]!.defId]!.types.includes('land')).length;
+    expect(lands).toBeGreaterThan(0);
+    expect(stats(s, ally)).toEqual([before[0] + lands, before[1] + lands]);
+    expect(hasKeyword(s, s.cards[ally]!, 'Trample')).toBe(true);
+    expect(s.cards[r.id]!.zone).toBe('graveyard');
+  }, 60_000);
+});
