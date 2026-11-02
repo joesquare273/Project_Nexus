@@ -46,6 +46,7 @@ import {
   subsets,
   groupProblem,
   landDrops,
+  maxModes,
   spellSacrificeChoices,
   additionalManaFor,
   addCosts,
@@ -97,10 +98,11 @@ export interface CostedOption {
  * The ways to choose modes: each mode for "choose one", and every allowed
  * combination for "choose two" or "choose one or more".
  */
-function modeChoices(def: CardDefinition): SpellChoice[] {
+function modeChoices(def: CardDefinition, s?: GameState, playerId?: PlayerId): SpellChoice[] {
   if (!def.modes) return [{}];
   if (!def.chooseModes) return def.modes.map((_, mode) => ({ mode }));
-  const { min, max } = def.chooseModes;
+  const { min } = def.chooseModes;
+  const max = maxModes(def, s, playerId);
   const out: SpellChoice[] = [];
   for (let mask = 1; mask < 1 << def.modes.length; mask++) {
     const modes = def.modes.map((_, i) => i).filter((i) => mask & (1 << i));
@@ -149,7 +151,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     // Cast without paying its mana cost: X is 0 and alternative costs cannot be combined.
     const free = !permission.castGroup && !permission.graveyardSource && (from === 'graveyard' || from === 'exile') && c.castPermission?.player===playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.free;
     if (def.alternativeCost && way !== 'flashback' && way !== 'blitz' && !free && !alternativeCostProblem(s, def, playerId, c.id)) alternatives.push(true);
-    for (const modes of modeChoices(def)) {
+    for (const modes of modeChoices(def, s, playerId)) {
       for (const alternative of alternatives) {
        for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative, c)) {
         for (const kicks of kickChoices(s, playerId, def, c)) {

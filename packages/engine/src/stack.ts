@@ -225,12 +225,20 @@ export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
   return spellEffects(defOf(s, s.cards[item.card]!), item);
 }
 
+/** The most modes a player may choose for a spell: more if they control a commander (Akroma's Will). */
+export function maxModes(def: CardDefinition, s?: GameState, playerId?: PlayerId): number {
+  const choose = def.chooseModes!;
+  if (choose.maxWithCommander !== undefined && s && playerId && battlefield(s).some((c) => c.controller === playerId && c.isCommander && !c.phasedOut)) return choose.maxWithCommander;
+  return choose.max;
+}
+
 /** Problems with a choice of modes, or null if it's fine. */
-export function modeProblem(def: CardDefinition, choice: SpellChoice): string | null {
+export function modeProblem(def: CardDefinition, choice: SpellChoice, s?: GameState, playerId?: PlayerId): string | null {
   if (!def.modes) return null;
   if (def.chooseModes) {
     const modes = choice.modes ?? [];
-    const { min, max } = def.chooseModes;
+    const { min } = def.chooseModes;
+    const max = maxModes(def, s, playerId);
     if (new Set(modes).size !== modes.length || modes.some((m) => !def.modes![m])) return `Choose different modes for ${def.name}.`;
     if (modes.length < min || modes.length > max) {
       return min === max ? `Choose ${min} modes for ${def.name}.` : `Choose ${min} to ${max} modes for ${def.name}.`;
@@ -843,7 +851,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!hasInstantTiming(def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }
-  const modes = modeProblem(def, choice);
+  const modes = modeProblem(def, choice, s, playerId);
   if (modes) reject(modes);
   const alternative = choice.alternative ?? false;
   if (alternative) {

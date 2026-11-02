@@ -2462,3 +2462,96 @@ describe('S4 group 12: impulse draw, spectacle, and more', () => {
     expect(t.players.P2!.life).toBe(20 - stats(t, wall2)[0]!);
   });
 });
+
+describe('S4 group 13: attacking alone, Kenrith, Mangara, Akroma’s Will', () => {
+  it('Seifer: a creature attacking alone gains double strike; combat damage lets you cast a cheap instant or sorcery free from your graveyard', () => {
+    let s = newGame();
+    const seifer = put(s, 'P1', 'seifer-almasy');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'graveyard');
+    const power = stats(s, seifer)[0]!;
+    s = fight(s, [{ attacker: seifer, defender: 'P2' }], {}, { accept: true }).state;
+    expect(s.players.P2!.life).toBe(20 - 2 * power);
+    expect(s.cards[bolt]!.castPermission).toMatchObject({ player: 'P1', free: true });
+    s = goTo(s, 'main2');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(20 - 2 * power - 3);
+    expect(s.cards[bolt]!.zone).toBe('exile');
+  });
+
+  it('two attackers: no double strike', () => {
+    let s = newGame();
+    const seifer = put(s, 'P1', 'seifer-almasy');
+    const cat = put(s, 'P1', 'coeurl');
+    const total = stats(s, seifer)[0]! + stats(s, cat)[0]!;
+    s = fight(s, [{ attacker: seifer, defender: 'P2' }, { attacker: cat, defender: 'P2' }], {}, { accept: false }).state;
+    expect(s.players.P2!.life).toBe(20 - total);
+  });
+
+  it('Squall returns a permanent card with mana value 3 or less when it deals combat damage to a player', () => {
+    let s = newGame();
+    const squall = put(s, 'P1', 'squall-seed-mercenary');
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    put(s, 'P1', 'primeval-titan', 'graveyard');
+    s = fight(s, [{ attacker: squall, defender: 'P2' }]).state;
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+  });
+
+  it('Kenrith’s five abilities', () => {
+    let s = newGame();
+    const kenrith = put(s, 'P1', 'kenrith-the-returned-king');
+    const cat = put(s, 'P2', 'coeurl');
+    const dead = put(s, 'P2', 'coeurl', 'graveyard');
+    mana(s, 'P1', { R: 1, G: 1, W: 1, U: 1, B: 1, C: 10 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: kenrith, ability: 0, targets: [] }).state;
+    expect(hasKeyword(s, s.cards[cat]!, 'Trample') && hasKeyword(s, s.cards[kenrith]!, 'Haste')).toBe(true);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: kenrith, ability: 1, targets: [card(kenrith)] }).state;
+    expect(s.cards[kenrith]!.counters).toBe(1);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: kenrith, ability: 2, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(25);
+    const hand = s.players.P2!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: kenrith, ability: 3, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.hand.length).toBe(hand + 1);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: kenrith, ability: 4, targets: [card(dead)] }).state;
+    expect([s.cards[dead]!.zone, s.cards[dead]!.controller]).toEqual(['battlefield', 'P2']);
+  });
+
+  it('Mangara draws when an opponent attacks you with two or more creatures, and on an opponent’s second spell each turn', () => {
+    let s = newGame(3);
+    put(s, 'P3', 'mangara-the-diplomat');
+    const [a, b] = [put(s, 'P1', 'coeurl'), put(s, 'P1', 'coeurl')];
+    const hand = s.players.P3!.hand.length;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: a, defender: 'P3' }, { attacker: b, defender: 'P3' }] })).state;
+    expect(s.players.P3!.hand.length).toBe(hand + 1);
+    let t = newGame(3);
+    put(t, 'P3', 'mangara-the-diplomat');
+    const [x, y] = [put(t, 'P1', 'coeurl'), put(t, 'P1', 'coeurl')];
+    t = goTo(t, 'declareAttackers');
+    t = settle(act(t, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: x, defender: 'P3' }, { attacker: y, defender: 'P2' }] })).state;
+    expect(t.players.P3!.hand.length).toBe(hand);
+    // Second spell.
+    let u = newGame(3);
+    put(u, 'P3', 'mangara-the-diplomat');
+    const before = u.players.P3!.hand.length;
+    for (let i = 0; i < 2; i++) {
+      const bolt = put(u, 'P1', 'lightning-bolt', 'hand');
+      mana(u, 'P1', { R: 1 });
+      u = cast(u, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+      expect(u.players.P3!.hand.length).toBe(before + i);
+    }
+  });
+
+  it('Akroma’s Will: choose one, or both if you control a commander', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'akromas-will', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    const modes = () => getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell).map((a) => (a.type === 'CastSpell' ? a.modes : []));
+    expect(modes()).toEqual([[0], [1]]);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, modes: [0, 1] })).toMatch(/modes/);
+    put(s, 'P1', 'sram-senior-edificer', 'battlefield', { isCommander: true });
+    expect(modes()).toEqual([[0], [1], [0, 1]]);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, modes: [0, 1] }).state;
+    for (const k of ['Flying', 'Vigilance', 'DoubleStrike', 'Lifelink', 'Indestructible', 'ProtectionFromRed'] as const) expect(hasKeyword(s, s.cards[cat]!, k)).toBe(true);
+  });
+});

@@ -891,6 +891,11 @@ export interface TriggerSpec {
   drawer?: 'You' | 'Opponent';
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
+  /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you. */
+  byOpponent?: boolean;
+  attackingYouAtLeast?: number;
+  /** Attacks: only a creature attacking alone. */
+  alone?: boolean;
   /** YouAttack: how many attacking creatures it takes. */
   attackersAtLeast?: number;
   /** Draws: only the Nth card the drawer draws this turn ("whenever you draw your third card each turn"). */
@@ -1237,7 +1242,8 @@ export interface CardDefinition {
    */
   costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; ifOpponentGraveyardAtLeast?: number };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
-  chooseModes?: { min: number; max: number };
+  /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
+  chooseModes?: { min: number; max: number; maxWithCommander?: number };
   /**
    * Another way to cast it: pay life instead of mana (Snuff Out), or a
    * different mana cost with different effects (overload). `label` names it

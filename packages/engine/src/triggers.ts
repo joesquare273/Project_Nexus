@@ -52,6 +52,10 @@ interface Occurrence {
   drawNumber?: number;
   /** SpellCast: how many spells its caster had cast this turn, counting it. */
   spellNumber?: number;
+  /** Attacks: the attacker was the only creature declared as an attacker. */
+  alone?: boolean;
+  /** YouAttack: how many of the creatures attacked each player. */
+  attacking?: Record<PlayerId, number>;
   /** YouAttack: how many creatures attacked. */
   attackers?: number;
   /** CombatDamageToPlayer: how much; SpellCast: the mana spent to cast it. */
@@ -176,14 +180,18 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
     }
   });
   // "Whenever you attack with N or more creatures": one occurrence per attacking player.
-  const attackers = new Map<PlayerId, { at: number; n: number }>();
+  const attackers = new Map<PlayerId, { at: number; n: number; attacking: Record<PlayerId, number> }>();
   events.forEach((e, at) => {
     if (e.type !== 'AttackDeclared') return;
     const pid = s.cards[e.attacker]!.controller;
-    const seen = attackers.get(pid);
-    attackers.set(pid, { at: seen?.at ?? at, n: (seen?.n ?? 0) + 1 });
+    const seen = attackers.get(pid) ?? { at, n: 0, attacking: {} };
+    seen.n += 1;
+    if (e.defendingPlayer) seen.attacking[e.defendingPlayer] = (seen.attacking[e.defendingPlayer] ?? 0) + 1;
+    attackers.set(pid, seen);
   });
-  for (const [pid, { at, n }] of attackers) out.push({ when: 'YouAttack', at, subjectController: pid, attackers: n });
+  // "Attacks alone": the only creature declared as an attacker (rule 506.5).
+  for (const o of out) if (o.when === 'Attacks' && o.subjectController && attackers.get(o.subjectController)?.n === 1) o.alone = true;
+  for (const [pid, { at, n, attacking }] of attackers) out.push({ when: 'YouAttack', at, subjectController: pid, attackers: n, attacking });
   return out;
 }
 
@@ -239,7 +247,11 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
   if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
   if (spec.ifEvoked && !s.cards[source]!.evoked) return false;
-  if (o.when === 'YouAttack') return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
+  if (o.when === 'YouAttack') {
+    // Mangara: "whenever an opponent attacks with creatures, if two or more of those creatures are attacking you".
+    if (spec.byOpponent) return o.subjectController !== controller && (o.attacking?.[controller] ?? 0) >= (spec.attackingYouAtLeast ?? 1);
+    return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
+  }
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
     if (spec.drawer === 'You' && o.drawer !== controller) return false;
@@ -264,6 +276,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.fromGraveyard && o.subject && o.from !== 'graveyard' && !s.cards[o.subject]!.castFromGraveyard) return false;
   if (spec.byYou && o.by !== controller) return false;
   if (spec.attacksYou && o.defender !== controller) return false;
+  if (spec.alone && !o.alone) return false;
   if (spec.plusOneCountersOnly && o.counter !== undefined) return false;
   // Evolve: the entering creature has greater power or toughness than this one.
   if (spec.evolve) {

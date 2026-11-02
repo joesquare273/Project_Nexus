@@ -390,7 +390,9 @@ export function Game({
     if (modeKey === undefined && keys.length > 1) {
       const labels = modeLabels(def.id, def.modes?.length ?? 0);
       const how = def.chooseModes
-        ? def.chooseModes.min === def.chooseModes.max
+        ? def.chooseModes.maxWithCommander !== undefined && keys.some((k) => k.includes('+'))
+          ? 'choose one, or both (you control a commander)'
+          : def.chooseModes.min === def.chooseModes.max
           ? `choose ${def.chooseModes.min}`
           : `choose ${def.chooseModes.min} or more`
         : 'choose one';

@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 13: attacking alone, 5 set cards
+
+- Engine: "whenever a creature you control attacks alone" (`alone` on an
+  Attacks trigger); "whenever an opponent attacks with creatures, if two or
+  more are attacking you" (`byOpponent`, `attackingYouAtLeast` on
+  YouAttack); "choose one; if you control a commander, you may choose both"
+  (`chooseModes.maxWithCommander`).
+- Seifer Almasy, Squall, Kenrith, Mangara and Akroma's Will, each with a
+  test. 146 of 320 set cards are built. The partner commanders (Bruse Tarl,
+  Kraum, Ishai, Thrasios, Tymna, Vial Smasher) wait for partner in deck
+  building.
+
 ### S4 group 12: impulse draw, spectacle, 6 set cards
 
 - Engine: exiled cards you may play "until your next end step" (counted by
