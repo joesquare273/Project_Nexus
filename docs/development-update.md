@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 19, and what's waiting on card data
+
+- Danitha Capashen, Paragon; Prishe's Wanderings; Weapons Vendor (175 of 320).
+- Waiting on data: the five Sidequests need their back faces (power,
+  toughness, types), and Stroke of Midnight its Human token printing. Neither
+  is in the cached Scryfall data, and api.scryfall.com can't be reached from
+  cloud sessions; fetch them on a computer that can.
+
 ### Set cards, group 18: Summon Saga creatures
 
 - Summon: Knights of Round, Primal Garuda, Shiva, Anima, Esper Ramuh and

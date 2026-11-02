@@ -2998,3 +2998,48 @@ describe('S4 group 18: Summon Saga creatures', () => {
     expect(s.cards[r.id]!.zone).toBe('graveyard');
   }, 60_000);
 });
+
+describe('S4 group 19: Equipment helpers and land search', () => {
+  it('Danitha Capashen: first strike, vigilance, lifelink; Aura and Equipment spells cost {1} less', () => {
+    let s = newGame();
+    const danitha = put(s, 'P1', 'danitha-capashen-paragon');
+    for (const k of ['FirstStrike', 'Vigilance', 'Lifelink'] as const) expect(hasKeyword(s, s.cards[danitha]!, k)).toBe(true);
+    const plate = put(s, 'P1', 'darksteel-plate', 'hand');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: plate }).state;
+    expect(s.cards[plate]!.zone).toBe('battlefield');
+  });
+
+  it('Prishe’s Wanderings: a basic land or Town onto the battlefield tapped, and a +1/+1 counter on your creature', () => {
+    let s = newGame();
+    const forest = put(s, 'P1', 'forest', 'library');
+    const body = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'prishes-wanderings', 'hand');
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(body)] }).state;
+    expect(s.cards[forest]!.zone).toBe('battlefield');
+    expect(s.cards[forest]!.tapped).toBe(true);
+    expect(countersOf(s.cards[body]!, '+1/+1')).toBe(1);
+  });
+
+  it('Weapons Vendor draws a card; at the beginning of combat you may pay {1} to attach your Equipment to your creature', () => {
+    let s = newGame();
+    const vendor = put(s, 'P1', 'weapons-vendor', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: vendor }).state;
+    expect(s.players.P1!.hand.length).toBe(hand); // cast one, drew one
+    const plate = put(s, 'P1', 'darksteel-plate');
+    put(s, 'P1', 'coeurl');
+    // Into combat: the trigger asks whether to pay {1}.
+    for (let i = 0; i < 12 && s.pending.kind !== 'decide'; i++) {
+      if (s.pending.kind === 'chooseTargets') s = act(s, getLegalActions(s).find((a) => a.type === 'ChooseTargets')!);
+      else if (s.pending.kind === 'priority' && s.stack.length > 0 && s.pending.player !== 'P1') s = act(s, { type: 'PassPriority', player: s.pending.player });
+      else s = nextStep(s);
+    }
+    expect(s.pending.kind).toBe('decide');
+    mana(s, 'P1', { C: 1 });
+    s = settle(s, { accept: true }).state;
+    expect(s.cards[plate]!.attachedTo).toBeDefined();
+  });
+});
