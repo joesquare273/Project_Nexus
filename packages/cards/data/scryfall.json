@@ -7658,6 +7658,23 @@
       }
     ]
   },
+  "ragnarok-divine-deliverance": {
+    "name": "Ragnarok, Divine Deliverance",
+    "typeLine": "Legendary Creature — Beast Avatar",
+    "oracleText": "Vigilance, menace, trample, reach, haste\nWhen Ragnarok dies, destroy target permanent and return target nonlegendary permanent card from your graveyard to the battlefield.",
+    "set": "fin",
+    "number": "99b",
+    "artist": "Simon Dominic",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/1/01c5bafe-c995-4cef-90fb-7ccb95858511.jpg?1783906622",
+      "normal": "https://cards.scryfall.io/normal/front/0/1/01c5bafe-c995-4cef-90fb-7ccb95858511.jpg?1783906622",
+      "large": "https://cards.scryfall.io/large/front/0/1/01c5bafe-c995-4cef-90fb-7ccb95858511.jpg?1783906622",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/1/01c5bafe-c995-4cef-90fb-7ccb95858511.jpg?1783906622"
+    },
+    "scryfallUri": "https://scryfall.com/card/fin/99b/ragnarok-divine-deliverance?utm_source=api",
+    "scryfallId": "01c5bafe-c995-4cef-90fb-7ccb95858511",
+    "relatedTokens": []
+  },
   "rampant-growth": {
     "name": "Rampant Growth",
     "typeLine": "Sorcery",

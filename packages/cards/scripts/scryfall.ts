@@ -125,7 +125,7 @@ if (!existsSync(typesFile) || values.refresh) {
 `);
   console.log(`Saved type lists (${Object.keys(CATALOGS).length} API requests).`);
 }
-const { CARDS } = await import('../src/index.ts');
+const { CARDS, meldResultId } = await import('../src/index.ts');
 const file = new URL('../data/scryfall.json', import.meta.url);
 const saved: Record<string, ScryfallInfo> =
   existsSync(file) && !values.refresh ? JSON.parse(readFileSync(file, 'utf8')) : {};
@@ -151,6 +151,15 @@ for (const def of CARDS) {
     // Real cards from other sets: Scryfall's default printing of that name.
     wanted.push({ id: def.id, identifier: { name: def.name }, matches: (c) => c.name === def.name });
   }
+}
+
+// Melded cards (Ragnarok, Divine Deliverance) are their own Scryfall printing, saved under the melded name.
+for (const def of CARDS) {
+  if (!def.meld || !def.backFace) continue;
+  const id = meldResultId(def.meld.result);
+  const { set, number } = def.meld.resultPrinting;
+  if (saved[id] || wanted.some((w) => w.id === id)) continue;
+  wanted.push({ id, identifier: { set, collector_number: number }, matches: (c) => c.set === set && c.collector_number === number });
 }
 
 /**

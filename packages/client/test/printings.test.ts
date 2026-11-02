@@ -29,3 +29,17 @@ describe('printing-aware artwork',()=>{
   expect(session.moves.at(-1)).toMatchObject({card:id,defId:'island',printing});expect(session.view().cards[id]!.printing).toEqual(printing);
  });
 });
+describe('pack printings and melded art', () => {
+ it('a variant printing pulled from a pack shows its own art in games', () => {
+  const info = scryfallOf('fang-fearless-lcie', { set: 'fin', number: '381' });
+  expect(info?.number).toBe('381');
+  expect(info?.image.normal).toContain('cards.scryfall.io');
+ });
+ it('a melded Fang shows Ragnarok, matching the Fang printing', () => {
+  const ragnarok = (printing?: { set: string; number: string }) =>
+   renderToStaticMarkup(createElement(CardFace, { defId: 'fang-fearless-lcie', backFace: true, ...(printing ? { printing } : {}) }));
+  expect(ragnarok()).toContain(SCRYFALL_PRINTINGS['fin/99b']!.image.normal.replaceAll('&', '&amp;'));
+  expect(ragnarok({ set: 'fin', number: '381' })).toContain(scryfallOf('fang-fearless-lcie', { set: 'fin', number: '381b' })!.image.normal.replaceAll('&', '&amp;'));
+  expect(ragnarok({ set: 'fin', number: '381' })).not.toContain('/back/');
+ });
+});

@@ -5,6 +5,26 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### Meld: Fang, Fearless l'Cie and Vanille, Cheerful l'Cie; turning cards over in packs
+
+- Meld (rule 701.42): Vanille's "at the beginning of your first main
+  phase" trigger (new `FirstMain` event) lets you pay {3}{B}{G} to exile
+  her and Fang and meld them into Ragnarok, Divine Deliverance (7/6,
+  vigilance, menace, trample, reach, haste; when it dies, destroy target
+  permanent and return a nonlegendary permanent card). You must own and
+  control both. If Ragnarok leaves the battlefield, both cards go there.
+- Fang draws a card and loses 1 life when cards leave your graveyard (once
+  each turn); Vanille mills two, then returns a permanent card from your
+  graveyard to your hand (new effect `ReturnFromGraveyardToHand`).
+- The board shows Ragnarok's own art for the melded permanent, matching the
+  Fang printing in the deck. Variant printings from packs now show their
+  own art in games instead of a drawn frame.
+- Packs: during the reveal, a double-faced card has a turn-over control
+  (Show the back, the ⟲ corner, or F), and Fang and Vanille show Ragnarok
+  with what they meld with. The hover preview shows Ragnarok too.
+- Tests: six in `fin-set-cards.test.ts`, four in `boosters.test.ts`
+  (including each variant printing's Ragnarok). 99 of 320 set cards built.
+
 ### S4 group 6: "as long as you control N or more", 9 set cards
 
 - Engine: a static ability can apply only while you control a number of

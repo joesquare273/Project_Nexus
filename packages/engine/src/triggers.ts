@@ -166,6 +166,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         }
         break;
       case 'StepChanged':
+        if (e.step === 'main1') out.push({ when: 'FirstMain', at, activePlayer: e.activePlayer });
         if (e.step === 'main2') out.push({ when: 'SecondMain', at, activePlayer: e.activePlayer });
         if (e.step === 'beginCombat') out.push({ when: 'BeginCombat', at, activePlayer: e.activePlayer });
         if (e.step === 'upkeep') out.push({ when: 'Upkeep', at, activePlayer: e.activePlayer });
@@ -243,7 +244,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     if (spec.nthDrawThisTurn !== undefined && o.drawNumber !== spec.nthDrawThisTurn) return false;
     return !spec.notOnDrawersTurn || o.drawer !== s.activePlayer;
   }
-  if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep' || o.when === 'SecondMain') {
+  if (o.when === 'BeginCombat' || o.when === 'Upkeep' || o.when === 'EndStep' || o.when === 'SecondMain' || o.when === 'FirstMain') {
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
     if (spec.ifYouPutCounterOnCreatureThisTurn && s.players[controller]!.counterOnCreatureTurn !== s.turnNumber) return false;
     // "If a player lost 4 or more life this turn" (an intervening "if", rule 603.4).

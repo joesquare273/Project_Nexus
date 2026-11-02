@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOSTER_CARDS, COLLECTOR_BOOSTER, PLAY_BOOSTER, buildSheets, openPack, packOdds } from '../src/boosters.ts';
+import { BOOSTER_CARDS, COLLECTOR_BOOSTER, PLAY_BOOSTER, buildSheets, openPack, otherFace, packOdds } from '../src/boosters.ts';
 
 /** A small seeded generator (mulberry32), so the tests are repeatable. */
 function seeded(seed: number) {
@@ -118,5 +118,26 @@ describe('Collector Booster', () => {
       expect(s.outcomes.reduce((n, x) => n + x.percent, 0)).toBeCloseTo(100, 6);
       for (const x of s.outcomes) expect(x.cards, x.label).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the other side of a pulled card', () => {
+  const byNumber = (n: string) => BOOSTER_CARDS.find((c) => c.set === 'fin' && c.number === n)!;
+  it('a transforming card shows its back face', () => {
+    const dion = byNumber('16');
+    expect(otherFace(dion)).toEqual({ name: 'Bahamut, Warden of Light', image: dion.images[1] });
+  });
+  it('Fang and Vanille each show Ragnarok, Divine Deliverance, naming the other half', () => {
+    const ragnarok = byNumber('99b');
+    expect(otherFace(byNumber('99'))).toEqual({ name: ragnarok.name, image: ragnarok.images[0], meld: { partner: 'Vanille, Cheerful l’Cie'.replace('’', "'") } });
+    expect(otherFace(byNumber('211'))).toEqual({ name: ragnarok.name, image: ragnarok.images[0], meld: { partner: "Fang, Fearless l'Cie" } });
+  });
+  it('each variant printing of the pair shows its own Ragnarok printing', () => {
+    for (const [half, result] of [['381', '381b'], ['392', '381b'], ['446', '446b'], ['475', '446b'], ['526', '526b'], ['537', '526b']] as const) {
+      expect(otherFace(byNumber(half))?.image).toEqual(byNumber(result).images[0]);
+    }
+  });
+  it('single-faced cards, Adventures and the melded card itself have no other side', () => {
+    for (const n of ['1', '283', '99b']) expect(otherFace(byNumber(n))).toBeUndefined();
   });
 });

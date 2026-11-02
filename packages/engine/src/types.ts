@@ -173,6 +173,14 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /**
+   * Meld (rule 701.42): if you own and control this permanent and a creature
+   * named its meld partner, exile both, then put them onto the battlefield as
+   * one melded permanent (the card with `meld` shows its melded face).
+   */
+  'Meld',
+  /** Return `amount` (default 1) cards matching `filter` from your graveyard to your hand, your choice (not targeted). */
+  'ReturnFromGraveyardToHand',
   'AnimateVehicle',
   /** Each target player takes an extra turn after this one (rule 500.7: the most recent extra turn is taken first). */
   'ExtraTurn',
@@ -698,6 +706,8 @@ export const TRIGGER_EVENTS = [
   /** Grouped by attacker controller after a defending player declares blockers. */
   'AttackersUnblocked',
   'SecondMain',
+  /** "At the beginning of your first main phase" (precombat). */
+  'FirstMain',
   'AbilityTargetsCreature',
   'EntersBattlefield',
   'Dies',
@@ -1041,6 +1051,13 @@ export interface StaticSpec {
 
 /** Immutable, shared definition of a card. */
 export interface CardDefinition {
+  /**
+   * A meld card (rule 712.4): `partner` is the other card's name, `result`
+   * the melded card's name and printing (for its image), and `manaCost` a
+   * cost whose mana value is the two front faces' total (rule 712.8g). The
+   * card with `meld` has the melded card's characteristics as its `backFace`.
+   */
+  meld?: { partner: string; result: string; resultPrinting: { set: string; number: string }; manaCost?: string };
   /** Its controller may privately look at the top card of their library. */
   lookAtLibraryTop?: boolean;
   /** While attached to a creature, its controller may cast creature spells from their library's top. */
@@ -1298,6 +1315,8 @@ export interface CardInstance {
   crewed?: boolean;
   /** A double-faced permanent with its back face up (rule 712); cleared when it leaves the battlefield. */
   transformed?: boolean;
+  /** A melded permanent: the other card it's made of (kept out of every zone until the permanent leaves). */
+  meldedWith?: InstanceId;
   enteredTimestamp?: number;
   attachedTimestamp?: number;
   graveyardArrival?: { turn: number; from: ZoneName };

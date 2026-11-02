@@ -1579,6 +1579,34 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
+    case 'Meld': {
+      // Rule 701.42: you must own and control both; they're exiled, then return melded.
+      const self = s.cards[source];
+      const me = item.controller;
+      const partnerName = self && s.cardDefs[self.defId]!.meld?.partner;
+      const ours = (c: CardInstance) => c.zone === 'battlefield' && !c.phasedOut && !c.isToken && c.owner === me && c.controller === me;
+      if (!self || !partnerName || !ours(self)) return;
+      const partner = battlefield(s).find((c) => c.id !== self.id && ours(c) && !c.meldedWith && currentDefinition(s, c).name === partnerName && currentDefinition(s, c).types.includes('creature'));
+      if (!partner || self.meldedWith) return;
+      const [carrier, other] = s.cardDefs[self.defId]!.backFace ? [self, partner] : [partner, self];
+      if (!s.cardDefs[carrier.defId]!.backFace) return;
+      moveCard(ctx, self.id, 'exile');
+      moveCard(ctx, partner.id, 'exile');
+      // If either didn't make it to exile, neither melds (rule 701.42c).
+      if (carrier.zone !== 'exile' || other.zone !== 'exile') return;
+      moveCard(ctx, other.id, 'void', { silent: true });
+      moveCard(ctx, carrier.id, 'battlefield', { controller: me, transformed: true });
+      carrier.meldedWith = other.id;
+      carrier.summoningSick = true;
+      return;
+    }
+    case 'ReturnFromGraveyardToHand': {
+      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      const n = Math.min(effect.amount === undefined ? 1 : amount, candidates.length);
+      if (n === 0) return;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: candidates, min: n, max: n }];
+      return;
+    }
     case 'BecomeMonarch':
       for (const who of targetPlayers(targets)) becomeMonarch(ctx, who);
       return;

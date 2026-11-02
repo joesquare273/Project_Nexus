@@ -272,6 +272,8 @@ function effectText(e: EffectSpec): string {
     case 'CantCastSpellsThisTurn': return "they can't cast spells this turn";
     case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;
     case 'ExileAndReturn': return `exile it, then return it to the battlefield ${e.transformed ? 'transformed' : '(front face up)'}`;
+    case 'Meld': return 'exile it and its meld partner, then meld them';
+    case 'ReturnFromGraveyardToHand': return `return ${e.amount === undefined || e.amount === 1 ? 'a' : e.amount} ${subjectText(e.filter ?? {}, 'card')} from your graveyard to your hand`;
     case 'FlipCoin': return 'flip a coin';
     case 'ReflexiveTrigger': return 'when you do, return a target creature card from your graveyard';
     case 'ReturnToBattlefield':
@@ -371,6 +373,7 @@ function triggerCondition(t: TriggerSpec): string {
   if (t.when === 'CoinFlipWon') return 'Whenever you win a coin flip';
   if (t.when === 'Reflexive') return 'When you do';
   if (t.when === 'SecondMain') return 'At the beginning of your second main phase';
+  if (t.when === 'FirstMain') return 'At the beginning of your first main phase';
   if (t.when === 'AbilityTargetsCreature') return 'Whenever one or more creatures you control become the target of an activated ability';
   if (t.when === 'BeginCombat') return t.turn === 'Each' ? 'At the beginning of each combat' : 'At the beginning of combat on your turn';
   if (t.when === 'Upkeep') return t.turn === 'Each' ? "At the beginning of each player's upkeep" : 'At the beginning of your upkeep';

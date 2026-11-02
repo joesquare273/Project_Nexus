@@ -745,7 +745,7 @@ export function Game({
       {choosing?.purpose === 'hand' && (
         <CardList
           view={view}
-          title={`Top of your library: choose ${choosing.min} for your hand (${bottomPicks.length} chosen)`}
+          title={`${choosing.cards.every((id) => s.cards[id]?.zone === 'graveyard') ? 'Your graveyard' : 'Top of your library'}: choose ${choosing.min} for your hand (${bottomPicks.length} chosen)`}
           ids={choosing.cards}
           h={h}
           actions={
@@ -1075,7 +1075,7 @@ function PromptBar(p: PromptProps) {
               : c.purpose === 'digLands'
                 ? 'land cards to put onto the battlefield tapped; the rest go to your graveyard'
               : c.purpose === 'hand'
-                ? 'to put into your hand; the rest go on the bottom of your library'
+                ? (c.cards.every((id) => s.cards[id]?.zone === 'graveyard') ? 'from your graveyard to put into your hand' : 'to put into your hand; the rest go on the bottom of your library')
                 : c.purpose === 'fateBottom' ? 'to put on the bottom of the caster’s library; the other returns to the battlefield tapped'
                   : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
                   : c.purpose === 'addCounters' ? `to receive a ${c.counter ?? '+1/+1'} counter each`

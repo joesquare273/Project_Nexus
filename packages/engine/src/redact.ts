@@ -154,6 +154,7 @@ const CARD_FIELDS = {
   finish: 'copy',
   crewed: 'copy',
   transformed: 'copy',
+  meldedWith: 'drop',
   enteredTimestamp: 'copy',
   attachedTimestamp: 'copy',
   graveyardArrival: 'copy',

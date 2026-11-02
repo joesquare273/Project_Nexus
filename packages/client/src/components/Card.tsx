@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CardDefinition, CardFinish } from '@nexus/engine';
-import { costSymbols, defOf, frameClass, isCreature, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
+import { costSymbols, defOf, frameClass, isCreature, meldedPrinting, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
 
 export function ManaCost({ cost, size = 14 }: { cost: string | undefined; size?: number }) {
   return (
@@ -50,7 +50,7 @@ export type CardSize = 'small' | 'normal' | 'large';
 /**
  * A card face: the real Scryfall image when there is one, otherwise a drawn
  * frame. `backFace`: a transformed double-faced permanent, whose back image
- * Scryfall serves at the same path under /back/.
+ * Scryfall serves at the same path under /back/, or a melded permanent.
  */
 export function CardFace({
   defId,
@@ -67,9 +67,11 @@ export function CardFace({
   finish?: CardFinish;
 }) {
   const def = defOf(defId);
-  const info = scryfallOf(defId,printing);
+  // A melded permanent shows the melded card, which Scryfall lists as its own printing.
+  const melded = backFace && def.backFace && def.meld ? scryfallOf(defId, meldedPrinting(def, printing)) : undefined;
+  const info = melded ?? scryfallOf(defId,printing);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const src = info && (backFace ? info.image[size].replace('/front/', '/back/') : info.image[size]);
+  const src = info && (backFace && !melded ? info.image[size].replace('/front/', '/back/') : info.image[size]);
   const shine = finish && <CardShine finish={finish} />;
   if (!info || !src || failedSrc === src)
     return (

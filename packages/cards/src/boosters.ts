@@ -38,6 +38,39 @@ export interface BoosterCard {
 
 export const BOOSTER_CARDS = data as BoosterCard[];
 
+/** A card's other side: a double-faced card's back face, or the card a meld card melds into. */
+export interface OtherFace {
+  name: string;
+  image: BoosterCard['images'][number];
+  /** A meld card: `name` is the melded card, made with `partner`. */
+  meld?: { partner: string };
+}
+
+const isMeldResult = (c: BoosterCard) => c.layout === 'meld' && /b$/.test(c.number);
+
+/**
+ * The other side of a pulled card, if it has one. A meld card's melded
+ * result is its own printing ("99b"), shared by both halves (Fang and
+ * Vanille meld into Ragnarok). A set can print a meld pair several times
+ * (regular and variant art): the Nth printing of each half goes with the
+ * Nth melded printing, by collector number.
+ */
+export function otherFace(card: BoosterCard, all: readonly BoosterCard[] = BOOSTER_CARDS): OtherFace | undefined {
+  if (card.images[1]) return { name: card.name.split(' // ')[1] ?? card.name, image: card.images[1] };
+  if (card.layout !== 'meld' || isMeldResult(card)) return undefined;
+  const byNumber = (a: BoosterCard, b: BoosterCard) => parseInt(a.number, 10) - parseInt(b.number, 10);
+  const melds = all.filter((c) => c.set === card.set && c.layout === 'meld').sort(byNumber);
+  const rank = melds.filter((c) => !isMeldResult(c) && c.name === card.name).findIndex((c) => c.number === card.number);
+  // The result made from this card (its number plus "b"), or else the one at the same rank.
+  const own = melds.find((c) => c.number === `${card.number}b`);
+  const results = melds.filter(isMeldResult);
+  const result = own ?? results[rank];
+  if (!result?.images[0]) return undefined;
+  // The other half: the set's other meld card name (one meld pair per set so far).
+  const partner = melds.find((c) => !isMeldResult(c) && c.name !== card.name)?.name;
+  return { name: result.name, image: result.images[0], meld: { partner: partner ?? 'its partner' } };
+}
+
 /** FINAL FANTASY Secret Lair printings (scripts/import-secret-lairs.ts), each with its drop if it belongs to one. */
 export const SECRET_LAIR_CARDS = secretLair.printings as (BoosterCard & { drop?: string })[];
 /** The Secret Lair drops: Scryfall collector numbers and the bonus card's. */

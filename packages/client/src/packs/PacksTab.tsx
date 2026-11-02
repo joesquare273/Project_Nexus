@@ -4,7 +4,7 @@
 // adds the cards to your account's collection (packs/collection.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { finishLook, type BoosterCard, type Pack, type PackKind, type Pull } from '@nexus/cards/boosters';
+import { finishLook, otherFace, type BoosterCard, type OtherFace, type Pack, type PackKind, type Pull } from '@nexus/cards/boosters';
 import { CardShine } from '../components/Card.tsx';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
@@ -161,7 +161,7 @@ export function PacksTab() {
       {preview && (
         <div className="packs-preview" aria-hidden="true">
           <img src={preview.images[0]!.large} alt="" />
-          {preview.images[1] && <img src={preview.images[1].large} alt="" />}
+          {otherFace(preview) && <img src={otherFace(preview)!.image.large} alt="" />}
         </div>
       )}
     </div>
@@ -286,12 +286,22 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
   const [step, setStep] = useState(0);
   const [faceUp, setFaceUp] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  /** A double-faced card turned to its back, or a meld card showing its melded card. */
+  const [backSide, setBackSide] = useState(false);
+  const [turned, setTurned] = useState(false);
   const drag = useRef<{ x: number; width: number } | null>(null);
   const order = useMemo(() => revealOrder(pack), [pack]);
   const best = Math.max(...pack.cards.map((c) => c.hype));
   const current = pack.cards[order[step]!]!;
   const special = current.hype >= 1;
   const shown = !special || faceUp;
+  const other = useMemo(() => otherFace(current.card), [current]);
+  const flip = () => {
+    if (!shown || !other || leaving) return;
+    setBackSide((b) => !b);
+    setTurned(true);
+    sound('flip');
+  };
 
   const rip = () => {
     if (torn) return;
@@ -314,6 +324,8 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
     window.setTimeout(() => {
       setLeaving(false);
       setFaceUp(false);
+      setBackSide(false);
+      setTurned(false);
       setStep((n) => n + 1);
     }, 220);
   };
@@ -323,6 +335,9 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
       if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
         e.preventDefault();
         advance();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        flip();
       } else if (e.key === 'Escape') onDone();
     };
     window.addEventListener('keydown', key);
@@ -372,7 +387,21 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
         ))}
         <div className={`reveal-card ${leaving ? 'leaving' : ''} ${shown ? 'up' : 'down'} rarity-${current.card.rarity}`} key={order[step]}>
           <div className="reveal-face">
-            <PullImage pull={current} />
+            <PullImage pull={current} side={backSide && other ? other : undefined} turned={turned} />
+            {other && shown && (
+              <span
+                className={`reveal-flip ${backSide ? 'on' : ''}`}
+                role="button"
+                tabIndex={-1}
+                title={other.meld ? 'Show the melded card (F)' : 'Turn it over (F)'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  flip();
+                }}
+              >
+                ⟲
+              </span>
+            )}
           </div>
           <div className="reveal-back">
             <img src={CARD_BACK} alt="" draggable={false} />
@@ -382,17 +411,21 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
       <div className="reveal-caption" aria-live="polite">
         {shown ? (
           <>
-            <strong>{current.card.name.split(' // ')[0]}</strong>
+            <strong>{backSide && other ? other.name : current.card.name.split(' // ')[0]}</strong>
             <span>
               {current.slot}
               {fresh[order[step]!] && <span className="new-badge">NEW</span>}
             </span>
+            {other && <span className="reveal-side">{sideNote(current.card, other, backSide)}</span>}
           </>
         ) : (
           <span>Something special… click to turn it over.</span>
         )}
       </div>
       <div className="reveal-buttons">
+        {shown && other && (
+          <button onClick={flip}>{backSide ? 'Show the front' : other.meld ? 'Show the melded card' : 'Show the back'}</button>
+        )}
         <button className="primary" onClick={advance}>
           {!shown ? 'Turn over' : step === order.length - 1 ? 'See the pack' : 'Next card'}
         </button>
@@ -402,10 +435,18 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
   );
 }
 
-function PullImage({ pull, size = 'normal' }: { pull: Pull; size?: 'small' | 'normal' }) {
+/** What the caption says about a card's other side. */
+function sideNote(card: BoosterCard, other: OtherFace, back: boolean): string {
+  const front = card.name.split(' // ')[0]!;
+  if (other.meld) return back ? `Melded from ${front} and ${other.meld.partner}` : `Melds with ${other.meld.partner} into ${other.name}`;
+  return back ? `Back face of ${front}` : 'Double-faced card: press F or ⟲ to see the back';
+}
+
+/** A pulled card's image; `side` shows its back face or melded card instead. */
+function PullImage({ pull, size = 'normal', side, turned = false }: { pull: Pull; size?: 'small' | 'normal'; side?: OtherFace; turned?: boolean }) {
   return (
     <div className={`pull-image finish-${pull.finish} ${pull.stamped ? 'stamped' : ''}`}>
-      <img src={pull.card.images[0]![size]} alt={pull.card.name} draggable={false} />
+      <img key={side ? 'back' : 'front'} className={turned ? 'side-turn' : undefined} src={side ? side.image[size] : pull.card.images[0]![size]} alt={side ? side.name : pull.card.name} draggable={false} />
       {finishLook(pull.card, pull.finish) && <CardShine finish={finishLook(pull.card, pull.finish)!} />}
       {pull.stamped && <div className="pull-stamp">✦</div>}
     </div>

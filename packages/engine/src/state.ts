@@ -210,6 +210,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     }
   }
   const lastKeywords = from === 'battlefield' ? [...characteristics(s, c).keywords] : undefined;
+  // A melded permanent is two cards: both go where it goes (rule 712.4c).
+  const meldedWith = from === 'battlefield' ? c.meldedWith : undefined;
+  delete c.meldedWith;
   if (from === 'graveyard') player(s, c.owner).cardLeftGraveyardTurn = s.turnNumber;
   if (s.triggeredThisTurn.length > 0) {
     // A new object: its once-each-turn abilities can trigger again.
@@ -284,6 +287,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     });
   }
   if (from === 'battlefield') leftBattlefield(ctx, id);
+  if (meldedWith && s.cards[meldedWith]?.zone === 'void') moveCard(ctx, meldedWith, to === 'battlefield' || to === 'void' ? 'exile' : to, { silent: !!opts.silent });
   // A double-faced card put onto the battlefield transformed enters back face up (rule 712.14a),
   // so its back face's "as this enters" rules apply (a Saga back face gets its lore counter).
   if (to === 'battlefield' && opts.transformed && s.cardDefs[c.defId]!.backFace) c.transformed = true;

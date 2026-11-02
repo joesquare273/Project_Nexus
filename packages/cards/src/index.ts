@@ -65,7 +65,12 @@ export interface ScryfallInfo {
   relatedTokens?: { name: string; scryfallId: string }[];
 }
 
-/** By card id. Refresh with `npm run scryfall`. Placeholder cards have no entry. */
+/** The Scryfall entry key for a melded card ("Ragnarok, Divine Deliverance" → "ragnarok-divine-deliverance"). */
+export function meldResultId(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/** By card id (melded cards by `meldResultId`). Refresh with `npm run scryfall`. Placeholder cards have no entry. */
 export const SCRYFALL: Record<CardDefId, ScryfallInfo> = scryfall;
 /** Artwork by physical printing; variants share the same engine card definition. */
 export const SCRYFALL_PRINTINGS: Record<string,ScryfallInfo> = Object.fromEntries(

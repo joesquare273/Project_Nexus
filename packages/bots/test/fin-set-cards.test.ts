@@ -3,8 +3,8 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
+import { type Target, AliasBook, playerUpdate, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
 const heroes = (s: GameState, who: string) => s.players[who]!.battlefield.filter((id) => s.cards[id]!.defId === 'hero-token');
@@ -1626,5 +1626,134 @@ describe('S4 group 6: Ring of the Lucii', () => {
     s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ring, ability: 0, targets: [card(target)] }).state;
     expect(s.cards[target]!.tapped).toBe(true);
     expect(s.players.P1!.life).toBe(19);
+  });
+});
+
+describe('Meld: Fang, Fearless l’Cie and Vanille, Cheerful l’Cie', () => {
+  const FANG = 'fang-fearless-lcie';
+  const VANILLE = 'vanille-cheerful-lcie';
+  /** P1's turn, at the start of the first main phase, with five lands for {3}{B}{G}. */
+  function toFirstMain(s: GameState, accept = true): GameState {
+    const lands = ['swamp', 'forest', 'swamp', 'forest', 'swamp'].map((land) => put(s, 'P1', land));
+    s.step = 'draw';
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    s = nextStep(s);
+    expect(s.step).toBe('main1');
+    // The meld trigger resolves; paying means tapping the lands for mana first.
+    while (s.pending.kind === 'priority' && s.stack.length > 0) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    if (s.pending.kind === 'decide' && accept) {
+      for (const land of lands) s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: land, mana: s.cards[land]!.defId === 'forest' ? 'G' : 'B' });
+    }
+    return settle(s, { accept }).state;
+  }
+
+  it('Fang: when one or more cards leave your graveyard, draw a card and lose 1 life, once each turn', () => {
+    let s = newGame();
+    put(s, 'P1', FANG);
+    const first = put(s, 'P1', 'coeurl', 'graveyard');
+    const second = put(s, 'P1', 'coeurl', 'graveyard');
+    const value = manaValue(parseManaCost(s.cardDefs.coeurl!.manaCost));
+    const reanimate = (target: string) => {
+      const spell = put(s, 'P1', 'reanimate', 'hand');
+      mana(s, 'P1', { B: 1 });
+      const hand = s.players.P1!.hand.length;
+      const life = s.players.P1!.life;
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(target)] }).state;
+      return { drawn: s.players.P1!.hand.length - (hand - 1), lost: life - s.players.P1!.life };
+    };
+    expect(reanimate(first)).toEqual({ drawn: 1, lost: value + 1 });
+    expect(reanimate(second)).toEqual({ drawn: 0, lost: value });
+  });
+
+  it('Vanille mills two, then returns a permanent card from your graveyard to your hand', () => {
+    let s = newGame();
+    const vanille = put(s, 'P1', VANILLE, 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    put(s, 'P1', 'lightning-bolt', 'graveyard');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: vanille });
+    s = settle(s).state;
+    // Two Islands milled; the choice is among permanent cards only.
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect(s.pending.cards).toContain(ring);
+    expect(s.pending.cards.map((id) => s.cards[id]!.defId).sort()).toEqual(['island', 'island', 'sol-ring']);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect(s.cards[ring]!.zone).toBe('hand');
+    expect(s.players.P1!.graveyard.length).toBe(3);
+  });
+
+  it('at the beginning of your first main phase, pay {3}{B}{G} to meld them into Ragnarok, Divine Deliverance', () => {
+    let s = newGame();
+    const fang = put(s, 'P1', FANG);
+    const vanille = put(s, 'P1', VANILLE);
+    s = toFirstMain(s);
+    const [ragnarok] = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === FANG);
+    expect(ragnarok).toBe(fang);
+    const r = s.cards[fang]!;
+    expect(r.transformed).toBe(true);
+    expect(r.meldedWith).toBe(vanille);
+    expect(currentDefinition(s, r).name).toBe('Ragnarok, Divine Deliverance');
+    expect(stats(s, fang)).toEqual([7, 6]);
+    for (const k of ['Vigilance', 'Menace', 'Trample', 'Reach', 'Haste'] as const) expect(hasKeyword(s, r, k)).toBe(true);
+    expect(manaValue(parseManaCost(currentDefinition(s, r).manaCost))).toBe(7);
+    // Vanille is part of the melded permanent, in no zone.
+    expect(s.cards[vanille]!.zone).toBe('void');
+    expect(Object.values(s.players.P1!).flat().includes(vanille)).toBe(false);
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.tapped).length).toBe(5);
+    // What an opponent is sent online never mentions the card inside the melded permanent.
+    let n = 0;
+    const update = playerUpdate(s, 'P2', new AliasBook(() => `x${n++}`));
+    expect(JSON.stringify(update)).not.toContain('meldedWith');
+    expect(update.view.players.P1!.battlefield.length).toBe(6);
+  });
+
+  it('declining to pay leaves them as they are; Vanille alone (or an opponent’s Fang) never melds', () => {
+    let s = newGame();
+    const fang = put(s, 'P1', FANG);
+    const vanille = put(s, 'P1', VANILLE);
+    s = toFirstMain(s, false);
+    expect([s.cards[fang]!.transformed, s.cards[vanille]!.zone]).toEqual([undefined, 'battlefield']);
+
+    let t = newGame();
+    put(t, 'P2', FANG);
+    const lonely = put(t, 'P1', VANILLE);
+    t = toFirstMain(t);
+    expect(t.cards[lonely]!.zone).toBe('battlefield');
+    expect(t.players.P1!.battlefield.filter((id) => t.cards[id]!.tapped).length).toBe(0);
+  });
+
+  it('when Ragnarok dies, both cards go to the graveyard; it destroys a permanent and returns a nonlegendary permanent card', () => {
+    let s = newGame(3);
+    const fang = put(s, 'P1', FANG);
+    const vanille = put(s, 'P1', VANILLE);
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    const enemy = put(s, 'P3', 'sol-ring');
+    s = toFirstMain(s);
+    const kill = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.cards[fang]!.damage = 4;
+    mana(s, 'P2', { R: 1 });
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    s = act(s, { type: 'CastSpell', player: 'P2', card: kill, targets: [card(fang)] });
+    s = settle(s, {
+      targets: (options) => options.find((o) => o.some((t) => t.kind === 'card' && t.card === enemy) && o.some((t) => t.kind === 'card' && t.card === ring)) ?? options[0]!,
+    }).state;
+    expect([s.cards[fang]!.zone, s.cards[vanille]!.zone]).toEqual(['graveyard', 'graveyard']);
+    expect(s.players.P1!.graveyard).toEqual(expect.arrayContaining([fang, vanille]));
+    expect(s.cards[enemy]!.zone).toBe('graveyard');
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+  });
+
+  it('if Ragnarok is returned to hand, both cards go to their owner’s hand', () => {
+    let s = newGame();
+    const fang = put(s, 'P1', FANG);
+    const vanille = put(s, 'P1', VANILLE);
+    s = toFirstMain(s);
+    const bounce = put(s, 'P1', 'eject', 'hand');
+    mana(s, 'P1', { U: 1, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bounce, targets: [card(fang)] }).state;
+    expect([s.cards[fang]!.zone, s.cards[vanille]!.zone]).toEqual(['hand', 'hand']);
+    expect(s.players.P1!.hand).toEqual(expect.arrayContaining([fang, vanille]));
+    expect(s.cards[fang]!.transformed).toBeUndefined();
   });
 });

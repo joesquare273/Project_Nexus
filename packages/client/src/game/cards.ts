@@ -2,6 +2,7 @@
 
 import { parseManaCost, manaProduced, COLORS, type CardDefinition, type CardDefId, type Color } from '@nexus/engine';
 import { CARD_DEFS, SCRYFALL, SCRYFALL_PRINTINGS, type ScryfallInfo } from '@nexus/cards';
+import { BOOSTER_CARDS, SECRET_LAIR_CARDS, type BoosterCard } from '@nexus/cards/boosters';
 import { rulesSummary } from '@nexus/bots/narrate';
 
 export function defOf(defId: CardDefId): CardDefinition {
@@ -10,8 +11,35 @@ export function defOf(defId: CardDefId): CardDefinition {
   return def;
 }
 
+/** Pack and Secret Lair printings (variant arts), by "set/number", for printings Scryfall data doesn't cover. */
+const OTHER_PRINTINGS = new Map<string, BoosterCard>([...BOOSTER_CARDS, ...SECRET_LAIR_CARDS].map((c) => [`${c.set}/${c.number}`, c]));
+
+/**
+ * The card's Scryfall details: for a deck's printing, that printing's
+ * image (a variant art pulled from a pack included), or nothing when the
+ * printing is unknown.
+ */
 export function scryfallOf(defId: CardDefId, printing?: CardDefinition['printing']): ScryfallInfo | undefined {
-  return printing ? SCRYFALL_PRINTINGS[printing.set.toLowerCase()+'/'+printing.number] : SCRYFALL[defId];
+  if (!printing) return SCRYFALL[defId];
+  const key = printing.set.toLowerCase() + '/' + printing.number;
+  const exact = SCRYFALL_PRINTINGS[key];
+  if (exact) return exact;
+  const other = OTHER_PRINTINGS.get(key);
+  const base = SCRYFALL[defId];
+  // An unknown printing draws a frame rather than showing another printing's art.
+  if (!other?.images[0]) return undefined;
+  const { small, normal, large, artCrop } = other.images[0];
+  return { ...(base ?? { typeLine: other.typeLine, oracleText: '', scryfallUri: '' }), name: other.name, set: other.set, number: other.number, ...(other.artist ? { artist: other.artist } : {}), image: { small, normal, large, artCrop } };
+}
+
+/** The printing of the card a meld card melds into: the one matching the deck's printing ("381" melds into "381b") when it exists. */
+export function meldedPrinting(def: CardDefinition, printing?: CardDefinition['printing']): CardDefinition['printing'] | undefined {
+  if (!def.meld) return undefined;
+  if (printing) {
+    const matching = { set: printing.set.toLowerCase(), number: `${printing.number}b` };
+    if (SCRYFALL_PRINTINGS[`${matching.set}/${matching.number}`] || OTHER_PRINTINGS.has(`${matching.set}/${matching.number}`)) return matching;
+  }
+  return def.meld.resultPrinting;
 }
 
 /** Colors from the mana cost, or from the mana a land makes. */

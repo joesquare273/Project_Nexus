@@ -378,6 +378,29 @@ cards than before. Tests that need a particular random outcome set
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
 
+## 2026-11-02: Meld (Fang and Vanille)
+
+- A melded permanent is one object made of two cards (rule 712.4). The
+  engine keeps it as the card whose definition has the melded card as its
+  `backFace` (Fang), put onto the battlefield transformed; the other card
+  (Vanille) is held outside every zone (`void`) and linked by `meldedWith`
+  (never sent to players). When the melded permanent leaves the
+  battlefield, both cards go to the same zone, front face up.
+- Mana value of the melded permanent is the total of the fronts (rule
+  712.8g): `meld.manaCost` "{5}{B}{G}" stands in for it. Simplification:
+  the melded permanent shows that as a mana cost, where the real card has none.
+- Ragnarok, Divine Deliverance's Scryfall entry in `scryfall.json` was
+  added by hand (2026-11-02, Scryfall was unreachable): the image links and
+  id come from the booster data; its Oracle text was typed in.
+  `npm run scryfall -- --refresh` replaces it with Scryfall's (the script
+  now fetches melded cards' printings).
+- On the board, a melded permanent shows the melded card's image, matching
+  the half's printing (Fang #381 melds into #381b). A deck card whose variant
+  printing has no Scryfall entry shows its pack printing's image (it used
+  to fall back to a drawn frame); an unknown printing still draws a frame.
+- Packs: a double-faced card can be turned over during the reveal (button,
+  the corner ⟲ or F), and a meld card shows the card it melds into.
+
 ## 2026-10-29: The Final Fantasy set for sealed
 
 - The main set (FIN 1-309) and Through the Ages (FCA 1-64) are imported from
@@ -391,7 +414,7 @@ cards than before. Tests that need a particular random outcome set
   (Phyrexian or hybrid; only K'rrik, Son of Yawgmoth so far) leaves the card
   without a `manaCost` and marks it `uncastable`: it can't be cast at all,
   rather than being given a made-up cost.
-- Double-faced cards show their front face's image from Scryfall.
+- Double-faced cards show their front face's image from Scryfall (the back face where a permanent is transformed, or in a pack reveal once turned over).
 
 ## 2026-10-29: Accounts and the shard ledger (E1)
 

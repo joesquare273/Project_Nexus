@@ -22,7 +22,9 @@ const backFaces = new WeakMap<CardDefinition, CardDefinition>();
 export function backFaceDefinition(def: CardDefinition): CardDefinition {
   let back = backFaces.get(def);
   if (!back) {
-    back = { id: def.id, ...def.backFace!, ...(def.manaCost ? { manaCost: def.manaCost } : {}), colors: def.backFace!.colors ?? [] };
+    // A melded permanent's mana value is the total of its front faces' (rule 712.8g).
+    const manaCost = def.meld?.manaCost ?? def.manaCost;
+    back = { id: def.id, ...def.backFace!, ...(manaCost ? { manaCost } : {}), colors: def.backFace!.colors ?? [] };
     backFaces.set(def, back);
   }
   return back;
