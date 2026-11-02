@@ -1908,3 +1908,121 @@ describe('S4 group 7: sacrifice as a cost, and modes with tokens', () => {
     expect([a, b, c].map((id) => countersOf(s.cards[id]!, 'stun'))).toEqual([0, 1, 0]);
   });
 });
+
+describe('S4 group 8: flashback spells and enters/upkeep triggers', () => {
+  it('Resentful Revelation: look at three, one into your hand, the rest into your graveyard; flashback {6}{B}', () => {
+    let s = newGame();
+    const tops = [put(s, 'P1', 'sol-ring', 'library'), put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'coeurl', 'library')].reverse();
+    const spell = put(s, 'P1', 'resentful-revelation', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: spell })).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [tops[0]!] })).state;
+    expect(tops.map((id) => s.cards[id]!.zone)).toEqual(['hand', 'graveyard', 'graveyard']);
+    // Flashback from the graveyard, then it's exiled.
+    expect(s.cards[spell]!.zone).toBe('graveyard');
+    mana(s, 'P1', { B: 1, C: 6 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: spell })).state;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [s.pending.kind === 'chooseCards' ? s.pending.cards[0]! : ''] })).state;
+    expect(s.cards[spell]!.zone).toBe('exile');
+  });
+
+  it('Sorceress’s Schemes returns an instant or sorcery from your graveyard, or an exiled flashback card, and adds {R}', () => {
+    let s = newGame();
+    const bolt = put(s, 'P1', 'lightning-bolt', 'graveyard');
+    const exiled = put(s, 'P1', 'resentful-revelation', 'exile');
+    put(s, 'P1', 'sol-ring', 'exile');
+    put(s, 'P2', 'lightning-bolt', 'graveyard');
+    const spell = put(s, 'P1', 'sorceresss-schemes', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    const options = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell).map((a) => (a.type === 'CastSpell' ? a.targets?.[0] : undefined));
+    expect(options).toEqual(expect.arrayContaining([card(bolt), card(exiled)]));
+    expect(options.length).toBe(2);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(exiled)] }).state;
+    expect(s.cards[exiled]!.zone).toBe('hand');
+    expect(s.players.P1!.manaPool.R).toBe(1);
+  });
+
+  it('Nibelheim Aflame: your creature deals damage equal to its power to each other creature; from the graveyard, discard your hand and draw four', () => {
+    let s = newGame();
+    const titan = put(s, 'P1', 'primeval-titan');
+    const mine = put(s, 'P1', 'coeurl');
+    const theirs = put(s, 'P2', 'jumbo-cactuar');
+    const spell = put(s, 'P1', 'nibelheim-aflame', 'graveyard');
+    const kept = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { R: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan)] }).state;
+    expect(s.cards[titan]!.zone).toBe('battlefield');
+    expect(s.cards[titan]!.damage).toBe(0);
+    expect(s.cards[mine]!.zone).toBe('graveyard');
+    expect(s.cards[theirs]!.damage).toBe(6);
+    expect(s.cards[kept]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.length).toBe(4);
+    expect(s.cards[spell]!.zone).toBe('exile');
+  });
+
+  it('Nibelheim Aflame from your hand doesn’t touch your hand', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'nibelheim-aflame', 'hand');
+    put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { R: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(cat)] }).state;
+    expect(s.players.P1!.hand.length).toBe(1);
+  });
+
+  it('From Father to Son: a Vehicle into your hand; with flashback, onto the battlefield', () => {
+    let s = newGame();
+    const first = put(s, 'P1', 'magitek-armor', 'library');
+    const spell = put(s, 'P1', 'from-father-to-son', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.cards[first]!.zone).toBe('hand');
+    const second = put(s, 'P1', 'magitek-armor', 'library');
+    mana(s, 'P1', { W: 3, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.cards[second]!.zone).toBe('battlefield');
+    expect(s.cards[spell]!.zone).toBe('exile');
+  });
+
+  it('Sandworm destroys a land; its controller may fetch a basic land tapped', () => {
+    let s = newGame();
+    const land = put(s, 'P2', 'mountain');
+    const worm = put(s, 'P1', 'sandworm', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: worm }, { targets: (options) => options.find((o) => o.some((t) => t.kind === 'card' && t.card === land))! }).state;
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    const fetched = s.players.P2!.battlefield.map((id) => s.cards[id]!).filter((c) => c.defId === 'island');
+    expect(fetched.length).toBe(1);
+    expect(fetched[0]!.tapped).toBe(true);
+    expect(hasKeyword(s, s.cards[worm]!, 'Haste')).toBe(true);
+  });
+
+  it('Malboro: each opponent discards a card, loses 2 life and exiles the top three cards of their library', () => {
+    let s = newGame(3);
+    for (const pid of ['P2', 'P3']) put(s, pid, 'sol-ring', 'hand');
+    const tops = s.players.P2!.library.slice(0, 3);
+    const malboro = put(s, 'P1', 'malboro', 'hand');
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: malboro });
+    for (let i = 0; i < 20 && !(s.pending.kind === 'priority' && s.stack.length === 0); i++) {
+      const p = s.pending;
+      s = p.kind === 'chooseCards' ? act(s, { type: 'ChooseCards', player: p.player, cards: p.cards.slice(0, p.min) }) : settle(s).state;
+    }
+    expect([s.players.P2!.life, s.players.P3!.life, s.players.P1!.life]).toEqual([18, 18, 20]);
+    expect([s.players.P2!.hand.length, s.players.P3!.hand.length]).toEqual([0, 0]);
+    expect(tops.every((id) => s.cards[id]!.zone === 'exile')).toBe(true);
+    expect(s.players.P3!.exile.length).toBe(3);
+  });
+
+  it('Dark Confidant: at your upkeep, reveal the top card, put it into your hand, and lose life equal to its mana value', () => {
+    let s = newGame();
+    put(s, 'P1', 'dark-confidant');
+    const top = put(s, 'P1', 'primeval-titan', 'library');
+    s.step = 'untap';
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    s = goTo(s, 'draw');
+    expect(s.cards[top]!.zone).toBe('hand');
+    expect(s.players.P1!.life).toBe(14);
+  });
+});

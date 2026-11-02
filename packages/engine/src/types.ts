@@ -176,6 +176,10 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /** Each target player exiles the top `amount` cards of their library, face up. */
+  'ExileTopOfLibrary',
+  /** Reveal the top card of your library and put it into your hand; you lose life equal to its mana value (Dark Confidant). */
+  'RevealTopToHandLoseLife',
   /**
    * Meld (rule 701.42): if you own and control this permanent and a creature
    * named its meld partner, exile both, then put them onto the battlefield as
@@ -619,13 +623,17 @@ export interface EffectSpec {
   allCounters?: boolean;
   /** PutLastCounters: the triggering card's counters instead of the source's. */
   countersOf?: 'TriggeringCard';
-  /** DealDamage: the triggering object deals the damage ("that creature deals damage equal to its power"). */
-  damageSource?: 'TriggeringObject';
+  /**
+   * DealDamage: the triggering object deals the damage ("that creature deals
+   * damage equal to its power"), or the previous chosen target ("it deals
+   * damage equal to its power to each other creature"), which isn't dealt any itself.
+   */
+  damageSource?: 'TriggeringObject' | 'PreviousTarget';
   /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
   toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
   /** `controlChanged`: only if an earlier GainControl of the same ability changed a permanent's controller ("if they do"). */
-  if?: 'castFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked' | 'controlChanged';
+  if?: 'castFromGraveyard' | 'notCastFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked' | 'controlChanged';
   /** AddMana without manaType: the colors the player may choose from (default any color). */
   manaTypes?: Color[];
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
@@ -680,6 +688,10 @@ export interface EffectSpec {
   unearth?: boolean;
   /** LookAtTopPutInHand: how many go to your hand. */
   keep?: number;
+  /** LookAtTopPutInHand: the rest go into your graveyard instead of on the bottom of your library. */
+  restToGraveyard?: boolean;
+  /** TargetCardInGraveyard: an exiled card with flashback you own can be chosen too ("... or exiled card with flashback you own"). */
+  alsoExiledFlashback?: boolean;
   /** AllowCastFromGraveyard: without paying its mana cost. */
   free?: boolean;
   /** AddMana: this type, without a choice ("add {R} for each lore counter"). */
@@ -1708,6 +1720,8 @@ export interface CardChoice {
   max: number;
   /** All of `cards` or none (discarding a whole hand). */
   allOrNothing?: boolean;
+  /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */
+  restToGraveyard?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */
   onePerType?: CardType[];
   /** copyOnEntry: the permanent spell waiting on the stack for the choice. */

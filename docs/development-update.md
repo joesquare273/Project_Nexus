@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 8: flashback spells, 7 set cards
+
+- Engine: "if this spell was cast from a graveyard" has an opposite
+  (`if: 'notCastFromGraveyard'`); a chosen creature can deal damage to each
+  other creature (`damageSource: 'PreviousTarget'`); looking at the top
+  cards can bin the rest (`restToGraveyard`); a graveyard target can also
+  be an exiled flashback card you own (`alsoExiledFlashback`); new effects
+  `ExileTopOfLibrary` and `RevealTopToHandLoseLife`.
+- Resentful Revelation, Sorceress's Schemes, Nibelheim Aflame, From Father
+  to Son, Sandworm, Malboro and Dark Confidant, each with a test. 114 of 320
+  set cards are built.
+
 ### S4 group 7: sacrifice as a cost, 8 set cards
 
 - Engine: a spell's additional cost can be "sacrifice a [permanent]"

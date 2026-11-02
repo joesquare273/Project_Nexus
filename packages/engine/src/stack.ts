@@ -312,6 +312,10 @@ export function isLegalTarget(
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
     return !!spell && c.id !== source && matchesObject(s, effect.filter, c, viewpoint, spell.controller);
   }
+  if (kind === 'TargetCardInGraveyard' && c.zone === 'exile' && effect.alsoExiledFlashback) {
+    // "... or exiled card with flashback you own" (face up).
+    return c.owner === controller && !!defOf(s, c).flashback && !c.linkedExile && c.foretoldTurn === undefined;
+  }
   if (kind === 'TargetCardInGraveyard') {
     // A player who left the game took their cards with them (rule 800.4a).
     return c.zone === 'graveyard' && !s.players[c.owner]!.eliminated && matchesObject(s, effect.filter, c, viewpoint);
@@ -342,6 +346,9 @@ export function targetOptions(
   for (const c of battlefield(s)) all.push({ kind: 'card', card: c.id });
   if (effect.target === 'TargetCardInGraveyard' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
+  }
+  if (effect.target === 'TargetCardInGraveyard' && effect.alsoExiledFlashback) {
+    for (const id of s.players[controller]!.exile) all.push({ kind: 'card', card: id });
   }
   if (effect.target === 'TargetSpell' || effect.target === 'TargetSpellOrAbility' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const item of s.stack) if (item.kind === 'spell') all.push({ kind: 'card', card: item.card });
@@ -1715,8 +1722,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DealDamage': {
       // "That creature deals damage equal to its power" (Flayer of the Hatebound).
       const subject = item.kind === 'ability' ? item.subject : undefined;
-      const from = effect.damageSource === 'TriggeringObject' && subject ? subject : source;
-      for (const t of targets) dealDamage(ctx, from, t, amount, false);
+      const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined;
+      if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
+      const from = effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source;
+      for (const t of targets) if (!(t.kind === 'card' && t.card === chosen)) dealDamage(ctx, from, t, amount, false);
       return;
     }
     case 'DrawCards':
@@ -1990,7 +1999,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const top = topOfLibrary(s, item.controller, amount);
       if (top.length === 0) return;
       const keep = Math.min(effect.keep ?? 1, top.length);
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: top, min: keep, max: keep }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: top, min: keep, max: keep, ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
+      return;
+    }
+    case 'ExileTopOfLibrary':
+      for (const pid of targetPlayers(targets)) {
+        for (const id of player(s, pid).library.slice(0, amount)) moveCard(ctx, id, 'exile');
+      }
+      return;
+    case 'RevealTopToHandLoseLife': {
+      const top = player(s, item.controller).library[0];
+      if (!top) return;
+      const lost = objectManaValue(s, s.cards[top]!);
+      ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: top, defId: s.cards[top]!.defId });
+      moveCard(ctx, top, 'hand');
+      changeLife(ctx, item.controller, -lost);
       return;
     }
     case 'AllowCastFromGraveyard':
@@ -2515,6 +2538,7 @@ function continueResolving(ctx: Ctx): void {
       if (c?.zone === 'battlefield') r.previousTargetPower = powerOf(s, c);
     }
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
+    if (effect.if === 'notCastFromGraveyard' && item.kind === 'spell' && item.castFrom === 'graveyard') continue;
     if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
     if (effect.if === 'castFromHand' && !(item.kind === 'spell' && item.castFrom === 'hand')) continue;
     if (effect.if === 'controlChanged' && !r.controlChanged) continue;
@@ -2878,9 +2902,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     shuffleInPlace(s, rest);
     library.push(...rest);
   } else if (pending.purpose === 'hand') {
-    // The rest go on the bottom of the library, in the order shown.
+    // The rest go on the bottom of the library, in the order shown (or into the graveyard).
     const library = player(s, pending.player).library;
     for (const id of cards) moveCard(ctx, id, 'hand');
+    if (pending.restToGraveyard) {
+      for (const id of pending.cards) if (!cards.includes(id) && library.includes(id)) moveCard(ctx, id, 'graveyard');
+    }
     for (const id of pending.cards) {
       if (cards.includes(id) || !library.includes(id)) continue;
       library.splice(library.indexOf(id), 1);

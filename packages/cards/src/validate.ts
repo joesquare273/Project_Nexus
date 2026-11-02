@@ -331,7 +331,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   if (e.effect === 'Counter' && e.target !== 'TargetSpell' && e.target !== 'TargetAbility' && e.target !== 'TargetSpellOrAbility') err('Counter needs a TargetSpell, TargetAbility or TargetSpellOrAbility target.');
-  if (e.if !== undefined && !['castFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked', 'controlChanged'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
+  if (e.if !== undefined && !['castFromGraveyard', 'notCastFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked', 'controlChanged'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
   if (e.whileYouControlSource && e.effect !== 'GrantKeywords' && e.effect !== 'GainControl') err('whileYouControlSource is only for GrantKeywords and GainControl.');
   if (e.effect === 'Fight' && !inAbility) err('Fight is only for abilities (the source creature fights).');
@@ -352,7 +352,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.toughnessFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT with an amount.');
   if (e.powerFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('powerFromAmount is only for ModifyPT with an amount.');
   if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
-  if ((e.countersOf || e.damageSource) && !inAbility) err('countersOf and damageSource are only for abilities.');
+  if ((e.countersOf || e.damageSource === 'TriggeringObject') && !inAbility) err('countersOf and a TriggeringObject damage source are only for abilities.');
 }
 
 function validateTrigger(t: TriggerSpec, err: Err): void {
