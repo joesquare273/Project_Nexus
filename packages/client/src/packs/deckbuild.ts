@@ -132,6 +132,11 @@ export function deckTotal(deck: DeckDraft): number {
   return deck.cards.reduce((n, c) => n + c.count, 0) + (['W', 'U', 'B', 'R', 'G'] as const).reduce((n, k) => n + deck.basics[k], 0);
 }
 
+/** 60-card decks: at most four copies of a card other than basic lands. */
+export const MAX_COPIES = 4;
+/** The smallest 60-card deck. */
+export const CONSTRUCTED_DECK_SIZE = 60;
+
 /** A Commander deck is 100 cards, commander included (rule 903.5a). */
 export const COMMANDER_DECK_SIZE = 100;
 
@@ -141,6 +146,8 @@ export const COMMANDER_DECK_SIZE = 100;
  * (rule 903.5c), and no more than 100 cards.
  */
 export function canAdd(deck: DeckDraft, g: CardGroup, identity?: readonly string[] | null): boolean {
+  // 60-card decks: at most four of each card (basic lands aren't in groups; they're unlimited).
+  if (deck.format === 'constructed' && copiesInDeck(deck, g) >= MAX_COPIES) return false;
   if (deck.format === 'commander') {
     if (copiesInDeck(deck, g) >= 1 || deckTotal(deck) >= COMMANDER_DECK_SIZE) return false;
     if (identity && !fitsIdentity(g, identity)) return false;

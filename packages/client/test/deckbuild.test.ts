@@ -36,6 +36,7 @@ describe('deckbuilding', () => {
     d = addOne(d, fangGroup);
     expect(inDeck(d, fangGroup.arts[2]!)).toBe(1);
     expect(copiesInDeck(d, fangGroup)).toBe(2);
+    d = { ...d, format: 'limited' };
     for (let i = 0; i < 10; i++) d = addOne(d, fangGroup);
     expect(copiesInDeck(d, fangGroup)).toBe(5);
     expect(canAdd(d, fangGroup)).toBe(false);
@@ -78,6 +79,10 @@ describe('deckbuilding', () => {
     let free = empty('constructed');
     for (let i = 0; i < 6; i++) free = addOne(free, boltGroup);
     expect(copiesInDeck(free, boltGroup)).toBe(4);
+    // 60-card decks: four of a card at most, even when you own more (Fang: five owned).
+    for (let i = 0; i < 6; i++) free = addOne(free, fangGroup);
+    expect(copiesInDeck(free, fangGroup)).toBe(4);
+    expect(canAdd(free, fangGroup)).toBe(false);
     expect(setBasics(free, 'R', 40).basics.R).toBe(40);
   });
 

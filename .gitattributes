@@ -1,0 +1,6 @@
+# Line endings: Git stores LF and compares files ignoring CRLF/LF differences,
+# so Windows editors or OneDrive rewriting line endings don't show up as local
+# changes that block a merge.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

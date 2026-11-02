@@ -1404,3 +1404,44 @@
   margin: 0 0 12px;
   color: #e9dcb8;
 }
+
+/* Decks page: Commander and 60-card decks in their own sections. */
+.decks-section {
+  text-align: left;
+  margin-bottom: 30px;
+}
+.decks-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(199, 169, 103, 0.15);
+}
+.decks-section-head h2 {
+  margin: 0 0 2px;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  font-size: 20px;
+  color: #f1dfae;
+}
+.decks-section-head h2::after {
+  display: none;
+}
+.decks-section-head .fineprint {
+  margin: 0;
+}
+.deck-format-badge {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1b1405;
+  background: #e7c579;
+}
+.deck-progress {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}

@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Commander and 60-card decks built separately; line endings
+
+- The Decks page has two sections, **Commander decks** (100 cards) and
+  **60-card decks**, each with its own New button; the editor's format is
+  fixed by where you started (no format menu). 60-card decks take at most
+  four of a card (basic lands unlimited), and the collection shows how many
+  more can go in. Limited decks saved earlier stay listed in their own
+  section.
+- `.gitattributes` (`* text=auto eol=lf`): Git ignores CRLF/LF differences,
+  so line endings rewritten on Windows no longer block merges.
+
 ### Draft events, step S3a: the event core
 
 - `packages/server/src/draftEvent.ts` runs a draft event's rules on the

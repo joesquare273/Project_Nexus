@@ -15,6 +15,7 @@ import {
   basicAllowed,
   canAdd,
   COMMANDER_DECK_SIZE,
+  MAX_COPIES,
   deckTotal,
   removeOffColor,
   setBasics,
@@ -127,49 +128,71 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
     );
   }
 
+  const tile = (d: SavedDeck) => {
+    const note = deckNote(d, names, unbuiltId);
+    const face = byId.get(d.commander ?? d.cards[0]?.id ?? '');
+    return (
+      <div key={d.id} className="deck-tile">
+        {face ? <img src={face.images[0]!.artCrop} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} /> : <div className="deck-tile-blank" />}
+        <div className="deck-tile-text">
+          <strong>{d.name}</strong>
+          <span className="fineprint">
+            {FORMATS.find((f) => f.format === d.format)!.label} · {deckSize(d)} cards
+          </span>
+          <span className={note ? 'deck-note' : 'deck-ok'}>{note ?? 'Ready to play'}</span>
+        </div>
+        <div className="deck-tile-buttons">
+          <button onClick={() => setEditing(structuredClone(d))}>Edit</button>
+          <button
+            disabled={busy}
+            onClick={() => {
+              if (!window.confirm(`Delete "${d.name}"?`)) return;
+              void withToken(async (token) => {
+                await deleteDeck(token, d.id);
+                setDecks((list) => (list ?? []).filter((x) => x.id !== d.id));
+              });
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  };
+  const blank = (format: DeckFormat, name: string): DeckDraft => ({ name, format, cards: [], basics: { ...NO_BASICS }, commander: null });
+  // Commander (100) and 60-card decks are built separately; Limited decks saved before stay listed.
+  const sections: { format: DeckFormat; title: string; blurb: string; button: string | null }[] = [
+    { format: 'commander', title: 'Commander decks', blurb: '100 cards with your commander, one of each card (basic lands excepted), in your commander’s colors.', button: 'New Commander deck' },
+    { format: 'constructed', title: '60-card decks', blurb: 'At least 60 cards, up to four copies of each card (basic lands are unlimited).', button: 'New 60-card deck' },
+    { format: 'limited', title: 'Limited decks', blurb: '40 to 60 cards.', button: null },
+  ];
+
   return (
     <div className="decks">
       {problem && <p className="account-error">{problem}</p>}
-      <div className="decks-head">
-        <button className="primary" disabled={!decks} onClick={() => setEditing({ name: 'New deck', format: 'limited', cards: [], basics: { ...NO_BASICS }, commander: null })}>
-          New deck
-        </button>
-      </div>
       {!decks && !problem && <p className="fineprint">Loading your decks…</p>}
-      {decks?.length === 0 && <p className="fineprint">No decks yet. Build one from the cards in your collection.</p>}
-      <div className="decks-list">
-        {decks?.map((d) => {
-          const note = deckNote(d, names, unbuiltId);
-          const face = byId.get(d.commander ?? d.cards[0]?.id ?? '');
+      {decks &&
+        sections.map((sec) => {
+          const list = decks.filter((d) => d.format === sec.format);
+          if (!sec.button && list.length === 0) return null;
           return (
-            <div key={d.id} className="deck-tile">
-              {face ? <img src={face.images[0]!.artCrop} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} /> : <div className="deck-tile-blank" />}
-              <div className="deck-tile-text">
-                <strong>{d.name}</strong>
-                <span className="fineprint">
-                  {FORMATS.find((f) => f.format === d.format)!.label} · {deckSize(d)} cards
-                </span>
-                <span className={note ? 'deck-note' : 'deck-ok'}>{note ?? 'Ready to play'}</span>
+            <section key={sec.format} className="decks-section">
+              <div className="decks-section-head">
+                <div>
+                  <h2>{sec.title}</h2>
+                  <p className="fineprint">{sec.blurb}</p>
+                </div>
+                {sec.button && (
+                  <button className="primary" onClick={() => setEditing(blank(sec.format, sec.format === 'commander' ? 'New Commander deck' : 'New 60-card deck'))}>
+                    {sec.button}
+                  </button>
+                )}
               </div>
-              <div className="deck-tile-buttons">
-                <button onClick={() => setEditing(structuredClone(d))}>Edit</button>
-                <button
-                  disabled={busy}
-                  onClick={() => {
-                    if (!window.confirm(`Delete "${d.name}"?`)) return;
-                    void withToken(async (token) => {
-                      await deleteDeck(token, d.id);
-                      setDecks((list) => (list ?? []).filter((x) => x.id !== d.id));
-                    });
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+              {list.length === 0 && <p className="fineprint">No {sec.title.toLowerCase()} yet.</p>}
+              <div className="decks-list">{list.map(tile)}</div>
+            </section>
           );
         })}
-      </div>
     </div>
   );
 }
@@ -255,13 +278,9 @@ function DeckEditor({
     <div className="deck-editor v2">
       <div className="deck-editor-head">
         <input value={deck.name} maxLength={40} aria-label="Deck name" onChange={(e) => onChange({ ...deck, name: e.target.value })} />
-        <select value={deck.format} aria-label="Format" onChange={(e) => onChange({ ...deck, format: e.target.value as DeckFormat, commander: e.target.value === 'commander' ? deck.commander : null })}>
-          {FORMATS.map((f) => (
-            <option key={f.format} value={f.format}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+        <span className="deck-format-badge" aria-label="Format">
+          {deck.format === 'commander' ? 'Commander · 100 cards' : deck.format === 'constructed' ? '60-card · up to 4 of each' : 'Limited · 40-60 cards'}
+        </span>
         <span className={note ? 'deck-note' : 'deck-ok'}>{note ?? `${deckSize(deck)} cards · ready to play`}</span>
         <button className="primary" disabled={busy || deck.name.trim() === ''} onClick={onSave}>
           Save deck
@@ -321,7 +340,9 @@ function DeckEditor({
             <p className="deck-help">
               {deck.format === 'commander'
                 ? `Click a card to add it: one of each card (basic lands excepted), up to ${COMMANDER_DECK_SIZE} cards with your commander. Click a card in your deck to choose its art or remove it.`
-                : 'Click a card to add a copy. Click a card in your deck to choose its art or remove it.'}
+                : deck.format === 'constructed'
+                  ? 'Click a card to add a copy (up to four of each). Click a card in your deck to choose its art or remove it.'
+                  : 'Click a card to add a copy. Click a card in your deck to choose its art or remove it.'}
             </p>
           )}
           {groups.length === 0 && <p className="fineprint">Your collection is empty. Open some packs first.</p>}
@@ -349,7 +370,7 @@ function DeckEditor({
                   onMouseEnter={() => onPreview(face.card)}
                   onMouseLeave={() => onPreview(null)}
                 >
-                  <CardPic o={face} badge={deck.format === 'commander' ? undefined : `${free} left`} />
+                  <CardPic o={face} badge={deck.format === 'commander' ? undefined : `${deck.format === 'constructed' ? Math.max(0, Math.min(free, MAX_COPIES - used)) : free} left`} />
                   {g.arts.length > 1 && <span className="deck-arts-chip">{g.arts.length} arts</span>}
                   {used > 0 && <span className="deck-used-chip">{deck.format === 'commander' ? 'In deck' : `${used} in deck`}</span>}
                   {isUnbuilt(face.card) && <span className="binder-unbuilt">Not built</span>}
