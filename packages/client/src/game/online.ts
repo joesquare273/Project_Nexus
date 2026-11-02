@@ -3,9 +3,10 @@
 // events (engine/src/redact.ts); the board reads them exactly as it reads a
 // local game. Moves go back as all-or-nothing batches of actions.
 //
-// The board calls you "You". The server calls players by seat (P1, P2), so
-// incoming data renames your seat to "You" and the other seat to their guest
-// name, and outgoing actions rename them back, only in player fields.
+// The board calls you "You". The server calls players by seat (P1-P4), so
+// incoming data renames your seat to "You" and the other seats to their
+// players' names, and outgoing actions rename them back, only in player
+// fields. The same session plays Starter Kit duels and Commander tables.
 
 import { materialize, type Action } from '@nexus/engine';
 import { CARD_DEFS } from '@nexus/cards';
@@ -60,8 +61,10 @@ const PLAYER_FIELDS = new Set(['player', 'opponent', 'defender']);
 
 export class OnlineSession extends GameSession {
   readonly seat: Seat;
-  readonly opponentSeat: Seat;
-  readonly opponentName: string;
+  /** Each seat's name on the board ("You" for yours). */
+  private readonly toName: Map<string, string>;
+  /** And back: a name on the board to its seat. */
+  private readonly toSeat: Map<string, string>;
   /** The game version the server last sent. */
   private version: number;
   private serverLegal: Action[];
@@ -71,15 +74,18 @@ export class OnlineSession extends GameSession {
   private readonly listeners = new Set<(error?: string) => void>();
   private readonly connection: OnlineConnection;
 
-  constructor(connection: OnlineConnection, first: Update, deck: Deck) {
+  constructor(connection: OnlineConnection, first: Update, deck: Deck = 'RW', format: 'starter' | 'commander' = 'starter') {
     const seat = first.seat;
-    const opponentSeat: Seat = seat === 'P1' ? 'P2' : 'P1';
-    const opponentName = first.names[opponentSeat] ?? opponentSeat;
-    const update = renameIncoming(first.update, seat, opponentSeat, opponentName);
-    super({ deck, opponents: 1, seed: 0, bot: 'ai' }, { state: materialize(update.state, CARD_DEFS), bots: {}, opponents: [opponentName] });
+    // The other seats in turn order after yours, as the board lists opponents.
+    const order = first.update.state.turnOrder as string[];
+    const at = Math.max(0, order.indexOf(seat));
+    const others = [...order.slice(at + 1), ...order.slice(0, at)];
+    const toName = new Map<string, string>([[seat, YOU], ...others.map((x): [string, string] => [x, first.names[x as Seat] ?? x])]);
+    const update = renameIncoming(first.update, toName);
+    super({ format, deck, opponents: others.length, seed: 0, bot: 'ai' }, { state: materialize(update.state, CARD_DEFS), bots: {}, opponents: others.map((x) => toName.get(x)!) });
     this.seat = seat;
-    this.opponentSeat = opponentSeat;
-    this.opponentName = opponentName;
+    this.toName = toName;
+    this.toSeat = new Map([...toName].map(([k, v]) => [v, k]));
     this.version = first.version;
     this.serverLegal = update.legal;
     this.connection = connection;
@@ -129,13 +135,13 @@ export class OnlineSession extends GameSession {
   private send(actions: Action[]): void {
     this.waiting = true;
     this.seq++;
-    const out = actions.map((a) => renameOutgoing(a, this.seat, this.opponentSeat, this.opponentName));
+    const out = actions.map((a) => renameOutgoing(a, this.toSeat));
     this.connection.send({ type: 'actions', seq: this.seq, version: this.version, actions: out as never });
   }
 
   private receive(m: ServerMessage): void {
     if (m.type === 'update') {
-      const update = renameIncoming(m.update, this.seat, this.opponentSeat, this.opponentName);
+      const update = renameIncoming(m.update, this.toName);
       const before = this.state;
       this.state = materialize(update.state, CARD_DEFS);
       this.version = m.version;
@@ -162,9 +168,9 @@ export class OnlineSession extends GameSession {
   }
 }
 
-/** Server data as the board expects it: your seat becomes "You", the other seat their name. */
-function renameIncoming<T>(value: T, seat: Seat, opponentSeat: Seat, opponentName: string): T {
-  const name = (x: string) => (x === seat ? YOU : x === opponentSeat ? opponentName : x);
+/** Server data as the board expects it: your seat becomes "You", the other seats their players' names. */
+function renameIncoming<T>(value: T, toName: ReadonlyMap<string, string>): T {
+  const name = (x: string) => toName.get(x) ?? x;
   const walk = (v: unknown): unknown => {
     if (typeof v === 'string') return name(v);
     if (Array.isArray(v)) return v.map(walk);
@@ -175,8 +181,8 @@ function renameIncoming<T>(value: T, seat: Seat, opponentSeat: Seat, opponentNam
 }
 
 /** An action as the server expects it: player fields name seats. */
-function renameOutgoing(action: Action, seat: Seat, opponentSeat: Seat, opponentName: string): Action {
-  const seatOf = (x: unknown) => (x === YOU ? seat : x === opponentName ? opponentSeat : x);
+function renameOutgoing(action: Action, toSeat: ReadonlyMap<string, string>): Action {
+  const seatOf = (x: unknown) => (typeof x === 'string' ? (toSeat.get(x) ?? x) : x);
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) return v.map(walk);
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, PLAYER_FIELDS.has(k) ? seatOf(x) : walk(x)]));

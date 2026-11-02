@@ -362,7 +362,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   const active = view.activePlayer === pid;
   return (
     <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
-      <div className="avatar">{pid === YOU ? 'You' : pid.replace('Bot', 'B')}</div>
+      <div className="avatar">{avatarText(pid)}</div>
       <div className="who">
         <div className="name">
           {pid === YOU ? 'You' : pid}
@@ -760,4 +760,12 @@ export function CardList({
       </div>
     </div>
   );
+}
+
+/** What a player's round avatar shows: "You", "B1" for local bots, or a name's initials ("Chocobo Bot" → "CB"). */
+export function avatarText(pid: string): string {
+  if (pid === YOU) return 'You';
+  if (/^Bot\d+$/.test(pid)) return pid.replace('Bot', 'B');
+  const words = pid.split(/\s+/).filter(Boolean);
+  return (words.length > 1 ? words.slice(0, 2).map((w) => w[0]) : [...(words[0] ?? '?')].slice(0, 2)).join('').toUpperCase();
 }

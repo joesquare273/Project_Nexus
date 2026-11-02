@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Commander tables in the browser
+
+- Play → Online has two formats: **Commander** (host or join a table of 2-4
+  seats with players and bots, your own decks) and the Starter Kit duel.
+  `components/TableMenu.tsx` (host/join form, seat steppers, waiting room),
+  `components/CommanderDecks.tsx` (your Commander decks, shared with the
+  Vs. computer page).
+- `game/online.ts`: `OnlineSession` maps every seat (P1-P4) to its player's
+  name, so the board works for Commander pods online.
+- Player avatars show initials for long names ("Chocobo Bot" → CB).
+- Checked in a browser with two signed-in players (a test server with
+  in-memory accounts): host 2 players + 2 bots, join by code, start; both
+  boards show the four-player game with only their own hand.
+
 ### Host or join: Commander tables and draft seats
 
 - Commander tables on the server (`server/src/tables.ts`, games in

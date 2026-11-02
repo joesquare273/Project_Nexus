@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FIN_PRECONS, SCRYFALL } from '@nexus/cards';
-import { gameDeck, type GameDeck } from '@nexus/cards/decks';
-import { BOOSTER_CARDS } from '@nexus/cards/boosters';
-import { accessToken } from './account/AccountBar.tsx';
-import { fetchDecks, type SavedDeck } from './packs/collection.ts';
-import { PRINTING_CARDS } from './packs/browse.ts';
+import type { GameDeck } from '@nexus/cards/decks';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
 import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
@@ -12,6 +8,8 @@ import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { StoreTab } from './packs/StoreTab.tsx';
 import { OnlineMenu } from './components/OnlineMenu.tsx';
+import { OwnCommanderDecks } from './components/CommanderDecks.tsx';
+import { TableMenu } from './components/TableMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
 import { StarterPick } from './account/StarterPick.tsx';
 import { Tour } from './account/Tour.tsx';
@@ -218,7 +216,7 @@ function MainApp() {
               ]}
               onChange={(play) => go({ play })}
             />
-            {route.play === 'online' && <OnlineMenu onStart={play} />}
+            {route.play === 'online' && <OnlinePlay onStart={play} onBuild={() => go({ page: 'decks' })} />}
             {route.play === 'draft' && <DraftTab onPlay={play} />}
             {route.play === 'ai' && (
               <div className="play-setup">
@@ -249,7 +247,7 @@ function MainApp() {
                     ))}
                   </div>
                 ) : (
-                  <OwnCommanderDecks onChoose={setOwnDeck} onBuild={() => go({ page: 'decks' })} />
+                  <OwnCommanderDecks onChoose={(d) => setOwnDeck(d)} onBuild={() => go({ page: 'decks' })} />
                 )}
                 {format === 'commander' && (
                   <p className="fineprint">
@@ -335,6 +333,25 @@ function MainApp() {
   );
 }
 
+/** Online: a Commander table (host or join, players and bots) or a Starter Kit duel by room code. */
+function OnlinePlay({ onStart, onBuild }: { onStart: (s: GameSession) => void; onBuild: () => void }) {
+  const [kind, setKind] = useState<'commander' | 'starter'>('commander');
+  return (
+    <div className="play-setup">
+      <h2>Format</h2>
+      <div className="format-choices">
+        <button className={kind === 'commander' ? 'chosen' : ''} onClick={() => setKind('commander')}>
+          Commander <span>2-4 seats · players and bots · your decks</span>
+        </button>
+        <button className={kind === 'starter' ? 'chosen' : ''} onClick={() => setKind('starter')}>
+          Starter Kit duel <span>1 vs 1 · same room code</span>
+        </button>
+      </div>
+      {kind === 'commander' ? <TableMenu onStart={onStart} onBuild={onBuild} /> : <OnlineMenu onStart={onStart} />}
+    </div>
+  );
+}
+
 function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="page-title">
@@ -358,7 +375,7 @@ function SubTabs<T extends string>({ value, options, onChange }: { value: T; opt
 
 const TILES: { title: string; text: string; art: string; to: Partial<Route> }[] = [
   { title: 'Play the computer', text: 'Starter Kits or your Commander decks, 1 to 3 opponents.', art: 'sephiroth-planets-heir', to: { page: 'play', play: 'ai' } },
-  { title: 'Play a friend', text: 'Both enter the same room code.', art: 'cloud-planets-champion', to: { page: 'play', play: 'online' } },
+  { title: 'Play friends', text: 'Host or join a Commander table, with bots in any empty seats.', art: 'cloud-planets-champion', to: { page: 'play', play: 'online' } },
   { title: 'Booster draft', text: 'Pick cards from packs as they pass, then build a deck.', art: 'terra-herald-of-hope', to: { page: 'play', play: 'draft' } },
   { title: 'Open packs', text: 'Play and Collector Boosters, kept in your collection.', art: 'tifa-lockhart', to: { page: 'shop', shop: 'packs' } },
   { title: 'Your collection', text: 'Every card you own, with its finishes.', art: 'tidus-yunas-guardian', to: { page: 'collection' } },
@@ -410,56 +427,3 @@ function HomePage({ name, lessonDone, onLearn, onPractice, go }: { name: string 
   );
 }
 
-/**
- * Commander: the player's own saved Commander decks (only decks they own,
- * user rule 2026-10-30). Picking one converts it for the game; a deck with
- * a card the game doesn't know yet can't be picked.
- */
-function OwnCommanderDecks({ onChoose, onBuild }: { onChoose: (deck: GameDeck | null) => void; onBuild: () => void }) {
-  const [decks, setDecks] = useState<SavedDeck[] | null>(null);
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
-  useEffect(() => {
-    accessToken()
-      .then((token) => (token ? fetchDecks(token) : Promise.reject(new Error('Sign in first.'))))
-      .then((all) => setDecks(all.filter((d) => d.format === 'commander' && d.commander)), (e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server.' : e.message));
-  }, []);
-  const art = (id: string) => [...PRINTING_CARDS, ...BOOSTER_CARDS].find((c) => c.id === id)?.images[0]?.artCrop;
-  if (problem) return <p className="account-error">{problem}</p>;
-  if (!decks) return <p className="fineprint">Loading your decks…</p>;
-  if (decks.length === 0) {
-    return (
-      <p className="fineprint">
-        You don't own a Commander deck yet. Pick your free precon, buy one in the Store, or{' '}
-        <button className="link" onClick={onBuild}>
-          build one in Decks
-        </button>
-        .
-      </p>
-    );
-  }
-  return (
-    <div className="deck-choices precons">
-      {decks.map((d) => {
-        const converted = gameDeck(d);
-        const playable = !('problem' in converted);
-        return (
-          <button
-            key={d.id}
-            className={`deck ${chosen === d.id ? 'chosen' : ''}`}
-            disabled={!playable}
-            title={playable ? undefined : converted.problem}
-            onClick={() => {
-              setChosen(d.id);
-              onChoose(playable ? converted : null);
-            }}
-          >
-            {d.commander && art(d.commander) && <img src={art(d.commander)} alt="" />}
-            <span className="deck-name">{d.name}</span>
-            <span className="deck-blurb">{playable ? 'Your deck' : converted.problem}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}

@@ -234,5 +234,13 @@ many for bots (all players, all bots but the host, or a mix), 2-4 in all.
   bots play it out quickly.
 - A seat stays yours while you're away; leaving a lobby opens your seat
   again, and the host leaving closes the lobby.
-- Not yet: the browser page for tables (next step), and a turn timer for a
-  player who leaves mid-game (they can come back, or the others wait).
+- Browser (2026-11-03): Play → Online → **Commander**: *Host a table*
+  (steppers for player and bot seats; with all four seats taken, adding one
+  kind turns a seat of the other kind into it) or *Join a table* (the code),
+  and one of your own Commander decks. The waiting room shows the code with
+  a Copy button, every seat with its deck's commander art, open seats and
+  bot seats; the host can change the seats and starts the game. The game is
+  the usual board (`OnlineSession` now plays 2-4 seats). The last table's
+  code is remembered for the tab, so a reload offers it to rejoin.
+- Not yet: a turn timer for a player who leaves mid-game (they can come
+  back, or the others wait).
