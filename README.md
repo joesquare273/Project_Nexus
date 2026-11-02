@@ -4,6 +4,9 @@ A multiplayer Magic: The Gathering engine for 2 to 4 player games, built
 toward Commander pods. The first real cards being implemented are the two
 Final Fantasy Starter Kits.
 
+**Play it online:** https://project-nexus-adwp.onrender.com (sign in with
+Discord; the free Render service may take a minute to wake up).
+
 Private, non-commercial project. Card names and game rules belong to Wizards
 of the Coast; the Final Fantasy material also belongs to Square Enix. Card
 images and Oracle text load from Scryfall; no image files are stored here.
