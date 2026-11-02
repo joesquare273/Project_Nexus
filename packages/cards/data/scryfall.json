@@ -746,7 +746,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/272/balamb-garden-seed-academy-balamb-garden-airborne?utm_source=api",
     "scryfallId": "001e9f20-5b15-41cb-bf82-46172decc235",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Balamb Garden, SeeD Academy",
+        "typeLine": "Land — Town",
+        "oracleText": "This land enters tapped.\n{T}: Add {G} or {U}.\n{5}{G}{U}, {T}: Transform this land. This ability costs {1} less to activate for each other Town you control.",
+        "colors": []
+      },
+      {
+        "name": "Balamb Garden, Airborne",
+        "typeLine": "Legendary Artifact — Vehicle",
+        "oracleText": "Flying\nWhenever Balamb Garden attacks, draw a card.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+        "power": "5",
+        "toughness": "4",
+        "colors": []
+      }
+    ]
   },
   "balamb-t-rexaur": {
     "name": "Balamb T-Rexaur",
@@ -1566,7 +1582,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/91/cecil-dark-knight-cecil-redeemed-paladin?utm_source=api",
     "scryfallId": "026e7167-d665-43d0-a51e-8df2d68cdb5e",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Cecil, Dark Knight",
+        "typeLine": "Legendary Creature — Human Knight",
+        "oracleText": "Deathtouch\nDarkness — Whenever Cecil deals damage, you lose that much life. Then if your life total is less than or equal to half your starting life total, untap Cecil and transform it.",
+        "manaCost": "{B}",
+        "power": "2",
+        "toughness": "3",
+        "colors": [
+          "B"
+        ]
+      },
+      {
+        "name": "Cecil, Redeemed Paladin",
+        "typeLine": "Legendary Creature — Human Knight",
+        "oracleText": "Lifelink\nProtect — Whenever Cecil attacks, other attacking creatures gain indestructible until end of turn.",
+        "power": "4",
+        "toughness": "4",
+        "colors": [
+          "W"
+        ]
+      }
+    ]
   },
   "celes-rune-knight": {
     "name": "Celes, Rune Knight",
@@ -1700,6 +1739,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/215/choco-seeker-of-paradise?utm_source=api",
     "scryfallId": "409c305a-52dc-4538-8e72-efcd568eaf49",
+    "relatedTokens": []
+  },
+  "chocobo-bird-token": {
+    "name": "Bird",
+    "typeLine": "Token Creature — Bird",
+    "oracleText": "Whenever a land you control enters, this token gets +1/+0 until end of turn.",
+    "set": "tfin",
+    "number": "17",
+    "artist": "Constantin Marin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
+      "normal": "https://cards.scryfall.io/normal/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
+      "large": "https://cards.scryfall.io/large/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/17/bird?utm_source=api",
+    "scryfallId": "8632216a-33c3-4d16-bf25-42e41af53986",
     "relatedTokens": []
   },
   "chocobo-kick": {
@@ -1948,7 +2004,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/133/clive-ifrits-dominant-ifrit-warden-of-inferno?utm_source=api",
     "scryfallId": "9a069e96-2786-493d-aca8-f70611435dbe",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Clive, Ifrit's Dominant",
+        "typeLine": "Legendary Creature — Human Noble Warrior",
+        "oracleText": "When Clive enters, you may discard your hand, then draw cards equal to your devotion to red. (Each {R} in the mana costs of permanents you control counts toward your devotion to red.)\n{4}{R}{R}, {T}: Exile Clive, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+        "manaCost": "{4}{R}{R}",
+        "power": "5",
+        "toughness": "5",
+        "colors": [
+          "R"
+        ]
+      },
+      {
+        "name": "Ifrit, Warden of Inferno",
+        "typeLine": "Legendary Enchantment Creature — Saga Demon",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Lunge — Ifrit fights up to one other target creature.\nII, III — Brimstone — Add {R}{R}{R}{R}. If Ifrit has three or more lore counters on it, exile it, then return it to the battlefield (front face up).",
+        "power": "9",
+        "toughness": "9",
+        "colors": [
+          "R"
+        ]
+      }
+    ]
   },
   "clives-hideaway": {
     "name": "Clive's Hideaway",
@@ -2490,7 +2569,28 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/13/crystal-fragments-summon:-alexander?utm_source=api",
     "scryfallId": "5f51c853-949d-44e9-a3a2-02e1ce69a147",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Crystal Fragments",
+        "typeLine": "Artifact — Equipment",
+        "oracleText": "Equipped creature gets +1/+1.\n{5}{W}{W}: Exile this Equipment, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.\nEquip {1}",
+        "manaCost": "{W}",
+        "colors": [
+          "W"
+        ]
+      },
+      {
+        "name": "Summon: Alexander",
+        "typeLine": "Enchantment Creature — Saga Construct",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II — Prevent all damage that would be dealt to creatures you control this turn.\nIII — Tap all creatures your opponents control.\nFlying",
+        "power": "4",
+        "toughness": "3",
+        "colors": [
+          "W"
+        ]
+      }
+    ]
   },
   "cultivate": {
     "name": "Cultivate",
@@ -2952,6 +3052,29 @@
         "name": "Knight",
         "scryfallId": "a7758a0b-9e85-4b4a-bf1c-ffcc6761dbad"
       }
+    ],
+    "faces": [
+      {
+        "name": "Dion, Bahamut's Dominant",
+        "typeLine": "Legendary Creature — Human Noble Knight",
+        "oracleText": "Dragonfire Dive — During your turn, Dion and other Knights you control have flying.\nWhen Dion enters, create a 2/2 white Knight creature token.\n{4}{W}{W}, {T}: Exile Dion, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+        "manaCost": "{3}{W}",
+        "power": "3",
+        "toughness": "3",
+        "colors": [
+          "W"
+        ]
+      },
+      {
+        "name": "Bahamut, Warden of Light",
+        "typeLine": "Legendary Enchantment Creature — Saga Dragon",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Wings of Light — Put a +1/+1 counter on each other creature you control. Those creatures gain flying until end of turn.\nIII — Gigaflare — Destroy target permanent. Exile Bahamut, then return it to the battlefield (front face up).\nFlying",
+        "power": "5",
+        "toughness": "5",
+        "colors": [
+          "W"
+        ]
+      }
     ]
   },
   "dispatch": {
@@ -3256,7 +3379,32 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/218/emet-selch-unsundered-hades-sorcerer-of-eld?utm_source=api",
     "scryfallId": "75cf4eb8-33e7-4dfc-b890-a7e3b5c1b9d5",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Emet-Selch, Unsundered",
+        "typeLine": "Legendary Creature — Elder Wizard",
+        "oracleText": "Vigilance\nWhenever Emet-Selch enters or attacks, draw a card, then discard a card.\nAt the beginning of your upkeep, if there are fourteen or more cards in your graveyard, you may transform Emet-Selch.",
+        "manaCost": "{1}{U}{B}",
+        "power": "2",
+        "toughness": "4",
+        "colors": [
+          "B",
+          "U"
+        ]
+      },
+      {
+        "name": "Hades, Sorcerer of Eld",
+        "typeLine": "Legendary Creature — Avatar",
+        "oracleText": "Vigilance\nEcho of the Lost — During your turn, you may play cards from your graveyard.\nIf a card or token would be put into your graveyard from anywhere, exile it instead.",
+        "power": "6",
+        "toughness": "6",
+        "colors": [
+          "B",
+          "U"
+        ]
+      }
+    ]
   },
   "endless-detour": {
     "name": "Endless Detour",
@@ -3307,7 +3455,28 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/185/esper-origins-summon:-esper-maduin?utm_source=api",
     "scryfallId": "0f503360-216a-4629-89b2-d32072850aef",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Esper Origins",
+        "typeLine": "Sorcery",
+        "oracleText": "Surveil 2. You gain 2 life. If this spell was cast from a graveyard, exile it, then put it onto the battlefield transformed under its owner's control with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)\nFlashback {3}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+        "manaCost": "{1}{G}",
+        "colors": [
+          "G"
+        ]
+      },
+      {
+        "name": "Summon: Esper Maduin",
+        "typeLine": "Enchantment Creature — Saga Elemental",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Reveal the top card of your library. If it's a permanent card, put it into your hand.\nII — Add {G}{G}.\nIII — Other creatures you control get +2/+2 and gain trample until end of turn.",
+        "power": "4",
+        "toughness": "4",
+        "colors": [
+          "G"
+        ]
+      }
+    ]
   },
   "espers-to-magicite": {
     "name": "Espers to Magicite",
@@ -3448,7 +3617,32 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/220/exdeath-void-warlock-neo-exdeath-dimensions-end?utm_source=api",
     "scryfallId": "1b4bab87-4000-461d-8b58-d34928fee305",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Exdeath, Void Warlock",
+        "typeLine": "Legendary Creature — Spirit Warlock",
+        "oracleText": "When Exdeath enters, you gain 3 life.\nAt the beginning of your end step, if there are six or more permanent cards in your graveyard, transform Exdeath.",
+        "manaCost": "{1}{B}{G}",
+        "power": "3",
+        "toughness": "3",
+        "colors": [
+          "B",
+          "G"
+        ]
+      },
+      {
+        "name": "Neo Exdeath, Dimension's End",
+        "typeLine": "Legendary Creature — Spirit Avatar",
+        "oracleText": "Trample\nNeo Exdeath's power is equal to the number of permanent cards in your graveyard.",
+        "power": "*",
+        "toughness": "3",
+        "colors": [
+          "B",
+          "G"
+        ]
+      }
+    ]
   },
   "exotic-orchard": {
     "name": "Exotic Orchard",
@@ -4099,7 +4293,32 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/221/garland-knight-of-cornelia-chaos-the-endless?utm_source=api",
     "scryfallId": "dd463dbe-5f2c-4d4f-86f8-ad8ff407af62",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Garland, Knight of Cornelia",
+        "typeLine": "Legendary Creature — Human Knight",
+        "oracleText": "Whenever you cast a noncreature spell, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{3}{B}{B}{R}{R}: Return this card from your graveyard to the battlefield transformed. Activate only as a sorcery.",
+        "manaCost": "{B}{R}",
+        "power": "3",
+        "toughness": "2",
+        "colors": [
+          "B",
+          "R"
+        ]
+      },
+      {
+        "name": "Chaos, the Endless",
+        "typeLine": "Legendary Creature — Demon",
+        "oracleText": "Flying\nWhen Chaos dies, put it on the bottom of its owner's library.",
+        "power": "5",
+        "toughness": "5",
+        "colors": [
+          "B",
+          "R"
+        ]
+      }
+    ]
   },
   "garnet-princess-of-alexandria": {
     "name": "Garnet, Princess of Alexandria",
@@ -5287,7 +5506,20 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/283/ishgard-the-holy-see-faith-&-grief?utm_source=api",
     "scryfallId": "068bc755-9d3d-430b-abc5-c775a5415bf9",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Ishgard, the Holy See",
+        "typeLine": "Land — Town",
+        "oracleText": "This land enters tapped.\n{T}: Add {W}."
+      },
+      {
+        "name": "Faith & Grief",
+        "typeLine": "Sorcery — Adventure",
+        "oracleText": "Return up to two target artifact and/or enchantment cards from your graveyard to your hand. (Then exile this card. You may play the land later from exile.)",
+        "manaCost": "{3}{W}{W}"
+      }
+    ]
   },
   "island": {
     "name": "Island",
@@ -5372,7 +5604,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/104/jecht-reluctant-guardian-braskas-final-aeon?utm_source=api",
     "scryfallId": "4ec91fe8-b3da-47fa-b45e-94b62a260aba",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Jecht, Reluctant Guardian",
+        "typeLine": "Legendary Creature — Human Warrior",
+        "oracleText": "Menace\nWhenever Jecht deals combat damage to a player, you may exile it, then return it to the battlefield transformed under its owner's control.",
+        "manaCost": "{3}{B}",
+        "power": "4",
+        "toughness": "3",
+        "colors": [
+          "B"
+        ]
+      },
+      {
+        "name": "Braska's Final Aeon",
+        "typeLine": "Legendary Enchantment Creature — Saga Nightmare",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II — Jecht Beam — Each opponent discards a card and you draw a card.\nIII — Ultimate Jecht Shot — Each opponent sacrifices two creatures of their choice.\nMenace",
+        "power": "7",
+        "toughness": "7",
+        "colors": [
+          "B"
+        ]
+      }
+    ]
   },
   "jenova-ancient-calamity": {
     "name": "Jenova, Ancient Calamity",
@@ -5406,7 +5661,20 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/284/jidoor-aristocratic-capital-overture?utm_source=api",
     "scryfallId": "98b2d5b5-f85b-4c42-a0f5-a76f6af304ba",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Jidoor, Aristocratic Capital",
+        "typeLine": "Land — Town",
+        "oracleText": "This land enters tapped.\n{T}: Add {U}."
+      },
+      {
+        "name": "Overture",
+        "typeLine": "Sorcery — Adventure",
+        "oracleText": "Target opponent mills half their library, rounded down. (Then exile this card. You may play the land later from exile.)",
+        "manaCost": "{4}{U}{U}"
+      }
+    ]
   },
   "jill-shivas-dominant-shiva-warden-of-ice": {
     "name": "Jill, Shiva's Dominant // Shiva, Warden of Ice",
@@ -5423,7 +5691,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/58/jill-shivas-dominant-shiva-warden-of-ice?utm_source=api",
     "scryfallId": "1f163763-4802-4a96-a5bc-f3c381db7b5c",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Jill, Shiva's Dominant",
+        "typeLine": "Legendary Creature — Human Noble Warrior",
+        "oracleText": "When Jill enters, return up to one other target nonland permanent to its owner's hand.\n{3}{U}{U}, {T}: Exile Jill, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+        "manaCost": "{2}{U}",
+        "power": "2",
+        "toughness": "2",
+        "colors": [
+          "U"
+        ]
+      },
+      {
+        "name": "Shiva, Warden of Ice",
+        "typeLine": "Legendary Enchantment Creature — Saga Elemental",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Mesmerize — Target creature can't be blocked this turn.\nIII — Cold Snap — Tap all lands your opponents control. Exile Shiva, then return it to the battlefield (front face up).",
+        "power": "4",
+        "toughness": "5",
+        "colors": [
+          "U"
+        ]
+      }
+    ]
   },
   "jodah-the-unifier": {
     "name": "Jodah, the Unifier",
@@ -5457,7 +5748,32 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/229/joshua-phoenixs-dominant-phoenix-warden-of-fire?utm_source=api",
     "scryfallId": "457fdbb9-5439-460f-8e37-176f8919362c",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Joshua, Phoenix's Dominant",
+        "typeLine": "Legendary Creature — Human Noble Wizard",
+        "oracleText": "When Joshua enters, discard up to two cards, then draw that many cards.\n{3}{R}{W}, {T}: Exile Joshua, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+        "manaCost": "{1}{R}{W}",
+        "power": "3",
+        "toughness": "4",
+        "colors": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "name": "Phoenix, Warden of Fire",
+        "typeLine": "Legendary Enchantment Creature — Saga Phoenix",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Rising Flames — Phoenix deals 2 damage to each opponent.\nIII — Flames of Rebirth — Return any number of target creature cards with total mana value 6 or less from your graveyard to the battlefield. Exile Phoenix, then return it to the battlefield (front face up).\nFlying, lifelink",
+        "power": "4",
+        "toughness": "4",
+        "colors": [
+          "R",
+          "W"
+        ]
+      }
+    ]
   },
   "judge-magister-gabranth": {
     "name": "Judge Magister Gabranth",
@@ -5564,7 +5880,34 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/231/kefka-court-mage-kefka-ruler-of-ruin?utm_source=api",
     "scryfallId": "8fcf3fbb-1ddd-437e-81c1-f5a3133f5ee8",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Kefka, Court Mage",
+        "typeLine": "Legendary Creature — Human Wizard",
+        "oracleText": "Whenever Kefka enters or attacks, each player discards a card. Then you draw a card for each card type among cards discarded this way.\n{8}: Each opponent sacrifices a permanent of their choice. Transform Kefka. Activate only as a sorcery.",
+        "manaCost": "{2}{U}{B}{R}",
+        "power": "4",
+        "toughness": "5",
+        "colors": [
+          "B",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "name": "Kefka, Ruler of Ruin",
+        "typeLine": "Legendary Creature — Avatar Wizard",
+        "oracleText": "Flying\nWhenever an opponent loses life during your turn, you draw that many cards.",
+        "power": "5",
+        "toughness": "7",
+        "colors": [
+          "B",
+          "R",
+          "U"
+        ]
+      }
+    ]
   },
   "kefka-dancing-mad": {
     "name": "Kefka, Dancing Mad",
@@ -5743,6 +6086,31 @@
       {
         "name": "Wizard",
         "scryfallId": "04ae24bf-0b24-4996-afae-7bf9f9d7471c"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Kuja, Genome Sorcerer",
+        "typeLine": "Legendary Creature — Human Mutant Wizard",
+        "oracleText": "At the beginning of your end step, create a tapped 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\" Then if you control four or more Wizards, transform Kuja.",
+        "manaCost": "{2}{B}{R}",
+        "power": "3",
+        "toughness": "4",
+        "colors": [
+          "B",
+          "R"
+        ]
+      },
+      {
+        "name": "Trance Kuja, Fate Defied",
+        "typeLine": "Legendary Creature — Avatar Wizard",
+        "oracleText": "Flare Star — If a Wizard you control would deal damage to a permanent or player, it deals double that damage instead.",
+        "power": "4",
+        "toughness": "6",
+        "colors": [
+          "B",
+          "R"
+        ]
       }
     ]
   },
@@ -5952,6 +6320,19 @@
       {
         "name": "Wizard",
         "scryfallId": "04ae24bf-0b24-4996-afae-7bf9f9d7471c"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Lindblum, Industrial Regency",
+        "typeLine": "Land — Town",
+        "oracleText": "This land enters tapped.\n{T}: Add {R}."
+      },
+      {
+        "name": "Mage Siege",
+        "typeLine": "Instant — Adventure",
+        "oracleText": "Create a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"",
+        "manaCost": "{2}{R}"
       }
     ]
   },
@@ -6425,7 +6806,20 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/286/midgar-city-of-mako-reactor-raid?utm_source=api",
     "scryfallId": "8a837256-6bb4-4a60-962d-d2793548d26c",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Midgar, City of Mako",
+        "typeLine": "Land — Town",
+        "oracleText": "This land enters tapped.\n{T}: Add {B}."
+      },
+      {
+        "name": "Reactor Raid",
+        "typeLine": "Sorcery — Adventure",
+        "oracleText": "You may sacrifice an artifact or creature. If you do, draw two cards. (Then exile this card. You may play the land later from exile.)",
+        "manaCost": "{2}{B}"
+      }
+    ]
   },
   "millikin": {
     "name": "Millikin",
@@ -8663,7 +9057,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/115/sephiroth-fabled-soldier-sephiroth-one-winged-angel?utm_source=api",
     "scryfallId": "85eaf5e7-77dc-4842-a70c-ce4ac7f724df",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Sephiroth, Fabled SOLDIER",
+        "typeLine": "Legendary Creature — Human Avatar Soldier",
+        "oracleText": "Whenever Sephiroth enters or attacks, you may sacrifice another creature. If you do, draw a card.\nWhenever another creature dies, target opponent loses 1 life and you gain 1 life. If this is the fourth time this ability has resolved this turn, transform Sephiroth.",
+        "manaCost": "{2}{B}",
+        "power": "3",
+        "toughness": "3",
+        "colors": [
+          "B"
+        ]
+      },
+      {
+        "name": "Sephiroth, One-Winged Angel",
+        "typeLine": "Legendary Creature — Angel Nightmare Avatar",
+        "oracleText": "Flying\nSuper Nova — As this creature transforms into Sephiroth, One-Winged Angel, you get an emblem with \"Whenever a creature dies, target opponent loses 1 life and you gain 1 life.\"\nWhenever Sephiroth attacks, you may sacrifice any number of other creatures. If you do, draw that many cards.",
+        "power": "5",
+        "toughness": "5",
+        "colors": [
+          "B"
+        ]
+      }
+    ]
   },
   "sephiroth-fallen-hero": {
     "name": "Sephiroth, Fallen Hero",
@@ -8748,7 +9165,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/240/serah-farron-crystallized-serah?utm_source=api",
     "scryfallId": "62fa74c0-43ae-445c-8039-ca9d00e9709a",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Serah Farron",
+        "typeLine": "Legendary Creature — Human Citizen",
+        "oracleText": "The first legendary creature spell you cast each turn costs {2} less to cast.\nAt the beginning of combat on your turn, if you control two or more other legendary creatures, you may transform Serah Farron.",
+        "manaCost": "{1}{G}{W}",
+        "power": "2",
+        "toughness": "2",
+        "colors": [
+          "G",
+          "W"
+        ]
+      },
+      {
+        "name": "Crystallized Serah",
+        "typeLine": "Legendary Artifact",
+        "oracleText": "The first legendary creature spell you cast each turn costs {2} less to cast.\nLegendary creatures you control get +2/+2.",
+        "colors": [
+          "G",
+          "W"
+        ]
+      }
+    ]
   },
   "setzer-wandering-gambler": {
     "name": "Setzer, Wandering Gambler",
@@ -8944,7 +9384,28 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/73/sidequest:-card-collection-magicked-card?utm_source=api",
     "scryfallId": "8ac3d2c9-5978-4cfb-a746-c901decff093",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Sidequest: Card Collection",
+        "typeLine": "Enchantment",
+        "oracleText": "When this enchantment enters, draw three cards, then discard two cards.\nAt the beginning of your end step, if eight or more cards are in your graveyard, transform this enchantment.",
+        "manaCost": "{3}{U}",
+        "colors": [
+          "U"
+        ]
+      },
+      {
+        "name": "Magicked Card",
+        "typeLine": "Artifact — Vehicle",
+        "oracleText": "Flying\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+        "power": "4",
+        "toughness": "4",
+        "colors": [
+          "U"
+        ]
+      }
+    ]
   },
   "sidequest-catch-a-fish-cooking-campsite": {
     "name": "Sidequest: Catch a Fish // Cooking Campsite",
@@ -8965,6 +9426,23 @@
       {
         "name": "Food",
         "scryfallId": "4853f6f5-476d-4109-a1c6-f98f4d332db3"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Sidequest: Catch a Fish",
+        "typeLine": "Enchantment",
+        "oracleText": "At the beginning of your upkeep, look at the top card of your library. If it's an artifact or creature card, you may reveal it and put it into your hand. If you put a card into your hand this way, create a Food token and transform this enchantment.",
+        "manaCost": "{2}{W}",
+        "colors": [
+          "W"
+        ]
+      },
+      {
+        "name": "Cooking Campsite",
+        "typeLine": "Land",
+        "oracleText": "{T}: Add {W}.\n{3}, {T}, Sacrifice an artifact: Put a +1/+1 counter on each creature you control. Activate only as a sorcery.",
+        "colors": []
       }
     ]
   },
@@ -8988,6 +9466,27 @@
         "name": "Treasure",
         "scryfallId": "e5f4f810-f95a-41ac-9c3b-47254c03e766"
       }
+    ],
+    "faces": [
+      {
+        "name": "Sidequest: Hunt the Mark",
+        "typeLine": "Enchantment",
+        "oracleText": "When this enchantment enters, destroy up to one target creature.\nAt the beginning of your end step, if a creature died under an opponent's control this turn, create a Treasure token. Then if you control three or more Treasures, transform this enchantment.",
+        "manaCost": "{3}{B}{B}",
+        "colors": [
+          "B"
+        ]
+      },
+      {
+        "name": "Yiazmat, Ultimate Mark",
+        "typeLine": "Legendary Creature — Dragon",
+        "oracleText": "{1}{B}, Sacrifice another creature or artifact: Yiazmat gains indestructible until end of turn. Tap it.",
+        "power": "5",
+        "toughness": "6",
+        "colors": [
+          "B"
+        ]
+      }
     ]
   },
   "sidequest-play-blitzball-world-champion-celestial-weapon": {
@@ -9005,7 +9504,26 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/158/sidequest:-play-blitzball-world-champion-celestial-weapon?utm_source=api",
     "scryfallId": "31e2ad37-73cf-4858-8a3a-fc1165cd21a7",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Sidequest: Play Blitzball",
+        "typeLine": "Enchantment",
+        "oracleText": "At the beginning of combat on your turn, target creature you control gets +2/+0 until end of turn.\nAt the end of combat on your turn, if a player was dealt 6 or more combat damage this turn, transform this enchantment, then attach it to a creature you control.",
+        "manaCost": "{2}{R}",
+        "colors": [
+          "R"
+        ]
+      },
+      {
+        "name": "World Champion, Celestial Weapon",
+        "typeLine": "Legendary Artifact — Equipment",
+        "oracleText": "Double Overdrive — Equipped creature gets +2/+0 and has double strike.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+        "colors": [
+          "R"
+        ]
+      }
+    ]
   },
   "sidequest-raise-a-chocobo-black-chocobo": {
     "name": "Sidequest: Raise a Chocobo // Black Chocobo",
@@ -9026,6 +9544,27 @@
       {
         "name": "Bird",
         "scryfallId": "8632216a-33c3-4d16-bf25-42e41af53986"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Sidequest: Raise a Chocobo",
+        "typeLine": "Enchantment",
+        "oracleText": "When this enchantment enters, create a 2/2 green Bird creature token with \"Whenever a land you control enters, this token gets +1/+0 until end of turn.\"\nAt the beginning of your first main phase, if you control four or more Birds, transform this enchantment.",
+        "manaCost": "{1}{G}",
+        "colors": [
+          "G"
+        ]
+      },
+      {
+        "name": "Black Chocobo",
+        "typeLine": "Creature — Bird",
+        "oracleText": "When this permanent transforms into Black Chocobo, search your library for a land card, put it onto the battlefield tapped, then shuffle.\nLandfall — Whenever a land you control enters, Birds you control get +1/+0 until end of turn.",
+        "power": "2",
+        "toughness": "2",
+        "colors": [
+          "G"
+        ]
       }
     ]
   },
@@ -10838,6 +11377,31 @@
         "name": "Copy",
         "scryfallId": "81c9d442-d7d5-4911-b0b9-c3206faeab1d"
       }
+    ],
+    "faces": [
+      {
+        "name": "Terra, Magical Adept",
+        "typeLine": "Legendary Creature — Human Wizard Warrior",
+        "oracleText": "When Terra enters, mill five cards. Put up to one enchantment card milled this way into your hand.\nTrance — {4}{R}{G}, {T}: Exile Terra, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+        "manaCost": "{1}{R}{G}",
+        "power": "4",
+        "toughness": "2",
+        "colors": [
+          "G",
+          "R"
+        ]
+      },
+      {
+        "name": "Esper Terra",
+        "typeLine": "Legendary Enchantment Creature — Saga Wizard",
+        "oracleText": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II, III — Create a token that's a copy of target nonlegendary enchantment you control. It gains haste. If it's a Saga, put up to three lore counters on it. Sacrifice it at the beginning of your next end step.\nIV — Add {W}{W}, {U}{U}, {B}{B}, {R}{R}, and {G}{G}. Exile Esper Terra, then return it to the battlefield (front face up).\nFlying",
+        "power": "6",
+        "toughness": "6",
+        "colors": [
+          "G",
+          "R"
+        ]
+      }
     ]
   },
   "thancred-waters": {
@@ -10945,7 +11509,32 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/219/the-emperor-of-palamecia-the-lord-master-of-hell?utm_source=api",
     "scryfallId": "3d75e8fd-6139-4b10-9ce3-195b47d72e0c",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "The Emperor of Palamecia",
+        "typeLine": "Legendary Creature — Human Noble Wizard",
+        "oracleText": "{T}: Add {U} or {R}. Spend this mana only to cast a noncreature spell.\nWhenever you cast a noncreature spell, if at least four mana was spent to cast it, put a +1/+1 counter on The Emperor of Palamecia. Then if it has three or more +1/+1 counters on it, transform it.",
+        "manaCost": "{U}{R}",
+        "power": "2",
+        "toughness": "2",
+        "colors": [
+          "R",
+          "U"
+        ]
+      },
+      {
+        "name": "The Lord Master of Hell",
+        "typeLine": "Legendary Creature — Demon Noble Wizard",
+        "oracleText": "Starfall — Whenever The Lord Master of Hell attacks, it deals X damage to each opponent, where X is the number of noncreature, nonland cards in your graveyard.",
+        "power": "3",
+        "toughness": "3",
+        "colors": [
+          "R",
+          "U"
+        ]
+      }
+    ]
   },
   "the-falcon-airship-restored": {
     "name": "The Falcon, Airship Restored",
@@ -11813,7 +12402,32 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/247/ultimecia-time-sorceress-ultimecia-omnipotent?utm_source=api",
     "scryfallId": "2d6a2b68-5407-464e-a335-7866fd969c30",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Ultimecia, Time Sorceress",
+        "typeLine": "Legendary Creature — Human Warlock",
+        "oracleText": "Whenever Ultimecia enters or attacks, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nAt the beginning of your end step, you may pay {4}{U}{U}{B}{B} and exile eight cards from your graveyard. If you do, transform Ultimecia.",
+        "manaCost": "{3}{U}{B}",
+        "power": "4",
+        "toughness": "5",
+        "colors": [
+          "B",
+          "U"
+        ]
+      },
+      {
+        "name": "Ultimecia, Omnipotent",
+        "typeLine": "Legendary Creature — Nightmare Warlock",
+        "oracleText": "Menace (This creature can't be blocked except by two or more creatures.)\nTime Compression — When this creature transforms into Ultimecia, Omnipotent, take an extra turn after this one.",
+        "power": "7",
+        "toughness": "7",
+        "colors": [
+          "B",
+          "U"
+        ]
+      }
+    ]
   },
   "ultros-obnoxious-octopus": {
     "name": "Ultros, Obnoxious Octopus",
@@ -12134,7 +12748,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/39/venat-heart-of-hydaelyn-hydaelyn-the-mothercrystal?utm_source=api",
     "scryfallId": "2625c00d-0a51-4481-bf36-cf13a2546242",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Venat, Heart of Hydaelyn",
+        "typeLine": "Legendary Creature — Elder Wizard",
+        "oracleText": "Whenever you cast a legendary spell, draw a card. This ability triggers only once each turn.\nHero's Sundering — {7}, {T}: Exile target nonland permanent. Transform Venat. Activate only as a sorcery.",
+        "manaCost": "{1}{W}{W}",
+        "power": "3",
+        "toughness": "3",
+        "colors": [
+          "W"
+        ]
+      },
+      {
+        "name": "Hydaelyn, the Mothercrystal",
+        "typeLine": "Legendary Creature — God",
+        "oracleText": "Indestructible\nBlessing of Light — At the beginning of combat on your turn, put a +1/+1 counter on another target creature you control. Until your next turn, it gains indestructible. If that creature is legendary, draw a card.",
+        "power": "4",
+        "toughness": "4",
+        "colors": [
+          "W"
+        ]
+      }
+    ]
   },
   "venser-shaper-savant": {
     "name": "Venser, Shaper Savant",
@@ -12185,7 +12822,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/125/vincent-valentine-galian-beast?utm_source=api",
     "scryfallId": "028ef608-acfe-4e9d-90db-eca4411ba78a",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Vincent Valentine",
+        "typeLine": "Legendary Creature — Assassin",
+        "oracleText": "Whenever a creature an opponent controls dies, put a number of +1/+1 counters on Vincent Valentine equal to that creature's power.\nWhenever Vincent Valentine attacks, you may transform it.",
+        "manaCost": "{2}{B}{B}",
+        "power": "2",
+        "toughness": "2",
+        "colors": [
+          "B"
+        ]
+      },
+      {
+        "name": "Galian Beast",
+        "typeLine": "Legendary Creature — Werewolf Beast",
+        "oracleText": "Trample, lifelink\nWhen Galian Beast dies, return it to the battlefield tapped (front face up).",
+        "power": "3",
+        "toughness": "2",
+        "colors": [
+          "B"
+        ]
+      }
+    ]
   },
   "vincent-vengeful-atoner": {
     "name": "Vincent, Vengeful Atoner",
@@ -12783,6 +13443,19 @@
         "name": "Hero",
         "scryfallId": "17fa0c1f-6737-487c-9101-0bec2e586795"
       }
+    ],
+    "faces": [
+      {
+        "name": "Zanarkand, Ancient Metropolis",
+        "typeLine": "Land — Town",
+        "oracleText": "This land enters tapped.\n{T}: Add {G}."
+      },
+      {
+        "name": "Lasting Fayth",
+        "typeLine": "Sorcery — Adventure",
+        "oracleText": "Create a 1/1 colorless Hero creature token. Put a +1/+1 counter on it for each land you control. (Then exile this card. You may play the land later from exile.)",
+        "manaCost": "{4}{G}{G}"
+      }
     ]
   },
   "zell-dincht": {
@@ -12817,7 +13490,30 @@
     },
     "scryfallUri": "https://scryfall.com/card/fin/127/zenos-yae-galvus-shinryu-transcendent-rival?utm_source=api",
     "scryfallId": "b65ffce4-bb58-418a-9bad-81533a5f2ba2",
-    "relatedTokens": []
+    "relatedTokens": [],
+    "faces": [
+      {
+        "name": "Zenos yae Galvus",
+        "typeLine": "Legendary Creature — Human Noble Warrior",
+        "oracleText": "My First Friend — When Zenos yae Galvus enters, choose a creature an opponent controls. Until end of turn, creatures other than Zenos yae Galvus and the chosen creature get -2/-2.\nWhen the chosen creature leaves the battlefield, transform Zenos yae Galvus.",
+        "manaCost": "{3}{B}{B}",
+        "power": "4",
+        "toughness": "4",
+        "colors": [
+          "B"
+        ]
+      },
+      {
+        "name": "Shinryu, Transcendent Rival",
+        "typeLine": "Legendary Creature — Dragon",
+        "oracleText": "Flying\nAs this creature transforms into Shinryu, choose an opponent.\nBurning Chains — When the chosen player loses the game, you win the game.",
+        "power": "8",
+        "toughness": "8",
+        "colors": [
+          "B"
+        ]
+      }
+    ]
   },
   "zidane-tantalus-thief": {
     "name": "Zidane, Tantalus Thief",
@@ -12879,22 +13575,5 @@
         "scryfallId": "4cecd5c6-d6c8-4cd5-97a3-cddaf051af15"
       }
     ]
-  },
-  "chocobo-bird-token": {
-    "name": "Bird",
-    "typeLine": "Token Creature — Bird",
-    "oracleText": "Whenever a land you control enters, this token gets +1/+0 until end of turn.",
-    "set": "tfin",
-    "number": "17",
-    "artist": "Constantin Marin",
-    "image": {
-      "small": "https://cards.scryfall.io/small/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
-      "normal": "https://cards.scryfall.io/normal/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
-      "large": "https://cards.scryfall.io/large/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
-      "artCrop": "https://cards.scryfall.io/art_crop/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133"
-    },
-    "scryfallUri": "https://scryfall.com/card/tfin/17/bird?utm_source=api",
-    "scryfallId": "8632216a-33c3-4d16-bf25-42e41af53986",
-    "relatedTokens": []
   }
 }

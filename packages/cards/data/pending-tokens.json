@@ -1,0 +1,249 @@
+{
+  "4853f6f5-476d-4109-a1c6-f98f4d332db3": {
+    "name": "Food",
+    "typeLine": "Token Artifact — Food",
+    "oracleText": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+    "set": "tfin",
+    "number": "22",
+    "artist": "David Astruga",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130",
+      "normal": "https://cards.scryfall.io/normal/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130",
+      "large": "https://cards.scryfall.io/large/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/22/food?utm_source=api",
+    "scryfallId": "4853f6f5-476d-4109-a1c6-f98f4d332db3",
+    "relatedTokens": [
+      {
+        "name": "Food",
+        "scryfallId": "4853f6f5-476d-4109-a1c6-f98f4d332db3"
+      },
+      {
+        "name": "Boar",
+        "scryfallId": "365b2234-c29d-42db-a8e0-80685a4b6434"
+      }
+    ],
+    "colors": []
+  },
+  "ddcf50c2-24f5-46b4-bfe9-c636bb51bae5": {
+    "name": "Horror",
+    "typeLine": "Token Creature — Horror",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "13",
+    "artist": "Lordigan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133",
+      "normal": "https://cards.scryfall.io/normal/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133",
+      "large": "https://cards.scryfall.io/large/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/13/horror?utm_source=api",
+    "scryfallId": "ddcf50c2-24f5-46b4-bfe9-c636bb51bae5",
+    "relatedTokens": [
+      {
+        "name": "Horror",
+        "scryfallId": "ddcf50c2-24f5-46b4-bfe9-c636bb51bae5"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "B"
+    ]
+  },
+  "e3c84944-23b8-40d7-9b25-c746b08b4dc4": {
+    "name": "Frog",
+    "typeLine": "Token Creature — Frog",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "18",
+    "artist": "Daniel Correia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132",
+      "normal": "https://cards.scryfall.io/normal/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132",
+      "large": "https://cards.scryfall.io/large/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/18/frog?utm_source=api",
+    "scryfallId": "e3c84944-23b8-40d7-9b25-c746b08b4dc4",
+    "relatedTokens": [
+      {
+        "name": "Frog",
+        "scryfallId": "e3c84944-23b8-40d7-9b25-c746b08b4dc4"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "G"
+    ]
+  },
+  "54347961-0a41-4f62-b47e-2afa0ca07b21": {
+    "name": "Angelo",
+    "typeLine": "Token Legendary Creature — Dog",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "19",
+    "artist": "Yumi Yaoshida",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131",
+      "normal": "https://cards.scryfall.io/normal/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131",
+      "large": "https://cards.scryfall.io/large/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/19/angelo?utm_source=api",
+    "scryfallId": "54347961-0a41-4f62-b47e-2afa0ca07b21",
+    "relatedTokens": [
+      {
+        "name": "Angelo",
+        "scryfallId": "54347961-0a41-4f62-b47e-2afa0ca07b21"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "G",
+      "W"
+    ]
+  },
+  "19faca08-0eef-4da4-ab6f-c3aed63ac77b": {
+    "name": "Darkstar",
+    "typeLine": "Token Legendary Creature — Dog",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "20",
+    "artist": "Ben Wootten",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131",
+      "normal": "https://cards.scryfall.io/normal/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131",
+      "large": "https://cards.scryfall.io/large/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/20/darkstar?utm_source=api",
+    "scryfallId": "19faca08-0eef-4da4-ab6f-c3aed63ac77b",
+    "relatedTokens": [
+      {
+        "name": "Darkstar",
+        "scryfallId": "19faca08-0eef-4da4-ab6f-c3aed63ac77b"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "B",
+      "W"
+    ]
+  },
+  "fe592a5c-5e6e-40ed-8818-f4651bcf2fe8": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "This token is all colors.",
+    "set": "tfin",
+    "number": "21",
+    "artist": "Anna Podedworna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130",
+      "normal": "https://cards.scryfall.io/normal/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130",
+      "large": "https://cards.scryfall.io/large/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/21/elemental?utm_source=api",
+    "scryfallId": "fe592a5c-5e6e-40ed-8818-f4651bcf2fe8",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "fe592a5c-5e6e-40ed-8818-f4651bcf2fe8"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "B",
+      "G",
+      "R",
+      "U",
+      "W"
+    ]
+  },
+  "5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3": {
+    "name": "Human",
+    "typeLine": "Token Creature — Human",
+    "oracleText": "",
+    "set": "ttdc",
+    "number": "5",
+    "artist": "Ben Maier",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807",
+      "normal": "https://cards.scryfall.io/normal/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807",
+      "large": "https://cards.scryfall.io/large/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807"
+    },
+    "scryfallUri": "https://scryfall.com/card/ttdc/5/human?utm_source=api",
+    "scryfallId": "5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3",
+    "relatedTokens": [
+      {
+        "name": "Human",
+        "scryfallId": "5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "3877d2d1-61f2-4295-b0fc-827965eaaefc": {
+    "name": "Construct",
+    "typeLine": "Token Artifact Creature — Construct",
+    "oracleText": "This creature gets +1/+1 for each artifact you control.",
+    "set": "tbig",
+    "number": "3",
+    "artist": "Matteo Bassini",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690",
+      "normal": "https://cards.scryfall.io/normal/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690",
+      "large": "https://cards.scryfall.io/large/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690"
+    },
+    "scryfallUri": "https://scryfall.com/card/tbig/3/construct?utm_source=api",
+    "scryfallId": "3877d2d1-61f2-4295-b0fc-827965eaaefc",
+    "relatedTokens": [
+      {
+        "name": "Construct",
+        "scryfallId": "3877d2d1-61f2-4295-b0fc-827965eaaefc"
+      }
+    ],
+    "power": "0",
+    "toughness": "0",
+    "colors": []
+  },
+  "2dde64e7-dff3-4495-9649-d4b1e91f1cf3": {
+    "name": "Warrior",
+    "typeLine": "Token Creature — Warrior",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "5",
+    "artist": "Ryan Barger",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362",
+      "normal": "https://cards.scryfall.io/normal/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362",
+      "large": "https://cards.scryfall.io/large/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/5/warrior?utm_source=api",
+    "scryfallId": "2dde64e7-dff3-4495-9649-d4b1e91f1cf3",
+    "relatedTokens": [
+      {
+        "name": "Warrior",
+        "scryfallId": "2dde64e7-dff3-4495-9649-d4b1e91f1cf3"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  }
+}
