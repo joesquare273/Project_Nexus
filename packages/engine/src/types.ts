@@ -596,6 +596,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
+  restStayOnTop?: boolean;
   /** ModifyPT: also add (n - 1) times the creature's current power and toughness ("double" is 2, "triple" is 3: Tifa's Limit Break). */
   multiplyPT?: number;
   /** CopyCreature: name exception, duration, retained resolving trigger, and optional buffs to both objects. */
@@ -785,6 +787,8 @@ export const TRIGGER_EVENTS = [
   'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
   'CombatDamage',
+  /** At end of combat (`turn` as for BeginCombat). */
+  'EndCombat',
   /** A permanent is dealt damage, combat or not (`what`; default this permanent: "when enchanted creature is dealt damage" is `equippedBySource`). */
   'DealtDamage',
   'BeginCombat',
@@ -951,6 +955,8 @@ export interface TriggerSpec {
   ifSourceGotCountersThisTurn?: boolean;
   /** Intervening "if": "if a player lost N or more life this turn". */
   ifPlayerLostLifeThisTurn?: number;
+  /** Intervening "if": "if a player was dealt N or more combat damage this turn" (Sidequest: Play Blitzball). */
+  ifPlayerDealtCombatDamageThisTurn?: number;
   /** Intervening "if": the player who controls the entering permanent controls more lands than you. */
   ifSubjectControllerHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
@@ -1586,6 +1592,8 @@ export interface PlayerState {
   landsPlayedThisTurn: number;
   eliminated: boolean;
   drewFromEmptyLibrary: boolean;
+  /** Combat damage dealt to this player this turn. Reset as each turn begins. */
+  combatDamageThisTurn?: number;
   /** Life lost this turn ("if a player lost 4 or more life this turn"). Reset as each turn begins. */
   lifeLostThisTurn?: number;
   /** The next creature spell this player casts on `turn` enters with `amount` additional +1/+1 counters. */
@@ -1835,6 +1843,8 @@ export interface CardChoice {
   /** lookTop: where chosen cards go; every card looked at, the rest going on the bottom in a random order; then attach one to the source. */
   lookTo?: 'hand' | 'battlefield';
   attachOneToSource?: boolean;
+  /** lookTop: the cards not chosen stay on top of the library. */
+  restOnTop?: boolean;
   /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */
   restToGraveyard?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */

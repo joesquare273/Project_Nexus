@@ -218,6 +218,7 @@ export function startNextTurn(ctx: Ctx): void {
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     p.lifeLostThisTurn = 0;
+    delete p.combatDamageThisTurn;
     p.lifeGainedThisTurn = 0;
     p.noncreatureSpellsThisTurn = 0;
     p.cardsDrawnThisTurn = 0;

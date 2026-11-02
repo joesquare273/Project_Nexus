@@ -472,6 +472,7 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   });
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
+    if (combat) player(s, target.player).combatDamageThisTurn = (player(s, target.player).combatDamageThisTurn ?? 0) + amount;
     if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {
       source: sourceId, sourceObject: source.zoneChanges ?? 0, player: target.player,
       dragon: characteristics(s, source).subtypes.includes('Dragon'),

@@ -389,6 +389,7 @@ function triggerCondition(t: TriggerSpec): string {
   if (t.when === 'LifeGained') return 'Whenever you gain life';
   if (t.when === 'AbilityTargetsCreature') return 'Whenever one or more creatures you control become the target of an activated ability';
   if (t.when === 'BeginCombat') return t.turn === 'Each' ? 'At the beginning of each combat' : 'At the beginning of combat on your turn';
+  if (t.when === 'EndCombat') return t.turn === 'Each' ? 'At end of each combat' : 'At end of combat on your turn';
   if (t.when === 'Upkeep') return t.turn === 'Each' ? "At the beginning of each player's upkeep" : 'At the beginning of your upkeep';
   if (t.when === 'EndStep') {
     return t.turn === 'Each'
@@ -409,6 +410,7 @@ function triggerCondition(t: TriggerSpec): string {
     CombatDamageToPlayer: 'deals combat damage to a player',
     CombatDamage: 'deals combat damage',
     DealtDamage: 'is dealt damage',
+    EndCombat: '',
     TokensCreated: 'you create tokens',
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',

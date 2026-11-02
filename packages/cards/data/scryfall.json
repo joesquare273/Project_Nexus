@@ -4006,6 +4006,23 @@
     "scryfallId": "7b280a73-9246-4da4-8fc1-a5683edd8aab",
     "relatedTokens": []
   },
+  "food-token": {
+    "name": "Food",
+    "typeLine": "Token Artifact — Food",
+    "oracleText": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+    "set": "tfin",
+    "number": "22",
+    "artist": "David Astruga",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130",
+      "normal": "https://cards.scryfall.io/normal/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130",
+      "large": "https://cards.scryfall.io/large/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/8/4853f6f5-476d-4109-a1c6-f98f4d332db3.jpg?1783906130"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/22/food?utm_source=api",
+    "scryfallId": "4853f6f5-476d-4109-a1c6-f98f4d332db3",
+    "relatedTokens": []
+  },
   "foreboding-ruins": {
     "name": "Foreboding Ruins",
     "typeLine": "Land",

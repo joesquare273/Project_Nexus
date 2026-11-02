@@ -5,6 +5,21 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### New accounts start with 5,000 Aether Shards
+
+- Welcome grant 4,000 plus the 1,000 welcome bonus (`economy.ts`), for
+  new accounts only (user's choice); existing accounts keep their balance.
+  The amount is passed to the database's `ensure_profile`, so no migration.
+
+### Set cards, group 22: the last two Sidequests
+
+- Sidequest: Catch a Fish // Cooking Campsite (with the Food token, tfin
+  22) and Sidequest: Play Blitzball // World Champion, Celestial Weapon
+  (183 of 320). Engine: LookAtTopPutMatching `restStayOnTop`, an
+  `EndCombat` trigger, and combat damage dealt to each player this turn
+  (`combatDamageThisTurn`, public: copied in redaction). Land back faces
+  keep the front's mana value (rule 712.8e), so the validator allows it.
+
 ### Set cards, group 21: Auras that keep a permanent tapped
 
 - Sleep Magic and Stuck in Summoner's Sanctum (181 of 320). Engine:

@@ -2156,7 +2156,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const top = topOfLibrary(s, item.controller, amount);
       if (top.length === 0) return;
       const matching = top.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max: effect.anyNumber ? matching.length : Math.min(1, matching.length), looked: top, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}) }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max: effect.anyNumber ? matching.length : Math.min(1, matching.length), looked: top, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}) }];
       return;
     }
     case 'DestroyAttachedEquipment': {
@@ -2956,8 +2956,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         if (entersTapped(s, c)) c.tapped = true;
       }
     }
-    // The rest go on the bottom of the library in a random order.
-    const rest = (pending.looked ?? pending.cards).filter((id) => !cards.includes(id) && library.includes(id));
+    // The rest go on the bottom of the library in a random order (or stay on top).
+    const rest = pending.restOnTop ? [] : (pending.looked ?? pending.cards).filter((id) => !cards.includes(id) && library.includes(id));
     for (const id of rest) library.splice(library.indexOf(id), 1);
     shuffleInPlace(s, rest);
     library.push(...rest);

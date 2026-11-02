@@ -3182,3 +3182,76 @@ describe('S4 group 21: Auras that keep a permanent tapped', () => {
     expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === ring)).toBe(false);
   });
 });
+
+describe('S4 group 22: the last two Sidequests', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, s.pending.max) }), opts).state;
+    }
+    return s;
+  };
+  /** To P1's next upkeep, with its triggers resolved. */
+  const toP1Upkeep = (s: GameState) => {
+    for (let guard = 0; guard < 6; guard++) {
+      s = settleAll(goTo(settleAll(s), 'end'));
+      s = goTo(s, 'upkeep');
+      if (s.activePlayer === 'P1') return settleAll(s);
+    }
+    throw new Error("never reached P1's upkeep");
+  };
+  const nameOf = (s: GameState, id: string) => currentDefinition(s, s.cards[id]!).name;
+
+  it('Sidequest: Catch a Fish takes an artifact or creature off the top at your upkeep, makes a Food and becomes Cooking Campsite, a land that taps for {W}', () => {
+    let s = newGame();
+    const quest = put(s, 'P1', 'sidequest-catch-a-fish-cooking-campsite', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state;
+    const fish = put(s, 'P1', 'coeurl', 'library');
+    s = toP1Upkeep(s);
+    expect(s.cards[fish]!.zone).toBe('hand');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'food-token')).toBe(true);
+    expect(nameOf(s, quest)).toBe('Cooking Campsite');
+    expect(currentDefinition(s, s.cards[quest]!).types).toEqual(['land']);
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === quest && a.mana === 'W')).toBe(true);
+  }, 60_000);
+
+  it('Catch a Fish: a land on top stays there, and nothing transforms', () => {
+    let s = newGame();
+    const quest = put(s, 'P1', 'sidequest-catch-a-fish-cooking-campsite', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state;
+    const land = put(s, 'P1', 'forest', 'library');
+    s = toP1Upkeep(s);
+    expect(s.players.P1!.library[0]).toBe(land);
+    expect(s.cards[quest]!.transformed ?? false).toBe(false);
+  }, 60_000);
+
+  it('Sidequest: Play Blitzball gives +2/+0 each combat; after 6 combat damage to a player it becomes World Champion, attached to your creature (+2/+0 and double strike)', () => {
+    let s = newGame();
+    const quest = put(s, 'P1', 'sidequest-play-blitzball-world-champion-celestial-weapon', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state;
+    const titan = put(s, 'P1', 'summon-titan', 'battlefield', { summoningSick: false } as never);
+    s = fight(s, [{ attacker: titan, defender: 'P2' }]).state;
+    expect(s.players.P2!.combatDamageThisTurn).toBeGreaterThanOrEqual(6);
+    s = settleAll(goTo(s, 'main2'));
+    expect(nameOf(s, quest)).toBe('World Champion, Celestial Weapon');
+    const host = s.cards[quest]!.attachedTo;
+    expect(host).toBeDefined();
+    expect(hasKeyword(s, s.cards[host!]!, 'DoubleStrike')).toBe(true);
+  }, 60_000);
+
+  it('Play Blitzball: less than 6 combat damage, no transform', () => {
+    let s = newGame();
+    const quest = put(s, 'P1', 'sidequest-play-blitzball-world-champion-celestial-weapon', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state;
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { summoningSick: false } as never);
+    s = fight(s, [{ attacker: cat, defender: 'P2' }]).state;
+    expect(s.players.P2!.combatDamageThisTurn ?? 0).toBeLessThan(6);
+    s = settleAll(goTo(s, 'main2'));
+    expect(s.cards[quest]!.transformed ?? false).toBe(false);
+  }, 60_000);
+});
