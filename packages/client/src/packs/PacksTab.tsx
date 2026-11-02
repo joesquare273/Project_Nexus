@@ -49,13 +49,19 @@ interface Opened {
 
 type View = { kind: 'shop' } | { kind: 'open'; opened: Opened[]; index: number } | { kind: 'summary'; opened: Opened[] } | { kind: 'collection' } | { kind: 'decks' };
 
-export function PacksTab() {
+export type PacksSection = 'packs' | 'collection' | 'decks';
+
+const viewFor = (section: PacksSection): View => (section === 'collection' ? { kind: 'collection' } : section === 'decks' ? { kind: 'decks' } : { kind: 'shop' });
+
+/** Opening packs, the collection, or decks: the menu's Shop, Collection and Decks pages share the loaded card data. */
+export function PacksTab({ section = 'packs', onSection }: { section?: PacksSection; onSection?: (section: PacksSection) => void }) {
   const [mod, setMod] = useState<Boosters | null>(null);
   const [failed, setFailed] = useState(false);
   const [collection, setCollection] = useState<Collection | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<View>({ kind: 'shop' });
+  const [view, setView] = useState<View>(viewFor(section));
+  useEffect(() => setView(viewFor(section)), [section]);
   const [odds, setOdds] = useState<PackKind | null>(null);
   const [preview, setPreview] = useState<BoosterCard | null>(null);
   const [muted, setMuted] = useState(!soundOn());
@@ -101,28 +107,21 @@ export function PacksTab() {
 
   return (
     <div className="packs">
-      <div className="packs-bar">
-        <button className={view.kind === 'shop' || view.kind === 'open' || view.kind === 'summary' ? 'chosen' : ''} onClick={() => setView({ kind: 'shop' })}>
-          Open packs
-        </button>
-        <button className={view.kind === 'collection' ? 'chosen' : ''} onClick={() => setView({ kind: 'collection' })}>
-          Collection
-        </button>
-        <button className={view.kind === 'decks' ? 'chosen' : ''} onClick={() => setView({ kind: 'decks' })}>
-          Decks
-        </button>
-        <button
-          className="packs-mute"
-          aria-pressed={!muted}
-          title={muted ? 'Sound off' : 'Sound on'}
-          onClick={() => {
-            setSoundOn(muted);
-            setMuted(!muted);
-          }}
-        >
-          {muted ? 'Sound off' : 'Sound on'}
-        </button>
-      </div>
+      {section === 'packs' && (
+        <div className="packs-bar">
+          <button
+            className="packs-mute ghost"
+            aria-pressed={!muted}
+            title={muted ? 'Sound off' : 'Sound on'}
+            onClick={() => {
+              setSoundOn(muted);
+              setMuted(!muted);
+            }}
+          >
+            {muted ? '🔇 Sound off' : '🔊 Sound on'}
+          </button>
+        </div>
+      )}
 
       {problem && view.kind === 'shop' && <p className="account-error">{problem}</p>}
       {view.kind === 'shop' && <Shop mod={mod} busy={busy} onOpen={(k, n) => void open(k, n)} onOdds={setOdds} />}
@@ -150,7 +149,7 @@ export function PacksTab() {
           opened={view.opened}
           onPreview={setPreview}
           onAgain={() => void open(view.opened[0]!.pack.kind)}
-          onCollection={() => setView({ kind: 'collection' })}
+          onCollection={() => (onSection ? onSection('collection') : setView({ kind: 'collection' }))}
           onShop={() => setView({ kind: 'shop' })}
         />
       )}

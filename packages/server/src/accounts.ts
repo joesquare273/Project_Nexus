@@ -38,7 +38,23 @@ export interface AccountService {
   saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null>;
   /** True if the player had that deck. */
   deleteDeck(userId: string, id: string): Promise<boolean>;
+  /** Which first-time help the player has finished. */
+  onboarding(userId: string): Promise<Onboarding>;
+  /** Records a finished step; returns the new state. */
+  finishOnboarding(userId: string, step: OnboardingStep): Promise<Onboarding>;
 }
+
+/** Only the known steps, as booleans (a stored value is never trusted as is). */
+function cleanOnboarding(raw: unknown): Onboarding {
+  const out: Onboarding = {};
+  if (raw && typeof raw === 'object') for (const step of ONBOARDING_STEPS) if ((raw as Record<string, unknown>)[step] === true) out[step] = true;
+  return out;
+}
+
+/** First-time help the player has finished: the menu tour and the "Learn to play" lesson. */
+export const ONBOARDING_STEPS = ['tour', 'lesson'] as const;
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+export type Onboarding = Partial<Record<OnboardingStep, boolean>>;
 
 export interface CardGrant {
   kind: 'pack_open' | 'draft' | 'starter_precon' | 'store_purchase' | 'admin_adjustment';
@@ -133,6 +149,19 @@ export class SupabaseAccounts implements AccountService {
     if (error) throw new Error(`Could not delete the deck: ${error.message}`);
     return data.length > 0;
   }
+
+  async onboarding(userId: string): Promise<Onboarding> {
+    const { data, error } = await this.db.from('profiles').select('onboarding').eq('id', userId).maybeSingle<{ onboarding: unknown }>();
+    if (error) throw new Error(`Could not load the account: ${error.message}`);
+    return cleanOnboarding(data?.onboarding);
+  }
+
+  async finishOnboarding(userId: string, step: OnboardingStep): Promise<Onboarding> {
+    const next = { ...(await this.onboarding(userId)), [step]: true };
+    const { error } = await this.db.from('profiles').update({ onboarding: next }).eq('id', userId);
+    if (error) throw new Error(`Could not save the account: ${error.message}`);
+    return next;
+  }
 }
 
 /** Accounts from the environment, or null when this server has none set up (guest play still works). */
@@ -154,6 +183,7 @@ export class MemoryAccounts implements AccountService {
   readonly owned = new Map<string, OwnedCard[]>();
   readonly grants = new Set<string>();
   readonly savedDecks = new Map<string, SavedDeck[]>();
+  readonly onboarded = new Map<string, Onboarding>();
 
   async verify(token: string): Promise<AccountUser | null> {
     return this.tokens.get(token) ?? null;
@@ -213,6 +243,16 @@ export class MemoryAccounts implements AccountService {
     else if (list.length >= MAX_DECKS) return null;
     else list.unshift(saved);
     return structuredClone(saved);
+  }
+
+  async onboarding(userId: string): Promise<Onboarding> {
+    return { ...(this.onboarded.get(userId) ?? {}) };
+  }
+
+  async finishOnboarding(userId: string, step: OnboardingStep): Promise<Onboarding> {
+    const next = { ...(this.onboarded.get(userId) ?? {}), [step]: true };
+    this.onboarded.set(userId, next);
+    return { ...next };
   }
 
   async deleteDeck(userId: string, id: string): Promise<boolean> {

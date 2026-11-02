@@ -395,6 +395,15 @@ cards than before. Tests that need a particular random outcome set
   it put onto the battlefield to itself (a Samurai), not to another Samurai
   you control. Isshin is the set's only other Samurai.
 
+## 2026-11-03: Menu structure and saved onboarding
+
+- The menu is five pages (Home, Play, Collection, Decks, Shop) under a top
+  bar, so a new player sees the lesson first and never has to find their
+  collection or decks inside the Packs page.
+- First-time help (tour, lesson) is account state, stored by the server in
+  `profiles.onboarding` (jsonb of known step names only); browsers never
+  write it directly.
+
 ## 2026-11-02: Sacrifice costs; Aerith Rescue Mission
 
 - Spell sacrifice costs are paid while casting, with the other costs (rule

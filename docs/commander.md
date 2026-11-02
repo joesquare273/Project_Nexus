@@ -209,7 +209,7 @@ needing several groups' pieces waits for the last of them.
 
 - Players play Commander only with decks they own: the Play tab lists the
   player's saved Commander decks (the free starter precon, precons bought in
-  the Store, decks built in Packs → Decks); there is no precon picker. The
+  the Store, decks built on the Decks page); there is no precon picker. The
   AI opponents play the four precons.
 - A saved deck becomes a game deck with `gameDeck` (`cards/src/decks.ts`):
   each card's definition, printing and finish, the chosen basic land art,

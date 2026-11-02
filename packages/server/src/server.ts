@@ -8,7 +8,7 @@ import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { Lobby, type LobbyOptions } from './rooms.ts';
-import type { AccountService, AccountUser } from './accounts.ts';
+import { ONBOARDING_STEPS, type AccountService, type AccountUser, type OnboardingStep } from './accounts.ts';
 import { randomInt, randomUUID } from 'node:crypto';
 import { openPack, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
@@ -100,6 +100,8 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/decks, POST /api/decks (new, or changed by id), DELETE /api/decks/<id>.
  * - GET /api/starter: whether the free starter precon is still to pick, and the choices;
  *   POST /api/starter {precon}: grants it (once per account) and saves it as a deck.
+ * - GET /api/onboarding: which first-time help the player finished ({tour, lesson});
+ *   POST /api/onboarding {step}: records one as finished.
  * - GET /api/store: the Store's sets and items with prices;
  *   POST /api/store/buy {key}: buys an item (a card or a bundle), paid and added at once.
  * - POST /api/packs/open {kind, count}: buys 1 or 10 boosters (10 come with a
@@ -134,6 +136,16 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
       if (!result.granted) return json(res, 409, { error: 'You already have your free precon.' });
       return json(res, 200, { deck: result.deck });
     }
+    if (path === '/api/onboarding' && method === 'GET') {
+      await accounts.ensure(user);
+      return json(res, 200, await accounts.onboarding(user.id));
+    }
+    if (path === '/api/onboarding' && method === 'POST') {
+      const step = (await readJson(req) as { step?: unknown } | undefined)?.step;
+      if (!ONBOARDING_STEPS.includes(step as OnboardingStep)) return json(res, 400, { error: 'Unknown step.' });
+      await accounts.ensure(user);
+      return json(res, 200, await accounts.finishOnboarding(user.id, step as OnboardingStep));
+    }
     if (path === '/api/store' && method === 'GET') return json(res, 200, { sets: storeSets() });
     if (path === '/api/store/buy' && method === 'POST') {
       const key = (await readJson(req) as { key?: unknown } | undefined)?.key;
@@ -159,7 +171,7 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
-    if (['/api/account', '/api/collection', '/api/decks', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    if (['/api/account', '/api/collection', '/api/decks', '/api/onboarding', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });

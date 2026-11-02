@@ -71,7 +71,7 @@ export function StoreTab() {
       const cards = { ...collection.cards };
       for (const c of item.cards) cards[c.id] = { ...cards[c.id], [c.finish]: (cards[c.id]?.[c.finish] ?? 0) + (c.count ?? 1) };
       setCollection({ cards });
-      setBought(item.deck ? `${item.name}: its 100 cards and a saved Commander deck (Packs → Decks)` : item.name);
+      setBought(item.deck ? `${item.name}: its 100 cards and a saved Commander deck (see Decks)` : item.name);
     } catch (e) {
       setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server.');
     } finally {

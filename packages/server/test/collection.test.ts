@@ -314,3 +314,18 @@ describe('precons in the Store', () => {
     expect(decks[0]).toMatchObject({ format: 'commander', commander: precons[0]!.deck!.commander });
   });
 });
+
+describe('first-time help (onboarding)', () => {
+  it('remembers the tour and the lesson on the account, per player', async () => {
+    const { call } = await withAccounts();
+    expect(await (await call('token-alice', '/api/onboarding')).json()).toEqual({});
+    const r = await call('token-alice', '/api/onboarding', 'POST', { step: 'tour' });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ tour: true });
+    await call('token-alice', '/api/onboarding', 'POST', { step: 'lesson' });
+    expect(await (await call('token-alice', '/api/onboarding')).json()).toEqual({ tour: true, lesson: true });
+    expect(await (await call('token-bob', '/api/onboarding')).json()).toEqual({});
+    expect((await call('token-alice', '/api/onboarding', 'POST', { step: 'everything' })).status).toBe(400);
+    expect((await call('nobody', '/api/onboarding')).status).toBe(401);
+  });
+});

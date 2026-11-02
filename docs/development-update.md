@@ -3,7 +3,35 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
-## 2026-11-02
+## 2026-11-03
+
+### Menu, landing page, saved tutorial progress, calmer board
+
+- **Navigation:** a top bar on every page: Home, Play, Collection, Decks,
+  Shop (the account's shards and a menu with "Replay the tour" and "Sign
+  out" on the right). Play holds Vs. computer, Online and Draft; Shop holds
+  Booster packs and the Store. Collection and Decks are their own pages
+  instead of views inside Packs. The page is in the address (`#/play/online`),
+  so the browser's back button works.
+- **Home:** for a player who hasn't finished the lesson, a "New to Magic?
+  Start here" panel (Learn to play, Practice game with tips); afterwards a
+  small refresher line. Tiles lead to every part of the app.
+- **Landing page:** before signing in, a proper front page (what the app
+  does, with card art) instead of a bare sign-in box.
+- **Tutorial progress on the account:** the tour and the "Learn to play"
+  lesson are saved per account (`profiles.onboarding`, migration
+  `20261103120000_onboarding.sql`; `GET`/`POST /api/onboarding`), so they
+  no longer come back in a private window or on another computer. A tour
+  finished in this browser before is carried over once. If the server
+  can't be reached, the tour doesn't start on its own.
+- **Board:** each player's seat (avatar, hand, command zone) is a narrow
+  column beside their battlefield instead of a row above it; zones lost
+  their boxes; battlefield cards are bigger (132px, lands 76px; hand cards
+  unchanged); highlights are thin rings that don't pulse; a targetable
+  player gets a ring and a "Target" tag instead of a glowing box; the turn
+  steps, pause button and life totals share one strip; the "targeted
+  actions" bar only appears when there is one. Text in the strip, prompt and
+  log is smaller.
 
 ### S4 group 15: affinity and a d20, 5 set cards
 

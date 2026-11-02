@@ -40,7 +40,7 @@ export function StarterPick() {
       <div className="starter-pick" role="dialog" aria-label="Your free precon">
         <div className="starter-box">
           <h2>{done} is yours!</h2>
-          <p>Its 100 cards are in your collection, and it's saved as a Commander deck (Packs → Decks).</p>
+          <p>Its 100 cards are in your collection, and it's saved as a Commander deck (see Decks).</p>
           <button
             className="primary"
             onClick={() => {

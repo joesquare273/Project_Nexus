@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { SCRYFALL } from '@nexus/cards';
 
 const url = import.meta.env['VITE_SUPABASE_URL'] as string | undefined;
 const anonKey = import.meta.env['VITE_SUPABASE_ANON_KEY'] as string | undefined;
@@ -26,7 +27,7 @@ export function showShards(balance: number): void {
   window.dispatchEvent(new CustomEvent<number>('nexus:shards', { detail: balance }));
 }
 
-type Status = { kind: 'loading' } | { kind: 'ready'; account: Account } | { kind: 'error'; message: string };
+export type Status = { kind: 'loading' } | { kind: 'ready'; account: Account } | { kind: 'error'; message: string };
 
 /** The current sign-in: `ready` once Supabase has said whether there is one. */
 export function useSession(): { ready: boolean; session: Session | null } {
@@ -46,19 +47,36 @@ export function useSession(): { ready: boolean; session: Session | null } {
 
 const signIn = () => supabase?.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: window.location.origin } });
 
-/** The page shown until you sign in. */
+const FEATURES: { title: string; text: string; art: string }[] = [
+  { title: 'Learn as you play', text: 'A guided first game teaches the rules step by step, with tips along the way.', art: 'cloud-planets-champion' },
+  { title: 'Play the computer or friends', text: 'The Final Fantasy Starter Kits and Commander precons, against the AI or online.', art: 'sephiroth-planets-heir' },
+  { title: 'Open packs and collect', text: 'Real Final Fantasy Play and Collector Boosters, with every card kept on your account.', art: 'tifa-lockhart' },
+  { title: 'Draft and build decks', text: 'Booster drafts for 2 to 4 players, and a deck builder for your own collection.', art: 'terra-herald-of-hope' },
+];
+
+/** The landing page, shown until you sign in. */
 export function SignInPage() {
   return (
-    <div className="menu sign-in-page">
-      <h1>Project Nexus</h1>
-      <p className="tagline">Final Fantasy Magic with your friends</p>
-      <div className="sign-in-card">
-        <h2>Sign in</h2>
-        <p>Sign in with your Discord account to play, draft, open packs and keep your Aether Shards.</p>
+    <div className="landing">
+      <header className="landing-hero">
+        <div className="landing-mark" aria-hidden="true">✦</div>
+        <h1>Project Nexus</h1>
+        <p className="landing-tagline">Final Fantasy Magic: The Gathering, in your browser. Learn, collect, draft and play with friends.</p>
         <button className="primary big" onClick={signIn}>
-          Sign in with Discord
+          Sign in with Discord to play
         </button>
-      </div>
+        <p className="fineprint">Free to play. Your cards, decks and Aether Shards are saved on your account.</p>
+      </header>
+      <section className="landing-features" aria-label="What you can do">
+        {FEATURES.map((f) => (
+          <article key={f.title} className="landing-feature">
+            {SCRYFALL[f.art] && <img src={SCRYFALL[f.art]!.image.artCrop} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />}
+            <h2>{f.title}</h2>
+            <p>{f.text}</p>
+          </article>
+        ))}
+      </section>
+      <p className="fineprint landing-foot">A personal, non-commercial project. Card images courtesy of Scryfall.</p>
     </div>
   );
 }
@@ -86,21 +104,10 @@ export function ShardIcon({ size = 22 }: { size?: number }) {
   return <img className="shard-icon" src="/icons/aether-shard.png" alt="" width={size} height={size} onError={() => setOk(false)} />;
 }
 
-export function AccountBar() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [checked, setChecked] = useState(false);
+/** The signed-in player's name and Aether Shards from the game server, kept up to date after purchases. */
+export function useAccount(): Status {
+  const { session } = useSession();
   const [status, setStatus] = useState<Status>({ kind: 'loading' });
-
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setChecked(true);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => data.subscription.unsubscribe();
-  }, []);
-
   const token = session?.access_token;
   useEffect(() => {
     if (!token) return;
@@ -118,7 +125,6 @@ export function AccountBar() {
       stale = true;
     };
   }, [token]);
-
   useEffect(() => {
     const update = (e: Event) => {
       const shards = (e as CustomEvent<number>).detail;
@@ -127,25 +133,48 @@ export function AccountBar() {
     window.addEventListener('nexus:shards', update);
     return () => window.removeEventListener('nexus:shards', update);
   }, []);
+  return status;
+}
 
-  if (!supabase || !checked) return null;
-
-  if (!session) return null;
-
+/** The top bar's account corner: shards, name, and a small menu (tour, sign out). */
+export function AccountChip({ status }: { status: Status }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [open]);
   return (
-    <div className="account-bar" aria-live="polite">
-      {status.kind === 'loading' && <span className="fineprint">Loading your account…</span>}
-      {status.kind === 'error' && <span className="account-error">{status.message}</span>}
+    <div className="account-chip" aria-live="polite">
+      {status.kind === 'loading' && <span className="fineprint">Loading…</span>}
+      {status.kind === 'error' && <span className="account-error" title={status.message}>Server offline</span>}
       {status.kind === 'ready' && (
-        <>
-          <span className="account-name">{status.account.name}</span>
-          <span className="account-shards" title="Aether Shards">
-            <ShardIcon /> {status.account.shards.toLocaleString()} Aether Shards
-          </span>
-        </>
+        <span className="account-shards" title="Aether Shards">
+          <ShardIcon size={18} /> {status.account.shards.toLocaleString()}
+        </span>
       )}
-      <button onClick={() => window.dispatchEvent(new Event('nexus:tour'))}>Tour</button>
-      <button onClick={() => supabase!.auth.signOut()}>Sign out</button>
+      <button
+        className="account-menu-button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+        }}
+      >
+        {status.kind === 'ready' ? status.account.name : 'Account'} <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="account-menu" role="menu">
+          <button role="menuitem" onClick={() => window.dispatchEvent(new Event('nexus:tour'))}>
+            Replay the tour
+          </button>
+          <button role="menuitem" onClick={() => supabase!.auth.signOut()}>
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
   );
 }

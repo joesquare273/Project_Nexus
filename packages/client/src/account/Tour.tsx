@@ -1,11 +1,11 @@
 // The first sign-in tour (economy step E1c): a few steps that point at the
-// parts of the menu, one at a time. It runs once per account in this browser
-// (after the free precon pick), can be skipped, and the account bar's "Tour"
-// button replays it.
+// parts of the menu, one at a time. It runs once per account (after the free
+// precon pick), wherever the player signs in: finishing or skipping it is
+// saved on the account (/api/onboarding). The Tour button replays it.
 
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { starterSettled } from './StarterPick.tsx';
-import { supabase } from './AccountBar.tsx';
+import { finishOnboarding, loadOnboarding } from './onboarding.ts';
 
 interface Step {
   /** What to point at; null for a step in the middle of the screen. */
@@ -16,50 +16,29 @@ interface Step {
 
 const STEPS: Step[] = [
   { target: null, title: 'Welcome to Project Nexus', text: 'A quick look around. You can skip this, and replay it any time with the Tour button.' },
-  { target: '.account-bar', title: 'Your account', text: 'Your Discord name and your Aether Shards. You earn shards by playing and spend them on packs and events.' },
-  { target: '.menu-tabs button:nth-child(1)', title: 'Play', text: 'Play against the computer: the Final Fantasy Starter Kits, or a Commander game with the precons. Turn on tips for a guided lesson.' },
-  { target: '.menu-tabs button:nth-child(2)', title: 'Online', text: 'Play a friend: both of you enter the same room code.' },
-  { target: '.menu-tabs button:nth-child(3)', title: 'Draft', text: 'Open six Play Boosters, pick a card from each pack as they pass around the table, then build a 40 to 60 card deck.' },
-  { target: '.menu-tabs button:nth-child(4)', title: 'Packs', text: 'Buy and open boosters, browse your collection, and build your own decks (your free precon is there too).' },
-  { target: '.menu-tabs button:nth-child(5)', title: 'Store', text: 'Buy exclusive printings one at a time, such as the Chocobo Track foils, set by set.' },
+  { target: '[data-nav="home"]', title: 'Home', text: 'Start here: the lesson for new players, and shortcuts to everything else.' },
+  { target: '[data-nav="play"]', title: 'Play', text: 'Play the computer (Starter Kits or Commander), a friend online, or a booster draft.' },
+  { target: '[data-nav="collection"]', title: 'Collection', text: 'Every card you own, with its finishes. Your free precon is in here too.' },
+  { target: '[data-nav="decks"]', title: 'Decks', text: 'Build and edit your own decks from your collection.' },
+  { target: '[data-nav="shop"]', title: 'Shop', text: 'Open booster packs, and buy exclusive printings in the Store.' },
+  { target: '.account-chip', title: 'Your account', text: 'Your Aether Shards. You earn them by playing and spend them on packs and events.' },
 ];
 
-const KEY = 'nexus.tour.v1.';
-
-function seen(userId: string): boolean {
-  try {
-    return localStorage.getItem(KEY + userId) === 'done';
-  } catch {
-    return true;
-  }
-}
-
-function markSeen(userId: string): void {
-  try {
-    localStorage.setItem(KEY + userId, 'done');
-  } catch {
-    // Not saved; it may show again next time.
-  }
-}
-
-/** Asks the tour to start again (the account bar's Tour button). */
+/** Asks the tour to start again (the Tour button). */
 export function replayTour(): void {
   window.dispatchEvent(new Event('nexus:tour'));
 }
 
 export function Tour() {
-  const [userId, setUserId] = useState<string | null>(null);
   const [step, setStep] = useState<number | null>(null);
   const [box, setBox] = useState<DOMRect | null>(null);
 
   // Start once the precon pick is out of the way, if this account hasn't seen it.
   useEffect(() => {
     let stopped = false;
-    void supabase?.auth.getSession().then(({ data }) => {
-      const id = data.session?.user.id;
-      if (!id || stopped) return;
-      setUserId(id);
-      if (seen(id)) return;
+    // Only when the account says it hasn't been seen (not when the server can't be reached).
+    void loadOnboarding().then((state) => {
+      if (!state || state.tour || stopped) return;
       const wait = window.setInterval(() => {
         if (!starterSettled() || document.querySelector('.starter-pick')) return;
         window.clearInterval(wait);
@@ -85,7 +64,7 @@ export function Tour() {
 
   if (!current || step === null) return null;
   const finish = () => {
-    if (userId) markSeen(userId);
+    void finishOnboarding('tour');
     setStep(null);
   };
   const last = step === STEPS.length - 1;

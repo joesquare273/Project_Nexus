@@ -644,23 +644,34 @@ export function Game({
         </div>
         <div className="midline" data-pile="stack">
           <PhaseTrack view={view} session={session} onChange={refresh} />
+          <button
+            className="pause-button ghost"
+            aria-pressed={paused}
+            title={paused ? 'Resume the computer players' : 'Pause the computer players'}
+            onClick={() => {
+              pausedRef.current = !pausedRef.current;
+              setPaused(pausedRef.current);
+              window.clearTimeout(timer.current);
+              setBusy(false);
+              if (!pausedRef.current) run();
+            }}
+          >
+            {paused ? '▶ Resume' : '❚❚ Pause'}
+          </button>
+          <LifeTotals view={view} />
           <StackView view={view} onHover={setHovered} h={h} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />
           {fourPlayers && <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide game log' : 'Show game log'}</button>}
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
         </div>
-        <section className="target-notice" aria-label="Targeting activity">
-          <button aria-pressed={paused} onClick={() => {
-            pausedRef.current = !pausedRef.current; setPaused(pausedRef.current);
-            window.clearTimeout(timer.current); setBusy(false);
-            if (!pausedRef.current) run();
-          }}>{paused ? 'Resume playback' : 'Pause playback'}</button>
-          {notice ? <details>
-            <summary><span className="source-label">{notice.controller} · {notice.source}</span> → <strong>{notice.labels.join(' + ')}</strong></summary>
-            <small>Most recent targeted action · blue = source · orange = target</small>
-            {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source} → {n.labels.join(' + ')}</div>)}
-          </details> : <span>Targeted actions will appear here.</span>}
-        </section>
-        <LifeTotals view={view} />
+        {notice && (
+          <section className="target-notice" aria-label="Targeting activity">
+            <details>
+              <summary><span className="source-label">{notice.controller} · {notice.source}</span> → <strong>{notice.labels.join(' + ')}</strong></summary>
+              <small>Most recent targeted action · blue = source · orange = target</small>
+              {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source} → {n.labels.join(' + ')}</div>)}
+            </details>
+          </section>
+        )}
         <YourZone fit={fourPlayers} view={view} h={h} placement={session.placement} onPlaced={refresh} />
         <PromptBar
           session={session}
