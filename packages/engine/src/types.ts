@@ -1014,6 +1014,8 @@ export interface StaticSpec {
   zone?: 'graveyard';
   /** Only while you control a permanent with this subtype ("and you control a Mountain"). */
   ifYouControlSubtype?: string;
+  /** Only while you control at least `atLeast` permanents matching `filter` ("as long as you control two or more artifacts"; `other` excludes this one). Filters here avoid power and toughness. */
+  ifYouControlAtLeast?: { filter: ObjectFilter; atLeast: number };
   /** Authority of the Consuls: creatures your opponents control enter tapped. */
   opponentCreaturesEnterTapped?: boolean;
   /** "Enchanted creature loses all abilities" (layer 6; abilities granted by other effects still apply). */

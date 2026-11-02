@@ -202,6 +202,12 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
     const yours = battlefieldCards(s).filter((x) => x.controller === source.controller);
     if (!yours.some((x) => def(s, x).subtypes?.includes(spec.ifYouControlSubtype!))) return false;
   }
+  // "As long as you control seven or more lands" / "another artifact".
+  if (spec.ifYouControlAtLeast) {
+    const { filter, atLeast } = spec.ifYouControlAtLeast;
+    const count = battlefieldCards(s).filter((x) => x.controller === source.controller && !x.phasedOut && matchesObject(s, filter, x, { controller: source.controller, source: source.id })).length;
+    if (count < atLeast) return false;
+  }
   if (spec.affects === 'EachMatching') {
     // An ability an Equipment grants to others while attached (Dancer's Chakrams).
     if (spec.conditions?.includes('attached') && !source.attachedTo) return false;

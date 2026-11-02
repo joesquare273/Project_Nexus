@@ -3,6 +3,20 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-11-02
+
+### S4 group 6: "as long as you control N or more", 9 set cards
+
+- Engine: a static ability can apply only while you control a number of
+  matching permanents (`ifYouControlAtLeast` on a static: a filter, with
+  `other` for "another artifact", and a minimum). Phased-out permanents
+  don't count.
+- Gaelicat (two or more artifacts), Gigantoad and Scorpion Sentinel (seven
+  or more lands), Magitek Infantry (another artifact; fetches another
+  Magitek Infantry tapped), Gran Pulse Ochu, Sram, Senior Edificer,
+  Primeval Titan, Captain Lannery Storm and Ring of the Lucii, each with a
+  test in `fin-set-cards.test.ts`. 97 of 320 set cards are built.
+
 ## 2026-10-30
 
 ### Secret Lair card: Blade of Selves (myriad); every Store card is built

@@ -1519,3 +1519,112 @@ describe('Secret Lair: Blade of Selves (myriad)', () => {
     expect(currentDefinition(s, s.cards[gear]!).equip).toBe('{4}');
   });
 });
+
+describe('S4 group 6: as long as you control N or more', () => {
+  it('Gaelicat gets +2/+0 while you control two or more artifacts', () => {
+    const s = newGame();
+    const cat = put(s, 'P1', 'gaelicat');
+    put(s, 'P1', 'sol-ring');
+    expect(stats(s, cat)).toEqual([1, 3]);
+    put(s, 'P2', 'sol-ring');
+    expect(stats(s, cat)).toEqual([1, 3]);
+    put(s, 'P1', 'sol-ring');
+    expect(stats(s, cat)).toEqual([3, 3]);
+  });
+
+  it('Gigantoad gets +2/+2 and Scorpion Sentinel +3/+0 with seven or more lands', () => {
+    const s = newGame(3);
+    const toad = put(s, 'P1', 'gigantoad');
+    const scorpion = put(s, 'P1', 'scorpion-sentinel');
+    for (let i = 0; i < 6; i++) put(s, 'P1', 'forest');
+    for (let i = 0; i < 7; i++) put(s, 'P3', 'island');
+    expect([stats(s, toad), stats(s, scorpion)]).toEqual([[4, 4], [1, 4]]);
+    put(s, 'P1', 'island');
+    expect([stats(s, toad), stats(s, scorpion)]).toEqual([[6, 6], [4, 4]]);
+  });
+
+  it('Magitek Infantry gets +1/+0 with another artifact and fetches another Magitek Infantry tapped', () => {
+    let s = newGame();
+    const first = put(s, 'P1', 'magitek-infantry');
+    expect(stats(s, first)).toEqual([1, 1]);
+    const second = put(s, 'P1', 'magitek-infantry', 'library');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: first, ability: 0, targets: [] }).state;
+    expect(s.cards[second]!.zone).toBe('battlefield');
+    expect(s.cards[second]!.tapped).toBe(true);
+    expect([stats(s, first), stats(s, second)]).toEqual([[2, 1], [2, 1]]);
+  });
+
+  it('Gran Pulse Ochu gets +1/+1 for each permanent card in your graveyard for {8}', () => {
+    let s = newGame();
+    const ochu = put(s, 'P1', 'gran-pulse-ochu');
+    put(s, 'P1', 'forest', 'graveyard');
+    put(s, 'P1', 'sol-ring', 'graveyard');
+    put(s, 'P1', 'lightning-bolt', 'graveyard');
+    mana(s, 'P1', { C: 8 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ochu, ability: 0, targets: [] }).state;
+    expect(stats(s, ochu)).toEqual([3, 3]);
+    expect(hasKeyword(s, s.cards[ochu]!, 'Deathtouch')).toBe(true);
+  });
+});
+
+describe('S4 group 6: Through the Ages cards', () => {
+  it('Sram draws a card when you cast an Equipment spell, but not other spells', () => {
+    let s = newGame();
+    put(s, 'P1', 'sram-senior-edificer');
+    put(s, 'P1', 'island', 'library');
+    put(s, 'P1', 'island', 'library');
+    const gear = put(s, 'P1', 'colossus-hammer', 'hand');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { C: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gear }).state;
+    expect(s.players.P1!.hand.length).toBe(2);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P1!.hand.length).toBe(1);
+  });
+
+  it('Primeval Titan puts up to two lands onto the battlefield tapped when it enters and when it attacks', () => {
+    let s = newGame(3);
+    const titan = put(s, 'P1', 'primeval-titan', 'hand');
+    mana(s, 'P1', { G: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: titan }).state;
+    const lands = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'island');
+    expect(lands().length).toBe(2);
+    expect(lands().every((id) => s.cards[id]!.tapped)).toBe(true);
+    s.cards[titan]!.summoningSick = false;
+    s = fight(s, [{ attacker: titan, defender: 'P3' }], {}, { accept: true }).state;
+    expect(lands().length).toBe(4);
+    expect(s.players.P3!.life).toBe(14);
+  });
+
+  it('Captain Lannery Storm makes a Treasure when it attacks and gets +1/+0 when you sacrifice a Treasure', () => {
+    let s = newGame();
+    const captain = put(s, 'P1', 'captain-lannery-storm', 'battlefield', { summoningSick: true });
+    expect(hasKeyword(s, s.cards[captain]!, 'Haste')).toBe(true);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: captain, defender: 'P2' }] })).state;
+    const [treasure] = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token');
+    expect(treasure).toBeDefined();
+    // The trigger goes on the stack once the spell paid with the Treasure's mana is cast (rule 601.2i).
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: treasure!, mana: 'R' });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P1!.battlefield).not.toContain(treasure);
+    expect(stats(s, captain)).toEqual([3, 2]);
+  });
+});
+
+describe('S4 group 6: Ring of the Lucii', () => {
+  it('taps for {C}{C}, and {2}, {T}, pay 1 life taps target nonland permanent', () => {
+    let s = newGame();
+    const ring = put(s, 'P1', 'ring-of-the-lucii');
+    const target = put(s, 'P2', 'coeurl');
+    put(s, 'P2', 'island');
+    mana(s, 'P1', { C: 2 });
+    const legal = getLegalActions(s).filter((a) => a.type === 'ActivateAbility' && a.card === ring);
+    expect(legal.every((a) => a.type !== 'ActivateAbility' || (a.targets ?? []).every((t) => t.kind !== 'card' || s.cards[t.card]!.defId !== 'island'))).toBe(true);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ring, ability: 0, targets: [card(target)] }).state;
+    expect(s.cards[target]!.tapped).toBe(true);
+    expect(s.players.P1!.life).toBe(19);
+  });
+});
