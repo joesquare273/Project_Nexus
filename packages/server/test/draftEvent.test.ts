@@ -25,6 +25,8 @@ import {
   expirePicks,
   selectCard,
   changeSeats,
+  placements,
+  MAX_GAMES,
   PICK_SECONDS,
   type DraftEvent,
 } from '../src/draftEvent.ts';
@@ -79,7 +81,7 @@ describe('Swiss pairings and standings', () => {
 });
 
 describe('a draft event with bots', () => {
-  it('one player and three bots: draft, deckbuilding, three Swiss rounds of best-of-3, standings', () => {
+  it('one player and three bots: draft, deckbuilding, semifinals, then the final and the match for third', () => {
     let ev = createEvent('ABC', { players: 1, bots: 3 }, host);
     ev = startDraft(ev, 7);
     expect(ev.seats.map((s) => s.bot)).toEqual([false, true, true, true]);
@@ -113,41 +115,75 @@ describe('a draft event with bots', () => {
       }
     }
     expect(ev.phase).toBe('finished');
-    expect(ev.round).toBe(3);
-    const table = eventStandings(ev);
-    expect(table[0]).toMatchObject({ player: 'S1', points: 9, wins: 3 });
-    expect(table.reduce((n, s) => n + s.points, 0)).toBe(3 * 6);
+    expect(ev.round).toBe(2);
+    expect(ev.matches.map((m) => m.stage)).toEqual(['semifinal', 'semifinal', 'final', 'third']);
+    // Winners met in the final, losers played for third.
+    const [s1, s2, final, third] = ev.matches;
+    expect([final!.a, final!.b].sort()).toEqual([s1!.winner, s2!.winner].sort());
+    expect([third!.a, third!.b].sort()).toEqual([s1, s2].map((m) => (m!.winner === m!.a ? m!.b : m!.a)).sort());
+    const places = placements(ev)!;
+    expect(places[0]).toBe('S1');
+    expect(new Set(places).size).toBe(4);
+    expect(eventStandings(ev).map((s) => s.player)).toEqual(places);
   });
 
   it('the loser of a game chooses play or draw; a bot always plays first', () => {
     const rng = makeRng(1);
-    let ev = draftAll(startDraft(createEvent('D2', { players: 1, bots: 1 }, host), 11));
+    let ev = draftAll(startDraft(createEvent('D2', { players: 1, bots: 3 }, host), 11));
     ev = setReady(submitDeck(ev, 'S1', aiDeck(pool(ev, 'S1'))), 'S1', true, NOW, rng);
     const m = currentMatch(ev, 'S1')!;
-    expect(m.b).toBe('S2');
+    const bot = m.a === 'S1' ? m.b! : m.a;
+    expect(m.stage).toBe('semifinal');
     expect(nextGame(ev, m.id)).not.toBeNull();
     // The player loses game 1: they choose, and nothing starts until they do.
-    ev = recordGame(ev, m.id, 'S2', rng);
+    ev = recordGame(ev, m.id, bot, rng);
     expect(currentMatch(ev, 'S1')!.chooser).toBe('S1');
     expect(nextGame(ev, m.id)).toBeNull();
-    expect(() => choosePlayDraw(ev, m.id, 'S2', true)).toThrow(/not your choice/);
+    expect(() => choosePlayDraw(ev, m.id, bot, true)).toThrow(/not your choice/);
     ev = choosePlayDraw(ev, m.id, 'S1', false);
-    expect(nextGame(ev, m.id)).toEqual({ first: 'S2' });
-    expect(gameSetup(ev, m.id, 5).firstPlayer).toBe('S2');
-    for (const seed of [1, 2, 3, 4]) expect(createGame({ ...gameSetup(ev, m.id, seed), mulligans: false }).state.activePlayer).toBe('S2');
+    expect(nextGame(ev, m.id)).toEqual({ first: bot });
+    expect(gameSetup(ev, m.id, 5).firstPlayer).toBe(bot);
+    for (const seed of [1, 2, 3, 4]) expect(createGame({ ...gameSetup(ev, m.id, seed), mulligans: false }).state.activePlayer).toBe(bot);
     // The player wins game 2: the bot chooses, and plays first.
     ev = recordGame(ev, m.id, 'S1', rng);
-    expect(nextGame(ev, m.id)).toEqual({ first: 'S2' });
+    expect(nextGame(ev, m.id)).toEqual({ first: bot });
     // Sideboarding between games: a legal deck from the pool only.
     expect(() => submitDeck(ev, 'S1', { cards: [], basics: { W: 10, U: 0, B: 0, R: 0, G: 0 } })).toThrow(/at least 40/);
     ev = recordGame(ev, m.id, 'S1', rng);
-    expect(ev.phase).toBe('finished');
-    expect(eventStandings(ev)[0]).toMatchObject({ player: 'S1', points: 3 });
+    // The match is over; the other semifinal is still to finish.
+    expect(currentMatch(ev, 'S1')).toMatchObject({ done: true, winner: 'S1' });
+    expect(ev.round).toBe(1);
+  });
+
+  it('every match has a winner: drawn games mean more games, then a coin flip after five', () => {
+    const rng = makeRng(8);
+    let ev = draftAll(startDraft(createEvent('W1', { players: 1, bots: 3 }, host), 4));
+    ev = setReady(submitDeck(ev, 'S1', aiDeck(pool(ev, 'S1'))), 'S1', true, NOW, rng);
+    const m = currentMatch(ev, 'S1')!;
+    const bot = m.a === 'S1' ? m.b! : m.a;
+    const play = () => {
+      const now = ev.matches.find((x) => x.id === m.id)!;
+      if (!nextGame(ev, m.id)) ev = choosePlayDraw(ev, m.id, now.chooser!, true);
+    };
+    // 1-1 with a draw after three games: a fourth game is played.
+    for (const w of ['S1', bot, null]) {
+      play();
+      ev = recordGame(ev, m.id, w, rng);
+    }
+    expect(currentMatch(ev, 'S1')!.done).toBe(false);
+    play();
+    ev = recordGame(ev, m.id, null, rng);
+    play();
+    ev = recordGame(ev, m.id, null, rng);
+    const done = currentMatch(ev, 'S1')!;
+    expect(done.games).toHaveLength(MAX_GAMES);
+    expect(done.done).toBe(true);
+    expect(['S1', bot]).toContain(done.winner);
   });
 
   it('when deckbuilding time runs out, a deck in progress is filled with basic lands to 40', () => {
     const rng = makeRng(2);
-    let ev = draftAll(startDraft(createEvent('T1', { players: 1, bots: 1 }, host), 3));
+    let ev = draftAll(startDraft(createEvent('T1', { players: 1, bots: 3 }, host), 3));
     const mine = pool(ev, 'S1').slice(0, 10).map((c) => c.uid);
     ev = submitDeck(ev, 'S1', { cards: mine, basics: { W: 0, U: 0, B: 0, R: 0, G: 0 } });
     expect(() => setReady(ev, 'S1', true, NOW, rng)).toThrow(/legal deck/);
@@ -174,16 +210,17 @@ describe('a draft event with bots', () => {
     expect(ev.round).toBe(1);
   });
 
-  it('the host sets the seats: players and bots; the draft waits for every player', () => {
-    let ev = createEvent('M1', { players: 2, bots: 1 }, host);
-    expect(() => startDraft(ev, 1)).toThrow(/Waiting for 1 more player/);
-    expect(() => createEvent('M2', { players: 0, bots: 2 }, host)).toThrow();
-    expect(() => createEvent('M3', { players: 3, bots: 2 }, host)).toThrow(/2 to 4/);
+  it('the host sets the seats: four in all, players and bots; the draft waits for every player', () => {
+    let ev = createEvent('M1', { players: 3, bots: 1 }, host);
+    expect(() => startDraft(ev, 1)).toThrow(/Waiting for 2 more players/);
+    expect(() => createEvent('M2', { players: 0, bots: 4 }, host)).toThrow();
+    expect(() => createEvent('M3', { players: 1, bots: 1 }, host)).toThrow(/4 seats/);
+    expect(() => createEvent('M4', { players: 3, bots: 2 }, host)).toThrow(/4 seats/);
     expect(joinEvent(ev, { name: 'Ann', userId: 'u-ann' })?.id).toBe('S2');
-    expect(joinEvent(ev, { name: 'Bea', userId: 'u-bea' })).toBeNull();
-    expect(() => changeSeats(ev, 1, 1)).toThrow(/already seated/);
+    expect(() => changeSeats(ev, 1, 3)).toThrow(/already seated/);
     ev = changeSeats(ev, 2, 2);
-    expect([ev.size, ev.players, ev.rounds]).toEqual([4, 2, 3]);
+    expect(joinEvent(ev, { name: 'Bea', userId: 'u-bea' })).toBeNull();
+    expect([ev.size, ev.players, ev.rounds]).toEqual([4, 2, 2]);
     ev = startDraft(ev, 2);
     expect(ev.seats.map((s) => s.bot)).toEqual([false, false, true, true]);
   });
@@ -202,7 +239,7 @@ describe('a draft event with bots', () => {
   }, 60_000);
 
   it('each pick has 30 seconds: then the selected card, or the AI’s choice, is taken for you', () => {
-    let ev = startDraft(createEvent('C1', { players: 1, bots: 1 }, host), 21, NOW);
+    let ev = startDraft(createEvent('C1', { players: 1, bots: 3 }, host), 21, NOW);
     expect(ev.pickEndsAt).toBe(NOW + PICK_SECONDS * 1000);
     const pack = ev.draft!.packs.S1!.cards;
     ev = selectCard(ev, 'S1', pack[3]!.uid);

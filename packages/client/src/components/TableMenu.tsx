@@ -10,6 +10,8 @@ import { accessToken } from '../account/AccountBar.tsx';
 import { OnlineConnection, OnlineSession } from '../game/online.ts';
 import type { SavedDeck } from '../packs/collection.ts';
 import { OwnCommanderDecks, commanderArt } from './CommanderDecks.tsx';
+import { GameLoading, LoadingScreen } from './LoadingScreen.tsx';
+import { avatarText } from './Zones.tsx';
 
 /** The table you were last at, so a reload can take you back to your seat. */
 const LAST_TABLE = 'nexus:lastTable';
@@ -40,6 +42,10 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
   const [table, setTable] = useState<TableView | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The game has arrived: checked and loaded before it opens on the board. */
+  const [loading, setLoading] = useState<OnlineSession | null>(null);
+  const tableRef = useRef<TableView | null>(null);
+  tableRef.current = table;
   const connection = useRef<OnlineConnection | null>(null);
   const started = useRef(false);
   const deckRef = useRef<SavedDeck | null>(null);
@@ -84,8 +90,9 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
           if (deckRef.current && !mine?.deck && m.table.phase === 'lobby') c.send({ type: 'tableDeck', deck: deckRef.current.id });
         }
       } else if (m.type === 'update') {
+        if (started.current) return;
         started.current = true;
-        onStart(new OnlineSession(c, m, 'RW', 'commander'));
+        setLoading(new OnlineSession(c, m, 'RW', 'commander'));
       } else if (m.type === 'tableClosed') {
         remember(null);
         reset('The host closed the table.');
@@ -111,6 +118,23 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
     setDeck(saved);
     if (saved && table?.phase === 'lobby') connection.current?.send({ type: 'tableDeck', deck: saved.id });
   };
+
+  if (loading) {
+    const seats = tableRef.current?.seats ?? [];
+    return (
+      <GameLoading
+        session={loading}
+        title={`Commander · table ${tableRef.current?.code ?? ''}`}
+        subtitle={<p>{seats.map((s) => (s.id === tableRef.current?.you ? 'You' : s.name)).join(' · ')}</p>}
+        minMs={1800}
+        onReady={() => onStart(loading)}
+      />
+    );
+  }
+
+  if (connecting && !table) {
+    return <LoadingScreen title="Joining the table" steps={[{ label: 'Connecting to the game server', state: 'working' }, { label: 'Checking your sign-in', state: 'waiting' }]} />;
+  }
 
   if (table || connecting) {
     return <TableLobby table={table} error={error} onLeave={leave} onSettings={(p, b) => connection.current?.send({ type: 'tableSettings', players: p, bots: b })} onStart={() => connection.current?.send({ type: 'tableStart' })} deckPicker={<OwnCommanderDecks onChoose={chooseDeck} onBuild={onBuild} />} />;
@@ -159,13 +183,25 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
 }
 
 /** How many seats are for players (you included) and how many for bots: 2-4 seats in all. */
-export function SeatPicker({ players, bots, min = 1, onChange }: { players: number; bots: number; min?: number; onChange: (players: number, bots: number) => void }) {
+export function SeatPicker({ players, bots, min = 1, fixedTotal, onChange }: { players: number; bots: number; min?: number; fixedTotal?: number; onChange: (players: number, bots: number) => void }) {
   const total = players + bots;
   return (
     <div className="seat-picker">
-      {/* With every seat taken, adding one kind of seat turns a seat of the other kind into it. */}
-      <Stepper label="Players" hint="you included" value={players} canDown={players > Math.max(1, min) && total > 2} canUp={total < 4 || bots > 0} onChange={(p) => onChange(p, p > players && total >= 4 ? bots - 1 : bots)} />
-      <Stepper label="Bots" value={bots} canDown={bots > 0 && total > 2} canUp={total < 4 || players > Math.max(1, min)} onChange={(b) => (b > bots && total >= 4 ? onChange(players - 1, b) : onChange(players, b))} />
+      {fixedTotal ? (
+        // A fixed number of seats (draft events: always four): bots fill the seats players don't.
+        <>
+          <Stepper label="Players" hint="you included" value={players} canDown={players > Math.max(1, min)} canUp={players < fixedTotal} onChange={(p) => onChange(p, fixedTotal - p)} />
+          <span className="stepper-label">
+            Bots <strong>{fixedTotal - players}</strong>
+          </span>
+        </>
+      ) : (
+        <>
+          {/* With every seat taken, adding one kind of seat turns a seat of the other kind into it. */}
+          <Stepper label="Players" hint="you included" value={players} canDown={players > Math.max(1, min) && total > 2} canUp={total < 4 || bots > 0} onChange={(p) => onChange(p, p > players && total >= 4 ? bots - 1 : bots)} />
+          <Stepper label="Bots" value={bots} canDown={bots > 0 && total > 2} canUp={total < 4 || players > Math.max(1, min)} onChange={(b) => (b > bots && total >= 4 ? onChange(players - 1, b) : onChange(players, b))} />
+        </>
+      )}
       <div className="seat-dots" aria-label={`${total} seats`}>
         {Array.from({ length: players }, (_, i) => (
           <span key={`p${i}`} className="seat-dot player" title="Player seat" />
@@ -258,6 +294,7 @@ function TableLobby({
           <li key={s.id} className={`table-seat ${s.id === table.you ? 'you' : ''}`}>
             {s.deck && commanderArt(s.deck.commander) ? <img src={commanderArt(s.deck.commander)} alt="" /> : <span className="table-seat-art" />}
             <span className="table-seat-name">
+              {s.avatar ? <img className="seat-avatar" src={s.avatar} alt="" /> : <span className="seat-avatar initials">{avatarText(s.name)}</span>}
               <strong>{s.name}</strong>
               {s.id === table.host && <em className="seat-badge">Host</em>}
               {s.id === table.you && <em className="seat-badge">You</em>}

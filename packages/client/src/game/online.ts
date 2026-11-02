@@ -13,6 +13,7 @@ import { CARD_DEFS } from '@nexus/cards';
 import type { ClientMessage, Deck, Seat, ServerMessage } from '@nexus/server/protocol';
 import { GameSession, YOU, applyAll, readable, touchedCards, type Advance } from './session.ts';
 import { eventTargetNotices } from './targeting.ts';
+import { setPlayerAvatars } from './avatars.ts';
 
 type Update = Extract<ServerMessage, { type: 'update' }>;
 
@@ -94,6 +95,8 @@ export class OnlineSession extends GameSession {
     this.seat = seat;
     this.toName = toName;
     this.toSeat = new Map([...toName].map(([k, v]) => [v, k]));
+    // Discord profile pictures for the player icons.
+    setPlayerAvatars(Object.entries(first.avatars ?? {}).flatMap(([seat, url]): [string, string][] => (url && toName.has(seat) ? [[toName.get(seat)!, url]] : [])));
     this.version = first.version;
     this.serverLegal = update.legal;
     this.connection = connection;

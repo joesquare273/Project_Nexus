@@ -19,10 +19,14 @@ export const ECONOMY = {
   welcomeBonus: 1000,
   /** The first sign-in of each day (UTC). */
   dailyLoginReward: 50,
-  /** Six Play Boosters' worth. */
+  /** A booster draft's entry: six Play Boosters' worth (user, 2026-11-03). Every player keeps the 84 cards they draft. */
   eventEntry: 600,
-  /** Event prizes in Play Boosters, by place, for a 4-player event. */
-  eventPrizes: [2, 1],
+  /**
+   * Draft prizes in shards by place, 1st to 4th (user, 2026-11-03): paid in
+   * full to players whatever the mix of players and bots (a bot's place pays
+   * no one). Nets after the entry: +400, +200, 0, -200.
+   */
+  eventPrizes: [1000, 800, 600, 400],
   /**
    * Store tab prices per item kind (null shows "Price coming soon" and can't
    * be bought). Proposed 2026-10-30: a Collector Booster is 500, so the

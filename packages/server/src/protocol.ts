@@ -118,7 +118,7 @@ export type ServerMessage =
    * of your batches that was applied. `match`: the draft event match it
    * belongs to, for event games (seats are P1/P2 in every game).
    */
-  | { type: 'update'; version: number; seat: Seat; names: Partial<Record<Seat, string>>; ackSeq: number; update: PlayerUpdate; match?: string; game?: number }
+  | { type: 'update'; version: number; seat: Seat; names: Partial<Record<Seat, string>>; avatars?: Partial<Record<Seat, string>>; ackSeq: number; update: PlayerUpdate; match?: string; game?: number }
   /** A draft event as this player may see it, after every change. */
   | { type: 'event'; event: EventView }
   /** A Commander table as this player may see it, after every change. */
@@ -138,7 +138,7 @@ export interface TableView {
   host: Seat;
   you: Seat;
   phase: 'lobby' | 'playing' | 'finished';
-  seats: { id: Seat; name: string; bot: boolean; connected: boolean; deck: { name: string; commander: string | null } | null }[];
+  seats: { id: Seat; name: string; avatar: string | null; bot: boolean; connected: boolean; deck: { name: string; commander: string | null } | null }[];
   /** Who won, once the game is over (null: a draw, or not over). */
   winner: Seat | null;
 }
@@ -147,6 +147,8 @@ export interface TableView {
 export interface EventSeatView {
   id: string;
   name: string;
+  /** The player's Discord profile picture (null: show initials). */
+  avatar: string | null;
   bot: boolean;
   connected: boolean;
   ready: boolean;
@@ -156,6 +158,9 @@ export interface EventSeatView {
 export interface EventMatchView {
   id: string;
   round: number;
+  /** Round 1: semifinals; round 2: the final and the match for third place. */
+  stage: 'semifinal' | 'final' | 'third';
+  winner: string | null;
   a: string;
   b: string | null;
   games: { winner: string | null; first: string }[];
@@ -199,4 +204,13 @@ export interface EventView {
   standings: { player: string; points: number; wins: number; losses: number; draws: number }[];
   /** Your drafted cards were added to your collection. */
   poolSaved: boolean;
+  /** The entry in Aether Shards, and the prizes by place (1st to 4th). */
+  entry: number;
+  prizes: number[];
+  entryPaid: boolean;
+  prizePaid: boolean;
+  /** Seats in order of place, once the event is over. */
+  places: string[] | null;
+  /** Your balance after your entry or prize was paid (null before). */
+  balance: number | null;
 }

@@ -22,8 +22,8 @@ live in one server-side configuration module.
 | Daily login reward | 50 | Built 2026-10-30: the first sign-in of each UTC day (ledger kind `login_reward`, ref `login-YYYY-MM-DD`) |
 | Complete the tutorial | 250 | Planned (user, 2026-10-30): once, when the server can check the tutorial was finished |
 | First win | 100 | Planned (user, 2026-10-30): once, from a game the server ran (E2) |
-| Event entry (draft or sealed) | 600 | Six Play Boosters; the player keeps every card. Six owned Play Boosters can be used instead |
-| Event prizes (4 players) | 1st: 2 Play Boosters, 2nd: 1 | Gives the Swiss rounds stakes; scaled for 2-3 players |
+| Draft entry | 600 | Built 2026-11-03 (user): six Play Boosters' worth, paid by every player when the host starts the draft (ledger `event_entry`, ref `draft-<event>`; nobody is charged unless everyone can pay). Every player keeps the 84 cards they draft |
+| Draft prizes | 1st 1,000 · 2nd 800 · 3rd 600 · 4th 400 | Built 2026-11-03 (user): paid once when the event finishes (ledger `event_prize`); full prizes whatever the mix of players and bots, and a bot's place pays no one. Nets after the entry: +400, +200, 0, −200. The user first proposed a 300 entry; at 300 every place would gain shards plus six free packs, so 600 was chosen |
 
 Rough earnings: one match a day ≈ 1,200 a week (about 12 Play Boosters);
 five bot matches a day ≈ 2,200 a week (about 22).

@@ -1,3 +1,4 @@
+import { playerAvatar } from '../game/avatars.ts';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
@@ -362,7 +363,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   const active = view.activePlayer === pid;
   return (
     <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
-      <div className="avatar">{avatarText(pid)}</div>
+      <PlayerAvatar pid={pid} />
       <div className="who">
         <div className="name">
           {pid === YOU ? 'You' : pid}
@@ -760,6 +761,20 @@ export function CardList({
       </div>
     </div>
   );
+}
+
+/** A player's round icon: their Discord profile picture in online games, else initials. */
+function PlayerAvatar({ pid }: { pid: PlayerId }) {
+  const url = playerAvatar(pid);
+  const [broken, setBroken] = useState(false);
+  if (url && !broken) {
+    return (
+      <div className="avatar has-picture">
+        <img src={url} alt="" onError={() => setBroken(true)} />
+      </div>
+    );
+  }
+  return <div className="avatar">{avatarText(pid)}</div>;
 }
 
 /** What a player's round avatar shows: "You", "B1" for local bots, or a name's initials ("Chocobo Bot" → "CB"). */

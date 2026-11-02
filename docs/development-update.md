@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Draft tournament, entry and prizes, loading screens, Discord pictures
+
+- Draft events: four seats, semifinals then the final and the match for
+  3rd; the bracket screen shows who moved up while a match waits for the
+  other. Entry 600 Aether Shards (paid at the start, all or nobody);
+  prizes 1,000/800/600/400 paid once at the end (`AccountService.applyShards`,
+  ledger kinds `event_entry` and `event_prize`, already allowed by the
+  database: no migration).
+- Loading screens with a precheck (known cards, a readable game, card
+  images) before Commander table and draft games, and while a draft starts.
+- Players' Discord profile pictures in lobbies, the bracket and on the board.
+- Checked in a browser: hosting with three bots charged 600, the draft,
+  deckbuilding and the first semifinal game opened on the board.
+
 ### Draft events in the browser; the host picks the set
 
 - Draft events need a set chosen by the host (`DRAFT_SETS`, Final Fantasy

@@ -113,6 +113,27 @@ first called it "sealed"; the format they described is a booster draft.)
   you play). *Practice draft* is the old offline draft. Not yet:
   sideboarding between games in the browser (the server allows it).
 
+- **The tournament (user, 2026-11-03):** always four seats (players, bots
+  or a mix). Round 1: two random semifinals, best of 3. Round 2: the
+  winners play the final (1st and 2nd), the losers play for 3rd and 4th.
+  A finished match waits for the other one; the page shows the bracket,
+  who moved up (▲ Final / ▼ 3rd place match) and the other match's score.
+  Every match has a winner: drawn games mean more games (five at most),
+  then a coin flip. Swiss pairing code (`swiss.ts`) stays for later
+  formats; standings use the bracket's places once it's over.
+- **Entry and prizes:** see docs/economy.md (600 entry; 1,000/800/600/400).
+- **Loading screens and the precheck (2026-11-03):** before an online game
+  opens (Commander tables and draft games), `game/precheck.ts` checks every
+  visible card is known to this browser, that the board can read the game,
+  and loads the card images; `components/LoadingScreen.tsx` shows the steps
+  and a progress bar (with who moved up, for the final and the match for
+  third). Draft events also show loading screens while joining, while the
+  print sheets load, and while the first pack's images load.
+- **Discord profile pictures:** the server reads each player's picture from
+  their sign-in (only `https://cdn.discordapp.com` addresses,
+  `discordAvatar`) and shows it in waiting rooms, the bracket, the results
+  and on the board's player icons; initials otherwise.
+
 ## The AI drafters and deckbuilder
 
 - `cards/src/rating.ts` (`cardRating`) rates a card for Limited on a rough

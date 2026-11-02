@@ -18,7 +18,9 @@ function setup(opts: { botGameLimit?: number } = {}) {
     events: {
       now: () => clock,
       // Everything runs on the next turn of the event loop.
-      schedule: (fn) => {
+      // Long waits (dropping a finished event after an hour) never come in a test.
+      schedule: (fn, ms) => {
+        if (ms >= 60_000 * 10) return () => {};
         const t = setTimeout(fn, 0);
         return () => clearTimeout(t);
       },
@@ -65,86 +67,102 @@ async function concede(b: ReturnType<typeof browser>) {
 }
 
 describe('draft events on the server', () => {
-  it('one player and a bot: draft, the pool saved to the account, deckbuilding, a best-of-3 match', async () => {
-    const { accounts, lobby } = setup();
+  it('one player and three bots: the entry, the pool saved, deckbuilding, the bracket, the prize', async () => {
+    const { accounts, lobby } = setup({ botGameLimit: 60 });
     const joe = browser(lobby);
-    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 1, set: 'fin' });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 3, set: 'fin' });
     const code = joe.event()!.code;
-    expect(joe.event()).toMatchObject({ phase: 'lobby', you: 'S1', host: 'S1' });
+    expect(joe.event()).toMatchObject({ phase: 'lobby', you: 'S1', host: 'S1', entry: 600, prizes: [1000, 800, 600, 400], entryPaid: false });
+    const before = (await accounts.ensure({ id: 'u-joe', name: 'Joe' })).shards;
     await joe.send({ type: 'eventStart' });
-    expect(joe.event()!.seats.map((s) => [s.name, s.bot])).toEqual([['Joe', false], ['Chocobo Bot', true]]);
-    // Only your own pack is ever sent.
-    expect(JSON.stringify(joe.event()).includes('"picks":[')).toBe(true);
+    expect(joe.event()!.seats.map((s) => [s.name, s.bot])).toEqual([['Joe', false], ['Chocobo Bot', true], ['Moogle Bot', true], ['Cactuar Bot', true]]);
+    // The entry is paid once, as the draft starts.
+    expect(joe.event()).toMatchObject({ entryPaid: true, balance: before - 600 });
+    expect(accounts.accounts.get('u-joe')!.shards).toBe(before - 600);
     await draft(joe);
     expect(joe.event()!.phase).toBe('building');
     await until(() => !!joe.event()?.poolSaved, 'the pool to be saved');
-    const owned = (await accounts.collection('u-joe')).reduce((n, c) => n + c.count, 0);
-    expect(owned).toBe(84);
-    // Building: save a deck, press Ready; the bot is ready already.
-    const picks = joe.event()!.draft!.picks as DraftCard[];
-    await joe.send({ type: 'eventDeck', deck: aiDeck(picks) });
-    expect(joe.event()!.deck).not.toBeNull();
-    await joe.send({ type: 'eventReady', ready: true });
-    expect(joe.event()!.phase).toBe('playing');
-    // Game 1 arrives as an ordinary online game update, for this match.
-    await until(() => !!joe.game(), 'game 1');
-    const match = joe.event()!.matches[0]!;
-    expect(joe.game()).toMatchObject({ match: match.id, game: 1 });
-    expect(joe.game()!.names[joe.game()!.seat]).toBe('Joe');
-    await concede(joe);
-    // Joe lost game 1, so Joe chooses play or draw.
-    await until(() => joe.event()!.matches[0]!.games.length === 1, 'game 1 to be recorded');
-    expect(joe.event()!.matches[0]!.chooser).toBe('S1');
-    // Sideboarding between games: only a legal deck.
-    await joe.send({ type: 'eventDeck', deck: { cards: [], basics: { W: 5, U: 0, B: 0, R: 0, G: 0 } } });
-    expect(joe.errors().at(-1)).toMatchObject({ code: 'event-rule' });
-    await joe.send({ type: 'eventPlayDraw', play: true });
-    await until(() => joe.game()?.game === 2, 'game 2');
-    await concede(joe);
-    await until(() => joe.event()!.phase === 'finished', 'the event to finish');
-    expect(joe.event()!.standings[0]).toMatchObject({ player: 'S2', points: 3 });
-    // Coming back to the event after a reload shows it again.
-    const again = browser(lobby);
-    await again.send({ type: 'eventJoin', token: 'tok-joe', code });
-    expect(again.event()).toMatchObject({ code, you: 'S1', phase: 'finished' });
-    // The pool was granted once only.
     expect((await accounts.collection('u-joe')).reduce((n, c) => n + c.count, 0)).toBe(84);
-  }, 120_000);
-
-  it('a player and three bots: bot-vs-bot matches are played on the server; three Swiss rounds', async () => {
-    const { lobby } = setup({ botGameLimit: 60 });
-    const joe = browser(lobby);
-    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 3, set: 'fin' });
-    await joe.send({ type: 'eventStart' });
-    await draft(joe);
+    // Building: save a deck, press Ready; the bots are ready already.
     await joe.send({ type: 'eventDeck', deck: aiDeck(joe.event()!.draft!.picks as DraftCard[]) });
     await joe.send({ type: 'eventReady', ready: true });
-    for (let i = 0; i < 40 && joe.event()!.phase === 'playing'; i++) {
+    expect(joe.event()!.phase).toBe('playing');
+    // Game 1 arrives as an ordinary online game update, for Joe's semifinal.
+    await until(() => !!joe.game(), 'game 1');
+    const semi = joe.event()!.matches.find((m) => m.a === 'S1' || m.b === 'S1')!;
+    expect(semi.stage).toBe('semifinal');
+    expect(joe.game()).toMatchObject({ match: semi.id, game: 1 });
+    await concede(joe);
+    // Joe lost game 1, so Joe chooses play or draw; sideboarding takes only a legal deck.
+    await until(() => joe.event()!.matches.find((m) => m.id === semi.id)!.games.length === 1, 'game 1 to be recorded');
+    expect(joe.event()!.matches.find((m) => m.id === semi.id)!.chooser).toBe('S1');
+    await joe.send({ type: 'eventDeck', deck: { cards: [], basics: { W: 5, U: 0, B: 0, R: 0, G: 0 } } });
+    expect(joe.errors().at(-1)).toMatchObject({ code: 'event-rule' });
+    // Joe concedes every game: he loses the semifinal, then the match for third.
+    for (let i = 0; i < 200 && joe.event()!.phase === 'playing'; i++) {
       const v = joe.event()!;
       const mine = v.matches.find((m) => m.round === v.round && (m.a === 'S1' || m.b === 'S1'))!;
-      if (mine.done) await settle();
-      else if (mine.chooser === 'S1') await joe.send({ type: 'eventPlayDraw', play: false });
-      else if (mine.live && joe.game()?.match === mine.id && joe.game()!.update.state.pending.kind !== 'gameOver') await concede(joe);
-      await until(() => true, 'a moment');
+      if (!mine.done && mine.chooser === 'S1' && !mine.nextFirst) await joe.send({ type: 'eventPlayDraw', play: false });
+      else if (!mine.done && mine.live && joe.game()?.match === mine.id && joe.game()!.update.state.pending.kind !== 'gameOver') await concede(joe);
       await settle();
     }
     await until(() => joe.event()!.phase === 'finished', 'the event to finish', 20_000);
     const v = joe.event()!;
-    expect(v.round).toBe(3);
-    expect(v.matches.filter((m) => m.done)).toHaveLength(6);
-    expect(v.standings.at(-1)).toMatchObject({ player: 'S1', points: 0 });
+    expect(v.matches.map((m) => m.stage)).toEqual(['semifinal', 'semifinal', 'final', 'third']);
+    expect(v.places!.at(-1)).toBe('S1');
+    expect(v.standings.map((s) => s.player)).toEqual(v.places);
+    // Last place: 400 shards, once.
+    await until(() => !!joe.event()?.prizePaid, 'the prize');
+    expect(accounts.accounts.get('u-joe')!.shards).toBe(before - 600 + 400);
+    // Coming back to the event after a reload shows it again; nothing is paid twice.
+    const again = browser(lobby);
+    await again.send({ type: 'eventJoin', token: 'tok-joe', code });
+    expect(again.event()).toMatchObject({ code, you: 'S1', phase: 'finished' });
+    await settle();
+    expect(accounts.accounts.get('u-joe')!.shards).toBe(before - 200);
+    expect((await accounts.collection('u-joe')).reduce((n, c) => n + c.count, 0)).toBe(84);
   }, 120_000);
+
+  it('the entry: nobody without 600 shards can join, and nobody is charged unless everyone can pay', async () => {
+    const { accounts, lobby } = setup();
+    const joe = browser(lobby);
+    const ann = browser(lobby);
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 2, set: 'fin' });
+    const code = joe.event()!.code;
+    await accounts.ensure({ id: 'u-ann', name: 'Ann' });
+    accounts.accounts.get('u-ann')!.shards = 599;
+    await ann.send({ type: 'eventJoin', token: 'tok-ann', code });
+    expect(ann.errors().at(-1)?.message).toMatch(/costs 600 Aether Shards to enter; you have 599/);
+    accounts.accounts.get('u-ann')!.shards = 700;
+    await ann.send({ type: 'eventJoin', token: 'tok-ann', code });
+    expect(ann.event()!.you).toBe('S2');
+    // Ann spends her shards in the lobby: the draft doesn't start, and Joe isn't charged.
+    accounts.accounts.get('u-ann')!.shards = 100;
+    const joeBefore = accounts.accounts.get('u-joe')!.shards;
+    await joe.send({ type: 'eventStart' });
+    expect(joe.errors().at(-1)?.message).toMatch(/Ann needs 600/);
+    expect(joe.event()!.phase).toBe('lobby');
+    expect(accounts.accounts.get('u-joe')!.shards).toBe(joeBefore);
+    accounts.accounts.get('u-ann')!.shards = 600;
+    await joe.send({ type: 'eventStart' });
+    expect(joe.event()!.phase).toBe('drafting');
+    expect(accounts.accounts.get('u-ann')!.shards).toBe(0);
+    expect(accounts.accounts.get('u-joe')!.shards).toBe(joeBefore - 600);
+  });
 
   it('rules and errors: only the creator starts; unknown events; a full event', async () => {
     const { lobby } = setup();
     const joe = browser(lobby);
     const ann = browser(lobby);
     // The host must pick a set the server can draft.
-    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 0 });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 2 });
     expect(joe.errors().at(-1)).toMatchObject({ code: 'bad-message' });
-    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 0, set: 'xyz' });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 2, set: 'xyz' });
     expect(joe.errors().at(-1)).toMatchObject({ code: 'bad-message' });
+    // Four seats, always.
     await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 0, set: 'fin' });
+    expect(joe.errors().at(-1)?.message).toMatch(/4 seats/);
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 2, set: 'fin' });
     expect(joe.event()!.set).toEqual({ code: 'fin', name: 'Final Fantasy' });
     // The draft waits for every player seat.
     await joe.send({ type: 'eventStart' });
@@ -159,8 +177,7 @@ describe('draft events on the server', () => {
     await ann.send({ type: 'eventPick', uid: 'd0' });
     expect(ann.errors().at(-1)).toMatchObject({ code: 'event-rule' });
     await joe.send({ type: 'eventStart' });
-    // No bots needed: both seats are players.
-    expect(joe.event()!.seats.every((s) => !s.bot)).toBe(true);
+    expect(joe.event()!.seats.map((s) => s.bot)).toEqual([false, false, true, true]);
     // Each sees only their own pack.
     const joePack = joe.event()!.draft!.pack!.map((c) => c.uid);
     const annPack = ann.event()!.draft!.pack!.map((c) => c.uid);

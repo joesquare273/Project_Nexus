@@ -18,6 +18,7 @@ import { basicAi, type Bot } from '@nexus/bots';
 import type { LimitedDeck } from '@nexus/cards/limited';
 import { draftSet, type DraftSetCode } from '@nexus/cards/draft';
 import type { AccountService } from './accounts.ts';
+import { ECONOMY } from './economy.ts';
 import {
   botMatch,
   changeSeats,
@@ -34,6 +35,7 @@ import {
   joinEvent,
   leaveEvent,
   pick,
+  placements,
   pool,
   recordGame,
   setReady,
@@ -87,6 +89,15 @@ interface Hosted {
   conns: Map<string, EventConnection>;
   games: Map<string, HostedGame>;
   poolSaved: Set<string>;
+  /** Seats whose entry was paid, and whose prize was paid. */
+  entryPaid: Set<string>;
+  prizePaid: Set<string>;
+  /** Each player's balance after their entry or prize, for their account chip. */
+  balances: Map<string, number>;
+  /** Drops the event an hour after it finishes. */
+  endTimer?: () => void;
+  /** The host pressed Start and the entries are being paid. */
+  starting?: boolean;
   buildTimer?: () => void;
   pickTimer?: () => void;
   /** The pick the pick timer is running for. */
@@ -129,22 +140,35 @@ export class EventHub {
     }
   }
 
-  /** Makes an event and seats its creator. */
-  create(user: { id: string; name: string }, seats: { players: number; bots: number; set: DraftSetCode }, conn: EventConnection): { code: string; seat: string } | { error: ErrorCode; message: string } {
-    const problem = seatsProblem(seats.players, seats.bots);
+  /** Why this player can't pay the entry, or null. */
+  private async cannotPay(user: { id: string; name: string }): Promise<string | null> {
+    const accounts = this.opts.accounts;
+    if (!accounts) return null;
+    const { shards } = await accounts.ensure(user);
+    return shards < ECONOMY.eventEntry ? `A draft costs ${ECONOMY.eventEntry} Aether Shards to enter; you have ${shards}.` : null;
+  }
+
+  /** Makes an event and seats its creator (who must be able to pay the entry). */
+  async create(user: { id: string; name: string; avatar?: string }, seats: { players: number; bots: number; set: DraftSetCode }, conn: EventConnection): Promise<{ code: string; seat: string } | { error: ErrorCode; message: string }> {
+    const problem = seatsProblem(seats.players, seats.bots) ?? (await this.cannotPay(user));
     if (problem) return { error: 'event-rule', message: problem };
     const code = this.newCode();
-    const ev = createEvent(code, seats, { name: user.name, userId: user.id });
+    const ev = createEvent(code, seats, { name: user.name, userId: user.id, ...(user.avatar ? { avatar: user.avatar } : {}) });
     const seat = ev.seats[0]!.id;
-    const hosted: Hosted = { id: [...this.opts.randomBytes(8)].map((x) => x.toString(16).padStart(2, '0')).join(''), ev, host: seat, conns: new Map([[seat, conn]]), games: new Map(), poolSaved: new Set() };
+    const hosted: Hosted = { id: [...this.opts.randomBytes(8)].map((x) => x.toString(16).padStart(2, '0')).join(''), ev, host: seat, conns: new Map([[seat, conn]]), games: new Map(), poolSaved: new Set(), entryPaid: new Set(), prizePaid: new Set(), balances: new Map() };
     this.events.set(code, hosted);
     this.broadcast(hosted);
     return { code, seat };
   }
 
-  /** Joins an event, or reconnects to your seat in it. */
-  join(user: { id: string; name: string }, code: string, conn: EventConnection): { seat: string } | { error: ErrorCode; message: string } {
-    const h = this.events.get(code);
+  /** Joins an event (if you can pay the entry), or reconnects to your seat in it. */
+  async join(user: { id: string; name: string; avatar?: string }, code: string, conn: EventConnection): Promise<{ seat: string } | { error: ErrorCode; message: string }> {
+    let h = this.events.get(code);
+    if (h && h.ev.phase === 'lobby' && !h.ev.seats.some((s) => s.userId === user.id)) {
+      const problem = await this.cannotPay(user);
+      if (problem) return { error: 'event-rule', message: problem };
+      h = this.events.get(code);
+    }
     if (!h) return { error: 'no-event', message: `There is no draft event ${code}.` };
     const mine = h.ev.seats.find((s) => s.userId === user.id);
     if (mine) {
@@ -154,7 +178,7 @@ export class EventHub {
       for (const g of h.games.values()) if (Object.values(g.seats).includes(mine.id)) this.sendGame(h, g, []);
       return { seat: mine.id };
     }
-    const seat = joinEvent(h.ev, { name: user.name, userId: user.id });
+    const seat = joinEvent(h.ev, { name: user.name, userId: user.id, ...(user.avatar ? { avatar: user.avatar } : {}) });
     if (!seat) return { error: 'event-full', message: h.ev.phase === 'lobby' ? `Event ${code} is full.` : `Event ${code} has already started.` };
     h.conns.set(seat.id, conn);
     this.broadcast(h);
@@ -190,6 +214,7 @@ export class EventHub {
   }
 
   private end(h: Hosted): void {
+    h.endTimer?.();
     h.buildTimer?.();
     h.pickTimer?.();
     for (const g of h.games.values()) g.cancel?.();
@@ -212,15 +237,85 @@ export class EventHub {
   settings(code: string, seat: string, players: number, bots: number, set?: DraftSetCode): string | null {
     return this.change(code, (h) => {
       if (seat !== h.host) throw new Error('Only the player who made the event can change it.');
+      if (h.starting) throw new Error('The draft is starting.');
       return changeSeats(h.ev, players, bots, set);
     });
   }
 
-  start(code: string, seat: string): string | null {
-    return this.change(code, (h) => {
-      if (seat !== h.host) throw new Error('Only the player who made the event can start it.');
-      return startDraft(h.ev, seedFromBytes(this.opts.randomBytes(16)), this.opts.now());
-    });
+  /**
+   * The host starts the draft: every player pays the entry first (nobody is
+   * charged unless everyone can pay), then the packs are opened.
+   */
+  async start(code: string, seat: string): Promise<string | null> {
+    const h = this.events.get(code);
+    if (!h) return 'There is no such event.';
+    if (seat !== h.host) return 'Only the player who made the event can start it.';
+    if (h.ev.phase !== 'lobby' || h.starting) return 'The draft has already started.';
+    const missing = h.ev.players - h.ev.seats.length;
+    if (missing > 0) return `Waiting for ${missing} more player${missing === 1 ? '' : 's'} to join.`;
+    const accounts = this.opts.accounts;
+    const players = h.ev.seats.filter((s) => !s.bot && s.userId);
+    const ref = `draft-${h.id}`;
+    if (accounts) {
+      h.starting = true;
+      try {
+        for (const s of players) {
+          const { shards } = await accounts.ensure({ id: s.userId!, name: s.name });
+          if (shards < ECONOMY.eventEntry) return `${s.name} needs ${ECONOMY.eventEntry} Aether Shards to enter (has ${shards}).`;
+        }
+        const charged: typeof players = [];
+        try {
+          for (const s of players) {
+            const r = await accounts.applyShards(s.userId!, -ECONOMY.eventEntry, 'event_entry', ref);
+            charged.push(s);
+            h.entryPaid.add(s.id);
+            h.balances.set(s.id, r.balance);
+          }
+        } catch {
+          // Someone couldn't pay after all: give back what was taken.
+          for (const s of charged) await this.refund(h, s.id, s.userId!);
+          this.broadcast(h);
+          return 'Not everyone could pay the entry, so the draft did not start. Nobody was charged.';
+        }
+      } finally {
+        h.starting = false;
+      }
+    }
+    if (this.events.get(code) !== h || h.ev.phase !== 'lobby') return 'The event was closed.';
+    // Anyone who left while the entries were paid gets theirs back.
+    for (const s of players) if (!h.ev.seats.some((x) => x.id === s.id)) await this.refund(h, s.id, s.userId!);
+    return this.change(code, (x) => startDraft(x.ev, seedFromBytes(this.opts.randomBytes(16)), this.opts.now()));
+  }
+
+  private async refund(h: Hosted, seat: string, userId: string): Promise<void> {
+    if (!h.entryPaid.has(seat) || !this.opts.accounts) return;
+    try {
+      const r = await this.opts.accounts.applyShards(userId, ECONOMY.eventEntry, 'event_entry', `draft-${h.id}-refund`);
+      h.entryPaid.delete(seat);
+      h.balances.set(seat, r.balance);
+    } catch {
+      // Left on the ledger to fix by hand (admin adjustment); never charged twice.
+    }
+  }
+
+  /** Pays each player their place's prize, once per event. */
+  private async payPrizes(h: Hosted): Promise<void> {
+    const accounts = this.opts.accounts;
+    const places = placements(h.ev);
+    if (!accounts || !places) return;
+    for (const [i, seat] of places.entries()) {
+      const s = h.ev.seats.find((x) => x.id === seat);
+      const prize = ECONOMY.eventPrizes[i] ?? 0;
+      if (!s || s.bot || !s.userId || !prize || h.prizePaid.has(seat)) continue;
+      h.prizePaid.add(seat);
+      try {
+        const r = await accounts.applyShards(s.userId, prize, 'event_prize', `draft-${h.id}`);
+        h.balances.set(seat, r.balance);
+      } catch {
+        h.prizePaid.delete(seat);
+      }
+    }
+    this.broadcast(h);
   }
 
   select(code: string, seat: string, uid: string): string | null {
@@ -279,7 +374,10 @@ export class EventHub {
       h.buildTimer = undefined;
     }
     if (ev.phase === 'playing') for (const m of ev.matches) if (m.round === ev.round && !m.done && m.nextFirst && !h.games.has(m.id)) this.startGame(h, m);
-    if (ev.phase === 'finished') this.opts.schedule(() => this.events.get(ev.code) === h && this.end(h), 60 * 60_000);
+    if (ev.phase === 'finished') {
+      void this.payPrizes(h);
+      h.endTimer ??= this.opts.schedule(() => this.events.get(ev.code) === h && this.end(h), 60 * 60_000);
+    }
     this.broadcast(h);
   }
 
@@ -412,10 +510,12 @@ export class EventHub {
   /** Each player in the game gets their own update. */
   private sendGame(h: Hosted, g: HostedGame, events: readonly GameEvent[]): void {
     const names = { P1: this.nameOf(h, g.seats.P1), P2: this.nameOf(h, g.seats.P2) };
+    const avatarOf = (seat: string) => h.ev.seats.find((s) => s.id === seat)?.avatar;
+    const avatars = Object.fromEntries(SEATS.flatMap((p) => (avatarOf(g.seats[p]) ? [[p, avatarOf(g.seats[p])!]] : [])));
     for (const p of SEATS) {
       const update = playerUpdate(g.state, p, g.books[p], events);
       const conn = h.conns.get(g.seats[p]);
-      if (!g.bots[p] && conn) conn.send({ type: 'update', version: g.version, seat: p, names, ackSeq: g.lastSeq[p], update, match: g.match, game: g.number });
+      if (!g.bots[p] && conn) conn.send({ type: 'update', version: g.version, seat: p, names, ackSeq: g.lastSeq[p], update, avatars, match: g.match, game: g.number });
     }
   }
 
@@ -440,7 +540,7 @@ export class EventHub {
       phase: ev.phase,
       you: seat,
       host: h.host,
-      seats: ev.seats.map((s) => ({ id: s.id, name: s.name, bot: s.bot, connected: s.bot || h.conns.has(s.id), ready: !!ev.ready[s.id], picks: draft?.picks[s.id]?.length ?? 0 })),
+      seats: ev.seats.map((s) => ({ id: s.id, name: s.name, avatar: s.avatar ?? null, bot: s.bot, connected: s.bot || h.conns.has(s.id), ready: !!ev.ready[s.id], picks: draft?.picks[s.id]?.length ?? 0 })),
       draft: eventDraftView(ev, seat),
       deck: ev.decks[seat] ?? null,
       buildEndsAt: ev.buildEndsAt,
@@ -449,9 +549,15 @@ export class EventHub {
       serverNow: this.opts.now(),
       rounds: ev.rounds,
       round: ev.round,
-      matches: ev.matches.map((m) => ({ id: m.id, round: m.round, a: m.a, b: m.b, games: m.games, chooser: m.done ? null : m.nextFirst ? null : m.chooser, nextFirst: m.nextFirst, done: m.done, live: h.games.has(m.id) })),
+      matches: ev.matches.map((m) => ({ id: m.id, round: m.round, stage: m.stage, winner: m.winner, a: m.a, b: m.b, games: m.games, chooser: m.done ? null : m.nextFirst ? null : m.chooser, nextFirst: m.nextFirst, done: m.done, live: h.games.has(m.id) })),
       standings: eventStandings(ev).map((s) => ({ player: s.player, points: s.points, wins: s.wins, losses: s.losses, draws: s.draws })),
       poolSaved: h.poolSaved.has(seat),
+      entry: ECONOMY.eventEntry,
+      prizes: [...ECONOMY.eventPrizes],
+      entryPaid: h.entryPaid.has(seat),
+      prizePaid: h.prizePaid.has(seat),
+      places: placements(ev),
+      balance: h.balances.get(seat) ?? null,
     };
   }
 }

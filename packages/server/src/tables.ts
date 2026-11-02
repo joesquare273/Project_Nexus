@@ -38,6 +38,7 @@ interface TableSeat {
   name: string;
   bot: boolean;
   userId?: string;
+  avatar?: string;
   /** The player's chosen deck: its name, its commander's printing, and the game deck. */
   deck: { id: string; name: string; commander: string | null; game: GameDeck } | null;
 }
@@ -96,7 +97,7 @@ export class TableHub {
     const problem = tableSizeProblem(players, bots);
     if (problem) return { error: 'event-rule', message: problem };
     const code = this.newCode();
-    const t: Table = { code, players, bots, host: 'P1', seats: [{ id: 'P1', name: boardName(user.name), bot: false, userId: user.id, deck: null }], conns: new Map([['P1', conn]]), phase: 'lobby', game: null, winner: null };
+    const t: Table = { code, players, bots, host: 'P1', seats: [{ id: 'P1', name: boardName(user.name), bot: false, userId: user.id, ...(user.avatar ? { avatar: user.avatar } : {}), deck: null }], conns: new Map([['P1', conn]]), phase: 'lobby', game: null, winner: null };
     this.tables.set(code, t);
     this.broadcast(t);
     return { code, seat: 'P1' };
@@ -117,7 +118,7 @@ export class TableHub {
     if (this.humans(t).length >= t.players) return { error: 'event-full', message: `Table ${code} is full.` };
     let name = boardName(user.name);
     while (t.seats.some((s) => s.name === name)) name = `${name} (2)`;
-    const seat: TableSeat = { id: SEAT_IDS.find((id) => !t.seats.some((s) => s.id === id))!, name, bot: false, userId: user.id, deck: null };
+    const seat: TableSeat = { id: SEAT_IDS.find((id) => !t.seats.some((s) => s.id === id))!, name, bot: false, userId: user.id, ...(user.avatar ? { avatar: user.avatar } : {}), deck: null };
     t.seats.push(seat);
     t.conns.set(seat.id, conn);
     this.broadcast(t);
@@ -197,6 +198,7 @@ export class TableHub {
       t.game = new HostedGame({
         setup,
         names: Object.fromEntries(t.seats.map((s) => [s.id, s.name])),
+        avatars: Object.fromEntries(t.seats.flatMap((s) => (s.avatar ? [[s.id, s.avatar]] : []))),
         bots,
         alias: this.opts.alias,
         schedule: this.opts.schedule,
@@ -277,7 +279,7 @@ export class TableHub {
       host: t.host,
       you: seat,
       phase: t.phase,
-      seats: t.seats.map((s) => ({ id: s.id, name: s.name, bot: s.bot, connected: s.bot || t.conns.has(s.id), deck: s.deck ? { name: s.deck.name, commander: s.deck.commander } : null })),
+      seats: t.seats.map((s) => ({ id: s.id, name: s.name, avatar: s.avatar ?? null, bot: s.bot, connected: s.bot || t.conns.has(s.id), deck: s.deck ? { name: s.deck.name, commander: s.deck.commander } : null })),
       winner: t.winner,
     };
   }

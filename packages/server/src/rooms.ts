@@ -152,7 +152,7 @@ export class Client {
     const m = parsed.data;
     try {
       if (m.type === 'eventCreate' || m.type === 'eventJoin') await this.enterEvent(m.token, m.type === 'eventCreate' ? { players: m.players, bots: m.bots, set: m.set } : { code: m.code });
-      else if (m.type.startsWith('event')) this.eventMessage(m);
+      else if (m.type.startsWith('event')) await this.eventMessage(m);
       else if (m.type === 'tableCreate' || m.type === 'tableJoin') await this.enterTable(m.token, m.type === 'tableCreate' ? { players: m.players, bots: m.bots } : { code: m.code });
       else if (m.type.startsWith('table')) await this.tableMessage(m);
       else if (m.type === 'actions' && this.table) {
@@ -228,22 +228,22 @@ export class Client {
     if (this.event) this.lobby.events.detach(this.event.code, this.event.seat, this.conn);
     this.event = null;
     if ('players' in which) {
-      const r = this.lobby.events.create(user, which, this.conn);
+      const r = await this.lobby.events.create(user, which, this.conn);
       if ('error' in r) return this.error(r.error, r.message);
       this.event = r;
       return;
     }
-    const r = this.lobby.events.join(user, which.code, this.conn);
+    const r = await this.lobby.events.join(user, which.code, this.conn);
     if ('error' in r) return this.error(r.error, r.message);
     this.event = { code: which.code, seat: r.seat };
   }
 
-  private eventMessage(m: ClientMessage): void {
+  private async eventMessage(m: ClientMessage): Promise<void> {
     if (!this.event) return this.error('no-event', 'Join a draft event first.');
     const { code, seat } = this.event;
     const hub = this.lobby.events;
     let problem: string | null = null;
-    if (m.type === 'eventStart') problem = hub.start(code, seat);
+    if (m.type === 'eventStart') problem = await hub.start(code, seat);
     else if (m.type === 'eventPick') problem = hub.pick(code, seat, m.uid);
     else if (m.type === 'eventSelect') problem = hub.select(code, seat, m.uid);
     else if (m.type === 'eventSettings') problem = hub.settings(code, seat, m.players, m.bots, m.set);

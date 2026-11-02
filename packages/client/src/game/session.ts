@@ -30,6 +30,7 @@ import type { GameDeck } from '@nexus/cards/decks';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
 import type { CardMove } from '../components/Flights.tsx';
 import { cardName, describe } from '@nexus/bots/narrate';
+import { setPlayerAvatars } from './avatars.ts';
 
 export const YOU: PlayerId = 'You';
 
@@ -114,6 +115,8 @@ export class GameSession {
 
   constructor(options: SessionOptions, scenario?: Scenario) {
     this.options = options;
+    // A new game starts with no profile pictures (online games set theirs).
+    setPlayerAvatars([]);
     this.opponents = scenario?.opponents ?? options.opponentNames ?? Array.from({ length: options.opponents }, (_, i) => `Bot${i + 1}`);
     if (scenario) {
       this.bots = scenario.bots;

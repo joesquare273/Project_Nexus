@@ -11,6 +11,8 @@ import { MAX_DECKS, addCards, type DeckInput, type OwnedCard, type SavedDeck } f
 export interface AccountUser {
   id: string;
   name: string;
+  /** The player's Discord profile picture (only Discord's own image server), if they have one. */
+  avatar?: string;
 }
 
 export interface Account {
@@ -33,6 +35,11 @@ export interface AccountService {
   grantCards(userId: string, grant: CardGrant): Promise<{ balance: number; applied: boolean }>;
   /** Whether that grant has happened (the free starter precon, say). */
   hasGrant(userId: string, kind: CardGrant['kind'], ref: string): Promise<boolean>;
+  /**
+   * Adds shards (or takes them, with a negative amount) once per (kind, ref):
+   * a repeat changes nothing. Throws if the balance would go below zero.
+   */
+  applyShards(userId: string, amount: number, kind: ShardKind, ref: string): Promise<{ balance: number; applied: boolean }>;
   decks(userId: string): Promise<SavedDeck[]>;
   /** Saves a new deck, or changes one of the player's own (by id); null if that deck isn't theirs or they have too many. */
   saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null>;
@@ -56,6 +63,9 @@ export const ONBOARDING_STEPS = ['tour', 'lesson'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 export type Onboarding = Partial<Record<OnboardingStep, boolean>>;
 
+/** Shard changes the game server makes on its own (draft entries and prizes); purchases go through grantCards. */
+export type ShardKind = 'event_entry' | 'event_prize';
+
 export interface CardGrant {
   kind: 'pack_open' | 'draft' | 'starter_precon' | 'store_purchase' | 'admin_adjustment';
   ref: string;
@@ -74,6 +84,22 @@ export function displayName(meta: Record<string, unknown> | undefined, fallback:
   return (raw ?? fallback).trim().slice(0, 32);
 }
 
+/**
+ * The player's Discord profile picture from their sign-in, if it's on
+ * Discord's image server (anything else is ignored, so a page never loads an
+ * image from an address a player chose).
+ */
+export function discordAvatar(meta: Record<string, unknown> | undefined): string | undefined {
+  const raw = [meta?.['avatar_url'], meta?.['picture']].find((v): v is string => typeof v === 'string');
+  if (!raw || raw.length > 300) return undefined;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && url.hostname === 'cdn.discordapp.com' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The real store: Supabase, with the service role key (server only). */
 export class SupabaseAccounts implements AccountService {
   private readonly db: SupabaseClient;
@@ -84,7 +110,8 @@ export class SupabaseAccounts implements AccountService {
   async verify(token: string): Promise<AccountUser | null> {
     const { data, error } = await this.db.auth.getUser(token);
     if (error || !data.user) return null;
-    return { id: data.user.id, name: displayName(data.user.user_metadata, 'Player') };
+    const avatar = discordAvatar(data.user.user_metadata);
+    return { id: data.user.id, name: displayName(data.user.user_metadata, 'Player'), ...(avatar ? { avatar } : {}) };
   }
 
   async ensure(user: AccountUser): Promise<Account> {
@@ -114,6 +141,12 @@ export class SupabaseAccounts implements AccountService {
       .rpc('grant_cards', { p_user: userId, p_kind: grant.kind, p_ref: grant.ref, p_cost: grant.cost, p_cards: grant.cards })
       .single<{ balance: number; applied: boolean }>();
     if (error || !data) throw new Error(`Could not add the cards: ${error?.message ?? 'no data'}`);
+    return data;
+  }
+
+  async applyShards(userId: string, amount: number, kind: ShardKind, ref: string): Promise<{ balance: number; applied: boolean }> {
+    const { data, error } = await this.db.rpc('apply_shards', { p_user: userId, p_amount: amount, p_kind: kind, p_ref: ref }).single<{ balance: number; applied: boolean }>();
+    if (error || !data) throw new Error(`Could not change the shards: ${error?.message ?? 'no data'}`);
     return data;
   }
 
@@ -223,6 +256,10 @@ export class MemoryAccounts implements AccountService {
     if (!this.owned.has(userId)) this.owned.set(userId, []);
     addCards(this.owned.get(userId)!, grant.cards);
     return { balance: account.shards, applied: true };
+  }
+
+  async applyShards(userId: string, amount: number, kind: ShardKind, ref: string): Promise<{ balance: number; applied: boolean }> {
+    return this.apply(userId, amount, kind, ref);
   }
 
   async hasGrant(userId: string, kind: CardGrant['kind'], ref: string): Promise<boolean> {

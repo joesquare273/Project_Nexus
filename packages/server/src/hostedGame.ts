@@ -14,6 +14,8 @@ import type { ErrorCode, Seat, ServerMessage } from './protocol.ts';
 export interface HostedGameOptions {
   setup: GameSetup;
   names: Partial<Record<Seat, string>>;
+  /** Players' Discord profile pictures, by seat. */
+  avatars?: Partial<Record<Seat, string>>;
   bots: Partial<Record<Seat, Bot>>;
   alias: () => string;
   schedule: (fn: () => void, ms: number) => () => void;
@@ -150,6 +152,6 @@ export class HostedGame {
     if (this.opts.bots[seat]) return;
     // Every player's aliases follow every change, even while they're away.
     const update = playerUpdate(this.state, seat, this.books[seat]!, events);
-    this.opts.send(seat, { type: 'update', version: this.version, seat, names: this.opts.names, ackSeq: this.lastSeq[seat] ?? 0, update });
+    this.opts.send(seat, { type: 'update', version: this.version, seat, names: this.opts.names, ...(this.opts.avatars ? { avatars: this.opts.avatars } : {}), ackSeq: this.lastSeq[seat] ?? 0, update });
   }
 }

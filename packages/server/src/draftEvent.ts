@@ -15,13 +15,15 @@ import { finishLook } from '@nexus/cards/boosters';
 import { aiPick, createDraft, defIdOf, draftSet, type DraftSetCode, draftView, lockPick, pickProblem, type DraftCard, type DraftState, type DraftView } from '@nexus/cards/draft';
 import { aiDeck, BASIC_LANDS, COLORS, DECKBUILDING_MINUTES, deckProblem, deckSize, MIN_DECK_SIZE, suggestBasics, type LimitedDeck } from '@nexus/cards/limited';
 import { basicAi, playGame } from '@nexus/bots';
-import { matchWinner, pairRound, roundsFor, standings, type MatchResult, type Standing } from './swiss.ts';
+import { matchWinner, standings, type MatchResult, type Standing } from './swiss.ts';
 
 export interface EventSeat {
   /** S1-S4: the seat's id, also its engine player id in games. */
   id: string;
   name: string;
   bot: boolean;
+  /** The player's Discord profile picture. */
+  avatar?: string;
   /** The player's account (players only). */
   userId?: string;
 }
@@ -50,6 +52,10 @@ export interface EventMatch {
   /** The next game's first player, once known. */
   nextFirst: string | null;
   done: boolean;
+  /** Round 1: the semifinals; round 2: the final (winners) and the match for third place (losers). */
+  stage: 'semifinal' | 'final' | 'third';
+  /** Who won the match (a match always has a winner; see recordGame). */
+  winner: string | null;
 }
 
 export interface DraftEvent {
@@ -88,7 +94,7 @@ const BOT_NAMES = ['Chocobo Bot', 'Moogle Bot', 'Cactuar Bot'];
 /** Why `players` player seats and `bots` bot seats isn't a valid event, or null. */
 export function seatsProblem(players: number, bots: number): string | null {
   if (!Number.isInteger(players) || !Number.isInteger(bots) || players < 1 || bots < 0) return 'An event has at least one player seat.';
-  if (players + bots < 2 || players + bots > MAX_SEATS) return 'A draft event is for 2 to 4 seats.';
+  if (players + bots !== MAX_SEATS) return 'A draft event has 4 seats: players and bots.';
   return null;
 }
 
@@ -96,7 +102,7 @@ export function seatsProblem(players: number, bots: number): string | null {
  * A new event with its first seat (the player who made it): `players` seats
  * for players (the host included) and `bots` for bots.
  */
-export function createEvent(code: string, seats: { players: number; bots: number; set?: DraftSetCode }, host: { name: string; userId: string }): DraftEvent {
+export function createEvent(code: string, seats: { players: number; bots: number; set?: DraftSetCode }, host: { name: string; userId: string; avatar?: string }): DraftEvent {
   const problem = seatsProblem(seats.players, seats.bots);
   if (problem) throw new Error(problem);
   const set = seats.set ?? 'fin';
@@ -107,7 +113,7 @@ export function createEvent(code: string, seats: { players: number; bots: number
     size,
     players: seats.players,
     set,
-    seats: [{ id: SEAT_IDS[0]!, name: host.name, bot: false, userId: host.userId }],
+    seats: [{ id: SEAT_IDS[0]!, name: host.name, bot: false, userId: host.userId, ...(host.avatar ? { avatar: host.avatar } : {}) }],
     phase: 'lobby',
     draft: null,
     decks: {},
@@ -116,19 +122,19 @@ export function createEvent(code: string, seats: { players: number; bots: number
     pickEndsAt: null,
     pickClock: 0,
     selected: {},
-    rounds: roundsFor(size),
+    rounds: 2,
     round: 0,
     matches: [],
   };
 }
 
 /** Seats another player; null if the event is full or under way. */
-export function joinEvent(ev: DraftEvent, player: { name: string; userId: string }): EventSeat | null {
+export function joinEvent(ev: DraftEvent, player: { name: string; userId: string; avatar?: string }): EventSeat | null {
   if (ev.phase !== 'lobby' || ev.seats.length >= ev.players) return null;
   if (ev.seats.some((s) => s.userId === player.userId)) return null;
   const taken = new Set(ev.seats.map((s) => s.name));
   const name = taken.has(player.name) ? `${player.name} (2)` : player.name;
-  const seat: EventSeat = { id: SEAT_IDS.find((id) => !ev.seats.some((s) => s.id === id))!, name, bot: false, userId: player.userId };
+  const seat: EventSeat = { id: SEAT_IDS.find((id) => !ev.seats.some((s) => s.id === id))!, name, bot: false, userId: player.userId, ...(player.avatar ? { avatar: player.avatar } : {}) };
   ev.seats.push(seat);
   return seat;
 }
@@ -145,7 +151,7 @@ export function changeSeats(prev: DraftEvent, players: number, bots: number, set
   const problem = seatsProblem(players, bots);
   if (problem) throw new Error(problem);
   if (players < prev.seats.length) throw new Error(`${prev.seats.length} players are already seated.`);
-  return { ...structuredClone(prev), players, set, size: players + bots, rounds: roundsFor(players + bots) };
+  return { ...structuredClone(prev), players, set, size: players + bots, rounds: 2 };
 }
 
 /** Starts the draft once every player seat is taken; the bot seats get bots. Returns the new state. */
@@ -346,20 +352,43 @@ const results = (ev: DraftEvent): MatchResult[] =>
 
 const wins = (m: EventMatch, seat: string) => m.games.filter((g) => g.winner === seat).length;
 
+/**
+ * The tournament (user decision 2026-11-03): four seats. Round 1 pairs them
+ * at random into two semifinals; in round 2 the winners play the final (1st
+ * and 2nd place) and the losers play for 3rd and 4th. Every match is best of 3.
+ */
 function startRound(ev: DraftEvent, rng: () => number): void {
   ev.round++;
-  const ids = ev.seats.map((s) => s.id);
-  // Round 1 is random (docs/sealed.md); later rounds pair by standings.
-  if (ev.round === 1) for (let i = ids.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+  const pairs: [string, string, EventMatch['stage']][] = [];
+  if (ev.round === 1) {
+    const ids = ev.seats.map((s) => s.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    }
+    pairs.push([ids[0]!, ids[1]!, 'semifinal'], [ids[2]!, ids[3]!, 'semifinal']);
+  } else {
+    const [m1, m2] = ev.matches.filter((m) => m.round === 1);
+    const loser = (m: EventMatch) => (m.winner === m.a ? m.b! : m.a);
+    pairs.push([m1!.winner!, m2!.winner!, 'final'], [loser(m1!), loser(m2!), 'third']);
   }
-  for (const [a, b] of pairRound(ids, results(ev))) {
-    const m: EventMatch = { id: `r${ev.round}-${a}`, round: ev.round, a, b, games: [], chooser: null, nextFirst: null, done: b === null };
-    if (b) m.nextFirst = rng() < 0.5 ? a : b;
-    ev.matches.push(m);
+  for (const [a, b, stage] of pairs) {
+    ev.matches.push({ id: `r${ev.round}-${a}`, round: ev.round, a, b, games: [], chooser: null, nextFirst: rng() < 0.5 ? a : b, done: false, stage, winner: null });
   }
 }
+
+/** Places once the event is over: the final's winner and loser, then the match for third. */
+export function placements(ev: DraftEvent): string[] | null {
+  if (ev.phase !== 'finished') return null;
+  const final = ev.matches.find((m) => m.stage === 'final');
+  const third = ev.matches.find((m) => m.stage === 'third');
+  if (!final?.winner || !third?.winner) return null;
+  const other = (m: EventMatch) => (m.winner === m.a ? m.b! : m.a);
+  return [final.winner, other(final), third.winner, other(third)];
+}
+
+/** Most games a match may take: best of 3, with up to two more if drawn games leave it tied. */
+export const MAX_GAMES = 5;
 
 /** This round's match for a seat, if any. */
 export function currentMatch(ev: DraftEvent, seat: string): EventMatch | undefined {
@@ -392,9 +421,12 @@ export function choosePlayDraw(prev: DraftEvent, matchId: string, seat: string, 
 }
 
 /**
- * Records a finished game. A match ends when a player has won two games (or
- * after three); the next game's loser chooses play or draw (a bot plays). When
- * every match of the round is over, the next round is paired, or the event ends.
+ * Records a finished game. A match ends when a player has won two games, or
+ * after three games with one player ahead. Drawn games can leave it tied:
+ * then more games are played (five at most); still tied after that, the
+ * match goes to a coin flip, since every match needs a winner. The next
+ * game's loser chooses play or draw (a bot plays). When both matches of the
+ * round are over, the next round is paired, or the event ends.
  */
 export function recordGame(prev: DraftEvent, matchId: string, winner: string | null, rng: () => number): DraftEvent {
   const ev = structuredClone(prev);
@@ -403,8 +435,12 @@ export function recordGame(prev: DraftEvent, matchId: string, winner: string | n
   if (winner !== null && winner !== m.a && winner !== m.b) throw new Error('The winner must be one of the match players.');
   m.games.push({ winner, first: m.nextFirst });
   m.nextFirst = null;
-  if (wins(m, m.a) >= 2 || wins(m, m.b) >= 2 || m.games.length >= 3) m.done = true;
-  else {
+  const wa = wins(m, m.a);
+  const wb = wins(m, m.b);
+  if (wa >= 2 || wb >= 2 || (m.games.length >= 3 && wa !== wb) || m.games.length >= MAX_GAMES) {
+    m.done = true;
+    m.winner = wa > wb ? m.a : wb > wa ? m.b : rng() < 0.5 ? m.a : m.b;
+  } else {
     // The loser chooses; after a draw, whoever chose last chooses again (or the player who went second).
     const last = m.games[m.games.length - 1]!;
     m.chooser = winner === null ? (m.chooser ?? (last.first === m.a ? m.b : m.a)) : winner === m.a ? m.b : m.a;
@@ -419,10 +455,13 @@ export function recordGame(prev: DraftEvent, matchId: string, winner: string | n
 
 /** The event's standings (best first). */
 export function eventStandings(ev: DraftEvent): Standing[] {
-  return standings(
+  const table = standings(
     ev.seats.map((s) => s.id),
     results(ev),
   );
+  // Once the event is over, the bracket decides the order.
+  const places = placements(ev);
+  return places ? places.map((p) => table.find((s) => s.player === p)!) : table;
 }
 
 export { matchWinner };

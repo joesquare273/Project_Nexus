@@ -3,14 +3,14 @@
 // the server with seats P1-P4.
 import { describe, expect, it } from 'vitest';
 import { FIN_PRECONS } from '@nexus/cards';
-import { MemoryAccounts } from '../src/accounts.ts';
+import { MemoryAccounts, discordAvatar } from '../src/accounts.ts';
 import { Lobby, type Client } from '../src/rooms.ts';
 import { claimStarter } from '../src/starter.ts';
 import type { ServerMessage, TableView } from '../src/protocol.ts';
 
 async function setup(opts: { botGameLimit?: number } = {}) {
   const accounts = new MemoryAccounts();
-  const users = { joe: { id: 'u-joe', name: 'Joe' }, ann: { id: 'u-ann', name: 'Ann' }, bea: { id: 'u-bea', name: 'Bea' } };
+  const users = { joe: { id: 'u-joe', name: 'Joe', avatar: 'https://cdn.discordapp.com/avatars/1/joe.png' }, ann: { id: 'u-ann', name: 'Ann' }, bea: { id: 'u-bea', name: 'Bea' } };
   const decks: Record<string, string> = {};
   for (const [key, u] of Object.entries(users)) {
     accounts.tokens.set(`tok-${key}`, u);
@@ -57,6 +57,17 @@ async function concede(b: ReturnType<typeof browser>) {
   await b.send({ type: 'actions', seq: seq++, version: g.version, actions: [{ type: 'Concede', player: g.seat }] });
 }
 
+describe('Discord profile pictures', () => {
+  it('are taken only from Discord’s image server', () => {
+    expect(discordAvatar({ avatar_url: 'https://cdn.discordapp.com/avatars/1/a.png' })).toBe('https://cdn.discordapp.com/avatars/1/a.png');
+    expect(discordAvatar({ picture: 'https://cdn.discordapp.com/embed/avatars/0.png' })).toBe('https://cdn.discordapp.com/embed/avatars/0.png');
+    expect(discordAvatar({ avatar_url: 'https://evil.example/a.png' })).toBeUndefined();
+    expect(discordAvatar({ avatar_url: 'http://cdn.discordapp.com/a.png' })).toBeUndefined();
+    expect(discordAvatar({ avatar_url: 'javascript:alert(1)' })).toBeUndefined();
+    expect(discordAvatar({})).toBeUndefined();
+  });
+});
+
 describe('Commander tables', () => {
   it('a host and three bots: the host plays their own deck; the bots play the precons', async () => {
     const { lobby, decks } = await setup({ botGameLimit: 400 });
@@ -81,6 +92,9 @@ describe('Commander tables', () => {
     ]);
     const g = joe.game()!;
     expect(g.seat).toBe('P1');
+    // Joe's Discord profile picture goes with his seat; bots have none.
+    expect(joe.table()!.seats[0]!.avatar).toBe('https://cdn.discordapp.com/avatars/1/joe.png');
+    expect(g.avatars).toEqual({ P1: 'https://cdn.discordapp.com/avatars/1/joe.png' });
     expect(Object.keys(g.names).sort()).toEqual(['P1', 'P2', 'P3', 'P4']);
     expect(g.update.state.players.P1!.life).toBe(40);
     // Joe sees only his own hand.
