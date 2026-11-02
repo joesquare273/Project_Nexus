@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import type { PlayerUpdate } from '@nexus/engine';
+import { DRAFT_SET_CODES } from '@nexus/cards/draftSets';
 
 /** The two Starter Kit decks. */
 export const DECKS = ['RW', 'UB'] as const;
@@ -30,11 +31,12 @@ const LimitedDeckPayload = z.strictObject({
 export const ClientMessage = z.discriminatedUnion('type', [
   /**
    * Draft events (docs/sealed.md, S3): the host makes one with `players`
-   * seats for players (the host included) and `bots` seats for bots, 2-4 in all.
+   * seats for players (the host included) and `bots` seats for bots, 2-4 in
+   * all, and the set to draft (prizes may depend on it).
    */
-  z.strictObject({ type: z.literal('eventCreate'), token: z.string().min(1).max(8192), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
-  /** The host changes the seats before the draft starts. */
-  z.strictObject({ type: z.literal('eventSettings'), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
+  z.strictObject({ type: z.literal('eventCreate'), token: z.string().min(1).max(8192), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3), set: z.enum(DRAFT_SET_CODES) }),
+  /** The host changes the seats or the set before the draft starts. */
+  z.strictObject({ type: z.literal('eventSettings'), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3), set: z.enum(DRAFT_SET_CODES).optional() }),
   /** Join an event by its code, or come back to one you're in (after a reload or a lost connection). */
   z.strictObject({ type: z.literal('eventJoin'), token: z.string().min(1).max(8192), code: RoomCode }),
   /** The event's creator starts the draft. */
@@ -172,6 +174,8 @@ export interface EventView {
   /** Seats for players (the host included) and for bots, set by the host. */
   players: number;
   bots: number;
+  /** The set being drafted. */
+  set: { code: string; name: string };
   phase: 'lobby' | 'drafting' | 'building' | 'playing' | 'finished';
   /** Your seat. */
   you: string;

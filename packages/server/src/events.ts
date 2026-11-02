@@ -16,6 +16,7 @@
 import { AliasBook, applyAction, createGame, getLegalActions, playerUpdate, resolveAction, seedFromBytes, type Action, type GameEvent, type GameState } from '@nexus/engine';
 import { basicAi, type Bot } from '@nexus/bots';
 import type { LimitedDeck } from '@nexus/cards/limited';
+import { draftSet, type DraftSetCode } from '@nexus/cards/draft';
 import type { AccountService } from './accounts.ts';
 import {
   botMatch,
@@ -129,7 +130,7 @@ export class EventHub {
   }
 
   /** Makes an event and seats its creator. */
-  create(user: { id: string; name: string }, seats: { players: number; bots: number }, conn: EventConnection): { code: string; seat: string } | { error: ErrorCode; message: string } {
+  create(user: { id: string; name: string }, seats: { players: number; bots: number; set: DraftSetCode }, conn: EventConnection): { code: string; seat: string } | { error: ErrorCode; message: string } {
     const problem = seatsProblem(seats.players, seats.bots);
     if (problem) return { error: 'event-rule', message: problem };
     const code = this.newCode();
@@ -208,10 +209,10 @@ export class EventHub {
     return null;
   }
 
-  settings(code: string, seat: string, players: number, bots: number): string | null {
+  settings(code: string, seat: string, players: number, bots: number, set?: DraftSetCode): string | null {
     return this.change(code, (h) => {
       if (seat !== h.host) throw new Error('Only the player who made the event can change it.');
-      return changeSeats(h.ev, players, bots);
+      return changeSeats(h.ev, players, bots, set);
     });
   }
 
@@ -435,6 +436,7 @@ export class EventHub {
       size: ev.size,
       players: ev.players,
       bots: ev.size - ev.players,
+      set: { code: ev.set, name: draftSet(ev.set)?.name ?? ev.set },
       phase: ev.phase,
       you: seat,
       host: h.host,

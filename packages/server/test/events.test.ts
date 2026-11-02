@@ -68,7 +68,7 @@ describe('draft events on the server', () => {
   it('one player and a bot: draft, the pool saved to the account, deckbuilding, a best-of-3 match', async () => {
     const { accounts, lobby } = setup();
     const joe = browser(lobby);
-    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 1 });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 1, set: 'fin' });
     const code = joe.event()!.code;
     expect(joe.event()).toMatchObject({ phase: 'lobby', you: 'S1', host: 'S1' });
     await joe.send({ type: 'eventStart' });
@@ -114,7 +114,7 @@ describe('draft events on the server', () => {
   it('a player and three bots: bot-vs-bot matches are played on the server; three Swiss rounds', async () => {
     const { lobby } = setup({ botGameLimit: 60 });
     const joe = browser(lobby);
-    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 3 });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 3, set: 'fin' });
     await joe.send({ type: 'eventStart' });
     await draft(joe);
     await joe.send({ type: 'eventDeck', deck: aiDeck(joe.event()!.draft!.picks as DraftCard[]) });
@@ -139,7 +139,13 @@ describe('draft events on the server', () => {
     const { lobby } = setup();
     const joe = browser(lobby);
     const ann = browser(lobby);
+    // The host must pick a set the server can draft.
     await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 0 });
+    expect(joe.errors().at(-1)).toMatchObject({ code: 'bad-message' });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 0, set: 'xyz' });
+    expect(joe.errors().at(-1)).toMatchObject({ code: 'bad-message' });
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 2, bots: 0, set: 'fin' });
+    expect(joe.event()!.set).toEqual({ code: 'fin', name: 'Final Fantasy' });
     // The draft waits for every player seat.
     await joe.send({ type: 'eventStart' });
     expect(joe.errors().at(-1)?.message).toMatch(/Waiting for 1 more player/);

@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Draft events in the browser; the host picks the set
+
+- Draft events need a set chosen by the host (`DRAFT_SETS`, Final Fantasy
+  for now); it's kept on the event for prizes later.
+- Play → Draft → *Draft event*: host or join, waiting room, the timed draft,
+  deckbuilding, matches with play/draw, standings (`draft/EventPage.tsx`,
+  `draft/eventLink.ts`). Type-checked and tested on the server side; the
+  browser walk-through was cut short, so the full flow still needs a run in
+  a real browser.
+
 ### Commander tables in the browser
 
 - Play → Online has two formats: **Commander** (host or join a table of 2-4

@@ -249,7 +249,7 @@ function aisLockIn(mod: DraftModule, s: DraftState): DraftState {
 }
 
 /** Whether the engine can play this card yet: drafting decisions depend on it. */
-function BuildBadge({ card, mod }: { card: DraftCard; mod: DraftModule }) {
+export function BuildBadge({ card, mod }: { card: DraftCard; mod: DraftModule }) {
   const def = CARD_DEFS[mod.defIdOf(card.card) ?? ''];
   if (!def || !def.notBuilt) return null;
   return <span className="build-badge blocked">Not built yet</span>;
@@ -263,7 +263,7 @@ function groupOf(mod: DraftModule, c: DraftCard): string {
   return colors.length === 0 ? 'colorless' : colors.length > 1 ? 'multi' : colors[0]!;
 }
 
-function PicksPanel({ picks, mod, onPreview }: { picks: DraftCard[]; mod: DraftModule; onPreview: (c: DraftCard | null) => void }) {
+export function PicksPanel({ picks, mod, onPreview }: { picks: DraftCard[]; mod: DraftModule; onPreview: (c: DraftCard | null) => void }) {
   const groups = useMemo(() => {
     const g: Record<string, DraftCard[]> = {};
     for (const c of picks) (g[groupOf(mod, c)] ??= []).push(c);

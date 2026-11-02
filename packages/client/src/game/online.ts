@@ -16,8 +16,16 @@ import { eventTargetNotices } from './targeting.ts';
 
 type Update = Extract<ServerMessage, { type: 'update' }>;
 
+/** What a game session talks through: the WebSocket itself, or a draft event's link to it (shared between games). */
+export interface GameLink {
+  send(m: ClientMessage): void;
+  listen(listener: (m: ServerMessage) => void): void;
+  close(): void;
+  onClose: () => void;
+}
+
 /** The WebSocket to the game server, at /ws on the page's own host (Vite forwards it in development). */
-export class OnlineConnection {
+export class OnlineConnection implements GameLink {
   private readonly ws: WebSocket;
   private listener: (m: ServerMessage) => void = () => {};
   /** Called once if the connection drops. */
@@ -72,9 +80,9 @@ export class OnlineSession extends GameSession {
   /** A batch is on its way and hasn't been answered yet. */
   private waiting = false;
   private readonly listeners = new Set<(error?: string) => void>();
-  private readonly connection: OnlineConnection;
+  private readonly connection: GameLink;
 
-  constructor(connection: OnlineConnection, first: Update, deck: Deck = 'RW', format: 'starter' | 'commander' = 'starter') {
+  constructor(connection: GameLink, first: Update, deck: Deck = 'RW', format: 'starter' | 'commander' | 'limited' = 'starter') {
     const seat = first.seat;
     // The other seats in turn order after yours, as the board lists opponents.
     const order = first.update.state.turnOrder as string[];

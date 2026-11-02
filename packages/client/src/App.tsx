@@ -11,6 +11,8 @@ import { OnlineMenu } from './components/OnlineMenu.tsx';
 import { OwnCommanderDecks } from './components/CommanderDecks.tsx';
 import { TableMenu } from './components/TableMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
+import { EventPage } from './draft/EventPage.tsx';
+import { eventLink } from './draft/eventLink.ts';
 import { StarterPick } from './account/StarterPick.tsx';
 import { Tour } from './account/Tour.tsx';
 import { AccountChip, AccountsSetupPage, SignInPage, supabase, useAccount, useSession } from './account/AccountBar.tsx';
@@ -217,7 +219,7 @@ function MainApp() {
               onChange={(play) => go({ play })}
             />
             {route.play === 'online' && <OnlinePlay onStart={play} onBuild={() => go({ page: 'decks' })} />}
-            {route.play === 'draft' && <DraftTab onPlay={play} />}
+            {route.play === 'draft' && <DraftPlay onPlay={play} />}
             {route.play === 'ai' && (
               <div className="play-setup">
                 {onboarding && !onboarding.lesson && (
@@ -333,6 +335,28 @@ function MainApp() {
   );
 }
 
+/** Draft: an online event (host or join, players and bots, a chosen set) or a practice draft in this browser. */
+function DraftPlay({ onPlay }: { onPlay: (s: GameSession) => void }) {
+  const [kind, setKind] = useState<'event' | 'practice'>('event');
+  const [, rerender] = useState(0);
+  useEffect(() => eventLink.subscribe(() => rerender((n) => n + 1)), []);
+  return (
+    <div className="play-setup">
+      {!eventLink.active && (
+        <div className="format-choices">
+          <button className={kind === 'event' ? 'chosen' : ''} onClick={() => setKind('event')}>
+            Draft event <span>Online · host or join · players and bots</span>
+          </button>
+          <button className={kind === 'practice' ? 'chosen' : ''} onClick={() => setKind('practice')}>
+            Practice draft <span>Offline · AI drafters · nothing kept</span>
+          </button>
+        </div>
+      )}
+      {kind === 'event' || eventLink.active ? <EventPage onPlay={onPlay} /> : <DraftTab onPlay={onPlay} />}
+    </div>
+  );
+}
+
 /** Online: a Commander table (host or join, players and bots) or a Starter Kit duel by room code. */
 function OnlinePlay({ onStart, onBuild }: { onStart: (s: GameSession) => void; onBuild: () => void }) {
   const [kind, setKind] = useState<'commander' | 'starter'>('commander');
@@ -376,7 +400,7 @@ function SubTabs<T extends string>({ value, options, onChange }: { value: T; opt
 const TILES: { title: string; text: string; art: string; to: Partial<Route> }[] = [
   { title: 'Play the computer', text: 'Starter Kits or your Commander decks, 1 to 3 opponents.', art: 'sephiroth-planets-heir', to: { page: 'play', play: 'ai' } },
   { title: 'Play friends', text: 'Host or join a Commander table, with bots in any empty seats.', art: 'cloud-planets-champion', to: { page: 'play', play: 'online' } },
-  { title: 'Booster draft', text: 'Pick cards from packs as they pass, then build a deck.', art: 'terra-herald-of-hope', to: { page: 'play', play: 'draft' } },
+  { title: 'Booster draft', text: 'Host or join a draft: pick the set, then players and bots.', art: 'terra-herald-of-hope', to: { page: 'play', play: 'draft' } },
   { title: 'Open packs', text: 'Play and Collector Boosters, kept in your collection.', art: 'tifa-lockhart', to: { page: 'shop', shop: 'packs' } },
   { title: 'Your collection', text: 'Every card you own, with its finishes.', art: 'tidus-yunas-guardian', to: { page: 'collection' } },
   { title: 'Your decks', text: 'Build and edit decks from your cards.', art: 'yshtola-nights-blessed', to: { page: 'decks' } },

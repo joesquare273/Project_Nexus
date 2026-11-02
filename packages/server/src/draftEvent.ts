@@ -12,7 +12,7 @@
 import { LIMITED, type GameSetup, type GameState, type PlayerId, type Seed } from '@nexus/engine';
 import { CARD_DEFS } from '@nexus/cards';
 import { finishLook } from '@nexus/cards/boosters';
-import { aiPick, createDraft, defIdOf, draftView, lockPick, pickProblem, type DraftCard, type DraftState, type DraftView } from '@nexus/cards/draft';
+import { aiPick, createDraft, defIdOf, draftSet, type DraftSetCode, draftView, lockPick, pickProblem, type DraftCard, type DraftState, type DraftView } from '@nexus/cards/draft';
 import { aiDeck, BASIC_LANDS, COLORS, DECKBUILDING_MINUTES, deckProblem, deckSize, MIN_DECK_SIZE, suggestBasics, type LimitedDeck } from '@nexus/cards/limited';
 import { basicAi, playGame } from '@nexus/bots';
 import { matchWinner, pairRound, roundsFor, standings, type MatchResult, type Standing } from './swiss.ts';
@@ -57,6 +57,8 @@ export interface DraftEvent {
   /** Seats the event is for (2-4): `players` for players (the host included), the rest for bots. */
   size: number;
   players: number;
+  /** The set being drafted, chosen by the host (prizes may depend on it). */
+  set: DraftSetCode;
   seats: EventSeat[];
   phase: EventPhase;
   draft: DraftState | null;
@@ -94,14 +96,17 @@ export function seatsProblem(players: number, bots: number): string | null {
  * A new event with its first seat (the player who made it): `players` seats
  * for players (the host included) and `bots` for bots.
  */
-export function createEvent(code: string, seats: { players: number; bots: number }, host: { name: string; userId: string }): DraftEvent {
+export function createEvent(code: string, seats: { players: number; bots: number; set?: DraftSetCode }, host: { name: string; userId: string }): DraftEvent {
   const problem = seatsProblem(seats.players, seats.bots);
   if (problem) throw new Error(problem);
+  const set = seats.set ?? 'fin';
+  if (!draftSet(set)) throw new Error(`There are no ${set} boosters to draft.`);
   const size = seats.players + seats.bots;
   return {
     code,
     size,
     players: seats.players,
+    set,
     seats: [{ id: SEAT_IDS[0]!, name: host.name, bot: false, userId: host.userId }],
     phase: 'lobby',
     draft: null,
@@ -134,12 +139,13 @@ export function leaveEvent(ev: DraftEvent, userId: string): void {
 }
 
 /** The host changes the seats before the draft (never below the players already seated). */
-export function changeSeats(prev: DraftEvent, players: number, bots: number): DraftEvent {
+export function changeSeats(prev: DraftEvent, players: number, bots: number, set: DraftSetCode = prev.set): DraftEvent {
+  if (!draftSet(set)) throw new Error(`There are no ${set} boosters to draft.`);
   if (prev.phase !== 'lobby') throw new Error('The draft has already started.');
   const problem = seatsProblem(players, bots);
   if (problem) throw new Error(problem);
   if (players < prev.seats.length) throw new Error(`${prev.seats.length} players are already seated.`);
-  return { ...structuredClone(prev), players, size: players + bots, rounds: roundsFor(players + bots) };
+  return { ...structuredClone(prev), players, set, size: players + bots, rounds: roundsFor(players + bots) };
 }
 
 /** Starts the draft once every player seat is taken; the bot seats get bots. Returns the new state. */
@@ -154,7 +160,7 @@ export function startDraft(prev: DraftEvent, seed: Seed, now = 0): DraftEvent {
     ev.seats.push({ id, name: BOT_NAMES[bots++ % BOT_NAMES.length]!, bot: true });
   }
   ev.seats.sort((a, b) => SEAT_IDS.indexOf(a.id) - SEAT_IDS.indexOf(b.id));
-  ev.draft = botsPick(ev, createDraft(ev.seats.map((s) => s.id), seed));
+  ev.draft = botsPick(ev, createDraft(ev.seats.map((s) => s.id), seed, ev.set));
   ev.phase = 'drafting';
   for (const s of ev.seats) {
     ev.decks[s.id] = null;

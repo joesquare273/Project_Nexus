@@ -98,6 +98,21 @@ first called it "sealed"; the format they described is a booster draft.)
   taken; bot seats get bots then. All bots but the host, all players, or a
   mix.
 
+- **The host picks the set (2026-11-03):** `eventCreate` needs a `set`
+  from `DRAFT_SETS` (`cards/src/draftSets.ts`; only Final Fantasy so far,
+  more as sets are imported). The event keeps it (`DraftEvent.set`), opens
+  that set's Play Boosters, and shows it to everyone; prizes can depend on
+  it once the reward system is set.
+- **The Draft page (S3c, 2026-11-03):** Play → Draft → *Draft event*: host
+  (set, player and bot seats) or join by code; the waiting room; the draft
+  with the 30-second clock (click to choose, Confirm or double-click to
+  lock in); the deckbuilder against the server's 20-minute clock (each
+  change saved on the server); then your match (play/draw choice when you
+  lose a game), all matches and the standings. Your games open on the board
+  automatically (`draft/eventLink.ts` keeps the event's connection while
+  you play). *Practice draft* is the old offline draft. Not yet:
+  sideboarding between games in the browser (the server allows it).
+
 ## The AI drafters and deckbuilder
 
 - `cards/src/rating.ts` (`cardRating`) rates a card for Limited on a rough

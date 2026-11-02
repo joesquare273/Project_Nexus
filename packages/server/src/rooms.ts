@@ -25,6 +25,7 @@ import { ClientMessage, type Deck, type ErrorCode, type LobbyPlayer, type Seat, 
 import type { AccountService } from './accounts.ts';
 import { EventHub, type EventHubOptions } from './events.ts';
 import { TableHub } from './tables.ts';
+import type { DraftSetCode } from '@nexus/cards/draft';
 
 /** Starter Kit rooms are duels. */
 const SEATS: Seat[] = ['P1', 'P2'];
@@ -150,7 +151,7 @@ export class Client {
     }
     const m = parsed.data;
     try {
-      if (m.type === 'eventCreate' || m.type === 'eventJoin') await this.enterEvent(m.token, m.type === 'eventCreate' ? { players: m.players, bots: m.bots } : { code: m.code });
+      if (m.type === 'eventCreate' || m.type === 'eventJoin') await this.enterEvent(m.token, m.type === 'eventCreate' ? { players: m.players, bots: m.bots, set: m.set } : { code: m.code });
       else if (m.type.startsWith('event')) this.eventMessage(m);
       else if (m.type === 'tableCreate' || m.type === 'tableJoin') await this.enterTable(m.token, m.type === 'tableCreate' ? { players: m.players, bots: m.bots } : { code: m.code });
       else if (m.type.startsWith('table')) await this.tableMessage(m);
@@ -217,7 +218,7 @@ export class Client {
   }
 
   /** Makes a draft event, or joins (or returns to) one by code. */
-  private async enterEvent(token: string, which: { players: number; bots: number } | { code: string }): Promise<void> {
+  private async enterEvent(token: string, which: { players: number; bots: number; set: DraftSetCode } | { code: string }): Promise<void> {
     if (this.room) return this.error('already-joined', `You are in room ${this.room.code}.`);
     if (this.table) return this.error('already-joined', `You are at table ${this.table.code}.`);
     const accounts = this.lobby.accounts;
@@ -245,7 +246,7 @@ export class Client {
     if (m.type === 'eventStart') problem = hub.start(code, seat);
     else if (m.type === 'eventPick') problem = hub.pick(code, seat, m.uid);
     else if (m.type === 'eventSelect') problem = hub.select(code, seat, m.uid);
-    else if (m.type === 'eventSettings') problem = hub.settings(code, seat, m.players, m.bots);
+    else if (m.type === 'eventSettings') problem = hub.settings(code, seat, m.players, m.bots, m.set);
     else if (m.type === 'eventDeck') problem = hub.deck(code, seat, m.deck);
     else if (m.type === 'eventReady') problem = hub.ready(code, seat, m.ready);
     else if (m.type === 'eventPlayDraw') problem = hub.playDraw(code, seat, m.play);

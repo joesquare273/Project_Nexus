@@ -16,6 +16,18 @@ import { cardRating } from './rating.ts';
 
 export const PACKS_PER_PLAYER = 6;
 
+export { DRAFT_SETS, DRAFT_SET_CODES, draftSet, type DraftSetCode } from './draftSets.ts';
+import { draftSet, type DraftSetCode } from './draftSets.ts';
+
+/** One Play Booster of `set`, without its token or art card. */
+function openDraftPack(set: DraftSetCode, rng: () => number): Pull[] {
+  switch (set) {
+    case 'fin':
+      // Real Play Boosters: FIN and Through the Ages only (no Scene Box extras).
+      return openPack('play', rng, undefined, { officialOnly: true }).cards.filter((p) => isMagicCard(p.card));
+  }
+}
+
 /** One card in the draft, with an id unique within the draft. */
 export interface DraftCard extends Pull {
   uid: string;
@@ -27,6 +39,8 @@ export interface DraftPack {
 }
 
 export interface DraftState {
+  /** The set being drafted (its Play Boosters). */
+  set: DraftSetCode;
   /** Seats in clockwise order: each passes to the next. */
   seats: string[];
   /** 0-5: which of the six packs is being drafted. */
@@ -48,6 +62,7 @@ export interface DraftState {
 
 /** What one player may see: their pack, their picks, and how far everyone is. */
 export interface DraftView {
+  set: DraftSetCode;
   seat: string;
   round: number;
   /** The pack to pick from now, or null when the draft is over. */
@@ -75,23 +90,22 @@ function rngFrom(seed: Seed): () => number {
   };
 }
 
-export function createDraft(seats: string[], seed: Seed): DraftState {
+export function createDraft(seats: string[], seed: Seed, set: DraftSetCode = 'fin'): DraftState {
   if (seats.length < 2 || seats.length > 4) throw new Error('A draft needs 2 to 4 players.');
+  if (!draftSet(set)) throw new Error(`There are no ${set} boosters to draft.`);
   const rng = rngFrom(seed);
   let uid = 0;
   const unopened: Record<string, DraftPack[]> = {};
   for (const seat of seats) {
     unopened[seat] = Array.from({ length: PACKS_PER_PLAYER }, (_, i) => ({
       id: `${seat}-pack${i + 1}`,
-      // Real Play Boosters: FIN and Through the Ages only (no Scene Box extras).
-      cards: openPack('play', rng, undefined, { officialOnly: true })
-        .cards.filter((p) => isMagicCard(p.card))
-        .map((p) => ({ ...p, uid: `d${uid++}` })),
+      cards: openDraftPack(set, rng).map((p) => ({ ...p, uid: `d${uid++}` })),
     }));
   }
   const sizes = new Set(Object.values(unopened).flat().map((p) => p.cards.length));
   if (sizes.size !== 1) throw new Error('Every pack should hold the same number of cards.');
   const state: DraftState = {
+    set,
     seats: [...seats],
     round: 0,
     packSize: [...sizes][0]!,
@@ -157,6 +171,7 @@ export function lockPick(prev: DraftState, seat: string, uid: string): DraftStat
 
 export function draftView(s: DraftState, seat: string): DraftView {
   return {
+    set: s.set ?? 'fin',
     seat,
     round: s.round,
     pack: s.packs[seat] ? structuredClone(s.packs[seat]!.cards) : null,
