@@ -25,8 +25,10 @@ export interface PlayerSetup {
 export interface GameSetup {
   format: FormatConfig;
   cardDefs: Record<CardDefId, CardDefinition>;
-  /** Seating order. The starting player is chosen at random from the seed. */
+  /** Seating order. The starting player is chosen at random from the seed, unless `firstPlayer` says. */
   players: PlayerSetup[];
+  /** Who takes the first turn (rule 103.1: in a match, the previous game's loser chooses). Random when absent. */
+  firstPlayer?: string;
   /** A 128-bit seed (online games: from crypto.randomBytes via seedFromBytes) or an integer (tests, local games). */
   seed: Seed;
   /** For tests that use tiny decks. */
@@ -151,7 +153,8 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
     }
   }
 
-  s.activePlayer = turnOrder[randomInt(s, turnOrder.length)]!;
+  const random = turnOrder[randomInt(s, turnOrder.length)]!;
+  s.activePlayer = setup.firstPlayer && turnOrder.includes(setup.firstPlayer) ? setup.firstPlayer : random;
   for (const id of turnOrder) drawCards(ctx, id, format.startingHandSize);
 
   if (setup.mulligans) startMulligans(ctx);

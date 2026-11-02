@@ -5,6 +5,23 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Draft events, step S3a: the event core
+
+- `packages/server/src/draftEvent.ts` runs a draft event's rules on the
+  server: seats (players or bots), the draft with bots picking at once, 20
+  minutes of deckbuilding (decks in progress saved at any size; at time-out
+  they're filled with basics to 40), Swiss rounds (`swiss.ts`: pairings
+  without rematches, byes, standings with the usual tiebreakers),
+  best-of-3 matches where the last game's loser chooses play or draw,
+  sideboarding between games, and bot-vs-bot games played out with the
+  basic AI. Games use the Limited format and each drafted card's printing.
+- Engine: `GameSetup.firstPlayer` chooses who takes the first turn (random
+  when absent).
+- The server package now depends on `@nexus/bots` (to play bot seats).
+- Tests: `server/test/draftEvent.test.ts` (a whole event with one player and
+  three bots, play/draw choices, the deckbuilding timer, joining, a real
+  bot-vs-bot game).
+
 ### Deck editor rebuilt around card pictures
 
 - **Your collection** is a grid of card images (one per card, with "N arts"

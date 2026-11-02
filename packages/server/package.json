@@ -12,6 +12,7 @@
     "start": "node src/main.ts"
   },
   "dependencies": {
+    "@nexus/bots": "*",
     "@nexus/cards": "*",
     "@nexus/engine": "*",
     "@supabase/supabase-js": "^2.118.0",
