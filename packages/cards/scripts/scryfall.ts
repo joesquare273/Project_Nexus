@@ -6,6 +6,11 @@
 //
 //   npm run scryfall               # fetch only cards not saved yet
 //   npm run scryfall -- --refresh  # fetch everything again
+//   npm run scryfall -- --faces    # also fetch double-faced cards saved without their faces
+//
+// It also saves the printings of tokens that cards not built yet make
+// (data/pending-tokens.json), so those tokens can be added to tokens.json
+// with their exact printing when the cards are built.
 //
 // The API (api.scryfall.com) does have hard rate limits: /cards/collection
 // allows 2 requests a second, and a 429 response locks you out for 30
@@ -23,7 +28,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import type { ScryfallInfo } from '../src/index.ts';
+import type { ScryfallFace, ScryfallInfo } from '../src/index.ts';
 
 const COLLECTION_URL = 'https://api.scryfall.com/cards/collection';
 const HEADERS = {
@@ -36,15 +41,27 @@ const DELAY_MS = 600;
 const LOCKOUT_MS = 31_000;
 const BASIC_LAND_SET = 'fin';
 
-type Identifier = { set: string; collector_number: string } | { name: string; set?: string };
+type Identifier = { set: string; collector_number: string } | { name: string; set?: string } | { id: string };
 
 interface ScryfallCard {
   id: string;
   name: string;
   all_parts?: { id: string; component: string; name: string }[];
   oracle_text?: string;
-  card_faces?: { name: string; oracle_text?: string; image_uris?: { small: string; normal: string; large: string; art_crop: string } }[];
+  card_faces?: {
+    name: string;
+    oracle_text?: string;
+    type_line?: string;
+    mana_cost?: string;
+    power?: string;
+    toughness?: string;
+    colors?: string[];
+    image_uris?: { small: string; normal: string; large: string; art_crop: string };
+  }[];
   type_line: string;
+  power?: string;
+  toughness?: string;
+  colors?: string[];
   set: string;
   collector_number: string;
   artist?: string;
@@ -95,10 +112,35 @@ function toInfo(card: ScryfallCard): ScryfallInfo {
     relatedTokens: (card.all_parts ?? [])
       .filter((p) => p.component === 'token')
       .map((p) => ({ name: p.name, scryfallId: p.id })),
+    ...(card.card_faces && card.card_faces.length > 1
+      ? {
+          faces: card.card_faces.map(
+            (f): ScryfallFace => ({
+              name: f.name,
+              typeLine: f.type_line ?? '',
+              oracleText: f.oracle_text ?? '',
+              ...(f.mana_cost ? { manaCost: f.mana_cost } : {}),
+              ...(f.power !== undefined ? { power: f.power } : {}),
+              ...(f.toughness !== undefined ? { toughness: f.toughness } : {}),
+              ...(f.colors ? { colors: f.colors } : {}),
+            }),
+          ),
+        }
+      : {}),
   };
 }
 
-const { values } = parseArgs({ options: { refresh: { type: 'boolean', default: false } } });
+/** A token's printing details, for tokens.json (power and toughness as printed). */
+function toToken(card: ScryfallCard) {
+  return {
+    ...toInfo(card),
+    ...(card.power !== undefined ? { power: card.power } : {}),
+    ...(card.toughness !== undefined ? { toughness: card.toughness } : {}),
+    ...(card.colors ? { colors: card.colors } : {}),
+  };
+}
+
+const { values } = parseArgs({ options: { refresh: { type: 'boolean', default: false }, faces: { type: 'boolean', default: false } } });
 
 // Type catalogs first: the card list below is validated against them.
 const CATALOGS = {
@@ -132,8 +174,10 @@ const saved: Record<string, ScryfallInfo> =
 
 // Which cards to ask for, and how to match each answer back to a card id.
 const wanted: { id: string; identifier: Identifier; matches: (c: ScryfallCard) => boolean }[] = [];
+/** Saved before faces were kept: a double-faced card's text has a "//" between its faces. */
+const missingFaces = (info: ScryfallInfo | undefined) => !!info && !info.faces && info.oracleText.includes('\n\n//\n\n');
 for (const def of CARDS) {
-  if (saved[def.id]) continue;
+  if (saved[def.id] && !(values.faces && missingFaces(saved[def.id]))) continue;
   if (def.printing) {
     const { set, number } = def.printing;
     wanted.push({
@@ -196,8 +240,36 @@ function checkTokens(): void {
   console.log('\nEvery token a built card makes is defined in tokens.json.');
 }
 
+/** Tokens that cards not built yet make, not in tokens.json: their printings, fetched by Scryfall id. */
+async function savePendingTokens(): Promise<void> {
+  const defined = new Set(CARDS.filter((d) => d.token).map((d) => saved[d.id]?.scryfallId));
+  const pendingFile = new URL('../data/pending-tokens.json', import.meta.url);
+  const pending: Record<string, unknown> = existsSync(pendingFile) ? JSON.parse(readFileSync(pendingFile, 'utf8')) : {};
+  const ids = new Set<string>();
+  for (const def of CARDS) {
+    if (!def.notBuilt) continue;
+    for (const t of saved[def.id]?.relatedTokens ?? []) if (t.name !== 'Copy' && !defined.has(t.scryfallId) && !pending[t.scryfallId]) ids.add(t.scryfallId);
+  }
+  if (ids.size === 0) return;
+  const list = [...ids];
+  try {
+    for (let i = 0; i < list.length; i += BATCH_SIZE) {
+      await sleep(DELAY_MS);
+      const res = await fetchCollection(list.slice(i, i + BATCH_SIZE).map((id) => ({ id })));
+      for (const card of res.data) pending[card.id] = toToken(card);
+    }
+  } catch (e) {
+    // Offline (or Scryfall unreachable): the token check below still runs.
+    console.warn(`Could not fetch the printings of ${ids.size} token(s) for cards not built yet: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+  writeFileSync(pendingFile, `${JSON.stringify(pending, null, 2)}\n`);
+  console.log(`Saved ${ids.size} token printing(s) for cards not built yet to data/pending-tokens.json.`);
+}
+
 if (wanted.length === 0) {
-  console.log('Every real card is already saved. Use --refresh to fetch them all again.');
+  console.log('Every real card is already saved. Use --refresh to fetch them all again, or --faces for double-faced cards saved without their faces.');
+  await savePendingTokens();
   checkTokens();
   process.exit(0);
 }
@@ -226,4 +298,5 @@ if (missing.length > 0) {
   console.error(`Not found on Scryfall: ${missing.join(', ')}`);
   process.exit(1);
 }
+await savePendingTokens();
 checkTokens();

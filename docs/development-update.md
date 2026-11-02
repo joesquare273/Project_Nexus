@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Card data: double-faced cards' faces and pending tokens
+
+- `npm run scryfall` now saves each face of a double-faced card (type line,
+  text, mana cost, power/toughness, colors: `faces` in scryfall.json), and
+  the printings of tokens that unbuilt cards make (`data/pending-tokens.json`).
+  `npm run scryfall -- --faces` fetches only the double-faced cards saved
+  before faces were kept. Offline, it warns and still checks tokens.
+- **To run on your computer** (cloud sessions can't reach api.scryfall.com):
+  `npm run scryfall -- --faces`, then commit `packages/cards/data/scryfall.json`
+  and `packages/cards/data/pending-tokens.json`. That unblocks the
+  Sidequests and Stroke of Midnight.
+
 ### Set cards, group 19, and what's waiting on card data
 
 - Danitha Capashen, Paragon; Prishe's Wanderings; Weapons Vendor (175 of 320).

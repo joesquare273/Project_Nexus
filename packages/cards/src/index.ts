@@ -63,6 +63,18 @@ export interface ScryfallInfo {
   scryfallId?: string;
   /** Tokens this card makes, per Scryfall's related parts. */
   relatedTokens?: { name: string; scryfallId: string }[];
+  /** Double-faced cards: each face's own details (to build back faces from, never guessed). */
+  faces?: ScryfallFace[];
+}
+
+export interface ScryfallFace {
+  name: string;
+  typeLine: string;
+  oracleText: string;
+  manaCost?: string;
+  power?: string;
+  toughness?: string;
+  colors?: string[];
 }
 
 /** The Scryfall entry key for a melded card ("Ragnarok, Divine Deliverance" → "ragnarok-divine-deliverance"). */
