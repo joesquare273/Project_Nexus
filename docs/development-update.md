@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 9: whenever you gain life, 8 set cards
+
+- Engine: a `LifeGained` trigger ("whenever you gain life", once per
+  life-gain event, lifelink included); "you gain twice that much life
+  instead" (`doubleLifeGain` static, each copy doubling again); counts for
+  charge counters on the source and life gained this turn.
+- Aerith Gainsborough, Minwu, White Mage, Excalibur II, Hope Estheim, The
+  Wind Crystal, Poison the Waters, Gaius van Baelsar and World Map, each with
+  a test. 122 of 320 set cards are built.
+- AI fix: when only some cards in hand may be discarded (Poison the Waters
+  on yourself), the AI fills its choice from the allowed cards instead of
+  coming up short (found by the random 4-player sealed games test).
+
 ### S4 group 8: flashback spells, 7 set cards
 
 - Engine: "if this spell was cast from a graveyard" has an opposite

@@ -378,6 +378,7 @@ function triggerCondition(t: TriggerSpec): string {
   if (t.when === 'Reflexive') return 'When you do';
   if (t.when === 'SecondMain') return 'At the beginning of your second main phase';
   if (t.when === 'FirstMain') return 'At the beginning of your first main phase';
+  if (t.when === 'LifeGained') return 'Whenever you gain life';
   if (t.when === 'AbilityTargetsCreature') return 'Whenever one or more creatures you control become the target of an activated ability';
   if (t.when === 'BeginCombat') return t.turn === 'Each' ? 'At the beginning of each combat' : 'At the beginning of combat on your turn';
   if (t.when === 'Upkeep') return t.turn === 'Each' ? "At the beginning of each player's upkeep" : 'At the beginning of your upkeep';
@@ -410,6 +411,7 @@ function triggerCondition(t: TriggerSpec): string {
     AbilityActivated: 'has an ability activated',
     Sacrificed: 'is sacrificed',
     OpponentLosesLife: '',
+    LifeGained: '',
   }[t.when] ?? '';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
   if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";

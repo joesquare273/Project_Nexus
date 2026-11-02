@@ -2026,3 +2026,129 @@ describe('S4 group 8: flashback spells and enters/upkeep triggers', () => {
     expect(s.players.P1!.life).toBe(14);
   });
 });
+
+describe('S4 group 9: whenever you gain life', () => {
+  /** P1 gains life from a spell (Battle Menu's Item mode: gain 4 life). */
+  function gainFour(s: GameState): GameState {
+    const spell = put(s, 'P1', 'battle-menu', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 3 }).state;
+  }
+
+  it('Aerith Gainsborough grows when you gain life; when she dies, her counters go on each legendary creature you control', () => {
+    let s = newGame();
+    const aerith = put(s, 'P1', 'aerith-gainsborough');
+    const sram = put(s, 'P1', 'sram-senior-edificer');
+    const plain = put(s, 'P1', 'coeurl');
+    s = gainFour(s);
+    s = gainFour(s);
+    expect(s.cards[aerith]!.counters).toBe(2);
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s.cards[aerith]!.damage = 3;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(aerith)] }).state;
+    expect(s.cards[aerith]!.zone).toBe('graveyard');
+    expect(s.cards[sram]!.counters).toBe(2);
+    expect(s.cards[plain]!.counters ?? 0).toBe(0);
+  });
+
+  it('Minwu puts a +1/+1 counter on each Cleric you control when you gain life (lifelink counts)', () => {
+    let s = newGame();
+    const minwu = put(s, 'P1', 'minwu-white-mage');
+    const aerith = put(s, 'P1', 'aerith-gainsborough');
+    const theirs = put(s, 'P2', 'aerith-gainsborough');
+    s = fight(s, [{ attacker: minwu, defender: 'P2' }]).state;
+    expect(s.players.P1!.life).toBe(23);
+    expect(s.cards[minwu]!.counters).toBe(1);
+    // Aerith also gets her own counter.
+    expect(s.cards[aerith]!.counters).toBe(2);
+    expect(s.cards[theirs]!.counters ?? 0).toBe(0);
+  });
+
+  it('Excalibur II gets a charge counter when you gain life; the equipped creature gets +1/+1 for each', () => {
+    let s = newGame();
+    const { body, gear } = equipped(s, 'excalibur-ii');
+    const before = stats(s, body);
+    s = gainFour(s);
+    s = gainFour(s);
+    expect(countersOf(s.cards[gear]!, 'charge')).toBe(2);
+    expect(stats(s, body)).toEqual([before[0]! + 2, before[1]! + 2]);
+  });
+
+  it('Hope Estheim: at your end step, each opponent mills cards equal to the life you gained this turn', () => {
+    let s = newGame(3);
+    put(s, 'P1', 'hope-estheim');
+    s = gainFour(s);
+    const [two, three] = [s.players.P2!.library.length, s.players.P3!.library.length];
+    s = settle(goTo(s, 'end')).state;
+    expect([two - s.players.P2!.library.length, three - s.players.P3!.library.length]).toEqual([4, 4]);
+  });
+
+  it('The Wind Crystal doubles life you gain, makes white spells cost {1} less, and gives flying and lifelink', () => {
+    let s = newGame();
+    const crystal = put(s, 'P1', 'the-wind-crystal');
+    const cat = put(s, 'P1', 'coeurl');
+    // Battle Menu ({1}{W}) costs just {W}.
+    const spell = put(s, 'P1', 'battle-menu', 'hand');
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 3 }).state;
+    expect(s.players.P1!.life).toBe(28);
+    mana(s, 'P1', { W: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crystal, ability: 0, targets: [] }).state;
+    expect(['Flying', 'Lifelink'].every((k) => hasKeyword(s, s.cards[cat]!, k as 'Flying'))).toBe(true);
+  });
+
+  it('Poison the Waters: all creatures get -1/-1, or you choose an artifact or creature card from a player’s hand to discard', () => {
+    let s = newGame();
+    const small = put(s, 'P2', 'magitek-infantry');
+    let spell = put(s, 'P1', 'poison-the-waters', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 0 }).state;
+    expect(s.cards[small]!.zone).toBe('graveyard');
+    const ring = put(s, 'P2', 'sol-ring', 'hand');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    spell = put(s, 'P1', 'poison-the-waters', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [{ kind: 'player', player: 'P2' }] })).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind === 'chooseCards') {
+      expect(s.pending.player).toBe('P1');
+      expect(s.pending.cards).toEqual([ring]);
+    }
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect([s.cards[ring]!.zone, s.cards[bolt]!.zone]).toEqual(['graveyard', 'hand']);
+  });
+
+  it('Gaius van Baelsar: each player sacrifices a nontoken creature (chosen mode)', () => {
+    let s = newGame(3);
+    const mine = put(s, 'P1', 'coeurl');
+    const two = put(s, 'P2', 'coeurl');
+    const token = put(s, 'P3', 'hero-token', 'battlefield', { isToken: true });
+    const gaius = put(s, 'P1', 'gaius-van-baelsar', 'hand');
+    mana(s, 'P1', { B: 2, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: gaius });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    s = act(s, { type: 'PassPriority', player: 'P3' });
+    // Choosing the mode as the trigger goes on the stack.
+    for (let i = 0; i < 30 && !(s.pending.kind === 'priority' && s.stack.length === 0); i++) {
+      const p = s.pending;
+      if (p.kind === 'chooseModes') s = act(s, { type: 'ChooseModes', player: p.player, modes: [1] });
+      else if (p.kind === 'chooseCards') s = act(s, { type: 'ChooseCards', player: p.player, cards: p.cards.slice(0, p.min) });
+      else s = settle(s).state;
+    }
+    expect(s.cards[two]!.zone).toBe('graveyard');
+    expect(s.cards[token]!.zone).toBe('battlefield');
+    // P1 had Coeurl and Gaius: one of them went.
+    expect([s.cards[mine]!.zone, s.cards[gaius]!.zone].filter((z) => z === 'graveyard').length).toBe(1);
+  });
+
+  it('World Map: {1}, {T}, sacrifice: a basic land; {3}: any land', () => {
+    let s = newGame();
+    const map = put(s, 'P1', 'world-map');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: map, ability: 0, targets: [] }).state;
+    expect(s.cards[map]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.filter((id) => s.cards[id]!.defId === 'island').length).toBe(1);
+  });
+});

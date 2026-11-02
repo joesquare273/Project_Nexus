@@ -578,8 +578,10 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     // "Any number": only cards we'd rather not have (surplus lands).
     const n = p.min === 0 ? Math.min(p.max, Math.max(0, p.cards.filter((id) => isLandCard(s, id)).length - 2)) : p.min;
     if (n === 0) return pick([]);
-    const ranked = (chooseBottom(s, me, n) as Extract<Action, { type: 'BottomCards' }>).cards;
-    return pick(ranked.filter((id) => p.cards.includes(id)).slice(0, n));
+    const ranked = (chooseBottom(s, me, n) as Extract<Action, { type: 'BottomCards' }>).cards.filter((id) => p.cards.includes(id));
+    // Only some cards may be allowed (Poison the Waters: an artifact or creature card): fill up from those.
+    const rest = p.cards.filter((id) => !ranked.includes(id));
+    return pick([...ranked, ...rest].slice(0, n));
   }
   const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
   if (p.purpose === 'fateBottom') return pick(byValue.reverse().slice(0, 1));

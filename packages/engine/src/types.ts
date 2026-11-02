@@ -473,6 +473,10 @@ export const COUNT_KINDS = [
   'SoulCountersOnThis',
   /** Lore counters on the card with the ability (Summon: Esper Valigarmanda). */
   'LoreCountersOnThis',
+  /** Charge counters on the card with the ability (Excalibur II). */
+  'ChargeCountersOnThis',
+  /** Life you gained this turn (Hope Estheim). */
+  'LifeGainedThisTurn',
   /** Tapped creatures controlled by the controller of the creature this Aura enchants (Observed Stasis). */
   'TappedCreaturesOfEnchantedController',
   'SoldiersYouControl',
@@ -758,6 +762,8 @@ export const TRIGGER_EVENTS = [
   'AbilityActivated',
   /** One or more opponents lost life (use with `oneOrMore`). */
   'OpponentLosesLife',
+  /** You gained life (once per life-gain event; lifelink damage is one event per source). */
+  'LifeGained',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -983,6 +989,8 @@ export interface StaticSpec {
   grantsMana?: ManaType[];
   /** The source's controller has no maximum hand size (Thought Vessel). */
   noMaximumHandSize?: boolean;
+  /** "If you would gain life, you gain twice that much life instead" (The Wind Crystal); each one doubles again. */
+  doubleLifeGain?: boolean;
   /** Spells matching this filter have improvise. */
   grantImprovise?: ObjectFilter;
   /** Professor Hojo: your first activated ability targeting your creature on your turn costs less. */

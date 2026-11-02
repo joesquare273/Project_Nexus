@@ -111,6 +111,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'LifeChanged':
         if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player });
+        if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player });
         break;
       case 'AttackDeclared': {
         const subjectController = s.cards[e.attacker]!.controller;
@@ -233,6 +234,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   // "Whenever one or more opponents lose life".
   if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
+  if (o.when === 'LifeGained') return o.subjectController === controller;
   // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
   if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
   if (spec.ifEvoked && !s.cards[source]!.evoked) return false;

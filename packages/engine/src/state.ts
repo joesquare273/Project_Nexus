@@ -394,6 +394,12 @@ export function drawCards(ctx: Ctx, playerId: PlayerId, count: number): void {
 export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   const p = player(ctx.s, playerId);
   if (delta === 0 || p.eliminated) return;
+  // The Wind Crystal: each one its controller controls doubles life they'd gain (rule 614.1a).
+  if (delta > 0) {
+    for (const c of battlefield(ctx.s)) {
+      if (c.controller === playerId && !c.phasedOut && defOf(ctx.s, c).statics?.some((st) => st.doubleLifeGain)) delta *= 2;
+    }
+  }
   const from = p.life;
   p.life += delta;
   if (delta < 0) p.lifeLostThisTurn = (p.lifeLostThisTurn ?? 0) - delta;
