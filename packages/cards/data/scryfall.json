@@ -5192,6 +5192,23 @@
       }
     ]
   },
+  "human-token": {
+    "name": "Human",
+    "typeLine": "Token Creature — Human",
+    "oracleText": "",
+    "set": "ttdc",
+    "number": "5",
+    "artist": "Ben Maier",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807",
+      "normal": "https://cards.scryfall.io/normal/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807",
+      "large": "https://cards.scryfall.io/large/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/0/5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3.jpg?1783906807"
+    },
+    "scryfallUri": "https://scryfall.com/card/ttdc/5/human?utm_source=api",
+    "scryfallId": "5054bb15-ddd5-4e5e-a9fd-6bdf255f7fd3",
+    "relatedTokens": []
+  },
   "hypnotic-sprite-mesmeric-glare": {
     "name": "Hypnotic Sprite // Mesmeric Glare",
     "typeLine": "Creature — Faerie // Instant — Adventure",

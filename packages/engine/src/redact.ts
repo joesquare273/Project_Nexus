@@ -264,6 +264,7 @@ const GAME_FIELDS = {
   delayedTriggers: 'refs',
   temporaryEffects: 'refs',
   creaturesDiedThisTurn: 'copy',
+  creatureDeathsByController: 'copy',
   combatsThisTurn: 'copy',
   extraCombats: 'copy',
   extraTurns: 'copy',

@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 20: Sidequests and Stroke of Midnight
+
+- Sidequest: Card Collection, Raise a Chocobo, Hunt the Mark, and Stroke
+  of Midnight (179 of 320), built from the faces data the user fetched.
+  The Human token (ttdc 5) added. Engine: creature deaths this turn by
+  controller (`creatureDeathsByController`, copied in redaction: public
+  information), counts `CardsInYourGraveyard` and
+  `OpponentCreaturesDiedThisTurn`.
+
 ### Card data: double-faced cards' faces and pending tokens
 
 - `npm run scryfall` now saves each face of a double-faced card (type line,

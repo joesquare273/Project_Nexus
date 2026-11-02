@@ -224,7 +224,10 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     // A new object: its once-each-turn abilities can trigger again.
     s.triggeredThisTurn = s.triggeredThisTurn.filter((key) => !key.startsWith(`${id}#`));
   }
-  if (from === 'battlefield' && to === 'graveyard' && lastTypes?.includes('creature')) s.creaturesDiedThisTurn += 1;
+  if (from === 'battlefield' && to === 'graveyard' && lastTypes?.includes('creature')) {
+    s.creaturesDiedThisTurn += 1;
+    s.creatureDeathsByController = { ...s.creatureDeathsByController, [c.controller]: (s.creatureDeathsByController?.[c.controller] ?? 0) + 1 };
+  }
   c.zone = to;
   if (to === 'graveyard') c.graveyardArrival = { turn: s.turnNumber, from };
   else delete c.graveyardArrival;

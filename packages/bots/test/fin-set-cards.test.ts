@@ -3043,3 +3043,107 @@ describe('S4 group 19: Equipment helpers and land search', () => {
     expect(s.cards[plate]!.attachedTo).toBeDefined();
   });
 });
+
+describe('S4 group 20: Sidequests (transforming enchantments) and Stroke of Midnight', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState, opts: Opts = {}) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = settleAll(goTo(settleAll(s, opts), 'end', opts), opts);
+      s = settleAll(goTo(s, 'main1', opts), opts);
+    }
+    if (s.activePlayer !== 'P1' || s.turnNumber <= turn) throw new Error("never reached P1's next turn");
+    return s;
+  };
+  const nameOf = (s: GameState, id: string) => currentDefinition(s, s.cards[id]!).name;
+
+  it('Sidequest: Card Collection draws three and discards two; with eight cards in your graveyard at your end step it becomes Magicked Card, a 4/4 flying Vehicle with crew 1', () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'coeurl', 'library');
+    const quest = put(s, 'P1', 'sidequest-card-collection-magicked-card', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state);
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 3 - 2);
+    s = settleAll(goTo(s, 'end'));
+    expect(s.cards[quest]!.transformed ?? false).toBe(false);
+    for (let i = 0; i < 8; i++) put(s, 'P1', 'coeurl', 'graveyard');
+    // Only at your own end step.
+    s = nextTurnOfP1(s);
+    expect(s.cards[quest]!.transformed ?? false).toBe(false);
+    s = settleAll(goTo(s, 'end'));
+    expect(nameOf(s, quest)).toBe('Magicked Card');
+    expect(stats(s, quest)).toEqual([4, 4]);
+    expect(currentDefinition(s, s.cards[quest]!).types).toEqual(['artifact']);
+  }, 60_000);
+
+  it('Sidequest: Raise a Chocobo makes a Bird; with four Birds at your first main phase it becomes Black Chocobo and fetches a land', () => {
+    let s = newGame();
+    const quest = put(s, 'P1', 'sidequest-raise-a-chocobo-black-chocobo', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state;
+    const birds = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'chocobo-bird-token');
+    expect(birds()).toHaveLength(1);
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'chocobo-bird-token');
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'forest', 'library');
+    const lands = (x: GameState) => x.players.P1!.battlefield.filter((id) => x.cardDefs[x.cards[id]!.defId]!.types.includes('land'));
+    const landsBefore = lands(s);
+    s = nextTurnOfP1(s);
+    expect(nameOf(s, quest)).toBe('Black Chocobo');
+    // A 2/2 Bird, and the land it fetched triggered its own landfall: +1/+0.
+    expect(stats(s, quest)).toEqual([3, 2]);
+    const fetched = lands(s).filter((id) => !landsBefore.includes(id));
+    expect(fetched).toHaveLength(1);
+    expect(s.cards[fetched[0]!]!.tapped).toBe(true);
+    // Landfall: Birds you control get +1/+0 (the tokens' own +1/+0 too).
+    const [bird] = birds();
+    const before = stats(s, bird!)[0]!;
+    const drop = put(s, 'P1', 'forest', 'hand');
+    s = settleAll(act(s, { type: 'PlayLand', player: 'P1', card: drop }));
+    expect(stats(s, bird!)[0]).toBe(before + 2);
+  }, 60_000);
+
+  it('Sidequest: Hunt the Mark destroys up to one creature; a Treasure each end step a creature of theirs died; with three Treasures it becomes Yiazmat', () => {
+    let s = newGame();
+    const foe = put(s, 'P2', 'coeurl');
+    put(s, 'P1', 'treasure-token');
+    put(s, 'P1', 'treasure-token');
+    const quest = put(s, 'P1', 'sidequest-hunt-the-mark-yiazmat-ultimate-mark', 'hand');
+    mana(s, 'P1', { B: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }, { targets: () => [card(foe)] }).state;
+    expect(s.cards[foe]!.zone).toBe('graveyard');
+    s = settleAll(goTo(s, 'end'));
+    s = settleAll(s);
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token')).toHaveLength(3);
+    expect(nameOf(s, quest)).toBe('Yiazmat, Ultimate Mark');
+    expect(stats(s, quest)).toEqual([5, 6]);
+  }, 60_000);
+
+  it('Hunt the Mark: no Treasure on a turn no creature of theirs died', () => {
+    let s = newGame();
+    const quest = put(s, 'P1', 'sidequest-hunt-the-mark-yiazmat-ultimate-mark', 'hand');
+    mana(s, 'P1', { B: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quest }).state;
+    s = settleAll(goTo(s, 'end'));
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token')).toBe(false);
+  });
+
+  it('Stroke of Midnight destroys a nonland permanent; its controller gets a 1/1 Human', () => {
+    let s = newGame();
+    const foe = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'stroke-of-midnight', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)] }).state;
+    expect(s.cards[foe]!.zone).toBe('graveyard');
+    const humans = s.players.P2!.battlefield.filter((id) => s.cards[id]!.defId === 'human-token');
+    expect(humans).toHaveLength(1);
+    expect(stats(s, humans[0]!)).toEqual([1, 1]);
+  });
+});

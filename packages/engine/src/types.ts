@@ -508,6 +508,10 @@ export const COUNT_KINDS = [
   'ArtifactsOpponentsControl',
   /** The greatest power among creatures you control. */
   'GreatestPowerAmongYourCreatures',
+  /** Cards in your graveyard (Sidequest: Card Collection). */
+  'CardsInYourGraveyard',
+  /** Creatures that died under an opponent's control this turn. */
+  'OpponentCreaturesDiedThisTurn',
   /** Opponents still in the game. */
   'Opponents',
   /** Opponents you're attacking with at least one creature this combat (melee). */
@@ -1955,6 +1959,8 @@ export interface GameState {
   temporaryEffects: TemporaryEffect[];
   /** Creatures put into a graveyard from the battlefield this turn. */
   creaturesDiedThisTurn: number;
+  /** Creatures that died this turn, by the player who controlled them (Sidequest: Hunt the Mark). */
+  creatureDeathsByController?: Record<PlayerId, number>;
   /** Combat phases begun this turn. */
   combatsThisTurn?: number;
   /** Additional combat phases still to come this turn (each after the current one). */

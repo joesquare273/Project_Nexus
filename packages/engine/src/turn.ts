@@ -208,6 +208,7 @@ export function startNextTurn(ctx: Ctx): void {
   }
   s.triggeredThisTurn = [];
   s.creaturesDiedThisTurn = 0;
+  delete s.creatureDeathsByController;
   s.combatDamageHistory = [];
   s.combatsThisTurn = 0;
   s.extraCombats = 0;

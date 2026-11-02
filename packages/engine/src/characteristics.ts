@@ -104,6 +104,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       }).length;
     case 'CreaturesDiedThisTurn':
       return s.creaturesDiedThisTurn;
+    case 'OpponentCreaturesDiedThisTurn':
+      return Object.entries(s.creatureDeathsByController ?? {}).reduce((n, [pid, k]) => (pid === player ? n : n + k), 0);
+    case 'CardsInYourGraveyard':
+      return s.players[player]!.graveyard.length;
     case 'CreaturesOnBattlefield':
       return battlefieldCards(s).filter(creature).length;
     case 'CreaturesYouControlWithCounters':
