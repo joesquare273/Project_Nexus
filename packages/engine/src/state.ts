@@ -191,6 +191,12 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';
   // A finality counter: "if it would be put into a graveyard from the battlefield, exile it instead" (rule 122.1h).
   if (from === 'battlefield' && to === 'graveyard' && (c.namedCounters?.finality ?? 0) > 0) to = 'exile';
+  // The Darkness Crystal: an opponent's nontoken creature that would die is exiled instead, linked to it.
+  let darkness: CardInstance | undefined;
+  if (from === 'battlefield' && to === 'graveyard' && !c.isToken && defOf(s, c).types.includes('creature')) {
+    darkness = battlefield(s).find((x) => x.controller !== c.controller && !x.phasedOut && defOf(s, x).statics?.some((st) => st.exileOpponentCreaturesThatDie));
+    if (darkness) to = 'exile';
+  }
   if (c.phasedOut) phaseIn(ctx, c, true);
   const fromList = zoneList(s, c.owner, from);
   if (fromList) {
@@ -238,6 +244,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.xPaid;
   delete c.foretoldTurn;
   delete c.linkedExile;
+  delete c.exiledWith;
   delete c.crewed;
   delete c.attachedTo;
   delete c.attachedTimestamp;
@@ -285,6 +292,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       from,
       to,
     });
+  }
+  if (darkness) {
+    c.exiledWith = { source: darkness.id, sourceObject: darkness.zoneChanges ?? 0 };
+    const gain = defOf(s, darkness).statics!.find((st) => st.exileOpponentCreaturesThatDie)!.exileOpponentCreaturesThatDie!.gainLife;
+    changeLife(ctx, darkness.controller, gain);
   }
   if (from === 'battlefield') {
     leftBattlefield(ctx, id);
@@ -520,6 +532,12 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   for (const source of battlefield(s)) {
     for (const spec of defOf(s, source).statics ?? []) {
       if (spec.extraCounters && staticAffects(s, source, spec, c)) amount += spec.extraCounters;
+    }
+  }
+  // The Earth Crystal doubles them (after any "plus one", the better order for the creature's controller).
+  for (const source of battlefield(s)) {
+    for (const spec of defOf(s, source).statics ?? []) {
+      if (spec.doubleCounters && staticAffects(s, source, spec, c)) amount *= 2;
     }
   }
   c.counters = (c.counters ?? 0) + amount;

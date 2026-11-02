@@ -2555,3 +2555,81 @@ describe('S4 group 13: attacking alone, Kenrith, Mangara, Akroma’s Will', () =
     for (const k of ['Flying', 'Vigilance', 'DoubleStrike', 'Lifelink', 'Indestructible', 'ProtectionFromRed'] as const) expect(hasKeyword(s, s.cards[cat]!, k)).toBe(true);
   });
 });
+
+describe('S4 group 14: the Crystals', () => {
+  it('The Fire Crystal: red spells cost {1} less, your creatures have haste, and a temporary token copy', () => {
+    let s = newGame();
+    const crystal = put(s, 'P1', 'the-fire-crystal');
+    const titan = put(s, 'P1', 'primeval-titan', 'battlefield', { summoningSick: true });
+    const theirs = put(s, 'P2', 'coeurl', 'battlefield', { summoningSick: true });
+    expect([hasKeyword(s, s.cards[titan]!, 'Haste'), hasKeyword(s, s.cards[theirs]!, 'Haste')]).toEqual([true, false]);
+    // Haste Magic ({1}{R}) for just {R}.
+    const spell = put(s, 'P1', 'haste-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan)] }).state;
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crystal, ability: 0, targets: [card(titan)] }, { accept: false }).state;
+    const copies = s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'primeval-titan');
+    expect(copies.length).toBe(1);
+    s = settle(goTo(s, 'end'), { accept: false }).state;
+    expect(s.cards[copies[0]!]?.zone ?? 'gone').not.toBe('battlefield');
+    expect(s.cards[titan]!.zone).toBe('battlefield');
+  });
+
+  it('The Water Crystal: opponents mill four more; {4}{U}{U}, {T}: each opponent mills your hand size', () => {
+    let s = newGame(3);
+    const crystal = put(s, 'P1', 'the-water-crystal');
+    put(s, 'P1', 'sol-ring', 'hand');
+    put(s, 'P1', 'sol-ring', 'hand');
+    const [two, three] = [s.players.P2!.library.length, s.players.P3!.library.length];
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crystal, ability: 0, targets: [] }).state;
+    expect([two - s.players.P2!.library.length, three - s.players.P3!.library.length]).toEqual([6, 6]);
+    // Your own mill isn't changed (Resentful Revelation-style self mill via Vanille).
+    const mine = s.players.P1!.library.length;
+    const vanille = put(s, 'P1', 'vanille-cheerful-lcie', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: vanille })).state;
+    expect(mine - s.players.P1!.library.length).toBe(2);
+  });
+
+  it('The Earth Crystal doubles +1/+1 counters on your creatures; distribute two among one or two targets', () => {
+    let s = newGame();
+    const crystal = put(s, 'P1', 'the-earth-crystal');
+    const [a, b] = [put(s, 'P1', 'coeurl'), put(s, 'P1', 'coeurl')];
+    const theirs = put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { G: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crystal, ability: 0, targets: [card(a), card(b)] }).state;
+    expect([s.cards[a]!.counters, s.cards[b]!.counters]).toEqual([2, 2]);
+    s.cards[crystal]!.tapped = false;
+    mana(s, 'P1', { G: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crystal, ability: 0, targets: [card(a), { kind: 'none' }] }).state;
+    expect(s.cards[a]!.counters).toBe(6);
+    // Opponents' creatures aren't doubled (Kenrith's {1}{G}).
+    const kenrith = put(s, 'P1', 'kenrith-the-returned-king');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: kenrith, ability: 1, targets: [card(theirs)] }).state;
+    expect(s.cards[theirs]!.counters).toBe(1);
+  });
+
+  it('The Darkness Crystal: an opponent’s nontoken creature that would die is exiled and you gain 2; later it returns under your control with two counters', () => {
+    let s = newGame(3);
+    const crystal = put(s, 'P1', 'the-darkness-crystal');
+    const victim = put(s, 'P2', 'coeurl');
+    const token = put(s, 'P2', 'hero-token', 'battlefield', { isToken: true });
+    const mine = put(s, 'P1', 'coeurl');
+    // Both creatures are one damage from dying; Poison the Waters gives all creatures -1/-1.
+    const wipe = put(s, 'P1', 'poison-the-waters', 'hand');
+    for (const id of [victim, mine]) s.cards[id]!.damage = toughnessOf(s, s.cards[id]!) - 1;
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: wipe, mode: 0 }).state;
+    expect(s.cards[victim]!.zone).toBe('exile');
+    expect(s.cards[victim]!.exiledWith?.source).toBe(crystal);
+    expect(s.cards[mine]!.zone).toBe('graveyard');
+    expect(s.cards[token]?.zone ?? 'gone').not.toBe('battlefield');
+    expect(s.players.P1!.life).toBe(22);
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crystal, ability: 0, targets: [card(victim)] }).state;
+    expect([s.cards[victim]!.zone, s.cards[victim]!.controller, s.cards[victim]!.tapped, s.cards[victim]!.counters]).toEqual(['battlefield', 'P1', true, 2]);
+  });
+});

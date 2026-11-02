@@ -43,6 +43,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOtherOpponent: 'each other opponent',
   TargetAbility: 'target activated or triggered ability',
   TargetSpellOrAbility: 'target activated ability, triggered ability, or spell',
+  TargetCardExiledWithSource: 'target card exiled with this',
   TargetSpell: 'target spell',
   EquippedCreature: 'equipped creature',
   SubjectController: 'that player',

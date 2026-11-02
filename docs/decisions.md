@@ -378,6 +378,17 @@ cards than before. Tests that need a particular random outcome set
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
 
+## 2026-11-02: The Crystals
+
+- The Earth Crystal's doubling is applied after "that many plus one"
+  effects (Hardened Scales), the order that gives the creature's controller
+  more counters; the real rules let that player choose the order.
+- The Water Crystal's "mill four more" applies to the Mill effect, not to
+  mill paid as a cost.
+- With two Darkness Crystals controlled by different opponents, the first
+  one found exiles the creature (the real rules let the creature's
+  controller choose).
+
 ## 2026-11-02: Gilgamesh's attachment
 
 - Simplification: Gilgamesh, Master-at-Arms may attach one of the Equipment

@@ -157,6 +157,8 @@ export const TARGET_KINDS = [
   'AllGraveyardCards',
   /** The creatures that convoked the spell (Lethal Scheme). */
   'ConvokedCreatures',
+  /** A card in exile linked to this permanent ("target creature card exiled with The Darkness Crystal"), matching `filter`. */
+  'TargetCardExiledWithSource',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
@@ -173,6 +175,7 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetSpellOrAbility',
   'TargetSpell',
   'TargetSpellPermanentOrGraveyardCard',
+  'TargetCardExiledWithSource',
 ];
 
 export const EFFECT_KINDS = [
@@ -483,6 +486,8 @@ export const COUNT_KINDS = [
   'SoulCountersOnThis',
   /** Lore counters on the card with the ability (Summon: Esper Valigarmanda). */
   'LoreCountersOnThis',
+  /** Cards in your hand. */
+  'CardsInYourHand',
   /** Charge counters on the card with the ability (Excalibur II). */
   'ChargeCountersOnThis',
   /** Life you gained this turn (Hope Estheim). */
@@ -688,6 +693,10 @@ export interface EffectSpec {
   ifChose?: 'any' | 'creature' | 'noncreature';
   /** ExileTopCardToPlay: playable until end of turn, not while you control the source. */
   thisTurn?: boolean;
+  /** An "up to one" target left out applies to the spell or ability's first target instead ("distribute two counters among one or two targets"). */
+  elseFirstTarget?: boolean;
+  /** CreateTokenCopy: sacrifice the copies at the beginning of the next end step. */
+  sacrificeAtEndStep?: boolean;
   /** ExileTopCardToPlay: playable until your next end step, or until the end of your next turn. */
   playUntil?: 'yourNextEndStep' | 'endOfYourNextTurn';
   /** ExileTopCardToPlay: playable until another card is exiled with the same source (Furious Rise). */
@@ -1018,6 +1027,12 @@ export interface StaticSpec {
   goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
+  /** "Twice that many +1/+1 counters are put on that creature instead" for each affected creature (The Earth Crystal). */
+  doubleCounters?: boolean;
+  /** "If an opponent would mill one or more cards, they mill that many cards plus N instead" (The Water Crystal). */
+  opponentsMillExtra?: number;
+  /** "If a nontoken creature an opponent controls would die, instead exile it and you gain N life" (The Darkness Crystal); the card is linked to this permanent. */
+  exileOpponentCreaturesThatDie?: { gainLife: number };
   /** "As long as this creature has a counter on it, it can attack as though it didn't have defender" (Demon Wall). */
   attacksDespiteDefenderWithCounters?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
@@ -1387,6 +1402,8 @@ export interface CardInstance {
   crewed?: boolean;
   /** A double-faced permanent with its back face up (rule 712); cleared when it leaves the battlefield. */
   transformed?: boolean;
+  /** In exile, linked to the permanent that exiled it, face up (The Darkness Crystal). */
+  exiledWith?: { source: InstanceId; sourceObject: number };
   /** A melded permanent: the other card it's made of (kept out of every zone until the permanent leaves). */
   meldedWith?: InstanceId;
   enteredTimestamp?: number;

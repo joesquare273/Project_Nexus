@@ -321,6 +321,10 @@ export function isLegalTarget(
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
     return !!spell && c.id !== source && matchesObject(s, effect.filter, c, viewpoint, spell.controller);
   }
+  if (kind === 'TargetCardExiledWithSource') {
+    const src = source ? s.cards[source] : undefined;
+    return c.zone === 'exile' && !!src && c.exiledWith?.source === src.id && c.exiledWith.sourceObject === (src.zoneChanges ?? 0) && matchesObject(s, effect.filter, c, viewpoint);
+  }
   if (kind === 'TargetCardInGraveyard' && c.zone === 'exile' && effect.alsoExiledFlashback) {
     // "... or exiled card with flashback you own" (face up).
     return c.owner === controller && !!defOf(s, c).flashback && !c.linkedExile && c.foretoldTurn === undefined;
@@ -355,6 +359,9 @@ export function targetOptions(
   for (const c of battlefield(s)) all.push({ kind: 'card', card: c.id });
   if (effect.target === 'TargetCardInGraveyard' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
+  }
+  if (effect.target === 'TargetCardExiledWithSource') {
+    for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) all.push({ kind: 'card', card: id });
   }
   if (effect.target === 'TargetCardInGraveyard' && effect.alsoExiledFlashback) {
     for (const id of s.players[controller]!.exile) all.push({ kind: 'card', card: id });
@@ -2133,7 +2140,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateTokenCopy':
       for (const id of onBattlefield) {
-        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) r.createdTokens.push(createTokenCopy(ctx, id, item.controller));
+        for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
+          const token = createTokenCopy(ctx, id, item.controller);
+          if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
+          r.createdTokens.push(token);
+        }
       }
       return;
     case 'Myriad': {
@@ -2246,7 +2257,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Mill':
       for (const t of targets) {
         if (t.kind !== 'player') continue;
-        for (const id of topOfLibrary(s, t.player, amount)) moveCard(ctx, id, 'graveyard');
+        // The Water Crystal: an opponent of its controller mills that many plus four.
+        const extra = amount > 0 ? battlefield(s).filter((c) => c.controller !== t.player && !c.phasedOut).reduce((n, c) => n + (defOf(s, c).statics ?? []).reduce((m, st) => m + (st.opponentsMillExtra ?? 0), 0), 0) : 0;
+        for (const id of topOfLibrary(s, t.player, amount + extra)) moveCard(ctx, id, 'graveyard');
       }
       return;
     case 'LookAndExileTop': {
@@ -2408,7 +2421,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ReturnToBattlefield':
       for (const id of cards) {
         const c = s.cards[id]!;
-        if (c.zone !== 'graveyard') continue;
+        if (c.zone !== 'graveyard' && !(c.zone === 'exile' && effect.target === 'TargetCardExiledWithSource')) continue;
         const linked = effect.attachToReturnedTarget === undefined ? undefined : item.targets[effect.attachToReturnedTarget];
         const candidate = linked?.kind === 'card' ? s.cards[linked.card] : undefined;
         const host = candidate && r.returnedObjects?.[candidate.id] === (candidate.zoneChanges ?? 0) ? candidate : undefined;
@@ -2594,8 +2607,10 @@ function continueResolving(ctx: Ctx): void {
     }
     if (r.next >= effects.length) break;
     const effect = effects[r.next++]!;
-    const chosen = CHOSEN_TARGET_KINDS.includes(effect.target) ? item.targets[r.chosenUsed++] : undefined;
+    let chosen = CHOSEN_TARGET_KINDS.includes(effect.target) ? item.targets[r.chosenUsed++] : undefined;
     if (chosen && !sameTargetObject(s, item, r.chosenUsed - 1)) continue;
+    // "Among one or two targets": with only one, it gets this part too.
+    if (chosen?.kind === 'none' && effect.elseFirstTarget && item.targets[0] && sameTargetObject(s, item, 0)) chosen = item.targets[0];
     if (chosen) {
       r.previousTarget = chosen;
       // Remember its power now: "life equal to its power" still works after it's exiled (rule 608.2h).

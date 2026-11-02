@@ -158,6 +158,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'LoreCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'lore') : 0;
+    case 'CardsInYourHand':
+      return s.players[player]!.hand.length;
     case 'ChargeCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'charge') : 0;
     case 'LifeGainedThisTurn':

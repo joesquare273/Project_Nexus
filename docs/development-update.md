@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 14: the Crystals
+
+- Engine: doubling +1/+1 counters on your creatures (`doubleCounters`,
+  applied after "plus one" effects); opponents mill extra (`opponentsMillExtra`,
+  for the Mill effect); "if a nontoken creature an opponent controls would
+  die, exile it instead and gain 2 life", linking the card to the source
+  (`exiledWith`, a new public card field) and a target kind for cards
+  exiled with it (`TargetCardExiledWithSource`); token copies sacrificed at
+  the next end step; "distribute two counters among one or two targets"
+  (`elseFirstTarget`); a count of cards in your hand.
+- The Fire, Water, Earth and Darkness Crystals, each with a test. 150 of
+  320 set cards are built.
+
 ### S4 group 13: attacking alone, 5 set cards
 
 - Engine: "whenever a creature you control attacks alone" (`alone` on an
