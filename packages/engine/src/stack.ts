@@ -293,7 +293,7 @@ export function isLegalTarget(
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
-  if (t.kind === 'ability') return kind === 'TargetAbility' && s.stack.some((item) => item.kind === 'ability' && item.id === t.ability);
+  if (t.kind === 'ability') return (kind === 'TargetAbility' || kind === 'TargetSpellOrAbility') && s.stack.some((item) => item.kind === 'ability' && item.id === t.ability);
   const c = s.cards[t.card];
   if (!c) return false;
   const viewpoint = {
@@ -307,7 +307,7 @@ export function isLegalTarget(
     if (c.zone === 'stack') return c.id !== source && s.stack.some((i) => i.kind === 'spell' && i.card === c.id);
     return !defOf(s, c).types.includes('land') && isLegalTarget(s, { ...effect, target: 'TargetPermanent' }, t, controller, source, context);
   }
-  if (kind === 'TargetSpell') {
+  if (kind === 'TargetSpell' || kind === 'TargetSpellOrAbility') {
     // A spell on the stack (not the spell or ability doing the targeting).
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
     return !!spell && c.id !== source && matchesObject(s, effect.filter, c, viewpoint, spell.controller);
@@ -343,10 +343,10 @@ export function targetOptions(
   if (effect.target === 'TargetCardInGraveyard' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
   }
-  if (effect.target === 'TargetSpell' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
+  if (effect.target === 'TargetSpell' || effect.target === 'TargetSpellOrAbility' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const item of s.stack) if (item.kind === 'spell') all.push({ kind: 'card', card: item.card });
   }
-  if (effect.target === 'TargetAbility') {
+  if (effect.target === 'TargetAbility' || effect.target === 'TargetSpellOrAbility') {
     for (const item of s.stack) if (item.kind === 'ability') all.push({ kind: 'ability', ability: item.id });
   }
   // "Up to one": leaving it out is a choice too.
@@ -603,7 +603,7 @@ export function playableZone(
   return null;
 }
 
-function addCosts(a: ManaCost, b: ManaCost): ManaCost {
+export function addCosts(a: ManaCost, b: ManaCost): ManaCost {
   const out: ManaCost = { ...a, generic: a.generic + b.generic };
   for (const t of MANA_TYPES) if (b[t]) out[t] = (out[t] ?? 0) + b[t]!;
   return out;
@@ -849,6 +849,12 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
   if (exileCost) {
     if (costCards.length !== 1 || !exileFromHandChoices(s, def, playerId, id).includes(costCards[0]!)) reject(`Choose a card in your hand to exile for ${def.name}.`);
+  } else if (def.additionalCost?.sacrifice || (def.kickerSacrifice && (choice.kicks ?? 0) > 0)) {
+    // A sacrifice cost (rule 601.2h): one matching permanent, or none when paying the mana instead.
+    const ways = spellSacrificeChoices(s, playerId, def, id, choice.kicks ?? 0);
+    if (!ways.some((way) => way.length === costCards.length && way.every((k, i) => costCards[i] === k))) {
+      reject(ways.length === 0 ? `You have nothing to sacrifice for ${def.name}.` : `Choose a permanent to sacrifice for ${def.name}.`);
+    }
   } else {
     const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
     checkDiscardCost(s, playerId, discardCount, costCards, id);
@@ -870,6 +876,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     reject('Escalate with different untapped creatures you control.');
   }
   let cost = spellCost(s, def, from, targets, c, alternative, x, { kicks, player: playerId, ...(group ? { castGroup: group.id } : {}), ...(choice.graveyardSource ? { graveyardSource: choice.graveyardSource } : {}), ...(choice.adventure ? { adventure: true } : {}), ...(choice.mode !== undefined ? { mode: choice.mode } : {}) });
+  const additionalMana = additionalManaFor(def, costCards);
+  if (additionalMana) cost = addCosts(cost, parseManaCost(additionalMana));
+  const sacrificing = !!def.additionalCost?.sacrifice || (!!def.kickerSacrifice && kicks > 0);
   // Convoke and delve pay part of the cost with creatures and graveyard cards.
   const convoked = (choice.convoke ?? []).map((cid) => card(s, cid));
   if (convoked.length > 0) {
@@ -915,6 +924,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const paid of costCards) {
     if (exileCost) moveCard(ctx, paid, 'exile');
+    else if (sacrificing) sacrifice(ctx, paid);
     else discard(ctx, paid);
   }
   for (const k of convoked) tap(ctx, k);
@@ -1125,6 +1135,24 @@ export function unblockedAttackers(s: GameState, playerId: PlayerId): InstanceId
   return combat.attacks
     .filter((a) => s.cards[a.attacker]?.controller === playerId && !combat.blockedAttackers?.includes(a.attacker))
     .map((a) => a.attacker);
+}
+
+/**
+ * Ways to pay a spell's sacrifice cost ("as an additional cost, sacrifice a
+ * creature"; kicker—sacrifice when kicked): one list of permanents per way.
+ * An empty list is "no sacrifice" (not kicked, or paying `orMana` instead).
+ * No ways at all: the spell can't be cast.
+ */
+export function spellSacrificeChoices(s: GameState, playerId: PlayerId, def: CardDefinition, source: InstanceId, kicks: number): InstanceId[][] {
+  const filter = def.additionalCost?.sacrifice ?? (kicks > 0 ? def.kickerSacrifice : undefined);
+  if (!filter) return [[]];
+  const ways = sacrificeCandidates(s, playerId, filter, source).map((id) => [id]);
+  return def.additionalCost?.sacrifice && def.additionalCost.orMana ? [...ways, []] : ways;
+}
+
+/** The mana a spell's additional cost adds for these cost cards ("or pay {2}" when nothing was sacrificed). */
+export function additionalManaFor(def: CardDefinition, costCards: readonly InstanceId[]): string | undefined {
+  return def.additionalCost?.sacrifice && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
 }
 
 /** Permanents a player could sacrifice for a "Sacrifice a ..." cost (the source itself counts if it matches). */

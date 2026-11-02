@@ -115,6 +115,8 @@ export const TARGET_KINDS = [
   'TargetSpell',
   /** An activated or triggered ability on the stack, identified separately from its source. */
   'TargetAbility',
+  /** A spell matching `filter`, or an activated or triggered ability ("counter target activated ability, triggered ability, or noncreature spell"). */
+  'TargetSpellOrAbility',
   /** A spell, a nonland permanent, or a card in a graveyard (Endless Detour). */
   'TargetSpellPermanentOrGraveyardCard',
   /** The same object (or player) the previous chosen target picked ("it", "that creature"). */
@@ -168,6 +170,7 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetPermanent',
   'TargetCardInGraveyard',
   'TargetAbility',
+  'TargetSpellOrAbility',
   'TargetSpell',
   'TargetSpellPermanentOrGraveyardCard',
 ];
@@ -1212,7 +1215,14 @@ export interface CardDefinition {
   cantBeCountered?: boolean;
   /** "As an additional cost to cast this spell, discard a card": chosen with the action (`costCards`). */
   /** Additional costs: discard cards, or pay X life (Toxic Deluge: X chosen as the spell is cast). */
-  additionalCost?: { discard?: number; lifeX?: boolean };
+  /**
+   * Additional costs (rule 601.2f): discard cards, pay X life, or sacrifice a
+   * permanent matching `sacrifice` (chosen with `costCards`); with `orMana`,
+   * paying that mana instead of sacrificing ("sacrifice a legendary creature or pay {2}").
+   */
+  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string };
+  /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
+  kickerSacrifice?: ObjectFilter;
   /** Ward {N} (rule 702.21). */
   ward?: number;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */

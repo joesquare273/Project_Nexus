@@ -42,6 +42,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
   EachOtherOpponent: 'each other opponent',
   TargetAbility: 'target activated or triggered ability',
+  TargetSpellOrAbility: 'target activated ability, triggered ability, or spell',
   TargetSpell: 'target spell',
   EquippedCreature: 'equipped creature',
   SubjectController: 'that player',
@@ -93,6 +94,7 @@ function amountText(a: Amount | undefined): string {
 function targetText(e: EffectSpec): string {
   if (e.target === 'AllPermanents' && e.filter) return `all ${subjectText(e.filter, 'permanent', true)}`;
   if (e.target === 'TargetPermanent' && e.filter) return `target ${subjectText(e.filter, 'permanent')}`;
+  if (e.target === 'TargetSpellOrAbility' && e.filter) return `target activated ability, triggered ability, or ${subjectText(e.filter, 'spell')}`;
   if (e.target === 'TargetCardInGraveyard' && e.filter) {
     return `target ${subjectText({ ...e.filter, controller: undefined }, 'card')} from ${e.filter.controller === 'You' ? 'your' : 'a'} graveyard`;
   }
@@ -476,7 +478,14 @@ export function rulesSummary(def: CardDefinition): string {
   if (def.equip) parts.push(`Equip ${def.equip}`);
   if (def.flashback) parts.push(`Flashback ${def.flashback}`);
   if (def.ward) parts.push(`Ward {${def.ward}}`);
-  if (def.kicker) parts.push(`Kicker ${def.kicker}`);
+  // "An artifact or creature", "a legendary creature".
+  const costSubject = (f: ObjectFilter) => {
+    const noun = `${f.supertypes?.includes('Legendary') ? 'legendary ' : ''}${f.anyOf ? f.anyOf.map((alt) => subjectText(alt, 'permanent')).join(' or ') : subjectText(f, 'permanent')}`;
+    return `${/^[aeiou]/.test(noun) ? 'an' : 'a'} ${noun}`;
+  };
+  if (def.kicker) parts.push(def.kickerSacrifice ? `Kicker—Sacrifice ${costSubject(def.kickerSacrifice)}` : `Kicker ${def.kicker}`);
+  const sac = def.additionalCost?.sacrifice;
+  if (sac) parts.push(`As an additional cost, sacrifice ${costSubject(sac)}${def.additionalCost?.orMana ? ` or pay ${def.additionalCost.orMana}` : ''}`);
   if (def.multikicker) parts.push(`Multikicker ${def.multikicker}`);
   if (def.escalateTapCreature) parts.push('Escalate: tap an untapped creature you control for each mode beyond the first');
   if (def.modeCosts) parts.push(`Tiered: each mode costs ${def.modeCosts.join(', ')} more`);

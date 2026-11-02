@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 7: sacrifice as a cost, 8 set cards
+
+- Engine: a spell's additional cost can be "sacrifice a [permanent]"
+  (`additionalCost.sacrifice`, the permanent chosen with `costCards`), with
+  `orMana` for "or pay {2}"; kicker can be a sacrifice (`kickerSacrifice`
+  with `kicker: "{0}"`). Nothing to sacrifice means the spell can't be cast.
+  A new target kind, `TargetSpellOrAbility`, for "counter target activated
+  ability, triggered ability, or noncreature spell".
+- Deadly Dispute, Diabolic Intent, Vayne's Treachery, Louisoix's Sacrifice,
+  Namazu Trader, Moogle's Valor, Battle Menu and Aerith Rescue Mission,
+  each with a test. 107 of 320 set cards are built.
+- The board asks which permanent to sacrifice (or "Pay {2} instead" /
+  "Don't kick it"); the AI counts what it would sacrifice against the spell.
+
 ### Meld: Fang, Fearless l'Cie and Vanille, Cheerful l'Cie; turning cards over in packs
 
 - Meld (rule 701.42): Vanille's "at the beginning of your first main

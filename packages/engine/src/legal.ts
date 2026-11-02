@@ -45,6 +45,9 @@ import {
   queuedTriggerSpec,
   subsets,
   groupProblem,
+  spellSacrificeChoices,
+  additionalManaFor,
+  addCosts,
 } from './stack.ts';
 import { battlefield, alivePlayers, hasKeyword } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
@@ -167,12 +170,17 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
         const discards = alternative && def.alternativeCost?.exileFromHand
           ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
-          : discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
+          : def.additionalCost?.sacrifice || def.kickerSacrifice
+            ? spellSacrificeChoices(s, playerId, def, c.id, kicks)
+            : discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
-          const cost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
-          const paymentKey = JSON.stringify([cost, tapCreatures]);
-          if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
+          const baseCost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
+            // "Or pay {2}": the extra mana when nothing is sacrificed.
+            const extra = additionalManaFor(def, costCards);
+            const cost = extra ? addCosts(baseCost, parseManaCost(extra)) : baseCost;
+            const paymentKey = JSON.stringify([cost, tapCreatures]);
+            if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
             for (const pay of payments.get(paymentKey)!) {
               out.push({
                 action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra },

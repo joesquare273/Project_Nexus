@@ -413,11 +413,14 @@ export function Game({
     const costKeys = [...new Set(forMode.map(costOf))];
     if (costKey === undefined && costKeys.length > 1) {
       const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
-      const verb = ability?.cost.crew !== undefined ? 'tap to crew with' : ability?.cost.exileGraveyard ? 'exile from your graveyard' : ability?.cost.sacrifice ? 'sacrifice' : 'discard';
+      const spellSacrifice = play.kind !== 'ability' && (!!def.additionalCost?.sacrifice || !!def.kickerSacrifice);
+      const verb = ability?.cost.crew !== undefined ? 'tap to crew with' : ability?.cost.exileGraveyard ? 'exile from your graveyard' : ability?.cost.sacrifice || spellSacrifice ? 'sacrifice' : 'discard';
+      // No sacrifice: paying the mana instead ("or pay {2}"), or not kicking.
+      const none = def.additionalCost?.orMana ? `Pay ${def.additionalCost.orMana} instead` : def.kickerSacrifice ? 'Don’t kick it' : 'None';
       setMenu({
         title: `${def.name}: ${verb} which card?`,
         options: costKeys.map((k) => ({
-          label: (JSON.parse(k) as InstanceId[]).map((id) => cardName(s, id)).join(', '),
+          label: (JSON.parse(k) as InstanceId[]).map((id) => cardName(s, id)).join(', ') || none,
           pick: () => startPlay(play, modeKey, k),
         })),
       });

@@ -378,6 +378,14 @@ cards than before. Tests that need a particular random outcome set
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
 
+## 2026-11-02: Sacrifice costs; Aerith Rescue Mission
+
+- Spell sacrifice costs are paid while casting, with the other costs (rule
+  601.2h); the sacrificed permanent is chosen with the cast (`costCards`).
+- Simplification: Aerith Rescue Mission's "put a stun counter on one of
+  them" goes on the first creature chosen as a target, rather than being
+  chosen as the spell resolves.
+
 ## 2026-11-02: Meld (Fang and Vanille)
 
 - A melded permanent is one object made of two cards (rule 712.4). The

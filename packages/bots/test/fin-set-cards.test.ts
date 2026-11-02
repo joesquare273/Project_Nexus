@@ -1757,3 +1757,154 @@ describe('Meld: Fang, Fearless l’Cie and Vanille, Cheerful l’Cie', () => {
     expect(s.cards[fang]!.transformed).toBeUndefined();
   });
 });
+
+describe('S4 group 7: sacrifice as a cost, and modes with tokens', () => {
+  const legalCasts = (s: GameState, spell: string) =>
+    getLegalActions(s).filter((a): a is Extract<ReturnType<typeof getLegalActions>[number], { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === spell);
+
+  it('Deadly Dispute: sacrifice an artifact or creature to draw two and make a Treasure; nothing to sacrifice, no cast', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'deadly-dispute', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    expect(legalCasts(s, spell)).toEqual([]);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell })).toMatch(/nothing to sacrifice/);
+    const ring = put(s, 'P1', 'sol-ring');
+    const cat = put(s, 'P1', 'coeurl');
+    put(s, 'P1', 'forest');
+    expect(legalCasts(s, spell).map((a) => a.costCards).sort()).toEqual([[ring], [cat]].sort());
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, costCards: [ring] }).state;
+    expect(s.cards[ring]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token')).toBe(true);
+  });
+
+  it('Diabolic Intent: sacrifice a creature, then search for any card', () => {
+    let s = newGame();
+    put(s, 'P1', 'coeurl');
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    const spell = put(s, 'P1', 'diabolic-intent', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const [action] = legalCasts(s, spell);
+    s = act(s, action!);
+    s = settle(s).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect(s.cards[ring]!.zone).toBe('hand');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'coeurl')).toBe(false);
+  });
+
+  it('Vayne’s Treachery: -2/-2, or -6/-6 when kicked by sacrificing an artifact or creature', () => {
+    let s = newGame();
+    const big = put(s, 'P2', 'jumbo-cactuar');
+    const ring = put(s, 'P1', 'sol-ring');
+    const spell = put(s, 'P1', 'vaynes-treachery', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const casts = legalCasts(s, spell).filter((a) => a.targets?.[0]?.kind === 'card' && a.targets[0].card === big);
+    expect(casts.map((a) => [a.kicks ?? 0, a.costCards ?? []])).toEqual(expect.arrayContaining([[0, []], [1, [ring]]]));
+    const before = stats(s, big);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(big)], kicks: 1, costCards: [ring] }).state;
+    expect(s.cards[ring]!.zone).toBe('graveyard');
+    expect(stats(s, big)).toEqual([before[0]! - 6, before[1]! - 6]);
+  });
+
+  it('Louisoix’s Sacrifice counters a triggered ability, paying {2} or sacrificing a legendary creature', () => {
+    let s = newGame();
+    put(s, 'P2', 'namazu-trader', 'hand');
+    const trader = put(s, 'P2', 'namazu-trader', 'hand');
+    // P2 casts Namazu Trader on their turn; its enters trigger goes on the stack.
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { B: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: trader });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(s.stack.at(-1)?.kind).toBe('ability');
+    const life = s.players.P2!.life;
+    const spell = put(s, 'P1', 'louisoixs-sacrifice', 'hand');
+    const legend = put(s, 'P1', 'sram-senior-edificer');
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    mana(s, 'P1', { U: 1 });
+    const ways = legalCasts(s, spell).filter((a) => a.targets?.[0]?.kind === 'ability');
+    expect(ways.map((a) => a.costCards)).toEqual([[legend]]);
+    mana(s, 'P1', { C: 2 });
+    expect(legalCasts(s, spell).filter((a) => a.targets?.[0]?.kind === 'ability').map((a) => a.costCards ?? [])).toEqual(expect.arrayContaining([[legend], []]));
+    const ability = (s.stack.at(-1) as { id: string }).id;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'ability', ability }] }).state;
+    expect(s.cards[legend]!.zone).toBe('battlefield');
+    expect(s.players.P2!.life).toBe(life);
+    expect(s.players.P2!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token')).toBe(false);
+  });
+
+  it('Namazu Trader: lose 1 life and make a Treasure; attacking, may sacrifice another to surveil 2', () => {
+    let s = newGame();
+    const trader = put(s, 'P1', 'namazu-trader', 'hand');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: trader }).state;
+    expect(s.players.P1!.life).toBe(19);
+    const [treasure] = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token');
+    expect(treasure).toBeDefined();
+    s.cards[trader]!.summoningSick = false;
+    const top = s.players.P1!.library.slice(0, 2);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: trader, defender: 'P2' }] }), { accept: true }).state;
+    // "You may sacrifice another creature or artifact": the Treasure.
+    expect(s.pending.kind).toBe('chooseCards');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [treasure!] }), { surveilToGraveyard: true }).state;
+    expect(s.cards[treasure!]?.zone ?? 'gone').not.toBe('battlefield');
+    expect(top.every((id) => s.cards[id]!.zone === 'graveyard')).toBe(true);
+  });
+
+  it('Moogle’s Valor: a 1/2 lifelink Moogle for each creature you control, then indestructible until end of turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'coeurl');
+    put(s, 'P1', 'coeurl');
+    put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'moogles-valor', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    const mine = s.players.P1!.battlefield.filter((id) => currentDefinition(s, s.cards[id]!).types.includes('creature'));
+    expect(mine.filter((id) => s.cards[id]!.defId === 'moogle-token').length).toBe(2);
+    expect(mine.every((id) => hasKeyword(s, s.cards[id]!, 'Indestructible'))).toBe(true);
+    expect(s.players.P2!.battlefield.some((id) => hasKeyword(s, s.cards[id]!, 'Indestructible'))).toBe(false);
+  });
+
+  it('Battle Menu: a 2/2 Knight, +0/+4, destroy power 4 or greater, or gain 4 life', () => {
+    let s = newGame();
+    const small = put(s, 'P2', 'coeurl');
+    const big = put(s, 'P2', 'primeval-titan');
+    const menu = () => {
+      const id = put(s, 'P1', 'battle-menu', 'hand');
+      mana(s, 'P1', { W: 1, C: 1 });
+      return id;
+    };
+    let spell = menu();
+    expect(legalCasts(s, spell).filter((a) => a.mode === 2).map((a) => a.targets![0])).toEqual([card(big)]);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 2, targets: [card(big)] }).state;
+    expect(s.cards[big]!.zone).toBe('graveyard');
+    spell = menu();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 0 }).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'knight-token')).toBe(true);
+    spell = menu();
+    const before = stats(s, small);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(small)] }).state;
+    expect(stats(s, small)).toEqual([before[0], before[1]! + 4]);
+    spell = menu();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 3 }).state;
+    expect(s.players.P1!.life).toBe(24);
+  });
+
+  it('Aerith Rescue Mission: three Heroes, or tap up to three different creatures and stun the first', () => {
+    let s = newGame();
+    let spell = put(s, 'P1', 'aerith-rescue-mission', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 0 }).state;
+    expect(heroes(s, 'P1').length).toBe(3);
+    const [a, b, c] = [put(s, 'P2', 'coeurl'), put(s, 'P2', 'coeurl'), put(s, 'P2', 'coeurl')];
+    spell = put(s, 'P1', 'aerith-rescue-mission', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(a), card(a), card(b)] })).toMatch(/different/);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(b), card(a), card(c)] }).state;
+    expect([a, b, c].every((id) => s.cards[id]!.tapped)).toBe(true);
+    expect([a, b, c].map((id) => countersOf(s.cards[id]!, 'stun'))).toEqual([0, 1, 0]);
+  });
+});

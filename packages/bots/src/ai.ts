@@ -303,6 +303,10 @@ function scoreOption(s: GameState, me: PlayerId, o: CostedOption, targetScores: 
     if (e.effect === 'Surveil' || e.effect === 'Mill') score += 0.2;
     if (e.effect === 'ModifyPT' && e.target === 'EachOpponentCreature') score += opponents(s, me).length;
   }
+  // A sacrifice cost (Deadly Dispute, kicker—sacrifice) gives up what's sacrificed.
+  if (a.type === 'CastSpell' && (d.additionalCost?.sacrifice || d.kickerSacrifice)) {
+    score -= (a.costCards ?? []).reduce((n, id) => n + value(s, s.cards[id]!), 0);
+  }
   return score;
 }
 
