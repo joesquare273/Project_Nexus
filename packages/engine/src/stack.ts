@@ -805,6 +805,11 @@ export function spellCost(
     const opponents = s.turnOrder.filter((pid) => pid !== payer! && !s.players[pid]!.eliminated);
     if (opponents.some((pid) => s.players[pid]!.graveyard.length >= opponentGraveyard)) cost = reduceGeneric(cost, def.costReduction!.generic);
   }
+  if (def.costReduction?.perMatching && card) {
+    const f = def.costReduction.perMatching;
+    const n = battlefield(s).filter((c) => c.controller === payer && !c.phasedOut && matchesObject(s, f, c, { controller: payer! })).length;
+    cost = reduceGeneric(cost, def.costReduction.generic * n);
+  }
   if (def.costReduction?.perCount && card) {
     cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, payer!));
   }
@@ -1051,6 +1056,11 @@ function equipAnyTime(s: GameState, playerId: PlayerId): boolean {
 /** What activating an ability costs with these targets (equip discounts depend on the target). */
 export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[], source?: CardInstance): ManaCost {
   let cost = parseManaCost(spec.cost.mana);
+  // "This ability costs {1} less to activate for each Town you control" (Qiqirn Merchant).
+  if (spec.costReductionPerMatching && source) {
+    const f = spec.costReductionPerMatching;
+    cost = reduceGeneric(cost, battlefield(s).filter((c) => c.controller === source.controller && !c.phasedOut && matchesObject(s, f, c, { controller: source.controller, source: source.id })).length);
+  }
   // Puresteel Paladin's metalcraft: "Equipment you control have equip {0}".
   if (spec.equip && source) {
     const yours = battlefield(s).filter((c) => c.controller === source.controller);
@@ -1457,7 +1467,9 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
   const a = effect.amount;
   if (a !== undefined && typeof a === 'object' && 'of' in a) {
     const base =
-      a.of === 'previousTargetPower'
+      a.of === 'dieRoll'
+        ? (r.dieRoll ?? 0)
+        : a.of === 'previousTargetPower'
         ? Math.max(0, r.previousTargetPower ?? 0)
         : a.of === 'destroyedThisWay'
           ? (r.destroyedCount ?? 0)
@@ -2118,6 +2130,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.cards[commanders[0]!]!.commanderStays = true;
       }
       else if (commanders.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: commanders, min: 1, max: 1 }];
+      return;
+    }
+    case 'EachMatchingDealsDamage':
+      for (const t of targets) {
+        for (const c of battlefield(s)) {
+          if (c.phasedOut || !matchesObject(s, effect.filter, c, { controller: item.controller, source })) continue;
+          if (!hasType(s, c, 'creature')) continue;
+          dealDamage(ctx, c.id, t, powerOf(s, c), false);
+        }
+      }
+      return;
+    case 'RollDie': {
+      const sides = Math.max(1, amount);
+      r.dieRoll = randomInt(s, sides) + 1;
+      ctx.ev.push({ type: 'DieRolled', player: item.controller, sides, result: r.dieRoll });
       return;
     }
     case 'LookAtTopPutMatching': {

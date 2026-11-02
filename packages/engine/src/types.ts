@@ -179,6 +179,10 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /** Each permanent matching `filter` deals damage equal to its power to the target (Bartz and Boko's Birds). */
+  'EachMatchingDealsDamage',
+  /** Roll a die with `amount` sides; later effects can use the result (`{ of: 'dieRoll' }`). */
+  'RollDie',
   /** Put your commander from the command zone into your hand (Command Beacon); with two, you choose. */
   'CommanderToHand',
   /**
@@ -562,7 +566,9 @@ export type Amount =
         /** The damage dealt in the triggering event ("it deals that much damage"). */
         | 'damageDealt'
         /** SpellCast triggers: the mana spent to cast the triggering spell ("where X is the amount of mana spent"). */
-        | 'subjectManaSpent';
+        | 'subjectManaSpent'
+        /** The result of the last RollDie. */
+        | 'dieRoll';
       plus?: number;
     };
 
@@ -1008,6 +1014,8 @@ export interface ActivatedSpec {
   ifYouControl?: ObjectFilter;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
   equip?: boolean;
+  /** "This ability costs {1} less to activate for each Town you control". */
+  costReductionPerMatching?: ObjectFilter;
   /** "Activate only once each turn." */
   oncePerTurn?: boolean;
   /** "Activate only during your turn." */
@@ -1027,6 +1035,8 @@ export interface StaticSpec {
   goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
+  /** "Prevent all combat damage that would be dealt to this creature" (Diamond Weapon). */
+  preventCombatDamage?: boolean;
   /** "Twice that many +1/+1 counters are put on that creature instead" for each affected creature (The Earth Crystal). */
   doubleCounters?: boolean;
   /** "If an opponent would mill one or more cards, they mill that many cards plus N instead" (The Water Crystal). */
@@ -1255,7 +1265,8 @@ export interface CardDefinition {
    * "This spell costs {N} less to cast if it targets a tapped creature", or
    * "costs {N} less for each [count]" (Vanquish the Horde).
    */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; ifOpponentGraveyardAtLeast?: number };
+  /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };
@@ -1768,6 +1779,8 @@ export interface Resolving {
   scrying?: boolean;
   /** Card choices still to make, in order (discard, sacrifice). */
   choiceQueue?: CardChoice[];
+  /** The result of the last die rolled by this spell or ability. */
+  dieRoll?: number;
   /** The last coin flip of this spell or ability was won. */
   wonFlip?: boolean;
   /** A permanent was sacrificed by an earlier effect of this spell ("If you do"). */
@@ -2035,6 +2048,7 @@ export type GameEvent =
   | { type: 'BecameCopy'; card: InstanceId; copied: InstanceId; name: string }
   | { type: 'CopyEnded'; card: InstanceId }
   | { type: 'CoinFlipped'; player: PlayerId; won: boolean }
+  | { type: 'DieRolled'; player: PlayerId; sides: number; result: number }
   | { type: 'MonarchChanged'; player: PlayerId; previous?: PlayerId }
   | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }
   | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }

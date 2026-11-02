@@ -438,6 +438,8 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     const victim = s.cards[target.card]!;
     // Protection prevents damage from sources of that color (rule 702.16e).
     if (protectedFrom(s, victim, source)) return;
+    // Diamond Weapon: "Prevent all combat damage that would be dealt to Diamond Weapon".
+    if (combat && defOf(s, victim).statics?.some((st) => st.affects === 'Self' && st.preventCombatDamage)) return;
     // A shield counter is removed instead (rule 122.1c).
     if (countersOf(victim, 'shield') > 0) {
       removeCounters(ctx, victim.id, 'shield', 1);

@@ -122,6 +122,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetPowerOverSubject',
       'damageDealt',
       'subjectManaSpent',
+      'dieRoll',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
@@ -258,8 +259,8 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
-    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && c.costReduction.ifOpponentGraveyardAtLeast === undefined) {
-      err('costReduction needs a condition or perCount.');
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined) {
+      err('costReduction needs a condition, perCount or perMatching.');
     }
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
   }

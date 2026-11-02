@@ -276,6 +276,8 @@ function effectText(e: EffectSpec): string {
     case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;
     case 'ExileAndReturn': return `exile it, then return it to the battlefield ${e.transformed ? 'transformed' : '(front face up)'}`;
     case 'Meld': return 'exile it and its meld partner, then meld them';
+    case 'EachMatchingDealsDamage': return `each ${subjectText(e.filter ?? {}, 'creature')} deals damage equal to its power to it`;
+    case 'RollDie': return `roll a d${typeof e.amount === 'number' ? e.amount : 'X'}`;
     case 'CommanderToHand': return 'put your commander into your hand from the command zone';
     case 'LookAtTopPutMatching': return `look at the top ${typeof e.amount === 'number' ? e.amount : 'X'} cards of your library; you may put ${e.anyNumber ? 'any number of' : 'one'} ${subjectText(e.filter ?? {}, 'card')} ${e.lookTo === 'battlefield' ? 'onto the battlefield' : 'into your hand'}, and the rest on the bottom in a random order`;
     case 'DestroyAttachedEquipment': return 'destroy up to one Equipment attached to that creature';
@@ -555,6 +557,7 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
   switch (e.type) {
     case 'BecameCopy': return cardName(s,e.card) + ' becomes a copy of ' + e.name + '.';
     case 'CopyEnded': return cardName(s,e.card) + ' returns to its original form.';
+    case 'DieRolled': return `${who(e.player)} ${e.player === viewer ? 'roll' : 'rolls'} a d${e.sides}: ${e.result}.`;
     case 'CoinFlipped': return `${who(e.player)} ${e.player === viewer ? (e.won ? 'win' : 'lose') : (e.won ? 'wins' : 'loses')} a coin flip.`;
     case 'MonarchChanged': return `${who(e.player)} ${e.player === viewer ? 'become' : 'becomes'} the monarch.`;
     case 'TurnChanged':

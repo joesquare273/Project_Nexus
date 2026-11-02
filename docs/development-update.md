@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 15: affinity and a d20, 5 set cards
+
+- Engine: affinity ("costs {1} less for each Town you control",
+  `costReduction.perMatching`) and the same for activated abilities
+  (`costReductionPerMatching`); "prevent all combat damage that would be
+  dealt to this creature" (`preventCombatDamage`); each matching creature
+  dealing damage equal to its power to a target (`EachMatchingDealsDamage`);
+  rolling a die (`RollDie`, a `DieRolled` event, `{ of: 'dieRoll' }`).
+- Travel the Overworld, Diamond Weapon, Bartz and Boko, Qiqirn Merchant and
+  Ancient Copper Dragon, each with a test. 155 of 320 set cards are built.
+
 ### S4 group 14: the Crystals
 
 - Engine: doubling +1/+1 counters on your creatures (`doubleCounters`,

@@ -2633,3 +2633,79 @@ describe('S4 group 14: the Crystals', () => {
     expect([s.cards[victim]!.zone, s.cards[victim]!.controller, s.cards[victim]!.tapped, s.cards[victim]!.counters]).toEqual(['battlefield', 'P1', true, 2]);
   });
 });
+
+describe('S4 group 15: costs less for each, and a d20', () => {
+  const costOf = (s: GameState, id: string) => {
+    const o = getLegalActions(s).find((a) => (a.type === 'CastSpell' || a.type === 'ActivateAbility') && a.card === id);
+    return o;
+  };
+
+  it('Travel the Overworld costs {1} less for each Town you control, and draws four', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'capital-city');
+    const spell = put(s, 'P1', 'travel-the-overworld', 'hand');
+    mana(s, 'P1', { U: 2, C: 1 });
+    expect(costOf(s, spell)).toBeUndefined();
+    mana(s, 'P1', { C: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 4);
+  });
+
+  it('Diamond Weapon costs {1} less for each permanent card in your graveyard and takes no combat damage', () => {
+    let s = newGame();
+    for (let i = 0; i < 5; i++) put(s, 'P1', 'forest', 'graveyard');
+    put(s, 'P1', 'lightning-bolt', 'graveyard');
+    const weapon = put(s, 'P1', 'diamond-weapon', 'hand');
+    mana(s, 'P1', { G: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: weapon }).state;
+    expect(s.cards[weapon]!.zone).toBe('battlefield');
+    // Blocks a big attacker and takes nothing; a Lightning Bolt still hurts.
+    let t = newGame();
+    const wall = put(t, 'P2', 'diamond-weapon');
+    const titan = put(t, 'P1', 'primeval-titan');
+    t = fight(t, [{ attacker: titan, defender: 'P2' }], { P2: [{ blocker: wall, attacker: titan }] }, { accept: false }).state;
+    expect(t.cards[wall]!.damage).toBe(0);
+    expect(t.cards[titan]!.zone).toBe('graveyard');
+    const bolt = put(t, 'P1', 'lightning-bolt', 'hand');
+    mana(t, 'P1', { R: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(wall)] }).state;
+    expect(t.cards[wall]!.damage).toBe(3);
+  });
+
+  it('Bartz and Boko: affinity for Birds; each other Bird you control deals damage equal to its power to an opponent’s creature', () => {
+    let s = newGame();
+    const birds = [0, 1, 2].map(() => put(s, 'P1', 'bird-token', 'battlefield', { isToken: true }));
+    const target = put(s, 'P2', 'jumbo-cactuar');
+    const bartz = put(s, 'P1', 'bartz-and-boko', 'hand');
+    // {3}{G}{G} less {3} for three Birds.
+    mana(s, 'P1', { G: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bartz }, { targets: (options) => options.find((o) => o.some((t) => t.kind === 'card' && t.card === target))! }).state;
+    expect(s.cards[bartz]!.zone).toBe('battlefield');
+    expect(s.cards[target]!.damage).toBe(birds.reduce((n, id) => n + stats(s, id)[0]!, 0));
+  });
+
+  it('Qiqirn Merchant loots for {1}, and its {7} ability costs {1} less for each Town', () => {
+    let s = newGame();
+    const merchant = put(s, 'P1', 'qiqirn-merchant');
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'capital-city', 'battlefield', { tapped: true });
+    mana(s, 'P1', { C: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: merchant, ability: 1, targets: [] }).state;
+    expect(s.cards[merchant]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.length).toBe(hand + 3);
+  });
+
+  it('Ancient Copper Dragon rolls a d20 and makes that many Treasures', () => {
+    let s = newGame();
+    const dragon = put(s, 'P1', 'ancient-copper-dragon');
+    const r = fight(s, [{ attacker: dragon, defender: 'P2' }]);
+    s = r.state;
+    const roll = r.events.find((e) => e.type === 'DieRolled');
+    expect(roll && roll.type === 'DieRolled' && roll.sides).toBe(20);
+    const result = roll && roll.type === 'DieRolled' ? roll.result : 0;
+    expect(result).toBeGreaterThanOrEqual(1);
+    expect(result).toBeLessThanOrEqual(20);
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token').length).toBe(result);
+  });
+});
