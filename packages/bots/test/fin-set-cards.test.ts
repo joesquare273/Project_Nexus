@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, AliasBook, playerUpdate, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { type Target, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -2360,5 +2360,105 @@ describe('S4 group 11: lands and mana', () => {
     }
     expect(s.cards[eden]!.zone).toBe('graveyard');
     expect(s.cards[ring]!.zone).toBe('hand');
+  });
+});
+
+describe('S4 group 12: impulse draw, spectacle, and more', () => {
+  const playable = (s: GameState, id: string) => getLegalActions(s).some((a) => (a.type === 'CastSpell' || a.type === 'PlayLand') && a.card === id);
+
+  it('Haste Magic: +3/+1 and haste; the top card may be played until your next end step', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { summoningSick: true });
+    const top = put(s, 'P1', 'forest', 'library');
+    const spell = put(s, 'P1', 'haste-magic', 'hand');
+    const before = stats(s, cat);
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(cat)] }).state;
+    expect(stats(s, cat)).toEqual([before[0]! + 3, before[1]! + 1]);
+    expect(hasKeyword(s, s.cards[cat]!, 'Haste')).toBe(true);
+    expect(s.cards[top]!.zone).toBe('exile');
+    expect(playable(s, top)).toBe(true);
+    // Gone once your end step begins.
+    s = goTo(s, 'end');
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    expect(s.players.P1!.endStepsBegun).toBe(1);
+    s.step = 'main2';
+    expect(playable(s, top)).toBe(false);
+  });
+
+  it('Opera Love Song: exile two to play, or +2/+0 on one or two different creatures', () => {
+    let s = newGame();
+    const [a, b] = [put(s, 'P1', 'coeurl'), put(s, 'P1', 'coeurl')];
+    let spell = put(s, 'P1', 'opera-love-song', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    const pa = stats(s, a);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(a), card(b)] }).state;
+    expect([stats(s, a)[0], stats(s, b)[0]]).toEqual([pa[0]! + 2, pa[0]! + 2]);
+    const tops = s.players.P1!.library.slice(0, 2);
+    spell = put(s, 'P1', 'opera-love-song', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 0 }).state;
+    expect(tops.every((id) => s.cards[id]!.zone === 'exile' && playable(s, id))).toBe(true);
+  });
+
+  it('Light Up the Stage: spectacle {R} only after an opponent lost life; play the cards until the end of your next turn', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'light-up-the-stage', 'hand');
+    mana(s, 'P1', { R: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, alternative: true })).toMatch(/spectacle/);
+    s.players.P2!.lifeLostThisTurn = 2;
+    s.players.P1!.turnsTaken = 1;
+    const tops = s.players.P1!.library.slice(0, 2);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, alternative: true }).state;
+    expect(tops.every((id) => s.cards[id]!.zone === 'exile')).toBe(true);
+    const [land] = tops;
+    // Still playable on P1's next turn, gone after it.
+    s.activePlayer = 'P1';
+    s.players.P1!.turnsTaken = 2;
+    s.players.P1!.landsPlayedThisTurn = 0;
+    expect(playable(s, land!)).toBe(true);
+    s.activePlayer = 'P2';
+    expect(s.cards[land!]!.playableFromExile?.throughTurn).toBe(2);
+    s.players.P1!.turnsTaken = 3;
+    s.activePlayer = 'P1';
+    expect(playable(s, land!)).toBe(false);
+  });
+
+  it('Rydia’s Return: creatures you control get +3/+3, or return up to two different permanent cards', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl');
+    const theirs = put(s, 'P2', 'coeurl');
+    let spell = put(s, 'P1', 'rydias-return', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    const before = stats(s, cat);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 0 }).state;
+    expect([stats(s, cat), stats(s, theirs)]).toEqual([[before[0]! + 3, before[1]! + 3], before]);
+    const [ring, forest] = [put(s, 'P1', 'sol-ring', 'graveyard'), put(s, 'P1', 'forest', 'graveyard')];
+    spell = put(s, 'P1', 'rydias-return', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(ring), card(forest)] }).state;
+    expect([s.cards[ring]!.zone, s.cards[forest]!.zone]).toEqual(['hand', 'hand']);
+  });
+
+  it('Cactuar returns to hand at your end step unless it entered this turn', () => {
+    let s = newGame();
+    const fresh = put(s, 'P1', 'cactuar', 'battlefield', { enteredTurn: 2 });
+    const old = put(s, 'P1', 'cactuar', 'battlefield', { enteredTurn: 1 });
+    s = settle(goTo(s, 'end')).state;
+    expect([s.cards[fresh]!.zone, s.cards[old]!.zone]).toEqual(['battlefield', 'hand']);
+  });
+
+  it('Demon Wall can’t attack until it has a counter; {5}{B} puts two +1/+1 counters on it', () => {
+    const s = newGame();
+    const wall = put(s, 'P1', 'demon-wall');
+    expect(canAttack(s, s.cards[wall]!, 'P1')).toBe(false);
+    let t = newGame();
+    const wall2 = put(t, 'P1', 'demon-wall');
+    mana(t, 'P1', { B: 1, C: 5 });
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: wall2, ability: 0, targets: [] }).state;
+    expect(t.cards[wall2]!.counters).toBe(2);
+    expect(canAttack(t, t.cards[wall2]!, 'P1')).toBe(true);
+    t = fight(t, [{ attacker: wall2, defender: 'P2' }]).state;
+    expect(t.players.P2!.life).toBe(20 - stats(t, wall2)[0]!);
   });
 });

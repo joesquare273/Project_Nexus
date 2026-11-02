@@ -249,6 +249,7 @@ export function alternativeCostProblem(s: GameState, def: CardDefinition, player
     return `You don't meet the condition for ${def.name}'s alternative cost.`;
   }
   if (alt.life !== undefined && s.players[playerId]!.life < alt.life) return "You don't have enough life to pay.";
+  if (alt.ifOpponentLostLife && !s.turnOrder.some((pid) => pid !== playerId && (s.players[pid]!.lifeLostThisTurn ?? 0) > 0)) return 'No opponent has lost life this turn (spectacle).';
   if (alt.exileFromHand && exileFromHandChoices(s, def, playerId, cardId).length === 0) return `You have no card in hand to exile for ${def.name}.`;
   return null;
 }
@@ -600,6 +601,13 @@ export function playableZone(
   if (c.zone === 'exile' && p?.player === playerId) {
     // "You may play that card this turn."
     if (p.untilTurn !== undefined) return s.turnNumber <= p.untilTurn ? 'exile' : null;
+    // "Until your next end step": until another of your end steps begins.
+    if (p.endSteps !== undefined) return (s.players[playerId]!.endStepsBegun ?? 0) === p.endSteps ? 'exile' : null;
+    // "Until the end of your next turn".
+    if (p.throughTurn !== undefined) {
+      const taken = s.players[playerId]!.turnsTaken ?? 0;
+      return taken < p.throughTurn || (taken === p.throughTurn && s.activePlayer === playerId) ? 'exile' : null;
+    }
     // "Until you exile another card with this enchantment" (Furious Rise).
     if (p.untilReplaced) return 'exile';
     // "For as long as that card remains exiled, you may play it" (Praetor's Grasp).
@@ -2185,6 +2193,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           player: item.controller,
           source,
           ...(effect.thisTurn ? { untilTurn: s.turnNumber } : {}),
+          ...(effect.playUntil === 'yourNextEndStep' ? { endSteps: s.players[item.controller]!.endStepsBegun ?? 0 } : {}),
+          ...(effect.playUntil === 'endOfYourNextTurn' ? { throughTurn: (s.players[item.controller]!.turnsTaken ?? 0) + 1 } : {}),
           ...(effect.untilNextFromSource ? { untilReplaced: true } : {}),
         };
       }

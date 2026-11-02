@@ -111,7 +111,10 @@ export function enterStep(ctx: Ctx, step: Step): void {
       }
       givePriority(ctx, s.activePlayer);
       return;
-    case 'end':
+    case 'end': {
+      const p = s.players[s.activePlayer]!;
+      p.endStepsBegun = (p.endStepsBegun ?? 0) + 1;
+    }
       // Blitz and unearth: "at the beginning of the next end step" (done as the step begins, without using the stack).
       for (const c of battlefield(s)) {
         if (c.unearthed) moveCard(ctx, c.id, 'exile');

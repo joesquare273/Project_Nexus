@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 12: impulse draw, spectacle, 6 set cards
+
+- Engine: exiled cards you may play "until your next end step" (counted by
+  each player's `endStepsBegun`, public) or "until the end of your next
+  turn" (`playUntil`); spectacle (`alternativeCost.ifOpponentLostLife`);
+  "if this creature didn't enter the battlefield this turn"
+  (`ifNotEnteredThisTurn`); "can attack as though it didn't have defender"
+  while it has a counter.
+- Haste Magic, Opera Love Song, Light Up the Stage, Rydia's Return, Cactuar
+  and Demon Wall, each with a test. Demon Wall's imported data was missing
+  Defender; no other card was. 141 of 320 set cards are built.
+
 ### S4 group 11: lands and mana, 7 set cards
 
 - Engine: each player's turns are counted (`turnsTaken`, public) for

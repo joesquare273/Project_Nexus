@@ -688,6 +688,8 @@ export interface EffectSpec {
   ifChose?: 'any' | 'creature' | 'noncreature';
   /** ExileTopCardToPlay: playable until end of turn, not while you control the source. */
   thisTurn?: boolean;
+  /** ExileTopCardToPlay: playable until your next end step, or until the end of your next turn. */
+  playUntil?: 'yourNextEndStep' | 'endOfYourNextTurn';
   /** ExileTopCardToPlay: playable until another card is exiled with the same source (Furious Rise). */
   untilNextFromSource?: boolean;
   /** Only if the last coin flip of this spell or ability was won ("If you win the flip, ..."). */
@@ -907,6 +909,8 @@ export interface TriggerSpec {
   ifYouControl?: { filter: ObjectFilter; atLeast?: number };
   /** Intervening "if": a count is at least this ("if there are six or more permanent cards in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number };
+  /** Intervening "if": "if this creature didn't enter the battlefield this turn" (Cactuar). */
+  ifNotEnteredThisTurn?: boolean;
   /** Intervening "if": "if you gained life this turn". */
   ifYouGainedLifeThisTurn?: boolean;
   /** Intervening "if": "if a card left your graveyard this turn". */
@@ -1009,6 +1013,8 @@ export interface StaticSpec {
   goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
+  /** "As long as this creature has a counter on it, it can attack as though it didn't have defender" (Demon Wall). */
+  attacksDespiteDefenderWithCounters?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
   additionalLands?: number;
   /** Edgar: the first time its controller flips coins each turn, they come up heads. */
@@ -1243,6 +1249,8 @@ export interface CardDefinition {
     life?: number;
     /** Only if you control a permanent matching this ("If you control a Swamp"). */
     ifControls?: ObjectFilter;
+    /** Spectacle (rule 702.137): only if an opponent lost life this turn. */
+    ifOpponentLostLife?: boolean;
     /** Replaces the spell's effects when cast this way (overload). */
     effects?: EffectSpec[];
     /** "Discard a card" as part of this cost (blitz); chosen with the action (`costCards`). */
@@ -1421,7 +1429,13 @@ export interface CardInstance {
   /** In exile, and `player` may play it as long as they control `source`. */
   /** `untilTurn`: playable until the end of that turn ("until end of turn", "until the end of your next turn") instead of while `player` controls `source`. */
   /** `untilReplaced`: playable until `source` exiles another card this way, whether or not `player` still controls it (Furious Rise). */
-  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean };
+  /**
+   * "You may play that card": this turn (`untilTurn`), until replaced, while
+   * exiled, until the player's next end step begins (`endSteps`: the count it
+   * was made at), or until the end of their next turn (`throughTurn`: their
+   * turn count); otherwise while they control the source.
+   */
+  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -1532,6 +1546,8 @@ export interface PlayerState {
   lifeGainedThisTurn?: number;
   /** The last turn a card left this player's graveyard. */
   cardLeftGraveyardTurn?: number;
+  /** How many of this player's end steps have begun ("until your next end step"). */
+  endStepsBegun?: number;
   /** How many turns this player has begun (Starting Town: "your first, second, or third turn of the game"). */
   turnsTaken?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */

@@ -212,6 +212,7 @@ function matchesFilter(
 function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   const p = s.players[controller]!;
   if (spec.ifYouGainedLifeThisTurn && !((p.lifeGainedThisTurn ?? 0) > 0)) return false;
+  if (spec.ifNotEnteredThisTurn && s.cards[source]?.enteredTurn === s.turnNumber) return false;
   if (spec.ifCardLeftYourGraveyardThisTurn && p.cardLeftGraveyardTurn !== s.turnNumber) return false;
   if (spec.ifYouControl) {
     const { filter, atLeast = 1 } = spec.ifYouControl;

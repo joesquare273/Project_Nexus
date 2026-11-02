@@ -6,7 +6,7 @@ import { continuousSources, currentDefinition } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { hasFlag, powerOf, protectedFrom, staticAffects, toughnessOf } from './characteristics.ts';
+import { hasFlag, powerOf, protectedFrom, staticAffects, toughnessOf, totalCounters } from './characteristics.ts';
 import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
@@ -28,7 +28,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
   return (
     isCreatureOnBattlefield(s, c) &&
     !cantAttackOrBlock(s, c) &&
-    !hasKeyword(s, c, 'Defender') &&
+    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0)) &&
     c.controller === playerId &&
     !c.tapped &&
     (!c.summoningSick || hasKeyword(s, c, 'Haste'))

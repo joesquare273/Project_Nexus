@@ -224,6 +224,7 @@ const PLAYER_FIELDS = {
   cardLeftGraveyardTurn: 'copy',
   permanentLeftTurn: 'copy',
   turnsTaken: 'copy',
+  endStepsBegun: 'copy',
   coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',
   spellsCastThisTurn: 'copy',
