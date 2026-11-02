@@ -228,7 +228,7 @@ describe('rejected messages', () => {
     const { a, b } = await startedGame(port);
     const players = { P1: a, P2: b };
     const u = a.lastUpdate()!;
-    const pending = u.update.state.pending as { player: Seat };
+    const pending = u.update.state.pending as { player: 'P1' | 'P2' };
     const mover = players[pending.player];
     const other = mover === a ? b : a;
     const otherSeat = mover === a ? 'P2' : 'P1';
@@ -277,7 +277,7 @@ describe('action batches', () => {
     const { a, b } = await startedGame(port, 'BATCH');
     const players = { P1: a, P2: b };
     const u = a.lastUpdate()!;
-    const seat = (u.update.state.pending as { player: Seat }).player;
+    const seat = (u.update.state.pending as { player: 'P1' | 'P2' }).player;
     const mover = players[seat];
     const before = lobby.rooms.get('BATCH')!.game!.state;
     const good = mover.lastUpdate()!.update.legal[0]!;
@@ -298,7 +298,7 @@ describe('a whole game', () => {
   it('two scripted clients play to the end, and neither is ever sent the other hand or any library', async () => {
     const realIds = new Set<string>();
     /** Definitions each seat may have seen so far: public zones, their own hand, cards they were shown. */
-    const seenBy: Record<Seat, Set<string>> = { P1: new Set(), P2: new Set() };
+    const seenBy: Record<Seat, Set<string>> = { P1: new Set(), P2: new Set(), P3: new Set(), P4: new Set() };
     let checkedMessages = 0;
     let hiddenChecks = 0;
     const problems: string[] = [];
@@ -327,7 +327,7 @@ describe('a whole game', () => {
     };
     const { port } = await open(observe, 7);
     const { a, b } = await startedGame(port, 'FULLGAME');
-    const players: Record<Seat, TestClient> = { P1: a, P2: b };
+    const players = { P1: a, P2: b } as Record<Seat, TestClient>;
 
     // Each client acts only on its own updates: a random legal action, passing about half the time.
     let x = 12345;

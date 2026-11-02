@@ -28,8 +28,13 @@ const LimitedDeckPayload = z.strictObject({
 });
 
 export const ClientMessage = z.discriminatedUnion('type', [
-  /** Draft events (docs/sealed.md, S3): make one for 2-4 seats (empty seats become bots when it starts). */
-  z.strictObject({ type: z.literal('eventCreate'), token: z.string().min(1).max(8192), size: z.number().int().min(2).max(4) }),
+  /**
+   * Draft events (docs/sealed.md, S3): the host makes one with `players`
+   * seats for players (the host included) and `bots` seats for bots, 2-4 in all.
+   */
+  z.strictObject({ type: z.literal('eventCreate'), token: z.string().min(1).max(8192), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
+  /** The host changes the seats before the draft starts. */
+  z.strictObject({ type: z.literal('eventSettings'), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
   /** Join an event by its code, or come back to one you're in (after a reload or a lost connection). */
   z.strictObject({ type: z.literal('eventJoin'), token: z.string().min(1).max(8192), code: RoomCode }),
   /** The event's creator starts the draft. */
@@ -45,6 +50,16 @@ export const ClientMessage = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('eventPlayDraw'), play: z.boolean() }),
   /** Leave an event that hasn't started. */
   z.strictObject({ type: z.literal('eventLeave') }),
+  /** Commander tables (tables.ts): the host makes one with seats for players and for bots, 2-4 in all. */
+  z.strictObject({ type: z.literal('tableCreate'), token: z.string().min(1).max(8192), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
+  /** Join a table by its code, or come back to your seat at it. */
+  z.strictObject({ type: z.literal('tableJoin'), token: z.string().min(1).max(8192), code: RoomCode }),
+  z.strictObject({ type: z.literal('tableSettings'), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
+  /** Play one of your saved Commander decks (its id). */
+  z.strictObject({ type: z.literal('tableDeck'), deck: z.string().min(1).max(64) }),
+  /** The host starts the game. */
+  z.strictObject({ type: z.literal('tableStart') }),
+  z.strictObject({ type: z.literal('tableLeave') }),
   /** Players join with their Discord sign-in (a Supabase access token); the server takes their name from it. No guests. */
   z.strictObject({ type: z.literal('join'), token: z.string().min(1).max(8192), room: RoomCode }),
   z.strictObject({ type: z.literal('pickDeck'), deck: z.enum(DECKS) }),
@@ -63,8 +78,8 @@ export const ClientMessage = z.discriminatedUnion('type', [
 ]);
 export type ClientMessage = z.input<typeof ClientMessage>;
 
-/** Seats are the engine's player ids. */
-export type Seat = 'P1' | 'P2';
+/** Seats are the engine's player ids (P3 and P4 only at Commander tables). */
+export type Seat = 'P1' | 'P2' | 'P3' | 'P4';
 
 export interface LobbyPlayer {
   seat: Seat;
@@ -101,11 +116,30 @@ export type ServerMessage =
    * of your batches that was applied. `match`: the draft event match it
    * belongs to, for event games (seats are P1/P2 in every game).
    */
-  | { type: 'update'; version: number; seat: Seat; names: Record<Seat, string>; ackSeq: number; update: PlayerUpdate; match?: string; game?: number }
+  | { type: 'update'; version: number; seat: Seat; names: Partial<Record<Seat, string>>; ackSeq: number; update: PlayerUpdate; match?: string; game?: number }
   /** A draft event as this player may see it, after every change. */
   | { type: 'event'; event: EventView }
+  /** A Commander table as this player may see it, after every change. */
+  | { type: 'table'; table: TableView }
+  /** The table was closed (its host left the lobby, or it finished long ago). */
+  | { type: 'tableClosed'; code: string }
   | { type: 'error'; code: ErrorCode; message: string; seq?: number }
   | { type: 'opponentLeft'; seat: Seat; name: string };
+
+/** A Commander table: its seats (players and bots), each player's chosen deck, and the game's phase. */
+export interface TableView {
+  code: string;
+  format: 'commander';
+  /** Seats for players (the host included) and for bots. */
+  players: number;
+  bots: number;
+  host: Seat;
+  you: Seat;
+  phase: 'lobby' | 'playing' | 'finished';
+  seats: { id: Seat; name: string; bot: boolean; connected: boolean; deck: { name: string; commander: string | null } | null }[];
+  /** Who won, once the game is over (null: a draw, or not over). */
+  winner: Seat | null;
+}
 
 /** One seat of an event, as everyone sees it. */
 export interface EventSeatView {
@@ -135,6 +169,9 @@ export interface EventMatchView {
 export interface EventView {
   code: string;
   size: number;
+  /** Seats for players (the host included) and for bots, set by the host. */
+  players: number;
+  bots: number;
   phase: 'lobby' | 'drafting' | 'building' | 'playing' | 'finished';
   /** Your seat. */
   you: string;

@@ -24,7 +24,9 @@ import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
 import { ClientMessage, type Deck, type ErrorCode, type LobbyPlayer, type Seat, type ServerMessage } from './protocol.ts';
 import type { AccountService } from './accounts.ts';
 import { EventHub, type EventHubOptions } from './events.ts';
+import { TableHub } from './tables.ts';
 
+/** Starter Kit rooms are duels. */
 const SEATS: Seat[] = ['P1', 'P2'];
 
 export interface Connection {
@@ -74,7 +76,7 @@ export interface LobbyOptions {
   observe?: (room: Room, seat: Seat, message: ServerMessage) => void;
   /** Player accounts: joining a room needs a valid sign-in. Without them nobody can join (no guests). */
   accounts?: AccountService | null;
-  /** Draft events: clock, timers and bot pacing (tests speed them up). */
+  /** Draft events and Commander tables: clock, timers and bot pacing (tests speed them up). */
   events?: Partial<Pick<EventHubOptions, 'now' | 'schedule' | 'botDelayMs' | 'botGameLimit'>>;
 }
 
@@ -86,11 +88,15 @@ export class Lobby {
   readonly accounts: AccountService | null;
   /** Draft events (docs/sealed.md, S3). */
   readonly events: EventHub;
+  /** Commander tables. */
+  readonly tables: TableHub;
   constructor(opts: LobbyOptions = {}) {
     this.randomBytes = opts.randomBytes ?? ((n) => cryptoBytes(n));
     this.observe = opts.observe;
     this.accounts = opts.accounts ?? null;
     this.events = new EventHub({ accounts: this.accounts, randomBytes: this.randomBytes, alias: () => this.alias(), ...opts.events });
+    const { now: _now, ...tableOpts } = opts.events ?? {};
+    this.tables = new TableHub({ accounts: this.accounts, randomBytes: this.randomBytes, alias: () => this.alias(), ...tableOpts });
   }
   connect(conn: Connection): Client {
     return new Client(this, conn);
@@ -111,6 +117,8 @@ export class Client {
   private seat: Seat | null = null;
   /** The draft event this connection is seated in, and its seat there. */
   private event: { code: string; seat: string } | null = null;
+  /** The Commander table this connection is seated at, and its seat there. */
+  private table: { code: string; seat: Seat } | null = null;
   /** Messages are handled one at a time, in order (checking a sign-in takes a moment). */
   private queue: Promise<void> = Promise.resolve();
   constructor(lobby: Lobby, conn: Connection) {
@@ -142,8 +150,14 @@ export class Client {
     }
     const m = parsed.data;
     try {
-      if (m.type === 'eventCreate' || m.type === 'eventJoin') await this.enterEvent(m.token, m.type === 'eventCreate' ? { size: m.size } : { code: m.code });
+      if (m.type === 'eventCreate' || m.type === 'eventJoin') await this.enterEvent(m.token, m.type === 'eventCreate' ? { players: m.players, bots: m.bots } : { code: m.code });
       else if (m.type.startsWith('event')) this.eventMessage(m);
+      else if (m.type === 'tableCreate' || m.type === 'tableJoin') await this.enterTable(m.token, m.type === 'tableCreate' ? { players: m.players, bots: m.bots } : { code: m.code });
+      else if (m.type.startsWith('table')) await this.tableMessage(m);
+      else if (m.type === 'actions' && this.table) {
+        const problem = this.lobby.tables.act(this.table.code, this.table.seat, m.seq, m.version, m.actions as unknown as Action[]);
+        if (problem) this.error(problem.error, problem.message, m.seq);
+      }
       else if (m.type === 'join') await this.join(m.token, m.room);
       else if (m.type === 'pickDeck') this.pickDeck(m.deck);
       else if (m.type === 'actions' && this.event) {
@@ -156,16 +170,66 @@ export class Client {
     }
   }
 
-  /** Makes a draft event, or joins (or returns to) one by code. */
-  private async enterEvent(token: string, which: { size: number } | { code: string }): Promise<void> {
+  /** Signs in for an event or table; null (after an error message) if that fails. */
+  private async signedIn(token: string): Promise<{ id: string; name: string } | null> {
+    const accounts = this.lobby.accounts;
+    if (!accounts) {
+      this.error('not-signed-in', 'Accounts are not set up on this server, so nobody can join.');
+      return null;
+    }
+    const user = await accounts.verify(token);
+    if (!user) this.error('not-signed-in', 'Your sign-in has expired. Sign in with Discord again.');
+    return user;
+  }
+
+  /** Makes a Commander table, or joins (or returns to) one by code. */
+  private async enterTable(token: string, which: { players: number; bots: number } | { code: string }): Promise<void> {
     if (this.room) return this.error('already-joined', `You are in room ${this.room.code}.`);
+    if (this.event) return this.error('already-joined', `You are in draft event ${this.event.code}.`);
+    const user = await this.signedIn(token);
+    if (!user) return;
+    if (this.table) this.lobby.tables.detach(this.table.code, this.table.seat, this.conn);
+    this.table = null;
+    if ('code' in which) {
+      const r = this.lobby.tables.join(user, which.code, this.conn);
+      if ('error' in r) return this.error(r.error, r.message);
+      this.table = { code: which.code, seat: r.seat };
+    } else {
+      const r = this.lobby.tables.create(user, which.players, which.bots, this.conn);
+      if ('error' in r) return this.error(r.error, r.message);
+      this.table = r;
+    }
+  }
+
+  private async tableMessage(m: ClientMessage): Promise<void> {
+    if (!this.table) return this.error('no-event', 'Join a table first.');
+    const { code, seat } = this.table;
+    const hub = this.lobby.tables;
+    let problem: string | null = null;
+    if (m.type === 'tableSettings') problem = hub.settings(code, seat, m.players, m.bots);
+    else if (m.type === 'tableDeck') problem = await hub.deck(code, seat, m.deck);
+    else if (m.type === 'tableStart') problem = hub.start(code, seat);
+    else if (m.type === 'tableLeave') {
+      problem = hub.leave(code, seat);
+      if (!problem) this.table = null;
+    }
+    if (problem) this.error('event-rule', problem);
+  }
+
+  /** Makes a draft event, or joins (or returns to) one by code. */
+  private async enterEvent(token: string, which: { players: number; bots: number } | { code: string }): Promise<void> {
+    if (this.room) return this.error('already-joined', `You are in room ${this.room.code}.`);
+    if (this.table) return this.error('already-joined', `You are at table ${this.table.code}.`);
     const accounts = this.lobby.accounts;
     if (!accounts) return this.error('not-signed-in', 'Accounts are not set up on this server, so nobody can join.');
     const user = await accounts.verify(token);
     if (!user) return this.error('not-signed-in', 'Your sign-in has expired. Sign in with Discord again.');
     if (this.event) this.lobby.events.detach(this.event.code, this.event.seat, this.conn);
-    if ('size' in which) {
-      this.event = this.lobby.events.create(user, which.size, this.conn);
+    this.event = null;
+    if ('players' in which) {
+      const r = this.lobby.events.create(user, which, this.conn);
+      if ('error' in r) return this.error(r.error, r.message);
+      this.event = r;
       return;
     }
     const r = this.lobby.events.join(user, which.code, this.conn);
@@ -181,6 +245,7 @@ export class Client {
     if (m.type === 'eventStart') problem = hub.start(code, seat);
     else if (m.type === 'eventPick') problem = hub.pick(code, seat, m.uid);
     else if (m.type === 'eventSelect') problem = hub.select(code, seat, m.uid);
+    else if (m.type === 'eventSettings') problem = hub.settings(code, seat, m.players, m.bots);
     else if (m.type === 'eventDeck') problem = hub.deck(code, seat, m.deck);
     else if (m.type === 'eventReady') problem = hub.ready(code, seat, m.ready);
     else if (m.type === 'eventPlayDraw') problem = hub.playDraw(code, seat, m.play);
@@ -193,6 +258,7 @@ export class Client {
 
   private async join(token: string, code: string): Promise<void> {
     if (this.event) return this.error('already-joined', `You are in draft event ${this.event.code}.`);
+    if (this.table) return this.error('already-joined', `You are at table ${this.table.code}.`);
     if (this.room) return this.error('already-joined', `You are already in room ${this.room.code}.`);
     const accounts = this.lobby.accounts;
     if (!accounts) return this.error('not-signed-in', 'Accounts are not set up on this server, so nobody can join.');
@@ -276,6 +342,10 @@ export class Client {
 
   /** The browser went away. In a game, the other player is told and the room closes. */
   disconnect(): void {
+    if (this.table) {
+      this.lobby.tables.detach(this.table.code, this.table.seat, this.conn);
+      this.table = null;
+    }
     if (this.event) {
       this.lobby.events.detach(this.event.code, this.event.seat, this.conn);
       this.event = null;

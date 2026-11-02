@@ -24,6 +24,7 @@ import {
   tick,
   expirePicks,
   selectCard,
+  changeSeats,
   PICK_SECONDS,
   type DraftEvent,
 } from '../src/draftEvent.ts';
@@ -79,7 +80,7 @@ describe('Swiss pairings and standings', () => {
 
 describe('a draft event with bots', () => {
   it('one player and three bots: draft, deckbuilding, three Swiss rounds of best-of-3, standings', () => {
-    let ev = createEvent('ABC', 4, host);
+    let ev = createEvent('ABC', { players: 1, bots: 3 }, host);
     ev = startDraft(ev, 7);
     expect(ev.seats.map((s) => s.bot)).toEqual([false, true, true, true]);
     ev = draftAll(ev);
@@ -120,7 +121,7 @@ describe('a draft event with bots', () => {
 
   it('the loser of a game chooses play or draw; a bot always plays first', () => {
     const rng = makeRng(1);
-    let ev = draftAll(startDraft(createEvent('D2', 2, host), 11));
+    let ev = draftAll(startDraft(createEvent('D2', { players: 1, bots: 1 }, host), 11));
     ev = setReady(submitDeck(ev, 'S1', aiDeck(pool(ev, 'S1'))), 'S1', true, NOW, rng);
     const m = currentMatch(ev, 'S1')!;
     expect(m.b).toBe('S2');
@@ -146,7 +147,7 @@ describe('a draft event with bots', () => {
 
   it('when deckbuilding time runs out, a deck in progress is filled with basic lands to 40', () => {
     const rng = makeRng(2);
-    let ev = draftAll(startDraft(createEvent('T1', 2, host), 3));
+    let ev = draftAll(startDraft(createEvent('T1', { players: 1, bots: 1 }, host), 3));
     const mine = pool(ev, 'S1').slice(0, 10).map((c) => c.uid);
     ev = submitDeck(ev, 'S1', { cards: mine, basics: { W: 0, U: 0, B: 0, R: 0, G: 0 } });
     expect(() => setReady(ev, 'S1', true, NOW, rng)).toThrow(/legal deck/);
@@ -159,7 +160,7 @@ describe('a draft event with bots', () => {
   });
 
   it('players join until the event is full; bots fill the rest; bot-vs-bot games are played out on the server', () => {
-    let ev = createEvent('J1', 4, host);
+    let ev = createEvent('J1', { players: 2, bots: 2 }, host);
     expect(joinEvent(ev, host)).toBeNull();
     expect(joinEvent(ev, { name: 'Ann', userId: 'u-ann' })?.id).toBe('S2');
     ev = draftAll(startDraft(ev, 5));
@@ -173,9 +174,23 @@ describe('a draft event with bots', () => {
     expect(ev.round).toBe(1);
   });
 
+  it('the host sets the seats: players and bots; the draft waits for every player', () => {
+    let ev = createEvent('M1', { players: 2, bots: 1 }, host);
+    expect(() => startDraft(ev, 1)).toThrow(/Waiting for 1 more player/);
+    expect(() => createEvent('M2', { players: 0, bots: 2 }, host)).toThrow();
+    expect(() => createEvent('M3', { players: 3, bots: 2 }, host)).toThrow(/2 to 4/);
+    expect(joinEvent(ev, { name: 'Ann', userId: 'u-ann' })?.id).toBe('S2');
+    expect(joinEvent(ev, { name: 'Bea', userId: 'u-bea' })).toBeNull();
+    expect(() => changeSeats(ev, 1, 1)).toThrow(/already seated/);
+    ev = changeSeats(ev, 2, 2);
+    expect([ev.size, ev.players, ev.rounds]).toEqual([4, 2, 3]);
+    ev = startDraft(ev, 2);
+    expect(ev.seats.map((s) => s.bot)).toEqual([false, false, true, true]);
+  });
+
   it('a bot-vs-bot game is played to the end on the server', () => {
     const rng = makeRng(6);
-    let ev = draftAll(startDraft(createEvent('B1', 4, host), 13));
+    let ev = draftAll(startDraft(createEvent('B1', { players: 1, bots: 3 }, host), 13));
     ev = setReady(submitDeck(ev, 'S1', aiDeck(pool(ev, 'S1'))), 'S1', true, NOW, rng);
     // One player and three bots: one first-round match is bots only.
     const bots = ev.matches.find((m) => m.round === 1 && botMatch(ev, m))!;
@@ -187,7 +202,7 @@ describe('a draft event with bots', () => {
   }, 60_000);
 
   it('each pick has 30 seconds: then the selected card, or the AI’s choice, is taken for you', () => {
-    let ev = startDraft(createEvent('C1', 2, host), 21, NOW);
+    let ev = startDraft(createEvent('C1', { players: 1, bots: 1 }, host), 21, NOW);
     expect(ev.pickEndsAt).toBe(NOW + PICK_SECONDS * 1000);
     const pack = ev.draft!.packs.S1!.cards;
     ev = selectCard(ev, 'S1', pack[3]!.uid);

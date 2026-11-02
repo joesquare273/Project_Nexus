@@ -92,6 +92,12 @@ first called it "sealed"; the format they described is a booster draft.)
   selected, or the AI's choice if they selected none. The clock restarts
   for every new pick.
 
+- **The host sets the seats (2026-11-03):** `eventCreate {players, bots}`
+  (2-4 seats, at least one for a player) and `eventSettings` before the
+  draft. The draft starts when the host says so and every player seat is
+  taken; bot seats get bots then. All bots but the host, all players, or a
+  mix.
+
 ## The AI drafters and deckbuilder
 
 - `cards/src/rating.ts` (`cardRating`) rates a card for Limited on a rough

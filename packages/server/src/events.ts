@@ -19,7 +19,9 @@ import type { LimitedDeck } from '@nexus/cards/limited';
 import type { AccountService } from './accounts.ts';
 import {
   botMatch,
+  changeSeats,
   choosePlayDraw,
+  seatsProblem,
   createEvent,
   currentMatch,
   eventDraftView,
@@ -40,7 +42,10 @@ import {
   type DraftEvent,
   type EventMatch,
 } from './draftEvent.ts';
-import type { ErrorCode, EventView, Seat, ServerMessage } from './protocol.ts';
+import type { ErrorCode, EventView, ServerMessage } from './protocol.ts';
+
+/** Event games are duels: seats P1 and P2. */
+type Seat = 'P1' | 'P2';
 
 export interface EventConnection {
   send(message: ServerMessage): void;
@@ -124,9 +129,11 @@ export class EventHub {
   }
 
   /** Makes an event and seats its creator. */
-  create(user: { id: string; name: string }, size: number, conn: EventConnection): { code: string; seat: string } {
+  create(user: { id: string; name: string }, seats: { players: number; bots: number }, conn: EventConnection): { code: string; seat: string } | { error: ErrorCode; message: string } {
+    const problem = seatsProblem(seats.players, seats.bots);
+    if (problem) return { error: 'event-rule', message: problem };
     const code = this.newCode();
-    const ev = createEvent(code, size, { name: user.name, userId: user.id });
+    const ev = createEvent(code, seats, { name: user.name, userId: user.id });
     const seat = ev.seats[0]!.id;
     const hosted: Hosted = { id: [...this.opts.randomBytes(8)].map((x) => x.toString(16).padStart(2, '0')).join(''), ev, host: seat, conns: new Map([[seat, conn]]), games: new Map(), poolSaved: new Set() };
     this.events.set(code, hosted);
@@ -199,6 +206,13 @@ export class EventHub {
     }
     this.afterChange(h);
     return null;
+  }
+
+  settings(code: string, seat: string, players: number, bots: number): string | null {
+    return this.change(code, (h) => {
+      if (seat !== h.host) throw new Error('Only the player who made the event can change it.');
+      return changeSeats(h.ev, players, bots);
+    });
   }
 
   start(code: string, seat: string): string | null {
@@ -419,6 +433,8 @@ export class EventHub {
     return {
       code: ev.code,
       size: ev.size,
+      players: ev.players,
+      bots: ev.size - ev.players,
       phase: ev.phase,
       you: seat,
       host: h.host,

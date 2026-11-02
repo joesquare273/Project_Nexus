@@ -5,6 +5,23 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Host or join: Commander tables and draft seats
+
+- Commander tables on the server (`server/src/tables.ts`, games in
+  `hostedGame.ts` for seats P1-P4): the host chooses how many seats are for
+  players and how many for bots; others join with the table's code and pick
+  one of their own saved Commander decks (checked on the server); bots play
+  the precons. See docs/commander.md, "Online Commander tables".
+- Draft events: the host sets player and bot seats the same way
+  (`eventCreate {players, bots}`, `eventSettings`); the draft waits for every
+  player seat.
+- Protocol: seats are P1-P4 now (Starter Kit rooms and draft games still use
+  P1 and P2); game updates' `names` list only the seats in the game.
+- Tests: `server/test/tables.test.ts` (host and three bots to the end; two
+  players and a bot with joining, deck checks, rejoining; seat rules) and
+  the seat settings in `draftEvent.test.ts`.
+- Next: the browser pages for hosting and joining (Commander, then draft).
+
 ### Draft picks timed (30 seconds) and smarter AI drafters
 
 - Each draft pick has a 30-second clock on the server. A selected card is

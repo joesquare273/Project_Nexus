@@ -54,8 +54,9 @@ export interface EventMatch {
 
 export interface DraftEvent {
   code: string;
-  /** Seats the event is for (2-4). */
+  /** Seats the event is for (2-4): `players` for players (the host included), the rest for bots. */
   size: number;
+  players: number;
   seats: EventSeat[];
   phase: EventPhase;
   draft: DraftState | null;
@@ -82,12 +83,25 @@ export const PICK_SECONDS = 30;
 const SEAT_IDS = ['S1', 'S2', 'S3', 'S4'];
 const BOT_NAMES = ['Chocobo Bot', 'Moogle Bot', 'Cactuar Bot'];
 
-/** A new event with its first seat (the player who made it). */
-export function createEvent(code: string, size: number, host: { name: string; userId: string }): DraftEvent {
-  if (!Number.isInteger(size) || size < 2 || size > MAX_SEATS) throw new Error('A draft event is for 2 to 4 players.');
+/** Why `players` player seats and `bots` bot seats isn't a valid event, or null. */
+export function seatsProblem(players: number, bots: number): string | null {
+  if (!Number.isInteger(players) || !Number.isInteger(bots) || players < 1 || bots < 0) return 'An event has at least one player seat.';
+  if (players + bots < 2 || players + bots > MAX_SEATS) return 'A draft event is for 2 to 4 seats.';
+  return null;
+}
+
+/**
+ * A new event with its first seat (the player who made it): `players` seats
+ * for players (the host included) and `bots` for bots.
+ */
+export function createEvent(code: string, seats: { players: number; bots: number }, host: { name: string; userId: string }): DraftEvent {
+  const problem = seatsProblem(seats.players, seats.bots);
+  if (problem) throw new Error(problem);
+  const size = seats.players + seats.bots;
   return {
     code,
     size,
+    players: seats.players,
     seats: [{ id: SEAT_IDS[0]!, name: host.name, bot: false, userId: host.userId }],
     phase: 'lobby',
     draft: null,
@@ -105,7 +119,7 @@ export function createEvent(code: string, size: number, host: { name: string; us
 
 /** Seats another player; null if the event is full or under way. */
 export function joinEvent(ev: DraftEvent, player: { name: string; userId: string }): EventSeat | null {
-  if (ev.phase !== 'lobby' || ev.seats.length >= ev.size) return null;
+  if (ev.phase !== 'lobby' || ev.seats.length >= ev.players) return null;
   if (ev.seats.some((s) => s.userId === player.userId)) return null;
   const taken = new Set(ev.seats.map((s) => s.name));
   const name = taken.has(player.name) ? `${player.name} (2)` : player.name;
@@ -119,9 +133,20 @@ export function leaveEvent(ev: DraftEvent, userId: string): void {
   if (ev.phase === 'lobby') ev.seats = ev.seats.filter((s) => s.userId !== userId);
 }
 
-/** Starts the draft, filling empty seats with bots. Returns the new state. */
+/** The host changes the seats before the draft (never below the players already seated). */
+export function changeSeats(prev: DraftEvent, players: number, bots: number): DraftEvent {
+  if (prev.phase !== 'lobby') throw new Error('The draft has already started.');
+  const problem = seatsProblem(players, bots);
+  if (problem) throw new Error(problem);
+  if (players < prev.seats.length) throw new Error(`${prev.seats.length} players are already seated.`);
+  return { ...structuredClone(prev), players, size: players + bots, rounds: roundsFor(players + bots) };
+}
+
+/** Starts the draft once every player seat is taken; the bot seats get bots. Returns the new state. */
 export function startDraft(prev: DraftEvent, seed: Seed, now = 0): DraftEvent {
   if (prev.phase !== 'lobby') throw new Error('The draft has already started.');
+  const missing = prev.players - prev.seats.length;
+  if (missing > 0) throw new Error(`Waiting for ${missing} more player${missing === 1 ? '' : 's'} to join.`);
   const ev = structuredClone(prev);
   let bots = 0;
   while (ev.seats.length < ev.size) {

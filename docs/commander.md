@@ -214,3 +214,25 @@ needing several groups' pieces waits for the last of them.
 - A saved deck becomes a game deck with `gameDeck` (`cards/src/decks.ts`):
   each card's definition, printing and finish, the chosen basic land art,
   and the commander in the command zone.
+
+## Online Commander tables (2026-11-03)
+
+User request: for both Commander and draft games, a player either hosts a
+table or joins one; the host chooses how many seats are for players and how
+many for bots (all players, all bots but the host, or a mix), 2-4 in all.
+
+- Server: `packages/server/src/tables.ts` (`TableHub`), games hosted by
+  `hostedGame.ts` with seats P1-P4. Messages: `tableCreate {players, bots}`,
+  `tableJoin {code}` (also to come back after a reload), `tableSettings`
+  (host, before the game), `tableDeck {deck}` (one of your saved Commander
+  decks: checked against your collection and the Commander deck rules on the
+  server), `tableStart` (host, once every player seat is taken and has a
+  deck), `tableLeave`. The server sends `table` (seats, decks chosen, phase,
+  winner) and the usual `update` for the game. Table codes start with C.
+- Bots play the four precons, a different one each, one action every 450 ms
+  so their turns can be followed. When no player is left in the game, the
+  bots play it out quickly.
+- A seat stays yours while you're away; leaving a lobby opens your seat
+  again, and the host leaving closes the lobby.
+- Not yet: the browser page for tables (next step), and a turn timer for a
+  player who leaves mid-game (they can come back, or the others wait).

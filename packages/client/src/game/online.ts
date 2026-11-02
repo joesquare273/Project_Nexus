@@ -74,7 +74,7 @@ export class OnlineSession extends GameSession {
   constructor(connection: OnlineConnection, first: Update, deck: Deck) {
     const seat = first.seat;
     const opponentSeat: Seat = seat === 'P1' ? 'P2' : 'P1';
-    const opponentName = first.names[opponentSeat];
+    const opponentName = first.names[opponentSeat] ?? opponentSeat;
     const update = renameIncoming(first.update, seat, opponentSeat, opponentName);
     super({ deck, opponents: 1, seed: 0, bot: 'ai' }, { state: materialize(update.state, CARD_DEFS), bots: {}, opponents: [opponentName] });
     this.seat = seat;
