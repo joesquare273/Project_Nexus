@@ -12879,5 +12879,22 @@
         "scryfallId": "4cecd5c6-d6c8-4cd5-97a3-cddaf051af15"
       }
     ]
+  },
+  "chocobo-bird-token": {
+    "name": "Bird",
+    "typeLine": "Token Creature — Bird",
+    "oracleText": "Whenever a land you control enters, this token gets +1/+0 until end of turn.",
+    "set": "tfin",
+    "number": "17",
+    "artist": "Constantin Marin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
+      "normal": "https://cards.scryfall.io/normal/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
+      "large": "https://cards.scryfall.io/large/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/6/8632216a-33c3-4d16-bf25-42e41af53986.jpg?1783906133"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/17/bird?utm_source=api",
+    "scryfallId": "8632216a-33c3-4d16-bf25-42e41af53986",
+    "relatedTokens": []
   }
 }

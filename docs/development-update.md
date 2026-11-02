@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 17: Chocobo Birds
+
+- Gysahl Greens, Call the Mountain Chocobo, Choco-Comet, Chocobo Racetrack
+  and Summon: Fat Chocobo (166 of 320), with the green 2/2 Bird token
+  (tfin 17, `chocobo-bird-token`; its Scryfall entry taken from the
+  imported booster data, so no API call).
+
 ### Set cards, group 16: Tiered spells
 
 - Ice Magic, Fire Magic, Thunder Magic, Restoration Magic, Tifa's Limit

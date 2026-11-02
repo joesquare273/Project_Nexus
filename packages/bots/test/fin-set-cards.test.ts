@@ -2827,3 +2827,65 @@ describe('S4 group 16: Tiered spells (choose one additional cost)', () => {
     expect(stats(s, body)).not.toEqual([5, 2]);
   });
 });
+
+describe('S4 group 17: Chocobo Birds (2/2 Birds that get +1/+0 whenever a land you control enters)', () => {
+  const birds = (s: GameState) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'chocobo-bird-token');
+
+  it('Gysahl Greens makes a Bird that grows with each land drop; flashback {6}{G}', () => {
+    let s = newGame();
+    const greens = put(s, 'P1', 'gysahl-greens', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: greens }).state;
+    const [bird] = birds(s);
+    expect(stats(s, bird!)).toEqual([2, 2]);
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(stats(s, bird!)).toEqual([3, 2]);
+    // Flashback from the graveyard, then exiled.
+    expect(s.cards[greens]!.zone).toBe('graveyard');
+    mana(s, 'P1', { G: 1, C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: greens }).state;
+    expect(birds(s)).toHaveLength(2);
+    expect(s.cards[greens]!.zone).toBe('exile');
+  });
+
+  it('Call the Mountain Chocobo finds a Mountain and makes a Bird', () => {
+    let s = newGame();
+    const mountain = put(s, 'P1', 'mountain', 'library');
+    const spell = put(s, 'P1', 'call-the-mountain-chocobo', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.cards[mountain]!.zone).toBe('hand');
+    expect(birds(s)).toHaveLength(1);
+  });
+
+  it('Choco-Comet deals X damage to any target and makes a Bird', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'choco-comet', 'hand');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, x: 3, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(17);
+    expect(birds(s)).toHaveLength(1);
+  });
+
+  it('Chocobo Racetrack makes a Bird whenever a land you control enters', () => {
+    let s = newGame();
+    put(s, 'P1', 'chocobo-racetrack');
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(birds(s)).toHaveLength(1);
+    // An opponent's land doesn't count.
+    expect(s.players.P2!.battlefield.some((id) => s.cards[id]!.defId === 'chocobo-bird-token')).toBe(false);
+  });
+
+  it('Summon: Fat Chocobo is a 4/4 Saga creature: chapter I makes a Bird; later chapters give your creatures trample', () => {
+    let s = newGame();
+    const fat = put(s, 'P1', 'summon-fat-chocobo', 'hand');
+    mana(s, 'P1', { G: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fat }).state;
+    expect(stats(s, fat)).toEqual([4, 4]);
+    expect(s.cards[fat]!.namedCounters?.lore).toBe(1);
+    expect(birds(s)).toHaveLength(1);
+    expect(hasKeyword(s, s.cards[fat]!, 'Trample')).toBe(false);
+  });
+});
