@@ -785,6 +785,8 @@ export const TRIGGER_EVENTS = [
   'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
   'CombatDamage',
+  /** A permanent is dealt damage, combat or not (`what`; default this permanent: "when enchanted creature is dealt damage" is `equippedBySource`). */
+  'DealtDamage',
   'BeginCombat',
   'Upkeep',
   /** "At the beginning of your end step". */
@@ -1127,6 +1129,10 @@ export interface StaticSpec {
   losesAllAbilities?: boolean;
   /** "Can't attack or block." */
   cantAttackOrBlock?: boolean;
+  /** "Doesn't untap during its controller's untap step" (Sleep Magic). */
+  doesntUntap?: boolean;
+  /** "Its activated abilities can't be activated", mana abilities included (Stuck in Summoner's Sanctum). */
+  cantActivateAbilities?: boolean;
   /** Propaganda: creatures can't attack you unless their controller pays this much generic mana for each. */
   attackTax?: number;
   /**

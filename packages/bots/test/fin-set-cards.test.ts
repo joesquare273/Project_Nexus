@@ -3147,3 +3147,38 @@ describe('S4 group 20: Sidequests (transforming enchantments) and Stroke of Midn
     expect(stats(s, humans[0]!)).toEqual([1, 1]);
   });
 });
+
+describe('S4 group 21: Auras that keep a permanent tapped', () => {
+  it('Sleep Magic taps the creature, which then doesn’t untap; the Aura is sacrificed when the creature is dealt damage', () => {
+    let s = newGame();
+    const foe = put(s, 'P2', 'coeurl');
+    const aura = put(s, 'P1', 'sleep-magic', 'hand');
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(foe)] }).state;
+    expect(s.cards[aura]!.attachedTo).toBe(foe);
+    expect(s.cards[foe]!.tapped).toBe(true);
+    // Through P2's untap step: still tapped.
+    s = goTo(goTo(s, 'end'), 'upkeep');
+    expect(s.activePlayer).toBe('P2');
+    expect(s.cards[foe]!.tapped).toBe(true);
+    // Back on P1's turn, damage it: the Aura goes.
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.activePlayer).toBe('P1');
+    const fire = put(s, 'P1', 'fire-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fire, mode: 0 }).state;
+    expect(s.cards[aura]!.zone).toBe('graveyard');
+  }, 60_000);
+
+  it('Stuck in Summoner’s Sanctum (flash) taps an artifact or creature; it doesn’t untap and its abilities, mana abilities too, can’t be activated', () => {
+    let s = newGame();
+    const ring = put(s, 'P1', 'sol-ring');
+    const aura = put(s, 'P1', 'stuck-in-summoners-sanctum', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(ring)] }).state;
+    expect(s.cards[ring]!.tapped).toBe(true);
+    s.cards[ring]!.tapped = false;
+    expect(rejected(s, { type: 'ActivateManaAbility', player: 'P1', card: ring, mana: 'C' })).toMatch(/can't be activated/);
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === ring)).toBe(false);
+  });
+});

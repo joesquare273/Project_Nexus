@@ -38,6 +38,7 @@ import {
   untap,
   type Ctx,
   removeFromCombat,
+  staticRule,
 } from './state.ts';
 import { givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
@@ -536,6 +537,7 @@ export function activateManaAbility(
   const c = card(s, id);
   const def = defOf(s, c);
   if (c.zone !== 'battlefield' || c.phasedOut || c.controller !== playerId) reject('You do not control that permanent.');
+  if (staticRule(s, c, 'cantActivateAbilities')) reject("That permanent's activated abilities can't be activated.");
   if (grantedBy !== undefined) {
     if (tapCreature !== undefined || output !== undefined || !grantedManaAbilities(s, c).some((ability) => ability.source === grantedBy && ability.mana.includes(mana))) reject('That granted mana ability is not available.');
     if (c.tapped || (c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That creature cannot tap for mana right now.');
@@ -1098,6 +1100,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (zone === 'battlefield' && (c.zone !== 'battlefield' || c.controller !== playerId)) {
     return 'You do not control that permanent.';
   }
+  if (zone === 'battlefield' && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
   if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
   if (zone === 'graveyard' && (c.zone !== 'graveyard' || c.owner !== playerId)) return 'That card is not in your graveyard.';
   if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';

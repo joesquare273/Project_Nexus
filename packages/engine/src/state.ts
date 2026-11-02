@@ -156,6 +156,11 @@ export function aliveFromActive(s: GameState): PlayerId[] {
 }
 
 /** Every permanent on the battlefield, in turn order then entry order. */
+/** Whether a static rule from any permanent applies to `c` ("doesn't untap", "can't activate its abilities"). */
+export function staticRule(s: GameState, c: CardInstance, rule: 'doesntUntap' | 'cantActivateAbilities'): boolean {
+  return battlefield(s).some((source) => (defOf(s, source).statics ?? []).some((spec) => spec[rule] && staticAffects(s, source, spec, c)));
+}
+
 export function battlefield(s: GameState): CardInstance[] {
   return s.turnOrder.flatMap((pid) => s.players[pid]!.battlefield.map((id) => s.cards[id]!));
 }

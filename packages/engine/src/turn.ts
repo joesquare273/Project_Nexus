@@ -19,6 +19,7 @@ import {
   sacrifice,
   untap,
   type Ctx,
+  staticRule,
 } from './state.ts';
 import { STEPS, type GameState, type InstanceId, type PlayerId, type Step } from './types.ts';
 
@@ -41,7 +42,8 @@ export function enterStep(ctx: Ctx, step: Step): void {
       const untapped: string[] = [];
       for (const c of battlefield(s)) {
         if (c.controller !== s.activePlayer) continue;
-        if (untap(ctx, c)) untapped.push(c.id);
+        // "Doesn't untap during its controller's untap step" (rule 502.3).
+        if (!staticRule(s, c, 'doesntUntap') && untap(ctx, c)) untapped.push(c.id);
         c.summoningSick = false;
       }
       if (untapped.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: s.activePlayer, cards: untapped });

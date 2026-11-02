@@ -51,7 +51,7 @@ import {
   additionalManaFor,
   addCosts,
 } from './stack.ts';
-import { battlefield, alivePlayers, hasKeyword } from './state.ts';
+import { battlefield, alivePlayers, hasKeyword, staticRule } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices } from './typerules.ts';
@@ -321,7 +321,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
 /** Mana abilities the player could activate right now. */
 function manaAbilities(s: GameState, player: PlayerId): Action[] {
   const actions: Action[] = [];
-  for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === player)) {
+  for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === player && !staticRule(s, card, 'cantActivateAbilities'))) {
     const id = c.id;
     const def = currentDefinition(s, c);
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');

@@ -154,6 +154,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         });
         break;
       case 'DamageDealt':
+        if (e.target.kind === 'card' && s.cards[e.target.card]) {
+          out.push({ when: 'DealtDamage', at, subject: e.target.card, subjectController: s.cards[e.target.card]!.controller, amount: e.amount });
+        }
         if (e.combat) {
           out.push({ when: 'CombatDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         }
