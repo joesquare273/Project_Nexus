@@ -3,6 +3,9 @@
     "id": "sephiroths-intervention",
     "name": "Sephiroth's Intervention",
     "manaCost": "{3}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "instant"
     ],
@@ -26,6 +29,9 @@
     "id": "al-bhed-salvagers",
     "name": "Al Bhed Salvagers",
     "manaCost": "{2}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "creature"
     ],
@@ -69,6 +75,9 @@
     "id": "graha-tia",
     "name": "G'raha Tia",
     "manaCost": "{4}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -115,6 +124,9 @@
     "id": "shambling-cieth",
     "name": "Shambling Cie'th",
     "manaCost": "{2}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "creature"
     ],
@@ -155,6 +167,9 @@
     "id": "ultimecia-temporal-threat",
     "name": "Ultimecia, Temporal Threat",
     "manaCost": "{4}{U}{U}",
+    "colorIdentity": [
+      "U"
+    ],
     "types": [
       "creature"
     ],
@@ -203,6 +218,9 @@
     "id": "adelbert-steiner",
     "name": "Adelbert Steiner",
     "manaCost": "{1}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -242,6 +260,9 @@
     "id": "barret-wallace",
     "name": "Barret Wallace",
     "manaCost": "{3}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "creature"
     ],
@@ -282,6 +303,9 @@
     "id": "beatrix-loyal-general",
     "name": "Beatrix, Loyal General",
     "manaCost": "{4}{W}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -324,6 +348,10 @@
     "id": "cloud-planets-champion",
     "name": "Cloud, Planet's Champion",
     "manaCost": "{3}{R}{W}",
+    "colorIdentity": [
+      "W",
+      "R"
+    ],
     "types": [
       "creature"
     ],
@@ -360,6 +388,9 @@
     "id": "cloudbound-moogle",
     "name": "Cloudbound Moogle",
     "manaCost": "{3}{W}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -396,6 +427,9 @@
     "id": "coeurl",
     "name": "Coeurl",
     "manaCost": "{1}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -436,6 +470,9 @@
     "id": "dragoons-lance",
     "name": "Dragoon's Lance",
     "manaCost": "{1}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "artifact"
     ],
@@ -487,6 +524,9 @@
     "id": "dwarven-castle-guard",
     "name": "Dwarven Castle Guard",
     "manaCost": "{1}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -518,6 +558,9 @@
     "id": "fate-of-the-sun-cryst",
     "name": "Fate of the Sun-Cryst",
     "manaCost": "{4}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "instant"
     ],
@@ -548,6 +591,9 @@
     "id": "freya-crescent",
     "name": "Freya Crescent",
     "manaCost": "{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "creature"
     ],
@@ -586,6 +632,9 @@
     "id": "item-shopkeep",
     "name": "Item Shopkeep",
     "manaCost": "{1}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "creature"
     ],
@@ -632,6 +681,9 @@
     "id": "judgment-bolt",
     "name": "Judgment Bolt",
     "manaCost": "{3}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "instant"
     ],
@@ -660,6 +712,9 @@
     "id": "lightning-security-sergeant",
     "name": "Lightning, Security Sergeant",
     "manaCost": "{2}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "creature"
     ],
@@ -696,6 +751,9 @@
     "id": "rosa-resolute-white-mage",
     "name": "Rosa, Resolute White Mage",
     "manaCost": "{3}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "creature"
     ],
@@ -746,6 +804,9 @@
     "id": "samurais-katana",
     "name": "Samurai's Katana",
     "manaCost": "{2}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "artifact"
     ],
@@ -793,6 +854,9 @@
     "id": "slash-of-light",
     "name": "Slash of Light",
     "manaCost": "{1}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "instant"
     ],
@@ -817,6 +881,9 @@
     "id": "suplex",
     "name": "Suplex",
     "manaCost": "{1}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "sorcery"
     ],
@@ -856,6 +923,9 @@
     "id": "the-crystals-chosen",
     "name": "The Crystal's Chosen",
     "manaCost": "{5}{W}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "sorcery"
     ],
@@ -881,6 +951,7 @@
     "id": "ultima-weapon",
     "name": "Ultima Weapon",
     "manaCost": "{7}",
+    "colorIdentity": [],
     "types": [
       "artifact"
     ],
@@ -921,6 +992,9 @@
     "id": "warriors-sword",
     "name": "Warrior's Sword",
     "manaCost": "{3}{R}",
+    "colorIdentity": [
+      "R"
+    ],
     "types": [
       "artifact"
     ],
@@ -964,6 +1038,9 @@
     "id": "white-auracite",
     "name": "White Auracite",
     "manaCost": "{2}{W}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "artifact"
     ],
@@ -999,6 +1076,9 @@
     "id": "white-mages-staff",
     "name": "White Mage's Staff",
     "manaCost": "{1}{W}",
+    "colorIdentity": [
+      "W"
+    ],
     "types": [
       "artifact"
     ],
@@ -1055,6 +1135,9 @@
     "id": "deadly-embrace",
     "name": "Deadly Embrace",
     "manaCost": "{3}{B}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "sorcery"
     ],
@@ -1082,6 +1165,9 @@
     "id": "dreams-of-laguna",
     "name": "Dreams of Laguna",
     "manaCost": "{1}{U}",
+    "colorIdentity": [
+      "U"
+    ],
     "types": [
       "instant"
     ],
@@ -1107,6 +1193,9 @@
     "id": "evil-reawakened",
     "name": "Evil Reawakened",
     "manaCost": "{4}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "sorcery"
     ],
@@ -1132,6 +1221,9 @@
     "id": "il-mheg-pixie",
     "name": "Il Mheg Pixie",
     "manaCost": "{1}{U}",
+    "colorIdentity": [
+      "U"
+    ],
     "types": [
       "creature"
     ],
@@ -1164,6 +1256,7 @@
     "id": "magitek-scythe",
     "name": "Magitek Scythe",
     "manaCost": "{4}",
+    "colorIdentity": [],
     "types": [
       "artifact"
     ],
@@ -1219,6 +1312,9 @@
     "id": "overkill",
     "name": "Overkill",
     "manaCost": "{2}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "instant"
     ],
@@ -1239,6 +1335,9 @@
     "id": "relms-sketching",
     "name": "Relm's Sketching",
     "manaCost": "{2}{U}{U}",
+    "colorIdentity": [
+      "U"
+    ],
     "types": [
       "sorcery"
     ],
@@ -1264,6 +1363,9 @@
     "id": "retrieve-the-esper",
     "name": "Retrieve the Esper",
     "manaCost": "{3}{U}",
+    "colorIdentity": [
+      "U"
+    ],
     "types": [
       "sorcery"
     ],
@@ -1291,6 +1393,9 @@
     "id": "sahagin",
     "name": "Sahagin",
     "manaCost": "{1}{U}",
+    "colorIdentity": [
+      "U"
+    ],
     "types": [
       "creature"
     ],
@@ -1335,6 +1440,10 @@
     "id": "sephiroth-planets-heir",
     "name": "Sephiroth, Planet's Heir",
     "manaCost": "{4}{U}{B}",
+    "colorIdentity": [
+      "U",
+      "B"
+    ],
     "types": [
       "creature"
     ],
@@ -1389,6 +1498,9 @@
     "id": "seymour-flux",
     "name": "Seymour Flux",
     "manaCost": "{4}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "creature"
     ],
@@ -1430,6 +1542,9 @@
     "id": "shinra-reinforcements",
     "name": "Shinra Reinforcements",
     "manaCost": "{2}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "creature"
     ],
@@ -1465,6 +1580,9 @@
     "id": "undercity-dire-rat",
     "name": "Undercity Dire Rat",
     "manaCost": "{1}{B}",
+    "colorIdentity": [
+      "B"
+    ],
     "types": [
       "creature"
     ],
@@ -1495,6 +1613,10 @@
     "id": "xande-dark-mage",
     "name": "Xande, Dark Mage",
     "manaCost": "{2}{U}{B}",
+    "colorIdentity": [
+      "U",
+      "B"
+    ],
     "types": [
       "creature"
     ],

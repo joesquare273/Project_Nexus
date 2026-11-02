@@ -1,9 +1,9 @@
 [
-  {"id":"plains","name":"Plains","types":["land"],"supertypes":["Basic"],"subtypes":["Plains"]},
-  {"id":"island","name":"Island","types":["land"],"supertypes":["Basic"],"subtypes":["Island"]},
-  {"id":"swamp","name":"Swamp","types":["land"],"supertypes":["Basic"],"subtypes":["Swamp"]},
-  {"id":"mountain","name":"Mountain","types":["land"],"supertypes":["Basic"],"subtypes":["Mountain"]},
-  {"id":"forest","name":"Forest","types":["land"],"supertypes":["Basic"],"subtypes":["Forest"]},
-  {"id":"rabanastre-royal-city","name":"Rabanastre, Royal City","types":["land"],"subtypes":["Town"],"entersTapped":true,"produces":["R","W"],"printing":{"set":"fin","number":"287"}},
-  {"id":"treno-dark-city","name":"Treno, Dark City","types":["land"],"subtypes":["Town"],"entersTapped":true,"produces":["U","B"],"printing":{"set":"fin","number":"290"}}
+  {"id":"plains","name":"Plains","types":["land"],"supertypes":["Basic"],"subtypes":["Plains"],"colorIdentity":["W"]},
+  {"id":"island","name":"Island","types":["land"],"supertypes":["Basic"],"subtypes":["Island"],"colorIdentity":["U"]},
+  {"id":"swamp","name":"Swamp","types":["land"],"supertypes":["Basic"],"subtypes":["Swamp"],"colorIdentity":["B"]},
+  {"id":"mountain","name":"Mountain","types":["land"],"supertypes":["Basic"],"subtypes":["Mountain"],"colorIdentity":["R"]},
+  {"id":"forest","name":"Forest","types":["land"],"supertypes":["Basic"],"subtypes":["Forest"],"colorIdentity":["G"]},
+  {"id":"rabanastre-royal-city","name":"Rabanastre, Royal City","types":["land"],"subtypes":["Town"],"entersTapped":true,"produces":["R","W"],"printing":{"set":"fin","number":"287"},"colorIdentity":["W","R"]},
+  {"id":"treno-dark-city","name":"Treno, Dark City","types":["land"],"subtypes":["Town"],"entersTapped":true,"produces":["U","B"],"printing":{"set":"fin","number":"290"},"colorIdentity":["U","B"]}
 ]

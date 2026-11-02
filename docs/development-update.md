@@ -5,6 +5,35 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Deck editor rebuilt around card pictures
+
+- **Your collection** is a grid of card images (one per card, with "N arts"
+  when you own several), split into Creatures, Planeswalkers, Instants,
+  Sorceries, Artifacts, Enchantments and Lands; a card with several types
+  goes by Creature first. Click to add a copy. Filters: search, color
+  (mana symbols), type, and "Commander's colors only".
+- **The deck** shows card images by the same sections, a mana curve, and
+  basic lands as pictures with + and −. Click a deck card to choose its art.
+- **Art (owned arts only, user decision):** the art picker shows every art
+  and finish you own of that card as pictures; one click moves every copy
+  to that art, or + and − set copies per art. Basic lands pick their art the
+  same way.
+- **Commander:** a commander slot with a picker of every legendary creature
+  you own, in every art you own; the chosen art leads the deck (and the
+  game takes the commander's finish from it). Commander decks take one copy
+  of each card, up to 100 cards with the commander (basic lands may
+  repeat); the collection shows only cards in the commander's colors (no
+  way to turn that off), basic lands of other colors are hidden, and cards
+  that fall outside after a commander change are listed with "Remove them".
+- **Data fix:** the 41 Starter Kit cards and the basic lands and Towns had
+  no `colorIdentity`, so they counted as colorless in Commander checks
+  (deck building and the engine's deck validation). It is now in
+  `fin.json` and `lands.json`, worked out by rule 903.4 (mana symbols in
+  cost and rules text, color indicator, basic land types).
+- Rules in `packages/client/src/packs/deckbuild.ts`, tested in
+  `deckbuild.test.ts`. No server or database change: decks were already
+  lists of owned printings.
+
 ### Menu, landing page, saved tutorial progress, calmer board
 
 - **Navigation:** a top bar on every page: Home, Play, Collection, Decks,
