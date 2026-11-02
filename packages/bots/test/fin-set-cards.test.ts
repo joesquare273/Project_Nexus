@@ -2152,3 +2152,107 @@ describe('S4 group 9: whenever you gain life', () => {
     expect(s.players.P1!.hand.filter((id) => s.cards[id]!.defId === 'island').length).toBe(1);
   });
 });
+
+describe('S4 group 10: look at the top cards, revolt, Equipment and coins', () => {
+  /** Answers each pending card choice with `pick`, then settles. */
+  function answer(s: GameState, pick: (cards: string[], looked: string[]) => string[]): GameState {
+    for (let i = 0; i < 10 && s.pending.kind === 'chooseCards'; i++) {
+      const p = s.pending;
+      s = settle(act(s, { type: 'ChooseCards', player: p.player, cards: pick(p.cards, p.looked ?? p.cards) })).state;
+    }
+    return s;
+  }
+
+  it('Commune with Beavers: look at three, take an artifact, creature or land; the rest go to the bottom', () => {
+    let s = newGame();
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    const bolt2 = put(s, 'P1', 'lightning-bolt', 'library');
+    const spell = put(s, 'P1', 'commune-with-beavers', 'hand');
+    mana(s, 'P1', { G: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: spell })).state;
+    expect(s.pending.kind === 'chooseCards' && s.pending.cards).toEqual([ring]);
+    s = answer(s, (cards) => cards);
+    expect(s.cards[ring]!.zone).toBe('hand');
+    const library = s.players.P1!.library;
+    expect(library.slice(-2).sort()).toEqual([bolt, bolt2].sort());
+  });
+
+  it('Ashe: whenever she attacks, look at five and you may take an artifact', () => {
+    let s = newGame();
+    const ashe = put(s, 'P1', 'ashe-princess-of-dalmasca');
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: ashe, defender: 'P2' }] })).state;
+    expect(s.pending.kind === 'chooseCards' && s.pending.looked?.length).toBe(5);
+    s = answer(s, () => []);
+    expect(s.cards[ring]!.zone).toBe('library');
+    expect(s.players.P1!.library.indexOf(ring)).toBeGreaterThan(s.players.P1!.library.length - 6);
+  });
+
+  it('Gilgamesh puts any number of Equipment from the top six onto the battlefield and may attach one to himself', () => {
+    let s = newGame();
+    const gear = [put(s, 'P1', 'colossus-hammer', 'library'), put(s, 'P1', 'excalibur-ii', 'library')];
+    const gilgamesh = put(s, 'P1', 'gilgamesh-master-at-arms', 'hand');
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: gilgamesh })).state;
+    expect(s.pending.kind === 'chooseCards' && [...s.pending.cards].sort()).toEqual([...gear].sort());
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: gear })).state;
+    expect(gear.every((id) => s.cards[id]!.zone === 'battlefield')).toBe(true);
+    // Then attach one of them to Gilgamesh.
+    expect(s.pending.kind === 'chooseCards' && s.pending.purpose).toBe('attachToSource');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [gear[0]!] })).state;
+    expect(s.cards[gear[0]!]!.attachedTo).toBe(gilgamesh);
+    expect(s.cards[gear[1]!]!.attachedTo).toBeUndefined();
+  });
+
+  it('Light of Judgment deals 6 damage and may destroy an Equipment attached to that creature', () => {
+    let s = newGame();
+    const titan = put(s, 'P2', 'primeval-titan');
+    const gear = put(s, 'P2', 'colossus-hammer', 'battlefield', { attachedTo: titan });
+    const spell = put(s, 'P1', 'light-of-judgment', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan)] })).state;
+    s = answer(s, (cards) => cards);
+    expect(s.cards[gear]!.zone).toBe('graveyard');
+    expect(s.cards[titan]!.zone).toBe('graveyard');
+  });
+
+  it('Fatal Push destroys mana value 2 or less, or 4 or less with revolt', () => {
+    let s = newGame();
+    const four = put(s, 'P2', 'namazu-trader');
+    const two = put(s, 'P2', 'dark-confidant');
+    let spell = put(s, 'P1', 'fatal-push', 'hand');
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(four)] }).state;
+    expect(s.cards[four]!.zone).toBe('battlefield');
+    // Revolt: a permanent of yours leaves the battlefield (a Treasure for mana).
+    const treasure = put(s, 'P1', 'treasure-token', 'battlefield', { isToken: true });
+    spell = put(s, 'P1', 'fatal-push', 'hand');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: treasure, mana: 'B' });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(four)] }).state;
+    expect(s.cards[four]!.zone).toBe('graveyard');
+    expect(s.cards[two]!.zone).toBe('battlefield');
+  });
+
+  it('Edgar draws a card for each artifact you control, and your first coin flip each turn comes up heads', () => {
+    let s = newGame();
+    put(s, 'P1', 'sol-ring');
+    put(s, 'P1', 'sol-ring');
+    const edgar = put(s, 'P1', 'edgar-king-of-figaro', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: edgar }).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+    // Setzer flips a coin when a Vehicle deals combat damage to a player; a win makes two Treasures.
+    for (const seed of [1, 2, 3, 4]) {
+      let t = structuredClone(s);
+      t.rngState = [seed, seed * 7, seed * 13, seed * 31];
+      put(t, 'P1', 'setzer-wandering-gambler');
+      const armor = put(t, 'P1', 'magitek-armor', 'battlefield', { crewed: true });
+      t = fight(t, [{ attacker: armor, defender: 'P2' }]).state;
+      expect(t.players.P1!.battlefield.filter((id) => t.cards[id]!.defId === 'treasure-token').length).toBe(2);
+      expect(t.players.P1!.coinHeadsTurn).toBe(t.turnNumber);
+    }
+  });
+});

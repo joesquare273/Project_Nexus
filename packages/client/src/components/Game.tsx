@@ -762,6 +762,23 @@ export function Game({
           }
         />
       )}
+      {choosing?.purpose === 'lookTop' && (
+        <CardList
+          view={view}
+          title={`Top of your library: you may choose ${choosing.max > 1 ? 'any of' : 'one of'} ${choosing.cards.length} matching card${choosing.cards.length === 1 ? '' : 's'} to put ${choosing.lookTo === 'battlefield' ? 'onto the battlefield' : 'into your hand'} (${bottomPicks.length} chosen)`}
+          ids={choosing.looked ?? choosing.cards}
+          h={h}
+          actions={
+            <button
+              className="primary"
+              disabled={!!choiceProblem(s, choosing, bottomPicks)}
+              onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}
+            >
+              {bottomPicks.length ? (choosing.lookTo === 'battlefield' ? 'Put onto the battlefield' : 'Put into your hand') : 'Take nothing'}
+            </button>
+          }
+        />
+      )}
       {offBoardOptions.length > 0 && (
         <CardList view={view} title={activeTargeting?.title ?? 'Choose a target'} ids={offBoardOptions} h={h} />
       )}
@@ -1077,6 +1094,8 @@ function PromptBar(p: PromptProps) {
                 ? `to find in your library (${c.searchTo === 'hand' ? 'into your hand' : 'onto the battlefield'}); then it's shuffled`
               : c.purpose === 'digLands'
                 ? 'land cards to put onto the battlefield tapped; the rest go to your graveyard'
+              : c.purpose === 'lookTop'
+                ? `from the top of your library to put ${c.lookTo === 'battlefield' ? 'onto the battlefield' : 'into your hand'} (or none); the rest go on the bottom in a random order`
               : c.purpose === 'hand'
                 ? (c.cards.every((id) => s.cards[id]?.zone === 'graveyard') ? 'from your graveyard to put into your hand' : c.restToGraveyard ? 'to put into your hand; the rest go into your graveyard' : 'to put into your hand; the rest go on the bottom of your library')
                 : c.purpose === 'fateBottom' ? 'to put on the bottom of the caster’s library; the other returns to the battlefield tapped'

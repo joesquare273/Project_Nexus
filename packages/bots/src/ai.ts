@@ -593,6 +593,7 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
   // Cards for our hand: the best.
   if (p.purpose === 'hand') return pick(byValue.reverse().slice(0, p.max));
+  if (p.purpose === 'lookTop') return pick([...byValue].reverse().slice(0, p.max));
   // A library search: the best matching cards, as many as allowed.
   if (p.purpose === 'search') return pick(byValue.reverse().slice(0, p.max));
   // Choco: every land.

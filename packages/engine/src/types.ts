@@ -176,6 +176,14 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /**
+   * Look at the top `amount` cards of your library; you may put one (or with
+   * `anyNumber`, any number) matching `filter` into your hand or onto the
+   * battlefield (`lookTo`), then the rest go on the bottom in a random order.
+   */
+  'LookAtTopPutMatching',
+  /** Destroy up to one Equipment attached to the previous target, chosen as it resolves (Light of Judgment). */
+  'DestroyAttachedEquipment',
   /** Each target player exiles the top `amount` cards of their library, face up. */
   'ExileTopOfLibrary',
   /** Reveal the top card of your library and put it into your hand; you lose life equal to its mana value (Dark Confidant). */
@@ -602,6 +610,14 @@ export interface EffectSpec {
   ifLifeGainedThisTurn?: { atLeast?: number; below?: number };
   /** Only if the previous target's mana value is at least this ("if the exiled card's mana value is 4 or greater"). */
   ifPreviousTargetManaValueAtLeast?: number;
+  /** Only if the previous target's mana value is at most this (Fatal Push). */
+  ifPreviousTargetManaValueAtMost?: number;
+  /** Revolt: only if (true) or unless (false) a permanent left the battlefield under your control this turn. */
+  ifRevolt?: boolean;
+  /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
+  lookTo?: 'hand' | 'battlefield';
+  /** LookAtTopPutMatching: then you may attach one of the Equipment put onto the battlefield to this creature (Gilgamesh). */
+  attachOneToThis?: boolean;
   /** Only if your graveyard has at least / fewer than this many cards (threshold). */
   ifYourGraveyard?: { atLeast?: number; below?: number };
   /** Only if you control at least `atLeast` (default 1) permanents matching `filter` (metalcraft). */
@@ -987,6 +1003,8 @@ export interface StaticSpec {
   goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
+  /** Edgar: the first time its controller flips coins each turn, they come up heads. */
+  firstCoinFlipsHeads?: boolean;
   /** The source's controller has no maximum hand size (Thought Vessel). */
   noMaximumHandSize?: boolean;
   /** "If you would gain life, you gain twice that much life instead" (The Wind Crystal); each one doubles again. */
@@ -1504,6 +1522,10 @@ export interface PlayerState {
   lifeGainedThisTurn?: number;
   /** The last turn a card left this player's graveyard. */
   cardLeftGraveyardTurn?: number;
+  /** The turn a permanent last left the battlefield under this player's control (revolt). */
+  permanentLeftTurn?: number;
+  /** The turn this player's first coin flip came up heads by Edgar's Two-Headed Coin. */
+  coinHeadsTurn?: number;
   /** Noncreature spells this player cast this turn. Reset as each turn begins. */
   noncreatureSpellsThisTurn?: number;
   /** Spells this player cast this turn. Reset as each turn begins. */
@@ -1721,13 +1743,16 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'distributeCounter' | 'divideDamage' | 'addCounters';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
   max: number;
   /** All of `cards` or none (discarding a whole hand). */
   allOrNothing?: boolean;
+  /** lookTop: where chosen cards go; every card looked at, the rest going on the bottom in a random order; then attach one to the source. */
+  lookTo?: 'hand' | 'battlefield';
+  attachOneToSource?: boolean;
   /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */
   restToGraveyard?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */

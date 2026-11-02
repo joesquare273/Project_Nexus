@@ -378,6 +378,12 @@ cards than before. Tests that need a particular random outcome set
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
 
+## 2026-11-02: Gilgamesh's attachment
+
+- Simplification: Gilgamesh, Master-at-Arms may attach one of the Equipment
+  it put onto the battlefield to itself (a Samurai), not to another Samurai
+  you control. Isshin is the set's only other Samurai.
+
 ## 2026-11-02: Sacrifice costs; Aerith Rescue Mission
 
 - Spell sacrifice costs are paid while casting, with the other costs (rule

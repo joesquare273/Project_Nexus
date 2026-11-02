@@ -275,6 +275,8 @@ function effectText(e: EffectSpec): string {
     case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;
     case 'ExileAndReturn': return `exile it, then return it to the battlefield ${e.transformed ? 'transformed' : '(front face up)'}`;
     case 'Meld': return 'exile it and its meld partner, then meld them';
+    case 'LookAtTopPutMatching': return `look at the top ${typeof e.amount === 'number' ? e.amount : 'X'} cards of your library; you may put ${e.anyNumber ? 'any number of' : 'one'} ${subjectText(e.filter ?? {}, 'card')} ${e.lookTo === 'battlefield' ? 'onto the battlefield' : 'into your hand'}, and the rest on the bottom in a random order`;
+    case 'DestroyAttachedEquipment': return 'destroy up to one Equipment attached to that creature';
     case 'ExileTopOfLibrary': return `exile the top ${typeof e.amount === 'number' ? e.amount : 'X'} cards of their library`;
     case 'RevealTopToHandLoseLife': return 'reveal the top card of your library and put it into your hand; you lose life equal to its mana value';
     case 'ReturnFromGraveyardToHand': return `return ${e.amount === undefined || e.amount === 1 ? 'a' : e.amount} ${subjectText(e.filter ?? {}, 'card')} from your graveyard to your hand`;

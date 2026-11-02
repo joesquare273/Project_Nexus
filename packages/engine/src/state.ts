@@ -286,7 +286,10 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       to,
     });
   }
-  if (from === 'battlefield') leftBattlefield(ctx, id);
+  if (from === 'battlefield') {
+    leftBattlefield(ctx, id);
+    if (s.players[controller]) s.players[controller]!.permanentLeftTurn = s.turnNumber;
+  }
   if (meldedWith && s.cards[meldedWith]?.zone === 'void') moveCard(ctx, meldedWith, to === 'battlefield' || to === 'void' ? 'exile' : to, { silent: !!opts.silent });
   // A double-faced card put onto the battlefield transformed enters back face up (rule 712.14a),
   // so its back face's "as this enters" rules apply (a Saga back face gets its lore counter).

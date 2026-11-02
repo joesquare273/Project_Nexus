@@ -2061,8 +2061,27 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for(const id of onBattlefield) if(!s.cards[id]!.phasedOut) s.cards[id]!.crewed=true;
       return;
     case 'FlipCoin':
-      for(const player of targetPlayers(targets)) ctx.ev.push({type:'CoinFlipped',player,won:randomInt(s,2)===1});
+      for (const who of targetPlayers(targets)) {
+        // Edgar's Two-Headed Coin: the first flip each turn comes up heads.
+        const p = s.players[who]!;
+        const twoHeaded = p.coinHeadsTurn !== s.turnNumber && battlefield(s).some((c) => c.controller === who && !c.phasedOut && defOf(s, c).statics?.some((st) => st.firstCoinFlipsHeads));
+        if (twoHeaded) p.coinHeadsTurn = s.turnNumber;
+        ctx.ev.push({ type: 'CoinFlipped', player: who, won: twoHeaded || randomInt(s, 2) === 1 });
+      }
       return;
+    case 'LookAtTopPutMatching': {
+      const top = topOfLibrary(s, item.controller, amount);
+      if (top.length === 0) return;
+      const matching = top.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max: effect.anyNumber ? matching.length : Math.min(1, matching.length), looked: top, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}) }];
+      return;
+    }
+    case 'DestroyAttachedEquipment': {
+      const host = r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined;
+      const gear = host ? battlefield(s).filter((c) => c.attachedTo === host && isEquipment(s, c)).map((c) => c.id) : [];
+      if (gear.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'destroy', cards: gear, min: 0, max: 1 }];
+      return;
+    }
     case 'ReflexiveTrigger': {
       const c=s.cards[source]!;
       s.triggerQueue.push({source,ability:-1,controller:item.controller,sourceZone:item.kind==='ability'?item.sourceZone:'stack',sourceObject:item.kind==='ability'?item.sourceObject:c.zoneChanges,spec:structuredClone(effect.trigger!)});
@@ -2556,6 +2575,12 @@ function continueResolving(ctx: Ctx): void {
       const { atLeast, below } = effect.ifLifeGainedThisTurn;
       if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
     }
+    if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
+    if (effect.ifPreviousTargetManaValueAtMost !== undefined) {
+      const t = r.previousTarget;
+      const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      if (!c || objectManaValue(s, c) > effect.ifPreviousTargetManaValueAtMost) continue;
+    }
     if (effect.ifPreviousTargetManaValueAtLeast !== undefined) {
       const t = r.previousTarget;
       const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
@@ -2822,6 +2847,25 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       for (const id of r.conniving.slice(0, nonland)) addCounters(ctx, id, 1, pending.player);
       delete r.conniving;
     }
+  } else if (pending.purpose === 'lookTop') {
+    const library = player(s, pending.player).library;
+    for (const id of cards) {
+      if (!library.includes(id)) continue;
+      moveCard(ctx, id, pending.lookTo === 'battlefield' ? 'battlefield' : 'hand');
+      if (pending.lookTo === 'battlefield') {
+        const c = s.cards[id]!;
+        c.controller = pending.player;
+        if (entersTapped(s, c)) c.tapped = true;
+      }
+    }
+    // The rest go on the bottom of the library in a random order.
+    const rest = (pending.looked ?? pending.cards).filter((id) => !cards.includes(id) && library.includes(id));
+    for (const id of rest) library.splice(library.indexOf(id), 1);
+    shuffleInPlace(s, rest);
+    library.push(...rest);
+    // Gilgamesh: "you may attach one of them to a Samurai you control" (to Gilgamesh himself here).
+    const put = cards.filter((id) => s.cards[id]!.zone === 'battlefield' && isEquipment(s, s.cards[id]!));
+    if (pending.attachOneToSource && put.length) r.choiceQueue = [{ player: pending.player, purpose: 'attachToSource', cards: put, min: 0, max: 1 }, ...(r.choiceQueue ?? [])];
   } else if (pending.purpose === 'attachToSource') {
     const source = sourceOf(r.item);
     const host = s.cards[source]!;

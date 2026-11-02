@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 10: look at the top cards, revolt, coins, 6 set cards
+
+- Engine: `LookAtTopPutMatching` (look at the top N; you may put one, or any
+  number, matching a filter into your hand or onto the battlefield; the rest
+  go on the bottom in a random order), shown on the board with every card
+  looked at; revolt (`ifRevolt`, a permanent left the battlefield under your
+  control this turn); `ifPreviousTargetManaValueAtMost`;
+  `DestroyAttachedEquipment`; Edgar's Two-Headed Coin (`firstCoinFlipsHeads`).
+  New player fields `permanentLeftTurn` and `coinHeadsTurn` are public in
+  redaction; cards looked at during a choice are visible to that player.
+- Commune with Beavers, Ashe, Gilgamesh, Light of Judgment, Fatal Push and
+  Edgar, King of Figaro, each with a test. 128 of 320 set cards are built.
+
 ### S4 group 9: whenever you gain life, 8 set cards
 
 - Engine: a `LifeGained` trigger ("whenever you gain life", once per

@@ -116,7 +116,7 @@ export function visibleCards(s: GameState, viewer: PlayerId): Set<InstanceId> {
     (p.kind === 'surveil' || p.kind === 'exileTop') && p.player === viewer
       ? [p.card]
       : p.kind === 'chooseCards' && p.player === viewer
-        ? p.cards
+        ? [...p.cards, ...(p.looked ?? [])]
         : p.kind === 'chooseLegend' && p.player === viewer
           ? p.cards
           : [],
@@ -222,6 +222,8 @@ const PLAYER_FIELDS = {
   counterOnCreatureTurn: 'copy',
   lifeGainedThisTurn: 'copy',
   cardLeftGraveyardTurn: 'copy',
+  permanentLeftTurn: 'copy',
+  coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',
   spellsCastThisTurn: 'copy',
   lostToEffect: 'copy',
