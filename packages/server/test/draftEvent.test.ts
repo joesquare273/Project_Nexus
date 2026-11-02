@@ -22,6 +22,9 @@ import {
   startDraft,
   submitDeck,
   tick,
+  expirePicks,
+  selectCard,
+  PICK_SECONDS,
   type DraftEvent,
 } from '../src/draftEvent.ts';
 
@@ -182,4 +185,25 @@ describe('a draft event with bots', () => {
     ev = recordGame(ev, bots.id, winner, rng);
     expect(ev.matches.find((m) => m.id === bots.id)!.games).toHaveLength(1);
   }, 60_000);
+
+  it('each pick has 30 seconds: then the selected card, or the AI’s choice, is taken for you', () => {
+    let ev = startDraft(createEvent('C1', 2, host), 21, NOW);
+    expect(ev.pickEndsAt).toBe(NOW + PICK_SECONDS * 1000);
+    const pack = ev.draft!.packs.S1!.cards;
+    ev = selectCard(ev, 'S1', pack[3]!.uid);
+    // Not yet: nothing happens before the time is up.
+    expect(expirePicks(ev, NOW + 29_000)).toBe(ev);
+    ev = expirePicks(ev, NOW + 30_000);
+    expect(ev.draft!.picks.S1!.map((c) => c.uid)).toEqual([pack[3]!.uid]);
+    // A new pick, a new 30 seconds, nothing selected: the AI picks for you.
+    expect(ev.pickEndsAt).toBe(NOW + 60_000);
+    expect(ev.selected.S1).toBeNull();
+    ev = expirePicks(ev, NOW + 60_000);
+    expect(ev.draft!.picks.S1).toHaveLength(2);
+    // Confirming in time works as before and restarts the clock.
+    const t = NOW + 61_000;
+    ev = pick(ev, 'S1', ev.draft!.packs.S1!.cards[0]!.uid, t);
+    expect(ev.pickEndsAt).toBe(t + 30_000);
+  });
 });
+

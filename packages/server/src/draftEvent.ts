@@ -64,6 +64,12 @@ export interface DraftEvent {
   ready: Record<string, boolean>;
   /** When deckbuilding ends (ms since the epoch). */
   buildEndsAt: number | null;
+  /** When the current pick's 30 seconds are up, while players still have to pick. */
+  pickEndsAt: number | null;
+  /** Which pick the clock is for (all picks made so far), so it restarts with each new pick. */
+  pickClock: number;
+  /** A card each player has selected but not confirmed: taken for them if time runs out. */
+  selected: Record<string, string | null>;
   rounds: number;
   /** The round being played, 1-based (0 before play). */
   round: number;
@@ -71,6 +77,8 @@ export interface DraftEvent {
 }
 
 export const MAX_SEATS = 4;
+/** Seconds to choose each card in the draft (user decision 2026-11-03). */
+export const PICK_SECONDS = 30;
 const SEAT_IDS = ['S1', 'S2', 'S3', 'S4'];
 const BOT_NAMES = ['Chocobo Bot', 'Moogle Bot', 'Cactuar Bot'];
 
@@ -86,6 +94,9 @@ export function createEvent(code: string, size: number, host: { name: string; us
     decks: {},
     ready: {},
     buildEndsAt: null,
+    pickEndsAt: null,
+    pickClock: 0,
+    selected: {},
     rounds: roundsFor(size),
     round: 0,
     matches: [],
@@ -109,7 +120,7 @@ export function leaveEvent(ev: DraftEvent, userId: string): void {
 }
 
 /** Starts the draft, filling empty seats with bots. Returns the new state. */
-export function startDraft(prev: DraftEvent, seed: Seed): DraftEvent {
+export function startDraft(prev: DraftEvent, seed: Seed, now = 0): DraftEvent {
   if (prev.phase !== 'lobby') throw new Error('The draft has already started.');
   const ev = structuredClone(prev);
   let bots = 0;
@@ -124,6 +135,58 @@ export function startDraft(prev: DraftEvent, seed: Seed): DraftEvent {
     ev.decks[s.id] = null;
     ev.ready[s.id] = false;
   }
+  armPickClock(ev, now);
+  return ev;
+}
+
+const picksMade = (s: DraftState) => Object.values(s.picks).reduce((n, p) => n + p.length, 0);
+
+/** Each new pick gets 30 seconds, while a player still has to choose. */
+function armPickClock(ev: DraftEvent, now: number): void {
+  const d = ev.draft;
+  if (ev.phase !== 'drafting' || !d) {
+    ev.pickEndsAt = null;
+    return;
+  }
+  const waiting = ev.seats.some((s) => !s.bot && d.packs[s.id] && !d.locked[s.id]);
+  if (!waiting) {
+    ev.pickEndsAt = null;
+    return;
+  }
+  const clock = picksMade(d);
+  if (ev.pickEndsAt === null || clock !== ev.pickClock) {
+    ev.pickClock = clock;
+    ev.pickEndsAt = now + PICK_SECONDS * 1000;
+    for (const s of ev.seats) ev.selected[s.id] = null;
+  }
+}
+
+/** A player selects a card (not yet confirmed); it's taken for them if the clock runs out. */
+export function selectCard(prev: DraftEvent, seat: string, uid: string): DraftEvent {
+  const problem = eventPickProblem(prev, seat, uid);
+  if (problem) throw new Error(problem);
+  const ev = structuredClone(prev);
+  ev.selected[seat] = uid;
+  return ev;
+}
+
+/**
+ * The pick's 30 seconds are up: everyone who hasn't confirmed gets the card
+ * they selected, or else the AI's choice for them. Then the packs move on.
+ */
+export function expirePicks(prev: DraftEvent, now: number): DraftEvent {
+  if (prev.phase !== 'drafting' || !prev.draft || prev.pickEndsAt === null || now < prev.pickEndsAt) return prev;
+  const ev = structuredClone(prev);
+  let d = ev.draft!;
+  for (const s of ev.seats) {
+    if (s.bot || !d.packs[s.id] || d.locked[s.id]) continue;
+    const chosen = ev.selected[s.id];
+    const uid = chosen && d.packs[s.id]!.cards.some((c) => c.uid === chosen) ? chosen : aiPick(d, s.id);
+    d = lockPick(d, s.id, uid);
+  }
+  ev.draft = botsPick(ev, d);
+  if (ev.draft.done) startBuilding(ev, now);
+  armPickClock(ev, now);
   return ev;
 }
 
@@ -152,6 +215,7 @@ export function pick(prev: DraftEvent, seat: string, uid: string, now: number): 
   const ev = structuredClone(prev);
   ev.draft = botsPick(ev, lockPick(ev.draft!, seat, uid));
   if (ev.draft.done) startBuilding(ev, now);
+  armPickClock(ev, now);
   return ev;
 }
 

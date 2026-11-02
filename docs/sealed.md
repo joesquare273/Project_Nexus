@@ -39,7 +39,7 @@ first called it "sealed"; the format they described is a booster draft.)
 | S1 | **Import the set:** every Final Fantasy main-set (FIN 1-309) and Through the Ages (FCA) card gets a definition (`cards/scripts/import-sets.ts`, `data/fin-set.json`). Cards the engine already covers are built; the rest are `notBuilt` (shown with their images, but they can't be cast or played until built). | **Done (2026-10-29):** 320 new definitions, 12 built |
 | S2a | **The draft**, locally against 1-3 AI drafters: choose, confirm, rotate clockwise; six packs; the Draft tab. | **Done (2026-10-29)** |
 | S2b | **The deckbuilder**, then playing your drafted deck against an AI drafter's deck: filters by color and type, deck columns by mana value, mana curve, land suggestions, unlimited basics, Auto-build, the 20-minute timer (5-minute warning; at zero, basics fill the deck to 40 and it locks), Ready. | **Done (2026-10-29)** |
-| S3 | **Online events:** rooms of up to 4, the draft run by the server (it holds the packs and waits for every player to lock in), the deckbuilding timer enforced by the server, Swiss pairings, best-of-3 matches with sideboarding, standings, and pools kept on players' accounts once accounts exist. | **In progress (2026-11-03):** built in steps, with bots first (user order: bots, then players, then mixed). S3a **event core done:** `server/src/draftEvent.ts` and `swiss.ts` (rules only, no networking). Next: S3b the event server (messages, games against bots hosted on the server, pools saved to accounts), S3c the Draft page on top of it, S3d players joining by code, S3e mixed tables. Rewards: the user will set them after. |
+| S3 | **Online events:** rooms of up to 4, the draft run by the server (it holds the packs and waits for every player to lock in), the deckbuilding timer enforced by the server, Swiss pairings, best-of-3 matches with sideboarding, standings, and pools kept on players' accounts once accounts exist. | **In progress (2026-11-03):** built in steps, with bots first (user order: bots, then players, then mixed). S3a **event core done:** `server/src/draftEvent.ts` and `swiss.ts` (rules only, no networking). S3b **event server done:** `server/src/events.ts` (messages, bots playing on the server, pools saved to accounts, 30 seconds per pick, AI drafters and deckbuilder). Next: S3c the Draft page on top of it, S3d players joining by code, S3e mixed tables. Rewards: the user will set them after. |
 | S4 | **Build the set's cards** in shared-mechanic groups, like the precons, until all of them work. | 155 of 320 imported cards built. Group 15 (costs less for each, 5: Travel the Overworld, Diamond Weapon, Bartz and Boko, Qiqirn Merchant, Ancient Copper Dragon) done. Group 14 (the Crystals, 4: The Fire, Water, Earth and Darkness Crystals; The Wind Crystal came with group 9) done. Group 13 (attacking alone and more, 5: Seifer Almasy, Squall, Kenrith, Mangara, Akroma's Will) done. Group 12 (impulse draw and more, 6: Haste Magic, Opera Love Song, Light Up the Stage, Rydia's Return, Cactuar, Demon Wall) done. Group 11 (lands and mana, 7: Capital City, Starting Town, Command Beacon, Chromatic Lantern, Azusa, The Gold Saucer, Eden) done. Group 10 (look at the top cards and more, 6: Commune with Beavers, Ashe, Gilgamesh, Light of Judgment, Fatal Push, Edgar) done. Group 9 (whenever you gain life and more, 8: Aerith Gainsborough, Minwu, Excalibur II, Hope Estheim, The Wind Crystal, Poison the Waters, Gaius van Baelsar, World Map) done. Group 8 (flashback spells and triggers, 7: Resentful Revelation, Sorceress's Schemes, Nibelheim Aflame, From Father to Son, Sandworm, Malboro, Dark Confidant) done. Group 7 (sacrifice as a cost and token modes, 8: Deadly Dispute, Diabolic Intent, Vayne's Treachery, Louisoix's Sacrifice, Namazu Trader, Moogle's Valor, Battle Menu, Aerith Rescue Mission) done; Fang and Vanille with meld (2026-11-02) (plus Snapcaster Mage, a Store-only card, in store-cards.json). Group 6 ("as long as you control N or more" and simple triggers, 9: Gaelicat, Gigantoad, Scorpion Sentinel, Magitek Infantry, Gran Pulse Ochu, Sram, Primeval Titan, Captain Lannery Storm, Ring of the Lucii) done. Group 4 (simple spells and enters-the-battlefield cards, 24) and group 5 (18 more: enters, attacks, chapters) done. Group 3 (transforming double-faced cards) started: Vincent Valentine, Garland, The Emperor of Palamecia, Exdeath, Dion, Jill, Jecht. Group 1 (Job select Equipment, 10 cards) done; group 2 (noncreature spells) in progress: Ultros, Cornered by Black Mages, Blazing Bomb, Mysidian Elder, Prompto Argentum, Queen Brahne, Black Waltz No. 3, Shantotto, Tellah, The Prima Vista; left: Vivi Ornitier (X mana in two colors) and the double-faced Emperor of Palamecia, Garland, Kuja and Lindblum, which wait for transforming double-faced cards (27 set cards need them); tests in `packages/bots/test/fin-set-cards.test.ts`. |
 
 ## The event, as built (S3a)
@@ -66,6 +66,48 @@ first called it "sealed"; the format they described is a booster draft.)
   33%).
 - Games use the Limited format with each drafted card's own printing and
   finish. A game that runs too long between bots is a draw.
+
+## The event server (S3b)
+
+- Messages (`protocol.ts`): `eventCreate {size}`, `eventJoin {code}` (also
+  to come back after a reload), `eventStart` (the creator), `eventPick`,
+  `eventDeck`, `eventReady`, `eventPlayDraw`, `eventLeave`; game moves are
+  the usual `actions`. The server sends `event` (your view: your pack,
+  picks and deck, everyone's progress, matches and standings) and, for your
+  games, the usual `update` with the match and game number. Every game has
+  seats P1 and P2, so the browser plays it like any online game.
+- Events live in the server's memory (`EventHub`); a seat stays yours while
+  you're away. Event codes start with D. A finished event is dropped after
+  an hour; a lobby nobody is in is dropped at once.
+- Bots act one move at a time with a short pause (450 ms) in games against
+  a player, so their turns can be followed; bot-vs-bot games are played in
+  chunks of 250 moves between other work (6,000 moves at most, then a draw).
+- When the draft ends, each player's 84 cards are added to their
+  collection once (`card_grants` kind `draft`, ref `draft-<event>-<seat>`).
+- Nothing is saved across a server restart yet: an event in progress is
+  lost then (the drafted cards are already on the account).
+- **30 seconds per pick:** each pick has a 30-second clock, held by the
+  server. Clicking a card selects it (`eventSelect`); confirming locks it in.
+  When the time is up, a player who hasn't confirmed gets the card they
+  selected, or the AI's choice if they selected none. The clock restarts
+  for every new pick.
+
+## The AI drafters and deckbuilder
+
+- `cards/src/rating.ts` (`cardRating`) rates a card for Limited on a rough
+  0-10 scale from its engine definition: a creature's stats for its cost and
+  its keywords; removal (destroy, exile, damage, fight, -X/-X) highest, then
+  card draw, tokens and other abilities; expensive cards lose a little; rares
+  and mythics gain a little. Cards that aren't built yet (or can't be cast)
+  are worth 0, so bots never draft or play them.
+- Drafting (`aiScore` in `draft.ts`): the first four picks take the best
+  card; after that, bots lean more and more into their two strongest colors
+  (weighted by the ratings of what they've picked).
+- Deckbuilding (`aiDeck` in `limited.ts`): tries every color pair (and
+  single colors), keeps the one whose best 23 spells rate highest, builds a
+  curve (at most five cards of mana value 5+, about 14 creatures), plays up
+  to three useful nonbasic lands, and fills to 40 with basics in proportion
+  to the mana symbols.
 
 ## Card status
 

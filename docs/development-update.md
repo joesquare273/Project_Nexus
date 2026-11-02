@@ -5,6 +5,35 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Draft picks timed (30 seconds) and smarter AI drafters
+
+- Each draft pick has a 30-second clock on the server. A selected card is
+  taken when time runs out; with nothing selected, the AI picks for you.
+  New message `eventSelect`; the event view has `pickEndsAt` and `selected`.
+- `cards/src/rating.ts`: a Limited rating for every card from what it does
+  (stats for cost, keywords, removal, card draw, tokens, abilities). The AI
+  drafters use it with color commitment after the first picks, and the AI
+  deckbuilder picks the best color pair, a curve and about 14 creatures.
+  Tests: `cards/test/rating.test.ts` (ratings in sensible order; bot decks
+  legal, two colors at most, a real curve) and the pick clock in
+  `server/test/draftEvent.test.ts`.
+
+### Draft events, step S3b: the event server
+
+- `packages/server/src/events.ts` (`EventHub`, one per server) runs draft
+  events over the WebSocket: create, join or rejoin by code, start, pick,
+  save a deck, Ready, play/draw; each player gets their own view after
+  every change. Games for event matches are hosted on the server as
+  ordinary P1/P2 online games; bot seats play there (one move every 450 ms
+  against a player; bot-vs-bot in chunks). Drafted pools go to the players'
+  collections when the draft ends.
+- Protocol: the new event messages and the `event` view in `protocol.ts`;
+  game updates carry the match and game number.
+- Tests: `server/test/events.test.ts` (one player and a bot from creation
+  to standings, the pool saved once, play/draw, sideboarding refused when
+  illegal, rejoining; one player and three bots through three Swiss rounds;
+  rules and errors, and each player seeing only their own pack).
+
 ### Commander and 60-card decks built separately; line endings
 
 - The Decks page has two sections, **Commander decks** (100 cards) and

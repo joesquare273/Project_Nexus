@@ -4,7 +4,9 @@
 
 import type { CardDefId } from '@nexus/engine';
 import { CARD_DEFS } from './index.ts';
-import { aiScore, cardColors, defIdOf, type DraftCard } from './draft.ts';
+import { manaValue, parseManaCost } from '@nexus/engine';
+import { cardColors, defIdOf, type DraftCard } from './draft.ts';
+import { cardRating } from './rating.ts';
 
 export const MIN_DECK_SIZE = 40;
 /** Draft and sealed decks are 40 to 60 cards. */
@@ -88,27 +90,66 @@ export function suggestBasics(deck: LimitedDeck, pool: readonly DraftCard[]): Re
   return out;
 }
 
+const PAIRS: Color[][] = COLORS.flatMap((a, i) => COLORS.slice(i + 1).map((b) => [a, b]));
+const SPELLS = MIN_DECK_SIZE - LAND_TARGET;
+
 /**
- * The AI's deck from its picks: its two main colors, its 23 best cards it can
- * cast in them (colorless cards and nonbasic lands too), and basic lands.
+ * The AI's deck from its picks. It tries every two-color pair (and each
+ * single color) and keeps the one whose best 23 playable cards rate highest;
+ * then it builds a curve: mostly creatures, few expensive cards, nonbasic
+ * lands in its colors counted toward the lands, and basic lands by the
+ * deck's colored mana symbols. Cards that aren't built yet never go in.
  */
 export function aiDeck(pool: readonly DraftCard[]): LimitedDeck {
   const defOf = (c: DraftCard) => CARD_DEFS[defIdOf(c.card) ?? ''];
-  const counts: Record<string, number> = {};
-  for (const c of pool) for (const color of cardColors(defOf(c))) counts[color] = (counts[color] ?? 0) + aiScore(c, []);
-  const main = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c]) => c);
-  const castable = pool.filter((c) => {
-    const def = defOf(c);
-    if (!def || def.supertypes?.includes('Basic') || def.uncastable) return false;
-    if (def.notBuilt) return false;
-    return cardColors(def).every((color) => main.includes(color));
-  });
-  const ranked = [...castable].sort((a, b) => aiScore(b, pool) - aiScore(a, pool));
-  const isLand = (c: DraftCard) => !!defOf(c)?.types.includes('land');
-  // 23 spells and 17 lands: nonbasic lands in its colors (up to 3) count toward the 17.
-  const spells = ranked.filter((c) => !isLand(c)).slice(0, MIN_DECK_SIZE - LAND_TARGET);
-  const lands = ranked.filter(isLand).slice(0, 3);
-  const deck: LimitedDeck = { cards: [...spells, ...lands].map((c) => c.uid), basics: noBasics() };
+  const rated = pool
+    .map((c) => ({ c, def: defOf(c), r: cardRating(defOf(c), c.card.rarity) }))
+    .filter((x) => x.def && x.r > 0 && !x.def.supertypes?.includes('Basic'));
+  const fits = (colors: readonly string[]) => (x: (typeof rated)[number]) => cardColors(x.def).every((k) => colors.includes(k));
+  const isLand = (x: (typeof rated)[number]) => !!x.def!.types.includes('land');
+  const choices: Color[][] = [...PAIRS, ...COLORS.map((c) => [c])];
+  const value = (colors: Color[]) =>
+    rated
+      .filter((x) => !isLand(x) && fits(colors)(x))
+      .map((x) => x.r)
+      .sort((a, b) => b - a)
+      .slice(0, SPELLS)
+      .reduce((n, r) => n + r, 0);
+  const colors = choices.reduce((best, c) => (value(c) > value(best) ? c : best), choices[0]!);
+  const playable = rated.filter(fits(colors));
+  const spells = buildCurve(playable.filter((x) => !isLand(x)), (x) => manaValue(parseManaCost(x.def!.manaCost)), (x) => x.r, (x) => x.def!.types.includes('creature'));
+  // Nonbasic lands in its colors (up to 3) take the place of basics.
+  const lands = playable.filter(isLand).sort((a, b) => b.r - a.r).slice(0, 3);
+  const deck: LimitedDeck = { cards: [...spells, ...lands].map((x) => x.c.uid), basics: noBasics() };
   deck.basics = suggestBasics(deck, pool);
   return deck;
+}
+
+/**
+ * Up to 23 spells for a good curve: the best cards first, but no more than 5
+ * costing 5 or more, and creatures preferred until there are 14 of them.
+ */
+function buildCurve<T>(cards: T[], mv: (x: T) => number, rating: (x: T) => number, creature: (x: T) => boolean): T[] {
+  const ranked = [...cards].sort((a, b) => rating(b) - rating(a));
+  const out: T[] = [];
+  let expensive = 0;
+  let creatures = 0;
+  const take = (x: T) => {
+    out.push(x);
+    if (mv(x) >= 5) expensive++;
+    if (creature(x)) creatures++;
+  };
+  // First pass: the best creatures and spells while keeping the curve and creature count in shape.
+  for (const x of ranked) {
+    if (out.length >= SPELLS) break;
+    if (mv(x) >= 5 && expensive >= 5) continue;
+    if (!creature(x) && out.length - creatures >= SPELLS - 14 && creatures < 14 && ranked.some((y) => creature(y) && !out.includes(y))) continue;
+    take(x);
+  }
+  // Fill any gap with whatever is left, best first.
+  for (const x of ranked) {
+    if (out.length >= SPELLS) break;
+    if (!out.includes(x)) take(x);
+  }
+  return out;
 }

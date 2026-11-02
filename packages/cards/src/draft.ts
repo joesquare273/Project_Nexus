@@ -12,6 +12,7 @@
 import { colorsOf, nextRandom, seedToState, type CardDefinition, type RngState, type Seed } from '@nexus/engine';
 import { CARD_DEFS, CARD_IDS_BY_NAME } from './index.ts';
 import { openPack, type BoosterCard, type Pull } from './boosters.ts';
+import { cardRating } from './rating.ts';
 
 export const PACKS_PER_PLAYER = 6;
 
@@ -185,33 +186,45 @@ export function defIdOf(card: BoosterCard): string | undefined {
 // The AI drafter
 // ---------------------------------------------------------------------------
 
-const RARITY_VALUE: Record<string, number> = { common: 1.5, uncommon: 2.5, rare: 4, mythic: 5, special: 3, bonus: 3 };
+/** A drafted card's engine definition. */
+const defFor = (c: DraftCard) => CARD_DEFS[defIdOf(c.card) ?? ''];
 
-/** How much the AI wants this card, given what it has picked. */
-export function aiScore(card: DraftCard, picks: readonly DraftCard[]): number {
-  const id = defIdOf(card.card);
-  const def = id ? CARD_DEFS[id] : undefined;
-  if (!def) return 0;
-  const isLand = def.types.includes('land');
-  const basic = !!def.supertypes?.includes('Basic');
-  if (basic) return 0;
-  let score = RARITY_VALUE[card.card.rarity] ?? 1;
-  // Cards that aren't built yet can't be used in games, so they're worth little to a drafter.
-  if (!def.notBuilt) score += 3;
-  else score -= 3;
-  if (isLand) score -= 1;
-  // After a few picks, stick to the two colors picked most.
-  if (picks.length >= 5) {
-    const counts: Record<string, number> = {};
-    for (const p of picks) {
-      const d = CARD_DEFS[defIdOf(p.card) ?? ''];
-      for (const c of cardColors(d)) counts[c] = (counts[c] ?? 0) + 1;
-    }
-    const main = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c]) => c);
+/**
+ * How strongly the AI is in each color, from what it has picked: each pick
+ * counts its rating toward its colors.
+ */
+export function colorWeights(picks: readonly DraftCard[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of picks) {
+    const def = defFor(p);
     const colors = cardColors(def);
-    if (colors.length > 0) score += colors.every((c) => main.includes(c)) ? 2 : -1.5;
+    const r = cardRating(def, p.card.rarity);
+    for (const c of colors) out[c] = (out[c] ?? 0) + r / colors.length;
   }
-  return score;
+  return out;
+}
+
+/**
+ * How much the AI wants this card, given what it has picked: the card's
+ * Limited rating (cardRating), and, after the first few picks, how well it
+ * fits the two colors the AI is in. Cards that aren't built yet are never
+ * wanted (they can't be played).
+ */
+export function aiScore(card: DraftCard, picks: readonly DraftCard[]): number {
+  const def = defFor(card);
+  if (!def) return 0;
+  const rating = cardRating(def, card.card.rarity);
+  if (rating === 0) return 0;
+  const colors = cardColors(def);
+  // The first picks take the best card; after that, commitment grows with each pick.
+  if (picks.length < 4) return rating;
+  const weights = colorWeights(picks);
+  const main = Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c]) => c);
+  const commitment = Math.min(1, (picks.length - 3) / 12);
+  if (colors.length === 0) return rating + 0.4 * commitment;
+  const fits = colors.every((c) => main.includes(c));
+  const off = colors.filter((c) => !main.includes(c)).length;
+  return rating + (fits ? 1.5 : -2.2 * off) * commitment;
 }
 
 /** The card the AI locks in from the pack in front of it (ties go to the first). */
