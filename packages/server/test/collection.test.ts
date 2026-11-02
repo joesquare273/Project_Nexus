@@ -183,8 +183,11 @@ describe('buying ten packs', () => {
 
   it('refuses ten Collector Boosters it can’t afford, and other counts', async () => {
     const { accounts, call } = await withAccounts();
+    // Starting balances cover ten Collector Boosters now (5,000), so make this player short of them.
+    await call('token-alice', '/api/account', 'GET');
+    accounts.accounts.get('alice-id')!.shards = 10 * ECONOMY.collectorBoosterPrice - 1;
     expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector', count: 10 })).status).toBe(402);
-    expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS);
+    expect(accounts.accounts.get('alice-id')!.shards).toBe(10 * ECONOMY.collectorBoosterPrice - 1);
     expect(await accounts.collection('alice-id')).toEqual([]);
     for (const count of [0, 2, 11, -10, '10']) expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play', count })).status).toBe(400);
   });

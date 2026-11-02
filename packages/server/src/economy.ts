@@ -14,8 +14,9 @@ export const ECONOMY = {
   dailyQuestReward: 100,
   weeklyQuestReward: 250,
   weeklyQuestMatches: 5,
-  welcomeGrant: 1000,
-  /** Once per account on top of the welcome grant, so every account (old and new) starts with 2,000 (user, 2026-10-30). */
+  /** New accounts start with 5,000 with the bonus below (user, 2026-11-03; accounts made before keep what they had). */
+  welcomeGrant: 4000,
+  /** Once per account on top of the welcome grant (user, 2026-10-30). */
   welcomeBonus: 1000,
   /** The first sign-in of each day (UTC). */
   dailyLoginReward: 50,

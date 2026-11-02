@@ -18,7 +18,7 @@ live in one server-side configuration module.
 | Commander or draft vs. friends | 50, +25 for the winner | Only the actual winner gets the bonus; a draw gets the base only |
 | Daily quest | 100–200 | Once per daily reset; the amount depends on the quest (user, 2026-10-30) |
 | Weekly quest | 300–500 | Bot and friend matches both count; the amount depends on the quest (user, 2026-10-30) |
-| Starting balance | 2,000 | Built 2026-10-30 (user): the 1,000 welcome grant plus a 1,000 welcome bonus, each once per account; accounts made before also get the bonus. 20 Play Boosters, 4 Collector Boosters, or a mix |
+| Starting balance | 5,000 | User, 2026-11-03: a 4,000 welcome grant plus the 1,000 welcome bonus, each once per account, for new accounts only (accounts made before started with 2,000 and keep their balance; no top-up). 50 Play Boosters, 10 Collector Boosters, or a mix. Before: 2,000 (2026-10-30) |
 | Daily login reward | 50 | Built 2026-10-30: the first sign-in of each UTC day (ledger kind `login_reward`, ref `login-YYYY-MM-DD`) |
 | Complete the tutorial | 250 | Planned (user, 2026-10-30): once, when the server can check the tutorial was finished |
 | First win | 100 | Planned (user, 2026-10-30): once, from a game the server ran (E2) |
