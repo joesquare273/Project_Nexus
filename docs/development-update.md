@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 16: Tiered spells
+
+- Ice Magic, Fire Magic, Thunder Magic, Restoration Magic, Tifa's Limit
+  Break and Vincent's Limit Break (161 of 320 set cards built). Engine:
+  ModifyPT `multiplyPT` (double/triple power and toughness), the
+  `ShuffleIntoLibrary` effect, and the `returnToBattlefieldTappedIfDies`
+  flag. Tests in `bots/test/fin-set-cards.test.ts`.
+- AI drafters commit harder to their two colors once settled, and among
+  cards that can't be played yet they take ones in their colors.
+
 ### Draft tournament, entry and prizes, loading screens, Discord pictures
 
 - Draft events: four seats, semifinals then the final and the match for

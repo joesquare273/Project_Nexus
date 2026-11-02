@@ -229,17 +229,18 @@ export function aiScore(card: DraftCard, picks: readonly DraftCard[]): number {
   const def = defFor(card);
   if (!def) return 0;
   const rating = cardRating(def, card.card.rarity);
-  if (rating === 0) return 0;
   const colors = cardColors(def);
-  // The first picks take the best card; after that, commitment grows with each pick.
-  if (picks.length < 4) return rating;
   const weights = colorWeights(picks);
   const main = Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c]) => c);
+  // A card that can't be played yet is only a tiebreak: one in your colors over one that isn't.
+  if (rating === 0) return colors.length > 0 && colors.every((c) => main.includes(c)) ? 0.02 : colors.length === 0 ? 0.01 : 0;
+  // The first picks take the best card; after that, commitment grows with each pick.
+  if (picks.length < 4) return rating;
   const commitment = Math.min(1, (picks.length - 3) / 12);
   if (colors.length === 0) return rating + 0.4 * commitment;
   const fits = colors.every((c) => main.includes(c));
   const off = colors.filter((c) => !main.includes(c)).length;
-  return rating + (fits ? 1.5 : -2.2 * off) * commitment;
+  return rating + (fits ? 2 : -3 * off) * commitment;
 }
 
 /** The card the AI locks in from the pack in front of it (ties go to the first). */

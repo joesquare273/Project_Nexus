@@ -147,6 +147,8 @@ function effectText(e: EffectSpec): string {
       const kept = e.onePerType ? `one ${e.onePerType.join(', one ')}` : `${n} ${subjectText({ ...e.filter, controller: undefined }, 'permanent', true)}`;
       return `${who} keeps ${kept} and sacrifices the rest`;
     }
+    case 'ShuffleIntoLibrary':
+      return `the owner of ${who} shuffles it into their library`;
     case 'ShuffleIntoLibraryReveal':
       return `the owner of ${who} shuffles it into their library, then reveals the top card; if it's a permanent card, they put it onto the battlefield`;
     case 'DrawCards':

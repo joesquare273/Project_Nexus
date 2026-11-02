@@ -2,7 +2,7 @@
 // stack (PRD 7.2).
 
 import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { randomInt, shuffleInPlace } from './rng.ts';
@@ -1866,6 +1866,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         sacrifice(ctx, theirs.find((c) => powerOf(s, c) === greatest)!.id);
       }
       return;
+    case 'ShuffleIntoLibrary':
     case 'ShuffleIntoLibraryReveal':
       for (const id of onBattlefield) {
         const owner = s.cards[id]!.owner;
@@ -1873,6 +1874,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         moveCard(ctx, id, 'library');
         shuffleInPlace(s, library);
         ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+        if (effect.effect === 'ShuffleIntoLibrary') continue;
         const top = library[0];
         if (top === undefined) continue;
         const revealed = s.cards[top]!;
@@ -2202,14 +2204,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'GrantKeywords':
     case 'GrantFlags':
       for (const id of onBattlefield) {
+        // "Double (or triple) its power and toughness": add what it has now (rule 701.10e-f).
+        const extra = effect.multiplyPT ? effect.multiplyPT - 1 : 0;
+        const plusP = extra ? extra * powerOf(s, s.cards[id]!) : 0;
+        const plusT = extra ? extra * toughnessOf(s, s.cards[id]!) : 0;
         s.temporaryEffects.push({
           source,
           affected: id,
-          ...(effect.power !== undefined || effect.powerFromAmount
-            ? { power: (effect.power ?? 0) + (effect.powerFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
+          ...(effect.power !== undefined || effect.powerFromAmount || extra
+            ? { power: (effect.power ?? 0) + plusP + (effect.powerFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
             : {}),
-          ...(effect.toughness !== undefined || effect.toughnessFromAmount
-            ? { toughness: (effect.toughness ?? 0) + (effect.toughnessFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
+          ...(effect.toughness !== undefined || effect.toughnessFromAmount || extra
+            ? { toughness: (effect.toughness ?? 0) + plusT + (effect.toughnessFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
             : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),

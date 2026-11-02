@@ -490,6 +490,7 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId, sacrificed = false): 
   const s = ctx.s;
   const c = s.cards[id]!;
   const backToHand = hasFlag(s, c, 'returnToHandIfDies');
+  const backToBattlefield = hasFlag(s, c, 'returnToBattlefieldTappedIfDies');
   if (hasFlag(s, c, 'exileIfWouldDie') || c.unearthed) {
     moveCard(ctx, id, 'exile', { sacrificed });
     return;
@@ -498,6 +499,13 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId, sacrificed = false): 
   moveCard(ctx, id, 'graveyard', { sacrificed });
   // "When that creature dies this turn, return that card to its owner's hand."
   if (backToHand && c.zone === 'graveyard') moveCard(ctx, id, 'hand');
+  // "When this creature dies, return it to the battlefield tapped under its owner's control."
+  else if (backToBattlefield && c.zone === 'graveyard') {
+    moveCard(ctx, id, 'battlefield');
+    c.controller = c.owner;
+    c.summoningSick = true;
+    c.tapped = true;
+  }
 }
 
 /** Destroys a permanent unless it is indestructible. Returns whether it was destroyed. */

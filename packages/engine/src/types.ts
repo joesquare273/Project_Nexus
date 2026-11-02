@@ -381,6 +381,8 @@ export const EFFECT_KINDS = [
    * the top card; a permanent card is put onto the battlefield (Chaos Warp).
    */
   'ShuffleIntoLibraryReveal',
+  /** The target permanent's owner shuffles it into their library (Ice Magic's Blizzaga). */
+  'ShuffleIntoLibrary',
   /** Attach the Equipment chosen for target `from` to this effect's target creature (Barret). */
   'AttachEquipmentTo',
   /** Does nothing itself: picks a target that a later effect uses (`from`). */
@@ -580,6 +582,8 @@ export const TEMPORARY_FLAGS = [
   'exileIfWouldDie',
   /** "When that creature dies this turn, return that card to its owner's hand." */
   'returnToHandIfDies',
+  /** "When this creature dies, return it to the battlefield tapped under its owner's control" (Vincent's Limit Break). */
+  'returnToBattlefieldTappedIfDies',
   /** "If damage would be dealt to that creature this turn, prevent that damage and put that many +1/+1 counters on it." */
   'damageBecomesCounters',
   /** "Can't block this turn." */
@@ -588,6 +592,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** ModifyPT: also add (n - 1) times the creature's current power and toughness ("double" is 2, "triple" is 3: Tifa's Limit Break). */
+  multiplyPT?: number;
   /** CopyCreature: name exception, duration, retained resolving trigger, and optional buffs to both objects. */
   copyName?: string;
   copyUntilEndOfTurn?: boolean;

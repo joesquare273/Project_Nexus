@@ -2709,3 +2709,121 @@ describe('S4 group 15: costs less for each, and a d20', () => {
     expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token').length).toBe(result);
   });
 });
+
+describe('S4 group 16: Tiered spells (choose one additional cost)', () => {
+  const tiered = (s: GameState, id: string, mode: number, targets: Target[] = []) => cast(s, { type: 'CastSpell', player: 'P1', card: id, mode, targets }).state;
+
+  it('Thunder Magic: 2, 4 or 8 damage to target creature, each tier costing more', () => {
+    let s = newGame();
+    const small = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'thunder-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    // Thundara needs {3} more.
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(small)] })).toBeTruthy();
+    s = tiered(s, spell, 0, [card(small)]);
+    expect(s.cards[small]!.damage ?? 0).toBe(toughnessOf(s, s.cards[small]!) <= 2 ? 0 : 2);
+    let t = newGame();
+    const big = put(t, 'P2', 'coeurl');
+    const again = put(t, 'P1', 'thunder-magic', 'hand');
+    mana(t, 'P1', { R: 2, C: 5 });
+    t = tiered(t, again, 2, [card(big)]);
+    expect(t.cards[big]!.zone).toBe('graveyard');
+  });
+
+  it('Fire Magic: 1, 2 or 3 damage to each creature', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'coeurl');
+    const theirs = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'fire-magic', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = tiered(s, spell, 1);
+    for (const id of [mine, theirs]) {
+      const c = s.cards[id]!;
+      expect(c.zone === 'graveyard' || c.damage === 2).toBe(true);
+    }
+  });
+
+  it('Ice Magic: back to hand, top or bottom of the library, or shuffled in', () => {
+    let s = newGame();
+    const a = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'ice-magic', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = tiered(s, spell, 0, [card(a)]);
+    expect(s.cards[a]!.zone).toBe('hand');
+
+    let t = newGame();
+    const b = put(t, 'P2', 'coeurl');
+    const second = put(t, 'P1', 'ice-magic', 'hand');
+    mana(t, 'P1', { U: 1, C: 3 });
+    t = tiered(t, second, 1, [card(b)]);
+    // Its owner chooses top or bottom.
+    expect(t.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'library' });
+    t = act(t, { type: 'ChooseCards', player: 'P2', cards: [] });
+    t = settle(t).state;
+    expect(t.players.P2!.library[0]).toBe(b);
+
+    let u = newGame();
+    const c = put(u, 'P2', 'coeurl');
+    const third = put(u, 'P1', 'ice-magic', 'hand');
+    mana(u, 'P1', { U: 2, C: 6 });
+    const before = u.players.P2!.library.length;
+    u = tiered(u, third, 2, [card(c)]);
+    expect(u.cards[c]!.zone).toBe('library');
+    expect(u.players.P2!.library.length).toBe(before + 1);
+  });
+
+  it('Restoration Magic: hexproof and indestructible, with 3 or 6 life at higher tiers', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'coeurl');
+    const other = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'restoration-magic', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = tiered(s, spell, 1, [card(mine)]);
+    expect(hasKeyword(s, s.cards[mine]!, 'Indestructible')).toBe(true);
+    expect(hasKeyword(s, s.cards[mine]!, 'Hexproof')).toBe(true);
+    expect(hasKeyword(s, s.cards[other]!, 'Indestructible')).toBe(false);
+    expect(s.players.P1!.life).toBe(23);
+
+    let t = newGame();
+    const x = put(t, 'P1', 'coeurl');
+    const y = put(t, 'P1', 'coeurl');
+    const curaga = put(t, 'P1', 'restoration-magic', 'hand');
+    mana(t, 'P1', { W: 2, C: 3 });
+    t = tiered(t, curaga, 2);
+    for (const id of [x, y]) expect(hasKeyword(t, t.cards[id]!, 'Indestructible')).toBe(true);
+    expect(t.players.P1!.life).toBe(26);
+  });
+
+  it('Tifa’s Limit Break: +2/+2, double, or triple power and toughness', () => {
+    for (const [mode, pay, expectStats] of [
+      [0, { G: 1 }, (p: number, t: number) => [p + 2, t + 2]],
+      [1, { G: 1, C: 2 }, (p: number, t: number) => [p * 2, t * 2]],
+      [2, { G: 2, C: 6 }, (p: number, t: number) => [p * 3, t * 3]],
+    ] as const) {
+      let s = newGame();
+      const body = put(s, 'P1', 'coeurl');
+      const [p, t] = stats(s, body) as [number, number];
+      const spell = put(s, 'P1', 'tifas-limit-break', 'hand');
+      mana(s, 'P1', pay);
+      s = tiered(s, spell, mode, [card(body)]);
+      expect(stats(s, body)).toEqual(expectStats(p, t));
+    }
+  });
+
+  it('Vincent’s Limit Break: base 3/2, 5/2 or 7/2, and it comes back tapped when it dies', () => {
+    let s = newGame();
+    const body = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'vincents-limit-break', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = tiered(s, spell, 1, [card(body)]);
+    expect(stats(s, body)).toEqual([5, 2]);
+    // It dies: back on the battlefield, tapped, under its owner's control.
+    const kill = put(s, 'P1', 'thunder-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = tiered(s, kill, 0, [card(body)]);
+    expect(s.cards[body]!.zone).toBe('battlefield');
+    expect(s.cards[body]!.tapped).toBe(true);
+    // A new object: back to its printed stats.
+    expect(stats(s, body)).not.toEqual([5, 2]);
+  });
+});
