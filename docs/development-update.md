@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-02
 
+### S4 group 11: lands and mana, 7 set cards
+
+- Engine: each player's turns are counted (`turnsTaken`, public) for
+  "enters tapped unless it's your first, second, or third turn"
+  (`entersTappedUnless.yourTurnAtMost`); extra land drops (`additionalLands`
+  static, `landDrops`); "sacrifice two artifacts" (`cost.sacrificeCount`);
+  "if you win the flip" (`ifWonFlip`); `CommanderToHand`, which doesn't
+  offer to send the commander straight back to the command zone.
+- Capital City, Starting Town, Command Beacon, Chromatic Lantern, Azusa,
+  The Gold Saucer and Eden, Seat of the Sanctum, each with a test. 135 of
+  320 set cards are built. Crossroads Village waits for "as it enters,
+  choose a color".
+
 ### S4 group 10: look at the top cards, revolt, coins, 6 set cards
 
 - Engine: `LookAtTopPutMatching` (look at the top N; you may put one, or any

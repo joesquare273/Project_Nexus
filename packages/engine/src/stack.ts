@@ -712,7 +712,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   if (!hasType(s, c, 'land')) reject('Only lands are played this way; cast spells with CastSpell.');
   if (defOf(s, c).notBuilt) reject(`${defOf(s, c).name} isn't built yet.`);
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
-  if (p.landsPlayedThisTurn >= 1) reject('You have already played a land this turn.');
+  if (p.landsPlayedThisTurn >= landDrops(s, playerId)) reject('You have already played a land this turn.');
   if (reveal && !canReveal(s, c, playerId)) reject('You have no card to reveal for that land.');
   p.landsPlayedThisTurn += 1;
   ctx.ev.push({ type: 'LandPlayed', player: playerId, card: id, from });
@@ -1117,7 +1117,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (rc && (rc.from ? counterCostCandidates(s, playerId, spec, c.id).length === 0 : !counterToRemove(c, rc.counter))) {
     return 'There is no counter to remove for that.';
   }
-  if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length === 0) return 'You have nothing to sacrifice for that.';
+  if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length < (spec.cost.sacrificeCount ?? 1)) return 'You have nothing to sacrifice for that.';
   if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   const n = spec.cost.discard ?? 0;
@@ -1162,6 +1162,17 @@ export function additionalManaFor(def: CardDefinition, costCards: readonly Insta
   return def.additionalCost?.sacrifice && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
 }
 
+/** Lands a player may play this turn: one, plus Azusa's two more on their own turn (rule 305.2). */
+export function landDrops(s: GameState, playerId: PlayerId): number {
+  if (s.activePlayer !== playerId) return 1;
+  let n = 1;
+  for (const c of battlefield(s)) {
+    if (c.controller !== playerId || c.phasedOut) continue;
+    for (const st of defOf(s, c).statics ?? []) n += st.additionalLands ?? 0;
+  }
+  return n;
+}
+
 /** Permanents a player could sacrifice for a "Sacrifice a ..." cost (the source itself counts if it matches). */
 export function sacrificeCandidates(s: GameState, playerId: PlayerId, filter: ObjectFilter, source: InstanceId): InstanceId[] {
   return battlefield(s)
@@ -1187,7 +1198,10 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
     walk(0,[],0);return out;
   }
   if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
-  if (spec.cost.sacrifice) return sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]);
+  if (spec.cost.sacrifice) {
+    const n = spec.cost.sacrificeCount ?? 1;
+    return n === 1 ? sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]) : subsets(sacrificeCandidates(s, playerId, spec.cost.sacrifice, source), n, n);
+  }
   if (spec.cost.returnUnblockedAttacker) return unblockedAttackers(s, playerId).map((id) => [id]);
   if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
   const n = spec.cost.discard ?? 0;
@@ -1236,8 +1250,10 @@ export function activateAbility(
   } else if (spec.cost.returnUnblockedAttacker) {
     if (costCards.length !== 1 || !unblockedAttackers(s, playerId).includes(costCards[0]!)) reject('Choose an unblocked attacker you control to return.');
   } else if (spec.cost.sacrifice) {
-    if (costCards.length !== 1 || !sacrificeCandidates(s, playerId, spec.cost.sacrifice, id).includes(costCards[0]!)) {
-      reject('Choose one permanent you control to sacrifice for that.');
+    const n = spec.cost.sacrificeCount ?? 1;
+    const able = sacrificeCandidates(s, playerId, spec.cost.sacrifice, id);
+    if (costCards.length !== n || new Set(costCards).size !== n || costCards.some((k) => !able.includes(k))) {
+      reject(n === 1 ? 'Choose one permanent you control to sacrifice for that.' : `Choose ${n} different permanents you control to sacrifice for that.`);
     }
   } else if (rc?.from) {
     if (costCards.length !== 1 || !counterCostCandidates(s, playerId, spec, id).includes(costCards[0]!)) {
@@ -1266,7 +1282,7 @@ export function activateAbility(
   // Ninjutsu: the Ninja attacks whoever the returned creature was attacking.
   const ninjutsuDefender = spec.cost.returnUnblockedAttacker ? s.combat!.attacks.find((a) => a.attacker === costCards[0])!.defender : undefined;
   if (spec.cost.returnUnblockedAttacker) moveCard(ctx, costCards[0]!, 'hand');
-  else if (spec.cost.sacrifice) sacrifice(ctx, costCards[0]!);
+  else if (spec.cost.sacrifice) for (const k of costCards) sacrifice(ctx, k);
   else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
@@ -2066,9 +2082,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const p = s.players[who]!;
         const twoHeaded = p.coinHeadsTurn !== s.turnNumber && battlefield(s).some((c) => c.controller === who && !c.phasedOut && defOf(s, c).statics?.some((st) => st.firstCoinFlipsHeads));
         if (twoHeaded) p.coinHeadsTurn = s.turnNumber;
-        ctx.ev.push({ type: 'CoinFlipped', player: who, won: twoHeaded || randomInt(s, 2) === 1 });
+        const won = twoHeaded || randomInt(s, 2) === 1;
+        r.wonFlip = won;
+        ctx.ev.push({ type: 'CoinFlipped', player: who, won });
       }
       return;
+    case 'CommanderToHand': {
+      const commanders = player(s, item.controller).command.filter((id) => s.cards[id]!.isCommander && s.cards[id]!.owner === item.controller);
+      if (commanders.length === 1) {
+        moveCard(ctx, commanders[0]!, 'hand');
+        // It came from the command zone on purpose: don't offer to send it straight back (rule 903.9b).
+        s.cards[commanders[0]!]!.commanderStays = true;
+      }
+      else if (commanders.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: commanders, min: 1, max: 1 }];
+      return;
+    }
     case 'LookAtTopPutMatching': {
       const top = topOfLibrary(s, item.controller, amount);
       if (top.length === 0) return;
@@ -2565,6 +2593,7 @@ function continueResolving(ctx: Ctx): void {
     if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
     if (effect.ifSacrificed && !r.sacrificedAny) continue;
+    if (effect.ifWonFlip && !r.wonFlip) continue;
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
       const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];

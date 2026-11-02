@@ -198,6 +198,7 @@ export function startNextTurn(ctx: Ctx): void {
   }
   s.activePlayer = extra ?? nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
+  s.players[s.activePlayer]!.turnsTaken = (s.players[s.activePlayer]!.turnsTaken ?? 0) + 1;
   for (const c of Object.values(s.cards)) {
     const permission = c.adventureGraveyard;
     if (permission?.player === s.activePlayer && permission.expiresOnTurn === undefined && s.turnNumber > permission.grantedTurn) permission.expiresOnTurn = s.turnNumber;

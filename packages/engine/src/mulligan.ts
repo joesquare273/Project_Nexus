@@ -86,6 +86,7 @@ export function beginFirstTurn(ctx: Ctx): void {
   const s = ctx.s;
   // Opening hands are drawn before the game's first turn; they don't count as draws "this turn".
   for (const pid of s.turnOrder) s.players[pid]!.cardsDrawnThisTurn = 0;
+  s.players[s.activePlayer]!.turnsTaken = 1;
   ctx.ev.push({ type: 'TurnChanged', activePlayer: s.activePlayer, turnNumber: 1 });
   enterStep(ctx, 'untap');
 }

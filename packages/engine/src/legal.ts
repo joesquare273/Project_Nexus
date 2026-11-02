@@ -45,6 +45,7 @@ import {
   queuedTriggerSpec,
   subsets,
   groupProblem,
+  landDrops,
   spellSacrificeChoices,
   additionalManaFor,
   addCosts,
@@ -499,7 +500,7 @@ export function getLegalActions(s: GameState): Action[] {
       const player = pending.player;
       const p = s.players[player]!;
       const actions: Action[] = [{ type: 'PassPriority', player }, ...manaAbilities(s, player)];
-      if (canActAtSorcerySpeed(s, player) && p.landsPlayedThisTurn < 1) {
+      if (canActAtSorcerySpeed(s, player) && p.landsPlayedThisTurn < landDrops(s, player)) {
         const lands = [...p.hand, ...s.turnOrder.flatMap((pid) => s.players[pid]!.exile), ...p.library.slice(0, 1)].filter((id) => {
           const c = s.cards[id]!;
           const zone = playableZone(s, player, c);

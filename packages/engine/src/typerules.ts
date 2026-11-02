@@ -188,6 +188,7 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
     return false;
   }
   if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
+  if (unless.yourTurnAtMost !== undefined && s.activePlayer === c.controller && (s.players[c.controller]!.turnsTaken ?? 0) <= unless.yourTurnAtMost) return false;
   return true;
 }
 

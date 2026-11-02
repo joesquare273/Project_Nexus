@@ -2256,3 +2256,109 @@ describe('S4 group 10: look at the top cards, revolt, Equipment and coins', () =
     }
   });
 });
+
+describe('S4 group 11: lands and mana', () => {
+  const manaActions = (s: GameState, id: string) => getLegalActions(s).filter((a): a is Extract<ReturnType<typeof getLegalActions>[number], { type: 'ActivateManaAbility' }> => a.type === 'ActivateManaAbility' && a.card === id);
+
+  it('Capital City taps for {C}, or {1}, {T} for any color', () => {
+    let s = newGame();
+    const city = put(s, 'P1', 'capital-city');
+    expect(manaActions(s, city).map((a) => a.mana)).toEqual(['C']);
+    mana(s, 'P1', { C: 1 });
+    const paid = manaActions(s, city).filter((a) => a.output !== undefined);
+    expect(paid.length).toBe(5);
+    s = act(s, paid.find((a) => a.output === 2)!);
+    expect(s.players.P1!.manaPool.B).toBe(1);
+    expect(s.players.P1!.manaPool.C).toBe(0);
+  });
+
+  it('Starting Town enters untapped on your first three turns; {T}, pay 1 life for any color', () => {
+    let s = newGame();
+    s.players.P1!.turnsTaken = 3;
+    const early = put(s, 'P1', 'starting-town', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: early });
+    expect(s.cards[early]!.tapped).toBe(false);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: early, mana: 'G' });
+    expect([s.players.P1!.manaPool.G, s.players.P1!.life]).toEqual([1, 19]);
+    let t = newGame();
+    t.players.P1!.turnsTaken = 4;
+    const late = put(t, 'P1', 'starting-town', 'hand');
+    t = act(t, { type: 'PlayLand', player: 'P1', card: late });
+    expect(t.cards[late]!.tapped).toBe(true);
+  });
+
+  it('a new game counts each player’s turns', () => {
+    let s = newGame();
+    s.players.P1!.turnsTaken = 1;
+    s = goTo(s, 'upkeep');
+    expect([s.activePlayer, s.players.P2!.turnsTaken]).toEqual(['P2', 1]);
+  });
+
+  it('Command Beacon: {T}, sacrifice it: put your commander into your hand from the command zone', () => {
+    let s = newGame();
+    const commander = put(s, 'P1', 'sram-senior-edificer', 'command', { isCommander: true });
+    const beacon = put(s, 'P1', 'command-beacon');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: beacon, ability: 0, targets: [] }).state;
+    expect(s.cards[commander]!.zone).toBe('hand');
+    expect(s.cards[beacon]!.zone).toBe('graveyard');
+  });
+
+  it('Chromatic Lantern: your lands tap for any color, and so does it', () => {
+    const s = newGame();
+    const lantern = put(s, 'P1', 'chromatic-lantern');
+    const island = put(s, 'P1', 'island');
+    const theirs = put(s, 'P2', 'island');
+    expect(new Set(manaActions(s, island).map((a) => a.mana))).toEqual(new Set(['U', 'W', 'B', 'R', 'G']));
+    expect(new Set(manaActions(s, lantern).map((a) => a.mana))).toEqual(new Set(['W', 'U', 'B', 'R', 'G']));
+    expect(manaActions(s, theirs)).toEqual([]);
+  });
+
+  it('Azusa: play two additional lands on each of your turns', () => {
+    let s = newGame();
+    put(s, 'P1', 'azusa-lost-but-seeking');
+    const lands = [put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'forest', 'hand')];
+    for (const id of lands.slice(0, 3)) s = act(s, { type: 'PlayLand', player: 'P1', card: id });
+    expect(rejected(s, { type: 'PlayLand', player: 'P1', card: lands[3]! })).toMatch(/already played/);
+  });
+
+  it('The Gold Saucer: {2}, {T}: flip a coin, a Treasure if you win; {3}, {T}, sacrifice two artifacts: draw', () => {
+    let wins = 0;
+    let g = newGame();
+    const flipper = put(g, 'P1', 'the-gold-saucer');
+    for (let i = 0; i < 12; i++) {
+      g.cards[flipper]!.tapped = false;
+      mana(g, 'P1', { C: 2 });
+      const before = g.players.P1!.battlefield.filter((id) => g.cards[id]!.defId === 'treasure-token').length;
+      const r = cast(g, { type: 'ActivateAbility', player: 'P1', card: flipper, ability: 0, targets: [] });
+      g = r.state;
+      const won = r.events.some((e) => e.type === 'CoinFlipped' && e.won);
+      expect(g.players.P1!.battlefield.filter((id) => g.cards[id]!.defId === 'treasure-token').length).toBe(before + (won ? 1 : 0));
+      if (won) wins++;
+    }
+    expect(wins).toBeGreaterThan(0);
+    expect(wins).toBeLessThan(12);
+    let s = newGame();
+    const saucer = put(s, 'P1', 'the-gold-saucer');
+    const rings = [put(s, 'P1', 'sol-ring'), put(s, 'P1', 'sol-ring')];
+    mana(s, 'P1', { C: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: saucer, ability: 1, targets: [], costCards: rings }).state;
+    expect(rings.every((id) => s.cards[id]!.zone === 'graveyard')).toBe(true);
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Eden: {5}, {T}: mill two, then you may sacrifice it to return another permanent card from your graveyard', () => {
+    let s = newGame();
+    const eden = put(s, 'P1', 'eden-seat-of-the-sanctum');
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    mana(s, 'P1', { C: 5 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: eden, ability: 0, targets: [] });
+    for (let i = 0; i < 20 && !(s.pending.kind === 'priority' && s.stack.length === 0); i++) {
+      const p = s.pending;
+      if (p.kind === 'chooseCards') s = act(s, { type: 'ChooseCards', player: p.player, cards: p.cards.filter((id) => id === eden) });
+      else s = settle(s, { targets: (options) => options.find((o) => o.some((t) => t.kind === 'card' && t.card === ring)) ?? options[0]! }).state;
+    }
+    expect(s.cards[eden]!.zone).toBe('graveyard');
+    expect(s.cards[ring]!.zone).toBe('hand');
+  });
+});

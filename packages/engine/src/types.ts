@@ -176,6 +176,8 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /** Put your commander from the command zone into your hand (Command Beacon); with two, you choose. */
+  'CommanderToHand',
   /**
    * Look at the top `amount` cards of your library; you may put one (or with
    * `anyNumber`, any number) matching `filter` into your hand or onto the
@@ -688,6 +690,8 @@ export interface EffectSpec {
   thisTurn?: boolean;
   /** ExileTopCardToPlay: playable until another card is exiled with the same source (Furious Rise). */
   untilNextFromSource?: boolean;
+  /** Only if the last coin flip of this spell or ability was won ("If you win the flip, ..."). */
+  ifWonFlip?: boolean;
   /** Only if a permanent was sacrificed earlier in this spell ("Sacrifice a creature. If you do, ..."). */
   ifSacrificed?: boolean;
   /** "Up to one target": the target may be left out. */
@@ -965,6 +969,8 @@ export interface ActivatedSpec {
     discard?: number;
     /** "Sacrifice a creature": one permanent you control matching this, chosen with the action (`costCards`). */
     sacrifice?: ObjectFilter;
+    /** "Sacrifice two artifacts": how many permanents `sacrifice` takes (default 1). */
+    sacrificeCount?: number;
     /**
      * "Remove a [page] counter from this": from this permanent, or with
      * `from` from a permanent you control matching it (chosen with the action,
@@ -1003,6 +1009,8 @@ export interface StaticSpec {
   goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
+  /** You may play this many additional lands on each of your turns (Azusa). */
+  additionalLands?: number;
   /** Edgar: the first time its controller flips coins each turn, they come up heads. */
   firstCoinFlipsHeads?: boolean;
   /** The source's controller has no maximum hand size (Thought Vessel). */
@@ -1171,6 +1179,8 @@ export interface CardDefinition {
     controlsSubtypes?: string[];
     /** "unless you control two or more basic lands". */
     basicLands?: number;
+    /** "unless it's your first, second, or third turn of the game". */
+    yourTurnAtMost?: number;
     /** "you may reveal a Forest or Plains card from your hand. If you don't, ...". */
     revealSubtypes?: string[];
   };
@@ -1522,6 +1532,8 @@ export interface PlayerState {
   lifeGainedThisTurn?: number;
   /** The last turn a card left this player's graveyard. */
   cardLeftGraveyardTurn?: number;
+  /** How many turns this player has begun (Starting Town: "your first, second, or third turn of the game"). */
+  turnsTaken?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
   /** The turn this player's first coin flip came up heads by Edgar's Two-Headed Coin. */
@@ -1717,6 +1729,8 @@ export interface Resolving {
   scrying?: boolean;
   /** Card choices still to make, in order (discard, sacrifice). */
   choiceQueue?: CardChoice[];
+  /** The last coin flip of this spell or ability was won. */
+  wonFlip?: boolean;
   /** A permanent was sacrificed by an earlier effect of this spell ("If you do"). */
   sacrificedAny?: boolean;
   /** Life players lost to this spell or ability's effects so far. */
