@@ -116,6 +116,7 @@ export function enterStep(ctx: Ctx, step: Step): void {
       givePriority(ctx, s.activePlayer);
       return;
     case 'end': {
+      s.endStepsThisTurn = (s.endStepsThisTurn ?? 0) + 1;
       const p = s.players[s.activePlayer]!;
       p.endStepsBegun = (p.endStepsBegun ?? 0) + 1;
     }
@@ -142,6 +143,12 @@ export function advanceStep(ctx: Ctx): void {
     s.extraCombats = s.extraCombats! - 1;
     s.combat = null;
     enterStep(ctx, 'beginCombat');
+    return;
+  }
+  // Y'shtola Rhul: "there is an additional end step after this step".
+  if (s.step === 'end' && (s.extraEndSteps ?? 0) > 0) {
+    s.extraEndSteps = s.extraEndSteps! - 1;
+    enterStep(ctx, 'end');
     return;
   }
   // Rule 514.3a: after exceptional cleanup priority, another cleanup begins.
@@ -239,6 +246,8 @@ export function startNextTurn(ctx: Ctx): void {
   delete s.creatureDeathsByController;
   s.combatDamageHistory = [];
   s.combatsThisTurn = 0;
+  delete s.endStepsThisTurn;
+  delete s.extraEndSteps;
   s.extraCombats = 0;
   delete s.players[s.activePlayer]!.attackTaxes;
   for (const pid of s.turnOrder) {

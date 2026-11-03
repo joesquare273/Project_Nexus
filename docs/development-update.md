@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 57: Y'shtola Rhul, Mizzix's Mastery, Terra
+
+Three more set cards (310 of 320). Y'shtola adds an extra end step after the
+turn's first one; Mizzix's Mastery (and its overload) exiles instants and
+sorceries from your graveyard to cast free; Terra is a transforming card
+whose Saga back face copies your nonlegendary enchantments. Fix: "milled
+this way" now works when returning a milled card to hand.
+
 ### Set cards, group 56: Muldrotha, Vaan, Firion
 
 Three more set cards (307 of 320). Muldrotha casts one permanent spell of

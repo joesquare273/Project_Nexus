@@ -375,6 +375,10 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** An additional end step after this one, if this is the turn's first end step (Y'shtola Rhul). */
+  'AdditionalEndStep',
+  /** Exile each target card from a graveyard; you may cast it this turn without paying its mana cost, then it's exiled (Mizzix's Mastery). */
+  'ExileToCastFree',
   /** Vaan: you may cast the card exiled earlier in this ability (paying its costs); if you don't, create a Treasure. */
   'CastExiledOrTreasure',
   /** Memories Returning: reveal the top five; you and an opponent alternately put one into your hand and one on the bottom; the last goes to your hand. */
@@ -2290,6 +2294,9 @@ export interface GameState {
   triggersHeld?: boolean;
   /** Triggered abilities waiting to go on the stack, in APNAP order. */
   triggerQueue: QueuedTrigger[];
+  /** End steps begun this turn, and additional end steps still to come (Y'shtola Rhul). */
+  endStepsThisTurn?: number;
+  extraEndSteps?: number;
   /** Ultima: "End the turn" (rule 724) happens as the resolving spell finishes. */
   endingTurn?: boolean;
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */

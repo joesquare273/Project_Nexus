@@ -1831,10 +1831,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'ReturnFromGraveyardToHand': {
-      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
       const n = Math.min(effect.amount === undefined ? 1 : amount, candidates.length);
       if (n === 0) return;
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: candidates, min: n, max: n }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: candidates, min: effect.optional ? 0 : n, max: n }];
       return;
     }
     case 'BecomeMonarch':
@@ -2312,6 +2312,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       else r.createdTokens.push(createToken(ctx, 'treasure-token', item.controller));
       return;
     }
+    case 'AdditionalEndStep':
+      if (s.step === 'end' && (s.endStepsThisTurn ?? 0) === 1) s.extraEndSteps = (s.extraEndSteps ?? 0) + 1;
+      return;
+    case 'ExileToCastFree':
+      for (const id of cards) {
+        if (s.cards[id]!.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'exile');
+        // Mizzix's Mastery casts a copy; casting the exiled card itself, exiled again afterwards, comes to the same.
+        s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, exileAfter: true };
+      }
+      return;
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;

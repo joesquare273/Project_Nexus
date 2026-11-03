@@ -286,6 +286,8 @@ const GAME_FIELDS = {
   triggersHeld: 'copy',
   triggerQueue: 'refs',
   endingTurn: 'copy',
+  endStepsThisTurn: 'copy',
+  extraEndSteps: 'copy',
   delayedTriggers: 'refs',
   temporaryEffects: 'refs',
   creaturesDiedThisTurn: 'copy',

@@ -5496,3 +5496,63 @@ describe('S4 group 56: Muldrotha, Vaan, Firion', () => {
     expect(s.cards[copy]?.zone ?? 'void').not.toBe('battlefield');
   });
 });
+
+describe('S4 group 57: Y’shtola Rhul, Mizzix’s Mastery, Terra', () => {
+  it('Y’shtola: at your end step, flicker a creature you control; the first end step is followed by another', () => {
+    let s = newGame();
+    put(s, 'P1', 'yshtola-rhul');
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { counters: 2 });
+    s = goTo(s, 'end', { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === cat))! });
+    s = settle(s, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === cat))! }).state;
+    expect(s.cards[cat]!.counters ?? 0).toBe(0);
+    expect(s.extraEndSteps).toBe(1);
+    s = nextStep(s);
+    expect(s.step).toBe('end');
+    expect(s.endStepsThisTurn).toBe(2);
+    s = settle(s).state;
+    expect(s.extraEndSteps ?? 0).toBe(0);
+    s = settle(nextStep(s)).state;
+    expect(s.activePlayer).toBe('P2');
+  });
+
+  it('Mizzix’s Mastery: exile an instant or sorcery from your graveyard and cast it free; overloaded, all of them', () => {
+    let s = newGame();
+    const bolts = [put(s, 'P1', 'lightning-bolt', 'graveyard'), put(s, 'P1', 'lightning-bolt', 'graveyard')];
+    const mastery = put(s, 'P1', 'mizzixs-mastery', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mastery, targets: [card(bolts[0]!)] }).state;
+    expect(s.cards[mastery]!.zone).toBe('graveyard');
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolts[0]!, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+    expect(s.cards[bolts[0]!]!.zone).toBe('exile');
+    const again = put(s, 'P1', 'mizzixs-mastery', 'hand');
+    put(s, 'P1', 'lightning-bolt', 'graveyard');
+    mana(s, 'P1', { R: 3, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: again, alternative: true }).state;
+    expect(s.players.P1!.graveyard.filter((id) => s.cards[id]!.defId === 'lightning-bolt')).toHaveLength(0);
+    expect(spellOptions(s, 'P1').filter((o) => s.cards[o.action.card]!.defId === 'lightning-bolt').length).toBeGreaterThan(0);
+  });
+
+  it('Terra mills five and takes an enchantment; Esper Terra copies an enchantment with haste and adds ten mana at IV', () => {
+    let s = newGame();
+    const carpet = put(s, 'P1', 'carpet-of-flowers', 'library');
+    s.players.P1!.library = [carpet, ...s.players.P1!.library.filter((id) => id !== carpet)];
+    const terra = put(s, 'P1', 'terra-magical-adept-esper-terra', 'hand');
+    mana(s, 'P1', { R: 1, G: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: terra });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'hand', min: 0 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [carpet] })).state;
+    expect(s.cards[carpet]!.zone).toBe('hand');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: carpet }, {}).state;
+    mana(s, 'P1', { R: 1, G: 1, C: 4 });
+    s.cards[terra]!.summoningSick = false;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: terra, ability: 0 }, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === carpet))! }).state;
+    expect(s.cards[terra]!.transformed).toBe(true);
+    const copy = s.players.P1!.battlefield.find((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'carpet-of-flowers');
+    expect(copy).toBeDefined();
+    expect(s.cards[copy!]!.sacrificeAtEndStep).toBe(true);
+  });
+});

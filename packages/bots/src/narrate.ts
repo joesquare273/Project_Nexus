@@ -356,6 +356,10 @@ function effectText(e: EffectSpec): string {
       return 'reveal the top five cards; you and an opponent take turns putting one into your hand and one on the bottom';
     case 'CastExiledOrTreasure':
       return "you may cast it; if you don't, create a Treasure";
+    case 'AdditionalEndStep':
+      return 'if this is the first end step of the turn, there is an additional end step after this one';
+    case 'ExileToCastFree':
+      return `exile ${who}; you may cast it without paying its mana cost`;
     case 'EndTheTurn':
       return 'end the turn';
     case 'CreateDemonCopy':
