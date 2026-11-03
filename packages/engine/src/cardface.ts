@@ -52,6 +52,13 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   let out = def;
   const change = () => { if (out === def) out = { ...def }; };
   if (c.crewed) { change(); out.types = [...new Set([...out.types, 'artifact' as const, 'creature' as const])]; }
+  // Purphoros: "as long as your devotion to red is less than five, Purphoros isn't a creature" (printed mana costs, rule 700.5).
+  if (def.creatureOnlyWithDevotion) {
+    const { color, atLeast } = def.creatureOnlyWithDevotion;
+    const devotion = Object.values(s.cards).filter((x) => x.zone === 'battlefield' && x.controller === c.controller && !x.phasedOut)
+      .reduce((n, x) => n + ((s.cardDefs[x.defId]?.manaCost ?? '').match(new RegExp(`\\{[^}]*${color}[^}]*\\}`, 'g'))?.length ?? 0), 0);
+    if (devotion < atLeast) { change(); out.types = out.types.filter((t) => t !== 'creature'); }
+  }
   // "Becomes a 7/7 Beast creature in addition to its other types" (Ride the Shoopuf).
   if (c.animated) {
     change();

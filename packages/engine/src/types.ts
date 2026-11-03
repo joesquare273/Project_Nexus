@@ -426,6 +426,8 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** "Until your next turn, damage dealt to that player or a permanent they control is doubled" (Lightning, Army of One). */
+  'Stagger',
   /** The triggering creature spell enters with `amount` additional +1/+1 counters (Torgal, A Fine Hound). */
   'SubjectEntersWithCounters',
   /** You put `amount` cards from your hand on top of your library, the first chosen on top (Brainstorm). */
@@ -626,6 +628,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** Sacrifice: each player sacrifices half the matching permanents they control, rounded down (Zodiark). */
+  halfOfMatching?: boolean;
   /** CreateToken: one for each opponent, tapped and attacking that player (Adeline). */
   attackingEachOpponent?: boolean;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
@@ -669,7 +673,7 @@ export interface EffectSpec {
   /** GrantTrigger: the combat damage ability to grant until cleanup. */
   trigger?: TriggerSpec;
   /** GainControl: give the permanent to the player captured by the trigger, or to the player chosen as target `from` ("target opponent gains control"). */
-  giveTo?: 'SubjectController' | 'TargetPlayer';
+  giveTo?: 'SubjectController' | 'TargetPlayer' | 'DefendingPlayer';
   /** Affect the source only if it is still the same object as when it triggered. */
   sameObject?: boolean;
   effect: EffectKind;
@@ -1211,6 +1215,8 @@ export interface StaticSpec {
   cantAttackOrBlock?: boolean;
   /** Base power and toughness equal to the source's controller's life total (Aettir and Priwen). */
   basePTFromLife?: boolean;
+  /** "If one or more tokens would be created under your control, those tokens plus a 1/1 green Frog are created instead" (Quina). */
+  extraFrogOnTokens?: boolean;
   /** "You have protection from each of your opponents" (Absolute Virtue). */
   controllerProtectedFromOpponents?: boolean;
   /** "Doesn't untap during its controller's untap step" (Sleep Magic). */
@@ -1413,6 +1419,8 @@ export interface CardDefinition {
   kickerSacrifice?: ObjectFilter;
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** "As long as your devotion to [color] is less than N, this isn't a creature" (Purphoros). */
+  creatureOnlyWithDevotion?: { color: 'W' | 'U' | 'B' | 'R' | 'G'; atLeast: number };
   /** Its power is equal to this count, everywhere (a characteristic-defining ability, rule 604.3: Adeline). */
   powerFromCount?: CountKind;
   /** "Can't be blocked except by N or more creatures" (Relentless X-ATM092: 3). */
@@ -1728,6 +1736,8 @@ export interface PlayerState {
   preventDamageTurn?: number;
   /** Can't cast spells during this turn (Silence). */
   cantCastTurn?: number;
+  /** Stagger: until `by`'s next turn, damage to this player and their permanents is doubled. */
+  staggeredBy?: PlayerId[];
   /** "Can't cast noncreature spells this turn" (Ranger-Captain of Eos). */
   cantCastNoncreatureTurn?: number;
   /** Cards drawn this turn. Reset as each turn begins. */

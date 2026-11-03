@@ -197,6 +197,8 @@ function effectText(e: EffectSpec): string {
       return 'shuffle cards from your graveyard into your library';
     case 'SubjectEntersWithCounters':
       return `that creature enters with ${plural('additional +1/+1 counter')}`;
+    case 'Stagger':
+      return `until your next turn, damage to ${who} and their permanents is doubled`;
     case 'ShuffleLibrary':
       return `${you ? 'shuffle your' : `${who} shuffles their`} library`;
     case 'CounterUnlessPays':

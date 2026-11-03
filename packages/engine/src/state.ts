@@ -459,6 +459,9 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   const source = s.cards[sourceId]!;
   // "Prevent all damage that would be dealt to you this turn" (Ultimate Magic: Holy).
   if (target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
+  // Stagger (Lightning, Army of One): damage to that player or their permanents is doubled.
+  const hurt = target.kind === 'player' ? target.player : target.kind === 'card' ? s.cards[target.card]?.controller : undefined;
+  if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;
   // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
   if (target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {

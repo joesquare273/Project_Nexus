@@ -284,7 +284,7 @@ export function validateCardDefinition(raw: unknown): string[] {
 }
 
 function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
-  if (e.giveTo && (e.effect !== 'GainControl' || !['SubjectController', 'TargetPlayer'].includes(e.giveTo))) err('giveTo is only for GainControl (SubjectController or TargetPlayer).');
+  if (e.giveTo && (e.effect !== 'GainControl' || !['SubjectController', 'TargetPlayer', 'DefendingPlayer'].includes(e.giveTo))) err('giveTo is only for GainControl (SubjectController, TargetPlayer or DefendingPlayer).');
   if (e.attacking && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This' || !inAbility)) err('attacking is only for ReturnToBattlefield on This in an ability.');
   if (e.sameObject && (!inAbility || (e.target !== 'This' && e.effect !== 'CopyCreature' && !(e.effect === 'Sacrifice' && e.target === 'You' && e.filter?.self)))) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
@@ -294,7 +294,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
   if (e.effect === 'Discard' && e.amount === undefined && !e.anyNumber && !e.wholeHand && !e.entireHand) err('Discard needs an amount (or anyNumber, wholeHand or entireHand).');
   if ((e.effect === 'Sacrifice' || e.effect === 'KeepAndSacrificeRest') && !e.filter) err(`${e.effect} needs a filter saying what qualifies.`);
-  if (e.effect === 'Sacrifice' && e.amount === undefined) err('Sacrifice needs an amount.');
+  if (e.effect === 'Sacrifice' && e.amount === undefined && !e.halfOfMatching) err('Sacrifice needs an amount (or halfOfMatching).');
   if (e.effect === 'KeepAndSacrificeRest' && e.amount === undefined && !e.onePerType) err('KeepAndSacrificeRest needs an amount (or onePerType).');
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
   if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');

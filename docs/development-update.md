@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 38: Lightning, Kain, Zodiark, Quina, Purphoros
+
+- 236 of 320, with the Frog token (tfin 18). Engine: `Stagger`
+  (`staggeredBy` on the player, public), giving control to the damaged
+  player, sacrificing half your matching creatures, Quina's extra Frog,
+  and Purphoros's devotion check.
+
 ### Set cards, group 37: Zell Dincht, Traxos, Tymna the Weaver, Torgal
 
 - 231 of 320. Engine: the `OpponentsDealtCombatDamageThisTurn` count and

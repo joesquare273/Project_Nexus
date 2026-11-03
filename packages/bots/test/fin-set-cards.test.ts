@@ -4132,3 +4132,87 @@ describe('S4 group 39: Zell Dincht, Traxos, Tymna the Weaver, Torgal', () => {
     expect(countersOf(s.cards[second]!, '+1/+1')).toBe(0);
   });
 });
+
+describe('S4 group 40: Lightning, Kain, Zodiark, Quina, Purphoros', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+
+  it('Lightning, Army of One: after its combat damage, damage to that player and their permanents is doubled until your next turn', () => {
+    let s = newGame();
+    const lightning = put(s, 'P1', 'lightning-army-of-one');
+    const foe = put(s, 'P2', 'summon-titan');
+    s = fight(s, [{ attacker: lightning, defender: 'P2' }]).state;
+    expect(s.players.P2!.life).toBe(17);
+    s = goTo(s, 'main2');
+    const comet = put(s, 'P1', 'choco-comet', 'hand');
+    mana(s, 'P1', { R: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: comet, x: 2, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(13);
+    const bolt = put(s, 'P1', 'thunder-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, mode: 0, targets: [card(foe)] }).state;
+    expect(s.cards[foe]!.damage).toBe(4);
+  });
+
+  it('Kain: during your turn it flies; its combat damage gives it to that player, and you draw, make tapped Treasures and lose that much', () => {
+    let s = newGame();
+    const kain = put(s, 'P1', 'kain-traitorous-dragoon');
+    expect(hasKeyword(s, s.cards[kain]!, 'Flying')).toBe(true);
+    const hand = s.players.P1!.hand.length;
+    s = fight(s, [{ attacker: kain, defender: 'P2' }]).state;
+    expect(s.cards[kain]!.controller).toBe('P2');
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+    const treasures = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token');
+    expect(treasures).toHaveLength(2);
+    expect(treasures.every((id) => s.cards[id]!.tapped)).toBe(true);
+    expect(s.players.P1!.life).toBe(18);
+  });
+
+  it('Zodiark: each player sacrifices half their non-God creatures; it grows for each other creature sacrificed', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, 'P2', 'coeurl');
+    for (let i = 0; i < 2; i++) put(s, 'P1', 'coeurl');
+    const zodiark = put(s, 'P1', 'zodiark-umbral-god', 'hand');
+    mana(s, 'P1', { B: 5 });
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: zodiark }).state);
+    const cats = (pid: string) => s.players[pid]!.battlefield.filter((id) => s.cards[id]!.defId === 'coeurl').length;
+    expect([cats('P1'), cats('P2')]).toEqual([1, 2]);
+    expect(countersOf(s.cards[zodiark]!, '+1/+1')).toBe(2);
+    expect(hasKeyword(s, s.cards[zodiark]!, 'Indestructible')).toBe(true);
+  });
+
+  it('Quina: each time you create tokens you get a 1/1 Frog too; {2}, sacrifice a Frog: a +1/+1 counter on Quina', () => {
+    let s = newGame();
+    const quina = put(s, 'P1', 'quina-qu-gourmet');
+    const greens = put(s, 'P1', 'gysahl-greens', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: greens }).state;
+    const frogs = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'frog-token');
+    expect(frogs).toHaveLength(1);
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'chocobo-bird-token')).toHaveLength(1);
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: quina, ability: 0, costCards: [frogs[0]!] }).state;
+    expect(countersOf(s.cards[quina]!, '+1/+1')).toBe(1);
+  });
+
+  it('Purphoros isn’t a creature until your devotion to red is five; another creature entering deals 2 to each opponent', () => {
+    let s = newGame(3);
+    const purphoros = put(s, 'P1', 'purphoros-god-of-the-forge');
+    expect(currentDefinition(s, s.cards[purphoros]!).types).not.toContain('creature');
+    put(s, 'P1', 'summon-esper-ramuh');
+    put(s, 'P1', 'zell-dincht');
+    expect(currentDefinition(s, s.cards[purphoros]!).types).not.toContain('creature');
+    put(s, 'P1', 'coral-sword');
+    expect(currentDefinition(s, s.cards[purphoros]!).types).toContain('creature');
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cat }).state;
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([18, 18]);
+  });
+});

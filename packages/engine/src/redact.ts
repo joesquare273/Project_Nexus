@@ -244,6 +244,7 @@ const PLAYER_FIELDS = {
   preventDamageTurn: 'copy',
   cantCastTurn: 'copy',
   cantCastNoncreatureTurn: 'copy',
+  staggeredBy: 'copy',
   cardsDrawnThisTurn: 'copy',
   conceded: 'copy',
   phasedOut: 'refs',

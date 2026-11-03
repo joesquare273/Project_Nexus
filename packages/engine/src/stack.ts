@@ -1563,7 +1563,9 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       .map((c) => c.id);
     if (cards.length === 0) continue;
     if (effect.effect === 'Sacrifice' || effect.effect === 'ChooseAndDestroy') {
-      const max = Math.min(Math.max(1, amount), cards.length);
+      // Zodiark: half of them, rounded down.
+      const max = effect.halfOfMatching ? Math.floor(cards.length / 2) : Math.min(Math.max(1, amount), cards.length);
+      if (max === 0) continue;
       const purpose = effect.effect === 'Sacrifice' ? 'sacrifice' : 'destroy';
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional ? 0 : max, max }];
     } else {
@@ -2001,7 +2003,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ? item.kind === 'ability' ? item.subjectController : undefined
           : effect.giveTo === 'TargetPlayer'
             ? chosen?.kind === 'player' ? chosen.player : undefined
-            : item.controller;
+            : effect.giveTo === 'DefendingPlayer'
+              ? item.kind === 'ability' ? item.defender : undefined
+              : item.controller;
       if (!receiver || s.players[receiver]!.eliminated) return;
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
@@ -2081,6 +2085,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (c?.zone === 'stack' && amount > 0) c.extraCountersOnEnter = (c.extraCountersOnEnter ?? 0) + amount;
       return;
     }
+    case 'Stagger':
+      for (const pid of targetPlayers(targets)) {
+        const p = player(s, pid);
+        p.staggeredBy = [...(p.staggeredBy ?? []), item.controller];
+      }
+      return;
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
@@ -2113,6 +2123,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           const id = createToken(ctx, effect.token!, pid);
           if (effect.entersTapped) s.cards[id]!.tapped = true;
           r.createdTokens.push(id);
+        }
+        // Quina, Qu Gourmet: "those tokens plus a 1/1 green Frog" (one Frog per Quina, per creation).
+        if (amount > 0) {
+          const quinas = battlefield(s).filter((c) => c.controller === pid && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.extraFrogOnTokens)).length;
+          for (let i = 0; i < quinas; i++) r.createdTokens.push(createToken(ctx, 'frog-token', pid));
         }
       }
       return;

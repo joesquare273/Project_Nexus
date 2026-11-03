@@ -4176,6 +4176,23 @@
     "scryfallId": "9921f646-e893-44db-ac89-0633c1009788",
     "relatedTokens": []
   },
+  "frog-token": {
+    "name": "Frog",
+    "typeLine": "Token Creature — Frog",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "18",
+    "artist": "Daniel Correia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132",
+      "normal": "https://cards.scryfall.io/normal/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132",
+      "large": "https://cards.scryfall.io/large/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/3/e3c84944-23b8-40d7-9b25-c746b08b4dc4.jpg?1783906132"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/18/frog?utm_source=api",
+    "scryfallId": "e3c84944-23b8-40d7-9b25-c746b08b4dc4",
+    "relatedTokens": []
+  },
   "from-father-to-son": {
     "name": "From Father to Son",
     "typeLine": "Sorcery",
