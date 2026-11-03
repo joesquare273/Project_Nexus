@@ -86,6 +86,11 @@ export function canEverCast(def: CardDefinition): boolean {
   return isSpellCard(def) && !def.uncastable && !def.notBuilt;
 }
 
+/** Whether a Bolas's Citadel lets this player pay life for spells cast from the top of their library. */
+export function libraryTopCostsLife(s: GameState, playerId: PlayerId): boolean {
+  return battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && defOf(s, c).libraryTopCostsLife);
+}
+
 export function hasInstantTiming(def: CardDefinition): boolean {
   return def.types.includes('instant') || (def.keywords?.includes('Flash') ?? false);
 }
@@ -821,6 +826,8 @@ export function spellCost(
     ? card.castPermission
     : undefined;
   const payer = extra.player ?? permission?.player ?? card?.owner;
+  // Bolas's Citadel: life instead of the mana cost (paid in castSpell).
+  if (from === 'library' && payer && libraryTopCostsLife(s, payer)) return parseManaCost('');
   const way = from === 'graveyard' && card ? extra.castGroup ? 'group' : extra.graveyardSource ? 'static' : graveyardWay(s, payer!, card, extra.adventure) : null;
   const base = permission?.free
     ? undefined
@@ -1031,7 +1038,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure) : undefined;
   if (edgar && !edgar.unlimited) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
   // Noctis: "by paying 3 life in addition to paying their other costs". Raubahn's ward: life equal to his power.
-  const lifeToPay = (edgar?.payLife ?? 0) + wardLife(s, targets, playerId);
+  const citadelLife = from === 'library' && libraryTopCostsLife(s, playerId) ? manaValue(parseManaCost(def.manaCost)) : 0;
+  const lifeToPay = (edgar?.payLife ?? 0) + wardLife(s, targets, playerId) + citadelLife;
   if (lifeToPay > 0) {
     if (player(s, playerId).life < lifeToPay) reject(`You need ${lifeToPay} life to pay for that.`);
     changeLife(ctx, playerId, -lifeToPay);
@@ -1171,7 +1179,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.ifOpponentHitByLegendary && !(s.combatDamageHistory ?? []).some((h) => h.legendary && h.player !== playerId && h.sourceController === playerId)) {
     return 'Only after an opponent was dealt combat damage by a legendary creature this turn.';
   }
-  if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
+  // Commander ninjutsu (Yuriko): from your hand or the command zone.
+  if (zone === 'hand' && !(c.owner === playerId && (c.zone === 'hand' || (spec.alsoFromCommandZone && c.zone === 'command')))) return 'That card is not in your hand.';
   if (zone === 'graveyard' && (c.zone !== 'graveyard' || c.owner !== playerId)) return 'That card is not in your graveyard.';
   if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';
   if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
@@ -2358,7 +2367,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const lost = objectManaValue(s, s.cards[top]!);
       ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: top, defId: s.cards[top]!.defId });
       moveCard(ctx, top, 'hand');
-      changeLife(ctx, item.controller, -lost);
+      // Yuriko: "Each opponent loses life equal to that card's mana value."
+      if (effect.opponentsLose) for (const opp of alivePlayers(s).filter((pid) => pid !== item.controller)) changeLife(ctx, opp, -lost);
+      else changeLife(ctx, item.controller, -lost);
       return;
     }
     case 'AllowCastFromGraveyard':
@@ -2642,7 +2653,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'EnterAttacking': {
       const c = s.cards[source]!;
       // The Ninja must still be the card in hand that was revealed.
-      if (c.zone !== 'hand' || (c.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0)) return;
+      if ((c.zone !== 'hand' && c.zone !== 'command') || (c.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0)) return;
       moveCard(ctx, source, 'battlefield', { controller: item.controller });
       c.tapped = true;
       c.summoningSick = true;
@@ -3181,6 +3192,10 @@ export function resolveTop(ctx: Ctx): void {
       }
       // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
       if (item.alternative && def.alternativeCost?.evoke) c.evoked = true;
+      if (item.alternative && def.alternativeCost?.dash) {
+        c.returnToHandAtEndStep = true;
+        s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'], whileControlledBy: item.controller });
+      }
       if (item.alternative && def.alternativeCost?.blitz) {
         c.blitzed = true;
         s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });

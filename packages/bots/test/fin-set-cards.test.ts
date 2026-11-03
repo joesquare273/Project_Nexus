@@ -5164,3 +5164,55 @@ describe('S4 group 51: Cargo Ship, Urza, Kinnan (mana)', () => {
     expect(s.players.P1!.manaPool.G).toBe(1);
   });
 });
+
+describe('S4 group 52: Ragavan, Bolas’s Citadel, Yuriko', () => {
+  it('Ragavan: dash for {1}{R} (haste, back to hand at end step); combat damage makes a Treasure and exiles their top card to cast', () => {
+    let s = newGame();
+    const ragavan = put(s, 'P1', 'ragavan-nimble-pilferer', 'hand');
+    const top = put(s, 'P2', 'lightning-bolt', 'library');
+    s.players.P2!.library = [top, ...s.players.P2!.library.filter((id) => id !== top)];
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ragavan, alternative: true }).state;
+    expect(hasKeyword(s, s.cards[ragavan]!, 'Haste')).toBe(true);
+    s = fight(s, [{ attacker: ragavan, defender: 'P2' }]).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token')).toBe(true);
+    expect(s.cards[top]!.zone).toBe('exile');
+    mana(s, 'P1', { R: 1 });
+    s = goTo(s, 'main2');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: top, targets: [player('P2')] }).state;
+    expect(s.cards[top]!.zone).toBe('graveyard');
+    s = goTo(s, 'end');
+    expect(s.cards[ragavan]!.zone).toBe('hand');
+  });
+
+  it('Bolas’s Citadel: cast spells from the top of your library by paying life equal to their mana value', () => {
+    let s = newGame();
+    put(s, 'P1', 'bolass-citadel');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    s.players.P1!.library = [bolt, ...s.players.P1!.library.filter((id) => id !== bolt)];
+    const [mine, theirs] = [s.players.P1!.life, s.players.P2!.life];
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] }).state;
+    expect([s.players.P1!.life, s.players.P2!.life]).toEqual([mine - 1, theirs - 3]);
+  });
+
+  it('Yuriko: commander ninjutsu from the command zone; a Ninja’s combat damage reveals the top card and opponents lose its mana value', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl');
+    const yuriko = put(s, 'P1', 'yuriko-the-tigers-shadow', 'command');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: cat, defender: 'P2' }] })).state;
+    s = nextStep(s);
+    while (s.pending.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: s.pending.player, blocks: [] });
+    s = settle(s).state;
+    mana(s, 'P1', { U: 1, B: 1 });
+    s = settle(act(s, { type: 'ActivateAbility', player: 'P1', card: yuriko, ability: 0, targets: [], costCards: [cat] })).state;
+    expect(s.cards[yuriko]).toMatchObject({ zone: 'battlefield', tapped: true });
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    s.players.P1!.library = [ring, ...s.players.P1!.library.filter((id) => id !== ring)];
+    const life = s.players.P2!.life;
+    s = settle(nextStep(s)).state;
+    expect(s.cards[ring]!.zone).toBe('hand');
+    expect(s.players.P2!.life).toBe(life - 1 - 1);
+  });
+});

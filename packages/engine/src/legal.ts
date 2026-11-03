@@ -24,6 +24,7 @@ import {
   canPayFromPool,
   choosingEffects,
   castsAtInstantSpeed,
+  libraryTopCostsLife,
   playableZone,
   spellCost,
   spellEffects,
@@ -140,6 +141,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const from = naturalFrom ?? ((c.zone==='graveyard'||c.zone==='exile') && groups.length ? c.zone : null);
     const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
     if (!from || !canEverCast(def) || (!castsAtInstantSpeed(s, playerId, c, def) && !sorcerySpeed && !anyTime)) continue;
+    // Bolas's Citadel: the life must be there to pay.
+    if (from === 'library' && libraryTopCostsLife(s, playerId) && p.life < manaValue(parseManaCost(def.manaCost))) continue;
     const payments = new Map<string, ReturnType<typeof helpedPayments>>();
     // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);
     // Without another permission, Sabin uses its native graveyard blitz route.
@@ -305,7 +308,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
   const out: CostedOption[] = [];
   const p = s.players[playerId]!;
   // Unearth works from the graveyard.
-  const cards = [...battlefield(s).filter(c=>c.controller===playerId), ...[...p.hand,...p.graveyard].map(id=>s.cards[id]!)];
+  const cards = [...battlefield(s).filter(c=>c.controller===playerId), ...[...p.hand,...p.graveyard,...p.command].map(id=>s.cards[id]!)];
   for (const c of cards) {
     activatedAbilities(currentDefinition(s, c)).forEach((spec, ability) => {
       if (activationProblem(s, playerId, c, spec, ability)) return;

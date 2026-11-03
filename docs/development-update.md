@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 52: Ragavan, Bolas's Citadel, Yuriko
+
+Three more set cards (293 of 320). New: dash (haste, back to hand at the
+next end step), Bolas's Citadel paying life for spells from the top of the
+library (legal actions skip them when the life isn't there), commander
+ninjutsu from the command zone, and Yuriko's reveal that costs opponents
+life.
+
 ### Set cards, group 51: Cargo Ship, Urza, Kinnan
 
 Three more set cards with mana abilities (290 of 320) and the Construct token

@@ -712,6 +712,8 @@ export interface EffectSpec {
   untilYourNextTurn?: boolean;
   /** The amount is doubled if the spell was kicked (Chocobo Kick). */
   doubleIfKicked?: boolean;
+  /** RevealTopToHandLoseLife: each opponent loses the life instead of you (Yuriko). */
+  opponentsLose?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1181,6 +1183,8 @@ export interface ActivatedSpec {
   };
   /** Where the card must be. Defaults to the battlefield. */
   zone?: 'battlefield' | 'hand' | 'graveyard';
+  /** A hand ability that also works from the command zone (commander ninjutsu). */
+  alsoFromCommandZone?: boolean;
   /** "Activate only as a sorcery" (equip always is). */
   sorcerySpeed?: boolean;
   /** "Activate only if you control a creature with power 4 or greater." */
@@ -1349,6 +1353,8 @@ export interface CardDefinition {
   castCreaturesFromLibraryTopWhileAttached?: boolean;
   /** Its controller may play cards matching this from the top of their library: lands and spells (Traveling Chocobo: lands and Birds). */
   playFromLibraryTop?: ObjectFilter;
+  /** Bolas's Citadel: spells cast from the top of your library this way cost life equal to their mana value instead of their mana cost. */
+  libraryTopCostsLife?: boolean;
   id: CardDefId;
   name: string;
   /** Mana cost in standard notation, e.g. "{2}{R}{W}". Absent for lands and tokens. */
@@ -1500,6 +1506,8 @@ export interface CardDefinition {
      * dies, draw a card", and is sacrificed at the beginning of the next end step.
      */
     blitz?: boolean;
+    /** Dash (rule 702.109): the creature gains haste and returns to its owner's hand at the beginning of the next end step. */
+    dash?: boolean;
     /** "You may cast this card from your graveyard using its blitz ability" (Sabin): this way only. */
     fromGraveyard?: boolean;
     /** "Exile a white card from your hand": another card in hand matching this, chosen with the action (`costCards`). */
