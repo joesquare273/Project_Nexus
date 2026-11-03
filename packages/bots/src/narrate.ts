@@ -66,6 +66,7 @@ const COUNT_TEXT: Record<string, string> = {
   EquippedAttackingCreaturesYouControl: 'equipped attacking creatures you control',
   CreaturesYouControlWithCounters: 'creatures you control with +1/+1 counters on them',
   CreatureCardsInYourGraveyard: 'creature cards in your graveyard',
+  ArtificersYouControlAndInYourGraveyard: 'Artificers you control and Artificer cards in your graveyard',
   CountersAmongCreaturesYouControl: 'counters among creatures you control',
   PlayersWhoLostLifeThisTurn: 'players who lost life this turn',
   SoulCountersOnThis: 'soul counters on this',
@@ -165,7 +166,7 @@ function effectText(e: EffectSpec): string {
     case 'AddCounters':
       if (e.monstrosity) return `monstrosity ${n}`;
       if (e.ifSourceHasNoCounters) return `adapt ${n}`;
-      return `${e.optional ? 'you may ' : ''}put ${countersText(n, e.counter)} on ${who}`;
+      return `${e.optional ? 'you may ' : ''}put ${countersText(n, e.counter)} on ${who}${e.thenDouble ? ', then double the +1/+1 counters on it' : ''}`;
     case 'PutLastCounters':
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
     case 'RevealUntil':
@@ -225,6 +226,7 @@ function effectText(e: EffectSpec): string {
     case 'Myriad':
       return `create a token copy of ${who} attacking each other opponent`;
     case 'SetBasePT':
+      if (e.powerFromAmount) return `${who}'s base power becomes ${n} until end of turn`;
       return `set the base power and toughness of ${who}${e.filter?.modified ? ' that are modified' : ''} to ${e.power}/${e.toughness} until end of turn`;
     case 'ModifyPT': {
       const sign = (v: number | undefined) => `${(v ?? 0) >= 0 ? '+' : ''}${v ?? 0}`;

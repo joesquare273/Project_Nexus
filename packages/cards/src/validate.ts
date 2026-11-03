@@ -325,7 +325,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   }
   if (e.effect === 'GrantFlags' && !e.flags?.length) err('GrantFlags needs flags.');
   for (const f of e.flags ?? []) if (!TEMPORARY_FLAGS.includes(f)) err(`unknown flag "${f}".`);
-  if (e.effect === 'SetBasePT' && (!Number.isInteger(e.power) || !Number.isInteger(e.toughness))) err('SetBasePT needs integer power and toughness.');
+  if (e.effect === 'SetBasePT' && !e.powerFromAmount && (!Number.isInteger(e.power) || !Number.isInteger(e.toughness))) err('SetBasePT needs integer power and toughness.');
   if (e.effect === 'AddCounters' && e.optional && (e.amount !== 1 || !CHOSEN_TARGET_KINDS.includes(e.target))) err('optional AddCounters needs one counter on a chosen target.');
   if (e.effect === 'ModifyPT' && e.power === undefined && e.toughness === undefined && !e.powerFromAmount && !e.toughnessFromAmount && !e.multiplyPT) err('ModifyPT needs power or toughness.');
   if (ABILITY_ONLY_TARGETS.has(e.target) && !inAbility) err(`"${e.target}" can only be used in abilities.`);
@@ -354,7 +354,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.damageSource && e.effect !== 'DealDamage' && e.effect !== 'Fight') err('damageSource is only for DealDamage and Fight.');
   if (e.ifYouControl) validateFilter(e.ifYouControl.filter, err);
   if (e.toughnessFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT with an amount.');
-  if (e.powerFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('powerFromAmount is only for ModifyPT with an amount.');
+  if (e.powerFromAmount && ((e.effect !== 'ModifyPT' && e.effect !== 'SetBasePT') || e.amount === undefined)) err('powerFromAmount is only for ModifyPT or SetBasePT with an amount.');
   if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
   if ((e.countersOf || e.damageSource === 'TriggeringObject') && !inAbility) err('countersOf and a TriggeringObject damage source are only for abilities.');
 }

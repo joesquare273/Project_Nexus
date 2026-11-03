@@ -4504,3 +4504,72 @@ describe('S4 group 42: Teferi, Varragoth, Bruse Tarl, Ishai, Vial Smasher', () =
     expect(total()).toBe(before - mv);
   });
 });
+
+describe('S4 group 43: Sazh, Cid, Golbez, PuPu UFO, The Regalia', () => {
+  it('Sazh Katzroy: attacking puts a +1/+1 counter on target creature, then doubles its counters', () => {
+    let s = newGame();
+    const sazh = put(s, 'P1', 'sazh-katzroy');
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { counters: 1 });
+    s = fight(s, [{ attacker: sazh, defender: 'P2' }], {}, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    expect(s.cards[cat]!.counters).toBe(4);
+  });
+
+  it('Sazh Katzroy may find a Bird or basic land card as he enters', () => {
+    let s = newGame();
+    const forest = put(s, 'P1', 'forest', 'library');
+    const sazh = put(s, 'P1', 'sazh-katzroy', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: sazh }).state;
+    expect(s.cards[forest]!.zone).toBe('hand');
+  });
+
+  it('Cid: artifact creatures and Heroes you control get +1/+1 per Artificer you control and in your graveyard; any number in a deck', () => {
+    const s = newGame();
+    put(s, 'P1', 'cid-timeless-artificer');
+    put(s, 'P1', 'cid-timeless-artificer', 'graveyard');
+    const ufo = put(s, 'P1', 'pupu-ufo');
+    const cat = put(s, 'P1', 'coeurl');
+    expect(stats(s, ufo)).toEqual([2, 6]);
+    expect(stats(s, cat)).toEqual([2, 2]);
+    expect(s.cardDefs['cid-timeless-artificer']!.anyNumberInDeck).toBe(true);
+  });
+
+  it('Golbez: surveil 1 when an artifact enters; at end step with four artifacts, return a creature card (eight: opponents lose its power)', () => {
+    let s = newGame();
+    put(s, 'P1', 'golbez-crystal-collector');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: ring });
+    s = settle(s).state;
+    expect(s.pending.kind).toBe('priority');
+    for (let i = 0; i < 7; i++) put(s, 'P1', 'sol-ring');
+    const cat = put(s, 'P1', 'coeurl', 'graveyard');
+    const life = s.players.P2!.life;
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    expect(s.cards[cat]!.zone).toBe('hand');
+    expect(s.players.P2!.life).toBe(life - (s.cardDefs['coeurl']!.power ?? 0));
+  });
+
+  it('PuPu UFO: {T}: put a land from your hand onto the battlefield; {3}: base power equals your Towns', () => {
+    let s = newGame();
+    const ufo = put(s, 'P1', 'pupu-ufo');
+    const inn = put(s, 'P1', 'adventurers-inn', 'hand');
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: ufo, ability: 0 });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [inn] })).state;
+    expect(s.cards[inn]!.zone).toBe('battlefield');
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ufo, ability: 1 }).state;
+    expect(stats(s, ufo)).toEqual([1, 4]);
+  });
+
+  it('The Regalia: attacking (crewed) reveals until a land and puts it onto the battlefield tapped', () => {
+    let s = newGame();
+    const car = put(s, 'P1', 'the-regalia', 'battlefield', { crewed: true });
+    const forest = put(s, 'P1', 'forest', 'library');
+    put(s, 'P1', 'coeurl', 'library');
+    s = fight(s, [{ attacker: car, defender: 'P2' }]).state;
+    expect(s.cards[forest]).toMatchObject({ zone: 'battlefield', tapped: true });
+  });
+});

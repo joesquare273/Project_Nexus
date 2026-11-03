@@ -520,6 +520,8 @@ export const COUNT_KINDS = [
   /** Creatures you control with one or more +1/+1 counters on them. */
   'CreaturesYouControlWithCounters',
   'CreatureCardsInYourGraveyard',
+  /** Artificers you control plus Artificer cards in your graveyard (Cid, Timeless Artificer). */
+  'ArtificersYouControlAndInYourGraveyard',
   'InstantAndSorceryCardsInYourGraveyard',
   /** Counters of every kind on creatures you control. */
   'CountersAmongCreaturesYouControl',
@@ -674,6 +676,8 @@ export interface EffectSpec {
   next?: boolean;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
+  /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
+  thenDouble?: boolean;
   /** ModifyPT: also add (n - 1) times the creature's current power and toughness ("double" is 2, "triple" is 3: Tifa's Limit Break). */
   multiplyPT?: number;
   /** CopyCreature: name exception, duration, retained resolving trigger, and optional buffs to both objects. */
@@ -1377,6 +1381,8 @@ export interface CardDefinition {
   landcycling?: { subtype?: string; basic?: boolean; cost: string };
   /** "Cycling [cost]": discard from hand to draw a card. */
   cycling?: string;
+  /** "A deck can have any number of cards named ..." (Cid, Timeless Artificer; rule 100.2a). */
+  anyNumberInDeck?: boolean;
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
   /** Alternative characteristics used only when casting/resolving the Adventure (rule 715). */

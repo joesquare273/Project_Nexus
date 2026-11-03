@@ -116,7 +116,7 @@ export function validateDeck(
       errors.push(`Unknown card "${id}".`);
       continue;
     }
-    if (!isBasicLand(def) && count > format.maxCopies) {
+    if (!isBasicLand(def) && !def.anyNumberInDeck && count > format.maxCopies) {
       errors.push(`"${def.name}" appears ${count} times; the limit is ${format.maxCopies}.`);
     }
   }

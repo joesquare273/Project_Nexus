@@ -1999,7 +1999,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (src.zone !== 'battlefield' || src.monstrous) return;
         src.monstrous = true;
       }
-      for (const id of onBattlefield) addCounters(ctx, id, amount, item.controller, effect.counter);
+      for (const id of onBattlefield) {
+        addCounters(ctx, id, amount, item.controller, effect.counter);
+        // Sazh Katzroy: "then double the number of +1/+1 counters on that creature".
+        if (effect.thenDouble && s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, s.cards[id]!.counters ?? 0, item.controller);
+      }
       return;
     }
     case 'PutLastCounters': {
@@ -2025,7 +2029,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const rest = revealed.filter((id) => id !== found);
       if (found) {
         r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[found]!).manaCost));
-        moveCard(ctx, found, 'hand');
+        // The Regalia: "put that card onto the battlefield tapped".
+        if (effect.entersTapped) {
+          moveCard(ctx, found, 'battlefield');
+          s.cards[found]!.controller = item.controller;
+          s.cards[found]!.tapped = true;
+        } else moveCard(ctx, found, 'hand');
       }
       // The rest go on the bottom in a random order.
       for (const id of rest) library.splice(library.indexOf(id), 1);
@@ -2384,7 +2393,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'SetBasePT': {
       const timestamp = newTimestamp(s);
-      for (const id of onBattlefield) s.temporaryEffects.push({ source, affected: id, basePowerToughness: [effect.power!, effect.toughness!], timestamp });
+      // PuPu UFO: "base power becomes equal to" a number; its base toughness stays the printed one.
+      for (const id of onBattlefield) {
+        const pt: [number, number] = effect.powerFromAmount ? [amount, defOf(s, s.cards[id]!).toughness ?? 0] : [effect.power!, effect.toughness!];
+        s.temporaryEffects.push({ source, affected: id, basePowerToughness: pt, timestamp });
+      }
       return;
     }
     case 'ModifyPT':
@@ -2858,6 +2871,8 @@ function continueResolving(ctx: Ctx): void {
       // Remember its power now: "life equal to its power" still works after it's exiled (rule 608.2h).
       const c = chosen.kind === 'card' ? s.cards[chosen.card] : undefined;
       if (c?.zone === 'battlefield') r.previousTargetPower = powerOf(s, c);
+      // A card in another zone has its printed power (Golbez: "that card's power").
+      else if (c && c.zone !== 'stack') r.previousTargetPower = defOf(s, c).power ?? 0;
     }
     if (effect.if === 'castFromGraveyard' && !(item.kind === 'spell' && item.castFrom === 'graveyard')) continue;
     if (effect.if === 'notCastFromGraveyard' && item.kind === 'spell' && item.castFrom === 'graveyard') continue;

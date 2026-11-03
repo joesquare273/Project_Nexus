@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 43: Sazh, Cid, Golbez, PuPu UFO, The Regalia
+
+Five more set cards (259 of 320). Deck checks allow any number of a card
+with `anyNumberInDeck` (Cid). Also new: AddCounters `thenDouble`, SetBasePT
+from an amount, RevealUntil onto the battlefield tapped, and
+`previousTargetPower` for a card in a graveyard or hand (its printed power).
+
 ### Set cards, group 42: Teferi, Varragoth, Bruse Tarl, Ishai, Vial Smasher
 
 Five more set cards (254 of 320). Casting timing now goes through

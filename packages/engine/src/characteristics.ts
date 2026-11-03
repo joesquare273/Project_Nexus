@@ -119,6 +119,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
         const types = def(s, s.cards[id]!).types;
         return types.includes('instant') || types.includes('sorcery');
       }).length;
+    case 'ArtificersYouControlAndInYourGraveyard':
+      return yours().filter((c) => subtypesOf(s, c).includes('Artificer')).length + s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).subtypes?.includes('Artificer')).length;
     case 'CreatureCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('creature')).length;
     case 'CountersAmongCreaturesYouControl':
