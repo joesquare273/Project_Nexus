@@ -221,6 +221,8 @@ export function visibleLibraryTop(s: GameState, player: string): string | undefi
 }
 export function canCastLibraryTop(s: GameState, player: string, c: CardInstance, definition = currentDefinition(s, c)): boolean {
   if (c.zone !== 'library' || s.players[player]?.library[0] !== c.id) return false;
+  // The Lunar Whale: "As long as The Lunar Whale attacked this turn, you may play the top card of your library."
+  if (librarySources(s, player).some((source) => currentDefinition(s, source).playFromLibraryTopIfAttacked && source.attackedTurn === s.turnNumber)) return true;
   // "You may play lands and cast Bird spells from the top of your library" (Traveling Chocobo).
   if (librarySources(s, player).some((source) => {
     const filter = currentDefinition(s, source).playFromLibraryTop;

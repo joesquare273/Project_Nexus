@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** End the turn (rule 724): exile everything on the stack, then go to the cleanup step. */
+  'EndTheTurn',
   /** Each target player gets `amount` poison counters. */
   'GivePoison',
   /** Create a token that's a copy of the previous target card, except it's a 5/5 black Demon (Ardyn). */
@@ -1353,6 +1355,8 @@ export interface CardDefinition {
   castCreaturesFromLibraryTopWhileAttached?: boolean;
   /** Its controller may play cards matching this from the top of their library: lands and spells (Traveling Chocobo: lands and Birds). */
   playFromLibraryTop?: ObjectFilter;
+  /** The Lunar Whale: as long as it attacked this turn, its controller may play the top card of their library. */
+  playFromLibraryTopIfAttacked?: boolean;
   /** Bolas's Citadel: spells cast from the top of your library this way cost life equal to their mana value instead of their mana cost. */
   libraryTopCostsLife?: boolean;
   id: CardDefId;
@@ -2250,6 +2254,8 @@ export interface GameState {
   triggersHeld?: boolean;
   /** Triggered abilities waiting to go on the stack, in APNAP order. */
   triggerQueue: QueuedTrigger[];
+  /** Ultima: "End the turn" (rule 724) happens as the resolving spell finishes. */
+  endingTurn?: boolean;
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
   /** `next`: "when you next ... this turn": it triggers once, then is gone. */
   delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean; /** An emblem (rule 114): it never ends. */ emblem?: boolean }[];

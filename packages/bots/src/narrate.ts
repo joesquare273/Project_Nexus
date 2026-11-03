@@ -346,6 +346,8 @@ function effectText(e: EffectSpec): string {
       return 'remove a lore counter from each of any number of Sagas you control; put a +1/+1 counter on this for each';
     case 'GivePoison':
       return `${who} get${you ? '' : 's'} ${n} poison counter${n === '1' ? '' : 's'}`;
+    case 'EndTheTurn':
+      return 'end the turn';
     case 'CreateDemonCopy':
       return "create a token that's a copy of that card, except it's a 5/5 black Demon";
     case 'ExileFromYourGraveyard':

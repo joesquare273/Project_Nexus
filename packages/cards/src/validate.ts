@@ -187,7 +187,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   const isSpell = c.types.includes('instant') || c.types.includes('sorcery');
   // A transformed permanent keeps its front face's mana value (rule 712.8e), so a land back face carries it.
   if (isLand && c.manaCost !== undefined && !c.id?.endsWith('-back')) err('lands have no mana cost.');
-  if (!isLand && !c.token && !c.uncastable && c.manaCost === undefined) err('nonland cards need a manaCost (use "{0}" for free).');
+  if (!isLand && !c.token && !c.uncastable && c.manaCost === undefined && !c.id?.endsWith('-back')) err('nonland cards need a manaCost (use "{0}" for free).');
   if (c.token && c.manaCost !== undefined) err('tokens have no mana cost.');
   validateCost(c.manaCost, err);
   if (c.adventure) {

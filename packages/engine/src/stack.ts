@@ -42,7 +42,7 @@ import {
   staticRule,
   playerProtectedFromOpponents,
 } from './state.ts';
-import { givePriority } from './turn.ts';
+import { enterStep, givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue, tapOtherManaTypes } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
@@ -2217,6 +2217,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         ctx.ev.push({ type: 'PoisonChanged', player: pid, total: p.poison });
       }
       return;
+    case 'EndTheTurn':
+      s.endingTurn = true;
+      return;
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2951,6 +2954,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
 /** After the effects: instants and sorceries go to the graveyard, or exile if cast with flashback. */
 function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
   const s = ctx.s;
+  // "End the turn" (rule 724.1): exile every object on the stack (this spell too), forget waiting triggers, and go to cleanup.
+  if (s.endingTurn) {
+    delete s.endingTurn;
+    if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') moveCard(ctx, item.card, 'exile');
+    for (const other of s.stack) if (other.kind === 'spell' && s.cards[other.card]?.zone === 'stack') moveCard(ctx, other.card, 'exile');
+    s.stack = [];
+    s.triggerQueue = [];
+    s.combat = null;
+    enterStep(ctx, 'cleanup');
+    return;
+  }
   if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') {
     const c = s.cards[item.card]!;
     if (item.adventure && resolved) {

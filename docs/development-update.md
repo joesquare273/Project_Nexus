@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 53: Ultima, The Lunar Whale, Balamb Garden, Clive's Hideaway, Zanarkand
+
+Five more set cards (298 of 320); every land in the set is now built, so the
+"not built yet" test uses a stand-in unbuilt land. New: ending the turn
+(Ultima), playing the library's top card after attacking (The Lunar Whale),
+and a land that transforms into a Vehicle (Balamb Garden).
+
 ### Set cards, group 52: Ragavan, Bolas's Citadel, Yuriko
 
 Three more set cards (293 of 320). New: dash (haste, back to hand at the

@@ -506,8 +506,9 @@ describe('cards that aren’t built yet', () => {
     const creature = put(s, 'P1', 'summon-brynhildr', 'hand');
     mana(s, 'P1', { R: 1, C: 1 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
-    expect(s.cardDefs['clives-hideaway']!.notBuilt).toBe(true);
-    const land = put(s, 'P1', 'clives-hideaway', 'hand');
+    // Every set land is built now: an unbuilt copy of one stands in.
+    s.cardDefs['unbuilt-land'] = { ...s.cardDefs['clives-hideaway']!, id: 'unbuilt-land', notBuilt: true };
+    const land = put(s, 'P1', 'unbuilt-land', 'hand');
     expect(rejected(s, { type: 'PlayLand', player: 'P1', card: land })).toMatch(/isn't built yet/);
     const offered = getLegalActions(s).filter((a) => (a.type === 'CastSpell' || a.type === 'PlayLand') && (a.card === creature || a.card === land));
     expect(offered).toEqual([]);
@@ -5214,5 +5215,85 @@ describe('S4 group 52: Ragavan, Bolas’s Citadel, Yuriko', () => {
     s = settle(nextStep(s)).state;
     expect(s.cards[ring]!.zone).toBe('hand');
     expect(s.players.P2!.life).toBe(life - 1 - 1);
+  });
+});
+
+describe('S4 group 53: Ultima, The Lunar Whale, Balamb Garden, Clive’s Hideaway, Zanarkand', () => {
+  it('Ultima destroys all artifacts and creatures, then ends the turn', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'coeurl');
+    const theirs = put(s, 'P2', 'coeurl');
+    const ring = put(s, 'P2', 'sol-ring');
+    const forest = put(s, 'P1', 'forest');
+    const ultima = put(s, 'P1', 'ultima', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    const turn = s.turnNumber;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ultima }).state;
+    expect([mine, theirs, ring].map((id) => s.cards[id]!.zone)).toEqual(['graveyard', 'graveyard', 'graveyard']);
+    expect(s.cards[forest]!.zone).toBe('battlefield');
+    expect(s.cards[ultima]!.zone).toBe('exile');
+    expect(s.turnNumber).toBe(turn + 1);
+    expect(s.activePlayer).toBe('P2');
+  });
+
+  it('The Lunar Whale: after it attacks this turn, you may play the top card of your library', () => {
+    let s = newGame();
+    const whale = put(s, 'P1', 'the-lunar-whale', 'battlefield', { crewed: true });
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    s.players.P1!.library = [bolt, ...s.players.P1!.library.filter((id) => id !== bolt)];
+    mana(s, 'P1', { R: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] })).toBeTruthy();
+    s = fight(s, [{ attacker: whale, defender: 'P2' }]).state;
+    const life = s.players.P2!.life;
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+  });
+
+  it('Balamb Garden: {5}{G}{U}, {1} less per other Town, transforms it into a flying Vehicle that draws when it attacks', () => {
+    let s = newGame();
+    const garden = put(s, 'P1', 'balamb-garden-seed-academy-balamb-garden-airborne');
+    put(s, 'P1', 'adventurers-inn');
+    put(s, 'P1', 'adventurers-inn');
+    mana(s, 'P1', { G: 1, U: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: garden, ability: 0 }).state;
+    expect(s.cards[garden]!.transformed).toBe(true);
+    expect(currentDefinition(s, s.cards[garden]!).subtypes).toContain('Vehicle');
+    s.cards[garden]!.crewed = true;
+    s.cards[garden]!.tapped = false;
+    const hand = s.players.P1!.hand.length;
+    s = fight(s, [{ attacker: garden, defender: 'P2' }]).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Clive’s Hideaway: hideaway 4; {2}, {T}: play the exiled card free with four legendary creatures', () => {
+    let s = newGame();
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    s.players.P1!.library = [bolt, ...s.players.P1!.library.filter((id) => id !== bolt)];
+    const land = put(s, 'P1', 'clives-hideaway', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: land });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'hideaway' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [bolt] })).state;
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    for (const id of ['najeela-the-blade-blossom', 'garnet-princess-of-alexandria', 'kinnan-bonder-prodigy', 'ragavan-nimble-pilferer']) put(s, 'P1', id);
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: land, ability: 0 }).state;
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+  });
+
+  it('Zanarkand: Lasting Fayth makes a Hero with a +1/+1 counter per land, then the land can be played from exile', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'forest');
+    const town = put(s, 'P1', 'zanarkand-ancient-metropolis-lasting-fayth', 'hand');
+    mana(s, 'P1', { G: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: town, adventure: true }).state;
+    const hero = heroes(s, 'P1')[0]!;
+    expect(stats(s, hero)).toEqual([1 + 3, 1 + 3]);
+    expect(s.cards[town]!.zone).toBe('exile');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: town });
+    expect(s.cards[town]).toMatchObject({ zone: 'battlefield', tapped: true });
   });
 });
