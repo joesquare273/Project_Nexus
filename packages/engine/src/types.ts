@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Memories Returning: reveal the top five; you and an opponent alternately put one into your hand and one on the bottom; the last goes to your hand. */
+  'MemoriesReturning',
   /** "When you next cast a creature spell this turn, it gains haste until end of turn" (Summon: Brynhildr). */
   'NextCreatureGainsHaste',
   /** Triple Triad: each player exiles their top card; you may play yours and each with lesser mana value free this turn. */
@@ -724,6 +726,9 @@ export interface EffectSpec {
   opponentsLose?: boolean;
   /** ExileTopCardToPlay: playable only during turns a lore counter is put on the source (Summon: Brynhildr). */
   whileSourceGetsLore?: boolean;
+  /** ExileUntilFound: only a card with lesser mana value than the triggering spell; the rest go on the bottom in a random order (Jodah). */
+  lesserThanSubject?: boolean;
+  restToBottom?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1240,6 +1245,10 @@ export interface StaticSpec {
   attacksDespiteDefenderWithCounters?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
   additionalLands?: number;
+  /** Hades: during your turn, you may play lands from your graveyard (spells come from `castFromGraveyard`). */
+  playLandsFromGraveyard?: boolean;
+  /** Hades: "If a card or token would be put into your graveyard from anywhere, exile it instead." */
+  exileInsteadOfYourGraveyard?: boolean;
   /** Kinnan: whenever you tap a nonland permanent for mana, add one more mana of a type it produced. */
   extraManaFromNonlandTaps?: boolean;
   /** Teferi, Mage of Zhalfir: creature cards its controller owns that aren't on the battlefield have flash. */
@@ -2048,6 +2057,8 @@ export interface TemporaryEffect {
 
 /** A spell or ability partway through resolving, waiting on a choice (surveil). */
 export interface Resolving {
+  /** Memories Returning: the revealed cards still to place, and how many have been placed. */
+  memories?: { pool: InstanceId[]; step: number; opponent: PlayerId };
   /** Objects returned earlier during this resolution, for linked attachments. */
   returnedObjects?: Record<InstanceId, number>;
   /** The non-target defending-player choice for entering attacking. */
@@ -2109,7 +2120,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

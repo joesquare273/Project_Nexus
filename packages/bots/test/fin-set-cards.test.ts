@@ -5367,3 +5367,68 @@ describe('S4 group 54: Summon: Brynhildr, Triple Triad, Sin', () => {
     expect(tokens.length).toBe(1 + exiledForests);
   });
 });
+
+describe('S4 group 55: Jodah, Emet-Selch, Memories Returning', () => {
+  const stack = (s: GameState, who: string, ids: string[]) => { s.players[who]!.library = [...ids, ...s.players[who]!.library.filter((x) => !ids.includes(x))]; };
+
+  it('Jodah: legendary creatures get +X/+X; a legendary spell from hand exiles until a cheaper legendary nonland card, castable free', () => {
+    let s = newGame();
+    const jodah = put(s, 'P1', 'jodah-the-unifier');
+    const najeela = put(s, 'P1', 'najeela-the-blade-blossom');
+    expect(stats(s, jodah)).toEqual([7, 7]);
+    expect(stats(s, najeela)).toEqual([5, 4]);
+    const cat = put(s, 'P1', 'coeurl', 'library');
+    const kinnan = put(s, 'P1', 'kinnan-bonder-prodigy', 'library');
+    const ragavan = put(s, 'P1', 'ragavan-nimble-pilferer', 'library');
+    stack(s, 'P1', [cat, kinnan, ragavan]);
+    const garnet = put(s, 'P1', 'garnet-princess-of-alexandria', 'hand');
+    mana(s, 'P1', { G: 1, W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: garnet }).state;
+    expect(s.cards[ragavan]!.zone).toBe('exile');
+    expect([s.cards[cat]!.zone, s.cards[kinnan]!.zone]).toEqual(['library', 'library']);
+    expect(s.players.P1!.library.slice(-2).sort()).toEqual([cat, kinnan].sort());
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ragavan }).state;
+    expect(s.cards[ragavan]!.zone).toBe('battlefield');
+  });
+
+  it('Hades: play lands and cast spells from your graveyard on your turn; your cards go to exile instead of your graveyard', () => {
+    let s = newGame();
+    put(s, 'P1', 'emet-selch-unsundered-hades-sorcerer-of-eld', 'battlefield', { transformed: true });
+    const forest = put(s, 'P1', 'forest', 'graveyard');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'graveyard');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: forest });
+    expect(s.cards[forest]!.zone).toBe('battlefield');
+    mana(s, 'P1', { R: 1 });
+    const cat = put(s, 'P1', 'coeurl');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(cat)] }).state;
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    expect(s.cards[cat]!.zone).toBe('exile');
+  });
+
+  it('Emet-Selch loots as he enters; with fourteen cards in your graveyard he may transform at your upkeep', () => {
+    let s = newGame();
+    const emet = put(s, 'P1', 'emet-selch-unsundered-hades-sorcerer-of-eld');
+    for (let i = 0; i < 14; i++) put(s, 'P1', 'forest', 'graveyard');
+    s = goTo(nextStep(goTo(s, 'end')), 'end');
+    s = goTo(s, 'draw', { accept: true });
+    expect(s.cards[emet]!.transformed).toBe(true);
+  });
+
+  it('Memories Returning: you and an opponent alternate: hand, bottom, hand, bottom, and the last card to your hand', () => {
+    let s = newGame();
+    const five = ['coeurl', 'forest', 'sol-ring', 'lightning-bolt', 'island'].map((id) => put(s, 'P1', id, 'library'));
+    stack(s, 'P1', five);
+    const spell = put(s, 'P1', 'memories-returning', 'hand');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: spell });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    const order = [['P1', five[0]], ['P2', five[1]], ['P1', five[2]], ['P2', five[3]]] as const;
+    for (const [who, id] of order) {
+      expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'memories', player: who });
+      s = act(s, { type: 'ChooseCards', player: who, cards: [id!] });
+    }
+    s = settle(s).state;
+    expect(five.map((id) => s.cards[id]!.zone)).toEqual(['hand', 'library', 'hand', 'library', 'hand']);
+    expect(s.players.P1!.library.slice(-2)).toEqual([five[1], five[3]]);
+  });
+});

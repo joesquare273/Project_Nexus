@@ -649,6 +649,9 @@ export function playableZone(
   includeGroups = true,
 ): 'hand' | 'graveyard' | 'exile' | 'command' | 'library' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
+  // Hades, Sorcerer of Eld: "During your turn, you may play cards from your graveyard" (lands too).
+  if (c.owner === playerId && c.zone === 'graveyard' && s.activePlayer === playerId && defOf(s, c).types.includes('land')
+    && battlefield(s).some((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.playLandsFromGraveyard))) return 'graveyard';
   if (canCastLibraryTop(s, playerId, c, spellDefinition(defOf(s, c), adventure))) return 'library';
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
@@ -794,7 +797,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   const c = card(s, id);
   const p = player(s, playerId);
   const from = playableZone(s, playerId, c);
-  if (from !== 'hand' && from !== 'exile' && from !== 'library') reject('That card is not in your hand.');
+  if (from !== 'hand' && from !== 'exile' && from !== 'library' && from !== 'graveyard') reject('That card is not in your hand.');
   if (!hasType(s, c, 'land')) reject('Only lands are played this way; cast spells with CastSpell.');
   if (defOf(s, c).notBuilt) reject(`${defOf(s, c).name} isn't built yet.`);
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
@@ -2263,6 +2266,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'MemoriesReturning': {
+      const pool = topOfLibrary(s, item.controller, 5);
+      if (pool.length === 0) return;
+      for (const id of pool) ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+      // "Choose an opponent": the next one in turn order.
+      const order = aliveFromActive(s);
+      const opponent = order.find((pid) => pid !== item.controller) ?? item.controller;
+      r.memories = { pool: [...pool], step: 0, opponent };
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'memories', cards: [...pool], min: 1, max: 1 }];
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2759,17 +2773,31 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ExileUntilFound':
       for (const pid of targetPlayers(targets)) {
         const library = s.players[pid]!.library;
+        const subject = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+        const limit = effect.lesserThanSubject && subject ? objectManaValue(s, subject) : Infinity;
+        const passed: InstanceId[] = [];
         while (library.length > 0) {
           const top = library[0]!;
           moveCard(ctx, top, 'exile');
-          if (!matchesObject(s, effect.filter, s.cards[top]!, { controller: item.controller })) continue;
+          if (!matchesObject(s, effect.filter, s.cards[top]!, { controller: item.controller }) || objectManaValue(s, s.cards[top]!) >= limit) { passed.push(top); continue; }
           s.cards[top]!.castPermission = {
             player: item.controller,
             turn: s.turnNumber,
             free: true,
             ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
+            // Jodah: cast as the trigger resolves, so timing doesn't apply.
+            ...(effect.lesserThanSubject ? { ignoreTiming: true } : {}),
           };
           break;
+        }
+        // Jodah: "Put the rest on the bottom of your library in a random order."
+        if (effect.restToBottom) {
+          shuffleInPlace(s, passed);
+          for (const id of passed) {
+            moveCard(ctx, id, 'library');
+            library.splice(library.indexOf(id), 1);
+            library.push(id);
+          }
         }
       }
       return;
@@ -3494,6 +3522,24 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         ctx.ev.push({ type: 'SpellCountered', card: spell, defId: s.cards[spell]!.defId, by: sourceOf(r.item) });
         moveCard(ctx, spell, pending.exileIfCountered || countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
       }
+    }
+  } else if (pending.purpose === 'memories' && r.memories) {
+    const m = r.memories;
+    const library = player(s, r.item.controller).library;
+    for (const id of cards) {
+      m.pool = m.pool.filter((x) => x !== id);
+      if (m.step % 2 === 0) moveCard(ctx, id, 'hand');
+      else {
+        library.splice(library.indexOf(id), 1);
+        library.push(id);
+      }
+      m.step += 1;
+    }
+    if (m.step < 4 && m.pool.length > 1) {
+      r.choiceQueue = [{ player: m.step % 2 === 0 ? r.item.controller : m.opponent, purpose: 'memories', cards: [...m.pool], min: 1, max: 1 }, ...(r.choiceQueue ?? [])];
+    } else {
+      for (const id of m.pool) moveCard(ctx, id, 'hand');
+      delete r.memories;
     }
   } else if (pending.purpose === 'castFree') {
     for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true };

@@ -352,6 +352,8 @@ function effectText(e: EffectSpec): string {
       return 'each player exiles their top card; you may play yours and each with lesser mana value free this turn';
     case 'ExileRandomPermanentCopy':
       return 'exile a permanent card from your graveyard at random and create a tapped token copy of it, again while it is a land';
+    case 'MemoriesReturning':
+      return 'reveal the top five cards; you and an opponent take turns putting one into your hand and one on the bottom';
     case 'EndTheTurn':
       return 'end the turn';
     case 'CreateDemonCopy':

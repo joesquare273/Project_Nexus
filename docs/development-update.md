@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 55: Jodah, Emet-Selch, Memories Returning
+
+Three more set cards (304 of 320). Jodah's cascade-like trigger exiles until
+a cheaper legendary nonland card (cast free, ignoring timing) and puts the
+rest on the bottom; Hades plays lands and casts spells from the graveyard on
+your turn and exiles your cards instead of letting them reach your
+graveyard; Memories Returning alternates picks between you and an opponent.
+
 ### Set cards, group 54: Summon: Brynhildr, Triple Triad, Sin
 
 Three more set cards (301 of 320). Brynhildr's exiled card is playable only

@@ -203,6 +203,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).
   delete c.transformed;
   c.zoneChanges = (c.zoneChanges ?? 0) + 1;
+  // Hades: "If a card or token would be put into your graveyard from anywhere, exile it instead."
+  if (to === 'graveyard' && battlefield(s).some((x) => x.controller === c.owner && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.exileInsteadOfYourGraveyard))) to = 'exile';
   // Unearth: "exile it if it would leave the battlefield" (rule 702.84a).
   if (from === 'battlefield' && c.unearthed && to !== 'exile') to = 'exile';
   // A finality counter: "if it would be put into a graveyard from the battlefield, exile it instead" (rule 122.1h).
