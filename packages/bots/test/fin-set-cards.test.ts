@@ -502,9 +502,9 @@ describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
 describe('cards that aren’t built yet', () => {
   it('can’t be cast (creatures included) or played, and aren’t offered', () => {
     const s = newGame();
-    expect(s.cardDefs['rydia-summoner-of-mist']!.notBuilt).toBe(true);
-    const creature = put(s, 'P1', 'rydia-summoner-of-mist', 'hand');
-    mana(s, 'P1', { R: 1, G: 1 });
+    expect(s.cardDefs['gogo-master-of-mimicry']!.notBuilt).toBe(true);
+    const creature = put(s, 'P1', 'gogo-master-of-mimicry', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
     // Every set land is built now: an unbuilt copy of one stands in.
     s.cardDefs['unbuilt-land'] = { ...s.cardDefs['clives-hideaway']!, id: 'unbuilt-land', notBuilt: true };
@@ -5634,5 +5634,82 @@ describe('Terra, Magical Adept // Esper Terra (every face and chapter)', () => {
     expect(s.cards[terra]!.transformed ?? false).toBe(false);
     expect(s.cards[terra]!.zoneChanges).toBeGreaterThan(before);
     expect(s.players.P1!.graveyard.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('S4 group 58: Rydia, Ancient Adamantoise, Zenos', () => {
+  it('Rydia: landfall may loot; {X}, {T}: return a Saga with mana value X with a finality counter and haste', () => {
+    let s = newGame();
+    const rydia = put(s, 'P1', 'rydia-summoner-of-mist');
+    const junk = put(s, 'P1', 'forest', 'hand');
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: land });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [junk] })).state;
+    expect(s.cards[junk]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.length).toBe(hand);
+    const saga = put(s, 'P1', 'summon-brynhildr', 'graveyard');
+    mana(s, 'P1', { C: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: rydia, ability: 0, targets: [card(saga)] })).toMatch(/mana/i);
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: rydia, ability: 0, targets: [card(saga)] }).state;
+    expect(s.cards[saga]!.zone).toBe('battlefield');
+    expect(countersOf(s.cards[saga]!, 'finality')).toBe(1);
+    expect(hasKeyword(s, s.cards[saga]!, 'Haste')).toBe(true);
+  });
+
+  it('Ancient Adamantoise takes the damage dealt to you and your other permanents, keeps it, and leaves ten tapped Treasures', () => {
+    let s = newGame();
+    const turtle = put(s, 'P1', 'ancient-adamantoise');
+    const cat = put(s, 'P1', 'coeurl');
+    const life = s.players.P1!.life;
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    for (const target of [player('P1'), card(cat)]) {
+      const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+      mana(s, 'P2', { R: 1 });
+      s = settle(act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [target] })).state;
+      if (s.pending.kind === 'priority' && s.pending.player === 'P1') s = act(s, { type: 'PassPriority', player: 'P1' });
+    }
+    expect(s.players.P1!.life).toBe(life);
+    expect(s.cards[cat]!.damage).toBe(0);
+    expect(s.cards[turtle]!.damage).toBe(6);
+    // Damage stays through cleanup.
+    s = goTo(nextStep(goTo(s, 'end')), 'upkeep');
+    expect(s.cards[turtle]!.damage).toBe(6);
+    s.cards[turtle]!.damage = 19;
+    s = goTo(s, 'main1');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    // Ward {3} is paid on top.
+    mana(s, 'P2', { R: 1, C: 3 });
+    const priority = s.pending.kind === 'priority' ? s.pending.player : 'P1';
+    if (priority !== 'P2') s = act(s, { type: 'PassPriority', player: priority });
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [card(turtle)] })).state;
+    expect(s.cards[turtle]!.zone).toBe('exile');
+    const treasures = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token');
+    expect(treasures).toHaveLength(10);
+    expect(treasures.every((id) => s.cards[id]!.tapped)).toBe(true);
+  });
+
+  it('Zenos: other creatures but the chosen one get -2/-2; when it leaves he becomes Shinryu, and its controller losing wins you the game', () => {
+    let s = newGame(3);
+    const rival = put(s, 'P2', 'omega-heartless-evolution');
+    const small = put(s, 'P3', 'coeurl');
+    const zenos = put(s, 'P1', 'zenos-yae-galvus-shinryu-transcendent-rival', 'hand');
+    mana(s, 'P1', { B: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: zenos }, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === rival))! }).state;
+    expect(s.cards[small]!.zone).toBe('graveyard');
+    expect(stats(s, rival)).toEqual([8, 8]);
+    expect(stats(s, zenos)).toEqual([4, 4]);
+    // The chosen creature leaves: Zenos transforms and Omega's controller becomes the rival.
+    s.cards[rival]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(s.cards[rival]!.zone).toBe('graveyard');
+    expect(s.cards[zenos]!.transformed).toBe(true);
+    expect(s.cards[zenos]!.rival).toBe('P2');
+    s.players.P2!.life = 0;
+    s = settle(act(s, { type: 'PassPriority', player: s.pending.kind === 'priority' ? s.pending.player : 'P1' })).state;
+    expect(s.pending.kind).toBe('gameOver');
+    expect(s.winner).toBe('P1');
   });
 });

@@ -51,6 +51,9 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
     if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') moveCard(ctx, item.card, 'exile');
   }
   ctx.ev.push({ type: 'PlayerEliminated', player: playerId, reason });
+  // Shinryu, Transcendent Rival: "When the chosen player loses the game, you win the game."
+  const rival = battlefield(s).find((c) => c.rival === playerId && !c.phasedOut && !s.players[c.controller]!.eliminated && defOf(s, c).winsWhenRivalLoses);
+  if (rival) for (const pid of alivePlayers(s)) if (pid !== rival.controller) s.players[pid]!.lostToEffect = true;
 
   for (const item of [...s.stack]) {
     if (item.kind === 'ability') {

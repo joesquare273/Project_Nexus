@@ -269,6 +269,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.exiledWith;
   delete c.crewed;
   delete c.addedSubtypes;
+  delete c.linkedCreature;
+  delete c.rival;
   delete c.attachedTo;
   delete c.attachedTimestamp;
   delete c.exiledUntilLeaves;
@@ -462,6 +464,13 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (amount <= 0 || target.kind === 'ability') return;
   const s = ctx.s;
   const source = s.cards[sourceId]!;
+  // Ancient Adamantoise: "All damage that would be dealt to you and other permanents you control is dealt to this creature instead."
+  {
+    const hit = target.kind === 'card' ? s.cards[target.card] : undefined;
+    const victim = target.kind === 'player' ? target.player : hit?.zone === 'battlefield' ? hit.controller : undefined;
+    const shell = victim ? battlefield(s).find((c) => c.controller === victim && !c.phasedOut && defOf(s, c).absorbsDamage && hasType(s, c, 'creature') && c.id !== hit?.id) : undefined;
+    if (shell) target = { kind: 'card', card: shell.id };
+  }
   // "Prevent all damage that would be dealt to you this turn" (Ultimate Magic: Holy).
   if (target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
   // Summon: Alexander: "prevent all damage that would be dealt to creatures you control this turn".

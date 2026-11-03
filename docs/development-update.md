@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 58: Rydia, Ancient Adamantoise, Zenos
+
+Three more set cards (313 of 320). Rydia returns a Saga paying X equal to
+its mana value; Ancient Adamantoise takes the damage dealt to you and your
+other permanents and never heals; Zenos remembers the creature he chose,
+weakens every other creature, and becomes Shinryu when it leaves, winning
+you the game if its controller loses. The "not built yet" test now uses
+Gogo.
+
 ### Terra reviewed; Saga chapter fixes
 
 A full pass over Terra, Magical Adept // Esper Terra against its Oracle text

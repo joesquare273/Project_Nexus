@@ -1169,6 +1169,8 @@ function equipAnyTime(s: GameState, playerId: PlayerId): boolean {
 /** What activating an ability costs with these targets (equip discounts depend on the target). */
 export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[], source?: CardInstance): ManaCost {
   let cost = parseManaCost(spec.cost.mana);
+  // Rydia: "Return target Saga card with mana value X": X is paid as the target's mana value.
+  if (spec.xIsTargetManaValue && targets[0]?.kind === 'card' && s.cards[targets[0].card]) cost = { ...cost, generic: cost.generic + objectManaValue(s, s.cards[targets[0].card]!) };
   // "This ability costs {1} less to activate for each Town you control" (Qiqirn Merchant).
   if (spec.costReductionPerMatching && source) {
     const f = spec.costReductionPerMatching;
@@ -2328,6 +2330,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, exileAfter: true };
       }
       return;
+    case 'LinkPreviousTarget': {
+      const t = r.previousTarget;
+      const src = s.cards[source]!;
+      if (t?.kind === 'card' && src.zone === 'battlefield') src.linkedCreature = { card: t.card };
+      return;
+    }
+    case 'ChooseRival': {
+      const src = s.cards[source]!;
+      if (src.zone !== 'battlefield') return;
+      const linked = src.linkedCreature ? s.cards[src.linkedCreature.card] : undefined;
+      const theirs = linked ? (linked.zone === 'battlefield' ? linked.controller : linked.owner) : undefined;
+      const opponents = aliveFromActive(s).filter((pid) => pid !== item.controller);
+      src.rival = theirs && opponents.includes(theirs) ? theirs : opponents.find((pid) => pid !== item.controller);
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;

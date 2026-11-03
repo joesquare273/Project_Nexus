@@ -360,6 +360,10 @@ function effectText(e: EffectSpec): string {
       return 'if this is the first end step of the turn, there is an additional end step after this one';
     case 'ExileToCastFree':
       return `exile ${who}; you may cast it without paying its mana cost`;
+    case 'LinkPreviousTarget':
+      return 'remember that creature';
+    case 'ChooseRival':
+      return 'choose an opponent';
     case 'EndTheTurn':
       return 'end the turn';
     case 'CreateDemonCopy':

@@ -39,6 +39,12 @@ export function matchesObject(
   const def = definition ?? currentDefinition(s, obj);
   if (f.other && obj.id === from.source) return false;
   if (f.notOwnedByYou && obj.owner === from.controller) return false;
+  if (f.linkedToSource || f.notLinkedToSource) {
+    const linked = from.source ? s.cards[from.source]?.linkedCreature : undefined;
+    const isLinked = !!linked && linked.card === obj.id;
+    if (f.linkedToSource && !isLinked) return false;
+    if (f.notLinkedToSource && isLinked) return false;
+  }
   if (f.crewedBySource && !(obj.crewedByThisTurn?.turn === s.turnNumber && from.source !== undefined && obj.crewedByThisTurn.by.includes(from.source))) return false;
   if (f.self && obj.id !== from.source) return false;
   if (f.name !== undefined && def.name !== f.name) return false;

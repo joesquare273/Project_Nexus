@@ -375,6 +375,10 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** The source remembers the previous target as its chosen creature (Zenos). */
+  'LinkPreviousTarget',
+  /** Choose an opponent as the rival of this permanent (Shinryu): the chosen creature's controller, else the next opponent. */
+  'ChooseRival',
   /** An additional end step after this one, if this is the turn's first end step (Y'shtola Rhul). */
   'AdditionalEndStep',
   /** Exile each target card from a graveyard; you may cast it this turn without paying its mana cost, then it's exiled (Mizzix's Mastery). */
@@ -1006,6 +1010,9 @@ export interface ObjectFilter {
   anyOf?: ObjectFilter[];
   /** A Vehicle the card with the ability crewed this turn (Balthier and Fran). */
   crewedBySource?: boolean;
+  /** The creature the card with the ability chose (Zenos), or (`notLinkedToSource`) anything else. */
+  linkedToSource?: boolean;
+  notLinkedToSource?: boolean;
   /** Owned by someone other than the ability's controller ("a spell you don't own"). */
   notOwnedByYou?: boolean;
   /** Excludes the card itself ("another creature"). */
@@ -1227,6 +1234,8 @@ export interface ActivatedSpec {
   oncePerTurn?: boolean;
   /** Boast: "activate only if this creature attacked this turn" (with `oncePerTurn`). */
   ifAttackedThisTurn?: boolean;
+  /** "{X}, where X is the target card's mana value": the first target's mana value is added as generic mana (Rydia). */
+  xIsTargetManaValue?: boolean;
   /** "Activate only during combat." */
   duringCombat?: boolean;
   /** "Activate only during your turn." */
@@ -1571,6 +1580,11 @@ export interface CardDefinition {
   kickerReturnsToHand?: boolean;
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** Ancient Adamantoise: damage stays marked through cleanup, and damage to you and your other permanents is dealt to it instead. */
+  keepsDamage?: boolean;
+  absorbsDamage?: boolean;
+  /** Shinryu: "When the chosen player loses the game, you win the game." */
+  winsWhenRivalLoses?: boolean;
   /** "Ward—Pay life equal to this creature's power" (Raubahn): opponents targeting it pay that life. */
   wardLifeEqualsPower?: boolean;
   /** "As long as your devotion to [color] is less than N, this isn't a creature" (Purphoros). */
@@ -1736,6 +1750,10 @@ export interface CardInstance {
   graveyardTypesUsed?: { turn: number; types: string[] };
   /** The creatures that crewed this Vehicle this turn. */
   crewedByThisTurn?: { turn: number; by: InstanceId[] };
+  /** Zenos: the creature it chose as it entered. */
+  linkedCreature?: { card: InstanceId };
+  /** Shinryu: the opponent chosen as it transformed; when they lose, its controller wins. */
+  rival?: PlayerId;
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
   /** With `sacrificeAtEndStep`: only at this player's end step ("your next end step"). */

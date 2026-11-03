@@ -177,6 +177,8 @@ const CARD_FIELDS = {
   sacrificeAtNextUpkeep: 'copy',
   sacrificeAtEndStepOf: 'copy',
   addedSubtypes: 'copy',
+  linkedCreature: 'refs',
+  rival: 'copy',
   crewedByThisTurn: 'copy',
   graveyardTypesUsed: 'copy',
   resolutionsThisTurn: 'copy',
