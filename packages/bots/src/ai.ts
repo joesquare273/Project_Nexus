@@ -599,6 +599,26 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Destroying an opponent's permanent of our choice: their best.
   if (p.purpose === 'destroy') return pick([...byValue].reverse().slice(0, p.max));
   // Putting lands onto the battlefield for free: always.
+  // Atraxa (one per card type), Phoenix (total mana value cap): the best cards that still fit.
+  if (p.onePerType || p.maxTotalManaValue !== undefined) {
+    const chosen: string[] = [];
+    const used = new Set<string>();
+    let total = 0;
+    for (const id of [...byValue].reverse()) {
+      if (chosen.length >= p.max) break;
+      const c = s.cards[id]!;
+      const mv = objectManaValue(s, c);
+      if (p.maxTotalManaValue !== undefined && total + mv > p.maxTotalManaValue) continue;
+      if (p.onePerType) {
+        const type = p.onePerType.find((ty) => !used.has(ty) && currentDefinition(s, c).types.includes(ty));
+        if (!type) continue;
+        used.add(type);
+      }
+      chosen.push(id);
+      total += mv;
+    }
+    return pick(chosen);
+  }
   if (p.purpose === 'battlefield') return pick(byValue.reverse().slice(0, p.max));
   // Cards for our hand: the best.
   if (p.purpose === 'hand') return pick(byValue.reverse().slice(0, p.max));

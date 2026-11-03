@@ -13119,6 +13119,23 @@
     "scryfallId": "ae94ab2a-5a6b-4358-ad7f-bdc9a98a9ac0",
     "relatedTokens": []
   },
+  "warrior-token": {
+    "name": "Warrior",
+    "typeLine": "Token Creature — Warrior",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "5",
+    "artist": "Ryan Barger",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362",
+      "normal": "https://cards.scryfall.io/normal/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362",
+      "large": "https://cards.scryfall.io/large/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/d/2dde64e7-dff3-4495-9649-d4b1e91f1cf3.jpg?1789737362"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/5/warrior?utm_source=api",
+    "scryfallId": "2dde64e7-dff3-4495-9649-d4b1e91f1cf3",
+    "relatedTokens": []
+  },
   "warriors-sword": {
     "name": "Warrior's Sword",
     "typeLine": "Artifact — Equipment",

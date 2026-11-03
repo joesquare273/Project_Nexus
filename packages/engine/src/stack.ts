@@ -1150,6 +1150,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
   if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
+  if (spec.duringCombat && !['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)) return 'That can be activated only during combat.';
   if (spec.ifAttackedThisTurn && c.attackedTurn !== s.turnNumber) return 'That can be activated only if this creature attacked this turn.';
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId) && !(spec.equip && equipAnyTime(s, playerId))) {
     return 'That can only be activated in your main phase with an empty stack.';
@@ -1525,6 +1526,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
     const base =
       a.of === 'dieRoll'
         ? (r.dieRoll ?? 0)
+        : a.of === 'chosenCardTypes'
+        ? new Set((r.chosen ?? []).flatMap((c) => c.cards).flatMap((id) => defOf(s, s.cards[id]!).types)).size
         : a.of === 'previousTargetPower'
         ? Math.max(0, r.previousTargetPower ?? 0)
         : a.of === 'destroyedThisWay'
@@ -1549,7 +1552,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                         ? subjectManaValue(s, r.item)
                         : a.of === 'previousTargetPowerOverSubject'
                           ? powerOver(s, r)
-                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent'
+                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
@@ -1637,6 +1640,7 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
   if (cards.length < choice.min || cards.length > choice.max) {
     return choice.min === choice.max ? `Choose exactly ${choice.min}.` : `Choose between ${choice.min} and ${choice.max}.`;
   }
+  if (choice.maxTotalManaValue !== undefined && cards.reduce((n, id) => n + objectManaValue(s, s.cards[id]!), 0) > choice.maxTotalManaValue) return `Choose cards with total mana value ${choice.maxTotalManaValue} or less.`;
   if (choice.onePerType) {
     // Each chosen card must stand for a different one of the types.
     const types = choice.onePerType;
@@ -2118,6 +2122,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       p.nextCreatureCounters = { turn: s.turnNumber, amount: before + amount };
       return;
     }
+    case 'ReturnFromGraveyardTotalManaValue': {
+      const cards = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
+      if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards, min: 0, max: cards.length, maxTotalManaValue: amount }];
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2197,6 +2206,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (let i = 0; i < amount; i++) {
           const id = createToken(ctx, effect.token!, pid);
           if (effect.entersTapped) s.cards[id]!.tapped = true;
+          const defender = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
+          if (defender && s.combat && !s.players[defender]!.eliminated) {
+            s.cards[id]!.tapped = true;
+            s.combat.attacks.push({ attacker: id, defender });
+            ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });
+          }
           r.createdTokens.push(id);
         }
         // Quina, Qu Gourmet: "those tokens plus a 1/1 green Frog" (one Frog per Quina, per creation).

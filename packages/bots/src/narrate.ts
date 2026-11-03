@@ -86,7 +86,8 @@ function amountText(a: Amount | undefined): string {
     if (a.of === 'previousTargetPower' || a.of === 'subjectPower') return 'its power';
     if (a.of === 'sourceCounterKinds') return 'the number of kinds of counters on this creature';
     if (a.of === 'sourcePower') return "this creature's power";
-    if (a.of === 'subjectCounters') return 'that many';
+    if (a.of === 'subjectCounters' || a.of === 'lifeLostInEvent') return 'that many';
+    if (a.of === 'chosenCardTypes') return 'the number of card types among the discarded cards';
     return 'the number of permanents destroyed this way';
   }
   if ('matching' in a) return 'that many';
@@ -333,6 +334,8 @@ function effectText(e: EffectSpec): string {
       return 'proliferate';
     case 'PutTopCardIfLand':
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
+    case 'ReturnFromGraveyardTotalManaValue':
+      return `return any number of creature cards with total mana value ${n} or less from your graveyard to the battlefield`;
     case 'AddSubtypes':
       return `${who} becomes ${(e.addSubtypes ?? []).join(' ')} in addition to its other types`;
     case 'SearchLibraryToTop':

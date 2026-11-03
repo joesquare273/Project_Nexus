@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 45: Kefka, Clive, Joshua, Najeela
+
+Four more set cards, three of them transforming into Sagas or a new face
+(268 of 320), and the Warrior token (tfrc 5). New: devotion to red,
+"card types among cards discarded this way", life lost in the triggering
+event, returning cards up to a total mana value, Warrior tokens entering
+attacking, and "activate only during combat". The AI now picks valid sets
+for one-per-type and total mana value choices.
+
 ### Set cards, group 44: Ignis, Jenova, The Wandering Minstrel, Winota, Atraxa
 
 Five more set cards (264 of 320) and the Elemental token (tfin 21). Fix:

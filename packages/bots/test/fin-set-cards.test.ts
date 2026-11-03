@@ -4657,3 +4657,122 @@ describe('S4 group 44: Ignis, Jenova, The Wandering Minstrel, Winota, Atraxa', (
     expect(s.cards[cats[1]!]!.zone).toBe('library');
   });
 });
+
+describe('S4 group 45: Kefka, Clive, Joshua, Najeela', () => {
+  const answerFirst = (s: GameState): GameState => {
+    for (let guard = 0; guard < 8 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) })).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = answerFirst(settle(goTo(answerFirst(s), 'end')).state);
+      s = answerFirst(settle(goTo(s, 'main1')).state);
+    }
+    return s;
+  };
+  const enter = (s: GameState, id: string, pool: Parameters<typeof mana>[2]) => {
+    const c = put(s, 'P1', id, 'hand');
+    mana(s, 'P1', pool);
+    return { s: settle(act(s, { type: 'CastSpell', player: 'P1', card: c })).state, c };
+  };
+
+  it('Kefka, Court Mage: each player discards; you draw one per card type discarded', () => {
+    let s = newGame();
+    s.players.P1!.hand = [];
+    s.players.P2!.hand = [];
+    const r = enter(s, 'kefka-court-mage-kefka-ruler-of-ruin', { U: 1, B: 1, R: 1, C: 2 });
+    s = r.s;
+    expect(s.pending.kind).toBe('priority');
+    put(s, 'P1', 'forest', 'hand');
+    put(s, 'P2', 'sol-ring', 'hand');
+    // Again by flickering isn't available: test the attack trigger instead.
+    s.cards[r.c]!.summoningSick = false;
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: r.c, defender: 'P2' }] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    s = answerFirst(s);
+    expect(s.players.P1!.hand.length).toBe(2);
+  });
+
+  it('Kefka: {8}: each opponent sacrifices a permanent and Kefka transforms; Ruler of Ruin draws what opponents lose on your turn', () => {
+    let s = newGame();
+    const kefka = put(s, 'P1', 'kefka-court-mage-kefka-ruler-of-ruin');
+    const cat = put(s, 'P2', 'coeurl');
+    s.players.P2!.battlefield = [cat];
+    mana(s, 'P1', { C: 8 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: kefka, ability: 0 });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    s = answerFirst(s);
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+    expect(s.cards[kefka]!.transformed).toBe(true);
+    expect(hasKeyword(s, s.cards[kefka]!, 'Flying')).toBe(true);
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] });
+    const hand = s.players.P1!.hand.length;
+    s = settle(s).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 3);
+  });
+
+  it('Clive: may discard your hand and draw your devotion to red; transformed, Ifrit fights and later adds {R}{R}{R}{R}', () => {
+    let s = newGame();
+    s.players.P1!.hand = [];
+    put(s, 'P1', 'forest', 'hand');
+    const r = enter(s, 'clive-ifrits-dominant-ifrit-warden-of-inferno', { R: 2, C: 4 });
+    s = answerFirst(r.s);
+    expect(s.players.P1!.hand.length).toBe(2);
+    const cat = put(s, 'P2', 'coeurl');
+    s.cards[r.c]!.summoningSick = false;
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: r.c, ability: 0 }, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    expect(s.cards[r.c]!.transformed).toBe(true);
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+    s = nextTurnOfP1(s);
+    expect(s.players.P1!.manaPool.R).toBe(4);
+  });
+
+  it('Joshua: discard up to two, then draw that many; Phoenix deals 2 to each opponent, then returns creature cards with total mana value 6 or less', () => {
+    let s = newGame();
+    s.players.P1!.hand = [];
+    const discards = [put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'forest', 'hand')];
+    const r = enter(s, 'joshua-phoenixs-dominant-phoenix-warden-of-fire', { R: 1, W: 1, C: 1 });
+    s = settle(act(r.s, { type: 'ChooseCards', player: 'P1', cards: discards })).state;
+    expect(s.players.P1!.hand.length).toBe(2);
+    s.cards[r.c]!.summoningSick = false;
+    const life = s.players.P2!.life;
+    mana(s, 'P1', { R: 1, W: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: r.c, ability: 0 }).state;
+    expect(s.players.P2!.life).toBe(life - 2);
+    const big = put(s, 'P1', 'clive-ifrits-dominant-ifrit-warden-of-inferno', 'graveyard');
+    const cat = put(s, 'P1', 'coeurl', 'graveyard');
+    const tiny = put(s, 'P1', 'coeurl', 'graveyard');
+    s = nextTurnOfP1(s);
+    expect(s.players.P2!.life).toBe(life - 4);
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && s.pending.kind !== 'chooseCards'; guard++) s = goTo(answerFirst(settle(goTo(s, 'end')).state), 'main1');
+    expect(s.turnNumber).toBeGreaterThan(turn);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'battlefield', maxTotalManaValue: 6 });
+    expect(rejected(s, { type: 'ChooseCards', player: 'P1', cards: [big, cat] })).toMatch(/total mana value 6/);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [cat, tiny] })).state;
+    expect([s.cards[cat]!.zone, s.cards[tiny]!.zone, s.cards[big]!.zone]).toEqual(['battlefield', 'battlefield', 'graveyard']);
+    expect(s.cards[r.c]!.transformed ?? false).toBe(false);
+  });
+
+  it('Najeela: an attacking Warrior brings a 1/1 Warrior token tapped and attacking; WUBRG during combat untaps attackers and adds a combat', () => {
+    let s = newGame();
+    const najeela = put(s, 'P1', 'najeela-the-blade-blossom');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: najeela, defender: 'P2' }] });
+    s = settle(s).state;
+    const token = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'warrior-token');
+    expect(token).toBeDefined();
+    expect(s.combat!.attacks.some((a) => a.attacker === token && a.defender === 'P2')).toBe(true);
+    mana(s, 'P1', { W: 1, U: 1, B: 1, R: 1, G: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: najeela, ability: 0 }).state;
+    expect(s.cards[najeela]!.tapped).toBe(false);
+    expect(hasKeyword(s, s.cards[najeela]!, 'Lifelink')).toBe(true);
+  });
+});

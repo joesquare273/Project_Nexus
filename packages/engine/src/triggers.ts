@@ -119,7 +119,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         }
         break;
       case 'LifeChanged':
-        if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player });
+        if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player, amount: e.from - e.to });
         if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player });
         break;
       case 'AttackDeclared': {

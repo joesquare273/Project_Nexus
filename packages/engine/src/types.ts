@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Return any number of cards matching `filter` from your graveyard to the battlefield, with total mana value `amount` or less (chosen as it resolves). */
+  'ReturnFromGraveyardTotalManaValue',
   /** Exile every card in the target players' graveyards. */
   'ExileGraveyard',
   /**
@@ -554,6 +556,8 @@ export const COUNT_KINDS = [
   'OpponentsDealtCombatDamageThisTurn',
   /** Cards in your graveyard (Sidequest: Card Collection). */
   'CardsInYourGraveyard',
+  /** Your devotion to red: {R} symbols in the mana costs of permanents you control (rule 700.5). */
+  'DevotionToRed',
   /** Creatures that died under an opponent's control this turn. */
   'OpponentCreaturesDiedThisTurn',
   /** Opponents still in the game. */
@@ -618,7 +622,11 @@ export type Amount =
         /** SpellCast triggers: the mana spent to cast the triggering spell ("where X is the amount of mana spent"). */
         | 'subjectManaSpent'
         /** The result of the last RollDie. */
-        | 'dieRoll';
+        | 'dieRoll'
+        /** The number of card types among the cards chosen so far (Kefka: "for each card type among cards discarded this way"). */
+        | 'chosenCardTypes'
+        /** OpponentLosesLife triggers: how much life was lost ("you draw that many cards"). */
+        | 'lifeLostInEvent';
       plus?: number;
     };
 
@@ -778,6 +786,8 @@ export interface EffectSpec {
   ifSubjectManaSpentAtLeast?: number;
   /** Converge: only targets with mana value at most the colors spent on this spell (Prismatic Ending). */
   ifTargetManaValueAtMostColorsSpent?: boolean;
+  /** CreateToken in an attack trigger: tapped and attacking the player the triggering creature attacked (Najeela). */
+  attackingLikeSubject?: boolean;
   /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
   attacking?: boolean;
   /** PutFromHand in an attack trigger: a chosen enchantment card enters tapped and attacking the player the triggering creature attacked (Summoner's Grimoire). */
@@ -1145,6 +1155,8 @@ export interface ActivatedSpec {
   oncePerTurn?: boolean;
   /** Boast: "activate only if this creature attacked this turn" (with `oncePerTurn`). */
   ifAttackedThisTurn?: boolean;
+  /** "Activate only during combat." */
+  duringCombat?: boolean;
   /** "Activate only during your turn." */
   yourTurn?: boolean;
   /** "Activate only if an opponent was dealt combat damage by a legendary creature this turn" (Blitzball). */
@@ -2029,6 +2041,8 @@ export interface CardChoice {
   /** payToAvoidCounter: how much generic mana to pay, and whether the spell is exiled if not paid. */
   payGeneric?: number;
   exileIfCountered?: boolean;
+  /** The chosen cards' total mana value can't be more than this (Phoenix, Warden of Fire). */
+  maxTotalManaValue?: number;
   /** payToAvoidCounter: nothing is countered; if they don't pay, this player draws `drawCount` cards instead (Rhystic Study). */
   drawFor?: PlayerId;
   drawCount?: number;
