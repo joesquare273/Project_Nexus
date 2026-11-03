@@ -1128,8 +1128,10 @@ function PromptBar(p: PromptProps) {
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'exileFromGraveyard'
+              ? 'from your graveyard to exile (a cost)'
             : c.purpose === 'battlefield'
-              ? 'to put onto the battlefield (in your hand)'
+              ? (c.cards.every((id) => s.cards[id]?.zone === 'graveyard') ? `from your graveyard to put onto the battlefield${c.maxTotalManaValue !== undefined ? ` (total mana value ${c.maxTotalManaValue} or less)` : ''}` : 'to put onto the battlefield (in your hand)')
               : c.purpose === 'search'
                 ? `to find in your library (${c.searchTo === 'hand' ? 'into your hand' : c.searchTo === 'top' ? 'on top after the shuffle' : 'onto the battlefield'}); then it's shuffled`
               : c.purpose === 'digLands'

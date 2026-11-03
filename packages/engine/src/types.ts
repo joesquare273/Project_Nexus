@@ -375,6 +375,10 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Exile `amount` cards of your choice from your graveyard (a trigger's exile cost). */
+  'ExileFromYourGraveyard',
+  /** Prevent all damage that would be dealt to creatures you control this turn (Summon: Alexander). */
+  'PreventDamageToYourCreatures',
   /** Return any number of cards matching `filter` from your graveyard to the battlefield, with total mana value `amount` or less (chosen as it resolves). */
   'ReturnFromGraveyardTotalManaValue',
   /** Exile every card in the target players' graveyards. */
@@ -686,6 +690,12 @@ export interface EffectSpec {
   next?: boolean;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
+  /** CreateDelayedTrigger: you get an emblem with this ability instead; it lasts the rest of the game (Sephiroth). */
+  emblem?: boolean;
+  /** Only on the Nth time this ability resolves this turn ("if this is the fourth time this ability has resolved this turn"). */
+  ifNthResolutionThisTurn?: number;
+  /** GrantKeywords/GrantFlags/ModifyPT: until your next turn instead of until end of turn (Hydaelyn). */
+  untilYourNextTurn?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1089,7 +1099,7 @@ export interface TriggerSpec {
   optional?: boolean;
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
   /** `lifeOf`: pay life equal to the triggering spell's mana value ("you may pay X life, where X is that spell's mana value"). */
-  cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue'; discard?: number };
+  cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue'; discard?: number; /** Exile this many cards from your graveyard, chosen as it resolves (Ultimecia). */ exileGraveyard?: number };
   /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
   oncePerTurnWhenPaid?: boolean;
   /** Dies: only if it was cast for its blitz cost (rule 702.152). */
@@ -1634,6 +1644,8 @@ export interface CardInstance {
   animated?: { power: number; toughness: number; subtypes?: string[] };
   /** The turn this permanent was last dealt damage. */
   damagedTurn?: number;
+  /** How many times one of its abilities resolved this turn (`turn:ability` key). */
+  resolutionsThisTurn?: { key: string; item: string; count: number };
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
   /** The turn this creature was last declared as an attacker (boast). */
@@ -1794,6 +1806,8 @@ export interface PlayerState {
   lostToEffect?: boolean;
   /** "Until your next turn, creatures can't attack you unless their controller pays {N} for each" (Summon: Yojimbo). Ends as this player's next turn begins. */
   attackTaxes?: number[];
+  /** "Prevent all damage that would be dealt to creatures you control this turn": the turn it applies to. */
+  preventCreatureDamageTurn?: number;
   /** "Prevent all damage that would be dealt to you this turn": the turn it applies to. */
   preventDamageTurn?: number;
   /** Can't cast spells during this turn (Silence). */
@@ -1952,6 +1966,8 @@ export interface TemporaryEffect {
   toughness?: number;
   keywords?: Keyword[];
   flags?: TemporaryFlag[];
+  /** Lasts until this player's next turn begins instead of until cleanup ("until your next turn"). */
+  untilNextTurnOf?: PlayerId;
   /** Lasts for as long as this player controls the source instead of until end of turn. */
   whileControlledBy?: PlayerId;
 }
@@ -2019,7 +2035,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -2176,7 +2192,7 @@ export interface GameState {
   triggerQueue: QueuedTrigger[];
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
   /** `next`: "when you next ... this turn": it triggers once, then is gone. */
-  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean }[];
+  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean; /** An emblem (rule 114): it never ends. */ emblem?: boolean }[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
   triggeredThisTurn: string[];
   /** "Until end of turn" effects. */

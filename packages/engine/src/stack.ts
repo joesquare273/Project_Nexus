@@ -229,8 +229,12 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): Eff
 export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
   if (item.kind === 'ability') {
     const spec = abilitySpec(s, item);
-    const discard = item.from === 'trigger' ? (spec as TriggerSpec).cost?.discard : undefined;
-    return discard ? [{ effect: 'Discard', target: 'You', amount: discard }, ...spec.effects] : spec.effects;
+    const cost = item.from === 'trigger' ? (spec as TriggerSpec).cost : undefined;
+    const paid: EffectSpec[] = [
+      ...(cost?.discard ? [{ effect: 'Discard', target: 'You', amount: cost.discard } as EffectSpec] : []),
+      ...(cost?.exileGraveyard ? [{ effect: 'ExileFromYourGraveyard', target: 'You', amount: cost.exileGraveyard } as EffectSpec] : []),
+    ];
+    return paid.length ? [...paid, ...spec.effects] : spec.effects;
   }
   return spellEffects(defOf(s, s.cards[item.card]!), item);
 }
@@ -2127,6 +2131,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards, min: 0, max: cards.length, maxTotalManaValue: amount }];
       return;
     }
+    case 'ExileFromYourGraveyard': {
+      const yard = [...player(s, item.controller).graveyard];
+      const n = Math.min(amount, yard.length);
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'exileFromGraveyard', cards: yard, min: n, max: n }];
+      return;
+    }
+    case 'PreventDamageToYourCreatures':
+      player(s, item.controller).preventCreatureDamageTurn = s.turnNumber;
+      return;
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2442,6 +2455,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),
           ...(effect.whileYouControlSource ? { whileControlledBy: item.controller } : {}),
+          ...(effect.untilYourNextTurn ? { untilNextTurnOf: item.controller } : {}),
         });
       }
       return;
@@ -2580,7 +2594,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateDelayedTrigger': {
       const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!), ...(effect.next ? { next: true } : {}) }];
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':
@@ -2925,6 +2939,15 @@ function continueResolving(ctx: Ctx): void {
       if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
+    if (effect.ifNthResolutionThisTurn !== undefined) {
+      // Counted once per resolution: this effect is reached once each time the ability resolves.
+      const c = s.cards[sourceOf(item)]!;
+      const ability = item.kind === 'ability' ? item.ability : -1;
+      const key = `${s.turnNumber}:${ability}`;
+      const prior = c.resolutionsThisTurn;
+      if (prior?.item !== item.id) c.resolutionsThisTurn = { key, item: item.id, count: prior?.key === key ? prior.count + 1 : 1 };
+      if (c.resolutionsThisTurn!.count !== effect.ifNthResolutionThisTurn) continue;
+    }
     if (effect.ifPreviousTargetIs) {
       // Ignis Scientia: "if a creature card was exiled this way".
       const t = r.previousTarget;
@@ -3086,6 +3109,7 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
   const cost = spec?.cost;
   if (accept && cost) {
     if (player(s, playerId).hand.length < (cost.discard ?? 0)) reject("You don't have enough cards to discard for that cost.");
+    if (player(s, playerId).graveyard.length < (cost.exileGraveyard ?? 0)) reject("You don't have enough cards in your graveyard to exile for that cost.");
     const life = triggerLifeCost(s, item);
     if (life !== undefined && player(s, playerId).life < life) reject("You don't have enough life to pay.");
     if (cost.mana) payMana(ctx, playerId, parseManaCost(cost.mana));
@@ -3290,6 +3314,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         moveCard(ctx, spell, pending.exileIfCountered || countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
       }
     }
+  } else if (pending.purpose === 'exileFromGraveyard') {
+    for (const id of cards) moveCard(ctx, id, 'exile');
   } else if (pending.purpose === 'payHalfLife') {
     // The first player who pays counters the spell; nobody else is asked.
     const spell = pending.cards[0]!;

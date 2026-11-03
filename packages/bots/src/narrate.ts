@@ -336,6 +336,10 @@ function effectText(e: EffectSpec): string {
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'ReturnFromGraveyardTotalManaValue':
       return `return any number of creature cards with total mana value ${n} or less from your graveyard to the battlefield`;
+    case 'ExileFromYourGraveyard':
+      return `exile ${plural('card')} from your graveyard`;
+    case 'PreventDamageToYourCreatures':
+      return 'prevent all damage that would be dealt to creatures you control this turn';
     case 'AddSubtypes':
       return `${who} becomes ${(e.addSubtypes ?? []).join(' ')} in addition to its other types`;
     case 'SearchLibraryToTop':

@@ -4776,3 +4776,100 @@ describe('S4 group 45: Kefka, Clive, Joshua, Najeela', () => {
     expect(hasKeyword(s, s.cards[najeela]!, 'Lifelink')).toBe(true);
   });
 });
+
+describe('S4 group 46: Venat, Crystal Fragments, Ultimecia, Sephiroth', () => {
+  const answerFirst = (s: GameState): GameState => {
+    for (let guard = 0; guard < 8 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) })).state;
+    }
+    return s;
+  };
+  const pickCard = (id: string) => (options: Target[][]) => [options.flat().find((t) => t.kind === 'card' && t.card === id)!];
+
+  it('Venat draws on your first legendary spell each turn; {7}: exile a nonland permanent and become Hydaelyn', () => {
+    let s = newGame();
+    const venat = put(s, 'P1', 'venat-heart-of-hydaelyn-hydaelyn-the-mothercrystal');
+    const hand = s.players.P1!.hand.length;
+    for (const id of ['najeela-the-blade-blossom', 'najeela-the-blade-blossom']) {
+      const c = put(s, 'P1', id, 'hand');
+      mana(s, 'P1', { R: 1, C: 2 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: c }).state;
+      s = answerFirst(s);
+    }
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    const cat = put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { C: 7 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: venat, ability: 0, targets: [card(cat)] }).state;
+    expect(s.cards[cat]!.zone).toBe('exile');
+    expect(s.cards[venat]!.transformed).toBe(true);
+    expect(hasKeyword(s, s.cards[venat]!, 'Indestructible')).toBe(true);
+  });
+
+  it('Hydaelyn: at combat, a counter and indestructible until your next turn on another creature; a legendary one draws a card', () => {
+    let s = newGame();
+    put(s, 'P1', 'venat-heart-of-hydaelyn-hydaelyn-the-mothercrystal', 'battlefield', { transformed: true });
+    const legend = put(s, 'P1', 'najeela-the-blade-blossom');
+    const hand = s.players.P1!.hand.length;
+    s = goTo(s, 'beginCombat', { targets: pickCard(legend) });
+    s = settle(s, { targets: pickCard(legend) }).state;
+    expect(s.cards[legend]!.counters).toBe(1);
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep');
+    expect(s.activePlayer).toBe('P2');
+    expect(hasKeyword(s, s.cards[legend]!, 'Indestructible')).toBe(true);
+  });
+
+  it('Crystal Fragments gives +1/+1; transformed, Summon: Alexander prevents damage to your creatures this turn', () => {
+    let s = newGame();
+    const { body, gear } = equipped(s, 'crystal-fragments-summon-alexander');
+    const base = stats(s, put(s, 'P2', 'coeurl'));
+    expect(stats(s, body)).toEqual([base[0]! + 1, base[1]! + 1]);
+    mana(s, 'P1', { W: 2, C: 5 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: gear, ability: 0 }).state;
+    expect(s.cards[gear]!.transformed).toBe(true);
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(body)] }).state;
+    expect(s.cards[body]!.zone).toBe('battlefield');
+    expect(s.cards[body]!.damage).toBe(0);
+  });
+
+  it('Ultimecia: at your end step, pay {4}{U}{U}{B}{B} and exile eight graveyard cards to transform and take an extra turn', () => {
+    let s = newGame();
+    const ultimecia = put(s, 'P1', 'ultimecia-time-sorceress-ultimecia-omnipotent');
+    for (let i = 0; i < 8; i++) put(s, 'P1', 'forest', 'graveyard');
+    s = goTo(s, 'main2');
+    for (let i = 0; i < 6 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.step).toBe('end');
+    expect(s.pending.kind).toBe('decide');
+    mana(s, 'P1', { U: 2, B: 2, C: 4 });
+    s = act(s, { type: 'Decide', player: 'P1', accept: true });
+    s = answerFirst(settle(s).state);
+    expect(s.players.P1!.graveyard).toHaveLength(0);
+    expect(s.cards[ultimecia]!.transformed).toBe(true);
+    expect(hasKeyword(s, s.cards[ultimecia]!, 'Menace')).toBe(true);
+    s = goTo(s, 'upkeep');
+    expect(s.activePlayer).toBe('P1');
+  });
+
+  it('Sephiroth drains on each other creature dying; the fourth time he transforms and leaves an emblem that keeps draining', () => {
+    let s = newGame(2);
+    const seph = put(s, 'P1', 'sephiroth-fabled-soldier-sephiroth-one-winged-angel');
+    const life = s.players.P2!.life;
+    for (let i = 0; i < 4; i++) {
+      const cat = put(s, 'P2', 'coeurl');
+      const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+      mana(s, 'P1', { R: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(cat)] }).state;
+    }
+    expect(s.players.P2!.life).toBe(life - 4);
+    expect(s.cards[seph]!.transformed).toBe(true);
+    expect(s.delayedTriggers?.some((d) => d.emblem)).toBe(true);
+    const cat = put(s, 'P2', 'coeurl');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(cat)] }).state;
+    expect(s.players.P2!.life).toBe(life - 5);
+  });
+});

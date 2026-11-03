@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 46: Venat, Crystal Fragments, Ultimecia, Sephiroth
+
+Four more transforming set cards (272 of 320). New engine pieces: emblems
+(a delayed trigger with `emblem: true` never ends), counting how many times
+an ability resolved this turn, effects that last until your next turn
+(`untilNextTurnOf`), preventing damage to your creatures for a turn, and
+trigger costs that exile graveyard cards.
+
 ### Set cards, group 45: Kefka, Clive, Joshua, Najeela
 
 Four more set cards, three of them transforming into Sagas or a new face

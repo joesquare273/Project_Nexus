@@ -201,8 +201,8 @@ export function cleanupDamage(ctx: Ctx): void {
     c.deathtouched = false;
   }
   // "Until end of turn" effects end at the same time (rule 514.2); "for as long as" effects go on.
-  ctx.s.temporaryEffects = ctx.s.temporaryEffects.filter((e) => e.whileControlledBy && effectLasts(ctx.s, e));
-  if (ctx.s.delayedTriggers?.length) ctx.s.delayedTriggers = ctx.s.delayedTriggers.filter((d) => d.turn > ctx.s.turnNumber);
+  ctx.s.temporaryEffects = ctx.s.temporaryEffects.filter((e) => (e.whileControlledBy && effectLasts(ctx.s, e)) || e.untilNextTurnOf);
+  if (ctx.s.delayedTriggers?.length) ctx.s.delayedTriggers = ctx.s.delayedTriggers.filter((d) => d.emblem || d.turn > ctx.s.turnNumber);
   ctx.s.combat = null;
   emptyAllManaPools(ctx.s);
 }
@@ -220,6 +220,8 @@ export function startNextTurn(ctx: Ctx): void {
   s.activePlayer = extra ?? nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
   s.players[s.activePlayer]!.turnsTaken = (s.players[s.activePlayer]!.turnsTaken ?? 0) + 1;
+  // "Until your next turn" effects end as that player's turn begins.
+  s.temporaryEffects = s.temporaryEffects.filter((e) => e.untilNextTurnOf !== s.activePlayer);
   // Stagger lasts "until your next turn".
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
