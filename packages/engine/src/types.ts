@@ -1200,7 +1200,8 @@ export interface StaticSpec {
    * Edgar: "Once during each of your turns, you may cast an artifact spell
    * from your graveyard. If you cast a spell this way, that artifact enters tapped."
    */
-  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean };
+  /** `unlimited`: any number of times, whenever you could cast it (Noctis), not once on your turn (Edgar); `payLife` extra; `finality`: it enters with a finality counter. */
+  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean };
   /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
   equipCost?: { mana: string; ifArtifactsAtLeast: number };
   /** Works while the card is in this zone instead of on the battlefield (Anger, from the graveyard). */
@@ -1217,6 +1218,8 @@ export interface StaticSpec {
   cantAttackOrBlock?: boolean;
   /** Base power and toughness equal to the source's controller's life total (Aettir and Priwen). */
   basePTFromLife?: boolean;
+  /** "If you tap a permanent for mana, it produces three times as much of that mana instead" (Nyxbloom Ancient). */
+  tripleMana?: boolean;
   /** "If one or more tokens would be created under your control, those tokens plus a 1/1 green Frog are created instead" (Quina). */
   extraFrogOnTokens?: boolean;
   /** "You have protection from each of your opponents" (Absolute Virtue). */
@@ -1421,6 +1424,8 @@ export interface CardDefinition {
   kickerSacrifice?: ObjectFilter;
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** "Ward—Pay life equal to this creature's power" (Raubahn): opponents targeting it pay that life. */
+  wardLifeEqualsPower?: boolean;
   /** "As long as your devotion to [color] is less than N, this isn't a creature" (Purphoros). */
   creatureOnlyWithDevotion?: { color: 'W' | 'U' | 'B' | 'R' | 'G'; atLeast: number };
   /** Its power is equal to this count, everywhere (a characteristic-defining ability, rule 604.3: Adeline). */
@@ -1797,6 +1802,8 @@ export interface SpellItem {
   manaSpent: number;
   /** Converge: how many colors of mana were spent to cast it. */
   colorsSpent?: number;
+  /** Cast with Noctis's permission: the artifact enters with a finality counter. */
+  finalityOnEnter?: true;
   /** Cast with Strago and Relm's permission: as a creature it gains haste and is sacrificed at the next end step. */
   sacrificeAtEndStep?: true;
   /** The value chosen for {X}. */

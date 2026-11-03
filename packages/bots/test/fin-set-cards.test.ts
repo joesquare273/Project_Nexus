@@ -4273,3 +4273,63 @@ describe('S4 group 41: the Town lands with Adventures (Ishgard, Jidoor, Lindblum
     expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
   });
 });
+
+describe('S4 group 42: Giott, Nyxbloom Ancient, Noctis, Raubahn', () => {
+  it('Giott (double strike): when it or another Dwarf enters, or an Equipment, you may discard a card to draw one', () => {
+    let s = newGame();
+    const giott = put(s, 'P1', 'giott-king-of-the-dwarves', 'hand');
+    const extra = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { R: 1, W: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: giott }), { accept: true }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [extra] })).state;
+    expect(hasKeyword(s, s.cards[giott]!, 'DoubleStrike')).toBe(true);
+    // Giott cast, Coeurl discarded, a card drawn.
+    expect(s.cards[extra]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.length).toBe(hand - 1);
+    // An Equipment entering triggers it too.
+    const plate = put(s, 'P1', 'darksteel-plate', 'hand');
+    mana(s, 'P1', { C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: plate });
+    s = settle(s, { accept: false }).state;
+    expect(s.cards[plate]!.zone).toBe('battlefield');
+  });
+
+  it('Nyxbloom Ancient: tapping a permanent for mana makes three times as much', () => {
+    let s = newGame();
+    put(s, 'P1', 'nyxbloom-ancient');
+    const forest = put(s, 'P1', 'forest');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: forest, mana: 'G' });
+    expect(s.players.P1!.manaPool.G).toBe(3);
+  });
+
+  it('Noctis: cast artifacts from your graveyard by also paying 3 life; they enter with a finality counter', () => {
+    let s = newGame();
+    put(s, 'P1', 'noctis-prince-of-lucis');
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    mana(s, 'P1', { C: 1 });
+    const option = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === ring);
+    expect(option).toBeDefined();
+    s = cast(s, option!).state;
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+    expect(countersOf(s.cards[ring]!, 'finality')).toBe(1);
+    expect(s.players.P1!.life).toBe(17);
+  });
+
+  it('Raubahn: ward—pay life equal to its power; when it attacks, attach up to one of your Equipment to an attacking creature', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'raubahn-bull-of-ala-mhigo');
+    const bolt = put(s, 'P1', 'thunder-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s.players.P1!.life = 1;
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: bolt, mode: 0, targets: [card(theirs)] })).toMatch(/life/);
+    s.players.P1!.life = 20;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, mode: 0, targets: [card(theirs)] }).state;
+    expect(s.players.P1!.life).toBe(18);
+    let t = newGame();
+    const mine = put(t, 'P1', 'raubahn-bull-of-ala-mhigo');
+    const plate = put(t, 'P1', 'darksteel-plate');
+    t = fight(t, [{ attacker: mine, defender: 'P2' }]).state;
+    expect(t.cards[plate]!.attachedTo).toBe(mine);
+  });
+});

@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 40: Giott, Nyxbloom Ancient, Noctis, Raubahn
+
+- 244 of 320. Engine: castFromGraveyard `unlimited`, `payLife` and
+  `finality` (Noctis), `wardLifeEqualsPower` (Raubahn), `tripleMana`
+  (Nyxbloom Ancient).
+
 ### Set cards, group 39: the Town lands with Adventures
 
 - Ishgard, Jidoor, Lindblum and Midgar (240 of 320): cast the Adventure,

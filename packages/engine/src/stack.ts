@@ -575,7 +575,9 @@ export function activateManaAbility(
   tap(ctx, c);
   const ability = def.manaAbility;
   if (ability?.sacrifice) sacrifice(ctx, id);
-  const amount = manaAbilityAmount(c, def);
+  // Nyxbloom Ancient: three times as much (each one triples again).
+  const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
+  const amount = manaAbilityAmount(c, def) * 3 ** triplers;
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : undefined);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
@@ -666,9 +668,11 @@ export function graveyardCastSources(s: GameState, playerId: PlayerId, c: CardIn
   if (s.activePlayer !== playerId || !isSpellCard(defOf(s, c))) return [];
   const out: InstanceId[] = [];
   for (const source of battlefield(s)) {
-    if (source.controller !== playerId || source.graveyardCastTurn === s.turnNumber) continue;
+    if (source.controller !== playerId) continue;
     for (const spec of defOf(s, source).statics ?? []) {
       const allow = spec.castFromGraveyard;
+      // Edgar's is once each turn; Noctis's has no limit.
+      if (allow && !allow.unlimited && source.graveyardCastTurn === s.turnNumber) continue;
       if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id }, c.owner, spellDefinition(defOf(s, c), adventure))) { out.push(source.id); break; }
     }
   }
@@ -689,6 +693,19 @@ function graveyardCastStatic(s: GameState, playerId: PlayerId, c: CardInstance, 
  * an opponent of `playerId` controls costs their ward on top (rule 702.21 counters
  * the spell or ability unless that's paid).
  */
+/** "Ward—Pay life equal to its power" (Raubahn): the life an opponent targeting these must pay. */
+export function wardLife(s: GameState, targets: readonly Target[], playerId: PlayerId): number {
+  const seen = new Set<InstanceId>();
+  let total = 0;
+  for (const t of targets) {
+    if (t.kind !== 'card' || seen.has(t.card)) continue;
+    seen.add(t.card);
+    const c = s.cards[t.card];
+    if (c?.zone === 'battlefield' && c.controller !== playerId && defOf(s, c).wardLifeEqualsPower) total += Math.max(0, powerOf(s, c));
+  }
+  return total;
+}
+
 export function wardCost(s: GameState, targets: readonly Target[], playerId: PlayerId): number {
   const seen = new Set<InstanceId>();
   let total = 0;
@@ -977,7 +994,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   for (const g of delved) moveCard(ctx, g, 'exile');
   // Edgar's permission is used up for this turn.
   const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure) : undefined;
-  if (edgar) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
+  if (edgar && !edgar.unlimited) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
+  // Noctis: "by paying 3 life in addition to paying their other costs". Raubahn's ward: life equal to his power.
+  const lifeToPay = (edgar?.payLife ?? 0) + wardLife(s, targets, playerId);
+  if (lifeToPay > 0) {
+    if (player(s, playerId).life < lifeToPay) reject(`You need ${lifeToPay} life to pay for that.`);
+    changeLife(ctx, playerId, -lifeToPay);
+  }
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
     casts[id] = (casts[id] ?? 0) + 1;
@@ -1018,6 +1041,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(kicks > 0 ? { kicks } : {}),
     ...(permission?.exileAfter ? { exileAfter: true } : {}),
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
+    ...(edgar?.finality ? { finalityOnEnter: true as const } : {}),
     ...(sacrificeLater ? { sacrificeAtEndStep: true as const } : {}),
   };
   s.stack.push(item);
@@ -1313,6 +1337,12 @@ export function activateAbility(
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
+  // Raubahn's ward: targeting him with an ability costs life equal to his power.
+  const wardLifeCost = wardLife(s, targets, playerId);
+  if (wardLifeCost > 0) {
+    if (player(s, playerId).life < wardLifeCost) reject(`You need ${wardLifeCost} life to pay for Raubahn's ward.`);
+    changeLife(ctx, playerId, -wardLifeCost);
+  }
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
@@ -2934,6 +2964,7 @@ export function resolveTop(ctx: Ctx): void {
       if (def.enchant && host?.kind === 'card') attach(ctx,c.id,host.card);
       c.summoningSick = true;
       if (entersTapped(s, c) || item.entersTapped) c.tapped = true;
+      if (item.finalityOnEnter) addCounters(ctx, c.id, 1, item.controller, 'finality');
       addCounters(ctx, c.id, extra, item.controller);
       // Strago and Relm: it gains haste, and is sacrificed at the beginning of the next end step.
       if (item.sacrificeAtEndStep) {
