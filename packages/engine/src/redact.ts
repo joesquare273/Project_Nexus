@@ -172,6 +172,7 @@ const CARD_FIELDS = {
   extraCountersOnEnter: 'copy',
   isToken: 'copy',
   damagedTurn: 'copy',
+  attackedTurn: 'copy',
   animated: 'copy',
   chosenColor: 'copy',
   returnToHandAtEndStep: 'copy',

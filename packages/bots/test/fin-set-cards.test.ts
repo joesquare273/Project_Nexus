@@ -4436,3 +4436,71 @@ describe('S4 group 41: Syr Konrad, Rhystic Study, Kraum, Thrasios, Smuggler’s 
     expect(t.players.P2!.graveyard.length).toBe(1);
   });
 });
+
+describe('S4 group 42: Teferi, Varragoth, Bruse Tarl, Ishai, Vial Smasher', () => {
+  it('Teferi: your creature cards have flash; opponents cast spells only at sorcery speed', () => {
+    let s = newGame();
+    put(s, 'P1', 'teferi-mage-of-zhalfir');
+    s = goTo(s, 'beginCombat');
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: cat })).state;
+    expect(s.cards[cat]!.zone).toBe('battlefield');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    mana(s, 'P2', { R: 1 });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [player('P1')] })).toMatch(/main phase/);
+  });
+
+  it('Varragoth: boast only after it attacked; the target player puts the card they find on top', () => {
+    let s = newGame();
+    const demon = put(s, 'P1', 'varragoth-bloodsky-sire');
+    const wanted = put(s, 'P1', 'lightning-bolt', 'library');
+    s.players.P1!.library.push(s.players.P1!.library.shift()!);
+    mana(s, 'P1', { B: 1, C: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: demon, ability: 0, targets: [player('P1')] })).toMatch(/attacked this turn/);
+    s = fight(s, [{ attacker: demon, defender: 'P2' }]).state;
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: demon, ability: 0, targets: [player('P1')] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'search', searchTo: 'top', player: 'P1' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [wanted] })).state;
+    expect(s.players.P1!.library[0]).toBe(wanted);
+    mana(s, 'P1', { B: 1, C: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: demon, ability: 0, targets: [player('P1')] })).toMatch(/once each turn/);
+  });
+
+  it('Bruse Tarl gives a creature you control double strike and lifelink as it enters', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl');
+    const bruse = put(s, 'P1', 'bruse-tarl-boorish-herder', 'hand');
+    mana(s, 'P1', { R: 1, W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bruse }, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    expect(hasKeyword(s, s.cards[cat]!, 'DoubleStrike')).toBe(true);
+    expect(hasKeyword(s, s.cards[cat]!, 'Lifelink')).toBe(true);
+  });
+
+  it('Ishai gets a +1/+1 counter whenever an opponent casts a spell', () => {
+    let s = newGame();
+    const ishai = put(s, 'P1', 'ishai-ojutai-dragonspeaker');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    mana(s, 'P2', { R: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [player('P1')] })).state;
+    expect(stats(s, ishai)).toEqual([2, 2]);
+  });
+
+  it('Vial Smasher deals damage equal to your first spell’s mana value to a random opponent, once each turn', () => {
+    let s = newGame(3);
+    put(s, 'P1', 'vial-smasher-the-fierce');
+    const total = () => s.players.P2!.life + s.players.P3!.life;
+    const before = total();
+    const cats = [put(s, 'P1', 'coeurl', 'hand'), put(s, 'P1', 'coeurl', 'hand')];
+    const mv = manaValue(parseManaCost(s.cardDefs['coeurl']!.manaCost));
+    for (const cat of cats) {
+      mana(s, 'P1', { W: 1, C: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: cat }).state;
+    }
+    expect(total()).toBe(before - mv);
+  });
+});

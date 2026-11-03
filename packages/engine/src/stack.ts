@@ -89,6 +89,14 @@ export function hasInstantTiming(def: CardDefinition): boolean {
   return def.types.includes('instant') || (def.keywords?.includes('Flash') ?? false);
 }
 
+/** Whether `playerId` may cast this card (as `def`) any time they have priority, after static abilities like Teferi's (rule 307.1, 601.3). */
+export function castsAtInstantSpeed(s: GameState, playerId: PlayerId, c: CardInstance, def: CardDefinition): boolean {
+  const statics = battlefield(s).filter((p) => !p.phasedOut).flatMap((p) => (defOf(s, p).statics ?? []).map((st) => ({ st, controller: p.controller })));
+  if (statics.some(({ st, controller }) => st.opponentsCastAtSorcerySpeed && controller !== playerId)) return false;
+  if (hasInstantTiming(def)) return true;
+  return def.types.includes('creature') && c.owner === playerId && c.zone !== 'battlefield' && statics.some(({ st, controller }) => st.ownCreatureCardsHaveFlash && controller === playerId);
+}
+
 /** The effects whose targets are chosen, in order. A spell or ability has one target per such effect. */
 export function choosingEffects(effects: readonly EffectSpec[] | undefined): EffectSpec[] {
   return (effects ?? []).filter((e) => CHOSEN_TARGET_KINDS.includes(e.target));
@@ -886,7 +894,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
   const anyTime = (from === 'exile' || from === 'graveyard') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
-  if (!hasInstantTiming(def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
+  if (!castsAtInstantSpeed(s, playerId, c, def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }
   const modes = modeProblem(def, choice, s, playerId);
@@ -1142,6 +1150,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
   if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
+  if (spec.ifAttackedThisTurn && c.attackedTurn !== s.turnNumber) return 'That can be activated only if this creature attacked this turn.';
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId) && !(spec.equip && equipAnyTime(s, playerId))) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
@@ -1413,6 +1422,10 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return toPlayers(alivePlayers(s));
     case 'EachOpponent':
       return toPlayers(alivePlayers(s).filter((id) => id !== item.controller));
+    case 'RandomOpponent': {
+      const opponents = alivePlayers(s).filter((id) => id !== item.controller);
+      return opponents.length > 0 ? toPlayers([opponents[randomInt(s, opponents.length)]!]) : [];
+    }
     case 'EachOpponentCreature':
       return creatures((c) => c.controller !== item.controller);
     case 'EachCreatureYouControl':
@@ -2758,6 +2771,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // Usually "you search"; Path to Exile has the exiled creature's controller search.
       for (const searcher of targetPlayers(targets)) queueSearch(s, r, searcher, effect, amount, effect.entersTapped ? 'battlefieldTapped' : 'battlefield');
       return;
+    case 'SearchLibraryToTop':
+      for (const searcher of targetPlayers(targets)) queueSearch(s, r, searcher, effect, amount, 'top');
+      return;
     case 'SearchLibraryToHand': {
       const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && hasType(s, c, 'land')).length;
       const behind = effect.toBattlefieldIfBehindOnLands && alivePlayers(s).some((pid) => lands(pid) > lands(item.controller));
@@ -3238,6 +3254,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       moveCard(ctx, spell, countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
       r.choiceQueue = (r.choiceQueue ?? []).filter((q) => q.purpose !== 'payHalfLife');
     }
+  } else if (pending.purpose === 'search' && pending.searchTo === 'top') {
+    // "Then shuffles and puts that card on top": the card stays hidden in the library.
+    const library = player(s, pending.player).library;
+    for (const id of cards) library.splice(library.indexOf(id), 1);
+    shuffleInPlace(s, library);
+    library.unshift(...cards);
+    ctx.ev.push({ type: 'LibraryShuffled', player: pending.player });
   } else if (pending.purpose === 'search') {
     for (const id of cards) {
       if (pending.searchTo === 'hand') {
@@ -3391,7 +3414,7 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
  * cards (one, or up to `amount`), and may find none (rule 701.19b); the
  * library is shuffled after the choice.
  */
-function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped'): void {
+function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped' | 'top'): void {
   const p = s.players[searcher]!;
   // "Search your library and/or graveyard": cards from both are offered.
   const where = effect.alsoGraveyard ? [...p.library, ...p.graveyard] : p.library;

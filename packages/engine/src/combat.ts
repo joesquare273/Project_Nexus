@@ -183,6 +183,7 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
   for (const a of attacks) {
     const c = s.cards[a.attacker]!;
     if (!hasKeyword(s, c, 'Vigilance')) tap(ctx, c);
+    c.attackedTurn = s.turnNumber;
     ctx.ev.push({ type: 'AttackDeclared', attacker: a.attacker, defendingPlayer: a.defender });
   }
   if (attacks.length === 0) {

@@ -151,6 +151,8 @@ export const TARGET_KINDS = [
   'SubjectController',
   /** Each opponent other than the one the triggering creature attacked or damaged ("each other opponent"). */
   'EachOtherOpponent',
+  /** An opponent chosen at random as the effect happens (Vial Smasher). */
+  'RandomOpponent',
   /** Each creature controlled by the player the previous chosen target picked ("each creature target player controls"). */
   'CreaturesPreviousTargetControls',
   /** Every card in every graveyard matching `filter` ("all creature cards from all graveyards"). */
@@ -369,6 +371,8 @@ export const EFFECT_KINDS = [
   'Proliferate',
   /** Search your library for a card matching `filter`, put it into your hand, then shuffle. */
   'SearchLibraryToHand',
+  /** Each target player searches their library for a card matching `filter`, then shuffles and puts that card on top (Varragoth). */
+  'SearchLibraryToTop',
   /** Exile every card in the target players' graveyards. */
   'ExileGraveyard',
   /**
@@ -1124,6 +1128,8 @@ export interface ActivatedSpec {
   costReductionPerMatching?: ObjectFilter;
   /** "Activate only once each turn." */
   oncePerTurn?: boolean;
+  /** Boast: "activate only if this creature attacked this turn" (with `oncePerTurn`). */
+  ifAttackedThisTurn?: boolean;
   /** "Activate only during your turn." */
   yourTurn?: boolean;
   /** "Activate only if an opponent was dealt combat damage by a legendary creature this turn" (Blitzball). */
@@ -1155,6 +1161,10 @@ export interface StaticSpec {
   attacksDespiteDefenderWithCounters?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
   additionalLands?: number;
+  /** Teferi, Mage of Zhalfir: creature cards its controller owns that aren't on the battlefield have flash. */
+  ownCreatureCardsHaveFlash?: boolean;
+  /** Teferi, Mage of Zhalfir: each opponent of its controller can cast spells only any time they could cast a sorcery. */
+  opponentsCastAtSorcerySpeed?: boolean;
   /** Edgar: the first time its controller flips coins each turn, they come up heads. */
   firstCoinFlipsHeads?: boolean;
   /** The source's controller has no maximum hand size (Thought Vessel). */
@@ -1593,6 +1603,8 @@ export interface CardInstance {
   animated?: { power: number; toughness: number; subtypes?: string[] };
   /** The turn this permanent was last dealt damage. */
   damagedTurn?: number;
+  /** The turn this creature was last declared as an attacker (boast). */
+  attackedTurn?: number;
   /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
   extraCountersOnEnter?: number;
   /** A token rather than a card. */
@@ -2003,7 +2015,7 @@ export interface CardChoice {
   /** digLands: every card looked at; those still in the library afterwards go to the graveyard. */
   looked?: InstanceId[];
   /** search: where the found cards go (hand, or the battlefield, tapped or not); the library is shuffled afterwards. */
-  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped' | 'exileFaceDown';
+  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped' | 'exileFaceDown' | 'top';
   /** search: whose library is searched, when it isn't the searcher's (Praetor's Grasp). */
   libraryOf?: PlayerId;
 }

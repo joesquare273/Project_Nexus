@@ -41,6 +41,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   EachOpponentWhoDidNotChoose: "each opponent who didn't",
   EachOpponentWhoLostLifeThisTurn: 'each opponent who lost life this turn',
   EachOtherOpponent: 'each other opponent',
+  RandomOpponent: 'an opponent chosen at random',
   TargetAbility: 'target activated or triggered ability',
   TargetSpellOrAbility: 'target activated ability, triggered ability, or spell',
   TargetCardExiledWithSource: 'target card exiled with this',
@@ -330,6 +331,8 @@ function effectText(e: EffectSpec): string {
       return 'proliferate';
     case 'PutTopCardIfLand':
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
+    case 'SearchLibraryToTop':
+      return `${who} searches their library for a card, then shuffles and puts that card on top`;
     case 'SearchLibraryToHand':
       return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand${e.toBattlefieldIfBehindOnLands ? ' (onto the battlefield tapped if an opponent controls more lands)' : ''}`;
     case 'PhaseOut':

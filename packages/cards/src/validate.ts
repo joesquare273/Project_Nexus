@@ -71,6 +71,7 @@ const PLAYER_TARGETS = new Set([
   'EachOpponentWhoDidNotChoose',
   'EachOpponentWhoLostLifeThisTurn',
   'EachOtherOpponent',
+  'RandomOpponent',
 ]);
 /** Target kinds that pick from a filter. */
 const FILTERED_TARGETS = new Set(['TargetPermanent', 'TargetCardInGraveyard', 'AllPermanents', 'AllGraveyardCards', 'TargetSpell']);

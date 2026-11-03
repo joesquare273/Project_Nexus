@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 42: Teferi, Varragoth, Bruse Tarl, Ishai, Vial Smasher
+
+Five more set cards (254 of 320). Casting timing now goes through
+`castsAtInstantSpeed` (stack.ts), which applies Teferi's two statics. New:
+boast-style activation (`ifAttackedThisTurn`, tracked by `attackedTurn`, a
+public field), `SearchLibraryToTop`, and the `RandomOpponent` target.
+
 ### Set cards, group 41: Syr Konrad, Rhystic Study, Kraum, Thrasios, Smuggler's Copter
 
 Five more set cards (249 of 320). New engine pieces: a `PutIntoGraveyard`
