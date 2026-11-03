@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Ordering triggers and holding priority
+
+- Players order their simultaneous triggers (rule 603.3b): the board asks
+  you to click them in resolve order ("Keep this order" for the default);
+  bots keep the order found, and identical triggers aren't asked about.
+  "Hold priority" (button by Pass, and a setting) keeps priority after you
+  cast so you can add more before anyone responds. See docs/decisions.md.
+  Tests: `bots/test/trigger-order.test.ts`.
+
 ### Set cards, group 25: Summon: Fenrir and Summon: Leviathan
 
 - 189 of 320. Engine: `NextCreatureEntersWithCounters` (the Yuna, Grand
