@@ -1997,6 +1997,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         c.controller = receiver;
         c.summoningSick = true;
         if (c.attachedTo) delete c.attachedTo;
+        if (effect.untilEndOfTurn) c.controlUntilEndOfTurn = { previous: c.controlUntilEndOfTurn?.previous ?? previous };
         if (effect.whileYouControlSource) c.controlWhile = { source, sourceObject: item.kind === 'spell' ? 0 : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0), controller: receiver, previous };
         ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver });
         r.controlChanged = true;
@@ -2573,6 +2574,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const equipment = t?.kind === 'card' ? s.cards[t.card] : undefined;
       if (!equipment || equipment.zone !== 'battlefield' || equipment.controller !== item.controller) return;
       for (const id of onBattlefield) attach(ctx, equipment.id, id);
+      if (effect.untilEndOfTurn && onBattlefield.length) equipment.unattachAtEndOfTurn = true;
       return;
     }
     case 'PutFromHand':

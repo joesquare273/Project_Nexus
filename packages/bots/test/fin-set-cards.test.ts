@@ -3719,3 +3719,57 @@ describe('S4 group 31: Syncopate', () => {
     expect(s.cards[cat]!.zone).toBe('battlefield');
   });
 });
+
+describe('S4 group 32: Swallowed by Leviathan and The Final Days', () => {
+  it('The Final Days: two tapped 2/2 Horrors; cast from the graveyard (flashback), one per creature card there', () => {
+    let s = newGame();
+    const horrors = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'horror-token');
+    const days = put(s, 'P1', 'the-final-days', 'hand');
+    mana(s, 'P1', { B: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: days }).state;
+    expect(horrors()).toHaveLength(2);
+    expect(horrors().every((id) => s.cards[id]!.tapped)).toBe(true);
+    expect(stats(s, horrors()[0]!)).toEqual([2, 2]);
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'coeurl', 'graveyard');
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: days }).state;
+    expect(horrors()).toHaveLength(5);
+    expect(s.cards[days]!.zone).toBe('exile');
+  });
+
+  it('Swallowed by Leviathan: surveil 2, then counter the spell unless its controller pays {1} per card in your graveyard', () => {
+    let s = newGame();
+    for (let i = 0; i < 2; i++) put(s, 'P1', 'forest', 'graveyard');
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cat });
+    const swallow = put(s, 'P1', 'swallowed-by-leviathan', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: swallow, targets: [{ kind: 'card', card: cat }] });
+    s = settle(s, { surveilToGraveyard: true }).state;
+    // Surveiled two into the graveyard first: now 4 cards there.
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'payToAvoidCounter', payGeneric: 4 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+  });
+});
+
+describe('S4 group 32b: Unexpected Request', () => {
+  it('gains control of a creature until end of turn, untaps it, gives it haste, and may lend it your Equipment until then', () => {
+    let s = newGame();
+    const titan = put(s, 'P2', 'summon-titan', 'battlefield', { tapped: true });
+    const plate = put(s, 'P1', 'darksteel-plate');
+    const spell = put(s, 'P1', 'unexpected-request', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(plate), card(titan)] }).state;
+    expect(s.cards[titan]!.controller).toBe('P1');
+    expect(s.cards[titan]!.tapped).toBe(false);
+    expect(hasKeyword(s, s.cards[titan]!, 'Haste')).toBe(true);
+    expect(s.cards[plate]!.attachedTo).toBe(titan);
+    // After the turn: back to its owner, and the Equipment comes off.
+    s = goTo(goTo(s, 'end'), 'upkeep');
+    expect(s.cards[titan]!.controller).toBe('P2');
+    expect(s.cards[plate]!.attachedTo).toBeUndefined();
+    expect(s.cards[plate]!.controller).toBe('P1');
+  });
+});

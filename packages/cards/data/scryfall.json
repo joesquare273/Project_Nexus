@@ -5200,6 +5200,23 @@
     "scryfallId": "fbdb68cc-5516-481a-94c5-59f6c69b8a17",
     "relatedTokens": []
   },
+  "horror-token": {
+    "name": "Horror",
+    "typeLine": "Token Creature — Horror",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "13",
+    "artist": "Lordigan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133",
+      "normal": "https://cards.scryfall.io/normal/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133",
+      "large": "https://cards.scryfall.io/large/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/d/ddcf50c2-24f5-46b4-bfe9-c636bb51bae5.jpg?1783906133"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/13/horror?utm_source=api",
+    "scryfallId": "ddcf50c2-24f5-46b4-bfe9-c636bb51bae5",
+    "relatedTokens": []
+  },
   "hraesvelgr-of-the-first-brood": {
     "name": "Hraesvelgr of the First Brood",
     "typeLine": "Legendary Creature — Elder Dragon",

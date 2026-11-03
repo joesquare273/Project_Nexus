@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 31: Swallowed by Leviathan, The Final Days, Unexpected Request
+
+- 209 of 320, with the Horror token (tfin 13). Engine: gain control until
+  end of turn (`controlUntilEndOfTurn`, given back at cleanup) and
+  Equipment attached until then (`unattachAtEndOfTurn`); both public.
+
 ### Set cards, group 30: Clash of the Eikons, Phantom Train, Syncopate
 
 - 206 of 320. Engine: Fight with `damageSource: 'PreviousTarget'` ("target

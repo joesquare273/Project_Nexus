@@ -174,6 +174,20 @@ export function cleanupDamage(ctx: Ctx): void {
   if (ctx.s.castGroups) ctx.s.castGroups=ctx.s.castGroups.filter(g=>g.turn!==ctx.s.turnNumber);
   for (const c of Object.values(ctx.s.cards)) if (c.adventureGraveyard?.expiresOnTurn === ctx.s.turnNumber) delete c.adventureGraveyard;
   for (const c of Object.values(ctx.s.cards).filter((card) => card.zone === 'battlefield')) {
+    // "Gain control ... until end of turn", and Equipment attached until then (Unexpected Request).
+    if (c.unattachAtEndOfTurn) {
+      delete c.unattachAtEndOfTurn;
+      delete c.attachedTo;
+    }
+    if (c.controlUntilEndOfTurn) {
+      const back = c.controlUntilEndOfTurn.previous;
+      delete c.controlUntilEndOfTurn;
+      if (!ctx.s.players[back]!.eliminated && c.controller !== back) {
+        c.controller = back;
+        if (c.attachedTo && ctx.s.cards[c.attachedTo]?.controller !== back && !ctx.s.cardDefs[c.defId]?.enchant) delete c.attachedTo;
+        ctx.ev.push({ type: 'ControlChanged', card: c.id, controller: back });
+      }
+    }
     if (c.copy?.untilTurn !== undefined && c.copy.untilTurn <= ctx.s.turnNumber) {
       do { c.copy=c.copy.previous; } while(c.copy?.untilTurn !== undefined && c.copy.untilTurn <= ctx.s.turnNumber);
       if(!c.copy) delete c.copy;

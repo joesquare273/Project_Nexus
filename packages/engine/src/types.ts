@@ -614,6 +614,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** GainControl: only until end of turn (it goes back at cleanup). AttachEquipmentTo: the Equipment is unattached then too. */
+  untilEndOfTurn?: boolean;
   /** CounterUnlessPays: a spell countered this way is exiled instead of put into its owner's graveyard. */
   exileCountered?: boolean;
   /** DealDamage with damageSource PreviousTarget: the chosen creature also deals the damage to itself ("and X damage to itself", Self-Destruct). */
@@ -1465,6 +1467,10 @@ export interface BattlefieldCopy {
 export interface CardInstance {
   /** "For as long as you control [source]": control returns to `previous` once that ends (Yuffie). */
   controlWhile?: { source: InstanceId; sourceObject: number; controller: PlayerId; previous: PlayerId };
+  /** Control gained until end of turn: who gets it back at cleanup. */
+  controlUntilEndOfTurn?: { previous: PlayerId };
+  /** Equipment attached "until the next end step" (Unexpected Request): unattached at cleanup. */
+  unattachAtEndOfTurn?: boolean;
   /** Copiable values of a battlefield object; counters, damage, control and attachments remain separate. */
   copy?: BattlefieldCopy;
   /** Copied abilities as the object left the battlefield, for death/leave triggers. */

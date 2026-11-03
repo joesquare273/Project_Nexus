@@ -174,6 +174,8 @@ const CARD_FIELDS = {
   damagedTurn: 'copy',
   animated: 'copy',
   chosenColor: 'copy',
+  controlUntilEndOfTurn: 'copy',
+  unattachAtEndOfTurn: 'copy',
   spellCopy: 'copy',
   attachedTo: 'refs',
   exiledUntilLeaves: 'refs',
