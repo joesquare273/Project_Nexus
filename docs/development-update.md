@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 30: Clash of the Eikons, Phantom Train, Syncopate
+
+- 206 of 320. Engine: Fight with `damageSource: 'PreviousTarget'` ("target
+  creature you control fights"), `RemoveCounters` (lore counters off a Saga
+  don't trigger chapters), and `CounterUnlessPays` (a `payToAvoidCounter`
+  choice for the spell's controller, who can tap mana while deciding; the
+  board offers "Pay {X}" with automatic taps; bots pay when they can).
+  Phantom Train's missing Trample keyword fixed in the import data.
+
 ### Set cards, group 29: Galuf's Final Act and Self-Destruct
 
 - 203 of 320. Engine: GrantTrigger also grants "when this creature dies"

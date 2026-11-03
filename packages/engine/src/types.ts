@@ -426,6 +426,10 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** Counter the target spell unless its controller pays `amount` generic mana (`exileCountered`: exile it instead, Syncopate). */
+  'CounterUnlessPays',
+  /** Remove `amount` (default 1) counters of kind `counter` from the target (removing lore counters doesn't trigger chapters). */
+  'RemoveCounters',
   /** The permanent becomes a creature (`becomes`), in addition to its other types, from now on (Ride the Shoopuf). */
   'BecomeCreature',
   /** "When you next cast a creature spell this turn, that creature enters with `amount` additional +1/+1 counters" (Summon: Fenrir). */
@@ -610,6 +614,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** CounterUnlessPays: a spell countered this way is exiled instead of put into its owner's graveyard. */
+  exileCountered?: boolean;
   /** DealDamage with damageSource PreviousTarget: the chosen creature also deals the damage to itself ("and X damage to itself", Self-Destruct). */
   damageItself?: boolean;
   /** SearchLibraryToHand: search your graveyard too ("search your library and/or graveyard", Delivery Moogle). */
@@ -1883,7 +1889,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -1898,6 +1904,9 @@ export interface CardChoice {
   /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */
   restToGraveyard?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */
+  /** payToAvoidCounter: how much generic mana to pay, and whether the spell is exiled if not paid. */
+  payGeneric?: number;
+  exileIfCountered?: boolean;
   /** search: the chosen cards must all have different names (Reach the Horizon). */
   differentNames?: boolean;
   onePerType?: CardType[];

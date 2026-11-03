@@ -1089,7 +1089,15 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseCards') {
     const c = pending;
     const picks = p.bottomPicks;
-    if (c.purpose === 'payHalfLife') {
+    if (c.purpose === 'payToAvoidCounter') {
+      const x = c.payGeneric ?? 0;
+      const taps = planTaps(s, YOU, { generic: x });
+      text = `${cardName(s, c.cards[0]!)} will be countered unless you pay {${x}}.`;
+      buttons = [
+        ...(taps ? [{ label: `Pay {${x}}`, onClick: () => p.submit([...tapActions(YOU, taps), { type: 'ChooseCards', player: YOU, cards: [...c.cards] }]), primary: true }] : []),
+        { label: taps ? 'Don’t pay' : `Can’t pay {${x}}`, onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
+      ];
+    } else if (c.purpose === 'payHalfLife') {
       const half = Math.ceil((s.players[YOU]?.life ?? 0) / 2);
       text = `Pay half your life (${half}) to counter ${cardName(s, c.cards[0]!)}?`;
       buttons = [

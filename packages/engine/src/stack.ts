@@ -1803,6 +1803,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ExtraTurn':
       for (const pid of targetPlayers(targets)) s.extraTurns = [...(s.extraTurns ?? []), pid];
       return;
+    case 'CounterUnlessPays':
+      // The spell's controller chooses: pay (choose the spell) or let it be countered.
+      for (const id of cards) {
+        if (!s.stack.some((i) => i.kind === 'spell' && i.card === id) || defOf(s, s.cards[id]!).cantBeCountered) continue;
+        const owner = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem).controller;
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: owner, purpose: 'payToAvoidCounter', cards: [id], min: 0, max: 1, payGeneric: amount, ...(effect.exileCountered ? { exileIfCountered: true } : {}) }];
+      }
+      return;
     case 'PayHalfLifeToCounter': {
       const spell = item.kind === 'ability' ? item.subject : undefined;
       if (!spell || !s.stack.some((i) => i.kind === 'spell' && i.card === spell)) return;
@@ -1852,8 +1860,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Fight': {
-      // Both must still be creatures on the battlefield (rule 701.14b).
-      const src = s.cards[source];
+      // Both must still be creatures on the battlefield (rule 701.14b). "Target creature you control fights": the earlier target fights.
+      const fighter = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : source;
+      const src = s.cards[fighter];
       if (!isCreatureOnBattlefield(s, src)) return;
       for (const id of onBattlefield) {
         const other = s.cards[id]!;
@@ -2021,6 +2030,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'BecomeCreature':
       for (const id of onBattlefield) s.cards[id]!.animated = structuredClone(effect.becomes!);
+      return;
+    case 'RemoveCounters':
+      for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
       return;
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
@@ -3036,6 +3048,21 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const owner = pending.libraryOf ?? pending.player;
     shuffleInPlace(s, player(s, owner).library);
     ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+  } else if (pending.purpose === 'payToAvoidCounter') {
+    const spell = pending.cards[0]!;
+    const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === spell);
+    if (index >= 0) {
+      const cost = { generic: pending.payGeneric ?? 0 } as ManaCost;
+      if (cards.length > 0) {
+        if (!canPayFromPool(s, pending.player, cost)) reject(`Tap mana for {${pending.payGeneric}} first, or don't pay.`);
+        payMana(ctx, pending.player, cost);
+      } else {
+        const countered = s.stack[index] as SpellItem;
+        s.stack.splice(index, 1);
+        ctx.ev.push({ type: 'SpellCountered', card: spell, defId: s.cards[spell]!.defId, by: sourceOf(r.item) });
+        moveCard(ctx, spell, pending.exileIfCountered || countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
+      }
+    }
   } else if (pending.purpose === 'payHalfLife') {
     // The first player who pays counters the spell; nobody else is asked.
     const spell = pending.cards[0]!;

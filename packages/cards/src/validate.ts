@@ -336,7 +336,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.if !== undefined && !['castFromGraveyard', 'notCastFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked', 'controlChanged'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
   if (e.whileYouControlSource && e.effect !== 'GrantKeywords' && e.effect !== 'GainControl') err('whileYouControlSource is only for GrantKeywords and GainControl.');
-  if (e.effect === 'Fight' && !inAbility) err('Fight is only for abilities (the source creature fights).');
+  if (e.effect === 'Fight' && !inAbility && e.damageSource !== 'PreviousTarget') err('Fight in a spell needs damageSource PreviousTarget (a chosen creature fights).');
   if (e.attachToReturnedTarget !== undefined && (e.effect !== 'ReturnToBattlefield' || e.target !== 'TargetCardInGraveyard' || !isNonNegativeInt(e.attachToReturnedTarget))) err('attachToReturnedTarget needs ReturnToBattlefield targeting a graveyard card and a whole target index.');
   if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');
   if (e.keep !== undefined && (e.effect !== 'LookAtTopPutInHand' || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
@@ -344,12 +344,12 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'AllowCastFromGraveyard' && e.target !== 'TargetCardInGraveyard') err('AllowCastFromGraveyard needs a TargetCardInGraveyard target.');
   if (e.effect === 'ChooseAndDestroy' && !e.filter) err('ChooseAndDestroy needs a filter.');
   validateCounterKind(e.counter, err);
-  if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'ReturnToBattlefield' && !(e.effect === 'KeepAndSacrificeRest' && e.counter === 'vow')) err('"counter" needs AddCounters, ReturnToBattlefield, or a vow on KeepAndSacrificeRest.');
+  if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'RemoveCounters' && e.effect !== 'ReturnToBattlefield' && !(e.effect === 'KeepAndSacrificeRest' && e.counter === 'vow')) err('"counter" needs AddCounters, ReturnToBattlefield, or a vow on KeepAndSacrificeRest.');
   if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');
   if ((e.anyKind || e.allCounters) && e.effect !== 'MoveCounters') err('anyKind and allCounters are only for MoveCounters.');
   if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
-  if (e.damageSource && e.effect !== 'DealDamage') err('damageSource is only for DealDamage.');
+  if (e.damageSource && e.effect !== 'DealDamage' && e.effect !== 'Fight') err('damageSource is only for DealDamage and Fight.');
   if (e.ifYouControl) validateFilter(e.ifYouControl.filter, err);
   if (e.toughnessFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT with an amount.');
   if (e.powerFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('powerFromAmount is only for ModifyPT with an amount.');

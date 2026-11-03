@@ -3650,3 +3650,72 @@ describe('S4 group 29: Galuf’s Final Act and Self-Destruct', () => {
     expect(s.cards[titan]!.zone).toBe('graveyard');
   });
 });
+
+describe('S4 group 30: Clash of the Eikons and Phantom Train', () => {
+  it('Clash of the Eikons: your creature fights theirs; and/or remove or add a lore counter on your Saga', () => {
+    let s = newGame();
+    const titan = put(s, 'P1', 'summon-titan');
+    const foe = put(s, 'P2', 'coeurl');
+    const saga = put(s, 'P1', 'summon-fat-chocobo');
+    s.cards[saga]!.namedCounters = { lore: 2 };
+    const clash = put(s, 'P1', 'clash-of-the-eikons', 'hand');
+    mana(s, 'P1', { G: 1 });
+    // Fight, and remove a lore counter.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: clash, modes: [0, 1], targets: [card(titan), card(foe), card(saga)] }).state;
+    expect(s.cards[foe]!.zone).toBe('graveyard');
+    expect(s.cards[titan]!.zone).toBe('battlefield');
+    expect(s.cards[saga]!.namedCounters?.lore).toBe(1);
+    // Adding a lore counter triggers that chapter (II: your creatures gain trample).
+    const again = put(s, 'P1', 'clash-of-the-eikons', 'hand');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: again, modes: [2], targets: [card(saga)] }).state;
+    expect(s.cards[saga]!.namedCounters?.lore).toBe(2);
+    expect(hasKeyword(s, s.cards[titan]!, 'Trample')).toBe(true);
+  });
+
+  it('Phantom Train: sacrifice another artifact or creature: a +1/+1 counter, and it’s an artifact creature until end of turn', () => {
+    let s = newGame();
+    const train = put(s, 'P1', 'phantom-train');
+    const fodder = put(s, 'P1', 'coeurl');
+    expect(currentDefinition(s, s.cards[train]!).types).not.toContain('creature');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: train, ability: 0, costCards: [fodder] }).state;
+    expect(s.cards[fodder]!.zone).toBe('graveyard');
+    expect(countersOf(s.cards[train]!, '+1/+1')).toBe(1);
+    expect(currentDefinition(s, s.cards[train]!).types).toContain('creature');
+    expect(stats(s, train)).toEqual([5, 5]);
+    expect(hasKeyword(s, s.cards[train]!, 'Trample')).toBe(true);
+    s = goTo(goTo(s, 'end'), 'upkeep');
+    expect(currentDefinition(s, s.cards[train]!).types).not.toContain('creature');
+  });
+});
+
+describe('S4 group 31: Syncopate', () => {
+  /** P1 casts a creature, then Syncopate (X) on it: P1, the creature's controller, decides. */
+  const setup = (x: number) => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cat });
+    const sync = put(s, 'P1', 'syncopate', 'hand');
+    mana(s, 'P1', { U: 1, C: x });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: sync, x, targets: [{ kind: 'card', card: cat }] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    return { s, cat };
+  };
+
+  it('counters the spell unless its controller pays {X}; countered, it’s exiled', () => {
+    let { s, cat } = setup(2);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'payToAvoidCounter', player: 'P1', payGeneric: 2 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect(s.cards[cat]!.zone).toBe('exile');
+  });
+
+  it('paying keeps the spell; paying needs the mana in the pool (lands can be tapped while deciding)', () => {
+    let { s, cat } = setup(2);
+    expect(rejected(s, { type: 'ChooseCards', player: 'P1', cards: [cat] })).toMatch(/Tap mana/);
+    const lands = [put(s, 'P1', 'forest'), put(s, 'P1', 'forest')];
+    for (const land of lands) s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: land, mana: 'G' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [cat] })).state;
+    expect(s.cards[cat]!.zone).toBe('battlefield');
+  });
+});

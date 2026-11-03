@@ -74,7 +74,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ActivateManaAbility':
         // Mana abilities also work while deciding whether to pay a cost, or paying to attack (rule 605.3a).
-        if ((s.pending.kind === 'decide' || s.pending.kind === 'declareAttackers') && s.pending.player === action.player) {
+        // And while choosing whether to pay to keep a spell from being countered (Syncopate).
+        const payingToKeep = s.pending.kind === 'chooseCards' && s.pending.purpose === 'payToAvoidCounter';
+        if ((s.pending.kind === 'decide' || s.pending.kind === 'declareAttackers' || payingToKeep) && 'player' in s.pending && s.pending.player === action.player) {
           activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy);
           break;
         }

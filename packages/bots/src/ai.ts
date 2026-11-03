@@ -549,6 +549,15 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
   // Temporal Extortion: pay half our life to stop an extra turn only while plenty of life remains.
   if (p.purpose === 'payHalfLife') return pick(s.players[me]!.life >= 16 ? [...p.cards] : []);
+  // Syncopate: pay to keep our spell if we can (tapping mana first), else let it go.
+  if (p.purpose === 'payToAvoidCounter') {
+    const cost = { generic: p.payGeneric ?? 0 };
+    const pool = s.players[me]!.manaPool;
+    const inPool = Object.values(pool).reduce((n, k) => n + (k ?? 0), 0);
+    if (inPool >= cost.generic) return pick([...p.cards]);
+    const taps = planTaps(s, me, cost);
+    return taps && taps.length > 0 ? tapActions(me, taps)[0]! : pick([]);
+  }
   // Enter as a copy of the best creature on the battlefield, whoever controls it.
   if (p.purpose === 'copyOnEntry') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'library') return pick([]);
