@@ -297,6 +297,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.fromGraveyard && o.subject && o.from !== 'graveyard' && !s.cards[o.subject]!.castFromGraveyard) return false;
   if (spec.byYou && o.by !== controller) return false;
   if (spec.attacksYou && o.defender !== controller) return false;
+  if (spec.toOpponent && (o.defender === undefined || o.defender === controller)) return false;
   if (spec.alone && !o.alone) return false;
   if (spec.plusOneCountersOnly && o.counter !== undefined) return false;
   // Evolve: the entering creature has greater power or toughness than this one.

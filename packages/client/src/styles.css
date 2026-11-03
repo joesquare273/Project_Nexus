@@ -2029,6 +2029,7 @@ button.phase.current {
 .life-hub { display:flex; align-items:center; justify-content:center; gap:12px; padding:3px 8px; flex-shrink:0; }
 .life-button { display:flex; align-items:center; gap:7px; padding:3px 12px; border-radius:20px; background:#14232e; border:1px solid #9a824d; }
 .life-button > span { font-size:12px; }
+.life-button > .poison-count { color:#9fdc6a; font-weight:600; }
 .life-button .life { font-size:26px; min-width:30px; padding:0; }
 .life-button.active { border-color:var(--gold); box-shadow:0 0 10px #e7c96d50; }
 .life-button.eliminated { opacity:.4; }

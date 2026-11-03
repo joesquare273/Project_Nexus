@@ -301,8 +301,10 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   if (countersOf(c, 'indestructible') > 0) out.keywords.add('Indestructible');
   // "Loses flying" wins over grants (a simplification of layer 6 timestamps).
   for (const k of removed) out.keywords.delete(k);
-  out.power += c.counters ?? 0;
-  out.toughness += c.counters ?? 0;
+  // -1/-1 counters (rule 122.1a); they and +1/+1 counters annihilate as a state-based action.
+  const minus = countersOf(c, '-1/-1');
+  out.power += (c.counters ?? 0) - minus;
+  out.toughness += (c.counters ?? 0) - minus;
   return out;
 }
 
@@ -324,6 +326,10 @@ const PROTECTION = { W: 'ProtectionFromWhite', U: 'ProtectionFromBlue', B: 'Prot
 /** Protection (rule 702.16): `c` has protection from one of `source`'s colors. */
 export function protectedFrom(s: GameState, c: CardInstance, source: CardInstance | undefined): boolean {
   if (!source) return false;
+  // Yawgmoth: "Protection from Humans".
+  const fromTypes = currentDefinition(s, c).protectionFromSubtypes;
+  if (fromTypes && source.zone === 'battlefield' && fromTypes.some((t) => subtypesOf(s, source).includes(t))) return true;
+  if (fromTypes && source.zone !== 'battlefield' && fromTypes.some((t) => currentDefinition(s, source).subtypes?.includes(t))) return true;
   return colorsOf(currentDefinition(s, source)).some((color) => hasKeyword(s, c, PROTECTION[color]));
 }
 

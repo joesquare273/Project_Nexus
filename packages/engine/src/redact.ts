@@ -248,6 +248,7 @@ const PLAYER_FIELDS = {
   attackTaxes: 'copy',
   preventDamageTurn: 'copy',
   preventCreatureDamageTurn: 'copy',
+  poison: 'copy',
   cantCastTurn: 'copy',
   cantCastNoncreatureTurn: 'copy',
   staggeredBy: 'copy',

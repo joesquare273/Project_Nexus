@@ -32,6 +32,8 @@ export interface PlayerView {
   commanders: { id: InstanceId; defId: CardDefId }[];
   id: PlayerId;
   life: number;
+  /** Poison counters (public). */
+  poison?: number;
   handCount: number;
   /** null means an effect removes the maximum. Checked during this player's cleanup. */
   maximumHandSize: number | null;
@@ -104,6 +106,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
     players[pid] = {
       id: pid,
       life: p.life,
+      ...(p.poison ? { poison: p.poison } : {}),
       handCount: p.hand.length,
       maximumHandSize: maximumHandSize(s, pid),
       libraryCount: p.library.length,

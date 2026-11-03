@@ -88,7 +88,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Each target player gets `amount` poison counters. */
+  'GivePoison',
   /** Create a token that's a copy of the previous target card, except it's a 5/5 black Demon (Ardyn). */
   'CreateDemonCopy',
   /** Choose a spell card in your hand with mana value `amount` or less; you may cast it this turn without paying its mana cost (Buster Sword). */
@@ -808,6 +810,8 @@ export interface EffectSpec {
   ifSourcePowerAtLeast?: number;
   /** Only happens if the source has at least this many +1/+1 counters ("then if it has three or more +1/+1 counters on it"). */
   ifSourceCountersAtLeast?: number;
+  /** Which counters `ifSourceCountersAtLeast` counts (default +1/+1). */
+  sourceCounterKind?: AnyCounter;
   /** SpellCast triggers: only happens if at least this much mana was spent on the triggering spell ("if four or more mana was spent"). */
   ifSubjectManaSpentAtLeast?: number;
   /** Converge: only targets with mana value at most the colors spent on this spell (Prismatic Ending). */
@@ -1061,6 +1065,8 @@ export interface TriggerSpec {
   byYou?: boolean;
   /** Attacks: only creatures attacking you ("whenever an opponent attacks you"). */
   attacksYou?: boolean;
+  /** CombatDamageToPlayer: only damage to one of your opponents. */
+  toOpponent?: boolean;
   /** Only during your turn ("whenever a Mutant you control dies during your turn"). */
   duringYourTurn?: boolean;
   /** Draws: whose draws count. */
@@ -1365,6 +1371,8 @@ export interface CardDefinition {
     tapLegendaryCreature?: boolean;
     /** "Spend this mana only to cast an Equipment spell or activate an equip ability." */
     onlyForEquipment?: boolean;
+    /** Strixhaven Stadium: "Put a point counter on this artifact" as part of the mana ability. */
+    addCounter?: AnyCounter;
     /** "Spend this mana only to cast a noncreature spell" (The Emperor of Palamecia). */
     onlyForNoncreatureSpells?: boolean;
     /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
@@ -1505,6 +1513,8 @@ export interface CardDefinition {
   additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string };
   /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
   kickerSacrifice?: ObjectFilter;
+  /** "Protection from Humans" (rule 702.16): protection from sources with these subtypes. */
+  protectionFromSubtypes?: string[];
   /** The kicker permanent chosen with `kickerSacrifice` returns to its owner's hand instead of being sacrificed (Chocobo Kick). */
   kickerReturnsToHand?: boolean;
   /** Ward {N} (rule 702.21). */
@@ -1836,6 +1846,8 @@ export interface PlayerState {
   lostToEffect?: boolean;
   /** "Until your next turn, creatures can't attack you unless their controller pays {N} for each" (Summon: Yojimbo). Ends as this player's next turn begins. */
   attackTaxes?: number[];
+  /** Poison counters (rule 122.1f): ten or more and this player loses (704.5c). */
+  poison?: number;
   /** "Prevent all damage that would be dealt to creatures you control this turn": the turn it applies to. */
   preventCreatureDamageTurn?: number;
   /** "Prevent all damage that would be dealt to you this turn": the turn it applies to. */
@@ -2327,7 +2339,7 @@ export type Action =
 // Events (immutable facts, PRD 9)
 // ---------------------------------------------------------------------------
 
-export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect';
+export type EliminationReason = 'life' | 'emptyLibrary' | 'conceded' | 'commanderDamage' | 'effect' | 'poison';
 
 export interface DamageSourceSnapshot {
   card: CardInstance;
@@ -2406,6 +2418,7 @@ export type GameEvent =
   | { type: 'CardsBottomed'; player: PlayerId; count: number }
   /** A card was revealed from a library (Chaos Warp). */
   | { type: 'CardRevealed'; player: PlayerId; card: InstanceId; defId: CardDefId }
+  | { type: 'PoisonChanged'; player: PlayerId; total: number }
   /** `by`: the controller of the spell or ability that put them there. */
   /** `total`: how many of that kind it has afterwards (for Saga chapters). */
   | { type: 'CountersAdded'; card: InstanceId; amount: number; by?: PlayerId; counter?: CounterKind; total?: number }

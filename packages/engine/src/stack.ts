@@ -591,6 +591,7 @@ export function activateManaAbility(
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : undefined);
+  if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
     const p = player(s, playerId);
@@ -2180,6 +2181,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       r.createdTokens.push(createToken(ctx, original.defId, item.controller, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) }));
       return;
     }
+    case 'GivePoison':
+      for (const pid of targetPlayers(targets)) {
+        const p = player(s, pid);
+        p.poison = (p.poison ?? 0) + amount;
+        ctx.ev.push({ type: 'PoisonChanged', player: pid, total: p.poison });
+      }
+      return;
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2852,7 +2860,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const pid of targetPlayers(targets)) {
         for (const c of battlefield(s)) {
           for (const [kind] of allCounters(c)) {
-            if (c.controller === pid ? kind !== 'stun' : kind === 'stun') addCounters(ctx, c.id, 1, pid, kind);
+            // Harmful kinds go on opponents' permanents, the rest on your own.
+            const harmful = kind === 'stun' || kind === '-1/-1';
+            if (c.controller === pid ? !harmful : harmful) addCounters(ctx, c.id, 1, pid, kind);
+          }
+        }
+        // Players too: each opponent with poison counters gets another (rule 701.27a).
+        for (const opp of alivePlayers(s)) {
+          const p = player(s, opp);
+          if (opp !== pid && (p.poison ?? 0) > 0) {
+            p.poison! += 1;
+            ctx.ev.push({ type: 'PoisonChanged', player: opp, total: p.poison! });
           }
         }
       }
@@ -3055,7 +3073,7 @@ function continueResolving(ctx: Ctx): void {
     }
     if (effect.ifSourceCountersAtLeast !== undefined) {
       const src = s.cards[sourceOf(item)]!;
-      if (src.zone !== 'battlefield' || countersOf(src, '+1/+1') < effect.ifSourceCountersAtLeast) continue;
+      if (src.zone !== 'battlefield' || countersOf(src, effect.sourceCounterKind ?? '+1/+1') < effect.ifSourceCountersAtLeast) continue;
     }
     if (effect.ifSubjectManaSpentAtLeast !== undefined && (item.kind !== 'ability' || (item.amount ?? 0) < effect.ifSubjectManaSpentAtLeast)) continue;
     let targets = resolveTargets(s, effect, r, chosen);

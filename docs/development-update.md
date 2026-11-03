@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 50: Yawgmoth, Fynn, Strixhaven Stadium
+
+Three more set cards (287 of 320) and three counter kinds: -1/-1 counters
+(they lower power and toughness and annihilate with +1/+1 counters), poison
+counters on players (ten loses; the life totals show a poison count; the
+public view carries `poison`), and point counters. Proliferate now adds
+-1/-1 counters to opponents' permanents and poison to opponents who have it.
+
 ### Set cards, group 49: Carpet of Flowers, Ardyn, Balthier and Fran
 
 Three more set cards (284 of 320). Triggers can share a once-each-turn mark

@@ -380,7 +380,7 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   if (t.zone !== undefined && t.zone !== 'battlefield' && t.zone !== 'graveyard' && t.zone !== 'stack') e(`unknown zone "${t.zone}".`);
   if (t.zone === 'stack' && t.when !== 'SpellCast') e('only "when you cast this spell" triggers work from the stack.');
   if (t.ifManaSpentAtLeast !== undefined && t.when !== 'SpellCast') e('ifManaSpentAtLeast is only for SpellCast.');
-  if (t.attacksYou && t.when !== 'Attacks') e('attacksYou is only for Attacks.');
+  if (t.attacksYou && t.when !== 'Attacks' && t.when !== 'CombatDamageToPlayer') e('attacksYou is only for Attacks and CombatDamageToPlayer (damage to you).');
   if (t.ifYouControl) validateFilter(t.ifYouControl.filter, e);
   if ((t.drawer || t.notOnDrawersTurn) && t.when !== 'Draws') e('drawer and notOnDrawersTurn are only for Draws.');
   if (t.nthSpellThisTurn !== undefined && t.when !== 'SpellCast') e('nthSpellThisTurn is only for SpellCast.');

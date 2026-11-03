@@ -5059,3 +5059,60 @@ describe('S4 group 49: Carpet of Flowers, Ardyn, Balthier and Fran', () => {
     expect(s.extraCombats).toBe(1);
   });
 });
+
+describe('S4 group 50: Yawgmoth, Fynn, Strixhaven Stadium (-1/-1, poison and point counters)', () => {
+  it('Yawgmoth: pay 1 life and sacrifice another creature for a -1/-1 counter and a card; -1/-1 and +1/+1 counters annihilate', () => {
+    let s = newGame();
+    const yawg = put(s, 'P1', 'yawgmoth-thran-physician');
+    const fodder = put(s, 'P1', 'coeurl');
+    const victim = put(s, 'P2', 'coeurl', 'battlefield', { counters: 1 });
+    const base = stats(s, put(s, 'P2', 'coeurl'));
+    const [life, hand] = [s.players.P1!.life, s.players.P1!.hand.length];
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: yawg, ability: 0, costCards: [fodder], targets: [card(victim)] }).state;
+    expect(s.cards[fodder]!.zone).toBe('graveyard');
+    expect([s.players.P1!.life, s.players.P1!.hand.length]).toEqual([life - 1, hand + 1]);
+    expect(s.cards[victim]!.counters ?? 0).toBe(0);
+    expect(countersOf(s.cards[victim]!, '-1/-1')).toBe(0);
+    expect(stats(s, victim)).toEqual(base);
+  });
+
+  it('Yawgmoth: {B}{B}, discard: proliferate puts another -1/-1 counter on an opponent’s creature; protection from Humans', () => {
+    let s = newGame();
+    const yawg = put(s, 'P1', 'yawgmoth-thran-physician');
+    const victim = put(s, 'P2', 'coeurl', 'battlefield', { namedCounters: { '-1/-1': 1 } });
+    const base = stats(s, put(s, 'P2', 'coeurl'));
+    expect(stats(s, victim)).toEqual([base[0]! - 1, base[1]! - 1]);
+    const junk = put(s, 'P1', 'forest', 'hand');
+    mana(s, 'P1', { B: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: yawg, ability: 1, costCards: [junk] }).state;
+    expect(s.cards[victim]!.zone).toBe('graveyard');
+    const human = put(s, 'P2', 'aerith-gainsborough');
+    dealDamage({ s, ev: [] } as never, human, { kind: 'card', card: yawg }, 3, false);
+    expect(s.cards[yawg]!.damage).toBe(0);
+  });
+
+  it('Fynn: your deathtouch creatures give two poison counters with combat damage; ten poison counters lose the game', () => {
+    let s = newGame();
+    const fynn = put(s, 'P1', 'fynn-the-fangbearer');
+    s = fight(s, [{ attacker: fynn, defender: 'P2' }]).state;
+    expect(s.players.P2!.poison).toBe(2);
+    s.players.P2!.poison = 8;
+    s = goTo(nextStep(goTo(s, 'end')), 'main1');
+    for (let i = 0; i < 6 && s.activePlayer !== 'P1'; i++) s = goTo(nextStep(goTo(s, 'end')), 'main1');
+    s = fight(s, [{ attacker: fynn, defender: 'P2' }]).state;
+    expect(s.players.P2!.eliminated).toBe(true);
+  });
+
+  it('Strixhaven Stadium: tapping adds {C} and a point counter; at ten from combat damage, that opponent loses', () => {
+    let s = newGame(3);
+    const stadium = put(s, 'P1', 'strixhaven-stadium');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: stadium, mana: 'C' });
+    expect(s.players.P1!.manaPool.C).toBe(1);
+    expect(countersOf(s.cards[stadium]!, 'point')).toBe(1);
+    s.cards[stadium]!.namedCounters = { point: 9 };
+    const cat = put(s, 'P1', 'coeurl');
+    s = fight(s, [{ attacker: cat, defender: 'P2' }]).state;
+    expect(s.players.P2!.eliminated).toBe(true);
+    expect(countersOf(s.cards[stadium]!, 'point')).toBe(0);
+  });
+});

@@ -40,6 +40,7 @@ export function LifeTotals({view}:{view:GameView}) {
       aria-label={pid+', '+view.players[pid]!.life+' life. Show commander damage'}
       onClick={e=>{opener.current=e.currentTarget;setSelected(pid);}}>
      <span>{pid}</span><Life life={view.players[pid]!.life}/>
+     {(view.players[pid]!.poison ?? 0) > 0 && <span className="poison-count" title="Poison counters (ten loses the game)">☠ {view.players[pid]!.poison}</span>}
    </button>)}
    {selected && <div className="commander-damage-overlay" onClick={close}>
      <div className="commander-damage-panel" role="dialog" aria-label={selected+' commander damage taken'} onClick={e=>e.stopPropagation()}>

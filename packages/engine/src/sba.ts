@@ -22,6 +22,7 @@ import {
   isCreatureOnBattlefield,
   putIntoGraveyard,
   sacrifice,
+  removeCounters,
   reject,
   type Ctx,
 } from './state.ts';
@@ -150,6 +151,16 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
       changed = true;
     }
 
+    // +1/+1 and -1/-1 counters on the same permanent are removed in pairs (704.5q).
+    for (const c of Object.values(s.cards)) {
+      if (c.zone !== 'battlefield') continue;
+      const pairs = Math.min(c.counters ?? 0, c.namedCounters?.['-1/-1'] ?? 0);
+      if (pairs > 0) {
+        removeCounters(ctx, c.id, '+1/+1', pairs);
+        removeCounters(ctx, c.id, '-1/-1', pairs);
+        changed = true;
+      }
+    }
     // Tokens that left the battlefield cease to exist (704.5d). They can only be where effects put them.
     for (const pid of s.turnOrder) {
       const p = s.players[pid]!;
@@ -168,6 +179,8 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
           ? 'effect'
         : p.life <= 0
           ? 'life'
+          : (p.poison ?? 0) >= 10
+            ? 'poison'
           : p.drewFromEmptyLibrary
             ? 'emptyLibrary'
             : commanderDamage
