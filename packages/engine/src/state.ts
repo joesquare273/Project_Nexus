@@ -189,7 +189,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const s = ctx.s;
   const c = card(s, id);
   const from = c.zone;
-  const lastDefinition = from === 'battlefield' && (c.copy || c.transformed) ? defOf(s,c) : undefined;
+  const lastDefinition = from === 'battlefield' && (c.copy || c.transformed || c.addedSubtypes) ? defOf(s,c) : undefined;
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
   // A copy of a spell ceases to exist when it leaves the stack (rule 707.10a).
@@ -264,6 +264,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.linkedExile;
   delete c.exiledWith;
   delete c.crewed;
+  delete c.addedSubtypes;
   delete c.attachedTo;
   delete c.attachedTimestamp;
   delete c.exiledUntilLeaves;

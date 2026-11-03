@@ -3347,6 +3347,23 @@
     "scryfallId": "aec83c9a-8ec4-4a5a-b27f-0e74a2b3d21e",
     "relatedTokens": []
   },
+  "elemental-token": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "This token is all colors.",
+    "set": "tfin",
+    "number": "21",
+    "artist": "Anna Podedworna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130",
+      "normal": "https://cards.scryfall.io/normal/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130",
+      "large": "https://cards.scryfall.io/large/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/e/fe592a5c-5e6e-40ed-8818-f4651bcf2fe8.jpg?1783906130"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/21/elemental?utm_source=api",
+    "scryfallId": "fe592a5c-5e6e-40ed-8818-f4651bcf2fe8",
+    "relatedTokens": []
+  },
   "elena-turk-recruit": {
     "name": "Elena, Turk Recruit",
     "typeLine": "Legendary Creature — Human Assassin",

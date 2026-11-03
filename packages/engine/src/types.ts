@@ -373,6 +373,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToHand',
   /** Each target player searches their library for a card matching `filter`, then shuffles and puts that card on top (Varragoth). */
   'SearchLibraryToTop',
+  /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
+  'AddSubtypes',
   /** Exile every card in the target players' graveyards. */
   'ExileGraveyard',
   /**
@@ -676,6 +678,8 @@ export interface EffectSpec {
   next?: boolean;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
+  /** AddSubtypes: the subtypes gained. */
+  addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
   thenDouble?: boolean;
   /** ModifyPT: also add (n - 1) times the creature's current power and toughness ("double" is 2, "triple" is 3: Tifa's Limit Break). */
@@ -715,12 +719,17 @@ export interface EffectSpec {
   ifLifeGainedThisTurn?: { atLeast?: number; below?: number };
   /** Only if the previous target's mana value is at least this ("if the exiled card's mana value is 4 or greater"). */
   ifPreviousTargetManaValueAtLeast?: number;
+  /** Only if the previous target matches this filter ("if a creature card was exiled this way"). */
+  ifPreviousTargetIs?: ObjectFilter;
   /** Only if the previous target's mana value is at most this (Fatal Push). */
   ifPreviousTargetManaValueAtMost?: number;
   /** Revolt: only if (true) or unless (false) a permanent left the battlefield under your control this turn. */
   ifRevolt?: boolean;
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
   lookTo?: 'hand' | 'battlefield';
+  /** LookAtTopPutMatching onto the battlefield: tapped (Ignis), or tapped and attacking with indestructible until end of turn (Winota). */
+  lookEntersTapped?: boolean;
+  lookAttacking?: boolean;
   /** LookAtTopPutMatching: then you may attach one of the Equipment put onto the battlefield to this creature (Gilgamesh). */
   attachOneToThis?: boolean;
   /** Only if your graveyard has at least / fewer than this many cards (threshold). */
@@ -1012,6 +1021,8 @@ export interface TriggerSpec {
   byYou?: boolean;
   /** Attacks: only creatures attacking you ("whenever an opponent attacks you"). */
   attacksYou?: boolean;
+  /** Only during your turn ("whenever a Mutant you control dies during your turn"). */
+  duringYourTurn?: boolean;
   /** Draws: whose draws count. */
   drawer?: 'You' | 'Opponent';
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
@@ -1234,6 +1245,8 @@ export interface StaticSpec {
   ifYouControlSubtype?: string;
   /** Only while you control at least `atLeast` permanents matching `filter` ("as long as you control two or more artifacts"; `other` excludes this one). Filters here avoid power and toughness. */
   ifYouControlAtLeast?: { filter: ObjectFilter; atLeast: number };
+  /** The Wandering Minstrel: lands you control enter untapped (overrides their own "enters tapped"). */
+  yourLandsEnterUntapped?: boolean;
   /** Authority of the Consuls: creatures your opponents control enter tapped. */
   opponentCreaturesEnterTapped?: boolean;
   /** "Enchanted creature loses all abilities" (layer 6; abilities granted by other effects still apply). */
@@ -1609,6 +1622,8 @@ export interface CardInstance {
   animated?: { power: number; toughness: number; subtypes?: string[] };
   /** The turn this permanent was last dealt damage. */
   damagedTurn?: number;
+  /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
+  addedSubtypes?: string[];
   /** The turn this creature was last declared as an attacker (boast). */
   attackedTurn?: number;
   /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
@@ -2002,6 +2017,10 @@ export interface CardChoice {
   /** lookTop: where chosen cards go; every card looked at, the rest going on the bottom in a random order; then attach one to the source. */
   lookTo?: 'hand' | 'battlefield';
   attachOneToSource?: boolean;
+  /** lookTop onto the battlefield: tapped, or tapped and attacking `attackDefender` with indestructible until end of turn. */
+  lookTapped?: boolean;
+  lookAttacking?: boolean;
+  attackDefender?: PlayerId;
   /** lookTop: the cards not chosen stay on top of the library. */
   restOnTop?: boolean;
   /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */

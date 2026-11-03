@@ -4573,3 +4573,87 @@ describe('S4 group 43: Sazh, Cid, Golbez, PuPu UFO, The Regalia', () => {
     expect(s.cards[forest]).toMatchObject({ zone: 'battlefield', tapped: true });
   });
 });
+
+describe('S4 group 44: Ignis, Jenova, The Wandering Minstrel, Winota, Atraxa', () => {
+  const pickTop = (s: GameState, cards: string[]) => settle(act(s, { type: 'ChooseCards', player: 'P1', cards })).state;
+  const castFromHand = (s: GameState, id: string, pool: Parameters<typeof mana>[2]) => {
+    const c = put(s, 'P1', id, 'hand');
+    mana(s, 'P1', pool);
+    return { s: settle(act(s, { type: 'CastSpell', player: 'P1', card: c })).state, c };
+  };
+
+  it('Ignis Scientia: a land from the top six enters tapped; exiling a creature card from a graveyard makes a Food', () => {
+    let s = newGame();
+    const forest = put(s, 'P1', 'forest', 'library');
+    let r = castFromHand(s, 'ignis-scientia', { G: 1, U: 1, C: 1 });
+    s = r.s;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop' });
+    s = pickTop(s, [forest]);
+    expect(s.cards[forest]).toMatchObject({ zone: 'battlefield', tapped: true });
+    s.cards[r.c]!.summoningSick = false;
+    const cat = put(s, 'P2', 'coeurl', 'graveyard');
+    mana(s, 'P1', { G: 1, U: 1, C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: r.c, ability: 0, targets: [card(cat)] }).state;
+    expect(s.cards[cat]!.zone).toBe('exile');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'food-token')).toBe(true);
+  });
+
+  it('Jenova: at combat, counters equal to its power on another creature, which becomes a Mutant; a Mutant dying on your turn draws its power', () => {
+    let s = newGame();
+    put(s, 'P1', 'jenova-ancient-calamity');
+    const cat = put(s, 'P1', 'coeurl');
+    const power = stats(s, cat)[0]!;
+    s = goTo(s, 'beginCombat', { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] });
+    s = settle(s, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    expect(s.cards[cat]!.counters).toBe(1);
+    expect(currentDefinition(s, s.cards[cat]!).subtypes).toContain('Mutant');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(cat)] });
+    const hand = s.players.P1!.hand.length;
+    s = settle(s).state;
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+    expect(s.players.P1!.hand.length).toBe(hand + power + 1);
+  });
+
+  it('The Wandering Minstrel: your lands enter untapped; with five Towns, a 2/2 all-color Elemental at combat', () => {
+    let s = newGame();
+    put(s, 'P1', 'the-wandering-minstrel');
+    const treno = put(s, 'P1', 'treno-dark-city', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: treno });
+    s = settle(s).state;
+    expect(s.cards[treno]!.tapped).toBe(false);
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'adventurers-inn');
+    s = goTo(s, 'declareAttackers');
+    const elemental = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'elemental-token');
+    expect(elemental).toBeDefined();
+    expect(stats(s, elemental!)).toEqual([2, 2]);
+  });
+
+  it('Winota: a non-Human attacking puts a Human from the top six onto the battlefield attacking, indestructible', () => {
+    let s = newGame();
+    put(s, 'P1', 'winota-joiner-of-forces');
+    const cat = put(s, 'P1', 'coeurl');
+    const aerith = put(s, 'P1', 'aerith-gainsborough', 'library');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: cat, defender: 'P2' }] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop', lookAttacking: true });
+    s = pickTop(s, [aerith]);
+    expect(s.cards[aerith]).toMatchObject({ zone: 'battlefield', tapped: true });
+    expect(s.combat!.attacks.some((a) => a.attacker === aerith && a.defender === 'P2')).toBe(true);
+    expect(hasKeyword(s, s.cards[aerith]!, 'Indestructible')).toBe(true);
+  });
+
+  it('Atraxa: from the top ten, one card of each card type into your hand', () => {
+    let s = newGame();
+    const cats = [put(s, 'P1', 'coeurl', 'library'), put(s, 'P1', 'coeurl', 'library')];
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    const forest = put(s, 'P1', 'forest', 'library');
+    s = castFromHand(s, 'atraxa-grand-unifier', { G: 1, W: 1, U: 1, B: 1, C: 3 }).s;
+    expect(rejected(s, { type: 'ChooseCards', player: 'P1', cards: cats })).toMatch(/at most one/);
+    s = pickTop(s, [cats[0]!, ring, forest]);
+    expect([cats[0], ring, forest].map((id) => s.cards[id!]!.zone)).toEqual(['hand', 'hand', 'hand']);
+    expect(s.cards[cats[1]!]!.zone).toBe('library');
+  });
+});

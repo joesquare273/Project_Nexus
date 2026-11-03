@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 44: Ignis, Jenova, The Wandering Minstrel, Winota, Atraxa
+
+Five more set cards (264 of 320) and the Elemental token (tfin 21). Fix:
+trigger filters on subtypes now use the last-known definition of a creature
+that left the battlefield (they used its card in the graveyard). New:
+look-at-the-top choices that enter tapped or attacking, one card per type,
+`AddSubtypes`, `ifPreviousTargetIs`, `duringYourTurn`, and lands entering
+untapped.
+
 ### Set cards, group 43: Sazh, Cid, Golbez, PuPu UFO, The Regalia
 
 Five more set cards (259 of 320). Deck checks allow any number of a card

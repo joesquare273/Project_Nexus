@@ -333,6 +333,8 @@ function effectText(e: EffectSpec): string {
       return 'proliferate';
     case 'PutTopCardIfLand':
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
+    case 'AddSubtypes':
+      return `${who} becomes ${(e.addSubtypes ?? []).join(' ')} in addition to its other types`;
     case 'SearchLibraryToTop':
       return `${who} searches their library for a card, then shuffles and puts that card on top`;
     case 'SearchLibraryToHand':

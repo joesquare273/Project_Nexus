@@ -180,6 +180,11 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
     }
   }
   const def = currentDefinition(s, c);
+  // The Wandering Minstrel: "Lands you control enter untapped" (its controller orders the replacements; untapped wins).
+  if (def.types.includes('land') && s.players[c.controller]?.battlefield.some((id) => {
+    const o = s.cards[id]!;
+    return o.id !== c.id && o.controller === c.controller && !o.phasedOut && currentDefinition(s, o).statics?.some((st) => st.yourLandsEnterUntapped);
+  })) return false;
   if (def.entersTapped) return true;
   const unless = def.entersTappedUnless;
   if (!unless) return false;

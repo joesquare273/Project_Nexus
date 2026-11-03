@@ -2118,6 +2118,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       p.nextCreatureCounters = { turn: s.turnNumber, amount: before + amount };
       return;
     }
+    case 'AddSubtypes':
+      for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
+      return;
     case 'BecomeCreature':
       for (const id of onBattlefield) s.cards[id]!.animated = structuredClone(effect.becomes!);
       return;
@@ -2349,7 +2352,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const top = topOfLibrary(s, item.controller, amount);
       if (top.length === 0) return;
       const matching = top.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max: effect.anyNumber ? matching.length : Math.min(1, matching.length), looked: top, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
+      const defender = item.kind === 'ability' ? item.defender : undefined;
+      const attacking = effect.lookAttacking && defender && s.combat ? { lookAttacking: true, attackDefender: defender } : {};
+      // Atraxa: one card for each card type.
+      const max = effect.anyNumber ? matching.length : effect.onePerType ? Math.min(effect.onePerType.length, matching.length) : Math.min(1, matching.length);
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max, looked: top, ...(effect.onePerType ? { onePerType: effect.onePerType } : {}), ...(effect.lookEntersTapped || effect.lookAttacking ? { lookTapped: true } : {}), ...attacking, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
       return;
     }
     case 'DestroyAttachedEquipment': {
@@ -2903,6 +2910,12 @@ function continueResolving(ctx: Ctx): void {
       if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
+    if (effect.ifPreviousTargetIs) {
+      // Ignis Scientia: "if a creature card was exiled this way".
+      const t = r.previousTarget;
+      const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      if (!c || !matchesObject(s, effect.ifPreviousTargetIs, c, { controller: item.controller, source: sourceOf(item) })) continue;
+    }
     if (effect.ifPreviousTargetManaValueAtMost !== undefined) {
       const t = r.previousTarget;
       const c = t?.kind === 'card' ? s.cards[t.card] : undefined;
@@ -3184,7 +3197,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       if (pending.lookTo === 'battlefield') {
         const c = s.cards[id]!;
         c.controller = pending.player;
-        if (entersTapped(s, c)) c.tapped = true;
+        if (pending.lookTapped || entersTapped(s, c)) c.tapped = true;
+        // Winota: "tapped and attacking. It gains indestructible until end of turn."
+        if (pending.lookAttacking && pending.attackDefender && s.combat && c.zone === 'battlefield') {
+          s.combat.attacks.push({ attacker: id, defender: pending.attackDefender });
+          ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender: pending.attackDefender });
+          s.temporaryEffects.push({ source: sourceOf(r.item), affected: id, keywords: ['Indestructible'] });
+        }
       }
     }
     // The rest go on the bottom of the library in a random order (or stay on top, or go into the graveyard).

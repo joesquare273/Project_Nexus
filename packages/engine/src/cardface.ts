@@ -67,6 +67,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     out.power = c.animated.power;
     out.toughness = c.animated.toughness;
   }
+  if (c.addedSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.addedSubtypes])]; }
   // Type/color effects never ask for power or abilities, avoiding a recursive layer evaluation.
   const layers: { source: CardInstance; spec: StaticSpec; timestamp: number }[] = [];
   for (const source of continuousSources(s)) {
