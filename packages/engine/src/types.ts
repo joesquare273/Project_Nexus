@@ -426,6 +426,8 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** The target players lose the game (Summon: Primal Odin's Zantetsuken). */
+  'LoseGame',
   /** Each target player puts up to `amount` cards matching `filter` from their hand onto the battlefield, their choice. */
   'PutFromHand',
   /**
@@ -508,6 +510,8 @@ export const COUNT_KINDS = [
   'ArtifactsOpponentsControl',
   /** The greatest power among creatures you control. */
   'GreatestPowerAmongYourCreatures',
+  /** The total mana value of the other permanents you control (Summon: Bahamut's Mega Flare). */
+  'TotalManaValueOfYourOtherPermanents',
   /** Cards in your graveyard (Sidequest: Card Collection). */
   'CardsInYourGraveyard',
   /** Creatures that died under an opponent's control this turn. */

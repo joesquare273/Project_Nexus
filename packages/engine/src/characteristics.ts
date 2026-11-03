@@ -172,6 +172,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
     case 'ArtifactsYouControl':
       return yours().filter((c) => def(s, c).types.includes('artifact')).length;
+    case 'TotalManaValueOfYourOtherPermanents':
+      return yours().filter((c) => c.id !== source).reduce((n, c) => n + objectManaValue(s, c), 0);
     case 'GreatestManaValueAmongYourArtifacts':
       return Math.max(0, ...yours().filter((c) => def(s, c).types.includes('artifact')).map((c) => objectManaValue(s, c)));
     case 'EquippedAttackingCreaturesYouControl':

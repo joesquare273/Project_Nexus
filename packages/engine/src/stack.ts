@@ -1990,6 +1990,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'LoseGame':
+      for (const pid of targetPlayers(targets)) s.players[pid]!.lostToEffect = true;
+      return;
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;

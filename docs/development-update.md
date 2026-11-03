@@ -5,6 +5,11 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 23: Summon: Bahamut and Summon: Primal Odin
+
+- 185 of 320. Engine: `LoseGame` ("that player loses the game") and the
+  count `TotalManaValueOfYourOtherPermanents` (Mega Flare).
+
 ### New accounts start with 5,000 Aether Shards
 
 - Welcome grant 4,000 plus the 1,000 welcome bonus (`economy.ts`), for

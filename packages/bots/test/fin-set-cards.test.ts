@@ -501,9 +501,9 @@ describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
 describe('cards that aren’t built yet', () => {
   it('can’t be cast (creatures included) or played, and aren’t offered', () => {
     const s = newGame();
-    expect(s.cardDefs['summon-bahamut']!.notBuilt).toBe(true);
-    const creature = put(s, 'P1', 'summon-bahamut', 'hand');
-    mana(s, 'P1', { C: 9 });
+    expect(s.cardDefs['summon-leviathan']!.notBuilt).toBe(true);
+    const creature = put(s, 'P1', 'summon-leviathan', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
     expect(s.cardDefs['lindblum-industrial-regency-mage-siege']!.notBuilt).toBe(true);
     const land = put(s, 'P1', 'lindblum-industrial-regency-mage-siege', 'hand');
@@ -3253,5 +3253,60 @@ describe('S4 group 22: the last two Sidequests', () => {
     expect(s.players.P2!.combatDamageThisTurn ?? 0).toBeLessThan(6);
     s = settleAll(goTo(s, 'main2'));
     expect(s.cards[quest]!.transformed ?? false).toBe(false);
+  }, 60_000);
+});
+
+describe('S4 group 23: Summon: Bahamut and Summon: Primal Odin', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState, opts: Opts = {}) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = settleAll(goTo(settleAll(s, opts), 'end', opts), opts);
+      s = settleAll(goTo(s, 'main1', opts), opts);
+    }
+    if (s.activePlayer !== 'P1' || s.turnNumber <= turn) throw new Error("never reached P1's next turn");
+    return s;
+  };
+
+  it('Summon: Bahamut destroys up to one nonland permanent (I, II), draws two (III), then deals damage equal to your other permanents’ total mana value to each opponent (IV)', () => {
+    let s = newGame(3);
+    const ring = put(s, 'P2', 'sol-ring');
+    const bahamut = put(s, 'P1', 'summon-bahamut', 'hand');
+    mana(s, 'P1', { C: 9 });
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: bahamut }, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === ring)!] }).state);
+    expect(s.cards[ring]!.zone).toBe('graveyard');
+    expect(stats(s, bahamut)).toEqual([9, 9]);
+    expect(hasKeyword(s, s.cards[bahamut]!, 'Flying')).toBe(true);
+    // Something of P2's for chapter II, and other permanents for Mega Flare (mana value 1 + 1).
+    put(s, 'P2', 'coeurl');
+    put(s, 'P1', 'sol-ring');
+    put(s, 'P1', 'sol-ring');
+    for (let i = 0; i < 3; i++) {
+      s = nextTurnOfP1(s, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && s.cards[t.card]!.controller !== 'P1') ?? options[0]![0]!] });
+    }
+    // Chapter IV happened: the damage equals the total mana value of P1's other permanents then.
+    expect(s.cards[bahamut]!.zone).toBe('graveyard');
+    expect(s.players.P2!.life).toBe(18);
+    expect(s.players.P3!.life).toBe(18);
+  }, 60_000);
+
+  it('Summon: Primal Odin destroys an opponent’s creature; with Zantetsuken, combat damage to a player makes them lose the game', () => {
+    let s = newGame();
+    const foe = put(s, 'P2', 'coeurl');
+    const odin = put(s, 'P1', 'summon-primal-odin', 'hand');
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: odin }).state);
+    expect(s.cards[foe]!.zone).toBe('graveyard');
+    s = nextTurnOfP1(s);
+    expect(s.cards[odin]!.namedCounters?.lore).toBe(2);
+    s = fight(s, [{ attacker: odin, defender: 'P2' }]).state;
+    expect(s.players.P2!.eliminated).toBe(true);
   }, 60_000);
 });

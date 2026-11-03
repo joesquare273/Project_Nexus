@@ -185,6 +185,8 @@ function effectText(e: EffectSpec): string {
       return `there is an additional combat phase after this phase${e.onlyFirstCombat ? " if it's the first combat phase of your turn" : ''}`;
     case 'GainControl':
       return e.giveTo === 'SubjectController' ? `that player gains control of ${who}` : `gain control of ${who}`;
+    case 'LoseGame':
+      return `${you ? 'you lose' : `${who} loses`} the game`;
     case 'WinGame':
       return `${you ? 'you win' : `${who} wins`} the game`;
     case 'AttachLastEquipment':
