@@ -243,6 +243,7 @@ const PLAYER_FIELDS = {
   attackTaxes: 'copy',
   preventDamageTurn: 'copy',
   cantCastTurn: 'copy',
+  cantCastNoncreatureTurn: 'copy',
   cardsDrawnThisTurn: 'copy',
   conceded: 'copy',
   phasedOut: 'refs',

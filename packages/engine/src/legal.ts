@@ -201,6 +201,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   }
   }
   }
+  // "Your opponents can't cast noncreature spells this turn" (Ranger-Captain of Eos).
+  if (p.cantCastNoncreatureTurn === s.turnNumber) return out.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('creature')));
   return out;
 }
 

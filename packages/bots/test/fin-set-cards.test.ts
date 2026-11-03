@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { type Target, spellOptions, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -3859,5 +3859,85 @@ describe('S4 group 35: Reno and Rude', () => {
     s = goTo(s, 'main2');
     mana(s, 'P1', { W: 1, C: 1 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: top })).toBeTruthy();
+  });
+});
+
+describe('S4 group 36: Cryptic Command, Genji Glove, Godo, Matoya, Ranger-Captain of Eos', () => {
+  it('Cryptic Command: choose two (bounce a permanent and draw; or tap their creatures and draw)', () => {
+    let s = newGame();
+    const foe = put(s, 'P2', 'coeurl');
+    const cmd = put(s, 'P1', 'cryptic-command', 'hand');
+    mana(s, 'P1', { U: 3, C: 1 });
+    const hand = s.players.P1!.hand.length;
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: cmd, modes: [3] })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cmd, modes: [1, 3], targets: [card(foe)] }).state;
+    expect(s.cards[foe]!.zone).toBe('hand');
+    expect(s.players.P1!.hand.length).toBe(hand);
+    let t = newGame();
+    const a = put(t, 'P2', 'coeurl');
+    const mine = put(t, 'P1', 'coeurl');
+    const cmd2 = put(t, 'P1', 'cryptic-command', 'hand');
+    mana(t, 'P1', { U: 3, C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: cmd2, modes: [2, 3] }).state;
+    expect(t.cards[a]!.tapped).toBe(true);
+    expect(t.cards[mine]!.tapped).toBe(false);
+  });
+
+  it('Genji Glove: double strike; attacking in the first combat untaps the creature and adds a combat phase', () => {
+    let s = newGame();
+    const body = put(s, 'P1', 'coeurl');
+    put(s, 'P1', 'genji-glove', 'battlefield', { attachedTo: body });
+    expect(hasKeyword(s, s.cards[body]!, 'DoubleStrike')).toBe(true);
+    s = fight(s, [{ attacker: body, defender: 'P2' }]).state;
+    expect(s.cards[body]!.tapped).toBe(false);
+    expect(s.extraCombats).toBe(1);
+  });
+
+  it('Godo finds an Equipment as he enters; his first attack each turn untaps him and your Samurai and adds a combat', () => {
+    let s = newGame();
+    const plate = put(s, 'P1', 'darksteel-plate', 'library');
+    const godo = put(s, 'P1', 'godo-bandit-warlord', 'hand');
+    mana(s, 'P1', { R: 1, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: godo }, { accept: true }).state;
+    expect(s.cards[plate]!.zone).toBe('battlefield');
+    s.cards[godo]!.summoningSick = false;
+    s = fight(s, [{ attacker: godo, defender: 'P2' }]).state;
+    expect(s.cards[godo]!.tapped).toBe(false);
+    expect(s.extraCombats).toBe(1);
+  });
+
+  it('Matoya, Archon Elder draws a card whenever you scry or surveil (once per scry or surveil)', () => {
+    let s = newGame();
+    put(s, 'P1', 'matoya-archon-elder');
+    const swallow = put(s, 'P1', 'swallowed-by-leviathan', 'hand');
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cat });
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: swallow, targets: [card(cat)] });
+    const hand = s.players.P1!.hand.length;
+    s = settle(s).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    // Surveil 2 is one surveil: one card.
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Ranger-Captain of Eos finds a creature with mana value 1 or less; sacrifice it: opponents can’t cast noncreature spells this turn', () => {
+    let s = newGame();
+    const one = put(s, 'P1', 'magitek-infantry', 'library');
+    const captain = put(s, 'P1', 'ranger-captain-of-eos', 'hand');
+    mana(s, 'P1', { W: 2, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: captain }, { accept: true }).state;
+    expect(s.cards[one]!.zone).toBe('hand');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: captain, ability: 0 }).state;
+    expect(s.cards[captain]!.zone).toBe('graveyard');
+    expect(s.players.P2!.cantCastNoncreatureTurn).toBe(s.turnNumber);
+    expect(s.players.P1!.cantCastNoncreatureTurn).toBeUndefined();
+    const bolt = put(s, 'P2', 'thunder-magic', 'hand');
+    const bear = put(s, 'P2', 'coeurl', 'hand');
+    s.players.P2!.manaPool.R = 1; s.players.P2!.manaPool.W = 1; s.players.P2!.manaPool.C = 1;
+    const options = spellOptions(s, 'P2').map((o) => o.action.type === 'CastSpell' ? o.action.card : '');
+    expect(options).not.toContain(bolt);
+    void bear;
   });
 });

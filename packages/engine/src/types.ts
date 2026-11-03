@@ -618,6 +618,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** CantCastSpellsThisTurn: only noncreature spells. */
+  noncreatureOnly?: boolean;
   /** ExileTopCardToPlay: from the damaged player's library, with no permission yet (AllowPlayExiledThisWay grants it). */
   fromDefendersLibrary?: boolean;
   /** ReturnToBattlefield: the returned creatures gain haste and go back to their owner's hand at the next end step (Random Encounter). */
@@ -833,6 +835,8 @@ export const TRIGGER_EVENTS = [
   'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
   'CombatDamage',
+  /** You scry or surveil (Matoya, Archon Elder): once per scry or surveil. */
+  'ScryOrSurveil',
   /** An opponent gains control of a permanent from you (Zidane, Tantalus Thief). */
   'OpponentGainsControlFromYou',
   /** At end of combat (`turn` as for BeginCombat). */
@@ -1698,6 +1702,8 @@ export interface PlayerState {
   preventDamageTurn?: number;
   /** Can't cast spells during this turn (Silence). */
   cantCastTurn?: number;
+  /** "Can't cast noncreature spells this turn" (Ranger-Captain of Eos). */
+  cantCastNoncreatureTurn?: number;
   /** Cards drawn this turn. Reset as each turn begins. */
   cardsDrawnThisTurn?: number;
   conceded: boolean;
@@ -2231,6 +2237,8 @@ export type GameEvent =
   | { type: 'Decided'; player: PlayerId; item: string; card: InstanceId; accepted: boolean }
   /** Surveil or scry: `toGraveyard` means "away" (the graveyard, or the bottom of the library when `scry`). */
   | { type: 'Surveiled'; player: PlayerId; card?: InstanceId; toGraveyard: boolean; scry?: boolean }
+  /** A whole scry or surveil finished (one per instance, for "whenever you scry or surveil"). */
+  | { type: 'ScryOrSurveilDone'; player: PlayerId; scry: boolean }
   | { type: 'LegendChosen'; player: PlayerId; kept: InstanceId; others: InstanceId[] }
   | { type: 'CommanderZoneChosen'; player: PlayerId; card: InstanceId; from: ZoneName; toCommand: boolean }
   /** A player shuffled their hand away and drew a new one; `taken` mulligans so far. */

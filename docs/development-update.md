@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 34: Cryptic Command, Genji Glove, Godo, Matoya, Ranger-Captain
+
+- 218 of 320. Engine: `ScryOrSurveil` trigger (a `ScryOrSurveilDone`
+  event when a whole scry or surveil finishes), "can't cast noncreature
+  spells this turn" (left out of the legal actions too), and
+  `onlyFirstCombat` on any effect.
+
 ### Set cards, group 33: Random Encounter and Reno and Rude
 
 - 213 of 320. Engine: `ShuffleLibrary`; cards remember what milled them

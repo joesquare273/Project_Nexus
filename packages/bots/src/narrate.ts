@@ -427,6 +427,7 @@ function triggerCondition(t: TriggerSpec): string {
     CombatDamage: 'deals combat damage',
     DealtDamage: 'is dealt damage',
     EndCombat: '',
+    ScryOrSurveil: '',
     OpponentGainsControlFromYou: '',
     TokensCreated: 'you create tokens',
     CountersAdded: 'gets counters',

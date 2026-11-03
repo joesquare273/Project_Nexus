@@ -855,6 +855,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
   const def = spellDefinition(printed, choice.adventure);
   if (castingForbidden(s, playerId)) reject("You can't cast spells right now (Silence, Conqueror's Flail).");
+  if (s.players[playerId]!.cantCastNoncreatureTurn === s.turnNumber && !def.types.includes('creature')) reject("You can't cast noncreature spells this turn.");
   const naturalFrom = playableZone(s, playerId, c, choice.adventure, false);
   const group = choice.castGroup !== undefined
     ? castGroupsFor(s,playerId,c).find(g=>g.id===choice.castGroup) ?? reject('That shared casting permission is no longer available.')
@@ -2138,7 +2139,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'CantCastSpellsThisTurn':
-      for (const pid of targetPlayers(targets)) player(s, pid).cantCastTurn = s.turnNumber;
+      for (const pid of targetPlayers(targets)) {
+        if (effect.noncreatureOnly) player(s, pid).cantCastNoncreatureTurn = s.turnNumber;
+        else player(s, pid).cantCastTurn = s.turnNumber;
+      }
       return;
     case 'PreventDamageToYouThisTurn':
       player(s, item.controller).preventDamageTurn = s.turnNumber;
@@ -2745,6 +2749,8 @@ function continueResolving(ctx: Ctx): void {
       if (!creatures.some((c) => c.controller === item.controller && powerOf(s, c) === best)) continue;
     }
     if (effect.ifChoseSubtype && !(r.chosenSubtypes ?? []).includes(effect.ifChoseSubtype)) continue;
+    // "If it's the first combat phase of the turn" (Genji Glove).
+    if (effect.onlyFirstCombat && effect.effect !== 'AdditionalCombat' && (s.combatsThisTurn ?? 0) !== 1) continue;
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
       const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];
@@ -3226,6 +3232,7 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     moveCard(ctx, id, 'graveyard');
   }
   ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
+  if (s.resolving.surveilQueue.length === 0) ctx.ev.push({ type: 'ScryOrSurveilDone', player: playerId, scry });
   continueResolving(ctx);
 }
 
