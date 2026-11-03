@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 33: Random Encounter and Reno and Rude
+
+- 213 of 320. Engine: `ShuffleLibrary`; cards remember what milled them
+  (`milledBy`, for "milled this way"); creatures returned until the next
+  end step go back to hand then (`returnToHandAtEndStep`, with haste); a
+  damaged player's top card exiled with permission to play it granted only
+  if you sacrificed (`AllowPlayExiledThisWay`), with any type of mana.
+
 ### Set cards, group 32: Zidane, Tantalus Thief and Stolen Uniform
 
 - 211 of 320. Engine: the `OpponentGainsControlFromYou` trigger

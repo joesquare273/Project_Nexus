@@ -174,6 +174,8 @@ const CARD_FIELDS = {
   damagedTurn: 'copy',
   animated: 'copy',
   chosenColor: 'copy',
+  returnToHandAtEndStep: 'copy',
+  milledBy: 'refs',
   controlUntilEndOfTurn: 'copy',
   unattachAtEndOfTurn: 'copy',
   spellCopy: 'copy',

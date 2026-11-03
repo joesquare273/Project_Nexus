@@ -426,6 +426,10 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** "You may play the exiled card this turn" for the cards ExileTopCardToPlay exiled earlier in this ability (`anyManaType`: any type of mana can be spent). */
+  'AllowPlayExiledThisWay',
+  /** Each target player shuffles their library. */
+  'ShuffleLibrary',
   /** Counter the target spell unless its controller pays `amount` generic mana (`exileCountered`: exile it instead, Syncopate). */
   'CounterUnlessPays',
   /** Remove `amount` (default 1) counters of kind `counter` from the target (removing lore counters doesn't trigger chapters). */
@@ -614,6 +618,10 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** ExileTopCardToPlay: from the damaged player's library, with no permission yet (AllowPlayExiledThisWay grants it). */
+  fromDefendersLibrary?: boolean;
+  /** ReturnToBattlefield: the returned creatures gain haste and go back to their owner's hand at the next end step (Random Encounter). */
+  returnToHandAtEndStep?: boolean;
   /** GainControl: only until end of turn (it goes back at cleanup). AttachEquipmentTo: the Equipment is unattached then too. */
   untilEndOfTurn?: boolean;
   /** CounterUnlessPays: a spell countered this way is exiled instead of put into its owner's graveyard. */
@@ -865,6 +873,8 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
  * trigger's subject, a target, or a card to search for.
  */
 export interface ObjectFilter {
+  /** Was milled by this spell or ability ("each creature card milled this way"). */
+  milledThisWay?: boolean;
   /** Was dealt damage this turn (Qutrub Forayer). */
   damagedThisTurn?: boolean;
   /** A graveyard card that arrived this turn from somewhere other than the battlefield. */
@@ -1549,7 +1559,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number };
+  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -1599,6 +1609,10 @@ export interface CardInstance {
   /** Cast for its evoke cost; cleared when it next enters. */
   evoked?: boolean;
   /** Sacrificed at the beginning of the next end step (a creature cast with Strago and Relm's permission). */
+  /** Return it to its owner's hand at the beginning of the next end step (Random Encounter). */
+  returnToHandAtEndStep?: boolean;
+  /** The source that milled it, and on which turn ("milled this way"). */
+  milledBy?: { source: InstanceId; turn: number };
   sacrificeAtEndStep?: boolean;
   /** Returned with unearth: exiled at the next end step or if it would leave the battlefield. */
   unearthed?: boolean;
@@ -1883,6 +1897,8 @@ export interface Resolving {
   chosenManaValue?: number;
   /** Whether the cards chosen in the last choosing effect included a creature / a noncreature card. */
   chosenTypes?: { creature: boolean; noncreature: boolean };
+  /** Cards exiled by ExileTopCardToPlay in this resolution, waiting for AllowPlayExiledThisWay. */
+  exiledToPlay?: InstanceId[];
   /** Subtypes of the cards chosen so far ("if you put a Town card into your hand this way"). */
   chosenSubtypes?: string[];
   /** Connive: the creatures conniving; each gets a +1/+1 counter per nonland card discarded, in order. */

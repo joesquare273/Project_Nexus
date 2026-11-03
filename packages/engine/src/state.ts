@@ -268,6 +268,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.countersTurn;
   delete c.castPermission;
   delete c.unearthed;
+  delete c.returnToHandAtEndStep;
+  if (to !== 'graveyard') delete c.milledBy;
   delete c.rebounding;
   delete c.adventureSpell;
   delete c.adventurer;

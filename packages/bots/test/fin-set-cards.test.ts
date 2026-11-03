@@ -3807,3 +3807,57 @@ describe('S4 group 33: Zidane, Tantalus Thief and Stolen Uniform', () => {
     expect(s.cards[plate]!.attachedTo).toBeUndefined();
   });
 });
+
+describe('S4 group 34: Random Encounter', () => {
+  it('shuffles, mills four, puts the creature cards milled onto the battlefield with haste, and returns them to hand at the end step', () => {
+    let s = newGame();
+    // A library of creatures, so some are milled whatever the shuffle.
+    for (let i = 0; i < 6; i++) put(s, 'P1', 'coeurl', 'library');
+    const spell = put(s, 'P1', 'random-encounter', 'hand');
+    mana(s, 'P1', { R: 2, C: 4 });
+    const graveBefore = s.players.P1!.graveyard.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    const back = s.players.P1!.battlefield.filter((id) => s.cards[id]!.returnToHandAtEndStep);
+    // Four were milled: the creatures among them came back, the rest stayed in the graveyard.
+    const milledStaying = s.players.P1!.graveyard.filter((id) => s.cards[id]!.milledBy?.source === spell);
+    expect(back.length + milledStaying.length).toBe(4);
+    expect(milledStaying.every((id) => !s.cardDefs[s.cards[id]!.defId]!.types.includes('creature'))).toBe(true);
+    expect(back.length).toBeGreaterThan(0);
+    for (const id of back) expect(hasKeyword(s, s.cards[id]!, 'Haste')).toBe(true);
+    expect(s.players.P1!.graveyard.length).toBe(graveBefore + milledStaying.length + 1);
+    s = goTo(s, 'end');
+    for (const id of back) expect(s.cards[id]!.zone).toBe('hand');
+  });
+});
+
+describe('S4 group 35: Reno and Rude', () => {
+  /** Reno and Rude hits P2, whose top card is a Coeurl; P1 may sacrifice `fodder`. */
+  const hit = (sacrifice: boolean) => {
+    let s = newGame();
+    const reno = put(s, 'P1', 'reno-and-rude');
+    const fodder = put(s, 'P1', 'sol-ring');
+    const top = put(s, 'P2', 'coeurl', 'library');
+    s = fight(s, [{ attacker: reno, defender: 'P2' }]).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: sacrifice ? [fodder] : [] })).state;
+    return { s, top, fodder };
+  };
+
+  it('exiles the top card of the damaged player’s library; sacrificing lets you play it this turn with any type of mana', () => {
+    let { s, top, fodder } = hit(true);
+    expect(s.cards[top]!.zone).toBe('exile');
+    expect(s.cards[fodder]!.zone).toBe('graveyard');
+    s = goTo(s, 'main2');
+    mana(s, 'P1', { G: 2 }); // Coeurl costs {1}{W}: green pays for it.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: top }).state;
+    expect(s.cards[top]!.zone).toBe('battlefield');
+    expect(s.cards[top]!.controller).toBe('P1');
+  });
+
+  it('without a sacrifice the card stays exiled and can’t be played', () => {
+    let { s, top } = hit(false);
+    expect(s.cards[top]!.zone).toBe('exile');
+    s = goTo(s, 'main2');
+    mana(s, 'P1', { W: 1, C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: top })).toBeTruthy();
+  });
+});

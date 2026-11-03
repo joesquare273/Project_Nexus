@@ -189,6 +189,10 @@ function effectText(e: EffectSpec): string {
       return `${you ? 'you lose' : `${who} loses`} the game`;
     case 'NextCreatureEntersWithCounters':
       return `your next creature spell this turn enters with ${plural('additional +1/+1 counter')}`;
+    case 'AllowPlayExiledThisWay':
+      return 'you may play the exiled card this turn';
+    case 'ShuffleLibrary':
+      return `${you ? 'shuffle your' : `${who} shuffles their`} library`;
     case 'CounterUnlessPays':
       return `counter ${who} unless its controller pays ${n}`;
     case 'RemoveCounters':

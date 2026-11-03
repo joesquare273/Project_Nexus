@@ -781,7 +781,8 @@ export function spellCost(
           : def.manaCost;
   let cost = parseManaCost(base);
   // "Mana of any type can be spent to cast that spell."
-  if (extra.castGroup && s.castGroups?.find((g) => g.id === extra.castGroup)?.anyManaType) {
+  const anyType = (extra.castGroup && s.castGroups?.find((g) => g.id === extra.castGroup)?.anyManaType) || (from === 'exile' && card?.playableFromExile?.anyManaType && card.playableFromExile.player === payer);
+  if (anyType) {
     const colored = MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
     cost = { generic: cost.generic + colored, ...(cost.x ? { x: cost.x } : {}) };
   }
@@ -2035,6 +2036,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'RemoveCounters':
       for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
       return;
+    case 'ShuffleLibrary':
+      for (const pid of targetPlayers(targets)) {
+        shuffleInPlace(s, s.players[pid]!.library);
+        ctx.ev.push({ type: 'LibraryShuffled', player: pid });
+      }
+      return;
+    case 'AllowPlayExiledThisWay':
+      for (const id of r.exiledToPlay ?? []) {
+        if (s.cards[id]?.zone !== 'exile') continue;
+        s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber, ...(effect.anyManaType ? { anyManaType: true } : {}) };
+      }
+      return;
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
@@ -2286,6 +2299,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           if (c.zone === 'exile' && c.playableFromExile?.source === source && c.playableFromExile.untilReplaced) delete c.playableFromExile;
         }
       }
+      // Reno and Rude: the top card of the damaged player's library, playable only if a later step says so.
+      if (effect.fromDefendersLibrary) {
+        const victim = item.kind === 'ability' ? item.defender : undefined;
+        for (const id of victim ? topOfLibrary(s, victim, Math.max(1, amount)) : []) {
+          moveCard(ctx, id, 'exile');
+          r.exiledToPlay = [...(r.exiledToPlay ?? []), id];
+        }
+        return;
+      }
       for (const id of topOfLibrary(s, item.controller, Math.max(1, amount))) {
         moveCard(ctx, id, 'exile');
         r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost));
@@ -2340,7 +2362,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (t.kind !== 'player') continue;
         // The Water Crystal: an opponent of its controller mills that many plus four.
         const extra = amount > 0 ? battlefield(s).filter((c) => c.controller !== t.player && !c.phasedOut).reduce((n, c) => n + (defOf(s, c).statics ?? []).reduce((m, st) => m + (st.opponentsMillExtra ?? 0), 0), 0) : 0;
-        for (const id of topOfLibrary(s, t.player, amount + extra)) moveCard(ctx, id, 'graveyard');
+        for (const id of topOfLibrary(s, t.player, amount + extra)) {
+          moveCard(ctx, id, 'graveyard');
+          s.cards[id]!.milledBy = { source, turn: s.turnNumber };
+        }
       }
       return;
     case 'LookAndExileTop': {
@@ -2530,6 +2555,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         addCounters(ctx, id, effect.counters ?? 0, item.controller, effect.counter);
         if (effect.unearth) {
           c.unearthed = true;
+          s.temporaryEffects.push({ source: id, affected: id, keywords: ['Haste'] });
+        }
+        if (effect.returnToHandAtEndStep) {
+          c.returnToHandAtEndStep = true;
           s.temporaryEffects.push({ source: id, affected: id, keywords: ['Haste'] });
         }
       }
