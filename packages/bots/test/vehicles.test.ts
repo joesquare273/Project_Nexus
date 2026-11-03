@@ -13,6 +13,7 @@ function finish(s:GameState,accept=true,pick?:string){
   const p=s.pending;let a:Action|undefined;
   if(p.kind==='decide')a={type:'Decide',player:p.player,accept};
   else if(p.kind==='chooseCards')a={type:'ChooseCards',player:p.player,cards:p.cards.slice(0,p.min)};
+  else if(p.kind==='orderTriggers')a=getLegalActions(s)[0];
   else if(p.kind==='chooseTargets')a=getLegalActions(s).find(a=>a.type==='ChooseTargets' && (!pick||a.targets.some(t=>t.kind==='card'&&t.card===pick)))??getLegalActions(s)[0];
   else if(p.kind==='chooseLegend')a={type:'ChooseLegend',player:p.player,keep:p.cards[0]!};
   else if(p.kind==='commanderZone')a={type:'CommanderZone',player:p.player,toCommand:true};

@@ -885,6 +885,17 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
             />{' '}
             Tap mana automatically
           </label>
+          <label title="After you cast a spell or activate an ability, keep priority so you can add more before anyone responds (pass when you're done)">
+            <input
+              type="checkbox"
+              checked={session.keepPriority}
+              onChange={(e) => {
+                session.keepPriority = e.target.checked;
+                onChange();
+              }}
+            />{' '}
+            Hold priority after casting
+          </label>
           <label>
             AI action speed
             <select aria-label="AI action speed" value={session.aiPace} onChange={(e) => { session.aiPace = e.target.value as typeof session.aiPace; onChange(); }}>
@@ -1025,6 +1036,10 @@ function PromptBar(p: PromptProps) {
   useEffect(() => setModePicks([]), [p.menu]);
   const s = p.session.state;
   const pending = s.pending;
+  /** Ordering your simultaneous triggers: the ones clicked so far, in resolve order. */
+  const [orderPicks, setOrderPicks] = useState<number[]>([]);
+  const orderKey = pending.kind === 'orderTriggers' ? `${s.turnNumber}:${s.triggerQueue.map((t) => t.source).join()}` : '';
+  useEffect(() => setOrderPicks([]), [orderKey]);
   let text: string;
   let buttons: { label: string; onClick: () => void; primary?: boolean }[] = [];
 
@@ -1147,6 +1162,38 @@ function PromptBar(p: PromptProps) {
       onClick: () => p.submit([{ type: 'ChooseDefender', player: YOU, defender }]),
       primary: true,
     }));
+  } else if (pending.kind === 'orderTriggers') {
+    // Rule 603.3b: click your triggers in the order they should resolve.
+    const n = pending.count;
+    const label = (i: number) => {
+      const t = s.triggerQueue[i]!;
+      return `${cardName(s, t.source)}: ${triggerText(queuedTriggerSpec(s, t))}`;
+    };
+    text = orderPicks.length
+      ? `Resolve order so far: ${orderPicks.map((i, k) => `${k + 1}. ${cardName(s, s.triggerQueue[i]!.source)}`).join(' · ')}. Click the next one.`
+      : `${n} of your abilities trigger at once. Click them in the order they should resolve, first to last (the last one goes on the stack first).`;
+    const remaining = Array.from({ length: n }, (_, i) => i).filter((i) => !orderPicks.includes(i));
+    const finish = (picks: number[]) => p.submit([{ type: 'OrderTriggers', player: YOU, order: picks }]);
+    buttons = [
+      ...remaining.map((i) => ({
+        label: `${orderPicks.length + 1}. ${label(i).slice(0, 90)}`,
+        onClick: () => {
+          const next = [...orderPicks, i];
+          // The last one is decided by the others.
+          if (next.length >= n - 1) finish([...next, ...remaining.filter((r) => r !== i)]);
+          else setOrderPicks(next);
+        },
+      })),
+      ...(orderPicks.length ? [{ label: 'Start over', onClick: () => setOrderPicks([]) }] : []),
+      {
+        label: 'Keep this order',
+        onClick: () => {
+          const first = getLegalActions(s).find((a) => a.type === 'OrderTriggers');
+          if (first) p.submit([first]);
+        },
+        primary: true,
+      },
+    ];
   } else if (pending.kind === 'chooseModes') {
     const t = s.triggerQueue[0]!;
     const spec = queuedTriggerSpec(s, t);
@@ -1235,12 +1282,20 @@ function PromptBar(p: PromptProps) {
       },
     ];
   } else {
+    // Hold priority: keep it after casting, to add more before anyone responds (rule 117.3c).
+    const holdButton = {
+      label: p.session.keepPriority ? 'Holding priority ✓' : 'Hold priority',
+      onClick: () => {
+        p.session.keepPriority = !p.session.keepPriority;
+        setOrderPicks((x) => [...x]);
+      },
+    };
     const top = s.stack.at(-1);
     if (top) {
       const src = top.kind === 'spell' ? top.card : top.source;
       const whose = top.controller === YOU ? 'Your' : `${top.controller}'s`;
       text = `${whose} ${cardName(s, src)}${top.kind === 'ability' ? ' ability' : ''} is on the stack. Respond with a legal spell or ability. It resolves after everyone passes in succession.`;
-      buttons = [{ label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
+      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
     } else {
       const yours = s.activePlayer === YOU;
       const main = s.step === 'main1' || s.step === 'main2';
@@ -1248,7 +1303,7 @@ function PromptBar(p: PromptProps) {
         ? `${stepName(s.step)}: play a land, cast a spell, or use an ability. Glowing cards are playable.`
         : `${yours ? 'Your' : `${s.activePlayer}'s`} ${stepName(s.step).toLowerCase()}: cast a legal instant or use an ability.`;
       text += ' Everyone must pass in succession to advance.';
-      buttons = [{ label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
+      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
     }
   }
 

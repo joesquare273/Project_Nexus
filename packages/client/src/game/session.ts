@@ -100,6 +100,12 @@ export class GameSession {
   autoTap = false;
   /** You're partway through paying a cost: keep priority until you finish or cancel. */
   holdPriority = false;
+  /**
+   * Hold priority (rule 117.3c): after you cast a spell or activate an
+   * ability you get priority back; with this on, the board waits so you can
+   * add more on top before anyone else can respond, instead of passing for you.
+   */
+  keepPriority = false;
   /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
   readonly triggered: { key: number; card: InstanceId }[] = [];
   /** Cards that changed zones, in order, for the board to animate (only what you may see). */
@@ -130,7 +136,7 @@ export class GameSession {
         format: LIMITED,
         cardDefs: CARD_DEFS,
         seed: options.seed,
-        players: [YOU, ...this.opponents].map((id, i) => ({ id, deck: options.decks![i]! })),
+        players: [YOU, ...this.opponents].map((id, i) => ({ id, deck: options.decks![i]!, ordersTriggers: id === YOU })),
         mulligans: true,
       });
       this.state = created.state;
@@ -145,7 +151,7 @@ export class GameSession {
         format: COMMANDER,
         cardDefs: CARD_DEFS,
         seed: options.seed,
-        players: [YOU, ...this.opponents].map((id, i) => ({ id, ...decks[i]! })),
+        players: [YOU, ...this.opponents].map((id, i) => ({ id, ...decks[i]!, ordersTriggers: id === YOU })),
         mulligans: true,
       });
       this.state = created.state;
@@ -160,7 +166,7 @@ export class GameSession {
       format: FREE_FOR_ALL,
       cardDefs: CARD_DEFS,
       seed: options.seed,
-      players: [YOU, ...this.opponents].map((id) => ({ id, deck: decks[id]! })),
+      players: [YOU, ...this.opponents].map((id) => ({ id, deck: decks[id]!, ordersTriggers: id === YOU })),
       mulligans: true,
     });
     this.state = created.state;
@@ -271,7 +277,8 @@ export class GameSession {
   private worthStopping(): boolean {
     const s = this.state;
     const top = s.stack.at(-1);
-    if (top) return top.controller !== YOU;
+    // Your own spell or ability on top: pass for you, unless you're holding priority.
+    if (top) return top.controller !== YOU || this.keepPriority;
     if (s.activePlayer === YOU) return s.step === 'main1' || s.step === 'main2';
     return s.step === 'declareAttackers' || s.step === 'declareBlockers' || s.step === 'end';
   }

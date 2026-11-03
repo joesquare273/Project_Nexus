@@ -20,6 +20,8 @@ export interface PlayerSetup {
   commanderFinish?: CardFinish;
   /** Commander format: the commander, which starts in the command zone. */
   commander?: CardDefId;
+  /** Asked to order simultaneous triggers (rule 603.3b). Off for bots, which keep the order they were found in. */
+  ordersTriggers?: boolean;
 }
 
 export interface GameSetup {
@@ -94,6 +96,7 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
 
   for (const p of players) {
     s.players[p.id] = {
+      ...(p.ordersTriggers ? { ordersTriggers: true } : {}),
       id: p.id,
       life: format.startingLife,
       library: [],

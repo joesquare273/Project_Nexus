@@ -401,6 +401,14 @@ export function getLegalActions(s: GameState): Action[] {
       return pending.opponents.filter(id => !s.players[id]!.eliminated).map((opponent): Action => ({ type: 'ChooseOpponent', player: pending.player, opponent }));
     case 'chooseDefender':
       return pending.defenders.filter((id) => id !== pending.player && !s.players[id]!.eliminated).map((defender): Action => ({ type: 'ChooseDefender', player: pending.player, defender }));
+    case 'orderTriggers': {
+      // The order they were found in comes first (it resolves last-found first, as before); every other order is legal too.
+      const n = pending.count;
+      const found = Array.from({ length: n }, (_, i) => n - 1 - i);
+      const all = n <= 5 ? permutations(n) : [found, [...found].reverse()];
+      const rest = all.filter((p) => p.join() !== found.join());
+      return [found, ...rest].map((order): Action => ({ type: 'OrderTriggers', player: pending.player, order }));
+    }
     case 'chooseModes':
       return triggerModeOptions(s, s.triggerQueue[0]!).map((modes): Action => ({ type: 'ChooseModes', player: pending.player, modes }));
     case 'chooseTargets': {
@@ -527,4 +535,12 @@ export function getLegalActions(s: GameState): Action[] {
       return actions;
     }
   }
+}
+
+/** Every order of 0..n-1. */
+function permutations(n: number): number[][] {
+  if (n <= 1) return [Array.from({ length: n }, (_, i) => i)];
+  const out: number[][] = [];
+  for (const rest of permutations(n - 1)) for (let at = 0; at <= rest.length; at++) out.push([...rest.slice(0, at), n - 1, ...rest.slice(at)]);
+  return out;
 }

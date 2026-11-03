@@ -411,7 +411,8 @@ export class EventHub {
     const setup = gameSetup(h.ev, m.id, seedFromBytes(this.opts.randomBytes(16)));
     const seats = { P1: m.a, P2: m.b! } as Record<Seat, string>;
     const toGame = (x: string) => (x === seats.P1 ? 'P1' : 'P2');
-    setup.players = setup.players.map((p) => ({ ...p, id: toGame(p.id) }));
+    // Players order their simultaneous triggers; bots keep the order found.
+    setup.players = setup.players.map((p) => ({ ...p, id: toGame(p.id), ordersTriggers: !h.ev.seats.find((s) => s.id === p.id)?.bot }));
     if (setup.firstPlayer) setup.firstPlayer = toGame(setup.firstPlayer);
     const created = createGame(setup);
     const isBot = (seat: string) => !!h.ev.seats.find((s) => s.id === seat)?.bot;

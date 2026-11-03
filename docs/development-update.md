@@ -5,6 +5,11 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 25: Summon: Fenrir and Summon: Leviathan
+
+- 189 of 320. Engine: `NextCreatureEntersWithCounters` (the Yuna, Grand
+  Summoner rule as an effect) and the `ifYouControlGreatestPower` condition.
+
 ### Set cards, group 24: copying spells
 
 - Ether and Summon: G.F. Cerberus (187 of 320). Engine: `CopySpell`

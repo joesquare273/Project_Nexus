@@ -189,7 +189,7 @@ export class TableHub {
           bots[s.id] = basicAi(botSeed + i);
           return { id: s.id, ...preconDeck(FIN_PRECONS[BOT_NAMES.indexOf(s.name) % FIN_PRECONS.length]!.name) };
         }
-        return { id: s.id, ...s.deck!.game };
+        return { id: s.id, ...s.deck!.game, ordersTriggers: true };
       }),
     };
     t.phase = 'playing';

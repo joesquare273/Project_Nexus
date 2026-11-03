@@ -220,6 +220,7 @@ const PLAYER_FIELDS = {
   friendlyTargetAbilityTurn: 'copy',
   equipActivatedTurn: 'copy',
   lifeLostThisTurn: 'copy',
+  ordersTriggers: 'copy',
   combatDamageThisTurn: 'copy',
   nextCreatureCounters: 'copy',
   counterOnCreatureTurn: 'copy',

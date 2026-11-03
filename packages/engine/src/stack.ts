@@ -2009,6 +2009,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'NextCreatureEntersWithCounters': {
+      const p = player(s, item.controller);
+      const before = p.nextCreatureCounters?.turn === s.turnNumber ? p.nextCreatureCounters.amount : 0;
+      p.nextCreatureCounters = { turn: s.turnNumber, amount: before + amount };
+      return;
+    }
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
@@ -2682,6 +2688,11 @@ function continueResolving(ctx: Ctx): void {
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
     if (effect.ifSacrificed && !r.sacrificedAny) continue;
     if (effect.ifWonFlip && !r.wonFlip) continue;
+    if (effect.ifYouControlGreatestPower) {
+      const creatures = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c));
+      const best = Math.max(...creatures.map((c) => powerOf(s, c)));
+      if (!creatures.some((c) => c.controller === item.controller && powerOf(s, c) === best)) continue;
+    }
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
       const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];

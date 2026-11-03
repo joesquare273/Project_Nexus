@@ -187,6 +187,8 @@ function effectText(e: EffectSpec): string {
       return e.giveTo === 'SubjectController' ? `that player gains control of ${who}` : `gain control of ${who}`;
     case 'LoseGame':
       return `${you ? 'you lose' : `${who} loses`} the game`;
+    case 'NextCreatureEntersWithCounters':
+      return `your next creature spell this turn enters with ${plural('additional +1/+1 counter')}`;
     case 'CopySpell':
       return 'copy that spell';
     case 'WinGame':

@@ -538,6 +538,18 @@ export function placeTriggers(ctx: Ctx, then: PlayerId): void {
   let placed = false;
   while (s.triggerQueue.length > 0) {
     const t = s.triggerQueue[0]!;
+    // Rule 603.3b: a player with several different triggers at once chooses their order.
+    if (!t.ordered) {
+      let n = 0;
+      while (n < s.triggerQueue.length && s.triggerQueue[n]!.controller === t.controller && !s.triggerQueue[n]!.ordered) n++;
+      const block = s.triggerQueue.slice(0, n);
+      const key = (x: QueuedTrigger) => `${x.rule ?? s.cards[x.source]?.defId}|${JSON.stringify(specOf(s, x))}`;
+      if (n > 1 && s.players[t.controller]?.ordersTriggers && new Set(block.map(key)).size > 1) {
+        s.pending = { kind: 'orderTriggers', player: t.controller, then, count: n };
+        return;
+      }
+      for (const x of block) x.ordered = true;
+    }
     if (specOf(s, t).modes && !t.modes) {
       if (triggerModeOptions(s, t).length === 0) {
         s.triggerQueue.shift();
@@ -560,6 +572,24 @@ export function placeTriggers(ctx: Ctx, then: PlayerId): void {
     placed = true;
   }
   if (placed) givePriority(ctx, then);
+}
+
+/**
+ * The player's order for their simultaneous triggers (`order`: resolve
+ * first to last). They go on the stack in reverse, so the last one listed
+ * is put on first and resolves last.
+ */
+export function orderTriggers(ctx: Ctx, playerId: PlayerId, order: number[]): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'orderTriggers' || pending.player !== playerId) reject('You are not ordering triggers right now.');
+  const n = pending.count;
+  if (order.length !== n || new Set(order).size !== n || order.some((i) => !Number.isInteger(i) || i < 0 || i >= n)) reject(`List each of the ${n} triggers once.`);
+  const block = s.triggerQueue.slice(0, n);
+  const placed = [...order].reverse().map((i) => ({ ...block[i]!, ordered: true }));
+  s.triggerQueue.splice(0, n, ...placed);
+  givePriority(ctx, pending.then);
+  placeTriggers(ctx, pending.then);
 }
 
 /** The legal single modes and, when allowed, both modes of a queued trigger. */

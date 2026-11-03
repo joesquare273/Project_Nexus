@@ -426,6 +426,8 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** "When you next cast a creature spell this turn, that creature enters with `amount` additional +1/+1 counters" (Summon: Fenrir). */
+  'NextCreatureEntersWithCounters',
   /**
    * Copy the triggering spell `amount` times (default once): each copy goes
    * on the stack with the same targets, modes and X (rule 707.10; choosing
@@ -606,6 +608,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** Only if you control the creature with the greatest power or tied for it (Summon: Fenrir). */
+  ifYouControlGreatestPower?: boolean;
   /** CreateDelayedTrigger: "when you next ..." (it triggers only once). */
   next?: boolean;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
@@ -1605,6 +1609,8 @@ export interface PlayerState {
   noncreatureSpellMana: ManaPool;
   landsPlayedThisTurn: number;
   eliminated: boolean;
+  /** This player chooses the order of their simultaneous triggers (players; bots keep the order found). */
+  ordersTriggers?: boolean;
   drewFromEmptyLibrary: boolean;
   /** Combat damage dealt to this player this turn. Reset as each turn begins. */
   combatDamageThisTurn?: number;
@@ -1771,6 +1777,8 @@ export interface QueuedTrigger {
   amount?: number;
   /** "Choose one at random": which of `randomModes` came up. */
   mode?: number;
+  /** Its controller has put it in order with their other simultaneous triggers (rule 603.3b). */
+  ordered?: boolean;
 }
 
 /** An "until end of turn" effect on one object (rule 611.2). */
@@ -1905,6 +1913,11 @@ export type Pending =
   | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[] }
   | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
+  /**
+   * Rule 603.3b: the player orders their triggered abilities that go on the
+   * stack at the same time: the first `count` queued triggers.
+   */
+  | { kind: 'orderTriggers'; player: PlayerId; then: PlayerId; count: number }
   | { kind: 'priority'; player: PlayerId; passes: number }
   | { kind: 'declareAttackers'; player: PlayerId }
   | { kind: 'declareBlockers'; player: PlayerId }
@@ -2062,6 +2075,11 @@ export type Action =
   | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
   | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
+  /**
+   * Order your simultaneous triggers: `order` lists them (by index among the
+   * first `count` queued) in the order they should resolve, first to last.
+   */
+  | { type: 'OrderTriggers'; player: PlayerId; order: number[] }
   | { type: 'Decide'; player: PlayerId; accept: boolean }
   | { type: 'ChooseMana'; player: PlayerId; mana: Color }
   | { type: 'ExileTop'; player: PlayerId; exile: boolean }

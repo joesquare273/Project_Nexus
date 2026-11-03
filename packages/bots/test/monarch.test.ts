@@ -12,7 +12,7 @@ function finish(s:GameState, bottom?:string, opponent?:string):GameState {
     const p=s.pending;let a:Action|undefined;
     if(p.kind==='chooseOpponent')a={type:'ChooseOpponent',player:p.player,opponent:opponent??p.opponents[0]!};
     else if(p.kind==='chooseCards')a={type:'ChooseCards',player:p.player,cards:[bottom&&p.cards.includes(bottom)?bottom:p.cards[0]!]};
-    else if(p.kind==='chooseTargets')a=getLegalActions(s)[0];
+    else if(p.kind==='chooseTargets'||p.kind==='orderTriggers')a=getLegalActions(s)[0];
     else if(p.kind==='commanderZone')a={type:'CommanderZone',player:p.player,toCommand:true};
     else if(p.kind==='surveil')a={type:'Surveil',player:p.player,toGraveyard:false};
     else if(p.kind==='priority'&&s.stack.length)a={type:'PassPriority',player:p.player};

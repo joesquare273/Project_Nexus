@@ -302,7 +302,7 @@ export class Client {
       cardDefs: CARD_DEFS,
       // 128 bits from crypto.randomBytes: never Math.random (see docs/decisions.md).
       seed: seedFromBytes(this.lobby.randomBytes(16)),
-      players: SEATS.map((seat) => ({ id: seat, deck: starterKitDeck(room.seats.get(seat)!.deck!) })),
+      players: SEATS.map((seat) => ({ id: seat, deck: starterKitDeck(room.seats.get(seat)!.deck!), ordersTriggers: true })),
       mulligans: true,
     });
     const books = Object.fromEntries(SEATS.map((s) => [s, new AliasBook(() => this.lobby.alias())])) as Record<Seat, AliasBook>;

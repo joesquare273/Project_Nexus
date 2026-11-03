@@ -501,9 +501,9 @@ describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
 describe('cards that aren’t built yet', () => {
   it('can’t be cast (creatures included) or played, and aren’t offered', () => {
     const s = newGame();
-    expect(s.cardDefs['summon-leviathan']!.notBuilt).toBe(true);
-    const creature = put(s, 'P1', 'summon-leviathan', 'hand');
-    mana(s, 'P1', { U: 2, C: 4 });
+    expect(s.cardDefs['summon-brynhildr']!.notBuilt).toBe(true);
+    const creature = put(s, 'P1', 'summon-brynhildr', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
     expect(s.cardDefs['lindblum-industrial-regency-mage-siege']!.notBuilt).toBe(true);
     const land = put(s, 'P1', 'lindblum-industrial-regency-mage-siege', 'hand');
@@ -3370,5 +3370,61 @@ describe('S4 group 24: copying your next instant or sorcery (Ether, Summon: G.F.
     s = comet(s, 1).s;
     expect(s.players.P2!.life).toBe(life - 3);
     expect(s.cards[cerberus]!.zone).toBe('graveyard');
+  }, 60_000);
+});
+
+describe('S4 group 25: Summon: Fenrir and Summon: Leviathan', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState, opts: Opts = {}) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = settleAll(goTo(settleAll(s, opts), 'end', opts), opts);
+      s = settleAll(goTo(s, 'main1', opts), opts);
+    }
+    if (s.activePlayer !== 'P1' || s.turnNumber <= turn) throw new Error("never reached P1's next turn");
+    return s;
+  };
+
+  it('Summon: Fenrir fetches a basic land (I), your next creature spell gets a +1/+1 counter (II), and draws if you control the biggest creature (III)', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'forest', 'library');
+    const fenrir = put(s, 'P1', 'summon-fenrir', 'hand');
+    mana(s, 'P1', { G: 1, C: 2 });
+    const landsBefore = s.players.P1!.battlefield.length;
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: fenrir }).state);
+    expect(s.players.P1!.battlefield.length).toBe(landsBefore + 2); // Fenrir and a tapped land
+    s = nextTurnOfP1(s);
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cat }).state;
+    expect(countersOf(s.cards[cat]!, '+1/+1')).toBe(1);
+    const hand = s.players.P1!.hand.length;
+    s = nextTurnOfP1(s);
+    // The draw step and chapter III (P1 controls the biggest creature).
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+  }, 60_000);
+
+  it('Summon: Leviathan (ward 2) returns every creature but the sea creatures; then sea creatures attacking draw you a card', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'coeurl');
+    const theirs = put(s, 'P2', 'coeurl');
+    const leviathan = put(s, 'P1', 'summon-leviathan', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: leviathan }).state);
+    expect(s.cards[mine]!.zone).toBe('hand');
+    expect(s.cards[theirs]!.zone).toBe('hand');
+    expect(s.cards[leviathan]!.zone).toBe('battlefield');
+    expect(stats(s, leviathan)).toEqual([6, 6]);
+    s = nextTurnOfP1(s);
+    const hand = s.players.P1!.hand.length;
+    s = fight(s, [{ attacker: leviathan, defender: 'P2' }]).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
   }, 60_000);
 });

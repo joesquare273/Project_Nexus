@@ -569,3 +569,20 @@ which isn't offered yet. A copy is a card object flagged `spellCopy` that
 goes to the void when it leaves the stack (rule 707.10a). Ether's mana
 ability uses the stack (it also sets up the copy), unlike real mana
 abilities.
+
+## Ordering simultaneous triggers and holding priority (2026-11-03, user request)
+
+- **Trigger order (rule 603.3b).** When several of one player's abilities
+  trigger at the same time, they go on the stack in APNAP order, and each
+  player orders their own. Players (`PlayerSetup.ordersTriggers`: the board
+  for "You", the server for human seats) get an `orderTriggers` choice and
+  answer with `OrderTriggers` (the order they should resolve, first to
+  last). Bots and tests keep the order the triggers were found in, which is
+  also the first legal action ("Keep this order"). Identical triggers (same
+  card and ability) aren't asked about. Targets and modes are still chosen
+  as each one goes on the stack, after ordering.
+- **Holding priority (rule 117.3c).** The engine always gives priority back
+  to the player who cast a spell or activated an ability. The board used to
+  pass it for you whenever your own spell was on top; with "Hold priority"
+  (a button next to Pass, and a setting) it waits, so you can add more to
+  the stack before anyone can respond, then pass yourself.

@@ -649,6 +649,8 @@ export function basicAi(_seed = 0): Bot {
       if (!blockProblem(s, pending.player, blocks)) return { type: 'DeclareBlockers', player: pending.player, blocks };
       return legal.at(-1)!;
     }
+    // Simultaneous triggers: the order they were found in (listed first).
+    if (pending.kind === 'orderTriggers') return legal[0]!;
     if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;
     if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);

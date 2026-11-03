@@ -118,6 +118,9 @@ export function settle(
       action = { type: 'ChooseTargets', player: p.player, targets };
     } else if (p.kind === 'decide') {
       action = { type: 'Decide', player: p.player, accept: opts.accept ?? true };
+    } else if (p.kind === 'orderTriggers') {
+      // Simultaneous triggers keep the order they were found in.
+      action = getLegalActions(s)[0]!;
     } else if (p.kind === 'chooseLegend') {
       action = { type: 'ChooseLegend', player: p.player, keep: p.cards[0]! };
     } else if (p.kind === 'commanderZone') {
