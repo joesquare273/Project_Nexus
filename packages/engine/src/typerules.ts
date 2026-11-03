@@ -124,6 +124,8 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   if (ability?.amountPerCounter && manaAbilityAmount(c, def) === 0) return [];
   // "Activate only if you control five or more lands."
   if (ability?.ifLandsAtLeast && yours().filter((x) => currentDefinition(s, x).types.includes('land')).length < ability.ifLandsAtLeast) return [];
+  // "Add one mana of the chosen color" (Crossroads Village): nothing until a color is chosen.
+  if (def.chooseColorAsEnters) return c.chosenColor ? [c.chosenColor] : [];
   const made = new Set<ManaType>(manaProduced(def));
   if (ability?.anyColorIfControls && yours().some((x) => matchesObject(s, ability.anyColorIfControls, x, { controller: c.controller }))) {
     for (const m of ['W', 'U', 'B', 'R', 'G'] as const) made.add(m);

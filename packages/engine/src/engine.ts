@@ -2,7 +2,7 @@
 // The input state is never mutated.
 
 import { declareAttackers, declareBlockers } from './combat.ts';
-import { chooseCommanderZone, chooseLegend, stabilize } from './sba.ts';
+import { chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
 import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
@@ -103,6 +103,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ChooseLegend':
         chooseLegend(ctx, action.player, action.keep);
+        break;
+      case 'ChooseColor':
+        chooseColor(ctx, action.player, action.color);
         break;
       case 'CommanderZone':
         chooseCommanderZone(ctx, action.player, action.toCommand);

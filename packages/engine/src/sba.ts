@@ -28,7 +28,7 @@ import {
 import { shuffleInPlace } from './rng.ts';
 import { isLegendary } from './typerules.ts';
 import { resumeResolving } from './stack.ts';
-import type { EliminationReason, GameEvent, PlayerId } from './types.ts';
+import type { Color, EliminationReason, GameEvent, PlayerId } from './types.ts';
 
 /**
  * A player leaving a multiplayer game takes everything they own with them
@@ -281,6 +281,25 @@ function repairPending(ctx: Ctx): void {
  * player in turn order, starting with the active player. Returns true if the
  * game is now waiting on that choice.
  */
+/** "As this enters, choose a color": asks the controller of the first permanent waiting on that choice. */
+function checkColorChoice(ctx: Ctx): boolean {
+  const s = ctx.s;
+  if (s.pending.kind === 'chooseColor' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseColor';
+  const c = battlefield(s).find((x) => !x.chosenColor && !x.phasedOut && defOf(s, x).chooseColorAsEnters);
+  if (!c) return false;
+  s.pending = { kind: 'chooseColor', player: c.controller, card: c.id, resume: s.pending };
+  return true;
+}
+
+export function chooseColor(ctx: Ctx, playerId: PlayerId, color: Color): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseColor' || pending.player !== playerId) reject('You are not choosing a color right now.');
+  if (!['W', 'U', 'B', 'R', 'G'].includes(color)) reject('Choose white, blue, black, red or green.');
+  s.cards[pending.card]!.chosenColor = color;
+  s.pending = pending.resume;
+}
+
 function checkLegendRule(ctx: Ctx): boolean {
   const s = ctx.s;
   if (s.pending.kind === 'chooseLegend' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseLegend';
@@ -384,7 +403,7 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
     // These need a choice; triggers go on the stack after it's made.
-    if (checkCommanderZone(ctx) || checkLegendRule(ctx)) {
+    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx)) {
       if (s.cleanupCheck) s.cleanupNeedsPriority = true;
       return;
     }

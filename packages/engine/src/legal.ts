@@ -438,6 +438,8 @@ export function getLegalActions(s: GameState): Action[] {
         { type: 'CommanderZone', player: pending.player, toCommand: false },
       ];
 
+    case 'chooseColor':
+      return (['W', 'U', 'B', 'R', 'G'] as const).map((color): Action => ({ type: 'ChooseColor', player: pending.player, color }));
     case 'chooseLegend':
       return pending.cards.map((keep): Action => ({ type: 'ChooseLegend', player: pending.player, keep }));
 

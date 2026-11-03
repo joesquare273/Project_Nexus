@@ -3595,3 +3595,29 @@ describe('S4 group 27: lands and growing', () => {
     expect(currentDefinition(s, s.cards[shoopuf]!).types).toContain('creature');
   });
 });
+
+describe('S4 group 28: Crossroads Village and Delivery Moogle', () => {
+  it('Crossroads Village enters tapped; as it enters you choose a color, and it taps for that color only', () => {
+    let s = newGame();
+    const village = put(s, 'P1', 'crossroads-village', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: village });
+    expect(s.pending).toMatchObject({ kind: 'chooseColor', player: 'P1', card: village });
+    s = act(s, { type: 'ChooseColor', player: 'P1', color: 'B' });
+    expect(s.pending.kind).toBe('priority');
+    expect(s.cards[village]!.tapped).toBe(true);
+    s.cards[village]!.tapped = false;
+    const offered = getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility' && a.card === village);
+    expect(offered.map((a) => (a.type === 'ActivateManaAbility' ? a.mana : ''))).toEqual(['B']);
+    expect(rejected(s, { type: 'ActivateManaAbility', player: 'P1', card: village, mana: 'G' })).toBeTruthy();
+  });
+
+  it('Delivery Moogle (flying) finds an artifact with mana value 2 or less in your library or graveyard', () => {
+    let s = newGame();
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    const moogle = put(s, 'P1', 'delivery-moogle', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: moogle })).state;
+    expect(s.cards[ring]!.zone).toBe('hand');
+    expect(hasKeyword(s, s.cards[moogle]!, 'Flying')).toBe(true);
+  });
+});

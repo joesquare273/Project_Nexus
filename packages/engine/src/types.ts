@@ -610,6 +610,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** SearchLibraryToHand: search your graveyard too ("search your library and/or graveyard", Delivery Moogle). */
+  alsoGraveyard?: boolean;
   /** SearchLibraryTo...: the cards found must have different names. */
   differentNames?: boolean;
   /** Only if a card chosen in the last choice has this subtype ("if you put a Town card into your hand this way"). */
@@ -1365,6 +1367,8 @@ export interface CardDefinition {
   kickerSacrifice?: ObjectFilter;
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** "As this enters, choose a color"; its mana ability makes only that color (Crossroads Village). */
+  chooseColorAsEnters?: boolean;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
   kicker?: string;
   /** Multikicker cost: may be paid any number of times. */
@@ -1502,6 +1506,8 @@ export interface CardInstance {
   lastCounters?: Partial<Record<AnyCounter, number>>;
   lastKeywords?: Keyword[];
   lastEquippedBy?: InstanceId[];
+  /** The color chosen as it entered ("add one mana of the chosen color"). */
+  chosenColor?: Color;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
   animated?: { power: number; toughness: number; subtypes?: string[] };
   /** The turn this permanent was last dealt damage. */
@@ -1957,6 +1963,8 @@ export type Pending =
    * due before, which continues afterwards.
    */
   | { kind: 'chooseLegend'; player: PlayerId; name: string; cards: InstanceId[]; resume: Pending }
+  /** "As this enters, choose a color" (Crossroads Village). */
+  | { kind: 'chooseColor'; player: PlayerId; card: InstanceId; resume: Pending }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
@@ -2097,6 +2105,7 @@ export type Action =
   | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
   | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
+  | { type: 'ChooseColor'; player: PlayerId; color: Color }
   /**
    * Order your simultaneous triggers: `order` lists them (by index among the
    * first `count` queued) in the order they should resolve, first to last.

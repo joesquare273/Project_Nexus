@@ -649,6 +649,16 @@ export function basicAi(_seed = 0): Bot {
       if (!blockProblem(s, pending.player, blocks)) return { type: 'DeclareBlockers', player: pending.player, blocks };
       return legal.at(-1)!;
     }
+    // "Choose a color": the color most of its other cards need.
+    if (pending.kind === 'chooseColor') {
+      const counts = new Map<string, number>();
+      for (const id of [...s.players[pending.player]!.hand, ...s.players[pending.player]!.battlefield]) {
+        const cost = parseManaCost(def(s, s.cards[id]!).manaCost);
+        for (const k of ['W', 'U', 'B', 'R', 'G'] as const) counts.set(k, (counts.get(k) ?? 0) + (cost[k] ?? 0));
+      }
+      const best = [...counts].sort((a, b) => b[1] - a[1])[0];
+      return legal.find((a) => a.type === 'ChooseColor' && a.color === best?.[0]) ?? legal[0]!;
+    }
     // Simultaneous triggers: the order they were found in (listed first).
     if (pending.kind === 'orderTriggers') return legal[0]!;
     if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;

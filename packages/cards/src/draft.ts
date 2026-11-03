@@ -236,7 +236,7 @@ export function aiScore(card: DraftCard, picks: readonly DraftCard[]): number {
   if (rating === 0) return colors.length > 0 && colors.every((c) => main.includes(c)) ? 0.02 : colors.length === 0 ? 0.01 : 0;
   // The first picks take the best card; after that, commitment grows with each pick.
   if (picks.length < 4) return rating;
-  const commitment = Math.min(1, (picks.length - 3) / 12);
+  const commitment = Math.min(1, (picks.length - 3) / 7);
   if (colors.length === 0) return rating + 0.4 * commitment;
   const fits = colors.every((c) => main.includes(c));
   const off = colors.filter((c) => !main.includes(c)).length;

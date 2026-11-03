@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 28: Crossroads Village and Delivery Moogle
+
+- 201 of 320. Engine: "as this enters, choose a color" (`chooseColor`
+  pending and `ChooseColor` action, asked like the legend rule; the land
+  then taps for that color only; bots pick the color their cards need;
+  the board shows five color buttons), and searches that also look in your
+  graveyard (`alsoGraveyard`).
+- AI drafters settle into their two colors by about pick 10 (they spread
+  too wide as more of the set became playable).
+
 ### Set cards, group 27: Town Greeter, Reach the Horizon, Ride the Shoopuf
 
 - 199 of 320. Engine: LookAtTopPutMatching `restToGraveyard`,

@@ -3200,7 +3200,9 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
  */
 function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped'): void {
   const p = s.players[searcher]!;
-  const cards = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
+  // "Search your library and/or graveyard": cards from both are offered.
+  const where = effect.alsoGraveyard ? [...p.library, ...p.graveyard] : p.library;
+  const cards = where.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
   const max = Math.min(effect.amount === undefined ? 1 : amount, cards.length);
   r.choiceQueue = [...(r.choiceQueue ?? []), { player: searcher, purpose: 'search', cards, min: 0, max, searchTo, ...(effect.differentNames ? { differentNames: true } : {}) }];
 }
