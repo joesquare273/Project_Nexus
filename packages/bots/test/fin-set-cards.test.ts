@@ -3428,3 +3428,118 @@ describe('S4 group 25: Summon: Fenrir and Summon: Leviathan', () => {
     expect(s.players.P1!.hand.length).toBe(hand + 1);
   }, 60_000);
 });
+
+describe('S4 group 26: landfall, enters and attack triggers', () => {
+  const ofDef = (s: GameState, player: string, defId: string) => s.players[player]!.battlefield.filter((id) => s.cards[id]!.defId === defId);
+  const playLand = (s: GameState) => settle(act(s, { type: 'PlayLand', player: 'P1', card: put(s, 'P1', 'forest', 'hand') })).state;
+
+  it('Ambrosia Whiteheart (flash) may return another permanent you control; landfall gives it +1/+0', () => {
+    let s = newGame();
+    const other = put(s, 'P1', 'coeurl');
+    const ambrosia = put(s, 'P1', 'ambrosia-whiteheart', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ambrosia }, { accept: true }).state;
+    expect(s.cards[other]!.zone).toBe('hand');
+    s = playLand(s);
+    expect(stats(s, ambrosia)).toEqual([3, 2]);
+  });
+
+  it('Gladiolus Amicitia fetches a land tapped; landfall: another creature of yours gets +2/+2 and trample', () => {
+    let s = newGame();
+    for (let i = 0; i < 2; i++) put(s, 'P1', 'forest', 'library');
+    const ally = put(s, 'P1', 'coeurl');
+    const before = stats(s, ally) as [number, number];
+    const glad = put(s, 'P1', 'gladiolus-amicitia', 'hand');
+    mana(s, 'P1', { R: 1, G: 1, C: 4 });
+    const lands = s.players.P1!.battlefield.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: glad }, { targets: (o) => [o.flat().find((t) => t.kind === 'card' && t.card === ally)!] }).state;
+    // Gladiolus, and the fetched land entering triggered landfall on the ally.
+    expect(s.players.P1!.battlefield.length).toBe(lands + 2);
+    expect(stats(s, ally)).toEqual([before[0] + 2, before[1] + 2]);
+    expect(hasKeyword(s, s.cards[ally]!, 'Trample')).toBe(true);
+  });
+
+  it('Cloud of Darkness (flying) gives an opponent’s creature -X/-X for each permanent card in your graveyard', () => {
+    let s = newGame();
+    put(s, 'P1', 'coeurl', 'graveyard');
+    put(s, 'P1', 'forest', 'graveyard');
+    put(s, 'P1', 'thunder-magic', 'graveyard');
+    const big = put(s, 'P2', 'summon-titan');
+    const cloud = put(s, 'P1', 'cloud-of-darkness', 'hand');
+    mana(s, 'P1', { B: 1, G: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cloud }).state;
+    expect(hasKeyword(s, s.cards[cloud]!, 'Flying')).toBe(true);
+    expect(stats(s, big)).toEqual([5, 5]);
+  });
+
+  it('Coral Sword (flash) attaches to your creature as it enters, giving first strike this turn; +1/+0', () => {
+    let s = newGame();
+    const body = put(s, 'P1', 'coeurl');
+    const before = stats(s, body)[0]!;
+    const sword = put(s, 'P1', 'coral-sword', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: sword }).state;
+    expect(s.cards[sword]!.attachedTo).toBe(body);
+    expect(stats(s, body)[0]).toBe(before + 1);
+    expect(hasKeyword(s, s.cards[body]!, 'FirstStrike')).toBe(true);
+  });
+
+  it('Qutrub Forayer destroys a creature dealt damage this turn, or exiles up to two cards from a single graveyard', () => {
+    let s = newGame();
+    const hurt = put(s, 'P2', 'summon-titan');
+    const fine = put(s, 'P2', 'summon-titan');
+    const bolt = put(s, 'P1', 'thunder-magic', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, mode: 0, targets: [card(hurt)] }).state;
+    const q = put(s, 'P1', 'qutrub-forayer', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: q });
+    s = settle(s).state;
+    if (s.pending.kind === 'chooseModes') s = act(s, { type: 'ChooseModes', player: 'P1', modes: [0] });
+    s = settle(s).state;
+    expect(s.cards[hurt]!.zone).toBe('graveyard');
+    expect(s.cards[fine]!.zone).toBe('battlefield');
+
+    // Mode 2: both cards must come from one graveyard.
+    let t = newGame();
+    put(t, 'P1', 'coeurl', 'graveyard');
+    put(t, 'P2', 'coeurl', 'graveyard');
+    put(t, 'P2', 'forest', 'graveyard');
+    const q2 = put(t, 'P1', 'qutrub-forayer', 'hand');
+    mana(t, 'P1', { B: 1, C: 2 });
+    t = settle(act(t, { type: 'CastSpell', player: 'P1', card: q2 })).state;
+    t = act(t, { type: 'ChooseModes', player: 'P1', modes: [1] });
+    const options = getLegalActions(t).filter((a): a is Extract<typeof a, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets');
+    expect(options.length).toBeGreaterThan(0);
+    for (const o of options) {
+      const owners = new Set(o.targets.filter((x) => x.kind === 'card').map((x) => (x.kind === 'card' ? t.cards[x.card]!.owner : '')));
+      expect(owners.size).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('Rufus Shinra makes Darkstar when it attacks, unless you already control one', () => {
+    let s = newGame();
+    const rufus = put(s, 'P1', 'rufus-shinra');
+    s = fight(s, [{ attacker: rufus, defender: 'P2' }]).state;
+    expect(ofDef(s, 'P1', 'darkstar-token')).toHaveLength(1);
+    expect(stats(s, ofDef(s, 'P1', 'darkstar-token')[0]!)).toEqual([2, 2]);
+    let t = newGame();
+    const r2 = put(t, 'P1', 'rufus-shinra');
+    put(t, 'P1', 'darkstar-token');
+    t = fight(t, [{ attacker: r2, defender: 'P2' }]).state;
+    expect(ofDef(t, 'P1', 'darkstar-token')).toHaveLength(1);
+  });
+
+  it('Rinoa Heartilly makes Angelo; when she attacks, another creature gets +1/+1 for each creature you control', () => {
+    let s = newGame();
+    const rinoa = put(s, 'P1', 'rinoa-heartilly', 'hand');
+    mana(s, 'P1', { G: 1, W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rinoa }).state;
+    const [angelo] = ofDef(s, 'P1', 'angelo-token');
+    expect(stats(s, angelo!)).toEqual([1, 1]);
+    s.cards[rinoa]!.summoningSick = false;
+    const creatures = s.players.P1!.battlefield.filter((id) => s.cardDefs[s.cards[id]!.defId]!.types.includes('creature')).length;
+    s = fight(s, [{ attacker: rinoa, defender: 'P2' }]).state;
+    expect(stats(s, angelo!)).toEqual([1 + creatures, 1 + creatures]);
+  });
+});

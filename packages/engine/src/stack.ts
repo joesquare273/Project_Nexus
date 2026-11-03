@@ -410,6 +410,7 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
     if (g.cards.has(t.card)) return 'Choose different targets.';
     const owner = s.cards[t.card]?.owner ?? '';
     if (needs[i]!.groupOwnersDiffer && g.owners.has(owner)) return 'Choose targets belonging to different players.';
+    if (needs[i]!.groupSameOwner && g.owners.size > 0 && !g.owners.has(owner)) return 'Choose targets from a single graveyard.';
     g.cards.add(t.card);
     g.owners.add(owner);
     seen.set(group, g);

@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 26: landfall, enters and attack triggers
+
+- Ambrosia Whiteheart, Gladiolus Amicitia, Cloud of Darkness, Coral Sword,
+  Qutrub Forayer, Rufus Shinra (Darkstar token) and Rinoa Heartilly
+  (Angelo token): 196 of 320. Engine: `damagedThisTurn` filter (tracked
+  as `damagedTurn`, public), `groupSameOwner` targets ("from a single
+  graveyard"), `ifYouControlNone` trigger condition.
+
 ### Ordering triggers and holding priority
 
 - Players order their simultaneous triggers (rule 603.3b): the board asks

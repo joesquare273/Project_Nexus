@@ -749,6 +749,8 @@ export interface EffectSpec {
    */
   group?: string;
   groupOwnersDiffer?: boolean;
+  /** The targets of this group all belong to one player ("from a single graveyard"). */
+  groupSameOwner?: boolean;
   /** ReturnToBattlefield: under your control instead of its owner's. */
   underYourControl?: boolean;
   /** ReturnToBattlefield, ExileAndReturn: the card enters with its back face up ("return it to the battlefield transformed"). */
@@ -841,6 +843,8 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
  * trigger's subject, a target, or a card to search for.
  */
 export interface ObjectFilter {
+  /** Was dealt damage this turn (Qutrub Forayer). */
+  damagedThisTurn?: boolean;
   /** A graveyard card that arrived this turn from somewhere other than the battlefield. */
   newGraveyardCardNotFromBattlefield?: boolean;
   /** Matches if any of these filters does ("artifact, enchantment, or tapped creature"); the rest of this filter must hold too. */
@@ -957,6 +961,8 @@ export interface TriggerSpec {
   notOnDrawersTurn?: boolean;
   /** Intervening "if": "if you put a counter on a creature this turn". */
   ifYouPutCounterOnCreatureThisTurn?: boolean;
+  /** Intervening "if": you control no permanent matching this ("if you don't control a creature named Darkstar"). */
+  ifYouControlNone?: ObjectFilter;
   /** Intervening "if": you control at least `atLeast` (default 1) permanents matching `filter` ("if you control a creature with power 7 or greater"). */
   ifYouControl?: { filter: ObjectFilter; atLeast?: number };
   /** Intervening "if": a count is at least this ("if there are six or more permanent cards in your graveyard"). */
@@ -1488,6 +1494,8 @@ export interface CardInstance {
   lastCounters?: Partial<Record<AnyCounter, number>>;
   lastKeywords?: Keyword[];
   lastEquippedBy?: InstanceId[];
+  /** The turn this permanent was last dealt damage. */
+  damagedTurn?: number;
   /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
   extraCountersOnEnter?: number;
   /** A token rather than a card. */

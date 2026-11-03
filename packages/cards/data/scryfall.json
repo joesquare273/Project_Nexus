@@ -398,6 +398,23 @@
     "scryfallId": "fd9c99f0-390d-4ab1-ac0a-b18f1b0af12c",
     "relatedTokens": []
   },
+  "angelo-token": {
+    "name": "Angelo",
+    "typeLine": "Token Legendary Creature — Dog",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "19",
+    "artist": "Yumi Yaoshida",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131",
+      "normal": "https://cards.scryfall.io/normal/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131",
+      "large": "https://cards.scryfall.io/large/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/4/54347961-0a41-4f62-b47e-2afa0ca07b21.jpg?1783906131"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/19/angelo?utm_source=api",
+    "scryfallId": "54347961-0a41-4f62-b47e-2afa0ca07b21",
+    "relatedTokens": []
+  },
   "anger": {
     "name": "Anger",
     "typeLine": "Creature — Incarnation",
@@ -2787,6 +2804,23 @@
     },
     "scryfallUri": "https://scryfall.com/card/fca/8/dark-ritual?utm_source=api",
     "scryfallId": "7cc0cfe1-7f13-4b1b-9a37-33ef457d3c62",
+    "relatedTokens": []
+  },
+  "darkstar-token": {
+    "name": "Darkstar",
+    "typeLine": "Token Legendary Creature — Dog",
+    "oracleText": "",
+    "set": "tfin",
+    "number": "20",
+    "artist": "Ben Wootten",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131",
+      "normal": "https://cards.scryfall.io/normal/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131",
+      "large": "https://cards.scryfall.io/large/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/9/19faca08-0eef-4da4-ab6f-c3aed63ac77b.jpg?1783906131"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfin/20/darkstar?utm_source=api",
+    "scryfallId": "19faca08-0eef-4da4-ab6f-c3aed63ac77b",
     "relatedTokens": []
   },
   "darksteel-plate": {

@@ -491,6 +491,7 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   } else {
     const victim = s.cards[target.card]!;
     victim.damage += amount;
+    if (amount > 0) victim.damagedTurn = s.turnNumber;
     if (hasKeyword(s, source, 'Deathtouch')) victim.deathtouched = true;
   }
   if (hasKeyword(s, source, 'Lifelink')) changeLife(ctx, source.controller, amount);

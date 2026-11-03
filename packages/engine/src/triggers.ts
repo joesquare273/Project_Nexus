@@ -226,6 +226,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
   if (spec.ifYouGainedLifeThisTurn && !((p.lifeGainedThisTurn ?? 0) > 0)) return false;
   if (spec.ifNotEnteredThisTurn && s.cards[source]?.enteredTurn === s.turnNumber) return false;
   if (spec.ifCardLeftYourGraveyardThisTurn && p.cardLeftGraveyardTurn !== s.turnNumber) return false;
+  if (spec.ifYouControlNone && battlefield(s).some((c) => c.controller === controller && matchesObject(s, spec.ifYouControlNone, c, { controller, source }))) return false;
   if (spec.ifYouControl) {
     const { filter, atLeast = 1 } = spec.ifYouControl;
     const n = battlefield(s).filter((c) => c.controller === controller && matchesObject(s, filter, c, { controller, source })).length;
