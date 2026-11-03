@@ -136,7 +136,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const naturalFrom = playableZone(s, playerId, c, adventure, false);
     const groups = castGroupsFor(s,playerId,c);
     const from = naturalFrom ?? ((c.zone==='graveyard'||c.zone==='exile') && groups.length ? c.zone : null);
-    const anyTime = (from === 'exile' || from === 'graveyard') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+    const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
     if (!from || !canEverCast(def) || (!castsAtInstantSpeed(s, playerId, c, def) && !sorcerySpeed && !anyTime)) continue;
     const payments = new Map<string, ReturnType<typeof helpedPayments>>();
     // Flashback is itself an alternative cost, and two can't be combined (rule 118.9a);

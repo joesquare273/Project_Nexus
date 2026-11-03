@@ -561,6 +561,9 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Enter as a copy of the best creature on the battlefield, whoever controls it.
   if (p.purpose === 'copyOnEntry') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'library') return pick([]);
+  // Buster Sword: the best free spell. Garnet: keep our Sagas' progress.
+  if (p.purpose === 'castFree') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
+  if (p.purpose === 'removeLore') return pick([]);
   // A cost: exile our least valuable graveyard cards.
   if (p.purpose === 'exileFromGraveyard') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, p.min));
   if (p.purpose === 'addCounters' && p.counter === 'cell' && p.cards.every(id => s.cards[id]!.controller !== me)) return pick([]);

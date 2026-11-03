@@ -375,6 +375,10 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Choose a spell card in your hand with mana value `amount` or less; you may cast it this turn without paying its mana cost (Buster Sword). */
+  'CastFreeFromHand',
+  /** Remove a lore counter from each of any number of Sagas you control; this gets a +1/+1 counter for each removed (Garnet). */
+  'RemoveLoreFromSagas',
   /** Exile `amount` cards of your choice from your graveyard (a trigger's exile cost). */
   'ExileFromYourGraveyard',
   /** Prevent all damage that would be dealt to creatures you control this turn (Summon: Alexander). */
@@ -700,6 +704,8 @@ export interface EffectSpec {
   ifNthResolutionThisTurn?: number;
   /** GrantKeywords/GrantFlags/ModifyPT: until your next turn instead of until end of turn (Hydaelyn). */
   untilYourNextTurn?: boolean;
+  /** The amount is doubled if the spell was kicked (Chocobo Kick). */
+  doubleIfKicked?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1241,7 +1247,7 @@ export interface StaticSpec {
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
    * turn ("the second spell you cast each turn costs {2} less").
    */
-  spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean };
+  spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean };
   /**
    * "... triggers an additional time": a triggered ability of a permanent
    * this one's controller controls triggers once more. `selfAndEquipment`:
@@ -1491,6 +1497,8 @@ export interface CardDefinition {
   additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string };
   /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
   kickerSacrifice?: ObjectFilter;
+  /** The kicker permanent chosen with `kickerSacrifice` returns to its owner's hand instead of being sacrificed (Chocobo Kick). */
+  kickerReturnsToHand?: boolean;
   /** Ward {N} (rule 702.21). */
   ward?: number;
   /** "Ward—Pay life equal to this creature's power" (Raubahn): opponents targeting it pay that life. */
@@ -1721,6 +1729,8 @@ export interface CardInstance {
     ownerLosesLife?: boolean;
     /** Paid rather than its mana cost (Blue Mage's Cane: {3}). */
     manaCost?: string;
+    /** A card in hand (Buster Sword: "cast a spell from your hand ... without paying its mana cost"). */
+    fromHand?: boolean;
   };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;
@@ -1808,6 +1818,8 @@ export interface PlayerState {
   coinHeadsTurn?: number;
   /** Noncreature spells this player cast this turn. Reset as each turn begins. */
   noncreatureSpellsThisTurn?: number;
+  /** Legendary creature spells cast this turn (Serah Farron's discount). */
+  legendaryCreatureSpellsThisTurn?: number;
   /** Spells this player cast this turn. Reset as each turn begins. */
   spellsCastThisTurn?: number;
   /** An effect said this player loses the game (someone else's "you win the game"). */
@@ -2043,7 +2055,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

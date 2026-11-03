@@ -796,7 +796,7 @@ export function spellCost(
   x = 0,
   extra: { kicks?: number; mode?: number; player?: PlayerId; castGroup?: string; graveyardSource?: InstanceId; adventure?: boolean } = {},
 ): ManaCost {
-  const permission = !extra.castGroup && !extra.graveyardSource && card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile')
+  const permission = !extra.castGroup && !extra.graveyardSource && card?.castPermission && card.castPermission.turn === s.turnNumber && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!card.castPermission.fromHand))
     ? card.castPermission
     : undefined;
   const payer = extra.player ?? permission?.player ?? card?.owner;
@@ -861,6 +861,7 @@ export function spellCost(
         if (r.fromGraveyard && from !== 'graveyard') continue;
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
+        if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
         cost = reduceGeneric(cost, r.generic);
       }
     }
@@ -897,7 +898,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
-  const anyTime = (from === 'exile' || from === 'graveyard') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+  const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
   if (!castsAtInstantSpeed(s, playerId, c, def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }
@@ -914,7 +915,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (choice.graveyardSource && (from !== 'graveyard' || c.owner !== playerId || !graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure))) reject('That graveyard-casting permission is not available.');
   if (way === 'blitz' && !alternative) reject(`${def.name} can only be cast from your graveyard for its blitz cost.`);
   if (from === 'graveyard' && alternative && way === 'flashback') reject("That alternative cost can't be used from the graveyard.");
-  const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile') && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
+  const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
   checkTargets(s, spellEffects(def, choice), targets, playerId, id);
@@ -997,6 +998,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const paid of costCards) {
     if (exileCost) moveCard(ctx, paid, 'exile');
+    else if (sacrificing && def.kickerReturnsToHand && kicks > 0 && !def.additionalCost?.sacrifice) moveCard(ctx, paid, 'hand');
     else if (sacrificing) sacrifice(ctx, paid);
     else discard(ctx, paid);
   }
@@ -1028,6 +1030,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const caster = player(s, playerId);
   caster.spellsCastThisTurn = (caster.spellsCastThisTurn ?? 0) + 1;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
+  else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const next = player(s, playerId).nextCreatureCounters;
   if (next && def.types.includes('creature')) {
     if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
@@ -1728,7 +1731,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
   const item = r.item;
   const source = sourceOf(item);
   if (effect.sameObject && item.kind === 'ability' && ((s.cards[source]?.zoneChanges ?? 0) !== item.sourceObject || s.cards[source]?.phasedOut)) return;
-  const amount = resolvedAmount(s, effect, r);
+  const amount = resolvedAmount(s, effect, r) * (effect.doubleIfKicked && item.kind === 'spell' && (item.kicks ?? 0) > 0 ? 2 : 1);
   const cards = targets.flatMap((t) => (t.kind === 'card' ? [t.card] : []));
   const onBattlefield = cards.filter((id) => s.cards[id]!.zone === 'battlefield');
   switch (effect.effect) {
@@ -2140,6 +2143,19 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PreventDamageToYourCreatures':
       player(s, item.controller).preventCreatureDamageTurn = s.turnNumber;
       return;
+    case 'CastFreeFromHand': {
+      const cards = player(s, item.controller).hand.filter((id) => {
+        const d = defOf(s, s.cards[id]!);
+        return canEverCast(d) && !d.types.includes('land') && objectManaValue(s, s.cards[id]!) <= amount;
+      });
+      if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castFree', cards, min: 0, max: 1 }];
+      return;
+    }
+    case 'RemoveLoreFromSagas': {
+      const sagas = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && (c.namedCounters?.lore ?? 0) > 0 && defOf(s, c).subtypes?.includes('Saga')).map((c) => c.id);
+      if (sagas.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'removeLore', cards: sagas, min: 0, max: sagas.length }];
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -3340,6 +3356,16 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         moveCard(ctx, spell, pending.exileIfCountered || countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
       }
     }
+  } else if (pending.purpose === 'castFree') {
+    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true };
+  } else if (pending.purpose === 'removeLore') {
+    let removed = 0;
+    for (const id of cards) {
+      const c = s.cards[id]!;
+      if ((c.namedCounters?.lore ?? 0) > 0) { removeCounters(ctx, id, 'lore' as never, 1); removed++; }
+    }
+    const src = s.cards[sourceOf(r.item)]!;
+    if (removed > 0 && src.zone === 'battlefield') addCounters(ctx, src.id, removed, pending.player);
   } else if (pending.purpose === 'exileFromGraveyard') {
     for (const id of cards) moveCard(ctx, id, 'exile');
   } else if (pending.purpose === 'payHalfLife') {

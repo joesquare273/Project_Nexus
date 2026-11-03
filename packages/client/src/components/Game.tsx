@@ -416,7 +416,7 @@ export function Game({
     if (costKey === undefined && costKeys.length > 1) {
       const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
       const spellSacrifice = play.kind !== 'ability' && (!!def.additionalCost?.sacrifice || !!def.kickerSacrifice);
-      const verb = ability?.cost.crew !== undefined ? 'tap to crew with' : ability?.cost.exileGraveyard ? 'exile from your graveyard' : ability?.cost.sacrifice || spellSacrifice ? 'sacrifice' : 'discard';
+      const verb = ability?.cost.crew !== undefined ? 'tap to crew with' : ability?.cost.exileGraveyard ? 'exile from your graveyard' : def.kickerReturnsToHand && spellSacrifice ? 'return to your hand' : ability?.cost.sacrifice || spellSacrifice ? 'sacrifice' : 'discard';
       // No sacrifice: paying the mana instead ("or pay {2}"), or not kicking.
       const none = def.additionalCost?.orMana ? `Pay ${def.additionalCost.orMana} instead` : def.kickerSacrifice ? 'Don’t kick it' : 'None';
       setMenu({
@@ -1128,6 +1128,10 @@ function PromptBar(p: PromptProps) {
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'castFree'
+              ? 'from your hand to cast this turn without paying its mana cost (or none)'
+            : c.purpose === 'removeLore'
+              ? 'Sagas to remove a lore counter from (this gets a +1/+1 counter for each)'
             : c.purpose === 'exileFromGraveyard'
               ? 'from your graveyard to exile (a cost)'
             : c.purpose === 'battlefield'

@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 48: Garnet, Buster Sword, Chocobo Kick, Serah Farron
+
+Four more set cards (281 of 320). Cast permissions can now cover a card in
+hand (`fromHand`), kicker can return a permanent instead of sacrificing it,
+effects can double when kicked, and players track legendary creature spells
+cast each turn for Serah's discount.
+
 ### Set cards, group 47: Omega, Cecil, Isshin, Quistis Trepe, Esper Origins
 
 Five more set cards (277 of 320). New: a "whenever this deals damage"

@@ -245,6 +245,7 @@ export function startNextTurn(ctx: Ctx): void {
     delete p.combatDamageThisTurn;
     p.lifeGainedThisTurn = 0;
     p.noncreatureSpellsThisTurn = 0;
+    p.legendaryCreatureSpellsThisTurn = 0;
     p.cardsDrawnThisTurn = 0;
     p.spellsCastThisTurn = 0;
   }

@@ -4942,3 +4942,67 @@ describe('S4 group 47: Omega, Cecil, Isshin, Quistis Trepe, Esper Origins', () =
     expect(s.cards[ring]!.zone).toBe('hand');
   });
 });
+
+describe('S4 group 48: Garnet, Buster Sword, Chocobo Kick, Serah Farron', () => {
+  it('Garnet: attacking, remove a lore counter from any number of your Sagas for +1/+1 counters', () => {
+    let s = newGame();
+    const garnet = put(s, 'P1', 'garnet-princess-of-alexandria');
+    const sagas = [put(s, 'P1', 'summon-choco-mog', 'battlefield', { namedCounters: { lore: 2 } }), put(s, 'P1', 'summon-choco-mog', 'battlefield', { namedCounters: { lore: 1 } })];
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: garnet, defender: 'P2' }] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'removeLore' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: sagas })).state;
+    expect(sagas.map((id) => s.cards[id]!.namedCounters?.lore ?? 0)).toEqual([1, 0]);
+    expect(s.cards[garnet]!.counters).toBe(2);
+  });
+
+  it('Buster Sword: +3/+2; combat damage to a player draws, then a spell with mana value up to that damage may be cast free', () => {
+    let s = newGame();
+    const { body } = equipped(s, 'buster-sword');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = fight(s, [{ attacker: body, defender: 'P2' }]).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'castFree' });
+    expect(s.pending.kind === 'chooseCards' && s.pending.cards).toContain(ring);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+  });
+
+  it('Chocobo Kick: your creature deals damage equal to its power; kicked by returning a land, twice that', () => {
+    const run = (kick: boolean) => {
+      let s = newGame();
+      const bird = put(s, 'P1', 'adeline-resplendent-cathar');
+      const big = put(s, 'P2', 'omega-heartless-evolution');
+      const land = put(s, 'P1', 'forest');
+      const kickIt = put(s, 'P1', 'chocobo-kick', 'hand');
+      mana(s, 'P1', { G: 1, C: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: kickIt, targets: [card(bird), card(big)], ...(kick ? { kicks: 1, costCards: [land] } : {}) }).state;
+      return { s, big, land };
+    };
+    const plain = run(false);
+    const kicked = run(true);
+    expect(kicked.s.cards[kicked.big]!.damage).toBe(plain.s.cards[plain.big]!.damage * 2);
+    expect(kicked.s.cards[kicked.land]!.zone).toBe('hand');
+    expect(plain.s.cards[plain.land]!.zone).toBe('battlefield');
+  });
+
+  it('Serah Farron: your first legendary creature spell each turn costs {2} less; with two other legends, she becomes Crystallized Serah (+2/+2)', () => {
+    let s = newGame();
+    const serah = put(s, 'P1', 'serah-farron-crystallized-serah');
+    // Najeela costs {2}{R}: the first one is just {R}, the second full price.
+    const first = put(s, 'P1', 'najeela-the-blade-blossom', 'hand');
+    const second = put(s, 'P1', 'najeela-the-blade-blossom', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: first }).state;
+    expect(s.cards[first]!.zone).toBe('battlefield');
+    mana(s, 'P1', { R: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: second })).toBeTruthy();
+    s.players.P1!.manaPool.R = 0;
+    s = settle(s).state;
+    const garnet = put(s, 'P1', 'garnet-princess-of-alexandria');
+    s = goTo(s, 'declareAttackers');
+    expect(s.cards[serah]!.transformed).toBe(true);
+    expect(stats(s, garnet)).toEqual([4, 4]);
+  });
+});

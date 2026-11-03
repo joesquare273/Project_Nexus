@@ -340,6 +340,10 @@ function effectText(e: EffectSpec): string {
       return `you may cast ${who} this turn (mana of any type can be spent; exiled afterwards)`;
     case 'SpellToBattlefieldTransformed':
       return 'exile this spell, then put it onto the battlefield transformed with a finality counter';
+    case 'CastFreeFromHand':
+      return `you may cast a spell with mana value ${n} or less from your hand without paying its mana cost`;
+    case 'RemoveLoreFromSagas':
+      return 'remove a lore counter from each of any number of Sagas you control; put a +1/+1 counter on this for each';
     case 'ExileFromYourGraveyard':
       return `exile ${plural('card')} from your graveyard`;
     case 'PreventDamageToYourCreatures':
@@ -549,7 +553,7 @@ export function rulesSummary(def: CardDefinition): string {
     const noun = `${f.supertypes?.includes('Legendary') ? 'legendary ' : ''}${f.anyOf ? f.anyOf.map((alt) => subjectText(alt, 'permanent')).join(' or ') : subjectText(f, 'permanent')}`;
     return `${/^[aeiou]/.test(noun) ? 'an' : 'a'} ${noun}`;
   };
-  if (def.kicker) parts.push(def.kickerSacrifice ? `Kicker—Sacrifice ${costSubject(def.kickerSacrifice)}` : `Kicker ${def.kicker}`);
+  if (def.kicker) parts.push(def.kickerSacrifice ? `Kicker—${def.kickerReturnsToHand ? 'Return' : 'Sacrifice'} ${costSubject(def.kickerSacrifice)}` : `Kicker ${def.kicker}`);
   const sac = def.additionalCost?.sacrifice;
   if (sac) parts.push(`As an additional cost, sacrifice ${costSubject(sac)}${def.additionalCost?.orMana ? ` or pay ${def.additionalCost.orMana}` : ''}`);
   if (def.multikicker) parts.push(`Multikicker ${def.multikicker}`);
