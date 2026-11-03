@@ -825,6 +825,8 @@ export const TRIGGER_EVENTS = [
   'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
   'CombatDamage',
+  /** An opponent gains control of a permanent from you (Zidane, Tantalus Thief). */
+  'OpponentGainsControlFromYou',
   /** At end of combat (`turn` as for BeginCombat). */
   'EndCombat',
   /** A permanent is dealt damage, combat or not (`what`; default this permanent: "when enchanted creature is dealt damage" is `equippedBySource`). */
@@ -2235,7 +2237,8 @@ export type GameEvent =
   /** A spell was countered: it left the stack without resolving. */
   | { type: 'SpellCountered'; card: InstanceId; defId: CardDefId; by: InstanceId }
   | { type: 'Attached'; equipment: InstanceId; creature: InstanceId | null }
-  | { type: 'ControlChanged'; card: InstanceId; controller: PlayerId }
+  /** `from`: who controlled it before. */
+  | { type: 'ControlChanged'; card: InstanceId; controller: PlayerId; from?: PlayerId }
   | { type: 'PriorityPassed'; player: PlayerId }
   | { type: 'AttackDeclared'; attacker: InstanceId; defendingPlayer: PlayerId }
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }

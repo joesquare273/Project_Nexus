@@ -99,11 +99,12 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
       if (c.controller !== w.controller) continue;
       const back = s.players[w.previous]?.eliminated ? c.owner : w.previous;
       if (back === c.controller) continue;
+      const from = c.controller;
       c.controller = back;
       c.summoningSick = true;
       if (c.attachedTo) delete c.attachedTo;
       removeFromCombat(s, c.id);
-      ctx.ev.push({ type: 'ControlChanged', card: c.id, controller: back });
+      ctx.ev.push({ type: 'ControlChanged', card: c.id, controller: back, from });
       changed = true;
     }
     if (s.combat) for (const id of new Set([...s.combat.attacks.map(a=>a.attacker), ...s.combat.blocks.map(b=>b.blocker)])) {

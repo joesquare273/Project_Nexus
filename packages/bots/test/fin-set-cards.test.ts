@@ -3773,3 +3773,37 @@ describe('S4 group 32b: Unexpected Request', () => {
     expect(s.cards[plate]!.controller).toBe('P1');
   });
 });
+
+describe('S4 group 33: Zidane, Tantalus Thief and Stolen Uniform', () => {
+  const treasures = (s: GameState) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token').length;
+
+  it('Zidane borrows a creature until end of turn (untapped, lifelink, haste); when it goes back, you get a Treasure', () => {
+    let s = newGame();
+    const titan = put(s, 'P2', 'summon-titan', 'battlefield', { tapped: true });
+    const zidane = put(s, 'P1', 'zidane-tantalus-thief', 'hand');
+    mana(s, 'P1', { R: 1, W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: zidane }).state;
+    expect(s.cards[titan]!.controller).toBe('P1');
+    expect(s.cards[titan]!.tapped).toBe(false);
+    for (const k of ['Lifelink', 'Haste'] as const) expect(hasKeyword(s, s.cards[titan]!, k)).toBe(true);
+    expect(treasures(s)).toBe(0);
+    s = settle(goTo(settle(goTo(s, 'end')).state, 'upkeep')).state;
+    expect(s.cards[titan]!.controller).toBe('P2');
+    expect(treasures(s)).toBe(1);
+  });
+
+  it('Stolen Uniform takes an Equipment until end of turn and attaches it to your creature; it comes off when it goes back', () => {
+    let s = newGame();
+    const plate = put(s, 'P2', 'darksteel-plate');
+    const body = put(s, 'P1', 'coeurl');
+    const spell = put(s, 'P1', 'stolen-uniform', 'hand');
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(plate), card(body)] }).state;
+    expect(s.cards[plate]!.controller).toBe('P1');
+    expect(s.cards[plate]!.attachedTo).toBe(body);
+    expect(hasKeyword(s, s.cards[body]!, 'Indestructible')).toBe(true);
+    s = goTo(goTo(s, 'end'), 'upkeep');
+    expect(s.cards[plate]!.controller).toBe('P2');
+    expect(s.cards[plate]!.attachedTo).toBeUndefined();
+  });
+});

@@ -1999,7 +1999,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (c.attachedTo) delete c.attachedTo;
         if (effect.untilEndOfTurn) c.controlUntilEndOfTurn = { previous: c.controlUntilEndOfTurn?.previous ?? previous };
         if (effect.whileYouControlSource) c.controlWhile = { source, sourceObject: item.kind === 'spell' ? 0 : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0), controller: receiver, previous };
-        ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver });
+        ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver, from: previous });
         r.controlChanged = true;
       }
       return;

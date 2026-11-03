@@ -423,6 +423,7 @@ function triggerCondition(t: TriggerSpec): string {
     CombatDamage: 'deals combat damage',
     DealtDamage: 'is dealt damage',
     EndCombat: '',
+    OpponentGainsControlFromYou: '',
     TokensCreated: 'you create tokens',
     CountersAdded: 'gets counters',
     BecomesUntapped: 'becomes untapped',

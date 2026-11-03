@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 32: Zidane, Tantalus Thief and Stolen Uniform
+
+- 211 of 320. Engine: the `OpponentGainsControlFromYou` trigger
+  ("whenever an opponent gains control of a permanent from you"), with the
+  previous controller on `ControlChanged` events.
+
 ### Set cards, group 31: Swallowed by Leviathan, The Final Days, Unexpected Request
 
 - 209 of 320, with the Horror token (tfin 13). Engine: gain control until

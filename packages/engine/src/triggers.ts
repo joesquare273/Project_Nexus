@@ -138,6 +138,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'CardsUntapped':
         for (const card of e.cards) out.push({ when: 'BecomesUntapped', at, subject: card, subjectController: s.cards[card]!.controller });
         break;
+      case 'ControlChanged':
+        if (e.from && e.from !== e.controller) out.push({ when: 'OpponentGainsControlFromYou', at, subject: e.card, subjectController: e.controller, defender: e.from });
+        break;
       case 'LandPlayed':
         out.push({ when: 'LandPlayed', at, subject: e.card, subjectController: e.player, from: e.from });
         break;
@@ -249,6 +252,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // "Whenever one or more opponents lose life".
   if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
   if (o.when === 'LifeGained') return o.subjectController === controller;
+  // "Whenever an opponent gains control of a permanent from you".
+  if (o.when === 'OpponentGainsControlFromYou') return o.defender === controller && o.subjectController !== controller;
   // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
   if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
   if (spec.ifEvoked && !s.cards[source]!.evoked) return false;

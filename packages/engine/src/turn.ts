@@ -183,9 +183,10 @@ export function cleanupDamage(ctx: Ctx): void {
       const back = c.controlUntilEndOfTurn.previous;
       delete c.controlUntilEndOfTurn;
       if (!ctx.s.players[back]!.eliminated && c.controller !== back) {
+        const from = c.controller;
         c.controller = back;
         if (c.attachedTo && ctx.s.cards[c.attachedTo]?.controller !== back && !ctx.s.cardDefs[c.defId]?.enchant) delete c.attachedTo;
-        ctx.ev.push({ type: 'ControlChanged', card: c.id, controller: back });
+        ctx.ev.push({ type: 'ControlChanged', card: c.id, controller: back, from });
       }
     }
     if (c.copy?.untilTurn !== undefined && c.copy.untilTurn <= ctx.s.turnNumber) {
