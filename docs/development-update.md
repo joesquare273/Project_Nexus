@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 24: copying spells
+
+- Ether and Summon: G.F. Cerberus (187 of 320). Engine: `CopySpell`
+  (copies of the triggering spell with the same targets, modes and X),
+  spell copies that vanish when they leave the stack, a `SpellCopied`
+  event, and "when you next cast" delayed triggers (`next`). See
+  docs/decisions.md for the simplifications.
+
 ### Set cards, group 23: Summon: Bahamut and Summon: Primal Odin
 
 - 185 of 320. Engine: `LoseGame` ("that player loses the game") and the

@@ -187,6 +187,8 @@ function effectText(e: EffectSpec): string {
       return e.giveTo === 'SubjectController' ? `that player gains control of ${who}` : `gain control of ${who}`;
     case 'LoseGame':
       return `${you ? 'you lose' : `${who} loses`} the game`;
+    case 'CopySpell':
+      return 'copy that spell';
     case 'WinGame':
       return `${you ? 'you win' : `${who} wins`} the game`;
     case 'AttachLastEquipment':
@@ -641,6 +643,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return null;
     case 'Transformed':
       return `  ${cardName(s, e.card)} transforms.`;
+    case 'SpellCopied':
+      return `  ${e.player === viewer ? 'You copy' : `${e.player} copies`} ${cardName(s, e.original)}.`;
     case 'CreatureEnteredAttacking':
       return `  ${cardName(s, e.card)} enters tapped and attacking ${e.defender === viewer ? 'you' : e.defender}.`;
     case 'AttackDeclared':

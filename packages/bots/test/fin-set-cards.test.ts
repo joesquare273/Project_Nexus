@@ -3310,3 +3310,65 @@ describe('S4 group 23: Summon: Bahamut and Summon: Primal Odin', () => {
     expect(s.players.P2!.eliminated).toBe(true);
   }, 60_000);
 });
+
+describe('S4 group 24: copying your next instant or sorcery (Ether, Summon: G.F. Cerberus)', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+  const nextTurnOfP1 = (s: GameState, opts: Opts = {}) => {
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 8 && !(s.activePlayer === 'P1' && s.turnNumber > turn); guard++) {
+      s = settleAll(goTo(settleAll(s, opts), 'end', opts), opts);
+      s = settleAll(goTo(s, 'main1', opts), opts);
+    }
+    if (s.activePlayer !== 'P1' || s.turnNumber <= turn) throw new Error("never reached P1's next turn");
+    return s;
+  };
+  const birds = (s: GameState) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'chocobo-bird-token').length;
+  const comet = (s: GameState, x: number) => {
+    const spell = put(s, 'P1', 'choco-comet', 'hand');
+    mana(s, 'P1', { R: 2, C: x });
+    return { spell, s: cast(s, { type: 'CastSpell', player: 'P1', card: spell, x, targets: [{ kind: 'player', player: 'P2' }] }).state };
+  };
+
+  it('Ether: {T}, exile it: add {U}, and the next instant or sorcery you cast this turn is copied (same targets and X); only the next one', () => {
+    let s = newGame();
+    const ether = put(s, 'P1', 'ether');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ether, ability: 0 }).state;
+    expect(s.cards[ether]!.zone).toBe('exile');
+    expect(s.players.P1!.manaPool.U).toBe(1);
+    const first = comet(s, 2);
+    s = first.s;
+    // The spell and its copy: 2 + 2 damage, two Birds. The copy is gone; the card is in the graveyard.
+    expect(s.players.P2!.life).toBe(16);
+    expect(birds(s)).toBe(2);
+    expect(s.cards[first.spell]!.zone).toBe('graveyard');
+    expect(Object.values(s.cards).filter((c) => c.spellCopy).every((c) => c.zone === 'void')).toBe(true);
+    expect(s.players.P1!.graveyard.filter((id) => s.cards[id]!.defId === 'choco-comet')).toHaveLength(1);
+    // The next one isn't copied.
+    s = comet(s, 1).s;
+    expect(s.players.P2!.life).toBe(15);
+    expect(birds(s)).toBe(3);
+  });
+
+  it('Summon: G.F. Cerberus: surveil 1, then copy your next instant or sorcery once (II) and twice (III)', () => {
+    let s = newGame();
+    const cerberus = put(s, 'P1', 'summon-g-f-cerberus', 'hand');
+    mana(s, 'P1', { R: 2, C: 2 });
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: cerberus }).state);
+    expect(stats(s, cerberus)).toEqual([3, 3]);
+    s = nextTurnOfP1(s);
+    s = comet(s, 1).s;
+    expect(s.players.P2!.life).toBe(18);
+    s = nextTurnOfP1(s);
+    const life = s.players.P2!.life;
+    s = comet(s, 1).s;
+    expect(s.players.P2!.life).toBe(life - 3);
+    expect(s.cards[cerberus]!.zone).toBe('graveyard');
+  }, 60_000);
+});

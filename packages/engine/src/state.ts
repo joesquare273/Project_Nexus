@@ -187,6 +187,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastDefinition = from === 'battlefield' && (c.copy || c.transformed) ? defOf(s,c) : undefined;
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
+  // A copy of a spell ceases to exist when it leaves the stack (rule 707.10a).
+  if (c.spellCopy && from === 'stack' && to !== 'stack') {
+    to = 'void';
+    opts = { ...opts, silent: true };
+  }
   delete c.graveyardCastTurn;
   delete c.activatedTurns;
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).

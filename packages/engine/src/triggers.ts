@@ -438,6 +438,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     // Delayed triggers work even after their source has left (rule 603.7).
     for (const d of s.delayedTriggers ?? []) {
       if (d.turn !== s.turnNumber || s.players[d.controller]!.eliminated || !triggersOn(d.spec, o, s, d.source, d.controller)) continue;
+      // "When you next ...": only the first time, then it's gone.
+      if (d.next) s.delayedTriggers = (s.delayedTriggers ?? []).filter((x) => x !== d);
       found.push({
         spec: structuredClone(d.spec),
         source: d.source,

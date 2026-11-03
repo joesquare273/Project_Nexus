@@ -1993,6 +1993,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'LoseGame':
       for (const pid of targetPlayers(targets)) s.players[pid]!.lostToEffect = true;
       return;
+    case 'CopySpell': {
+      // The triggering spell, while it's still on the stack.
+      const subject = item.kind === 'ability' ? item.subject : undefined;
+      const original = subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === subject) : undefined;
+      if (!original) return;
+      const from = s.cards[original.card]!;
+      for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
+        const id = `${original.card}c${(s.nextCopyId = (s.nextCopyId ?? 0) + 1)}`;
+        s.cards[id] = { ...structuredClone(from), id, owner: item.controller, controller: item.controller, spellCopy: true, zone: 'stack', zoneChanges: 0 };
+        const copy = { ...structuredClone(original), id: `${original.id}c${s.nextCopyId}`, card: id, controller: item.controller, manaSpent: 0 };
+        delete copy.flashback;
+        s.stack.push(copy);
+        ctx.ev.push({ type: 'SpellCopied', card: id, original: original.card, player: item.controller, defId: from.defId });
+      }
+      return;
+    }
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
@@ -2351,7 +2367,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateDelayedTrigger': {
       const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!) }];
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!), ...(effect.next ? { next: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':

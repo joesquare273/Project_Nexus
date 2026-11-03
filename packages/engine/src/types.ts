@@ -426,6 +426,12 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /**
+   * Copy the triggering spell `amount` times (default once): each copy goes
+   * on the stack with the same targets, modes and X (rule 707.10; choosing
+   * new targets isn't offered yet). Copies aren't cast.
+   */
+  'CopySpell',
   /** The target players lose the game (Summon: Primal Odin's Zantetsuken). */
   'LoseGame',
   /** Each target player puts up to `amount` cards matching `filter` from their hand onto the battlefield, their choice. */
@@ -600,6 +606,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** CreateDelayedTrigger: "when you next ..." (it triggers only once). */
+  next?: boolean;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
   /** ModifyPT: also add (n - 1) times the creature's current power and toughness ("double" is 2, "triple" is 3: Tifa's Limit Break). */
@@ -1480,6 +1488,8 @@ export interface CardInstance {
   extraCountersOnEnter?: number;
   /** A token rather than a card. */
   isToken?: boolean;
+  /** A copy of a spell (rule 707.10): not a card; it ceases to exist when it leaves the stack. */
+  spellCopy?: boolean;
   /** For Equipment: the creature it's attached to. */
   attachedTo?: InstanceId;
   /** Exiled "until [source] leaves the battlefield". */
@@ -1972,13 +1982,16 @@ export interface GameState {
   /** Triggered abilities waiting to go on the stack, in APNAP order. */
   triggerQueue: QueuedTrigger[];
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
-  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec }[];
+  /** `next`: "when you next ... this turn": it triggers once, then is gone. */
+  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean }[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
   triggeredThisTurn: string[];
   /** "Until end of turn" effects. */
   temporaryEffects: TemporaryEffect[];
   /** Creatures put into a graveyard from the battlefield this turn. */
   creaturesDiedThisTurn: number;
+  /** Numbers the copies of spells (their ids). */
+  nextCopyId?: number;
   /** Creatures that died this turn, by the player who controlled them (Sidequest: Hunt the Mark). */
   creatureDeathsByController?: Record<PlayerId, number>;
   /** Combat phases begun this turn. */
@@ -2085,6 +2098,8 @@ export type GameEvent =
   | { type: 'AbilityCountered'; ability: string; source: InstanceId; by: InstanceId }
   | { type: 'CreatureEnteredAttacking'; card: InstanceId; defender: PlayerId }
   | { type: 'Transformed'; card: InstanceId; toBack: boolean }
+  /** A copy of a spell was put on the stack (it wasn't cast). */
+  | { type: 'SpellCopied'; card: InstanceId; original: InstanceId; player: PlayerId; defId: CardDefId }
   | { type: 'AbilityTargeted'; card: InstanceId; controller: PlayerId; source: InstanceId }
   | { type: 'GameStarted'; turnOrder: PlayerId[] }
   | { type: 'LibraryShuffled'; player: PlayerId }

@@ -560,3 +560,12 @@ cards than before. Tests that need a particular random outcome set
 - Not yet: "when this transforms into ..." triggers and transforming lands
   (Balamb Garden). Modal double-faced cards are a
   different layout and aren't in the Final Fantasy set.
+
+## Spell copies (2026-11-03)
+
+Copies of spells (Ether, Summon: G.F. Cerberus) keep the original's
+targets, modes and X; rule 707.10c lets the controller choose new targets,
+which isn't offered yet. A copy is a card object flagged `spellCopy` that
+goes to the void when it leaves the stack (rule 707.10a). Ether's mana
+ability uses the stack (it also sets up the copy), unlike real mana
+abilities.
