@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 41: Syr Konrad, Rhystic Study, Kraum, Thrasios, Smuggler's Copter
+
+Five more set cards (249 of 320). New engine pieces: a `PutIntoGraveyard`
+trigger for cards put into a graveyard from anywhere but the battlefield, a
+`Blocks` trigger, `DrawUnlessPays` (reuses the pay-or-not choice from
+Syncopate, with `drawFor` on the choice) and `RevealTopLandOrDraw`.
+Rhystic Study's draw isn't optional, and Partner isn't supported yet.
+
 ### Set cards, group 40: Giott, Nyxbloom Ancient, Noctis, Raubahn
 
 - 244 of 320. Engine: castFromGraveyard `unlimited`, `payLife` and

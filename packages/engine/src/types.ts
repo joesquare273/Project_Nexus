@@ -440,6 +440,10 @@ export const EFFECT_KINDS = [
   'ShuffleLibrary',
   /** Counter the target spell unless its controller pays `amount` generic mana (`exileCountered`: exile it instead, Syncopate). */
   'CounterUnlessPays',
+  /** Rhystic Study: you draw `amount` cards unless the player who cast the triggering spell pays {payGeneric}. */
+  'DrawUnlessPays',
+  /** Thrasios: reveal the top card of your library; a land card goes onto the battlefield tapped, otherwise draw a card. */
+  'RevealTopLandOrDraw',
   /** Remove `amount` (default 1) counters of kind `counter` from the target (removing lore counters doesn't trigger chapters). */
   'RemoveCounters',
   /** The permanent becomes a creature (`becomes`), in addition to its other types, from now on (Ride the Shoopuf). */
@@ -646,6 +650,8 @@ export interface EffectSpec {
   returnToHandAtEndStep?: boolean;
   /** GainControl: only until end of turn (it goes back at cleanup). AttachEquipmentTo: the Equipment is unattached then too. */
   untilEndOfTurn?: boolean;
+  /** DrawUnlessPays: how much generic mana the caster pays to stop the draw (default 1). */
+  payGeneric?: number;
   /** CounterUnlessPays: a spell countered this way is exiled instead of put into its owner's graveyard. */
   exileCountered?: boolean;
   /** DealDamage with damageSource PreviousTarget: the chosen creature also deals the damage to itself ("and X damage to itself", Self-Destruct). */
@@ -877,6 +883,10 @@ export const TRIGGER_EVENTS = [
   'Draws',
   /** A card left a graveyard (subject: the card; its owner's graveyard). */
   'LeavesGraveyard',
+  /** A card was put into a graveyard from anywhere other than the battlefield (subject: the card). */
+  'PutIntoGraveyard',
+  /** The subject was declared as a blocker ("whenever this creature blocks"). */
+  'Blocks',
   /** You attacked with at least `attackersAtLeast` creatures ("whenever you attack with four or more creatures"). */
   'YouAttack',
   /** A Saga's chapter ability (rule 714.2): a lore counter brought it to one of `chapters`. */
@@ -1982,6 +1992,9 @@ export interface CardChoice {
   /** payToAvoidCounter: how much generic mana to pay, and whether the spell is exiled if not paid. */
   payGeneric?: number;
   exileIfCountered?: boolean;
+  /** payToAvoidCounter: nothing is countered; if they don't pay, this player draws `drawCount` cards instead (Rhystic Study). */
+  drawFor?: PlayerId;
+  drawCount?: number;
   /** search: the chosen cards must all have different names (Reach the Horizon). */
   differentNames?: boolean;
   onePerType?: CardType[];

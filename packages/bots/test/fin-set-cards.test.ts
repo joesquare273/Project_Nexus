@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Target, type GameEvent, spellOptions, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { dealDamage } from '../../engine/src/state.ts';
-import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
+import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, player, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
 const heroes = (s: GameState, who: string) => s.players[who]!.battlefield.filter((id) => s.cards[id]!.defId === 'hero-token');
@@ -4331,5 +4331,108 @@ describe('S4 group 42: Giott, Nyxbloom Ancient, Noctis, Raubahn', () => {
     const plate = put(t, 'P1', 'darksteel-plate');
     t = fight(t, [{ attacker: mine, defender: 'P2' }]).state;
     expect(t.cards[plate]!.attachedTo).toBe(mine);
+  });
+});
+
+describe('S4 group 41: Syr Konrad, Rhystic Study, Kraum, Thrasios, Smuggler’s Copter', () => {
+  it('Syr Konrad deals 1 damage to each opponent when another creature dies', () => {
+    let s = newGame();
+    put(s, 'P1', 'syr-konrad-the-grim');
+    const cat = put(s, 'P2', 'coeurl');
+    const life = s.players.P2!.life;
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(cat)] }).state;
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+    expect(s.players.P2!.life).toBe(life - 1);
+  });
+
+  it('Syr Konrad: {1}{B} makes each player mill a card; a milled creature card deals 1 to each opponent', () => {
+    let s = newGame();
+    const konrad = put(s, 'P1', 'syr-konrad-the-grim');
+    put(s, 'P1', 'forest', 'library');
+    put(s, 'P2', 'coeurl', 'library');
+    const life = s.players.P2!.life;
+    const graveyards = [s.players.P1!.graveyard.length, s.players.P2!.graveyard.length];
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: konrad, ability: 0 }).state;
+    expect([s.players.P1!.graveyard.length, s.players.P2!.graveyard.length]).toEqual([graveyards[0]! + 1, graveyards[1]! + 1]);
+    // Only the creature card counts; the Forest doesn't.
+    expect(s.players.P2!.life).toBe(life - 1);
+  });
+
+  const opponentBolts = (study: string) => {
+    let s = newGame();
+    put(s, 'P1', study);
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    mana(s, 'P2', { R: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [player('P1')] });
+    return settle(s).state;
+  };
+
+  it('Rhystic Study: an opponent casts a spell; you draw unless they pay {1}', () => {
+    let s = opponentBolts('rhystic-study');
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'payToAvoidCounter', player: 'P2', payGeneric: 1, drawFor: 'P1' });
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [] })).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Rhystic Study: paying {1} stops the draw', () => {
+    let s = opponentBolts('rhystic-study');
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [...(s.pending as { cards: string[] }).cards] })).state;
+    expect(s.players.P1!.hand.length).toBe(hand);
+    expect(s.players.P2!.manaPool.C ?? 0).toBe(0);
+  });
+
+  it('Kraum draws a card when an opponent casts their second spell each turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'kraum-ludevics-opus');
+    const bolts = [put(s, 'P2', 'lightning-bolt', 'hand'), put(s, 'P2', 'lightning-bolt', 'hand')];
+    const hand = s.players.P1!.hand.length;
+    for (const [i, bolt] of bolts.entries()) {
+      if (s.pending.kind === 'priority' && s.pending.player === 'P1') s = act(s, { type: 'PassPriority', player: 'P1' });
+      mana(s, 'P2', { R: 1 });
+      s = settle(act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [player('P1')] })).state;
+      expect(s.players.P1!.hand.length).toBe(hand + i);
+    }
+  });
+
+  it('Thrasios: {4}: scry 1, then a land on top goes onto the battlefield tapped; otherwise draw', () => {
+    let s = newGame();
+    const thrasios = put(s, 'P1', 'thrasios-triton-hero');
+    const land = put(s, 'P1', 'forest', 'library');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: thrasios, ability: 0 }).state;
+    expect(s.cards[land]).toMatchObject({ zone: 'battlefield', tapped: true });
+    const cat = put(s, 'P1', 'coeurl', 'library');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: thrasios, ability: 0 }).state;
+    expect(s.cards[cat]!.zone).toBe('hand');
+  });
+
+  it('Smuggler’s Copter loots when it attacks and when it blocks (crewed)', () => {
+    let s = newGame();
+    const copter = put(s, 'P1', 'smugglers-copter', 'battlefield', { crewed: true });
+    expect(hasKeyword(s, s.cards[copter]!, 'Flying')).toBe(true);
+    put(s, 'P1', 'coeurl', 'hand');
+    const hand = s.players.P1!.hand.length;
+    const loot = (st: GameState) => {
+      for (let i = 0; i < 4 && st.pending.kind === 'chooseCards'; i++) st = settle(act(st, { type: 'ChooseCards', player: st.pending.player, cards: st.pending.cards.slice(0, 1) })).state;
+      return st;
+    };
+    s = loot(fight(s, [{ attacker: copter, defender: 'P2' }]).state);
+    expect(s.players.P1!.hand.length).toBe(hand);
+    expect(s.players.P1!.graveyard.length).toBe(1);
+
+    let t = newGame();
+    const theirs = put(t, 'P2', 'smugglers-copter', 'battlefield', { crewed: true });
+    put(t, 'P2', 'coeurl', 'hand');
+    const bird = put(t, 'P1', 'coeurl');
+    t.temporaryEffects.push({ source: bird, affected: bird, keywords: ['Flying'] });
+    t = loot(fight(t, [{ attacker: bird, defender: 'P2' }], { P2: [{ blocker: theirs, attacker: bird }] }).state);
+    expect(t.players.P2!.graveyard.length).toBe(1);
   });
 });

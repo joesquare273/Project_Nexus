@@ -201,6 +201,10 @@ function effectText(e: EffectSpec): string {
       return `until your next turn, damage to ${who} and their permanents is doubled`;
     case 'ShuffleLibrary':
       return `${you ? 'shuffle your' : `${who} shuffles their`} library`;
+    case 'DrawUnlessPays':
+      return `draw ${plural('card')} unless that player pays {${e.payGeneric ?? 1}}`;
+    case 'RevealTopLandOrDraw':
+      return 'reveal the top card of your library; if it\'s a land card, put it onto the battlefield tapped, otherwise draw a card';
     case 'CounterUnlessPays':
       return `counter ${who} unless its controller pays ${n}`;
     case 'RemoveCounters':
@@ -443,6 +447,8 @@ function triggerCondition(t: TriggerSpec): string {
     LeavesBattlefield: 'leaves the battlefield',
     Draws: '',
     LeavesGraveyard: 'leaves your graveyard',
+    PutIntoGraveyard: 'is put into a graveyard from anywhere but the battlefield',
+    Blocks: 'blocks',
     YouAttack: '',
     Chapter: '',
     AbilityActivated: 'has an ability activated',

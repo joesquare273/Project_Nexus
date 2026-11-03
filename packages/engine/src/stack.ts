@@ -1852,6 +1852,26 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         r.choiceQueue = [...(r.choiceQueue ?? []), { player: owner, purpose: 'payToAvoidCounter', cards: [id], min: 0, max: 1, payGeneric: amount, ...(effect.exileCountered ? { exileIfCountered: true } : {}) }];
       }
       return;
+    case 'DrawUnlessPays': {
+      // The spell's caster may pay; the card's own id stands for the choice.
+      const caster = item.kind === 'ability' ? item.subjectController : undefined;
+      if (!caster || caster === item.controller || s.players[caster]!.eliminated) {
+        drawCards(ctx, item.controller, amount);
+        return;
+      }
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: caster, purpose: 'payToAvoidCounter', cards: [source], min: 0, max: 1, payGeneric: effect.payGeneric ?? 1, drawFor: item.controller, drawCount: amount }];
+      return;
+    }
+    case 'RevealTopLandOrDraw': {
+      const top = player(s, item.controller).library[0];
+      if (!top) return;
+      ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: top, defId: s.cards[top]!.defId });
+      if (defOf(s, s.cards[top]!).types.includes('land')) {
+        moveCard(ctx, top, 'battlefield');
+        s.cards[top]!.tapped = true;
+      } else drawCards(ctx, item.controller, 1);
+      return;
+    }
     case 'PayHalfLifeToCounter': {
       const spell = item.kind === 'ability' ? item.subject : undefined;
       if (!spell || !s.stack.some((i) => i.kind === 'spell' && i.card === spell)) return;
@@ -3184,6 +3204,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       library.splice(library.indexOf(id), 1);
       library.unshift(id);
     }
+  } else if (pending.purpose === 'payToAvoidCounter' && pending.drawFor) {
+    const cost = { generic: pending.payGeneric ?? 0 } as ManaCost;
+    if (cards.length > 0) {
+      if (!canPayFromPool(s, pending.player, cost)) reject(`Tap mana for {${pending.payGeneric}} first, or don't pay.`);
+      payMana(ctx, pending.player, cost);
+    } else drawCards(ctx, pending.drawFor, pending.drawCount ?? 1);
   } else if (pending.purpose === 'payToAvoidCounter') {
     const spell = pending.cards[0]!;
     const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === spell);
