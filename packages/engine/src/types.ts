@@ -426,6 +426,10 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** You put `amount` cards from your hand on top of your library, the first chosen on top (Brainstorm). */
+  'PutFromHandOnTop',
+  /** Shuffle the cards matching `filter` from your graveyard into your library (Elixir). */
+  'ShuffleGraveyardIntoLibrary',
   /** "You may play the exiled card this turn" for the cards ExileTopCardToPlay exiled earlier in this ability (`anyManaType`: any type of mana can be spent). */
   'AllowPlayExiledThisWay',
   /** Each target player shuffles their library. */
@@ -618,6 +622,10 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
+  spellOrPermanent?: boolean;
+  /** ShuffleGraveyardIntoLibrary: you gain 1 life for each card shuffled in (Elixir). */
+  gainLifePerCard?: boolean;
   /** CantCastSpellsThisTurn: only noncreature spells. */
   noncreatureOnly?: boolean;
   /** ExileTopCardToPlay: from the damaged player's library, with no permission yet (AllowPlayExiledThisWay grants it). */
@@ -1393,6 +1401,10 @@ export interface CardDefinition {
   kickerSacrifice?: ObjectFilter;
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** "Can't be blocked except by N or more creatures" (Relentless X-ATM092: 3). */
+  minBlockers?: number;
+  /** "If you would draw a card while your library has no cards in it, you win the game instead" (Laboratory Maniac). */
+  winOnEmptyDraw?: boolean;
   /** "As this enters, choose a color"; its mana ability makes only that color (Crossroads Village). */
   chooseColorAsEnters?: boolean;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
@@ -1919,7 +1931,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

@@ -411,6 +411,11 @@ export function drawCards(ctx: Ctx, playerId: PlayerId, count: number): void {
   for (let i = 0; i < count; i++) {
     const top = p.library[0];
     if (top === undefined) {
+      // Laboratory Maniac: "you win the game instead".
+      if (battlefield(ctx.s).some((c) => c.controller === playerId && !c.phasedOut && defOf(ctx.s, c).winOnEmptyDraw)) {
+        for (const other of ctx.s.turnOrder) if (other !== playerId && !ctx.s.players[other]!.eliminated) ctx.s.players[other]!.lostToEffect = true;
+        return;
+      }
       // Drawing from an empty library makes the player lose at the next state-based check.
       p.drewFromEmptyLibrary = true;
       return;

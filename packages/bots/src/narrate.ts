@@ -191,6 +191,10 @@ function effectText(e: EffectSpec): string {
       return `your next creature spell this turn enters with ${plural('additional +1/+1 counter')}`;
     case 'AllowPlayExiledThisWay':
       return 'you may play the exiled card this turn';
+    case 'PutFromHandOnTop':
+      return `put ${plural('card')} from your hand on top of your library`;
+    case 'ShuffleGraveyardIntoLibrary':
+      return 'shuffle cards from your graveyard into your library';
     case 'ShuffleLibrary':
       return `${you ? 'shuffle your' : `${who} shuffles their`} library`;
     case 'CounterUnlessPays':

@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 35: Venser, Brainstorm, Laboratory Maniac, Elixir, X-ATM092
+
+- 223 of 320. Engine: "target spell or permanent" (`spellOrPermanent`;
+  a spell returned to hand leaves the stack), `PutFromHandOnTop` (the board
+  says the first card clicked goes on top), win instead of drawing from an
+  empty library (`winOnEmptyDraw`), `ShuffleGraveyardIntoLibrary`, and
+  "can't be blocked except by N or more creatures" (`minBlockers`).
+
 ### Set cards, group 34: Cryptic Command, Genji Glove, Godo, Matoya, Ranger-Captain
 
 - 218 of 320. Engine: `ScryOrSurveil` trigger (a `ScryOrSurveilDone`

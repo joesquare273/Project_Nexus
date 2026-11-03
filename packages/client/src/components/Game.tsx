@@ -1122,6 +1122,8 @@ function PromptBar(p: PromptProps) {
       const verb =
         c.purpose === 'discard' || c.purpose === 'handSize'
           ? (c.purpose === 'handSize' ? 'to discard down to your maximum hand size' : 'to discard (in your hand)')
+          : c.purpose === 'handToTop'
+            ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
             : c.purpose === 'battlefield'

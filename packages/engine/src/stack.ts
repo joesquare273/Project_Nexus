@@ -313,8 +313,9 @@ export function isLegalTarget(
     ...(context.subject ? { subject: context.subject } : {}),
   };
   if (kind === 'TargetSpellPermanentOrGraveyardCard') {
-    if (c.zone === 'graveyard') return !s.players[c.owner]!.eliminated;
+    if (c.zone === 'graveyard') return !effect.spellOrPermanent && !s.players[c.owner]!.eliminated;
     if (c.zone === 'stack') return c.id !== source && s.stack.some((i) => i.kind === 'spell' && i.card === c.id);
+    if (effect.spellOrPermanent) return isLegalTarget(s, { ...effect, target: 'TargetPermanent' }, t, controller, source, context);
     return !defOf(s, c).types.includes('land') && isLegalTarget(s, { ...effect, target: 'TargetPermanent' }, t, controller, source, context);
   }
   if (kind === 'TargetSpell' || kind === 'TargetSpellOrAbility') {
@@ -1909,7 +1910,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) if (!s.cards[id]!.tapped) tap(ctx, s.cards[id]!);
       return;
     case 'ReturnToHand':
-      for (const id of cards) moveCard(ctx, id, 'hand');
+      for (const id of cards) {
+        // A spell returned to its owner's hand leaves the stack (Venser).
+        if (s.cards[id]!.zone === 'stack') s.stack = s.stack.filter((entry) => !(entry.kind === 'spell' && entry.card === id));
+        moveCard(ctx, id, 'hand');
+      }
       return;
     case 'AddCounters': {
       if (effect.optional) {
@@ -2049,6 +2054,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber, ...(effect.anyManaType ? { anyManaType: true } : {}) };
       }
       return;
+    case 'PutFromHandOnTop': {
+      const hand = player(s, item.controller).hand;
+      const n = Math.min(effect.amount === undefined ? 1 : amount, hand.length);
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n }];
+      return;
+    }
+    case 'ShuffleGraveyardIntoLibrary': {
+      const p = player(s, item.controller);
+      const moving = p.graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      for (const id of moving) moveCard(ctx, id, 'library');
+      shuffleInPlace(s, p.library);
+      ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
+      if (effect.gainLifePerCard && moving.length) changeLife(ctx, item.controller, moving.length);
+      return;
+    }
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
@@ -3085,6 +3105,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const owner = pending.libraryOf ?? pending.player;
     shuffleInPlace(s, player(s, owner).library);
     ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+  } else if (pending.purpose === 'handToTop') {
+    // The first card chosen ends up on top.
+    const library = player(s, pending.player).library;
+    for (const id of [...cards].reverse()) {
+      moveCard(ctx, id, 'library');
+      library.splice(library.indexOf(id), 1);
+      library.unshift(id);
+    }
   } else if (pending.purpose === 'payToAvoidCounter') {
     const spell = pending.cards[0]!;
     const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === spell);

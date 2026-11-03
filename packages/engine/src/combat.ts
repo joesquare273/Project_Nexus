@@ -213,7 +213,8 @@ export function nextBlockerDecision(ctx: Ctx): void {
 
 /** Blockers needed to block this attacker at all: two for menace. */
 export function blockersNeeded(s: GameState, attacker: CardInstance): number {
-  return hasKeyword(s, attacker, 'Menace') ? 2 : 1;
+  const printed = s.cardDefs[attacker.defId]?.minBlockers;
+  return Math.max(printed ?? 1, hasKeyword(s, attacker, 'Menace') ? 2 : 1);
 }
 
 /** Why a blocking declaration is illegal, or null if it's fine. */
@@ -239,6 +240,8 @@ export function blockProblem(s: GameState, playerId: PlayerId, blocks: Block[]):
     if (count === 1 && hasKeyword(s, s.cards[attackerId]!, 'Menace')) {
       return `"${attackerId}" has menace and can't be blocked except by two or more creatures.`;
     }
+    const need = blockersNeeded(s, s.cards[attackerId]!);
+    if (count < need) return `"${attackerId}" can't be blocked except by ${need} or more creatures.`;
   }
   // "Must be blocked this turn if able" (rule 509.1c). Simplified: it's a problem only if enough of
   // your creatures that aren't blocking anything could legally block it (two for menace).

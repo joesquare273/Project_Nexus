@@ -3941,3 +3941,86 @@ describe('S4 group 36: Cryptic Command, Genji Glove, Godo, Matoya, Ranger-Captai
     void bear;
   });
 });
+
+describe('S4 group 37: Venser, Brainstorm, Laboratory Maniac, Elixir, Relentless X-ATM092', () => {
+  it('Venser (flash) returns target spell or permanent, lands included, to its owner’s hand', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cat });
+    const venser = put(s, 'P1', 'venser-shaper-savant', 'hand');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: venser }, { targets: (o) => [o.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    expect(s.cards[cat]!.zone).toBe('hand');
+    expect(s.stack.some((i) => i.kind === 'spell' && i.card === cat)).toBe(false);
+    let t = newGame();
+    const land = put(t, 'P2', 'forest');
+    const v2 = put(t, 'P1', 'venser-shaper-savant', 'hand');
+    mana(t, 'P1', { U: 2, C: 2 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: v2 }, { targets: (o) => [o.flat().find((x) => x.kind === 'card' && x.card === land)!] }).state;
+    expect(t.cards[land]!.zone).toBe('hand');
+  });
+
+  it('Brainstorm draws three, then puts two cards from your hand on top (the first chosen on top)', () => {
+    let s = newGame();
+    const storm = put(s, 'P1', 'brainstorm', 'hand');
+    mana(s, 'P1', { U: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: storm })).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'handToTop', min: 2, max: 2 });
+    const [a, b] = s.players.P1!.hand;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [a!, b!] })).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 3 - 2);
+    expect(s.players.P1!.library.slice(0, 2)).toEqual([a, b]);
+  });
+
+  it('Laboratory Maniac: drawing from an empty library wins the game instead', () => {
+    let s = newGame();
+    put(s, 'P1', 'laboratory-maniac');
+    for (const id of [...s.players.P1!.library]) { s.cards[id]!.zone = 'exile'; s.players.P1!.exile.push(id); }
+    s.players.P1!.library = [];
+    const storm = put(s, 'P1', 'brainstorm', 'hand');
+    mana(s, 'P1', { U: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: storm })).state;
+    expect(s.players.P2!.eliminated).toBe(true);
+    expect(s.players.P1!.eliminated).toBe(false);
+  });
+
+  it('Elixir enters tapped; {5}, {T}, exile it: shuffle your nonland graveyard cards into your library and gain that much life', () => {
+    let s = newGame();
+    const elixir = put(s, 'P1', 'elixir', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: elixir }).state;
+    expect(s.cards[elixir]!.tapped).toBe(true);
+    s.cards[elixir]!.tapped = false;
+    const cats = [put(s, 'P1', 'coeurl', 'graveyard'), put(s, 'P1', 'coeurl', 'graveyard')];
+    const land = put(s, 'P1', 'forest', 'graveyard');
+    mana(s, 'P1', { C: 5 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elixir, ability: 0 }).state;
+    expect(cats.every((id) => s.cards[id]!.zone === 'library')).toBe(true);
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    expect(s.players.P1!.life).toBe(22);
+    expect(s.cards[elixir]!.zone).toBe('exile');
+  });
+
+  it('Relentless X-ATM092 can’t be blocked except by three or more creatures, and returns from the graveyard for {8} with a finality counter', () => {
+    let s = newGame();
+    const bot = put(s, 'P1', 'relentless-x-atm092');
+    const blockers = [put(s, 'P2', 'coeurl'), put(s, 'P2', 'coeurl'), put(s, 'P2', 'coeurl')];
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bot, defender: 'P2' }] })).state;
+    s = nextStep(s);
+    expect(s.pending.kind).toBe('declareBlockers');
+    expect(rejected(s, { type: 'DeclareBlockers', player: 'P2', blocks: blockers.slice(0, 2).map((b) => ({ blocker: b, attacker: bot })) })).toMatch(/three or more|3 or more/);
+    // Three is enough.
+    const blocked = act(s, { type: 'DeclareBlockers', player: 'P2', blocks: blockers.map((b) => ({ blocker: b, attacker: bot })) });
+    expect(blocked.combat!.blocks.filter((b) => b.attacker === bot)).toHaveLength(3);
+    let t = newGame();
+    const dead = put(t, 'P1', 'relentless-x-atm092', 'graveyard');
+    mana(t, 'P1', { C: 8 });
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: dead, ability: 0 }).state;
+    expect(t.cards[dead]!.zone).toBe('battlefield');
+    expect(t.cards[dead]!.tapped).toBe(true);
+    expect(countersOf(t.cards[dead]!, 'finality')).toBe(1);
+  });
+});
