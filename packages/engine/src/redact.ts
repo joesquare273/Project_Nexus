@@ -172,6 +172,7 @@ const CARD_FIELDS = {
   extraCountersOnEnter: 'copy',
   isToken: 'copy',
   damagedTurn: 'copy',
+  animated: 'copy',
   spellCopy: 'copy',
   attachedTo: 'refs',
   exiledUntilLeaves: 'refs',

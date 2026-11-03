@@ -189,6 +189,8 @@ function effectText(e: EffectSpec): string {
       return `${you ? 'you lose' : `${who} loses`} the game`;
     case 'NextCreatureEntersWithCounters':
       return `your next creature spell this turn enters with ${plural('additional +1/+1 counter')}`;
+    case 'BecomeCreature':
+      return `${who} becomes a ${e.becomes?.power}/${e.becomes?.toughness} creature`;
     case 'CopySpell':
       return 'copy that spell';
     case 'WinGame':

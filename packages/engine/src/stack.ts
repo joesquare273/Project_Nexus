@@ -1579,6 +1579,7 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
   if ((choice.purpose === 'distributeCounter' || choice.purpose === 'divideDamage') && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
   if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
   if (choice.allOrNothing) return cards.length === 0 || cards.length === choice.cards.length ? null : 'Choose all of them or none.';
+  if (choice.differentNames && new Set(cards.map((id) => defOf(s, s.cards[id]!).name)).size !== cards.length) return 'Choose cards with different names.';
   if (cards.length < choice.min || cards.length > choice.max) {
     return choice.min === choice.max ? `Choose exactly ${choice.min}.` : `Choose between ${choice.min} and ${choice.max}.`;
   }
@@ -2016,6 +2017,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       p.nextCreatureCounters = { turn: s.turnNumber, amount: before + amount };
       return;
     }
+    case 'BecomeCreature':
+      for (const id of onBattlefield) s.cards[id]!.animated = structuredClone(effect.becomes!);
+      return;
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
@@ -2182,7 +2186,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const top = topOfLibrary(s, item.controller, amount);
       if (top.length === 0) return;
       const matching = top.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max: effect.anyNumber ? matching.length : Math.min(1, matching.length), looked: top, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}) }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max: effect.anyNumber ? matching.length : Math.min(1, matching.length), looked: top, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
       return;
     }
     case 'DestroyAttachedEquipment': {
@@ -2694,6 +2698,7 @@ function continueResolving(ctx: Ctx): void {
       const best = Math.max(...creatures.map((c) => powerOf(s, c)));
       if (!creatures.some((c) => c.controller === item.controller && powerOf(s, c) === best)) continue;
     }
+    if (effect.ifChoseSubtype && !(r.chosenSubtypes ?? []).includes(effect.ifChoseSubtype)) continue;
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
       const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];
@@ -2915,6 +2920,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     r.chosenManaValue = (r.chosenManaValue ?? 0) + manaValue(parseManaCost(defOf(s, c).manaCost));
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
     r.chosenTypes = hasType(s, c, 'creature') ? { ...kinds, creature: true } : { ...kinds, noncreature: true };
+    r.chosenSubtypes = [...new Set([...(r.chosenSubtypes ?? []), ...(defOf(s, c).subtypes ?? [])])];
   }
   if (pending.purpose === 'fateBottom') {
     finishFate(ctx, r, cards[0]!);
@@ -2987,7 +2993,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         if (entersTapped(s, c)) c.tapped = true;
       }
     }
-    // The rest go on the bottom of the library in a random order (or stay on top).
+    // The rest go on the bottom of the library in a random order (or stay on top, or go into the graveyard).
+    if (pending.restToGraveyard) for (const id of pending.looked ?? pending.cards) if (!cards.includes(id) && library.includes(id)) moveCard(ctx, id, 'graveyard');
     const rest = pending.restOnTop ? [] : (pending.looked ?? pending.cards).filter((id) => !cards.includes(id) && library.includes(id));
     for (const id of rest) library.splice(library.indexOf(id), 1);
     shuffleInPlace(s, rest);
@@ -3195,7 +3202,7 @@ function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: Eff
   const p = s.players[searcher]!;
   const cards = p.library.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
   const max = Math.min(effect.amount === undefined ? 1 : amount, cards.length);
-  r.choiceQueue = [...(r.choiceQueue ?? []), { player: searcher, purpose: 'search', cards, min: 0, max, searchTo }];
+  r.choiceQueue = [...(r.choiceQueue ?? []), { player: searcher, purpose: 'search', cards, min: 0, max, searchTo, ...(effect.differentNames ? { differentNames: true } : {}) }];
 }
 
 /** The ChooseCards answer for "enter as a copy": none, or one creature still on the battlefield. */

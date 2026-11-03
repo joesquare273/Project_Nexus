@@ -3543,3 +3543,55 @@ describe('S4 group 26: landfall, enters and attack triggers', () => {
     expect(stats(s, angelo!)).toEqual([1 + creatures, 1 + creatures]);
   });
 });
+
+describe('S4 group 27: lands and growing', () => {
+  it('Town Greeter looks at the top four: a land into your hand, the rest into the graveyard; 2 life if it was a Town', () => {
+    for (const town of [true, false]) {
+      let s = newGame();
+      const land = put(s, 'P1', town ? 'adventurers-inn' : 'forest', 'library');
+      for (let i = 0; i < 3; i++) put(s, 'P1', 'coeurl', 'library');
+      const greeter = put(s, 'P1', 'town-greeter', 'hand');
+      mana(s, 'P1', { G: 1, C: 1 });
+      s = settle(act(s, { type: 'CastSpell', player: 'P1', card: greeter })).state;
+      expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop', cards: [land] });
+      s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [land] })).state;
+      expect(s.cards[land]!.zone).toBe('hand');
+      expect(s.players.P1!.graveyard.filter((id) => s.cards[id]!.defId === 'coeurl')).toHaveLength(3);
+      expect(s.players.P1!.life).toBe(town ? 22 : 20);
+    }
+  });
+
+  it('Reach the Horizon puts up to two basic lands or Towns with different names onto the battlefield tapped', () => {
+    let s = newGame();
+    const forests = [put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'forest', 'library')];
+    const inn = put(s, 'P1', 'adventurers-inn', 'library');
+    const spell = put(s, 'P1', 'reach-the-horizon', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: spell }), { targets: undefined }).state;
+    // settle takes the first matching cards; with two Forests first, that pick is refused.
+    expect(s.pending.kind === 'chooseCards' || s.cards[inn]!.zone === 'battlefield').toBe(true);
+    if (s.pending.kind === 'chooseCards') {
+      expect(rejected(s, { type: 'ChooseCards', player: 'P1', cards: forests })).toMatch(/different names/);
+      s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [forests[0]!, inn] })).state;
+    }
+    expect(s.cards[inn]!.zone).toBe('battlefield');
+    expect(s.cards[inn]!.tapped).toBe(true);
+    expect(forests.filter((id) => s.cards[id]!.zone === 'battlefield')).toHaveLength(1);
+  });
+
+  it('Ride the Shoopuf: landfall puts a +1/+1 counter on your creature; {5}{G}{G}: it becomes a 7/7 Beast creature for good', () => {
+    let s = newGame();
+    const shoopuf = put(s, 'P1', 'ride-the-shoopuf');
+    const body = put(s, 'P1', 'coeurl');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: put(s, 'P1', 'forest', 'hand') })).state;
+    expect(countersOf(s.cards[body]!, '+1/+1')).toBe(1);
+    mana(s, 'P1', { G: 2, C: 5 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: shoopuf, ability: 0 }).state;
+    expect(stats(s, shoopuf)).toEqual([7, 7]);
+    expect(currentDefinition(s, s.cards[shoopuf]!).types).toEqual(['enchantment', 'creature']);
+    expect(currentDefinition(s, s.cards[shoopuf]!).subtypes).toContain('Beast');
+    // Still a creature on later turns.
+    s = goTo(goTo(s, 'end'), 'upkeep');
+    expect(currentDefinition(s, s.cards[shoopuf]!).types).toContain('creature');
+  });
+});

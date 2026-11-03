@@ -52,6 +52,14 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   let out = def;
   const change = () => { if (out === def) out = { ...def }; };
   if (c.crewed) { change(); out.types = [...new Set([...out.types, 'artifact' as const, 'creature' as const])]; }
+  // "Becomes a 7/7 Beast creature in addition to its other types" (Ride the Shoopuf).
+  if (c.animated) {
+    change();
+    out.types = [...new Set([...out.types, 'creature' as const])];
+    out.subtypes = [...new Set([...(out.subtypes ?? []), ...(c.animated.subtypes ?? [])])];
+    out.power = c.animated.power;
+    out.toughness = c.animated.toughness;
+  }
   // Type/color effects never ask for power or abilities, avoiding a recursive layer evaluation.
   const layers: { source: CardInstance; spec: StaticSpec; timestamp: number }[] = [];
   for (const source of continuousSources(s)) {

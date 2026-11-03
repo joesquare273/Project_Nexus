@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 27: Town Greeter, Reach the Horizon, Ride the Shoopuf
+
+- 199 of 320. Engine: LookAtTopPutMatching `restToGraveyard`,
+  `ifChoseSubtype`, searches with `differentNames`, and `BecomeCreature`
+  (a permanent that stays a creature: `animated`, public).
+
 ### Set cards, group 26: landfall, enters and attack triggers
 
 - Ambrosia Whiteheart, Gladiolus Amicitia, Cloud of Darkness, Coral Sword,

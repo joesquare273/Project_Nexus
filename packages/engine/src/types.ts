@@ -426,6 +426,8 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** The permanent becomes a creature (`becomes`), in addition to its other types, from now on (Ride the Shoopuf). */
+  'BecomeCreature',
   /** "When you next cast a creature spell this turn, that creature enters with `amount` additional +1/+1 counters" (Summon: Fenrir). */
   'NextCreatureEntersWithCounters',
   /**
@@ -608,6 +610,12 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** SearchLibraryTo...: the cards found must have different names. */
+  differentNames?: boolean;
+  /** Only if a card chosen in the last choice has this subtype ("if you put a Town card into your hand this way"). */
+  ifChoseSubtype?: string;
+  /** BecomeCreature: the permanent becomes a creature with this base power and toughness and these subtypes, in addition to its other types (no end). */
+  becomes?: { power: number; toughness: number; subtypes?: string[] };
   /** Only if you control the creature with the greatest power or tied for it (Summon: Fenrir). */
   ifYouControlGreatestPower?: boolean;
   /** CreateDelayedTrigger: "when you next ..." (it triggers only once). */
@@ -1494,6 +1502,8 @@ export interface CardInstance {
   lastCounters?: Partial<Record<AnyCounter, number>>;
   lastKeywords?: Keyword[];
   lastEquippedBy?: InstanceId[];
+  /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
+  animated?: { power: number; toughness: number; subtypes?: string[] };
   /** The turn this permanent was last dealt damage. */
   damagedTurn?: number;
   /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
@@ -1851,6 +1861,8 @@ export interface Resolving {
   chosenManaValue?: number;
   /** Whether the cards chosen in the last choosing effect included a creature / a noncreature card. */
   chosenTypes?: { creature: boolean; noncreature: boolean };
+  /** Subtypes of the cards chosen so far ("if you put a Town card into your hand this way"). */
+  chosenSubtypes?: string[];
   /** Connive: the creatures conniving; each gets a +1/+1 counter per nonland card discarded, in order. */
   conniving?: InstanceId[];
 }
@@ -1878,6 +1890,8 @@ export interface CardChoice {
   /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */
   restToGraveyard?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */
+  /** search: the chosen cards must all have different names (Reach the Horizon). */
+  differentNames?: boolean;
   onePerType?: CardType[];
   /** copyOnEntry: the permanent spell waiting on the stack for the choice. */
   item?: string;
