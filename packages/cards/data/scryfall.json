@@ -2413,6 +2413,23 @@
     "scryfallId": "8e47061a-5505-4fe3-8caa-b0279b26e9b2",
     "relatedTokens": []
   },
+  "construct-urza-token": {
+    "name": "Construct",
+    "typeLine": "Token Artifact Creature — Construct",
+    "oracleText": "This creature gets +1/+1 for each artifact you control.",
+    "set": "tbig",
+    "number": "3",
+    "artist": "Matteo Bassini",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690",
+      "normal": "https://cards.scryfall.io/normal/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690",
+      "large": "https://cards.scryfall.io/large/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/8/3877d2d1-61f2-4295-b0fc-827965eaaefc.jpg?1783911690"
+    },
+    "scryfallUri": "https://scryfall.com/card/tbig/3/construct?utm_source=api",
+    "scryfallId": "3877d2d1-61f2-4295-b0fc-827965eaaefc",
+    "relatedTokens": []
+  },
   "contaminated-aquifer": {
     "name": "Contaminated Aquifer",
     "typeLine": "Land — Island Swamp",

@@ -51,10 +51,10 @@ import {
   additionalManaFor,
   addCosts,
 } from './stack.ts';
-import { battlefield, alivePlayers, hasKeyword, staticRule } from './state.ts';
+import { battlefield, alivePlayers, hasKeyword, hasType, staticRule } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
-import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices } from './typerules.ts';
+import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices, tapOtherManaTypes } from './typerules.ts';
 import { COLORS, MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
@@ -92,6 +92,8 @@ export interface CostedOption {
   forEquipment: boolean;
   /** Mana that can only be spent on noncreature spells can pay for it. */
   forNoncreatureSpell?: boolean;
+  /** Mana that can only be spent on artifacts can pay for it. */
+  forArtifact?: boolean;
 }
 
 /**
@@ -190,6 +192,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
                 cost: pay.cost,
                 forEquipment: isEquipment(s, c),
                 forNoncreatureSpell: !def.types.includes('creature'),
+                forArtifact: def.types.includes('artifact'),
               });
             }
           }
@@ -312,6 +315,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
             action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}) },
             cost: abilityCost(s, spec, targets, c),
             forEquipment: spec.equip ?? false,
+            forArtifact: hasType(s, c, 'artifact'),
           });
         }
       }
@@ -328,7 +332,7 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
     const def = currentDefinition(s, c);
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
     for (const creature of legendaryManaCreatures(s, c)) {
-      for (const mana of ['W', 'U', 'B', 'R', 'G'] as const) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, tapCreature: creature.id });
+      for (const mana of tapOtherManaTypes(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, tapCreature: creature.id });
     }
     if (c.tapped || c.controller !== player || sick) continue;
     for (const ability of grantedManaAbilities(s, c)) for (const mana of ability.mana) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, grantedBy: ability.source });
@@ -531,7 +535,7 @@ export function getLegalActions(s: GameState): Action[] {
         }
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
-        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false })) actions.push(o.action);
+        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false, artifact: o.forArtifact ?? false })) actions.push(o.action);
       }
       for (const id of s.players[player]!.hand) {
         if (!foretellProblem(s, player, s.cards[id]!)) actions.push({ type: 'Foretell', player, card: id });

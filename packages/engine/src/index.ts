@@ -58,6 +58,7 @@ export {
   visibleLibraryTop,
   canCastLibraryTop,
   legendaryManaCreatures,
+  tapOtherManaTypes,
   manaProduced,
   manaAbilityAmount,
   objectManaValue,

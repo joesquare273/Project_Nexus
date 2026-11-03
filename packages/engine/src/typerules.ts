@@ -201,9 +201,15 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
 
 /** Relic of Legends' cost has no tap symbol, so summoning sickness does not apply. */
 export function legendaryManaCreatures(s: GameState, source: CardInstance): CardInstance[] {
-  if (source.zone !== 'battlefield' || source.phasedOut || !currentDefinition(s, source).manaAbility?.tapLegendaryCreature) return [];
+  const ability = source.zone === 'battlefield' && !source.phasedOut ? currentDefinition(s, source).manaAbility : undefined;
+  if (!ability?.tapLegendaryCreature && !ability?.tapArtifactForBlue) return [];
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === source.controller && !c.tapped &&
-    currentDefinition(s,c).types.includes('creature') && isLegendary(currentDefinition(s, c)));
+    (ability.tapArtifactForBlue ? currentDefinition(s, c).types.includes('artifact') : currentDefinition(s,c).types.includes('creature') && isLegendary(currentDefinition(s, c))));
+}
+
+/** The mana a "tap another permanent" ability makes: any color (Relic of Legends) or {U} (Urza). */
+export function tapOtherManaTypes(s: GameState, source: CardInstance): ManaType[] {
+  return currentDefinition(s, source).manaAbility?.tapArtifactForBlue ? ['U'] : ['W', 'U', 'B', 'R', 'G'];
 }
 
 /** Active permanents whose abilities apply to their controller. */

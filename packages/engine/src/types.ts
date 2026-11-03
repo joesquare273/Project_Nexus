@@ -1226,6 +1226,8 @@ export interface StaticSpec {
   attacksDespiteDefenderWithCounters?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
   additionalLands?: number;
+  /** Kinnan: whenever you tap a nonland permanent for mana, add one more mana of a type it produced. */
+  extraManaFromNonlandTaps?: boolean;
   /** Teferi, Mage of Zhalfir: creature cards its controller owns that aren't on the battlefield have flash. */
   ownCreatureCardsHaveFlash?: boolean;
   /** Teferi, Mage of Zhalfir: each opponent of its controller can cast spells only any time they could cast a sorcery. */
@@ -1369,10 +1371,14 @@ export interface CardDefinition {
     sacrifice?: boolean;
     /** A separate ability: tap an untapped legendary creature you control for one mana of any color. */
     tapLegendaryCreature?: boolean;
+    /** A separate ability: "Tap an untapped artifact you control: Add {U}" (Urza; summoning sickness doesn't matter). */
+    tapArtifactForBlue?: boolean;
     /** "Spend this mana only to cast an Equipment spell or activate an equip ability." */
     onlyForEquipment?: boolean;
     /** Strixhaven Stadium: "Put a point counter on this artifact" as part of the mana ability. */
     addCounter?: AnyCounter;
+    /** "Spend this mana only to cast an artifact spell or activate an ability of an artifact source" (Cargo Ship). */
+    onlyForArtifacts?: boolean;
     /** "Spend this mana only to cast a noncreature spell" (The Emperor of Palamecia). */
     onlyForNoncreatureSpells?: boolean;
     /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
@@ -1811,6 +1817,8 @@ export interface PlayerState {
   equipmentMana: ManaPool;
   /** Mana that can only be spent to cast noncreature spells. */
   noncreatureSpellMana: ManaPool;
+  /** "Spend this mana only to cast an artifact spell or activate an ability of an artifact source" (Cargo Ship). */
+  artifactMana?: ManaPool;
   landsPlayedThisTurn: number;
   eliminated: boolean;
   /** This player chooses the order of their simultaneous triggers (players; bots keep the order found). */

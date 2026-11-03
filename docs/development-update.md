@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 51: Cargo Ship, Urza, Kinnan
+
+Three more set cards with mana abilities (290 of 320) and the Construct token
+(tbig 3). Players have an optional artifact-only mana pool (`artifactMana`,
+also in the view and shown in the mana pool), Urza taps another artifact for
+{U} through the same path as Relic of Legends (`tapOtherManaTypes`), and
+Kinnan adds one more mana when you tap a nonland permanent for mana.
+
 ### Set cards, group 50: Yawgmoth, Fynn, Strixhaven Stadium
 
 Three more set cards (287 of 320) and three counter kinds: -1/-1 counters

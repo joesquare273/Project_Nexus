@@ -44,6 +44,7 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
   delete p.creatureScryMana;
   p.equipmentMana = emptyManaPool();
   p.noncreatureSpellMana = emptyManaPool();
+  delete p.artifactMana;
   if (s.resolving?.item.controller === playerId) {
     const item = s.resolving.item;
     s.resolving = null;

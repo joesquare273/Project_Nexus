@@ -58,6 +58,8 @@ export interface PlayerView {
   equipmentMana: ManaPool;
   /** Mana that can only be spent to cast noncreature spells. */
   noncreatureSpellMana: ManaPool;
+  /** Mana only for artifact spells and abilities of artifacts. */
+  artifactMana?: ManaPool;
   eliminated: boolean;
 }
 
@@ -124,6 +126,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       manaPool: { ...p.manaPool },
       equipmentMana: { ...p.equipmentMana },
       noncreatureSpellMana: { ...p.noncreatureSpellMana },
+      ...(p.artifactMana ? { artifactMana: { ...p.artifactMana } } : {}),
       eliminated: p.eliminated,
     };
   }

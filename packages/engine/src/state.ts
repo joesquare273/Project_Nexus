@@ -65,6 +65,7 @@ export function cloneState(s: GameState): GameState {
       ...(p.creatureScryMana ? { creatureScryMana: [...p.creatureScryMana] } : {}),
       equipmentMana: { ...p.equipmentMana },
       noncreatureSpellMana: { ...p.noncreatureSpellMana },
+      ...(p.artifactMana ? { artifactMana: { ...p.artifactMana } } : {}),
     };
   }
   const copyItem = <T extends GameState['stack'][number]>(item: T): T => ({
@@ -699,9 +700,10 @@ export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): v
 }
 
 /** Adds one mana; `restricted` mana goes to its own pool and can only pay for what it says. */
-export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell'): void {
+export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact'): void {
   const p = player(ctx.s, playerId);
   if (restricted === 'equipment') p.equipmentMana[mana] += 1;
+  else if (restricted === 'artifact') (p.artifactMana ??= emptyManaPool())[mana] += 1;
   else if (restricted === 'noncreatureSpell') p.noncreatureSpellMana[mana] += 1;
   else {
     p.manaPool[mana] += 1;
@@ -720,6 +722,7 @@ export function emptyAllManaPools(s: GameState): void {
     delete s.players[id]!.creatureScryMana;
     s.players[id]!.equipmentMana = emptyManaPool();
     s.players[id]!.noncreatureSpellMana = emptyManaPool();
+    delete s.players[id]!.artifactMana;
   }
 }
 

@@ -9,6 +9,7 @@ import { randomInt, shuffleInPlace } from './rng.ts';
 import {
   addCounters,
   addMana,
+  emptyManaPool,
   aliveFromActive,
   alivePlayers,
   attach,
@@ -42,7 +43,7 @@ import {
   playerProtectedFromOpponents,
 } from './state.ts';
 import { givePriority } from './turn.ts';
-import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
+import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue, tapOtherManaTypes } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   COLORS,
@@ -467,11 +468,25 @@ function allTargetsIllegal(s: GameState, item: StackItem): boolean {
 // ---------------------------------------------------------------------------
 
 /** What a payment is for, which decides whether restricted mana can pay it. */
+/**
+ * Kinnan, Bonder Prodigy: "Whenever you tap a nonland permanent for mana, add
+ * one mana of any type that permanent produced" (a triggered mana ability,
+ * rule 605.1b, so it resolves at once). The engine adds the same type.
+ */
+function kinnanBonus(ctx: Ctx, playerId: PlayerId, tapped: CardInstance, mana: ManaType, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact'): void {
+  const s = ctx.s;
+  if (defOf(s, tapped).types.includes('land')) return;
+  const kinnans = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.extraManaFromNonlandTaps)).length;
+  for (let i = 0; i < kinnans; i++) addMana(ctx, playerId, mana, tapped.id, restricted);
+}
+
 export interface ManaUse {
   /** An Equipment spell or an equip ability. */
   equipment?: boolean;
   /** A noncreature spell being cast. */
   noncreatureSpell?: boolean;
+  /** An artifact spell, or an ability of an artifact source. */
+  artifact?: boolean;
   /** Filled with the mana of each type that was spent (converge). */
   spentOut?: Partial<Record<ManaType, number>>;
 }
@@ -481,6 +496,7 @@ function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
   const pool = { ...p.manaPool };
   if (use.equipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
   if (use.noncreatureSpell) for (const t of MANA_TYPES) pool[t] += p.noncreatureSpellMana[t];
+  if (use.artifact && p.artifactMana) for (const t of MANA_TYPES) pool[t] += p.artifactMana[t];
   return pool;
 }
 
@@ -495,7 +511,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
   if (!spent) reject('Not enough mana in your mana pool.');
   for (const t of MANA_TYPES) {
     let n = spent[t] ?? 0;
-    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana]] as const) {
+    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana], [use.artifact, p.artifactMana ?? emptyManaPool()]] as const) {
       if (!allowed) continue;
       const restricted = Math.min(n, pool[t]);
       pool[t] -= restricted;
@@ -537,6 +553,8 @@ function activatePaidManaAbility(ctx: Ctx, playerId: PlayerId, c: CardInstance, 
   tap(ctx, c);
   const made = parseManaCost(out);
   for (const t of MANA_TYPES) for (let i = 0; i < (made[t] ?? 0); i++) addMana(ctx, playerId, t, c.id);
+  const firstMade = MANA_TYPES.find((t) => (made[t] ?? 0) > 0);
+  if (firstMade) kinnanBonus(ctx, playerId, c, firstMade);
 }
 
 /** "{T}: Add ...", plus Treasure's sacrifice and Freya's Equipment-only mana. Mana abilities don't use the stack. */
@@ -560,11 +578,12 @@ export function activateManaAbility(
     if (c.tapped || (c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That creature cannot tap for mana right now.');
     tap(ctx, c);
     addMana(ctx, playerId, mana, id);
+    kinnanBonus(ctx, playerId, c, mana);
     return;
   }
   if (tapCreature !== undefined) {
     if (output !== undefined || !legendaryManaCreatures(s, c).some((candidate) => candidate.id === tapCreature)) reject('Tap an untapped legendary creature you control.');
-    if (!['W', 'U', 'B', 'R', 'G'].includes(mana)) reject('Choose a color of mana.');
+    if (!tapOtherManaTypes(s, c).includes(mana)) reject('That ability can’t make that mana.');
     tap(ctx, card(s, tapCreature));
     addMana(ctx, playerId, mana, id);
     return;
@@ -590,8 +609,9 @@ export function activateManaAbility(
   // Nyxbloom Ancient: three times as much (each one triples again).
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
-  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : undefined);
+  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
   if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
+  kinnanBonus(ctx, playerId, c, mana, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
     const p = player(s, playerId);
@@ -983,7 +1003,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = { ...cost, generic: cost.generic - delved.length };
   }
   const spentScryMana: CreatureScryMana[] = [];
-  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), spentOut: {} };
+  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {} };
   // Converge: pay generic mana with colors not spent yet, while the pool still covers the cost.
   if (def.converge) {
     for (const color of COLORS) {
@@ -1351,7 +1371,7 @@ export function activateAbility(
     checkDiscardCost(s, playerId, spec.cost.discard ?? 0, costCards, id);
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
-  payMana(ctx, playerId, abilityCost(s, spec, targets, c), { equipment: spec.equip ?? false });
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
@@ -2562,6 +2582,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ...(effect.playUntil === 'endOfYourNextTurn' ? { throughTurn: (s.players[item.controller]!.turnsTaken ?? 0) + 1 } : {}),
           ...(effect.untilNextFromSource ? { untilReplaced: true } : {}),
         };
+        // Urza: "you may play that card without paying its mana cost".
+        if (effect.free) s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };
       }
       return;
     }

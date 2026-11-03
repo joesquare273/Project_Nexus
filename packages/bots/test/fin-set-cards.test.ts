@@ -5116,3 +5116,51 @@ describe('S4 group 50: Yawgmoth, Fynn, Strixhaven Stadium (-1/-1, poison and poi
     expect(countersOf(s.cards[stadium]!, 'point')).toBe(0);
   });
 });
+
+describe('S4 group 51: Cargo Ship, Urza, Kinnan (mana)', () => {
+  it('Cargo Ship: flying, vigilance; its {C} pays only for artifact spells and abilities of artifacts', () => {
+    let s = newGame();
+    const ship = put(s, 'P1', 'cargo-ship');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: ship, mana: 'C' });
+    expect(s.players.P1!.artifactMana?.C).toBe(1);
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: cat })).toMatch(/mana/i);
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+    expect(s.players.P1!.manaPool.W).toBe(1);
+  });
+
+  it('Urza: a Construct that grows with your artifacts; tap an artifact for {U}; {5}: exile the top card and play it free', () => {
+    let s = newGame();
+    const ring = put(s, 'P1', 'sol-ring');
+    const urza = put(s, 'P1', 'urza-lord-high-artificer', 'hand');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: urza }).state;
+    const construct = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'construct-urza-token')!;
+    expect(stats(s, construct)).toEqual([2, 2]);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: urza, mana: 'U', tapCreature: ring });
+    expect(s.players.P1!.manaPool.U).toBe(1);
+    expect(s.cards[ring]!.tapped).toBe(true);
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    s.players.P1!.library = [bolt];
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: urza, ability: 0 }).state;
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+  });
+
+  it('Kinnan: tapping a nonland permanent for mana adds one more of that type; lands don’t', () => {
+    let s = newGame();
+    put(s, 'P1', 'kinnan-bonder-prodigy');
+    const ring = put(s, 'P1', 'sol-ring');
+    const forest = put(s, 'P1', 'forest');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: ring, mana: 'C' });
+    expect(s.players.P1!.manaPool.C).toBe(3);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: forest, mana: 'G' });
+    expect(s.players.P1!.manaPool.G).toBe(1);
+  });
+});
