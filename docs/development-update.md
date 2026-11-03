@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 39: the Town lands with Adventures
+
+- Ishgard, Jidoor, Lindblum and Midgar (240 of 320): cast the Adventure,
+  then play the land from exile later (or just play the land). Engine: the
+  validator allows Adventures on lands, and Mill `halfLibrary`.
+
 ### Set cards, group 38: Lightning, Kain, Zodiark, Quina, Purphoros
 
 - 236 of 320, with the Frog token (tfin 18). Engine: `Stagger`

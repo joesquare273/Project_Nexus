@@ -2423,9 +2423,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Mill':
       for (const t of targets) {
         if (t.kind !== 'player') continue;
+        const count = effect.halfLibrary ? Math.floor(s.players[t.player]!.library.length / 2) : amount;
         // The Water Crystal: an opponent of its controller mills that many plus four.
-        const extra = amount > 0 ? battlefield(s).filter((c) => c.controller !== t.player && !c.phasedOut).reduce((n, c) => n + (defOf(s, c).statics ?? []).reduce((m, st) => m + (st.opponentsMillExtra ?? 0), 0), 0) : 0;
-        for (const id of topOfLibrary(s, t.player, amount + extra)) {
+        const extra = count > 0 ? battlefield(s).filter((c) => c.controller !== t.player && !c.phasedOut).reduce((n, c) => n + (defOf(s, c).statics ?? []).reduce((m, st) => m + (st.opponentsMillExtra ?? 0), 0), 0) : 0;
+        for (const id of topOfLibrary(s, t.player, count + extra)) {
           moveCard(ctx, id, 'graveyard');
           s.cards[id]!.milledBy = { source, turn: s.turnNumber };
         }

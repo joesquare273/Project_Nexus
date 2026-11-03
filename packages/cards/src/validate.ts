@@ -187,7 +187,8 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (c.token && c.manaCost !== undefined) err('tokens have no mana cost.');
   validateCost(c.manaCost, err);
   if (c.adventure) {
-    if (!c.types.includes('creature')) err('Adventure needs a creature card.');
+    // Adventurer creatures, and the Final Fantasy Town lands (play the land later from exile).
+    if (!c.types.includes('creature') && !c.types.includes('land')) err('Adventure needs a creature or land card.');
     if (!Array.isArray(c.adventure.types) || c.adventure.types.length !== 1 || !['instant', 'sorcery'].includes(c.adventure.types[0]!)) err('Adventure must be an instant or sorcery.');
     for (const error of validateCardDefinition({ id: c.id, ...c.adventure, subtypes: ['Adventure'] })) err(`adventure: ${error}`);
   }
@@ -289,7 +290,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.sameObject && (!inAbility || (e.target !== 'This' && e.effect !== 'CopyCreature' && !(e.effect === 'Sacrifice' && e.target === 'You' && e.filter?.self)))) err('sameObject is only for an ability affecting This.');
   if (!EFFECT_KINDS.includes(e.effect)) err(`unknown effect "${e.effect}".`);
   if (!TARGET_KINDS.includes(e.target)) err(`unknown target "${e.target}".`);
-  if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined) err(`${e.effect} needs an amount.`);
+  if (AMOUNT_EFFECTS.has(e.effect) && e.amount === undefined && !(e.effect === 'Mill' && e.halfLibrary)) err(`${e.effect} needs an amount.`);
   validateAmount(e.amount, (m) => err(`${e.effect}: ${m}`));
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
   if (e.effect === 'Discard' && e.amount === undefined && !e.anyNumber && !e.wholeHand && !e.entireHand) err('Discard needs an amount (or anyNumber, wholeHand or entireHand).');

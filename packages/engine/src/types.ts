@@ -628,6 +628,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** Mill: each target player mills half their library, rounded down (Jidoor's Overture). */
+  halfLibrary?: boolean;
   /** Sacrifice: each player sacrifices half the matching permanents they control, rounded down (Zodiark). */
   halfOfMatching?: boolean;
   /** CreateToken: one for each opponent, tapped and attacking that player (Adeline). */

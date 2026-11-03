@@ -506,8 +506,8 @@ describe('cards that aren’t built yet', () => {
     const creature = put(s, 'P1', 'summon-brynhildr', 'hand');
     mana(s, 'P1', { R: 1, C: 1 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
-    expect(s.cardDefs['lindblum-industrial-regency-mage-siege']!.notBuilt).toBe(true);
-    const land = put(s, 'P1', 'lindblum-industrial-regency-mage-siege', 'hand');
+    expect(s.cardDefs['clives-hideaway']!.notBuilt).toBe(true);
+    const land = put(s, 'P1', 'clives-hideaway', 'hand');
     expect(rejected(s, { type: 'PlayLand', player: 'P1', card: land })).toMatch(/isn't built yet/);
     const offered = getLegalActions(s).filter((a) => (a.type === 'CastSpell' || a.type === 'PlayLand') && (a.card === creature || a.card === land));
     expect(offered).toEqual([]);
@@ -4214,5 +4214,62 @@ describe('S4 group 40: Lightning, Kain, Zodiark, Quina, Purphoros', () => {
     mana(s, 'P1', { W: 1, C: 1 });
     s = cast(s, { type: 'CastSpell', player: 'P1', card: cat }).state;
     expect([s.players.P2!.life, s.players.P3!.life]).toEqual([18, 18]);
+  });
+});
+
+describe('S4 group 41: the Town lands with Adventures (Ishgard, Jidoor, Lindblum, Midgar)', () => {
+  type Opts = Parameters<typeof settle>[1];
+  const settleAll = (s: GameState, opts: Opts = {}): GameState => {
+    s = settle(s, opts).state;
+    for (let guard = 0; guard < 10 && s.pending.kind === 'chooseCards'; guard++) {
+      s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: s.pending.cards.slice(0, Math.max(1, s.pending.min)) }), opts).state;
+    }
+    return s;
+  };
+
+  it('Lindblum: cast Mage Siege (a Wizard), then play the land later from exile; it enters tapped and taps for {R}', () => {
+    let s = newGame();
+    const town = put(s, 'P1', 'lindblum-industrial-regency-mage-siege', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: town, adventure: true }).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'wizard-token')).toBe(true);
+    expect(s.cards[town]!.zone).toBe('exile');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: town });
+    expect(s.cards[town]!.zone).toBe('battlefield');
+    expect(s.cards[town]!.tapped).toBe(true);
+    s.cards[town]!.tapped = false;
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === town && a.mana === 'R')).toBe(true);
+  });
+
+  it('a Town can also just be played from hand as a land', () => {
+    let s = newGame();
+    const town = put(s, 'P1', 'midgar-city-of-mako-reactor-raid', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: town });
+    expect(s.cards[town]!.zone).toBe('battlefield');
+  });
+
+  it('Jidoor’s Overture: target opponent mills half their library, rounded down', () => {
+    let s = newGame();
+    const n = s.players.P2!.library.length;
+    const town = put(s, 'P1', 'jidoor-aristocratic-capital-overture', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: town, adventure: true, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.library.length).toBe(n - Math.floor(n / 2));
+  });
+
+  it('Ishgard’s Faith & Grief returns up to two artifact and/or enchantment cards; Midgar’s Reactor Raid: sacrifice to draw two', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'sol-ring', 'graveyard');
+    const b = put(s, 'P1', 'sleep-magic', 'graveyard');
+    const ishgard = put(s, 'P1', 'ishgard-the-holy-see-faith-grief', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ishgard, adventure: true, targets: [card(a), card(b)] }).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['hand', 'hand']);
+    put(s, 'P1', 'coeurl');
+    const midgar = put(s, 'P1', 'midgar-city-of-mako-reactor-raid', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    const hand = s.players.P1!.hand.length;
+    s = settleAll(cast(s, { type: 'CastSpell', player: 'P1', card: midgar, adventure: true }).state);
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
   });
 });
