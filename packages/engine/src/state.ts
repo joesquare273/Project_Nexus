@@ -260,6 +260,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.vowTo;
   delete c.monstrous;
   delete c.extraCountersOnEnter;
+  delete c.hasteOnEnter;
   delete c.xPaid;
   delete c.foretoldTurn;
   delete c.linkedExile;
@@ -574,6 +575,8 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   if (c.zone !== 'battlefield' || amount <= 0) return;
   if (kind !== '+1/+1') {
     setCounters(c, kind, countersOf(c, kind) + amount);
+    // Summon: Brynhildr: cards it exiled are playable during turns it gets a lore counter.
+    if (kind === 'lore') for (const x of Object.values(s.cards)) if (x.playableFromExile?.source === id && x.playableFromExile.loreTurn !== undefined) x.playableFromExile.loreTurn = s.turnNumber;
     c.countersTurn = s.turnNumber;
     if (by && hasType(s, c, 'creature')) player(s, by).counterOnCreatureTurn = s.turnNumber;
     ctx.ev.push({ type: 'CountersAdded', card: id, amount, ...(by ? { by } : {}), counter: kind, total: countersOf(c, kind) });

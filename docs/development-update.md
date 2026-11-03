@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 54: Summon: Brynhildr, Triple Triad, Sin
+
+Three more set cards (301 of 320). Brynhildr's exiled card is playable only
+on turns the Saga gets a lore counter, and its next creature spell gains
+haste; Triple Triad exiles every player's top card each upkeep; Sin makes
+tapped token copies of random permanent cards from your graveyard. The
+"not built yet" test now uses Rydia.
+
 ### Set cards, group 53: Ultima, The Lunar Whale, Balamb Garden, Clive's Hideaway, Zanarkand
 
 Five more set cards (298 of 320); every land in the set is now built, so the

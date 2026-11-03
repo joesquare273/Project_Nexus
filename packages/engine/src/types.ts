@@ -375,6 +375,12 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** "When you next cast a creature spell this turn, it gains haste until end of turn" (Summon: Brynhildr). */
+  'NextCreatureGainsHaste',
+  /** Triple Triad: each player exiles their top card; you may play yours and each with lesser mana value free this turn. */
+  'TripleTriad',
+  /** Sin: exile a permanent card from your graveyard at random and create a tapped token copy; repeat while it's a land card. */
+  'ExileRandomPermanentCopy',
   /** End the turn (rule 724): exile everything on the stack, then go to the cleanup step. */
   'EndTheTurn',
   /** Each target player gets `amount` poison counters. */
@@ -716,6 +722,8 @@ export interface EffectSpec {
   doubleIfKicked?: boolean;
   /** RevealTopToHandLoseLife: each opponent loses the life instead of you (Yuriko). */
   opponentsLose?: boolean;
+  /** ExileTopCardToPlay: playable only during turns a lore counter is put on the source (Summon: Brynhildr). */
+  whileSourceGetsLore?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1702,6 +1710,8 @@ export interface CardInstance {
   crewedByThisTurn?: { turn: number; by: InstanceId[] };
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
+  /** A creature spell that gains haste until end of turn as it enters (Summon: Brynhildr). */
+  hasteOnEnter?: boolean;
   /** The turn this creature was last declared as an attacker (boast). */
   attackedTurn?: number;
   /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
@@ -1725,7 +1735,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean };
+  playableFromExile?: { player: PlayerId; source: InstanceId; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -1858,6 +1868,8 @@ export interface PlayerState {
   coinHeadsTurn?: number;
   /** Noncreature spells this player cast this turn. Reset as each turn begins. */
   noncreatureSpellsThisTurn?: number;
+  /** Summon: Brynhildr: "when you next cast a creature spell this turn, it gains haste until end of turn" (the turn). */
+  nextCreatureHasteTurn?: number;
   /** Legendary creature spells cast this turn (Serah Farron's discount). */
   legendaryCreatureSpellsThisTurn?: number;
   /** Spells this player cast this turn. Reset as each turn begins. */

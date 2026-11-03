@@ -346,6 +346,12 @@ function effectText(e: EffectSpec): string {
       return 'remove a lore counter from each of any number of Sagas you control; put a +1/+1 counter on this for each';
     case 'GivePoison':
       return `${who} get${you ? '' : 's'} ${n} poison counter${n === '1' ? '' : 's'}`;
+    case 'NextCreatureGainsHaste':
+      return 'your next creature spell this turn gains haste';
+    case 'TripleTriad':
+      return 'each player exiles their top card; you may play yours and each with lesser mana value free this turn';
+    case 'ExileRandomPermanentCopy':
+      return 'exile a permanent card from your graveyard at random and create a tapped token copy of it, again while it is a land';
     case 'EndTheTurn':
       return 'end the turn';
     case 'CreateDemonCopy':

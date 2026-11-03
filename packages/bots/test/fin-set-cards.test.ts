@@ -502,9 +502,9 @@ describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
 describe('cards that aren’t built yet', () => {
   it('can’t be cast (creatures included) or played, and aren’t offered', () => {
     const s = newGame();
-    expect(s.cardDefs['summon-brynhildr']!.notBuilt).toBe(true);
-    const creature = put(s, 'P1', 'summon-brynhildr', 'hand');
-    mana(s, 'P1', { R: 1, C: 1 });
+    expect(s.cardDefs['rydia-summoner-of-mist']!.notBuilt).toBe(true);
+    const creature = put(s, 'P1', 'rydia-summoner-of-mist', 'hand');
+    mana(s, 'P1', { R: 1, G: 1 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
     // Every set land is built now: an unbuilt copy of one stands in.
     s.cardDefs['unbuilt-land'] = { ...s.cardDefs['clives-hideaway']!, id: 'unbuilt-land', notBuilt: true };
@@ -5295,5 +5295,75 @@ describe('S4 group 53: Ultima, The Lunar Whale, Balamb Garden, Clive’s Hideawa
     expect(s.cards[town]!.zone).toBe('exile');
     s = act(s, { type: 'PlayLand', player: 'P1', card: town });
     expect(s.cards[town]).toMatchObject({ zone: 'battlefield', tapped: true });
+  });
+});
+
+describe('S4 group 54: Summon: Brynhildr, Triple Triad, Sin', () => {
+  const top = (s: GameState, who: string, id: string) => { s.players[who]!.library = [id, ...s.players[who]!.library.filter((x) => x !== id)]; };
+
+  it('Summon: Brynhildr: chapter I exiles the top card, playable only on turns it gets a lore counter; II gives your next creature haste', () => {
+    let s = newGame();
+    const bolt = put(s, 'P1', 'lightning-bolt', 'library');
+    top(s, 'P1', bolt);
+    const saga = put(s, 'P1', 'summon-brynhildr', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: saga }).state;
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    expect(spellOptions(s, 'P1').some((o) => o.action.card === bolt)).toBe(true);
+    // On the opponent's turn, no lore counter: not playable.
+    s = goTo(nextStep(goTo(s, 'end')), 'upkeep');
+    expect(s.activePlayer).toBe('P2');
+    expect(spellOptions(s, 'P1').some((o) => o.action.card === bolt)).toBe(false);
+    for (let i = 0; i < 6 && s.activePlayer !== 'P1'; i++) s = goTo(nextStep(goTo(s, 'end')), 'main1');
+    s = settle(s).state;
+    expect(s.cards[saga]!.namedCounters?.lore).toBe(2);
+    expect(spellOptions(s, 'P1').some((o) => o.action.card === bolt)).toBe(true);
+    const cat = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cat }).state;
+    expect(hasKeyword(s, s.cards[cat]!, 'Haste')).toBe(true);
+  });
+
+  it('Triple Triad: at your upkeep each player exiles their top card; play yours and each with lesser mana value free', () => {
+    let s = newGame();
+    put(s, 'P1', 'triple-triad');
+    const cat = put(s, 'P1', 'coeurl', 'library');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'library');
+    const big = put(s, 'P2', 'omega-heartless-evolution', 'library');
+    // To the opponent's end step, then set the libraries and go on to our upkeep.
+    s = goTo(nextStep(goTo(s, 'end')), 'end');
+    expect(s.activePlayer).toBe('P2');
+    top(s, 'P1', cat);
+    top(s, 'P2', bolt);
+    s = goTo(s, 'upkeep');
+    expect(s.activePlayer).toBe('P1');
+    s = settle(s).state;
+    expect(s.cards[cat]!.zone).toBe('exile');
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    expect(s.cards[big]!.zone).not.toBe('exile');
+    s = goTo(s, 'main1');
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cat }).state;
+    expect(s.cards[cat]!.zone).toBe('battlefield');
+  });
+
+  it('Sin: exiles a permanent card from your graveyard at random for a tapped token copy, repeating while it’s a land', () => {
+    let s = newGame();
+    s.players.P1!.graveyard = [];
+    const forests = [put(s, 'P1', 'forest', 'graveyard'), put(s, 'P1', 'forest', 'graveyard')];
+    const cat = put(s, 'P1', 'coeurl', 'graveyard');
+    const sin = put(s, 'P1', 'sin-spiras-punishment', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: sin }).state;
+    expect(s.cards[cat]!.zone).toBe('exile');
+    const tokens = s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken);
+    const catTokens = tokens.filter((id) => s.cards[id]!.defId === 'coeurl');
+    expect(catTokens).toHaveLength(1);
+    expect(s.cards[catTokens[0]!]!.tapped).toBe(true);
+    // Every Forest exiled before the Coeurl became a token too.
+    const exiledForests = forests.filter((id) => s.cards[id]!.zone === 'exile').length;
+    expect(tokens.length).toBe(1 + exiledForests);
   });
 });

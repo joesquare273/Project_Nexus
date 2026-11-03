@@ -661,6 +661,7 @@ export function playableZone(
   if (c.owner === playerId && c.zone === 'exile' && c.foretoldTurn !== undefined) return c.foretoldTurn < s.turnNumber ? 'exile' : null;
   const p = c.playableFromExile;
   if (c.zone === 'exile' && p?.player === playerId) {
+    if (p.loreTurn !== undefined) return p.loreTurn === s.turnNumber ? 'exile' : null;
     // "You may play that card this turn."
     if (p.untilTurn !== undefined) return s.turnNumber <= p.untilTurn ? 'exile' : null;
     // "Until your next end step": until another of your end steps begins.
@@ -1060,6 +1061,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   caster.spellsCastThisTurn = (caster.spellsCastThisTurn ?? 0) + 1;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
+  const hasteNext = player(s, playerId).nextCreatureHasteTurn;
+  if (hasteNext !== undefined && def.types.includes('creature')) {
+    if (hasteNext === s.turnNumber) c.hasteOnEnter = true;
+    delete player(s, playerId).nextCreatureHasteTurn;
+  }
   const next = player(s, playerId).nextCreatureCounters;
   if (next && def.types.includes('creature')) {
     if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
@@ -2220,6 +2226,43 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'EndTheTurn':
       s.endingTurn = true;
       return;
+    case 'NextCreatureGainsHaste':
+      player(s, item.controller).nextCreatureHasteTurn = s.turnNumber;
+      return;
+    case 'TripleTriad': {
+      const exiled: InstanceId[] = [];
+      for (const pid of aliveFromActive(s)) {
+        const top = player(s, pid).library[0];
+        if (!top) continue;
+        moveCard(ctx, top, 'exile');
+        exiled.push(top);
+      }
+      const mine = exiled.find((id) => s.cards[id]!.owner === item.controller);
+      if (!mine) return;
+      const mv = objectManaValue(s, s.cards[mine]!);
+      for (const id of exiled) {
+        if (id !== mine && objectManaValue(s, s.cards[id]!) >= mv) continue;
+        s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber };
+        s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };
+      }
+      return;
+    }
+    case 'ExileRandomPermanentCopy': {
+      for (let guard = 0; guard < 100; guard++) {
+        const yard = player(s, item.controller).graveyard.filter((id) => isPermanentCard(defOf(s, s.cards[id]!)));
+        if (yard.length === 0) return;
+        const picked = yard[randomInt(s, yard.length)]!;
+        const original = s.cards[picked]!;
+        moveCard(ctx, picked, 'exile');
+        const def = s.cardDefs[original.defId]!;
+        const printing = original.printing ?? def.printing;
+        const token = createToken(ctx, original.defId, item.controller, { definition: structuredClone(def), artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
+        s.cards[token]!.tapped = true;
+        r.createdTokens.push(token);
+        if (!def.types.includes('land')) return;
+      }
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2595,6 +2638,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ...(effect.playUntil === 'yourNextEndStep' ? { endSteps: s.players[item.controller]!.endStepsBegun ?? 0 } : {}),
           ...(effect.playUntil === 'endOfYourNextTurn' ? { throughTurn: (s.players[item.controller]!.turnsTaken ?? 0) + 1 } : {}),
           ...(effect.untilNextFromSource ? { untilReplaced: true } : {}),
+          ...(effect.whileSourceGetsLore ? { loreTurn: s.turnNumber } : {}),
         };
         // Urza: "you may play that card without paying its mana cost".
         if (effect.free) s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };
@@ -3185,7 +3229,9 @@ export function resolveTop(ctx: Ctx): void {
       // An Aura spell needs its target to remain legal before it can enter attached.
       if (def.enchant && fizzled) { moveCard(ctx,c.id,'graveyard'); givePriority(ctx,s.activePlayer); return; }
       const extra = c.extraCountersOnEnter ?? 0;
+      const haste = !!c.hasteOnEnter;
       moveCard(ctx, c.id, 'battlefield', { controller: item.controller });
+      if (haste) s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });
       if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
       if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
