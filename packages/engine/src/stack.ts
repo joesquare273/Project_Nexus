@@ -1363,7 +1363,12 @@ export function activateAbility(
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
-  if (spec.cost.crew !== undefined) for (const crew of costCards) tap(ctx,s.cards[crew]!);
+  if (spec.cost.crew !== undefined) {
+    for (const crew of costCards) tap(ctx,s.cards[crew]!);
+    // "A Vehicle crewed by Balthier and Fran this turn".
+    const prior = c.crewedByThisTurn?.turn === s.turnNumber ? c.crewedByThisTurn.by : [];
+    c.crewedByThisTurn = { turn: s.turnNumber, by: [...new Set([...prior, ...costCards])] };
+  }
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
     removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, 1);
@@ -1533,6 +1538,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
     const base =
       a.of === 'dieRoll'
         ? (r.dieRoll ?? 0)
+        : a.of === 'previousTargetPlayerMatching'
+        ? (r.previousTarget?.kind === 'player' ? battlefield(s).filter((c) => c.controller === (r.previousTarget as { player: PlayerId }).player && !c.phasedOut && matchesObject(s, effect.filter, c, { controller: r.item.controller })).length : 0)
         : a.of === 'chosenCardTypes'
         ? new Set((r.chosen ?? []).flatMap((c) => c.cards).flatMap((id) => defOf(s, s.cards[id]!).types)).size
         : a.of === 'previousTargetPower'
@@ -2154,6 +2161,23 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'RemoveLoreFromSagas': {
       const sagas = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && (c.namedCounters?.lore ?? 0) > 0 && defOf(s, c).subtypes?.includes('Saga')).map((c) => c.id);
       if (sagas.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'removeLore', cards: sagas, min: 0, max: sagas.length }];
+      return;
+    }
+    case 'CreateDemonCopy': {
+      const t = r.previousTarget;
+      const original = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      // "If you exiled a card this way."
+      if (!original || original.zone !== 'exile') return;
+      const def = s.cardDefs[original.defId]!;
+      const definition = structuredClone(def);
+      // "Except it's a 5/5 black Demon": those replace its color, creature types and base power and toughness.
+      definition.power = 5;
+      definition.toughness = 5;
+      definition.colors = ['B'];
+      definition.subtypes = ['Demon'];
+      definition.types = [...new Set([...definition.types, 'creature' as const])];
+      const printing = original.printing ?? def.printing;
+      r.createdTokens.push(createToken(ctx, original.defId, item.controller, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) }));
       return;
     }
     case 'AddSubtypes':
@@ -3158,7 +3182,7 @@ export function decide(ctx: Ctx, playerId: PlayerId, accept: boolean): void {
     if (life) changeLife(ctx, playerId, -life);
   }
   // "Do this only once each turn" (G'raha Tia, Emet-Selch): done, so not again this turn.
-  if (accept && spec?.oncePerTurnWhenPaid) s.triggeredThisTurn.push(`${item.source}#${item.ability}`);
+  if (accept && spec?.oncePerTurnWhenPaid) s.triggeredThisTurn.push(`${item.source}#${spec.onceKey ?? item.ability}`);
   item.accepted = accept;
   ctx.ev.push({ type: 'Decided', player: playerId, item: item.id, card: item.source, accepted: accept });
   resolveTop(ctx);

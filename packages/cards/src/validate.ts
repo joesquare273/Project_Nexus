@@ -125,6 +125,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectManaSpent',
       'dieRoll',
       'chosenCardTypes',
+      'previousTargetPlayerMatching',
       'lifeLostInEvent',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);

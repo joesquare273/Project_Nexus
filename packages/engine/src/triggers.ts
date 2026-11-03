@@ -412,7 +412,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     definition.triggers!.forEach((original, ability) => {
       let spec = original;
       if ((spec.zone ?? 'battlefield') !== zone || !triggersOn(spec, o, s, c.id, controller)) return;
-      const key = `${c.id}#${ability}`;
+      const key = `${c.id}#${spec.onceKey ?? ability}`;
       if (spec.oneOrMore) {
         const batchKey=o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key;
         if (batched.has(batchKey)) return;

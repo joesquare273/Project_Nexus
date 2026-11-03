@@ -5006,3 +5006,56 @@ describe('S4 group 48: Garnet, Buster Sword, Chocobo Kick, Serah Farron', () => 
     expect(stats(s, garnet)).toEqual([4, 4]);
   });
 });
+
+describe('S4 group 49: Carpet of Flowers, Ardyn, Balthier and Fran', () => {
+  it('Carpet of Flowers: at a main phase, you may add mana equal to the Islands target opponent controls, once each turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'carpet-of-flowers');
+    for (let i = 0; i < 3; i++) put(s, 'P2', 'island');
+    s = goTo(s, 'upkeep');
+    s = goTo(s, 'main1');
+    s = settle(s, { accept: true }).state;
+    expect(s.pending.kind).toBe('chooseMana');
+    s = act(s, { type: 'ChooseMana', player: 'P1', mana: 'G' } as never);
+    expect(s.players.P1!.manaPool.G).toBe(3);
+  });
+
+  it('Ardyn: Demons you control have menace, lifelink and haste; at combat, exile a creature card from a graveyard for a 5/5 black Demon copy', () => {
+    let s = newGame();
+    put(s, 'P1', 'ardyn-the-usurper');
+    const cat = put(s, 'P2', 'coeurl', 'graveyard');
+    s = goTo(s, 'beginCombat', { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] });
+    s = settle(s, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    expect(s.cards[cat]!.zone).toBe('exile');
+    const token = s.players.P1!.battlefield.find((id) => s.cards[id]!.isToken);
+    expect(token).toBeDefined();
+    expect(stats(s, token!)).toEqual([5, 5]);
+    expect(currentDefinition(s, s.cards[token!]!).subtypes).toEqual(['Demon']);
+    expect(['Menace', 'Lifelink', 'Haste'].every((k) => hasKeyword(s, s.cards[token!]!, k as never))).toBe(true);
+  });
+
+  it('Balthier and Fran: Vehicles get +1/+1, reach and vigilance; a Vehicle they crewed attacking may pay {1}{R}{G} for another combat', () => {
+    let s = newGame();
+    const pair = put(s, 'P1', 'balthier-and-fran');
+    const copter = put(s, 'P1', 'smugglers-copter');
+    expect(stats(s, copter)).toEqual([4, 4]);
+    expect(hasKeyword(s, s.cards[copter]!, 'Vigilance')).toBe(true);
+    const crew = activatedAbilities(s.cardDefs['smugglers-copter']!).findIndex((a) => a.cost.crew !== undefined);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: copter, ability: crew, costCards: [pair] }).state;
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: copter, defender: 'P2' }] });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    mana(s, 'P1', { R: 1, G: 1, C: 1 });
+    let asked = false;
+    for (let i = 0; i < 12 && s.stack.length > 0; i++) {
+      if (s.pending.kind === 'decide') {
+        const mine = s.stack.at(-1)!.kind === 'ability' && (s.stack.at(-1) as { source: string }).source === pair;
+        asked ||= mine;
+        s = act(s, { type: 'Decide', player: 'P1', accept: mine });
+      } else if (s.pending.kind === 'priority') s = act(s, { type: 'PassPriority', player: s.pending.player });
+      else break;
+    }
+    expect(asked).toBe(true);
+    expect(s.extraCombats).toBe(1);
+  });
+});

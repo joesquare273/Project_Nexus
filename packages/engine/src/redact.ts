@@ -174,6 +174,7 @@ const CARD_FIELDS = {
   damagedTurn: 'copy',
   attackedTurn: 'copy',
   addedSubtypes: 'copy',
+  crewedByThisTurn: 'copy',
   resolutionsThisTurn: 'copy',
   animated: 'copy',
   chosenColor: 'copy',

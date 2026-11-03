@@ -344,6 +344,8 @@ function effectText(e: EffectSpec): string {
       return `you may cast a spell with mana value ${n} or less from your hand without paying its mana cost`;
     case 'RemoveLoreFromSagas':
       return 'remove a lore counter from each of any number of Sagas you control; put a +1/+1 counter on this for each';
+    case 'CreateDemonCopy':
+      return "create a token that's a copy of that card, except it's a 5/5 black Demon";
     case 'ExileFromYourGraveyard':
       return `exile ${plural('card')} from your graveyard`;
     case 'PreventDamageToYourCreatures':

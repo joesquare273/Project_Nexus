@@ -38,6 +38,7 @@ export function matchesObject(
   if (f.anyOf && !f.anyOf.some((alt) => matchesObject(s, alt, obj, from, objController, definition))) return false;
   const def = definition ?? currentDefinition(s, obj);
   if (f.other && obj.id === from.source) return false;
+  if (f.crewedBySource && !(obj.crewedByThisTurn?.turn === s.turnNumber && from.source !== undefined && obj.crewedByThisTurn.by.includes(from.source))) return false;
   if (f.self && obj.id !== from.source) return false;
   if (f.name !== undefined && def.name !== f.name) return false;
   if (f.damagedThisTurn && obj.damagedTurn !== s.turnNumber) return false;

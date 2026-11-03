@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 49: Carpet of Flowers, Ardyn, Balthier and Fran
+
+Three more set cards (284 of 320). Triggers can share a once-each-turn mark
+(`onceKey`), amounts can count what the previous target player controls,
+Ardyn makes 5/5 black Demon copies of exiled creature cards, and Vehicles
+remember which creatures crewed them this turn.
+
 ### Set cards, group 48: Garnet, Buster Sword, Chocobo Kick, Serah Farron
 
 Four more set cards (281 of 320). Cast permissions can now cover a card in

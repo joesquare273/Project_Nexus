@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Create a token that's a copy of the previous target card, except it's a 5/5 black Demon (Ardyn). */
+  'CreateDemonCopy',
   /** Choose a spell card in your hand with mana value `amount` or less; you may cast it this turn without paying its mana cost (Buster Sword). */
   'CastFreeFromHand',
   /** Remove a lore counter from each of any number of Sagas you control; this gets a +1/+1 counter for each removed (Garnet). */
@@ -637,6 +639,8 @@ export type Amount =
         | 'dieRoll'
         /** The number of card types among the cards chosen so far (Kefka: "for each card type among cards discarded this way"). */
         | 'chosenCardTypes'
+        /** How many permanents matching the effect's `filter` the previous target player controls (Carpet of Flowers: Islands target opponent controls). */
+        | 'previousTargetPlayerMatching'
         /** OpponentLosesLife triggers: how much life was lost ("you draw that many cards"). */
         | 'lifeLostInEvent';
       plus?: number;
@@ -966,6 +970,8 @@ export interface ObjectFilter {
   newGraveyardCardNotFromBattlefield?: boolean;
   /** Matches if any of these filters does ("artifact, enchantment, or tapped creature"); the rest of this filter must hold too. */
   anyOf?: ObjectFilter[];
+  /** A Vehicle the card with the ability crewed this turn (Balthier and Fran). */
+  crewedBySource?: boolean;
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
   /** Only the card itself ("when this creature dies, if it had no +1/+1 counters on it"). */
@@ -1114,6 +1120,8 @@ export interface TriggerSpec {
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
   /** `lifeOf`: pay life equal to the triggering spell's mana value ("you may pay X life, where X is that spell's mana value"). */
   cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue'; discard?: number; /** Exile this many cards from your graveyard, chosen as it resolves (Ultimecia). */ exileGraveyard?: number };
+  /** Shares its once-each-turn mark with the card's other abilities that have the same key (Carpet of Flowers: "each of your main phases"). */
+  onceKey?: string;
   /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
   oncePerTurnWhenPaid?: boolean;
   /** Dies: only if it was cast for its blitz cost (rule 702.152). */
@@ -1662,6 +1670,8 @@ export interface CardInstance {
   damagedTurn?: number;
   /** How many times one of its abilities resolved this turn (`turn:ability` key). */
   resolutionsThisTurn?: { key: string; item: string; count: number };
+  /** The creatures that crewed this Vehicle this turn. */
+  crewedByThisTurn?: { turn: number; by: InstanceId[] };
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
   /** The turn this creature was last declared as an attacker (boast). */
