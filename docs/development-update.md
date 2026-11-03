@@ -5,6 +5,24 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Terra reviewed; Saga chapter fixes
+
+A full pass over Terra, Magical Adept // Esper Terra against its Oracle text
+found and fixed three engine problems that affect every Saga:
+
+- A Saga token got its entry lore counter before it existed as far as
+  triggers were concerned, so it skipped chapter I. The counter now comes
+  after the token is created.
+- Lore counters added at once (Esper Terra's "up to three") triggered an
+  ability printed "II, III" only once. Each chapter passed now triggers
+  (rule 714.2b).
+- "Sacrifice it at the beginning of your next end step" now waits for your
+  end step (`sacrificeAtEndStepOf`), not just the next one.
+
+Esper Terra's "up to three lore counters" is now a choice made one counter
+at a time (`counterUpTo`); the AI takes all three. New tests walk every face
+and chapter of Terra.
+
 ### Set cards, group 57: Y'shtola Rhul, Mizzix's Mastery, Terra
 
 Three more set cards (310 of 320). Y'shtola adds an extra end step after the

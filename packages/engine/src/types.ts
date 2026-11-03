@@ -735,9 +735,13 @@ export interface EffectSpec {
   /** ExileUntilFound: only a card with lesser mana value than the triggering spell; the rest go on the bottom in a random order (Jodah). */
   lesserThanSubject?: boolean;
   restToBottom?: boolean;
+  /** CreateTokenCopy with `sacrificeAtEndStep`: at your next end step, not just the next one. */
+  atYourEndStep?: boolean;
   /** CreateTokenCopy: the copies' equip abilities cost this much less; sacrificed at the beginning of the next upkeep (Firion). */
   equipCostsLess?: number;
   sacrificeAtNextUpkeep?: boolean;
+  /** AddCounters: "up to N": the controller adds them one at a time and may stop (Esper Terra's lore counters). */
+  upToChoice?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1734,6 +1738,8 @@ export interface CardInstance {
   crewedByThisTurn?: { turn: number; by: InstanceId[] };
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
+  /** With `sacrificeAtEndStep`: only at this player's end step ("your next end step"). */
+  sacrificeAtEndStepOf?: PlayerId;
   /** Sacrificed at the beginning of the next upkeep (Firion's token copies). */
   sacrificeAtNextUpkeep?: boolean;
   /** A creature spell that gains haste until end of turn as it enters (Summon: Brynhildr). */
@@ -2137,7 +2143,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

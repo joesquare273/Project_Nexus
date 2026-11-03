@@ -175,6 +175,7 @@ const CARD_FIELDS = {
   attackedTurn: 'copy',
   hasteOnEnter: 'copy',
   sacrificeAtNextUpkeep: 'copy',
+  sacrificeAtEndStepOf: 'copy',
   addedSubtypes: 'copy',
   crewedByThisTurn: 'copy',
   graveyardTypesUsed: 'copy',

@@ -124,7 +124,7 @@ export function enterStep(ctx: Ctx, step: Step): void {
       for (const c of battlefield(s)) {
         if (c.unearthed) moveCard(ctx, c.id, 'exile');
         else if (c.returnToHandAtEndStep) moveCard(ctx, c.id, 'hand');
-        else if (c.blitzed || c.sacrificeAtEndStep) sacrifice(ctx, c.id);
+        else if (c.blitzed || (c.sacrificeAtEndStep && (!c.sacrificeAtEndStepOf || c.sacrificeAtEndStepOf === s.activePlayer))) sacrifice(ctx, c.id);
       }
       givePriority(ctx, s.activePlayer);
       return;

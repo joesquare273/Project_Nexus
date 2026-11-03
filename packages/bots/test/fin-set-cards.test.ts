@@ -5556,3 +5556,83 @@ describe('S4 group 57: Y’shtola Rhul, Mizzix’s Mastery, Terra', () => {
     expect(s.cards[copy!]!.sacrificeAtEndStep).toBe(true);
   });
 });
+
+describe('Terra, Magical Adept // Esper Terra (every face and chapter)', () => {
+  const trance = (s: GameState, terra: string) => {
+    mana(s, 'P1', { R: 1, G: 1, C: 4 });
+    return act(s, { type: 'ActivateAbility', player: 'P1', card: terra, ability: 0 });
+  };
+  const passToChoice = (s: GameState) => {
+    for (let i = 0; i < 8 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    return s;
+  };
+
+  it('front: no enchantment among the five milled cards, no choice; Trance only as a sorcery', () => {
+    let s = newGame();
+    s.players.P1!.library = Array.from({ length: 6 }, () => put(s, 'P1', 'forest', 'library'));
+    const terra = put(s, 'P1', 'terra-magical-adept-esper-terra', 'hand');
+    mana(s, 'P1', { R: 1, G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: terra }).state;
+    expect(s.players.P1!.graveyard).toHaveLength(5);
+    expect(s.pending.kind).toBe('priority');
+    s.cards[terra]!.summoningSick = false;
+    s = goTo(s, 'beginCombat');
+    mana(s, 'P1', { R: 1, G: 1, C: 4 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: terra, ability: 0 })).toMatch(/main phase/);
+  });
+
+  it('Esper Terra is a 6/6 flying Saga; a copied non-Saga enchantment has haste and is sacrificed at your next end step only', () => {
+    let s = newGame();
+    const terra = put(s, 'P1', 'terra-magical-adept-esper-terra');
+    put(s, 'P1', 'rhystic-study');
+    s = settle(trance(s, terra)).state;
+    expect([stats(s, terra), hasKeyword(s, s.cards[terra]!, 'Flying'), countersOf(s.cards[terra]!, 'lore')]).toEqual([[6, 6], true, 1]);
+    const copy = s.players.P1!.battlefield.find((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'rhystic-study')!;
+    expect(hasKeyword(s, s.cards[copy]!, 'Haste')).toBe(true);
+    expect(s.cards[copy]!.sacrificeAtEndStepOf).toBe('P1');
+    s = goTo(s, 'end');
+    expect(s.cards[copy]?.zone ?? 'void').not.toBe('battlefield');
+  });
+
+  it('a copied Saga gets up to three lore counters, one at a time: each passes a chapter of the copy', () => {
+    const run = (extra: number) => {
+      let s = newGame();
+      const terra = put(s, 'P1', 'terra-magical-adept-esper-terra');
+      const saga = put(s, 'P1', 'summon-brynhildr', 'battlefield', { namedCounters: { lore: 1 } });
+      s = passToChoice(trance(s, terra));
+      if (s.pending.kind === 'chooseTargets') s = act(s, { type: 'ChooseTargets', player: 'P1', targets: [card(saga)] });
+      s = passToChoice(s);
+      const events: GameEvent[] = [];
+      for (let i = 0; i < 6 && s.pending.kind === 'chooseCards' && s.pending.purpose === 'counterUpTo'; i++) {
+        const pick = i < extra ? [...s.pending.cards] : [];
+        const r = actWithEvents(s, { type: 'ChooseCards', player: 'P1', cards: pick });
+        s = r.state;
+        events.push(...r.events);
+      }
+      const r = settle(s);
+      events.push(...r.events);
+      s = r.state;
+      return { s, chapters: events.filter((e) => e.type === 'AbilityTriggered' && s.cards[(e as { card: string }).card]?.defId === 'summon-brynhildr' && (e as { card: string }).card !== saga).length };
+    };
+    // The copy enters with one lore counter (chapter I); three more pass chapters II and III.
+    expect(run(0).chapters).toBe(1);
+    expect(run(1).chapters).toBe(2);
+    expect(run(3).chapters).toBe(3);
+  });
+
+  it('chapter IV adds {W}{W}{U}{U}{B}{B}{R}{R}{G}{G} and returns Terra front face up as a new object (her mill triggers again)', () => {
+    let s = newGame();
+    const terra = put(s, 'P1', 'terra-magical-adept-esper-terra', 'battlefield', { transformed: true, namedCounters: { lore: 3 } });
+    s.players.P1!.library = Array.from({ length: 10 }, () => put(s, 'P1', 'forest', 'library'));
+    const before = s.cards[terra]!.zoneChanges ?? 0;
+    // On your next turn, after the draw step, the fourth lore counter.
+    const start = s.turnNumber;
+    for (let g = 0; g < 8 && !(s.activePlayer === 'P1' && s.turnNumber > start && s.step === 'main1'); g++) s = goTo(nextStep(goTo(s, 'end')), 'main1');
+    s = settle(s).state;
+    expect(s.players.P1!.manaPool).toMatchObject({ W: 2, U: 2, B: 2, R: 2, G: 2 });
+    expect(s.cards[terra]!.zone).toBe('battlefield');
+    expect(s.cards[terra]!.transformed ?? false).toBe(false);
+    expect(s.cards[terra]!.zoneChanges).toBeGreaterThan(before);
+    expect(s.players.P1!.graveyard.length).toBeGreaterThanOrEqual(5);
+  });
+});

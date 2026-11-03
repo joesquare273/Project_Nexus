@@ -443,6 +443,11 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         // "Choose one at random" is decided as it triggers.
         ...(spec.randomModes ? { mode: randomInt(s, spec.randomModes.length) } : {}),
       });
+      // "II, III —" is two chapter abilities: lore counters added at once trigger each chapter they pass (rule 714.2b).
+      if (o.when === 'Chapter') {
+        const crossed = (spec.chapters ?? []).filter((n) => n > (o.loreFrom ?? 0) && n <= (o.loreTo ?? 0)).length;
+        for (let i = 1; i < crossed; i++) found.push(structuredClone(found.at(-1)!));
+      }
     });
   };
 

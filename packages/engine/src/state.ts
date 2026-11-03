@@ -288,7 +288,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.blitzed;
     delete c.evoked;
   }
-  if (from === 'battlefield') delete c.sacrificeAtEndStep;
+  if (from === 'battlefield') { delete c.sacrificeAtEndStep; delete c.sacrificeAtEndStepOf; }
   if (from === 'battlefield') delete c.exileAtEndOfCombat;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;
@@ -662,11 +662,12 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
   const c=s.cards[id]!, d=defOf(s,c);
   c.tapped=entersTapped(s,c);
   if(d.entersWithCounters) addCounters(ctx,id,d.entersWithCounters,undefined,d.entersWithCounterKind);
-  if(d.saga) addCounters(ctx,id,1,controller,'lore');
   for(const source of battlefield(s)) for(const spec of defOf(s,source).statics??[]) {
     if(source.id!==id && spec.entersWithExtraCounters && staticAffects(s,source,spec,c)) addCounters(ctx,id,spec.entersWithExtraCounters);
   }
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
+  // A Saga token's first lore counter comes after it exists, so its own chapter I sees it (rule 714.3a; Esper Terra's copies).
+  if(d.saga) addCounters(ctx,id,1,controller,'lore');
   return id;
 }
 

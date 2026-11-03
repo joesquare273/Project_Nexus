@@ -566,6 +566,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'removeLore') return pick([]);
   // Vaan: a Treasure is the safe choice for the basic AI.
   if (p.purpose === 'castOrTreasure') return pick([]);
+  // Esper Terra: as many lore counters as allowed (each one is another chapter).
+  if (p.purpose === 'counterUpTo') return pick([...p.cards]);
   // Memories Returning: our best into our hand, or (as the opponent) the caster's best onto the bottom.
   if (p.purpose === 'memories') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   // A cost: exile our least valuable graveyard cards.

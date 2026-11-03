@@ -2084,6 +2084,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (src.zone !== 'battlefield' || src.monstrous) return;
         src.monstrous = true;
       }
+      // "Put up to three lore counters on it": one at a time, stopping whenever (counterCount is how many are left).
+      if (effect.upToChoice) {
+        for (const id of onBattlefield) if (amount > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'counterUpTo', cards: [id], min: 0, max: 1, counterCount: amount, ...(effect.counter ? { counter: effect.counter } : {}) }];
+        return;
+      }
       for (const id of onBattlefield) {
         addCounters(ctx, id, amount, item.controller, effect.counter);
         // Sazh Katzroy: "then double the number of +1/+1 counters on that creature".
@@ -2608,6 +2613,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
           const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess);
           if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
+          // "At the beginning of your next end step": only the controller's.
+          if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
           if (effect.sacrificeAtNextUpkeep) s.cards[token]!.sacrificeAtNextUpkeep = true;
           r.createdTokens.push(token);
         }
@@ -3587,6 +3594,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     } else {
       for (const id of m.pool) moveCard(ctx, id, 'hand');
       delete r.memories;
+    }
+  } else if (pending.purpose === 'counterUpTo') {
+    const id = cards[0];
+    if (id && s.cards[id]!.zone === 'battlefield') {
+      addCounters(ctx, id, 1, pending.player, pending.counter ?? '+1/+1');
+      const left = (pending.counterCount ?? 1) - 1;
+      const { kind: _kind, ...choice } = pending;
+      if (left > 0) r.choiceQueue = [{ ...choice, counterCount: left }, ...(r.choiceQueue ?? [])];
     }
   } else if (pending.purpose === 'castOrTreasure') {
     // Choosing it: you may cast it now (as this resolves: this turn, any timing). Choosing none: a Treasure.
