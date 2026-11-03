@@ -318,7 +318,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
     if (!e.trigger) err('GrantTrigger needs a trigger.');
     else {
       validateTrigger(e.trigger, err);
-      if (e.trigger.when !== 'CombatDamageToPlayer' || e.trigger.what) err('GrantTrigger currently supports self combat damage to a player.');
+      if (!['CombatDamageToPlayer', 'Dies'].includes(e.trigger.when) || e.trigger.what) err('GrantTrigger supports self combat damage to a player, and "when this creature dies".');
     }
   }
   if (e.effect === 'GrantFlags' && !e.flags?.length) err('GrantFlags needs flags.');

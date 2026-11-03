@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 29: Galuf's Final Act and Self-Destruct
+
+- 203 of 320. Engine: GrantTrigger also grants "when this creature dies"
+  (it triggers as the creature dies, using its last known power), DealDamage
+  `damageItself`, and an effect whose damage comes from the previous
+  target no longer replaces that target with its own.
+
 ### Set cards, group 28: Crossroads Village and Delivery Moogle
 
 - 201 of 320. Engine: "as this enters, choose a color" (`chooseColor`

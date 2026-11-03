@@ -510,7 +510,11 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId, sacrificed = false): 
     moveCard(ctx, id, 'exile', { sacrificed });
     return;
   }
-  if (hasType(s, c, 'creature')) ctx.ev.push({ type: 'CreatureDied', card: id, defId: c.defId, owner: c.owner });
+  if (hasType(s, c, 'creature')) {
+    // "When this creature dies" abilities granted until end of turn trigger as it dies (rule 603.10a looks back).
+    const granted = s.temporaryEffects.filter((t) => t.affected === id && t.trigger?.when === 'Dies').map((t) => structuredClone(t.trigger!));
+    ctx.ev.push({ type: 'CreatureDied', card: id, defId: c.defId, owner: c.owner, controller: c.controller, ...(granted.length ? { grantedTriggers: granted } : {}) });
+  }
   moveCard(ctx, id, 'graveyard', { sacrificed });
   // "When that creature dies this turn, return that card to its owner's hand."
   if (backToHand && c.zone === 'graveyard') moveCard(ctx, id, 'hand');

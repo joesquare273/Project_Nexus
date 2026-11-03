@@ -610,6 +610,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** DealDamage with damageSource PreviousTarget: the chosen creature also deals the damage to itself ("and X damage to itself", Self-Destruct). */
+  damageItself?: boolean;
   /** SearchLibraryToHand: search your graveyard too ("search your library and/or graveyard", Delivery Moogle). */
   alsoGraveyard?: boolean;
   /** SearchLibraryTo...: the cards found must have different names. */
@@ -2224,7 +2226,8 @@ export type GameEvent =
   | { type: 'BlockDeclared'; blocker: InstanceId; attacker: InstanceId }
   | { type: 'AttackersUnblocked'; player: PlayerId; defender: PlayerId; attackers: InstanceId[] }
   | { type: 'DamageDealt'; sourceSnapshot?: DamageSourceSnapshot; damagedMonarch?: PlayerId; source: InstanceId; target: Target; amount: number; combat: boolean; grantedTriggers?: TriggerSpec[]; sourceController?: PlayerId; sourceObject?: number; sourceCounterKinds?: number }
-  | { type: 'CreatureDied'; card: InstanceId; defId: CardDefId; owner: PlayerId }
+  /** `grantedTriggers`: "when this creature dies" abilities it was given until end of turn (Galuf's Final Act). */
+  | { type: 'CreatureDied'; card: InstanceId; defId: CardDefId; owner: PlayerId; controller?: PlayerId; grantedTriggers?: TriggerSpec[] }
   | { type: 'PermanentDestroyed'; card: InstanceId; defId: CardDefId; owner: PlayerId }
   | { type: 'LifeChanged'; player: PlayerId; from: number; to: number }
   | { type: 'StepChanged'; step: Step; activePlayer: PlayerId }

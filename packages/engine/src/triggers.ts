@@ -375,6 +375,13 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
           subject: e.card });
       }
     }
+    if (e.type === 'CreatureDied') {
+      for (const spec of e.grantedTriggers ?? []) {
+        found.push({ source: e.card, sourceObject: Math.max(0, (s.cards[e.card]?.zoneChanges ?? 1) - 1), controller: e.controller ?? e.owner,
+          sourceZone: 'battlefield', ability: -1, spec, subject: e.card });
+      }
+      continue;
+    }
     if (e.type !== 'DamageDealt' || !e.combat || e.target.kind !== 'player') continue;
     for (const spec of e.grantedTriggers ?? []) {
       found.push({ source: e.source, sourceObject: e.sourceObject, controller: e.sourceController!,

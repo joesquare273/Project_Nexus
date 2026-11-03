@@ -3621,3 +3621,32 @@ describe('S4 group 28: Crossroads Village and Delivery Moogle', () => {
     expect(hasKeyword(s, s.cards[moogle]!, 'Flying')).toBe(true);
   });
 });
+
+describe('S4 group 29: Galuf’s Final Act and Self-Destruct', () => {
+  it('Galuf’s Final Act: +1/+0, and when that creature dies this turn, +1/+1 counters equal to its power on up to one creature', () => {
+    let s = newGame();
+    const body = put(s, 'P1', 'coeurl');
+    const heir = put(s, 'P1', 'summon-titan');
+    const spell = put(s, 'P1', 'galufs-final-act', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(body)] }).state;
+    const power = stats(s, body)[0]!;
+    const kill = put(s, 'P1', 'thunder-magic', 'hand');
+    mana(s, 'P1', { R: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kill, mode: 2, targets: [card(body)] }, { targets: (o) => [o.flat().find((t) => t.kind === 'card' && t.card === heir)!] }).state;
+    expect(s.cards[body]!.zone).toBe('graveyard');
+    expect(countersOf(s.cards[heir]!, '+1/+1')).toBe(power);
+  });
+
+  it('Self-Destruct: your creature deals damage equal to its power to another target and to itself', () => {
+    let s = newGame();
+    const titan = put(s, 'P1', 'summon-titan');
+    const spell = put(s, 'P1', 'self-destruct', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    // The other target can't be the creature itself.
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan), card(titan)] })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan), { kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(13);
+    expect(s.cards[titan]!.zone).toBe('graveyard');
+  });
+});

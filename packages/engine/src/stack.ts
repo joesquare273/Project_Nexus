@@ -1782,6 +1782,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
       const from = effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source;
       for (const t of targets) if (!(t.kind === 'card' && t.card === chosen)) dealDamage(ctx, from, t, amount, false);
+      // "... and X damage to itself" (Self-Destruct).
+      if (effect.damageItself && chosen && s.cards[chosen]!.zone === 'battlefield') dealDamage(ctx, from, { kind: 'card', card: chosen }, amount, false);
       return;
     }
     case 'DrawCards':
@@ -2677,7 +2679,8 @@ function continueResolving(ctx: Ctx): void {
     if (chosen && !sameTargetObject(s, item, r.chosenUsed - 1)) continue;
     // "Among one or two targets": with only one, it gets this part too.
     if (chosen?.kind === 'none' && effect.elseFirstTarget && item.targets[0] && sameTargetObject(s, item, 0)) chosen = item.targets[0];
-    if (chosen) {
+    // "Target creature you control deals damage to any other target": the damage comes from the earlier target, so it stays the previous one.
+    if (chosen && effect.damageSource !== 'PreviousTarget') {
       r.previousTarget = chosen;
       // Remember its power now: "life equal to its power" still works after it's exiled (rule 608.2h).
       const c = chosen.kind === 'card' ? s.cards[chosen.card] : undefined;
