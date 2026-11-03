@@ -4077,3 +4077,58 @@ describe('S4 group 38: Adeline, Absolute Virtue, Aettir and Priwen, Blitzball', 
     expect(s.cards[ball]!.zone).toBe('graveyard');
   });
 });
+
+describe('S4 group 39: Zell Dincht, Traxos, Tymna the Weaver, Torgal', () => {
+  it('Zell Dincht: an additional land each turn; +1/+0 per land you control; at your end step a land goes back to hand', () => {
+    let s = newGame();
+    const zell = put(s, 'P1', 'zell-dincht');
+    const lands = () => s.players.P1!.battlefield.filter((id) => s.cardDefs[s.cards[id]!.defId]!.types.includes('land')).length;
+    const base = lands();
+    for (let i = 0; i < 2; i++) s = settle(act(s, { type: 'PlayLand', player: 'P1', card: put(s, 'P1', 'forest', 'hand') })).state;
+    expect(lands()).toBe(base + 2);
+    expect(stats(s, zell)).toEqual([lands(), 3]);
+    s = settle(goTo(s, 'end')).state;
+    expect(lands()).toBe(base + 1);
+  });
+
+  it('Traxos enters tapped and doesn’t untap; casting a historic spell untaps it', () => {
+    let s = newGame();
+    const traxos = put(s, 'P1', 'traxos-scourge-of-kroog', 'hand');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: traxos }).state;
+    expect(s.cards[traxos]!.tapped).toBe(true);
+    s = goTo(goTo(goTo(s, 'end'), 'upkeep'), 'end');
+    s = goTo(s, 'main1');
+    expect(s.activePlayer).toBe('P1');
+    expect(s.cards[traxos]!.tapped).toBe(true);
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.cards[traxos]!.tapped).toBe(false);
+  });
+
+  it('Tymna the Weaver: in your postcombat main phase you may pay X life to draw X, X = opponents dealt combat damage this turn', () => {
+    let s = newGame(3);
+    const tymna = put(s, 'P1', 'tymna-the-weaver');
+    const cat = put(s, 'P1', 'coeurl');
+    s = fight(s, [{ attacker: tymna, defender: 'P2' }, { attacker: cat, defender: 'P3' }]).state;
+    const life = s.players.P1!.life;
+    const hand = s.players.P1!.hand.length;
+    s = settle(goTo(s, 'main2', { accept: true }), { accept: true }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+    expect(s.players.P1!.life).toBe(life - 2);
+  });
+
+  it('Torgal: your first Human creature spell each turn enters with a +1/+1 counter per Dog and Wolf you control; taps for any color', () => {
+    let s = newGame();
+    put(s, 'P1', 'torgal-a-fine-hound');
+    const first = put(s, 'P1', 'danitha-capashen-paragon', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: first }).state;
+    expect(countersOf(s.cards[first]!, '+1/+1')).toBe(1);
+    const second = put(s, 'P1', 'danitha-capashen-paragon', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second }).state;
+    expect(countersOf(s.cards[second]!, '+1/+1')).toBe(0);
+  });
+});

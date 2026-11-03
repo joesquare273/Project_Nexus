@@ -426,6 +426,8 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** The target players win the game: every other player loses. */
   'WinGame',
+  /** The triggering creature spell enters with `amount` additional +1/+1 counters (Torgal, A Fine Hound). */
+  'SubjectEntersWithCounters',
   /** You put `amount` cards from your hand on top of your library, the first chosen on top (Brainstorm). */
   'PutFromHandOnTop',
   /** Shuffle the cards matching `filter` from your graveyard into your library (Elixir). */
@@ -534,6 +536,8 @@ export const COUNT_KINDS = [
   'GreatestPowerAmongYourCreatures',
   /** The total mana value of the other permanents you control (Summon: Bahamut's Mega Flare). */
   'TotalManaValueOfYourOtherPermanents',
+  /** Opponents dealt combat damage this turn (Tymna the Weaver). */
+  'OpponentsDealtCombatDamageThisTurn',
   /** Cards in your graveyard (Sidequest: Card Collection). */
   'CardsInYourGraveyard',
   /** Creatures that died under an opponent's control this turn. */

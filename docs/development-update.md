@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 37: Zell Dincht, Traxos, Tymna the Weaver, Torgal
+
+- 231 of 320. Engine: the `OpponentsDealtCombatDamageThisTurn` count and
+  `SubjectEntersWithCounters` (the triggering creature spell enters with
+  extra +1/+1 counters).
+
 ### Set cards, group 36: Adeline, Absolute Virtue, Aettir and Priwen, Blitzball
 
 - 227 of 320. Engine: `powerFromCount`, CreateToken `attackingEachOpponent`,

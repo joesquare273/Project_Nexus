@@ -2075,6 +2075,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (effect.gainLifePerCard && moving.length) changeLife(ctx, item.controller, moving.length);
       return;
     }
+    case 'SubjectEntersWithCounters': {
+      const subject = item.kind === 'ability' ? item.subject : undefined;
+      const c = subject ? s.cards[subject] : undefined;
+      if (c?.zone === 'stack' && amount > 0) c.extraCountersOnEnter = (c.extraCountersOnEnter ?? 0) + amount;
+      return;
+    }
     case 'WinGame':
       for (const pid of targetPlayers(targets)) {
         for (const other of alivePlayers(s)) if (other !== pid) s.players[other]!.lostToEffect = true;
