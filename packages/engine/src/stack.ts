@@ -39,6 +39,7 @@ import {
   type Ctx,
   removeFromCombat,
   staticRule,
+  playerProtectedFromOpponents,
 } from './state.ts';
 import { givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue } from './typerules.ts';
@@ -300,6 +301,8 @@ export function isLegalTarget(
   if (t.kind === 'player') {
     const p = s.players[t.player];
     if (!p || p.eliminated) return false;
+    // Protection from each of their opponents: those opponents can't target them.
+    if (t.player !== controller && playerProtectedFromOpponents(s, t.player)) return false;
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
@@ -1105,6 +1108,9 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
     return 'You do not control that permanent.';
   }
   if (zone === 'battlefield' && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
+  if (spec.ifOpponentHitByLegendary && !(s.combatDamageHistory ?? []).some((h) => h.legendary && h.player !== playerId && h.sourceController === playerId)) {
+    return 'Only after an opponent was dealt combat damage by a legendary creature this turn.';
+  }
   if (zone === 'hand' && (c.zone !== 'hand' || c.owner !== playerId)) return 'That card is not in your hand.';
   if (zone === 'graveyard' && (c.zone !== 'graveyard' || c.owner !== playerId)) return 'That card is not in your graveyard.';
   if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';
@@ -2084,6 +2090,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'CreateToken': {
       // "Create a number of tokens equal to ..." can be zero. "Its controller creates": under the target player.
       const players = targetPlayers(targets);
+      // Adeline: for each opponent, a token tapped and attacking that player.
+      if (effect.attackingEachOpponent) {
+        for (const opp of alivePlayers(s).filter((p) => p !== item.controller)) {
+          for (let i = 0; i < amount; i++) {
+            const id = createToken(ctx, effect.token!, item.controller);
+            s.cards[id]!.tapped = true;
+            if (s.combat) s.combat.attacks.push({ attacker: id, defender: opp });
+            r.createdTokens.push(id);
+          }
+        }
+        return;
+      }
       for (const pid of players.length > 0 ? players : [item.controller]) {
         for (let i = 0; i < amount; i++) {
           const id = createToken(ctx, effect.token!, pid);

@@ -622,6 +622,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** CreateToken: one for each opponent, tapped and attacking that player (Adeline). */
+  attackingEachOpponent?: boolean;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
   spellOrPermanent?: boolean;
   /** ShuffleGraveyardIntoLibrary: you gain 1 life for each card shuffled in (Elixir). */
@@ -1104,6 +1106,8 @@ export interface ActivatedSpec {
   oncePerTurn?: boolean;
   /** "Activate only during your turn." */
   yourTurn?: boolean;
+  /** "Activate only if an opponent was dealt combat damage by a legendary creature this turn" (Blitzball). */
+  ifOpponentHitByLegendary?: boolean;
   effects: EffectSpec[];
 }
 
@@ -1201,6 +1205,10 @@ export interface StaticSpec {
   losesAllAbilities?: boolean;
   /** "Can't attack or block." */
   cantAttackOrBlock?: boolean;
+  /** Base power and toughness equal to the source's controller's life total (Aettir and Priwen). */
+  basePTFromLife?: boolean;
+  /** "You have protection from each of your opponents" (Absolute Virtue). */
+  controllerProtectedFromOpponents?: boolean;
   /** "Doesn't untap during its controller's untap step" (Sleep Magic). */
   doesntUntap?: boolean;
   /** "Its activated abilities can't be activated", mana abilities included (Stuck in Summoner's Sanctum). */
@@ -1401,6 +1409,8 @@ export interface CardDefinition {
   kickerSacrifice?: ObjectFilter;
   /** Ward {N} (rule 702.21). */
   ward?: number;
+  /** Its power is equal to this count, everywhere (a characteristic-defining ability, rule 604.3: Adeline). */
+  powerFromCount?: CountKind;
   /** "Can't be blocked except by N or more creatures" (Relentless X-ATM092: 3). */
   minBlockers?: number;
   /** "If you would draw a card while your library has no cards in it, you win the game instead" (Laboratory Maniac). */
@@ -2054,7 +2064,7 @@ export interface GameState {
   /** Cleanup actions have finished; state-based actions/triggers must be checked before ending the turn. */
   cleanupCheck?: boolean;
   cleanupNeedsPriority?: boolean;
-  combatDamageHistory?: { source: InstanceId; sourceObject: number; player: PlayerId; dragon: boolean }[];
+  combatDamageHistory?: { source: InstanceId; sourceObject: number; player: PlayerId; dragon: boolean; legendary?: boolean; sourceController?: PlayerId }[];
   format: FormatConfig;
   cardDefs: Record<CardDefId, CardDefinition>;
   cards: Record<InstanceId, CardInstance>;

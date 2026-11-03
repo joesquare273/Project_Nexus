@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 36: Adeline, Absolute Virtue, Aettir and Priwen, Blitzball
+
+- 227 of 320. Engine: `powerFromCount`, CreateToken `attackingEachOpponent`,
+  `controllerProtectedFromOpponents` (damage and targeting), static
+  `basePTFromLife`, and `ifOpponentHitByLegendary` on activated abilities
+  (combat damage history now records legendary sources and their controller).
+
 ### Set cards, group 35: Venser, Brainstorm, Laboratory Maniac, Elixir, X-ATM092
 
 - 223 of 320. Engine: "target spell or permanent" (`spellOrPermanent`;

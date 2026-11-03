@@ -156,6 +156,11 @@ export function aliveFromActive(s: GameState): PlayerId[] {
 }
 
 /** Every permanent on the battlefield, in turn order then entry order. */
+/** "You have protection from each of your opponents" (Absolute Virtue). */
+export function playerProtectedFromOpponents(s: GameState, pid: PlayerId): boolean {
+  return battlefield(s).some((c) => c.controller === pid && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.controllerProtectedFromOpponents));
+}
+
 /** Whether a static rule from any permanent applies to `c` ("doesn't untap", "can't activate its abilities"). */
 export function staticRule(s: GameState, c: CardInstance, rule: 'doesntUntap' | 'cantActivateAbilities'): boolean {
   return battlefield(s).some((source) => (defOf(s, source).statics ?? []).some((spec) => spec[rule] && staticAffects(s, source, spec, c)));
@@ -454,6 +459,8 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   const source = s.cards[sourceId]!;
   // "Prevent all damage that would be dealt to you this turn" (Ultimate Magic: Holy).
   if (target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
+  // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
+  if (target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
     const victim = s.cards[target.card]!;
     // Protection prevents damage from sources of that color (rule 702.16e).
@@ -488,6 +495,7 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {
       source: sourceId, sourceObject: source.zoneChanges ?? 0, player: target.player,
       dragon: characteristics(s, source).subtypes.includes('Dragon'),
+      legendary: !!defOf(s, source).supertypes?.includes('Legendary'), sourceController: source.controller,
     }];
     changeLife(ctx, target.player, -amount);
     // Commander damage (rule 903.10a): combat damage from a commander is tracked per commander.

@@ -3,7 +3,8 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, spellOptions, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { type Target, type GameEvent, spellOptions, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { dealDamage } from '../../engine/src/state.ts';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const stats = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
@@ -4022,5 +4023,57 @@ describe('S4 group 37: Venser, Brainstorm, Laboratory Maniac, Elixir, Relentless
     expect(t.cards[dead]!.zone).toBe('battlefield');
     expect(t.cards[dead]!.tapped).toBe(true);
     expect(countersOf(t.cards[dead]!, 'finality')).toBe(1);
+  });
+});
+
+describe('S4 group 38: Adeline, Absolute Virtue, Aettir and Priwen, Blitzball', () => {
+  it('Adeline’s power is the number of creatures you control; whenever you attack, a 1/1 Human enters tapped and attacking each opponent', () => {
+    let s = newGame(3);
+    const adeline = put(s, 'P1', 'adeline-resplendent-cathar');
+    put(s, 'P1', 'coeurl');
+    expect(stats(s, adeline)).toEqual([2, 4]);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: adeline, defender: 'P2' }] })).state;
+    const humans = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'human-token');
+    expect(humans).toHaveLength(2);
+    expect(humans.every((id) => s.cards[id]!.tapped)).toBe(true);
+    expect(new Set(s.combat!.attacks.filter((a) => humans.includes(a.attacker)).map((a) => a.defender))).toEqual(new Set(['P2', 'P3']));
+    expect(stats(s, adeline)[0]).toBe(4);
+    expect(hasKeyword(s, s.cards[adeline]!, 'Vigilance')).toBe(true);
+  });
+
+  it('Absolute Virtue: can’t be countered, flying; you can’t be dealt damage or targeted by your opponents', () => {
+    const s = newGame();
+    put(s, 'P1', 'absolute-virtue');
+    const foe = put(s, 'P2', 'coeurl');
+    const ctx = { s, ev: [] as GameEvent[] };
+    dealDamage(ctx, foe, { kind: 'player', player: 'P1' }, 3, true);
+    expect(s.players.P1!.life).toBe(20);
+    const comet = put(s, 'P2', 'choco-comet', 'hand');
+    mana(s, 'P2', { R: 2, C: 2 });
+    const targetsP1 = spellOptions(s, 'P2').some((o) => o.action.type === 'CastSpell' && o.action.card === comet && (o.action.targets ?? []).some((t) => t.kind === 'player' && t.player === 'P1'));
+    expect(targetsP1).toBe(false);
+    expect(s.cardDefs['absolute-virtue']!.cantBeCountered).toBe(true);
+  });
+
+  it('Aettir and Priwen: the equipped creature has base power and toughness equal to your life total', () => {
+    const s = newGame();
+    const body = put(s, 'P1', 'coeurl');
+    put(s, 'P1', 'aettir-and-priwen', 'battlefield', { attachedTo: body });
+    expect(stats(s, body)).toEqual([20, 20]);
+    s.players.P1!.life = 7;
+    expect(stats(s, body)).toEqual([7, 7]);
+  });
+
+  it('Blitzball taps for any color; {T}, sacrifice: draw two, only after a legendary creature dealt combat damage to an opponent this turn', () => {
+    let s = newGame();
+    const ball = put(s, 'P1', 'blitzball');
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: ball, ability: 0 })).toMatch(/legendary/);
+    const legend = put(s, 'P1', 'rufus-shinra');
+    s = fight(s, [{ attacker: legend, defender: 'P2' }]).state;
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ball, ability: 0 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+    expect(s.cards[ball]!.zone).toBe('graveyard');
   });
 });

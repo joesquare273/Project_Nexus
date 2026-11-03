@@ -251,6 +251,8 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     subtypes: subtypesOf(s, c),
     ward: d.ward ?? 0,
   };
+  // "Adeline's power is equal to the number of creatures you control" (rule 604.3: in every zone).
+  if (d.powerFromCount) out.power = countOf(s, d.powerFromCount, c.controller, c.id);
   if (c.zone !== 'battlefield') return out;
 
   const removed: Keyword[] = [];
@@ -258,9 +260,11 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   let baseTimestamp = -1;
   for (const source of staticSources(s)) {
     for (const spec of def(s, source).statics ?? []) {
-      if (!spec.basePowerToughness || (spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;
+      if (!(spec.basePowerToughness || spec.basePTFromLife) || (spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;
       const timestamp = (spec.affects === 'EquippedCreature' ? source.attachedTimestamp : undefined) ?? source.enteredTimestamp ?? 0;
-      if (timestamp >= baseTimestamp) { [out.power, out.toughness] = spec.basePowerToughness; baseTimestamp = timestamp; }
+      // "Base power and toughness X/X, where X is your life total" (Aettir and Priwen).
+      const base: [number, number] = spec.basePTFromLife ? [s.players[source.controller]!.life, s.players[source.controller]!.life] : spec.basePowerToughness!;
+      if (timestamp >= baseTimestamp) { [out.power, out.toughness] = base; baseTimestamp = timestamp; }
     }
   }
   for (const effect of s.temporaryEffects) {
