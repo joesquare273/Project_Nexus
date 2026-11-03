@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 56: Muldrotha, Vaan, Firion
+
+Three more set cards (307 of 320). Muldrotha casts one permanent spell of
+each type (and plays one land) from your graveyard each turn; Vaan offers
+"cast the exiled card or take a Treasure"; Firion's token copies of your
+Equipment equip for {2} less and are sacrificed at the next upkeep.
+
 ### Set cards, group 55: Jodah, Emet-Selch, Memories Returning
 
 Three more set cards (304 of 320). Jodah's cascade-like trigger exiles until

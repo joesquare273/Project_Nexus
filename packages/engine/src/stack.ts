@@ -651,7 +651,7 @@ export function playableZone(
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
   // Hades, Sorcerer of Eld: "During your turn, you may play cards from your graveyard" (lands too).
   if (c.owner === playerId && c.zone === 'graveyard' && s.activePlayer === playerId && defOf(s, c).types.includes('land')
-    && battlefield(s).some((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.playLandsFromGraveyard))) return 'graveyard';
+    && graveyardLandSource(s, playerId, c)) return 'graveyard';
   if (canCastLibraryTop(s, playerId, c, spellDefinition(defOf(s, c), adventure))) return 'library';
   // Commanders are cast from the command zone (rule 903.8).
   if (c.owner === playerId && c.zone === 'command' && c.isCommander) return 'command';
@@ -705,6 +705,27 @@ export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, 
   return null;
 }
 
+const PERMANENT_TYPES = ['artifact', 'creature', 'enchantment', 'land', 'planeswalker', 'battle'] as const;
+
+/** Muldrotha: this card's permanent types the source hasn't used from the graveyard yet this turn. */
+function unusedPermanentTypes(s: GameState, source: CardInstance, def: CardDefinition): string[] {
+  const used = source.graveyardTypesUsed?.turn === s.turnNumber ? source.graveyardTypesUsed.types : [];
+  return PERMANENT_TYPES.filter((t) => (def.types as string[]).includes(t) && !used.includes(t));
+}
+
+function markPermanentTypeUsed(s: GameState, source: CardInstance, def: CardDefinition): void {
+  const type = unusedPermanentTypes(s, source, def)[0];
+  if (!type) return;
+  const used = source.graveyardTypesUsed?.turn === s.turnNumber ? source.graveyardTypesUsed.types : [];
+  source.graveyardTypesUsed = { turn: s.turnNumber, types: [...used, type] };
+}
+
+/** A permanent letting this player play this land card from their graveyard now (Hades; Muldrotha once each turn). */
+export function graveyardLandSource(s: GameState, playerId: PlayerId, c: CardInstance): CardInstance | undefined {
+  return battlefield(s).find((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) =>
+    st.playLandsFromGraveyard && (!st.castFromGraveyard?.perPermanentType || unusedPermanentTypes(s, x, defOf(s, c)).includes('land'))));
+}
+
 /** Each independent permanent granting a once-per-turn graveyard permission. */
 export function graveyardCastSources(s: GameState, playerId: PlayerId, c: CardInstance, adventure = false): InstanceId[] {
   if (s.activePlayer !== playerId || !isSpellCard(defOf(s, c))) return [];
@@ -715,6 +736,7 @@ export function graveyardCastSources(s: GameState, playerId: PlayerId, c: CardIn
       const allow = spec.castFromGraveyard;
       // Edgar's is once each turn; Noctis's has no limit.
       if (allow && !allow.unlimited && source.graveyardCastTurn === s.turnNumber) continue;
+      if (allow?.perPermanentType && unusedPermanentTypes(s, source, spellDefinition(defOf(s, c), adventure)).length === 0) continue;
       if (allow && matchesObject(s, allow.filter, c, { controller: playerId, source: source.id }, c.owner, spellDefinition(defOf(s, c), adventure))) { out.push(source.id); break; }
     }
   }
@@ -804,6 +826,10 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   if (p.landsPlayedThisTurn >= landDrops(s, playerId)) reject('You have already played a land this turn.');
   if (reveal && !canReveal(s, c, playerId)) reject('You have no card to reveal for that land.');
   p.landsPlayedThisTurn += 1;
+  if (from === 'graveyard') {
+    const source = graveyardLandSource(s, playerId, c);
+    if (source && (defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.perPermanentType)) markPermanentTypeUsed(s, source, { ...defOf(s, c), types: ['land'] });
+  }
   ctx.ev.push({ type: 'LandPlayed', player: playerId, card: id, from });
   moveCard(ctx, id, 'battlefield');
   c.controller = playerId;
@@ -1041,6 +1067,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   // Edgar's permission is used up for this turn.
   const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure) : undefined;
   if (edgar && !edgar.unlimited) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
+  if (edgar?.perPermanentType) markPermanentTypeUsed(s, s.cards[edgar.source]!, def);
   // Noctis: "by paying 3 life in addition to paying their other costs". Raubahn's ward: life equal to his power.
   const citadelLife = from === 'library' && libraryTopCostsLife(s, playerId) ? manaValue(parseManaCost(def.manaCost)) : 0;
   const lifeToPay = (edgar?.payLife ?? 0) + wardLife(s, targets, playerId) + citadelLife;
@@ -1157,6 +1184,7 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
     }
   }
   const t = targets[0];
+  if (spec.equip && source && defOf(s, source).equipCostsLess) cost = reduceGeneric(cost, defOf(s, source).equipCostsLess!);
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
   }
@@ -2277,6 +2305,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'memories', cards: [...pool], min: 1, max: 1 }];
       return;
     }
+    case 'CastExiledOrTreasure': {
+      const exiled = (r.exiledToPlay ?? []).filter((id) => s.cards[id]?.zone === 'exile');
+      const castable = exiled.filter((id) => !defOf(s, s.cards[id]!).types.includes('land') && canEverCast(defOf(s, s.cards[id]!)));
+      if (castable.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castOrTreasure', cards: castable, min: 0, max: 1 }];
+      else r.createdTokens.push(createToken(ctx, 'treasure-token', item.controller));
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -2560,8 +2595,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'CreateTokenCopy':
       for (const id of onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
-          const token = createTokenCopy(ctx, id, item.controller);
+          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess);
           if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
+          if (effect.sacrificeAtNextUpkeep) s.cards[token]!.sacrificeAtNextUpkeep = true;
           r.createdTokens.push(token);
         }
       }
@@ -3541,6 +3577,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       for (const id of m.pool) moveCard(ctx, id, 'hand');
       delete r.memories;
     }
+  } else if (pending.purpose === 'castOrTreasure') {
+    // Choosing it: you may cast it now (as this resolves: this turn, any timing). Choosing none: a Treasure.
+    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, ignoreTiming: true };
+    if (cards.length === 0) createToken(ctx, 'treasure-token', pending.player);
   } else if (pending.purpose === 'castFree') {
     for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true };
   } else if (pending.purpose === 'removeLore') {
@@ -3811,8 +3851,10 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
 }
 
 /** A token that's a copy of `original`; copy effects and their exceptions are themselves copiable (rule 707.2). */
-function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId): InstanceId {
+function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number): InstanceId {
   const c = ctx.s.cards[original]!, definition = structuredClone(copiableDefinition(ctx.s, c));
+  // Firion: "except it has 'This Equipment's equip abilities cost {2} less to activate.'"
+  if (equipCostsLess) definition.equipCostsLess = (definition.equipCostsLess ?? 0) + equipCostsLess;
   const printing = c.copy?.printing ?? c.printing ?? definition.printing;
   return createToken(ctx, c.defId, controller, { definition, artDefId: c.copy?.artDefId ?? c.defId, copiedName: definition.name, ...(printing ? { printing } : {}) });
 }

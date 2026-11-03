@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Vaan: you may cast the card exiled earlier in this ability (paying its costs); if you don't, create a Treasure. */
+  'CastExiledOrTreasure',
   /** Memories Returning: reveal the top five; you and an opponent alternately put one into your hand and one on the bottom; the last goes to your hand. */
   'MemoriesReturning',
   /** "When you next cast a creature spell this turn, it gains haste until end of turn" (Summon: Brynhildr). */
@@ -729,6 +731,9 @@ export interface EffectSpec {
   /** ExileUntilFound: only a card with lesser mana value than the triggering spell; the rest go on the bottom in a random order (Jodah). */
   lesserThanSubject?: boolean;
   restToBottom?: boolean;
+  /** CreateTokenCopy: the copies' equip abilities cost this much less; sacrificed at the beginning of the next upkeep (Firion). */
+  equipCostsLess?: number;
+  sacrificeAtNextUpkeep?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -993,6 +998,8 @@ export interface ObjectFilter {
   anyOf?: ObjectFilter[];
   /** A Vehicle the card with the ability crewed this turn (Balthier and Fran). */
   crewedBySource?: boolean;
+  /** Owned by someone other than the ability's controller ("a spell you don't own"). */
+  notOwnedByYou?: boolean;
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
   /** Only the card itself ("when this creature dies, if it had no +1/+1 counters on it"). */
@@ -1311,7 +1318,7 @@ export interface StaticSpec {
    * from your graveyard. If you cast a spell this way, that artifact enters tapped."
    */
   /** `unlimited`: any number of times, whenever you could cast it (Noctis), not once on your turn (Edgar); `payLife` extra; `finality`: it enters with a finality counter. */
-  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean };
+  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean; /** Muldrotha: one permanent spell of each permanent type each turn (and one land, with `playLandsFromGraveyard`). */ perPermanentType?: boolean };
   /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
   equipCost?: { mana: string; ifArtifactsAtLeast: number };
   /** Works while the card is in this zone instead of on the battlefield (Anger, from the graveyard). */
@@ -1475,6 +1482,8 @@ export interface CardDefinition {
   equipLegendary?: string;
   /** "Equip abilities you activate that target this cost {N} less." */
   equipDiscount?: number;
+  /** "This Equipment's equip abilities cost {N} less to activate" (Firion's token copies). */
+  equipCostsLess?: number;
   /** "[Type]cycling [cost]": discard from hand to search for a card of that subtype, or a basic land. */
   landcycling?: { subtype?: string; basic?: boolean; cost: string };
   /** "Cycling [cost]": discard from hand to draw a card. */
@@ -1715,10 +1724,14 @@ export interface CardInstance {
   damagedTurn?: number;
   /** How many times one of its abilities resolved this turn (`turn:ability` key). */
   resolutionsThisTurn?: { key: string; item: string; count: number };
+  /** Muldrotha: the permanent types already used from the graveyard this turn. */
+  graveyardTypesUsed?: { turn: number; types: string[] };
   /** The creatures that crewed this Vehicle this turn. */
   crewedByThisTurn?: { turn: number; by: InstanceId[] };
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
+  /** Sacrificed at the beginning of the next upkeep (Firion's token copies). */
+  sacrificeAtNextUpkeep?: boolean;
   /** A creature spell that gains haste until end of turn as it enters (Summon: Brynhildr). */
   hasteOnEnter?: boolean;
   /** The turn this creature was last declared as an attacker (boast). */
@@ -2120,7 +2133,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

@@ -103,6 +103,8 @@ export function enterStep(ctx: Ctx, step: Step): void {
       givePriority(ctx, s.activePlayer);
       return;
     case 'upkeep':
+      // Firion: "Sacrifice that token at the beginning of the next upkeep."
+      for (const c of battlefield(s)) if (c.sacrificeAtNextUpkeep) sacrifice(ctx, c.id);
       // Rebound: "At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost."
       // Simplified: it can be cast free at any time during this turn.
       for (const id of s.players[s.activePlayer]!.exile) {

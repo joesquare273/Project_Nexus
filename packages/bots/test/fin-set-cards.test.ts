@@ -5432,3 +5432,67 @@ describe('S4 group 55: Jodah, Emet-Selch, Memories Returning', () => {
     expect(s.players.P1!.library.slice(-2)).toEqual([five[1], five[3]]);
   });
 });
+
+describe('S4 group 56: Muldrotha, Vaan, Firion', () => {
+  it('Muldrotha: on your turn, a land and one permanent spell of each permanent type from your graveyard', () => {
+    let s = newGame();
+    put(s, 'P1', 'muldrotha-the-gravetide');
+    const cats = [put(s, 'P1', 'coeurl', 'graveyard'), put(s, 'P1', 'coeurl', 'graveyard')];
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    const forest = put(s, 'P1', 'forest', 'graveyard');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cats[0]! }).state;
+    expect(s.cards[cats[0]!]!.zone).toBe('battlefield');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: cats[1]! })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: forest });
+    expect(s.cards[forest]!.zone).toBe('battlefield');
+  });
+
+  it('Vaan: combat damage exiles their top card; cast it, or take a Treasure; casting a spell you don’t own grows your Scouts', () => {
+    let s = newGame();
+    const vaan = put(s, 'P1', 'vaan-street-thief');
+    const bolt = put(s, 'P2', 'lightning-bolt', 'library');
+    s.players.P2!.library = [bolt, ...s.players.P2!.library.filter((id) => id !== bolt)];
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: vaan, defender: 'P2' }] })).state;
+    s = nextStep(s);
+    while (s.pending.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: s.pending.player, blocks: [] });
+    s = settle(s).state;
+    s = nextStep(s);
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'castOrTreasure', cards: [bolt] });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [bolt] })).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token')).toBe(false);
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')] }).state;
+    expect(s.cards[vaan]!.counters).toBe(1);
+  });
+
+  it('Vaan: not casting it makes a Treasure', () => {
+    let s = newGame();
+    const vaan = put(s, 'P1', 'vaan-street-thief');
+    s = fight(s, [{ attacker: vaan, defender: 'P2' }]).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token')).toBe(true);
+  });
+
+  it('Firion: an Equipment you control entering makes a token copy whose equip costs {2} less, sacrificed next upkeep; equipped creatures have haste', () => {
+    let s = newGame();
+    put(s, 'P1', 'firion-wild-rose-warrior');
+    const sword = put(s, 'P1', 'buster-sword', 'hand');
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: sword }).state;
+    const copy = s.players.P1!.battlefield.find((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'buster-sword')!;
+    expect(copy).toBeDefined();
+    const cat = put(s, 'P1', 'coeurl');
+    s.cards[cat]!.summoningSick = true;
+    const equip = activatedAbilities(currentDefinition(s, s.cards[copy]!)).findIndex((a) => a.equip);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: copy, ability: equip, targets: [card(cat)] }).state;
+    expect(s.cards[copy]!.attachedTo).toBe(cat);
+    expect(hasKeyword(s, s.cards[cat]!, 'Haste')).toBe(true);
+    s = goTo(nextStep(goTo(s, 'end')), 'upkeep');
+    expect(s.cards[copy]?.zone ?? 'void').not.toBe('battlefield');
+  });
+});

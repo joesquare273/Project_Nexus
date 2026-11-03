@@ -1128,6 +1128,8 @@ function PromptBar(p: PromptProps) {
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'castOrTreasure'
+              ? 'to cast this turn (paying its costs), or none for a Treasure'
             : c.purpose === 'memories'
               ? (s.resolving?.item.controller === YOU ? 'to put into your hand' : 'to put on the bottom of the caster’s library')
             : c.purpose === 'castFree'
