@@ -4873,3 +4873,72 @@ describe('S4 group 46: Venat, Crystal Fragments, Ultimecia, Sephiroth', () => {
     expect(s.players.P2!.life).toBe(life - 5);
   });
 });
+
+describe('S4 group 47: Omega, Cecil, Isshin, Quistis Trepe, Esper Origins', () => {
+  it('Omega taps up to one nonland permanent per opponent and stuns each with X counters; you gain X (X = your nonbasic lands)', () => {
+    let s = newGame(3);
+    const a = put(s, 'P2', 'coeurl');
+    const b = put(s, 'P3', 'coeurl');
+    put(s, 'P1', 'treno-dark-city');
+    put(s, 'P1', 'rabanastre-royal-city');
+    const life = s.players.P1!.life;
+    const omega = put(s, 'P1', 'omega-heartless-evolution', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 5 });
+    const pick = (o: Target[][]) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === a) && x.some((y) => y.kind === 'card' && y.card === b))!;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: omega }, { targets: pick }).state;
+    expect([s.cards[a]!.tapped, s.cards[b]!.tapped]).toEqual([true, true]);
+    expect([countersOf(s.cards[a]!, 'stun'), countersOf(s.cards[b]!, 'stun')]).toEqual([2, 2]);
+    expect(s.players.P1!.life).toBe(life + 2);
+  });
+
+  it('Cecil: you lose life equal to the damage he deals; at half your starting life or less he untaps and transforms', () => {
+    let s = newGame();
+    const cecil = put(s, 'P1', 'cecil-dark-knight-cecil-redeemed-paladin');
+    s.players.P1!.life = 11;
+    s = fight(s, [{ attacker: cecil, defender: 'P2' }]).state;
+    expect(s.players.P1!.life).toBe(9);
+    expect(s.cards[cecil]!.transformed).toBe(true);
+    expect(s.cards[cecil]!.tapped).toBe(false);
+    expect(hasKeyword(s, s.cards[cecil]!, 'Lifelink')).toBe(true);
+  });
+
+  it('Isshin: attack triggers of your permanents trigger an additional time', () => {
+    let s = newGame();
+    put(s, 'P1', 'isshin-two-heavens-as-one');
+    const sazh = put(s, 'P1', 'sazh-katzroy');
+    const cat = put(s, 'P1', 'coeurl');
+    s = fight(s, [{ attacker: sazh, defender: 'P2' }], {}, { targets: (options) => [options.flat().find((t) => t.kind === 'card' && t.card === cat)!] }).state;
+    // +1 then double, twice: 0 -> 2 -> 6.
+    expect(s.cards[cat]!.counters).toBe(6);
+  });
+
+  it('Quistis Trepe: cast an instant from an opponent’s graveyard with any type of mana; it’s exiled afterwards', () => {
+    let s = newGame();
+    const bolt = put(s, 'P2', 'lightning-bolt', 'graveyard');
+    const quistis = put(s, 'P1', 'quistis-trepe', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: quistis }).state;
+    mana(s, 'P1', { U: 1 });
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [player('P2')], castGroup: s.castGroups![0]!.id }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+    expect(s.cards[bolt]!.zone).toBe('exile');
+  });
+
+  it('Esper Origins: surveil 2 and gain 2; flashed back, it becomes Summon: Esper Maduin with a finality counter', () => {
+    let s = newGame();
+    const origins = put(s, 'P1', 'esper-origins-summon-esper-maduin', 'hand');
+    const life = s.players.P1!.life;
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: origins }).state;
+    expect(s.players.P1!.life).toBe(life + 2);
+    expect(s.cards[origins]!.zone).toBe('graveyard');
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: origins }).state;
+    expect(s.cards[origins]).toMatchObject({ zone: 'battlefield', transformed: true });
+    expect(countersOf(s.cards[origins]!, 'finality')).toBe(1);
+    // Chapter I: the revealed permanent card goes to hand.
+    expect(s.cards[ring]!.zone).toBe('hand');
+  });
+});

@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 47: Omega, Cecil, Isshin, Quistis Trepe, Esper Origins
+
+Five more set cards (277 of 320). New: a "whenever this deals damage"
+trigger, a half-starting-life condition, Isshin's doubled attack triggers,
+casting a card from any graveyard with any type of mana (exiled after), a
+sorcery that becomes a transformed Saga on the battlefield, and revealing
+the top card into your hand if it matches a filter.
+
 ### Set cards, group 46: Venat, Crystal Fragments, Ultimecia, Sephiroth
 
 Four more transforming set cards (272 of 320). New engine pieces: emblems

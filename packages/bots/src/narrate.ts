@@ -336,6 +336,10 @@ function effectText(e: EffectSpec): string {
       return `look at the top card of your library; if it's a land card, put it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'ReturnFromGraveyardTotalManaValue':
       return `return any number of creature cards with total mana value ${n} or less from your graveyard to the battlefield`;
+    case 'AllowCastTargetFromAnyGraveyard':
+      return `you may cast ${who} this turn (mana of any type can be spent; exiled afterwards)`;
+    case 'SpellToBattlefieldTransformed':
+      return 'exile this spell, then put it onto the battlefield transformed with a finality counter';
     case 'ExileFromYourGraveyard':
       return `exile ${plural('card')} from your graveyard`;
     case 'PreventDamageToYourCreatures':
@@ -463,6 +467,7 @@ function triggerCondition(t: TriggerSpec): string {
     LeavesGraveyard: 'leaves your graveyard',
     PutIntoGraveyard: 'is put into a graveyard from anywhere but the battlefield',
     Blocks: 'blocks',
+    DealsDamage: 'deals damage',
     YouAttack: '',
     Chapter: '',
     AbilityActivated: 'has an ability activated',

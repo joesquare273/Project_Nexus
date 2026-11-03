@@ -505,6 +505,10 @@ export const EFFECT_KINDS = [
    * exiled instead (Torrential Gearhulk, Emet-Selch).
    */
   'AllowCastFromGraveyard',
+  /** You may cast the target card from any graveyard this turn; mana of any type can be spent, and it's exiled instead of going to a graveyard (Quistis Trepe). */
+  'AllowCastTargetFromAnyGraveyard',
+  /** If this spell was cast from a graveyard (`if`), exile it and put it onto the battlefield transformed with a finality counter (Esper Origins). */
+  'SpellToBattlefieldTransformed',
   'AllowAdventureFromGraveyard',
   'PutOnLibraryBottom',
   /** The source creature and the target creature each deal damage equal to their power to the other (rule 701.14). */
@@ -737,6 +741,8 @@ export interface EffectSpec {
   ifLifeGainedThisTurn?: { atLeast?: number; below?: number };
   /** Only if the previous target's mana value is at least this ("if the exiled card's mana value is 4 or greater"). */
   ifPreviousTargetManaValueAtLeast?: number;
+  /** Only if your life total is at most half your starting life total (Cecil). */
+  ifLifeAtMostHalfStarting?: boolean;
   /** Only if the previous target matches this filter ("if a creature card was exiled this way"). */
   ifPreviousTargetIs?: ObjectFilter;
   /** Only if the previous target's mana value is at most this (Fatal Push). */
@@ -922,6 +928,8 @@ export const TRIGGER_EVENTS = [
   'LeavesGraveyard',
   /** A card was put into a graveyard from anywhere other than the battlefield (subject: the card). */
   'PutIntoGraveyard',
+  /** The subject dealt damage to anything, combat or not ("whenever Cecil deals damage"). */
+  'DealsDamage',
   /** The subject was declared as a blocker ("whenever this creature blocks"). */
   'Blocks',
   /** You attacked with at least `attackersAtLeast` creatures ("whenever you attack with four or more creatures"). */
@@ -1242,7 +1250,7 @@ export interface StaticSpec {
    * a permanent matching this filter entering (Traveling Chocobo: a land or
    * Bird you control).
    */
-  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter };
+  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter; /** Isshin: abilities triggered by a creature attacking. */ attacking?: true };
   /** Ward (rule 702.21): each affected permanent has ward with this cost (Bronze Guardian). */
   ward?: number;
   /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
@@ -2156,6 +2164,8 @@ export interface CastGroup {
   cards: { card: InstanceId; object: number; zone: 'graveyard' | 'exile' }[];
   /** Mana of any type can be spent to cast the spell (Summon: Esper Valigarmanda). */
   anyManaType?: boolean;
+  /** If the spell would be put into a graveyard, it's exiled instead (Quistis Trepe). */
+  exileAfter?: boolean;
 }
 
 export interface GameState {

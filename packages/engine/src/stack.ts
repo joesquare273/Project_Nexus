@@ -1051,7 +1051,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
     ...(kicks > 0 ? { kicks } : {}),
-    ...(permission?.exileAfter ? { exileAfter: true } : {}),
+    ...(permission?.exileAfter || group?.exileAfter ? { exileAfter: true } : {}),
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
     ...(edgar?.finality ? { finalityOnEnter: true as const } : {}),
     ...(sacrificeLater ? { sacrificeAtEndStep: true as const } : {}),
@@ -2300,6 +2300,26 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ...(effect.free ? { free: true } : {}) };
       }
       return;
+    case 'AllowCastTargetFromAnyGraveyard': {
+      const picked = cards.filter((id) => s.cards[id]!.zone === 'graveyard');
+      if (picked.length === 0) return;
+      s.castGroups = [...(s.castGroups ?? []), {
+        id: newId(s, 'cast'), source, player: item.controller, turn: s.turnNumber,
+        cards: picked.map((id) => ({ card: id, object: s.cards[id]!.zoneChanges ?? 0, zone: 'graveyard' as const })),
+        anyManaType: true, exileAfter: true,
+      }];
+      return;
+    }
+    case 'SpellToBattlefieldTransformed': {
+      const c = s.cards[source]!;
+      if (item.kind !== 'spell' || c.zone !== 'stack') return;
+      moveCard(ctx, source, 'exile');
+      if ((c.zone as string) !== 'exile') return;
+      moveCard(ctx, source, 'battlefield', { controller: item.controller, transformed: true });
+      c.summoningSick = true;
+      c.namedCounters = { ...c.namedCounters, finality: (c.namedCounters?.finality ?? 0) + 1 };
+      return;
+    }
     case 'CantCastSpellsThisTurn':
       for (const pid of targetPlayers(targets)) {
         if (effect.noncreatureOnly) player(s, pid).cantCastNoncreatureTurn = s.turnNumber;
@@ -2803,7 +2823,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (top === undefined) continue;
         const c = s.cards[top]!;
         ctx.ev.push({ type: 'CardRevealed', player: pid, card: top, defId: c.defId });
-        if (!defOf(s, c).types.includes('land')) continue;
+        // Summon: Esper Maduin: "if it's a permanent card, put it into your hand".
+        if (effect.filter ? !matchesObject(s, effect.filter, c, { controller: pid }) : !defOf(s, c).types.includes('land')) continue;
+        if (effect.lookTo === 'hand') {
+          moveCard(ctx, top, 'hand');
+          continue;
+        }
         moveCard(ctx, top, 'battlefield');
         c.controller = pid;
         if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
@@ -2939,6 +2964,7 @@ function continueResolving(ctx: Ctx): void {
       if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
+    if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
     if (effect.ifNthResolutionThisTurn !== undefined) {
       // Counted once per resolution: this effect is reached once each time the ability resolves.
       const c = s.cards[sourceOf(item)]!;

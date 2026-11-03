@@ -168,6 +168,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         if (e.target.kind === 'card' && s.cards[e.target.card]) {
           out.push({ when: 'DealtDamage', at, subject: e.target.card, subjectController: s.cards[e.target.card]!.controller, amount: e.amount });
         }
+        if (s.cards[e.source]) out.push({ when: 'DealsDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         if (e.combat) {
           out.push({ when: 'CombatDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         }
@@ -503,6 +504,7 @@ function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
         const equipped = battlefield(s).some((e) => e.attachedTo === p.id && defOf(s, e).subtypes?.includes('Equipment'));
         if (equipped && (t.source === p.id || source?.attachedTo === p.id)) extra++;
       }
+      if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack')) extra++;
       if (more.entering && spec?.when === 'EntersBattlefield' && t.subject) {
         const subject = s.cards[t.subject];
         if (subject && source?.controller === p.controller && matchesObject(s, more.entering, subject, { controller: p.controller, source: p.id })) extra++;
