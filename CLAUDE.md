@@ -50,6 +50,9 @@ this repo, not only in local memory.
   deckbuilder (40-60 cards, unlimited basics), Swiss best-of-3 matches, and
   players keep what they draft on their accounts. Roadmap S1-S4 in `docs/sealed.md`; the set's 320 imported
   cards (`data/fin-set.json`) are the next card target after the precons.
+- **Play modes (2026-11-04):** the Starter Kits are only for new players
+  (the lesson and a practice game against the computer). Online play is a
+  booster draft, Commander, or your own 60-card decks, not Starter Kit duels.
 - **Online play (2026-10-28):** `packages/server` (Node + `ws`, many rooms in
   one process) is the only authority; message types live in
   `packages/server/src/protocol.ts` and are checked with zod. Each player gets

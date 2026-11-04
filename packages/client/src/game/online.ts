@@ -83,7 +83,7 @@ export class OnlineSession extends GameSession {
   private readonly listeners = new Set<(error?: string) => void>();
   private readonly connection: GameLink;
 
-  constructor(connection: GameLink, first: Update, deck: Deck = 'RW', format: 'starter' | 'commander' | 'limited' = 'starter') {
+  constructor(connection: GameLink, first: Update, deck: Deck = 'RW', format: 'starter' | 'constructed' | 'commander' | 'limited' = 'starter') {
     const seat = first.seat;
     // The other seats in turn order after yours, as the board lists opponents.
     const order = first.update.state.turnOrder as string[];

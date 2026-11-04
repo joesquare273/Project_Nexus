@@ -52,12 +52,12 @@ export const ClientMessage = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('eventPlayDraw'), play: z.boolean() }),
   /** Leave an event that hasn't started. */
   z.strictObject({ type: z.literal('eventLeave') }),
-  /** Commander tables (tables.ts): the host makes one with seats for players and for bots, 2-4 in all. */
-  z.strictObject({ type: z.literal('tableCreate'), token: z.string().min(1).max(8192), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
+  /** Tables (tables.ts): the host makes one with seats for players and for bots, 2-4 in all: Commander, or your own 60-card decks. */
+  z.strictObject({ type: z.literal('tableCreate'), token: z.string().min(1).max(8192), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3), format: z.enum(['commander', 'constructed']).optional() }),
   /** Join a table by its code, or come back to your seat at it. */
   z.strictObject({ type: z.literal('tableJoin'), token: z.string().min(1).max(8192), code: RoomCode }),
   z.strictObject({ type: z.literal('tableSettings'), players: z.number().int().min(1).max(4), bots: z.number().int().min(0).max(3) }),
-  /** Play one of your saved Commander decks (its id). */
+  /** Play one of your saved decks (its id): a Commander deck, or a 60-card deck at a constructed table. */
   z.strictObject({ type: z.literal('tableDeck'), deck: z.string().min(1).max(64) }),
   /** The host starts the game. */
   z.strictObject({ type: z.literal('tableStart') }),
@@ -128,10 +128,13 @@ export type ServerMessage =
   | { type: 'error'; code: ErrorCode; message: string; seq?: number }
   | { type: 'opponentLeft'; seat: Seat; name: string };
 
+export type TableFormat = 'commander' | 'constructed';
+
 /** A Commander table: its seats (players and bots), each player's chosen deck, and the game's phase. */
 export interface TableView {
   code: string;
-  format: 'commander';
+  /** Commander (100 cards, 40 life), or constructed (your own 60-card decks, 20 life). */
+  format: TableFormat;
   /** Seats for players (the host included) and for bots. */
   players: number;
   bots: number;

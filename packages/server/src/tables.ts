@@ -10,14 +10,14 @@
 // join the same code to come back). A lobby is dropped when its host leaves;
 // a finished game an hour after it ends.
 
-import { COMMANDER, seedFromBytes, validateCommander, validateDeck, type GameSetup } from '@nexus/engine';
+import { COMMANDER, CONSTRUCTED_DUEL, FREE_FOR_ALL, seedFromBytes, validateCommander, validateDeck, type GameSetup } from '@nexus/engine';
 import { basicAi, type Bot } from '@nexus/bots';
-import { CARD_DEFS, FIN_PRECONS, preconDeck } from '@nexus/cards';
+import { CARD_DEFS, FIN_PRECONS, preconDeck, starterKitDeck } from '@nexus/cards';
 import { gameDeck, type GameDeck } from '@nexus/cards/decks';
 import type { AccountService, AccountUser } from './accounts.ts';
 import { deckProblem } from './collection.ts';
 import { HostedGame } from './hostedGame.ts';
-import type { ErrorCode, Seat, ServerMessage, TableView } from './protocol.ts';
+import type { ErrorCode, Seat, ServerMessage, TableFormat, TableView } from './protocol.ts';
 import type { Action } from '@nexus/engine';
 
 export interface TableConnection {
@@ -45,6 +45,8 @@ interface TableSeat {
 
 interface Table {
   code: string;
+  /** Commander, or constructed (your own 60-card decks). */
+  format: TableFormat;
   /** Seats for players (the host included) and for bots. */
   players: number;
   bots: number;
@@ -93,11 +95,11 @@ export class TableHub {
   }
 
   /** Makes a table and seats its host. */
-  create(user: AccountUser, players: number, bots: number, conn: TableConnection): { code: string; seat: Seat } | Problem {
+  create(user: AccountUser, players: number, bots: number, conn: TableConnection, format: TableFormat = 'commander'): { code: string; seat: Seat } | Problem {
     const problem = tableSizeProblem(players, bots);
     if (problem) return { error: 'event-rule', message: problem };
     const code = this.newCode();
-    const t: Table = { code, players, bots, host: 'P1', seats: [{ id: 'P1', name: boardName(user.name), bot: false, userId: user.id, ...(user.avatar ? { avatar: user.avatar } : {}), deck: null }], conns: new Map([['P1', conn]]), phase: 'lobby', game: null, winner: null };
+    const t: Table = { code, format, players, bots, host: 'P1', seats: [{ id: 'P1', name: boardName(user.name), bot: false, userId: user.id, ...(user.avatar ? { avatar: user.avatar } : {}), deck: null }], conns: new Map([['P1', conn]]), phase: 'lobby', game: null, winner: null };
     this.tables.set(code, t);
     this.broadcast(t);
     return { code, seat: 'P1' };
@@ -155,7 +157,7 @@ export class TableHub {
     const [decks, owned] = await Promise.all([accounts.decks(me.userId), accounts.collection(me.userId)]);
     const saved = decks.find((d) => d.id === deckId);
     if (!saved) return 'That deck is not one of yours.';
-    const problem = commanderDeckProblem(saved, owned);
+    const problem = t.format === 'constructed' ? constructedDeckProblem(saved, owned) : commanderDeckProblem(saved, owned);
     if (typeof problem === 'string') return problem;
     if (this.tables.get(code) !== t || t.phase !== 'lobby') return 'The game has already started.';
     me.deck = { id: saved.id, name: saved.name, commander: saved.commander, game: problem };
@@ -173,13 +175,13 @@ export class TableHub {
     if (humans.length < t.players) return `Waiting for ${t.players - humans.length} more player${t.players - humans.length === 1 ? '' : 's'} to join.`;
     const without = humans.find((s) => !s.deck);
     if (without) return `${without.name} hasn't chosen a deck yet.`;
-    // Bots take the free seats and play the precons, a different one each.
+    // Bots take the free seats: the precons at Commander tables (a different one each), the Starter Kits at 60-card tables.
     for (let i = 0; i < t.bots; i++) t.seats.push({ id: SEAT_IDS.find((id) => !t.seats.some((s) => s.id === id))!, name: BOT_NAMES[i]!, bot: true, deck: null });
     t.seats.sort((a, b) => SEAT_IDS.indexOf(a.id) - SEAT_IDS.indexOf(b.id));
     const bots: Partial<Record<Seat, Bot>> = {};
     const botSeed = this.opts.randomBytes(1)[0]!;
     const setup: GameSetup = {
-      format: COMMANDER,
+      format: t.format === 'constructed' ? (t.seats.length === 2 ? CONSTRUCTED_DUEL : FREE_FOR_ALL) : COMMANDER,
       cardDefs: CARD_DEFS,
       // 128 bits from crypto.randomBytes: never Math.random (see docs/decisions.md).
       seed: seedFromBytes(this.opts.randomBytes(16)),
@@ -187,6 +189,7 @@ export class TableHub {
       players: t.seats.map((s, i) => {
         if (s.bot) {
           bots[s.id] = basicAi(botSeed + i);
+          if (t.format === 'constructed') return { id: s.id, deck: starterKitDeck(BOT_NAMES.indexOf(s.name) % 2 ? 'UB' : 'RW') };
           return { id: s.id, ...preconDeck(FIN_PRECONS[BOT_NAMES.indexOf(s.name) % FIN_PRECONS.length]!.name) };
         }
         return { id: s.id, ...s.deck!.game, ordersTriggers: true };
@@ -273,7 +276,7 @@ export class TableHub {
   view(t: Table, seat: Seat): TableView {
     return {
       code: t.code,
-      format: 'commander',
+      format: t.format,
       players: t.players,
       bots: t.bots,
       host: t.host,
@@ -288,6 +291,22 @@ export class TableHub {
 /** The board calls you "You", so nobody may be called that. */
 function boardName(name: string): string {
   return name.toLowerCase() === 'you' ? `${name}.` : name;
+}
+
+/** A saved 60-card deck as a legal constructed game deck (owned cards, 60+ cards, at most four of each), or why it can't be played. */
+export function constructedDeckProblem(
+  saved: Parameters<typeof gameDeck>[0] & { format: string; name: string },
+  owned: Parameters<typeof deckProblem>[1],
+): GameDeck | string {
+  if (saved.format !== 'constructed') return 'Choose one of your 60-card decks.';
+  const owns = deckProblem(saved as never, owned);
+  if (owns) return owns;
+  const game = gameDeck(saved);
+  if ('problem' in game) return game.problem;
+  const errors = validateDeck(game.deck, CARD_DEFS, CONSTRUCTED_DUEL);
+  if (errors.length) return `${saved.name} isn't a legal 60-card deck: ${errors[0]}`;
+  const { commander: _none, ...rest } = game;
+  return rest;
 }
 
 /** A saved deck as a legal Commander game deck, or why it can't be played. */

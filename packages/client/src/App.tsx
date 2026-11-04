@@ -7,7 +7,6 @@ import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { StoreTab } from './packs/StoreTab.tsx';
-import { OnlineMenu } from './components/OnlineMenu.tsx';
 import { OwnCommanderDecks } from './components/CommanderDecks.tsx';
 import { TableMenu } from './components/TableMenu.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
@@ -91,7 +90,7 @@ function useRoute(): [Route, (next: Partial<Route>) => void] {
 
 function MainApp() {
   const [session, setSession] = useState<GameSession | null>(null);
-  const [format, setFormat] = useState<'starter' | 'commander'>('starter');
+  const [format, setFormat] = useState<'constructed' | 'commander'>('constructed');
   const [precon] = useState(FIN_PRECONS[0]!.name);
   /** Commander: the saved deck you play (yours only), converted for the game. */
   const [ownDeck, setOwnDeck] = useState<GameDeck | null>(null);
@@ -153,6 +152,12 @@ function MainApp() {
     );
   }
 
+  /** New players: a Starter Kit game against the computer, with tips (the Starter Kits are only for practice). */
+  const tryStarterKit = (kit: DeckChoice) => {
+    setDeck(kit);
+    play(new GameSession({ deck: kit, opponents: 1, bot: 'ai', seed: Math.floor(Math.random() * 1_000_000), coaching: true }));
+  };
+
   const start = () => {
     const chosenSeed = seed.trim() === '' ? Math.floor(Math.random() * 1_000_000) : Number(seed);
     play(
@@ -160,7 +165,7 @@ function MainApp() {
         format,
         deck,
         precon,
-        ...(format === 'commander' && ownDeck ? { ownDeck } : {}),
+        ...(ownDeck ? { ownDeck } : {}),
         opponents,
         bot,
         seed: Number.isFinite(chosenSeed) ? chosenSeed : 1,
@@ -222,35 +227,35 @@ function MainApp() {
             {route.play === 'draft' && <DraftPlay onPlay={play} />}
             {route.play === 'ai' && (
               <div className="play-setup">
-                {onboarding && !onboarding.lesson && (
-                  <p className="hint-banner">
-                    New to Magic? <button className="link" onClick={learn}>Start the lesson</button> first: it teaches the rules in one short game.
+                <section className="new-player">
+                  <h2>New to Magic?</h2>
+                  <p>
+                    <button className="link" onClick={learn}>Start the lesson</button>
+                    {onboarding && !onboarding.lesson ? ' first: it teaches the rules in one short game.' : ' again, or try a ready-made Starter Kit against the computer, with tips:'}
                   </p>
-                )}
+                  <div className="deck-choices">
+                    {DECKS.map((d) => (
+                      <button key={d.id} className="deck" onClick={() => tryStarterKit(d.id)}>
+                        <img src={SCRYFALL[d.art]?.image.artCrop} alt="" />
+                        <span className="deck-name">Try {d.name}</span>
+                        <span className="deck-blurb">{d.blurb}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
                 <h2>Format</h2>
                 <div className="format-choices">
-                  <button className={format === 'starter' ? 'chosen' : ''} onClick={() => setFormat('starter')}>
-                    Starter Kits <span>60 cards · 20 life</span>
+                  <button className={format === 'constructed' ? 'chosen' : ''} onClick={() => (setFormat('constructed'), setOwnDeck(null))}>
+                    60-card decks <span>Decks you built · 20 life</span>
                   </button>
-                  <button className={format === 'commander' ? 'chosen' : ''} onClick={() => setFormat('commander')}>
+                  <button className={format === 'commander' ? 'chosen' : ''} onClick={() => (setFormat('commander'), setOwnDeck(null))}>
                     Commander <span>Your 100-card decks · 40 life</span>
                   </button>
                 </div>
 
                 <h2>Your deck</h2>
-                {format === 'starter' ? (
-                  <div className="deck-choices">
-                    {DECKS.map((d) => (
-                      <button key={d.id} className={`deck ${deck === d.id ? 'chosen' : ''}`} onClick={() => setDeck(d.id)}>
-                        <img src={SCRYFALL[d.art]?.image.artCrop} alt="" />
-                        <span className="deck-name">{d.name}</span>
-                        <span className="deck-blurb">{d.blurb}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <OwnCommanderDecks onChoose={(d) => setOwnDeck(d)} onBuild={() => go({ page: 'decks' })} />
-                )}
+                <OwnCommanderDecks key={format} format={format} onChoose={(d) => setOwnDeck(d)} onBuild={() => go({ page: 'decks' })} />
                 {format === 'commander' && (
                   <p className="fineprint">
                     Commander rules: 40 life, your commander starts in the command zone (it costs {'{2}'} more each time you cast it from there), and 21 combat
@@ -290,8 +295,8 @@ function MainApp() {
 
                 <button
                   className="primary big"
-                  disabled={format === 'commander' && !ownDeck}
-                  title={format === 'commander' && !ownDeck ? 'Choose one of your Commander decks first' : undefined}
+                  disabled={!ownDeck}
+                  title={!ownDeck ? `Choose one of your ${format === 'commander' ? 'Commander' : '60-card'} decks first` : undefined}
                   onClick={start}
                 >
                   Start game
@@ -357,21 +362,26 @@ function DraftPlay({ onPlay }: { onPlay: (s: GameSession) => void }) {
   );
 }
 
-/** Online: a Commander table (host or join, players and bots) or a Starter Kit duel by room code. */
+/**
+ * Online: a table (host or join, players and bots) for Commander or your own
+ * 60-card decks. Booster drafts are the Draft tab; the Starter Kits are only
+ * for new players' practice against the computer (user rule 2026-11-04).
+ */
 function OnlinePlay({ onStart, onBuild }: { onStart: (s: GameSession) => void; onBuild: () => void }) {
-  const [kind, setKind] = useState<'commander' | 'starter'>('commander');
+  const [kind, setKind] = useState<'commander' | 'constructed'>('commander');
   return (
-    <div className="play-setup">
+    <div className="play-setup online-play">
       <h2>Format</h2>
       <div className="format-choices">
         <button className={kind === 'commander' ? 'chosen' : ''} onClick={() => setKind('commander')}>
-          Commander <span>2-4 seats · players and bots · your decks</span>
+          Commander <span>2-4 seats · players and bots · your Commander decks</span>
         </button>
-        <button className={kind === 'starter' ? 'chosen' : ''} onClick={() => setKind('starter')}>
-          Starter Kit duel <span>1 vs 1 · same room code</span>
+        <button className={kind === 'constructed' ? 'chosen' : ''} onClick={() => setKind('constructed')}>
+          60-card decks <span>2-4 seats · players and bots · decks you built</span>
         </button>
       </div>
-      {kind === 'commander' ? <TableMenu onStart={onStart} onBuild={onBuild} /> : <OnlineMenu onStart={onStart} />}
+      <p className="fineprint">Looking for a booster draft? It's the Draft tab.</p>
+      <TableMenu key={kind} format={kind} onStart={onStart} onBuild={onBuild} />
     </div>
   );
 }
@@ -398,8 +408,8 @@ function SubTabs<T extends string>({ value, options, onChange }: { value: T; opt
 }
 
 const TILES: { title: string; text: string; art: string; to: Partial<Route> }[] = [
-  { title: 'Play the computer', text: 'Starter Kits or your Commander decks, 1 to 3 opponents.', art: 'sephiroth-planets-heir', to: { page: 'play', play: 'ai' } },
-  { title: 'Play friends', text: 'Host or join a Commander table, with bots in any empty seats.', art: 'cloud-planets-champion', to: { page: 'play', play: 'online' } },
+  { title: 'Play the computer', text: 'Your 60-card or Commander decks, 1 to 3 opponents.', art: 'sephiroth-planets-heir', to: { page: 'play', play: 'ai' } },
+  { title: 'Play friends', text: 'Host or join a Commander or 60-card table, with bots in any empty seats.', art: 'cloud-planets-champion', to: { page: 'play', play: 'online' } },
   { title: 'Booster draft', text: 'Host or join a draft: pick the set, then players and bots.', art: 'terra-herald-of-hope', to: { page: 'play', play: 'draft' } },
   { title: 'Open packs', text: 'Play and Collector Boosters, kept in your collection.', art: 'tifa-lockhart', to: { page: 'shop', shop: 'packs' } },
   { title: 'Your collection', text: 'Every card you own, with its finishes.', art: 'tidus-yunas-guardian', to: { page: 'collection' } },

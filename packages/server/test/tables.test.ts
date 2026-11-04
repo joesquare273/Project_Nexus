@@ -173,3 +173,28 @@ describe('Commander tables', () => {
     expect(lobby.tables.tables.has(code)).toBe(false);
   });
 });
+
+describe('60-card tables (your own constructed decks)', () => {
+  it('take only legal 60-card decks you own; bots play the Starter Kits; 20 life', async () => {
+    const { accounts, lobby, decks } = await setup({ botGameLimit: 400 });
+    const owned = await accounts.collection('u-joe');
+    const cards = owned.slice(0, 40).map((c) => ({ id: c.id, finish: c.finish, count: 1 }));
+    const saved = await accounts.saveDeck('u-joe', { name: 'My Sixty', format: 'constructed', cards, basics: { W: 5, U: 5, B: 5, R: 5, G: 0 }, commander: null });
+    expect(saved).not.toBeNull();
+    const joe = browser(lobby);
+    await joe.send({ type: 'tableCreate', token: 'tok-joe', players: 1, bots: 1, format: 'constructed' });
+    expect(joe.table()).toMatchObject({ format: 'constructed', players: 1, bots: 1 });
+    // A Commander deck isn't a 60-card deck.
+    await joe.send({ type: 'tableDeck', deck: decks.joe! });
+    expect(joe.errors().at(-1)?.message).toMatch(/60-card/);
+    await joe.send({ type: 'tableDeck', deck: saved!.id });
+    await until(() => joe.table()?.seats[0]?.deck?.name === 'My Sixty', 'the deck');
+    await joe.send({ type: 'tableStart' });
+    await until(() => !!joe.game(), 'the game');
+    const state = joe.game()!.update.state as { players: Record<string, { life: number }>; format: { name: string } };
+    expect(state.format.name).toBe('constructedDuel');
+    expect(Object.values(state.players).map((p) => p.life)).toEqual([20, 20]);
+    expect(joe.table()!.seats.find((s) => s.bot)).toBeDefined();
+    await concede(joe);
+  });
+});

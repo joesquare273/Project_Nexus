@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Play page: Starter Kits for new players; online is draft, Commander or your 60-card decks
+
+User rule (2026-11-04): the Starter Kits are only for new players trying the
+game, and online play is a booster draft, Commander, or your own 60-card
+decks. Vs. computer now offers "60-card decks" (your own constructed decks
+against Starter Kit bots) and Commander, with a "New to Magic?" box for the
+lesson and a Starter Kit practice game. Online tables take a `format`
+(`commander` or `constructed`): 60-card tables check that you own the cards
+and that the deck is legal (60+ cards, at most four of each), use 20 life
+(`CONSTRUCTED_DUEL` for two seats, `FREE_FOR_ALL` for more), and their bots
+play the Starter Kits. The Starter Kit duel by room code is gone from the
+menu (OnlineMenu removed). The Online tab has more space between its choices.
+
+
 ### Card audit across every card
 
 `packages/cards/scripts/card-audit.ts` checks all 704 built cards against

@@ -49,7 +49,7 @@ const signIn = () => supabase?.auth.signInWithOAuth({ provider: 'discord', optio
 
 const FEATURES: { title: string; text: string; art: string }[] = [
   { title: 'Learn as you play', text: 'A guided first game teaches the rules step by step, with tips along the way.', art: 'cloud-planets-champion' },
-  { title: 'Play the computer or friends', text: 'The Final Fantasy Starter Kits and Commander precons, against the AI or online.', art: 'sephiroth-planets-heir' },
+  { title: 'Play the computer or friends', text: 'Your 60-card and Commander decks against the AI or online; the Starter Kits for learning.', art: 'sephiroth-planets-heir' },
   { title: 'Open packs and collect', text: 'Real Final Fantasy Play and Collector Boosters, with every card kept on your account.', art: 'tifa-lockhart' },
   { title: 'Draft and build decks', text: 'Booster drafts for 2 to 4 players, and a deck builder for your own collection.', art: 'terra-herald-of-hope' },
 ];

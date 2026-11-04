@@ -33,7 +33,8 @@ const remembered = (): string | null => {
 
 type Mode = 'host' | 'join';
 
-export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSession) => void; onBuild: () => void }) {
+export function TableMenu({ onStart, onBuild, format = 'commander' }: { onStart: (session: OnlineSession) => void; onBuild: () => void; format?: 'commander' | 'constructed' }) {
+  const deckKind = format === 'commander' ? 'Commander decks' : '60-card decks';
   const [mode, setMode] = useState<Mode>(() => (remembered() ? 'join' : 'host'));
   const [players, setPlayers] = useState(1);
   const [bots, setBots] = useState(3);
@@ -92,7 +93,7 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
       } else if (m.type === 'update') {
         if (started.current) return;
         started.current = true;
-        setLoading(new OnlineSession(c, m, 'RW', 'commander'));
+        setLoading(new OnlineSession(c, m, 'RW', tableRef.current?.format ?? 'commander'));
       } else if (m.type === 'tableClosed') {
         remember(null);
         reset('The host closed the table.');
@@ -106,7 +107,7 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
     c.send(first(token));
   };
 
-  const host = () => void open((token) => ({ type: 'tableCreate', token, players, bots }));
+  const host = () => void open((token) => ({ type: 'tableCreate', token, players, bots, format }));
   const join = () => void open((token) => ({ type: 'tableJoin', token, code: code.trim() }));
   const leave = () => {
     connection.current?.send({ type: 'tableLeave' });
@@ -124,7 +125,7 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
     return (
       <GameLoading
         session={loading}
-        title={`Commander · table ${tableRef.current?.code ?? ''}`}
+        title={`${format === 'commander' ? 'Commander' : '60-card'} · table ${tableRef.current?.code ?? ''}`}
         subtitle={<p>{seats.map((s) => (s.id === tableRef.current?.you ? 'You' : s.name)).join(' · ')}</p>}
         minMs={1800}
         onReady={() => onStart(loading)}
@@ -137,7 +138,7 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
   }
 
   if (table || connecting) {
-    return <TableLobby table={table} error={error} onLeave={leave} onSettings={(p, b) => connection.current?.send({ type: 'tableSettings', players: p, bots: b })} onStart={() => connection.current?.send({ type: 'tableStart' })} deckPicker={<OwnCommanderDecks onChoose={chooseDeck} onBuild={onBuild} />} />;
+    return <TableLobby table={table} error={error} onLeave={leave} onSettings={(p, b) => connection.current?.send({ type: 'tableSettings', players: p, bots: b })} onStart={() => connection.current?.send({ type: 'tableStart' })} deckPicker={<OwnCommanderDecks format={table?.format ?? format} onChoose={chooseDeck} onBuild={onBuild} />} />;
   }
 
   const canJoin = /^[A-Za-z0-9]{3,12}$/.test(code.trim());
@@ -165,19 +166,23 @@ export function TableMenu({ onStart, onBuild }: { onStart: (session: OnlineSessi
       )}
 
       <h2>Your deck</h2>
-      <OwnCommanderDecks onChoose={chooseDeck} onBuild={onBuild} />
+      <OwnCommanderDecks key={format} format={format} onChoose={chooseDeck} onBuild={onBuild} />
 
       {error && <p className="online-error">{error}</p>}
       {mode === 'host' ? (
-        <button className="primary big" disabled={!deck} title={deck ? undefined : 'Choose one of your Commander decks first'} onClick={host}>
+        <button className="primary big" disabled={!deck} title={deck ? undefined : `Choose one of your ${deckKind} first`} onClick={host}>
           Host table
         </button>
       ) : (
-        <button className="primary big" disabled={!canJoin || !deck} title={!deck ? 'Choose one of your Commander decks first' : undefined} onClick={join}>
+        <button className="primary big" disabled={!canJoin || !deck} title={!deck ? `Choose one of your ${deckKind} first` : undefined} onClick={join}>
           Join table
         </button>
       )}
-      <p className="fineprint">Bots play the Final Fantasy precons. Commander rules: 40 life, the command zone, commander tax and 21 commander damage.</p>
+      <p className="fineprint">
+        {format === 'commander'
+          ? 'Bots play the Final Fantasy precons. Commander rules: 40 life, the command zone, commander tax and 21 commander damage.'
+          : 'Your own 60-card decks (at most four of each card but basic lands), 20 life. Bots play the Final Fantasy Starter Kits.'}
+      </p>
     </div>
   );
 }
@@ -318,7 +323,7 @@ function TableLobby({
             <span className="table-seat-name">
               <strong>Bot</strong>
             </span>
-            <span className="table-seat-deck">Plays a Final Fantasy precon</span>
+            <span className="table-seat-deck">{table.format === 'commander' ? 'Plays a Final Fantasy precon' : 'Plays a Final Fantasy Starter Kit'}</span>
           </li>
         ))}
       </ul>

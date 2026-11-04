@@ -3367,3 +3367,58 @@ button.link {
   border-radius: 50%;
   font-size: 11px;
 }
+
+/* Online tab: room to breathe between the format, host/join, seats and deck choices (user request 2026-11-04). */
+.online-play {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.online-play > h2 {
+  margin-bottom: 0;
+}
+.online-play .format-choices,
+.table-menu .format-choices {
+  gap: 18px;
+  margin: 4px 0 8px;
+}
+.online-play .format-choices button,
+.table-menu .format-choices button {
+  min-width: 260px;
+  padding: 14px 22px;
+  gap: 6px;
+}
+.table-menu {
+  gap: 22px;
+}
+.table-menu > h2 {
+  margin: 10px 0 0;
+}
+.table-menu .seat-picker {
+  gap: 16px 32px;
+  padding: 6px 0;
+}
+.table-menu > .primary.big {
+  align-self: center;
+  margin-top: 8px;
+  min-width: 220px;
+}
+.online-play > .fineprint {
+  margin: -6px 0 0;
+  text-align: center;
+}
+
+/* Vs. computer: the Starter Kits are a practice option for new players. */
+.new-player {
+  margin: 0 auto 18px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(231, 197, 121, 0.35);
+  background: rgba(231, 197, 121, 0.06);
+}
+.new-player h2 {
+  margin-top: 0;
+}
+.new-player p {
+  margin: 0 0 12px;
+}

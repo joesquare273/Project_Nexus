@@ -21,7 +21,7 @@ import {
   type GameState,
 } from '@nexus/engine';
 import { CARD_DEFS, starterKitDeck } from '@nexus/cards';
-import { ClientMessage, type Deck, type ErrorCode, type LobbyPlayer, type Seat, type ServerMessage } from './protocol.ts';
+import { ClientMessage, type Deck, type ErrorCode, type LobbyPlayer, type Seat, type ServerMessage, type TableFormat } from './protocol.ts';
 import type { AccountService } from './accounts.ts';
 import { EventHub, type EventHubOptions } from './events.ts';
 import { TableHub } from './tables.ts';
@@ -153,7 +153,7 @@ export class Client {
     try {
       if (m.type === 'eventCreate' || m.type === 'eventJoin') await this.enterEvent(m.token, m.type === 'eventCreate' ? { players: m.players, bots: m.bots, set: m.set } : { code: m.code });
       else if (m.type.startsWith('event')) await this.eventMessage(m);
-      else if (m.type === 'tableCreate' || m.type === 'tableJoin') await this.enterTable(m.token, m.type === 'tableCreate' ? { players: m.players, bots: m.bots } : { code: m.code });
+      else if (m.type === 'tableCreate' || m.type === 'tableJoin') await this.enterTable(m.token, m.type === 'tableCreate' ? { players: m.players, bots: m.bots, format: m.format ?? 'commander' } : { code: m.code });
       else if (m.type.startsWith('table')) await this.tableMessage(m);
       else if (m.type === 'actions' && this.table) {
         const problem = this.lobby.tables.act(this.table.code, this.table.seat, m.seq, m.version, m.actions as unknown as Action[]);
@@ -184,7 +184,7 @@ export class Client {
   }
 
   /** Makes a Commander table, or joins (or returns to) one by code. */
-  private async enterTable(token: string, which: { players: number; bots: number } | { code: string }): Promise<void> {
+  private async enterTable(token: string, which: { players: number; bots: number; format: TableFormat } | { code: string }): Promise<void> {
     if (this.room) return this.error('already-joined', `You are in room ${this.room.code}.`);
     if (this.event) return this.error('already-joined', `You are in draft event ${this.event.code}.`);
     const user = await this.signedIn(token);
@@ -196,7 +196,7 @@ export class Client {
       if ('error' in r) return this.error(r.error, r.message);
       this.table = { code: which.code, seat: r.seat };
     } else {
-      const r = this.lobby.tables.create(user, which.players, which.bots, this.conn);
+      const r = this.lobby.tables.create(user, which.players, which.bots, this.conn, which.format);
       if ('error' in r) return this.error(r.error, r.message);
       this.table = r;
     }

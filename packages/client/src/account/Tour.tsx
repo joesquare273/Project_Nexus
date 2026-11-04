@@ -17,7 +17,7 @@ interface Step {
 const STEPS: Step[] = [
   { target: null, title: 'Welcome to Project Nexus', text: 'A quick look around. You can skip this, and replay it any time with the Tour button.' },
   { target: '[data-nav="home"]', title: 'Home', text: 'Start here: the lesson for new players, and shortcuts to everything else.' },
-  { target: '[data-nav="play"]', title: 'Play', text: 'Play the computer (Starter Kits or Commander), a friend online, or a booster draft.' },
+  { target: '[data-nav="play"]', title: 'Play', text: 'Play the computer or friends online with your 60-card or Commander decks, or a booster draft. New players can try the Starter Kits.' },
   { target: '[data-nav="collection"]', title: 'Collection', text: 'Every card you own, with its finishes. Your free precon is in here too.' },
   { target: '[data-nav="decks"]', title: 'Decks', text: 'Build and edit your own decks from your collection.' },
   { target: '[data-nav="shop"]', title: 'Shop', text: 'Open booster packs, and buy exclusive printings in the Store.' },

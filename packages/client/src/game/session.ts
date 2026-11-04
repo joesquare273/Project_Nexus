@@ -38,7 +38,7 @@ export type DeckChoice = 'RW' | 'UB';
 
 export interface SessionOptions {
   /** Starter Kit games (60 cards, 20 life), Commander with the precons (100 cards, 40 life), or Limited with drafted decks (40-60 cards, 20 life). */
-  format?: 'starter' | 'commander' | 'limited';
+  format?: 'starter' | 'constructed' | 'commander' | 'limited';
   /** Limited: every player's deck, yours first. */
   decks?: CardDefId[][];
   /** Limited: the opponents' names (the AI drafters). */
@@ -47,7 +47,7 @@ export interface SessionOptions {
   deck: DeckChoice;
   /** Commander: your precon's name. Opponents get the others. */
   precon?: string;
-  /** Commander: your own saved deck (only decks the player owns, user rule 2026-10-30); opponents play the precons. */
+  /** Commander or constructed: your own saved deck (only decks the player owns, user rule 2026-10-30); opponents play the precons or the Starter Kits. */
   ownDeck?: GameDeck;
   /** Commander: which legend from your precon leads it (default: the printed commander). */
   commander?: string;
@@ -158,7 +158,8 @@ export class GameSession {
       this.narrate(created.events);
       return;
     }
-    const decks: Record<PlayerId, ReturnType<typeof starterKitDeck>> = { [YOU]: starterKitDeck(options.deck) };
+    // Constructed: your own 60-card deck against the Starter Kits.
+    const decks: Record<PlayerId, ReturnType<typeof starterKitDeck>> = { [YOU]: options.format === 'constructed' && options.ownDeck ? options.ownDeck.deck : starterKitDeck(options.deck) };
     this.opponents.forEach((id, i) => {
       decks[id] = starterKitDeck((options.deck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');
     });
