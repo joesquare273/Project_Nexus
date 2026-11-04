@@ -6,7 +6,7 @@
 import type { BoosterCard, Finish } from '@nexus/cards/boosters';
 import { finishName } from '@nexus/cards/boosters';
 import { CARD_DEFS, CARD_IDS_BY_NAME } from '@nexus/cards';
-import { manaValue, parseManaCost } from '@nexus/engine';
+import { canPartner, manaValue, parseManaCost } from '@nexus/engine';
 import type { Collection, DeckDraft } from './collection.ts';
 
 /** One owned printing in one finish, and how many copies the player has. */
@@ -112,7 +112,8 @@ export function setArtCount(deck: DeckDraft, o: Owned, count: number): DeckDraft
     else cards.splice(at, 1);
   } else if (n > 0) cards.push({ id: o.id, finish: o.finish, count: n });
   const commander = deck.commander && cards.some((c) => c.id === deck.commander) ? deck.commander : null;
-  return { ...deck, cards, commander };
+  const partner = commander && deck.partner && cards.some((c) => c.id === deck.partner) ? deck.partner : null;
+  return { ...deck, cards, commander, partner };
 }
 
 /**
@@ -188,16 +189,58 @@ export function removeOne(deck: DeckDraft, g: CardGroup): DeckDraft {
  * the deck list (the game takes the commander's finish from the first entry
  * with its printing), and in Commander the other copies of that card leave.
  */
-export function chooseCommander(deck: DeckDraft, g: CardGroup, o: Owned): DeckDraft {
+export function chooseCommander(deck: DeckDraft, g: CardGroup, o: Owned, partnerName?: string): DeckDraft {
   const others = new Set(g.arts.map((a) => `${a.id}|${a.finish}`));
   const rest = deck.cards.filter((c) => !others.has(`${c.id}|${c.finish}`));
-  return { ...deck, format: 'commander', commander: o.id, cards: [{ id: o.id, finish: o.finish, count: 1 }, ...rest] };
+  const partnerCard = deck.partner ? rest.find((c) => c.id === deck.partner) : undefined;
+  // A partner that can't lead with the new commander stops being one (it stays in the deck).
+  const keepsPartner = !!partnerCard && deck.partner !== o.id && partnersWith(o.card.name, partnerName);
+  return { ...deck, format: 'commander', commander: o.id, partner: keepsPartner ? deck.partner! : null, cards: [{ id: o.id, finish: o.finish, count: 1 }, ...rest] };
 }
 
-/** The commander's color identity, or null without one. */
+/** Whether a card can be the partner of the named commander (both have Partner, or "Partner with" each other). */
+export function partnersWith(commanderName: string, candidateName: string | undefined): boolean {
+  const a = definition(commanderName);
+  const b = candidateName ? definition(candidateName) : undefined;
+  return !!a && !!b && canPartner(a, b);
+}
+
+/** Whether this commander can have a partner at all. */
+export function hasPartner(commanderName: string): boolean {
+  const d = definition(commanderName);
+  return !!d && (!!d.partner || !!d.partnerWith);
+}
+
+/**
+ * Makes this printing the second commander (rule 702.124): it goes second in
+ * the deck list, and the other copies of that card leave.
+ */
+export function choosePartner(deck: DeckDraft, g: CardGroup, o: Owned): DeckDraft {
+  const others = new Set(g.arts.map((a) => `${a.id}|${a.finish}`));
+  const rest = deck.cards.filter((c) => !others.has(`${c.id}|${c.finish}`));
+  const [first, ...after] = rest;
+  const entry = { id: o.id, finish: o.finish, count: 1 };
+  return { ...deck, partner: o.id, cards: first && first.id === deck.commander ? [first, entry, ...after] : [entry, ...rest] };
+}
+
+/** Takes the partner out of the command zone (its card leaves the deck too). */
+export function removePartner(deck: DeckDraft): DeckDraft {
+  if (!deck.partner) return deck;
+  const at = deck.cards.findIndex((c, i) => c.id === deck.partner && i > 0);
+  const cards = [...deck.cards];
+  if (at >= 0) {
+    if (cards[at]!.count > 1) cards[at] = { ...cards[at]!, count: cards[at]!.count - 1 };
+    else cards.splice(at, 1);
+  }
+  return { ...deck, cards, partner: null };
+}
+
+/** The commander's color identity (both commanders' with a partner), or null without one. */
 export function commanderIdentity(deck: DeckDraft, byId: Map<string, BoosterCard>): string[] | null {
   const card = deck.commander ? byId.get(deck.commander) : undefined;
-  return card ? (definition(card.name)?.colorIdentity ?? []) : null;
+  if (!card) return null;
+  const partner = deck.partner ? byId.get(deck.partner) : undefined;
+  return [...new Set([...(definition(card.name)?.colorIdentity ?? []), ...(partner ? (definition(partner.name)?.colorIdentity ?? []) : [])])];
 }
 
 /** Whether a card can go in a deck with this color identity (rule 903.4). */

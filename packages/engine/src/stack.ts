@@ -115,6 +115,11 @@ export function targetSlotEffects(s: GameState, action: Action): EffectSpec[] {
     const spec = c ? activatedAbilities(defOf(s, c))[action.ability] : undefined;
     return spec ? choosingEffects(spec.effects) : [];
   }
+  if (action.type === 'ChooseTargets' && s.pending.kind === 'chooseCopyTargets') {
+    const copy = s.pending.copy;
+    const item = s.stack.find((x) => x.id === copy);
+    return item ? choosingEffects(effectsOf(s, item)) : [];
+  }
   if (action.type === 'ChooseTargets') {
     const t = s.triggerQueue[0];
     return t ? choosingEffects(queuedTriggerSpec(s, t).effects) : [];
@@ -220,6 +225,10 @@ export interface SpellChoice {
   adventure?: boolean;
   improvise?: InstanceId[];
   graveyardSource?: InstanceId;
+  /** Muldrotha: which of the card's unused permanent types this cast uses. */
+  permanentType?: string;
+  /** How many {B} are paid with 2 life each ({B/P}, K'rrik); unset: only those the mana can't cover. */
+  lifeForB?: number;
   /** The value chosen for {X}. */
   x?: number;
   mode?: number;
@@ -251,6 +260,53 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): Eff
 }
 
 /** The effects a stack item applies when it resolves. */
+/** How a stack item's targets are judged: a trigger's defending player and subject. */
+function itemTargetContext(item: StackItem): TargetContext {
+  if (item.kind !== 'ability') return {};
+  return { ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
+}
+
+/** Each target slot's legal choices for a copy on the stack ("you may choose new targets for the copy"). */
+export function copyTargetOptions(s: GameState, item: StackItem): Target[][] {
+  return choosingEffects(effectsOf(s, item)).map((e) => targetOptions(s, e, item.controller, sourceOf(item), itemTargetContext(item)));
+}
+
+/** Asks about new targets for each of these copies that has any (the first now, the rest after). */
+function askCopyTargets(s: GameState, r: Resolving, copies: string[]): void {
+  const queue = copies.filter((id) => {
+    const item = s.stack.find((x) => x.id === id);
+    // Only when there's another legal choice for some target.
+    return !!item && copyTargetOptions(s, item).some((options) => options.length > 1);
+  });
+  if (!queue.length) return;
+  r.copyTargetQueue = queue;
+  const first = s.stack.find((x) => x.id === queue[0])!;
+  s.pending = { kind: 'chooseCopyTargets', player: first.controller, copy: first.id, source: sourceOf(first) };
+}
+
+/** The copy's targets: the same ones, or new legal ones. */
+export function chooseCopyTargets(ctx: Ctx, playerId: PlayerId, targets: Target[]): void {
+  const s = ctx.s, pending = s.pending;
+  if (pending.kind !== 'chooseCopyTargets' || pending.player !== playerId || !s.resolving) reject('You are not choosing targets for a copy right now.');
+  const r = s.resolving;
+  const item = s.stack.find((x) => x.id === pending.copy);
+  if (item) {
+    checkTargets(s, effectsOf(s, item), targets, item.controller, sourceOf(item), itemTargetContext(item));
+    item.targets = targets;
+    item.targetObjects = targets.map((t) => (t.kind === 'card' ? (s.cards[t.card]?.zoneChanges ?? 0) : null));
+  }
+  const rest = (r.copyTargetQueue ?? []).filter((id) => id !== pending.copy && s.stack.some((x) => x.id === id));
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  if (rest.length) {
+    r.copyTargetQueue = rest;
+    const next = s.stack.find((x) => x.id === rest[0])!;
+    s.pending = { kind: 'chooseCopyTargets', player: next.controller, copy: next.id, source: sourceOf(next) };
+    return;
+  }
+  delete r.copyTargetQueue;
+  continueResolving(ctx);
+}
+
 export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
   if (item.kind === 'ability') {
     const spec = abilitySpec(s, item);
@@ -349,6 +405,8 @@ export function isLegalTarget(
     // Gogo: "target activated or triggered ability you control"; its own ability can't be copied.
     if (effect.filter?.controller === 'You' && ability.controller !== controller) return false;
     if (effect.filter?.other && (ability as AbilityItem).source === source) return false;
+    // "This ability can't be copied" (another Gogo's).
+    if (effect.effect === 'CopyAbility' && (ability as AbilityItem).activatedSpec?.cantBeCopied) return false;
     return true;
   }
   const c = s.cards[t.card];
@@ -520,6 +578,8 @@ export interface ManaUse {
   artifact?: boolean;
   /** Filled with the mana of each type that was spent (converge). */
   spentOut?: Partial<Record<ManaType, number>>;
+  /** How many {B} to pay with 2 life each ({B/P}, K'rrik), as the player chose; unset: only what mana can't cover. */
+  lifeForB?: number;
 }
 
 function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
@@ -541,11 +601,22 @@ function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
  * Mana is used when it's there; only the {B} the pool can't cover are paid
  * with life. Returns the cost left for mana and the life to pay, or null.
  */
+/** How many of a cost's {B} could be paid with life ({B/P} symbols, or all of them with K'rrik). */
+export function lifePayableBlack(s: GameState, playerId: PlayerId, cost: ManaCost): number {
+  const krrik = battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.payLifeForBlack));
+  return Math.min(cost.B ?? 0, (cost.phyrexianB ?? 0) + (krrik ? (cost.B ?? 0) : 0));
+}
+
 function lifeForBlack(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse): { cost: ManaCost; life: number } | null {
   const pool = poolFor(s, playerId, use);
+  const able = lifePayableBlack(s, playerId, cost);
+  if (use.lifeForB !== undefined) {
+    const k = use.lifeForB;
+    if (!Number.isInteger(k) || k < 0 || k > able || s.players[playerId]!.life < 2 * k) return null;
+    const reduced = { ...cost, B: (cost.B ?? 0) - k };
+    return planPayment(pool, reduced) ? { cost: reduced, life: 2 * k } : null;
+  }
   if (planPayment(pool, cost)) return { cost, life: 0 };
-  const krrik = battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.payLifeForBlack));
-  const able = Math.min(cost.B ?? 0, (cost.phyrexianB ?? 0) + (krrik ? (cost.B ?? 0) : 0));
   for (let k = 1; k <= able; k++) {
     if (s.players[playerId]!.life < 2 * k) break;
     const reduced = { ...cost, B: (cost.B ?? 0) - k };
@@ -557,6 +628,7 @@ function lifeForBlack(s: GameState, playerId: PlayerId, cost: ManaCost, use: Man
 export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}, spentScryMana?: CreatureScryMana[]): number {
   const p = player(ctx.s, playerId);
   const withLife = lifeForBlack(ctx.s, playerId, cost, use);
+  if (use.lifeForB && !withLife) reject("You can't pay life for that many {B} here.");
   if (withLife && withLife.life > 0) {
     changeLife(ctx, playerId, -withLife.life);
     cost = withLife.cost;
@@ -659,7 +731,14 @@ export function activateManaAbility(
   }
   tap(ctx, c);
   const ability = def.manaAbility;
+  // Ether: "When you next cast an instant or sorcery spell this turn, copy that spell" comes with the mana.
+  if (ability?.copyNextInstantOrSorcery) {
+    s.delayedTriggers = [...(s.delayedTriggers ?? []), { source: id, sourceObject: c.zoneChanges ?? 0, controller: playerId, turn: s.turnNumber, next: true,
+      spec: { when: 'SpellCast', what: { controller: 'You', anyOf: [{ types: ['instant'] }, { types: ['sorcery'] }] }, effects: [{ effect: 'CopySpell', target: 'You' }] } }];
+  }
   if (ability?.sacrifice) sacrifice(ctx, id);
+  // Ether: "{T}, Exile this artifact: Add {U}."
+  if (ability?.exileSelf) moveCard(ctx, id, 'exile');
   // Nyxbloom Ancient: three times as much (each one triples again).
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
@@ -767,8 +846,16 @@ function unusedPermanentTypes(s: GameState, source: CardInstance, def: CardDefin
   return PERMANENT_TYPES.filter((t) => (def.types as string[]).includes(t) && !used.includes(t));
 }
 
-function markPermanentTypeUsed(s: GameState, source: CardInstance, def: CardDefinition): void {
-  const type = unusedPermanentTypes(s, source, def)[0];
+/** Muldrotha: the types this card could use from this source now ([] when the source isn't per-type). */
+export function unusedTypesFor(s: GameState, source: CardInstance, c: CardInstance, adventure = false): string[] {
+  if (!(defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.perPermanentType)) return [];
+  return unusedPermanentTypes(s, source, spellDefinition(defOf(s, c), adventure));
+}
+
+function markPermanentTypeUsed(s: GameState, source: CardInstance, def: CardDefinition, chosen?: string): void {
+  const unused = unusedPermanentTypes(s, source, def);
+  if (chosen !== undefined && !unused.includes(chosen)) reject(`That card can't use the ${chosen} permission: it isn't one of its unused permanent types.`);
+  const type = chosen ?? unused[0];
   if (!type) return;
   const used = source.graveyardTypesUsed?.turn === s.turnNumber ? source.graveyardTypesUsed.types : [];
   source.graveyardTypesUsed = { turn: s.turnNumber, types: [...used, type] };
@@ -874,6 +961,7 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   const p = player(s, playerId);
   const from = playableZone(s, playerId, c);
   if (from !== 'hand' && from !== 'exile' && from !== 'library' && from !== 'graveyard') reject('That card is not in your hand.');
+  if (from === 'exile' && c.playableFromExile?.castOnly && !c.castPermission) reject('That card can only be cast, not played.');
   if (!hasType(s, c, 'land')) reject('Only lands are played this way; cast spells with CastSpell.');
   if (defOf(s, c).notBuilt) reject(`${defOf(s, c).name} isn't built yet.`);
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
@@ -1094,7 +1182,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = { ...cost, generic: cost.generic - delved.length };
   }
   const spentScryMana: CreatureScryMana[] = [];
-  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {} };
+  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
   // Converge: pay generic mana with colors not spent yet, while the pool still covers the cost.
   if (def.converge) {
     for (const color of COLORS) {
@@ -1121,7 +1209,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   // Edgar's permission is used up for this turn.
   const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure) : undefined;
   if (edgar && !edgar.unlimited) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
-  if (edgar?.perPermanentType) markPermanentTypeUsed(s, s.cards[edgar.source]!, def);
+  if (edgar?.perPermanentType) markPermanentTypeUsed(s, s.cards[edgar.source]!, def, choice.permanentType);
   // Noctis: "by paying 3 life in addition to paying their other costs". Raubahn's ward: life equal to his power.
   const citadelLife = from === 'library' && libraryTopCostsLife(s, playerId) ? manaValue(parseManaCost(def.manaCost)) : 0;
   const lifeToPay = (edgar?.payLife ?? 0) + wardLife(s, targets, playerId) + citadelLife;
@@ -1221,8 +1309,12 @@ function equipAnyTime(s: GameState, playerId: PlayerId): boolean {
 }
 
 /** What activating an ability costs with these targets (equip discounts depend on the target). */
-export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[], source?: CardInstance): ManaCost {
+export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[], source?: CardInstance, x = 0): ManaCost {
   let cost = parseManaCost(spec.cost.mana);
+  if (cost.x) {
+    const { x: perX, ...rest } = cost;
+    cost = { ...rest, generic: rest.generic + x * perX };
+  }
   // Rydia: "Return target Saga card with mana value X": X is paid as the target's mana value.
   if (spec.xIsTargetManaValue && targets[0]?.kind === 'card' && s.cards[targets[0].card]) cost = { ...cost, generic: cost.generic + objectManaValue(s, s.cards[targets[0].card]!) };
   // "This ability costs {1} less to activate for each Town you control" (Qiqirn Merchant).
@@ -1421,6 +1513,8 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
   }
   if (spec.cost.returnUnblockedAttacker) return unblockedAttackers(s, playerId).map((id) => [id]);
   if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
+  // "Discard X cards": any number of them (capped by `subsets` for huge hands).
+  if (spec.cost.discardX) { const hand = player(s, playerId).hand.filter((id) => id !== source); return subsets(hand, 0, hand.length); }
   const n = spec.cost.discard ?? 0;
   if (n === 0) return [[]];
   return subsets(player(s, playerId).hand.filter((id) => id !== source), n, n);
@@ -1446,6 +1540,7 @@ export function activateAbility(
   index: number,
   targets: Target[] = [],
   costCards: InstanceId[] = [],
+  xChosen?: number,
 ): void {
   const s = ctx.s;
   const c = card(s, id);
@@ -1455,6 +1550,10 @@ export function activateAbility(
   const problem = activationProblem(s, playerId, c, spec, index);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
+  const hasX = !!parseManaCost(spec.cost.mana).x;
+  if (!hasX && !spec.cost.discardX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
+  if (hasX && (xChosen === undefined || !Number.isInteger(xChosen) || xChosen < (spec.xMin ?? 0))) reject(`Choose a value for X${spec.xMin ? ` of at least ${spec.xMin}` : ''}.`);
+  const x = spec.cost.discardX ? costCards.length : hasX ? xChosen! : undefined;
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
@@ -1480,10 +1579,10 @@ export function activateAbility(
       reject('Choose a permanent you control to remove a counter from.');
     }
   } else {
-    checkDiscardCost(s, playerId, spec.cost.discard ?? 0, costCards, id);
+    checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id);
   }
   if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
-  payMana(ctx, playerId, abilityCost(s, spec, targets, c), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
@@ -1534,6 +1633,7 @@ export function activateAbility(
     controller: playerId,
     targets,
     ...(ninjutsuDefender ? { defender: ninjutsuDefender } : {}),
+    ...(x !== undefined ? { x } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets });
@@ -1691,7 +1791,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                 : a.of === 'x'
                   ? r.item.kind === 'spell'
                     ? (r.item.x ?? 0)
-                    : (s.cards[r.item.source]!.xPaid ?? 0)
+                    : (r.item.x ?? s.cards[r.item.source]!.xPaid ?? 0)
                   : a.of === 'lifeLostThisWay'
                     ? (r.lifeLostThisWay ?? 0)
                     : a.of === 'revealedManaValue'
@@ -1808,6 +1908,7 @@ export function triggerLifeCost(s: GameState, item: AbilityItem): number | undef
     const subject = item.subject ? s.cards[item.subject] : undefined;
     return subject ? objectManaValue(s, subject) : 0;
   }
+  if (cost?.lifeOf === 'opponentsDealtCombatDamage') return countOf(s, 'OpponentsDealtCombatDamageThisTurn', item.controller);
   return undefined;
 }
 
@@ -1937,6 +2038,20 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'DivideDamage': {
+      // Fury: "divided as you choose among any number of target creatures": among this ability's targets, each getting at least 1.
+      if (effect.amongTargets) {
+        const picked = [...new Set(item.targets.flatMap((t) => (t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : [])))];
+        if (!picked.length || amount <= 0) return;
+        const assigned = Object.fromEntries(picked.map((id) => [id, 1]));
+        const remaining = amount - picked.length;
+        if (remaining <= 0 || picked.length === 1) {
+          for (const id of picked) dealDamage(ctx, source, { kind: 'card', card: id }, picked.length === 1 ? amount : 1, false);
+          return;
+        }
+        r.distribution = { source, remaining, assigned, damage: true };
+        r.choiceQueue = [{ player: item.controller, purpose: 'divideDamage', cards: picked, min: 1, max: 1, counterCount: remaining }];
+        return;
+      }
       const candidates = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c) && matchesObject(s, effect.filter, c, { controller: item.controller, source })
         && isLegalTarget(s, { effect: 'DealDamage', target: 'AnyTarget' }, { kind: 'card', card: c.id }, item.controller, source)).map((c) => c.id);
       if (!candidates.length || amount <= 0) return;
@@ -2259,14 +2374,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const original = subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === subject) : undefined;
       if (!original) return;
       const from = s.cards[original.card]!;
+      const copies: string[] = [];
       for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
         const id = `${original.card}c${(s.nextCopyId = (s.nextCopyId ?? 0) + 1)}`;
         s.cards[id] = { ...structuredClone(from), id, owner: item.controller, controller: item.controller, spellCopy: true, zone: 'stack', zoneChanges: 0 };
         const copy = { ...structuredClone(original), id: `${original.id}c${s.nextCopyId}`, card: id, controller: item.controller, manaSpent: 0 };
         delete copy.flashback;
         s.stack.push(copy);
+        copies.push(copy.id);
         ctx.ev.push({ type: 'SpellCopied', card: id, original: original.card, player: item.controller, defId: from.defId });
       }
+      // "You may choose new targets for the copy."
+      askCopyTargets(s, r, copies);
       return;
     }
     case 'NextCreatureEntersWithCounters': {
@@ -2317,6 +2436,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       definition.types = [...new Set([...definition.types, 'creature' as const])];
       const printing = original.printing ?? def.printing;
       r.createdTokens.push(createToken(ctx, original.defId, item.controller, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) }));
+      quinaFrogs(ctx, item.controller, r);
       return;
     }
     case 'GivePoison':
@@ -2362,6 +2482,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const token = createToken(ctx, original.defId, item.controller, { definition: structuredClone(def), artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
         s.cards[token]!.tapped = true;
         r.createdTokens.push(token);
+        quinaFrogs(ctx, item.controller, r);
         if (!def.types.includes('land')) return;
       }
       return;
@@ -2370,18 +2491,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const pool = topOfLibrary(s, item.controller, 5);
       if (pool.length === 0) return;
       for (const id of pool) ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
-      // "Choose an opponent": the next one in turn order.
-      const order = aliveFromActive(s);
-      const opponent = order.find((pid) => pid !== item.controller) ?? item.controller;
-      r.memories = { pool: [...pool], step: 0, opponent };
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'memories', cards: [...pool], min: 1, max: 1 }];
+      // "Choose an opponent": asked when there's more than one.
+      const opponents = aliveFromActive(s).filter((pid) => pid !== item.controller);
+      r.memories = { pool: [...pool], step: 0, opponent: opponents[0] ?? item.controller };
+      if (opponents.length > 1) s.pending = { kind: 'chooseOpponent', player: item.controller, opponents, purpose: 'memories' };
+      else r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'memories', cards: [...pool], min: 1, max: 1 }];
       return;
     }
     case 'CastExiledOrTreasure': {
       const exiled = (r.exiledToPlay ?? []).filter((id) => s.cards[id]?.zone === 'exile');
       const castable = exiled.filter((id) => !defOf(s, s.cards[id]!).types.includes('land') && canEverCast(defOf(s, s.cards[id]!)));
       if (castable.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castOrTreasure', cards: castable, min: 0, max: 1 }];
-      else r.createdTokens.push(createToken(ctx, 'treasure-token', item.controller));
+      else {
+        r.createdTokens.push(createToken(ctx, 'treasure-token', item.controller));
+        quinaFrogs(ctx, item.controller, r);
+      }
       return;
     }
     case 'AdditionalEndStep':
@@ -2392,7 +2516,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (s.cards[id]!.zone !== 'graveyard') continue;
         moveCard(ctx, id, 'exile');
         // Mizzix's Mastery casts a copy; casting the exiled card itself, exiled again afterwards, comes to the same.
-        s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, exileAfter: true };
+        s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, exileAfter: true, immediate: true };
       }
       return;
     case 'LinkPreviousTarget': {
@@ -2407,26 +2531,35 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const linked = src.linkedCreature ? s.cards[src.linkedCreature.card] : undefined;
       const theirs = linked ? (linked.zone === 'battlefield' ? linked.controller : linked.owner) : undefined;
       const opponents = aliveFromActive(s).filter((pid) => pid !== item.controller);
-      src.rival = theirs && opponents.includes(theirs) ? theirs : opponents.find((pid) => pid !== item.controller);
+      // "As this creature transforms into Shinryu, choose an opponent": any of them (the chosen creature's controller first).
+      src.rival = theirs && opponents.includes(theirs) ? theirs : opponents[0];
+      if (opponents.length > 1) s.pending = { kind: 'chooseOpponent', player: item.controller, opponents: theirs && opponents.includes(theirs) ? [theirs, ...opponents.filter((o) => o !== theirs)] : opponents, purpose: 'rival' };
       return;
     }
     case 'ExileTopToPlayFree':
       for (const pid of targetPlayers(targets)) {
         for (const id of topOfLibrary(s, pid, amount)) {
           moveCard(ctx, id, 'exile');
-          s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber };
-          s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };
+          // Gix: played as the ability resolves (right away), lands too while you have a land drop.
+          s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber, immediate: true };
+          s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true };
         }
       }
       return;
     case 'CopyAbility': {
+      const copies: string[] = [];
       for (const t of targets) {
         if (t.kind !== 'ability') continue;
         const original = s.stack.find((x): x is AbilityItem => x.kind === 'ability' && x.id === t.ability);
-        if (!original) continue;
-        // The copies keep the original's targets (choosing new ones isn't offered yet).
-        for (let i = 0; i < amount; i++) s.stack.push({ ...structuredClone(original), id: newId(s, 's') });
+        if (!original || original.activatedSpec?.cantBeCopied) continue;
+        for (let i = 0; i < amount; i++) {
+          const copy = { ...structuredClone(original), id: newId(s, 's') };
+          s.stack.push(copy);
+          copies.push(copy.id);
+        }
       }
+      // "You may choose new targets for the copies."
+      askCopyTargets(s, r, copies);
       return;
     }
     case 'MayAttachEquipmentToPreviousTarget': {
@@ -2446,6 +2579,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'AddSubtypes':
+      if (effect.untilEndOfTurn) {
+        for (const id of onBattlefield) s.cards[id]!.turnSubtypes = [...new Set([...(s.cards[id]!.turnSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
+        return;
+      }
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
     case 'BecomeCreature':
@@ -2463,7 +2600,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'AllowPlayExiledThisWay':
       for (const id of r.exiledToPlay ?? []) {
         if (s.cards[id]?.zone !== 'exile') continue;
-        s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber, ...(effect.anyManaType ? { anyManaType: true } : {}) };
+        s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber, ...(effect.anyManaType ? { anyManaType: true } : {}), ...(effect.castOnly ? { castOnly: true } : {}) };
       }
       return;
     case 'PutFromHandOnTop': {
@@ -2518,6 +2655,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             r.createdTokens.push(id);
           }
         }
+        if (amount > 0) quinaFrogs(ctx, item.controller, r);
         return;
       }
       for (const pid of players.length > 0 ? players : [item.controller]) {
@@ -2533,10 +2671,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           r.createdTokens.push(id);
         }
         // Quina, Qu Gourmet: "those tokens plus a 1/1 green Frog" (one Frog per Quina, per creation).
-        if (amount > 0) {
-          const quinas = battlefield(s).filter((c) => c.controller === pid && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.extraFrogOnTokens)).length;
-          for (let i = 0; i < quinas; i++) r.createdTokens.push(createToken(ctx, 'frog-token', pid));
-        }
+        if (amount > 0) quinaFrogs(ctx, pid, r);
       }
       return;
     }
@@ -2613,7 +2748,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       s.castGroups = [...(s.castGroups ?? []), {
         id: newId(s, 'cast'), source, player: item.controller, turn: s.turnNumber,
         cards: picked.map((id) => ({ card: id, object: s.cards[id]!.zoneChanges ?? 0, zone: 'graveyard' as const })),
-        anyManaType: true, exileAfter: true,
+        anyManaType: true, exileAfter: true, immediate: true,
       }];
       return;
     }
@@ -2737,6 +2872,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           r.createdTokens.push(token);
         }
       }
+      if (onBattlefield.length) quinaFrogs(ctx, item.controller, r);
       return;
     case 'Myriad': {
       const defender = item.kind === 'ability' ? item.defender : undefined;
@@ -2752,6 +2888,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           r.createdTokens.push(token);
         }
       }
+      if (r.createdTokens.length) quinaFrogs(ctx, item.controller, r);
       return;
     }
     case 'GrantTrigger':
@@ -2862,7 +2999,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           if (c.zone==='graveyard' || c.zone==='exile') milled.push({card:id,object:c.zoneChanges??0,zone:c.zone});
         }
       }
-      if (land && effect.token) r.createdTokens.push(createToken(ctx,effect.token,item.controller));
+      if (land && effect.token) {
+        r.createdTokens.push(createToken(ctx,effect.token,item.controller));
+        quinaFrogs(ctx, item.controller, r);
+      }
       if (milled.length) s.castGroups=[...(s.castGroups??[]),{id:newId(s,'cast'),source,player:item.controller,turn:s.turnNumber,cards:milled}];
       return;
     }
@@ -2897,10 +3037,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'MayAttachEquipmentToThis': {
       const host = s.cards[source]!;
       if (host.zone !== 'battlefield' || (host.zoneChanges ?? 0) !== ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0) || !isCreatureOnBattlefield(s, host)) return;
+      // Armory Automaton (`anyNumber`): "any number of target Equipment", anyone's (control doesn't change).
       const equipment = battlefield(s)
-        .filter((e) => e.controller === item.controller && e.attachedTo !== source && currentDefinition(s, e).subtypes?.includes('Equipment') && !hasType(s, e, 'creature'))
+        .filter((e) => (effect.anyNumber || e.controller === item.controller) && !e.phasedOut && e.attachedTo !== source && currentDefinition(s, e).subtypes?.includes('Equipment') && !hasType(s, e, 'creature'))
         .map((e) => e.id);
-      if (equipment.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'attachToSource', cards: equipment, min: 0, max: 1 }];
+      if (equipment.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'attachToSource', cards: equipment, min: 0, max: effect.anyNumber ? equipment.length : 1 }];
       return;
     }
     case 'RemoveFromCombat':
@@ -2957,8 +3098,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             turn: s.turnNumber,
             free: true,
             ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
-            // Jodah: cast as the trigger resolves, so timing doesn't apply.
-            ...(effect.lesserThanSubject ? { ignoreTiming: true } : {}),
+            // Jodah: cast as the trigger resolves, so timing doesn't apply, and only right away.
+            ...(effect.lesserThanSubject ? { ignoreTiming: true, immediate: true } : {}),
           };
           break;
         }
@@ -3168,6 +3309,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         ctx.ev.push({ type: 'CardRevealed', player: pid, card: top, defId: c.defId });
         // Summon: Esper Maduin: "if it's a permanent card, put it into your hand".
         if (effect.filter ? !matchesObject(s, effect.filter, c, { controller: pid }) : !defOf(s, c).types.includes('land')) continue;
+        // Explorer's Scope: "you may put it onto the battlefield tapped" (it stays on top if you don't).
+        if (effect.optional && effect.lookTo !== 'hand') {
+          r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'lookTop', cards: [top], min: 0, max: 1, looked: [top], lookTo: 'battlefield', restOnTop: true, ...(effect.entersTapped ? { lookTapped: true } : {}) }];
+          continue;
+        }
         if (effect.lookTo === 'hand') {
           moveCard(ctx, top, 'hand');
           continue;
@@ -3209,7 +3355,7 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
     if (item.kind === 'spell' && s.cards[item.card]!.zone === 'stack') moveCard(ctx, item.card, 'exile');
     for (const other of s.stack) if (other.kind === 'spell' && s.cards[other.card]?.zone === 'stack') moveCard(ctx, other.card, 'exile');
     s.stack = [];
-    s.triggerQueue = [];
+    // Abilities that triggered as it resolved (creatures dying to Ultima) wait and are put on the stack in the cleanup step, which then repeats (rules 724.1, 514.3a).
     s.combat = null;
     enterStep(ctx, 'cleanup');
     return;
@@ -3379,7 +3525,7 @@ function continueResolving(ctx: Ctx): void {
       targets = targets.filter((t) => t.kind === 'card' && objectManaValue(s, s.cards[t.card]!) <= colors);
     }
     applyEffect(ctx, effect, r, targets);
-    if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent') return;
+    if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent' || s.pending.kind === 'chooseCopyTargets') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -3534,7 +3680,13 @@ function finishFate(ctx: Ctx, r: Resolving, bottom: InstanceId): void {
 export function chooseOpponent(ctx: Ctx, playerId: PlayerId, opponent: PlayerId): void {
   const s = ctx.s, pending = s.pending;
   if (pending.kind !== 'chooseOpponent' || pending.player !== playerId || !s.resolving || !pending.opponents.includes(opponent) || s.players[opponent]!.eliminated) reject('Choose a living opponent for this decision.');
-  queueFateChoice(s, s.resolving, opponent);
+  const r = s.resolving;
+  if (pending.purpose === 'memories' && r.memories) {
+    r.memories.opponent = opponent;
+    r.choiceQueue = [{ player: playerId, purpose: 'memories', cards: [...r.memories.pool], min: 1, max: 1 }, ...(r.choiceQueue ?? [])];
+  } else if (pending.purpose === 'rival') {
+    s.cards[sourceOf(r.item)]!.rival = opponent;
+  } else queueFateChoice(s, r, opponent);
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   continueResolving(ctx);
 }
@@ -3545,6 +3697,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   const pending = s.pending;
   if (pending.kind !== 'chooseCards' || pending.player !== playerId || !s.resolving) reject('You are not choosing cards right now.');
   const problem = choiceProblem(s, pending, cards);
+  let enteredAttacker: { card: InstanceId; defenders: PlayerId[] } | undefined;
   if (problem) reject(problem);
   const r = s.resolving;
   r.choiceQueue = (r.choiceQueue ?? []).slice(1);
@@ -3625,10 +3778,15 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
         c.controller = pending.player;
         if (pending.lookTapped || entersTapped(s, c)) c.tapped = true;
         // Winota: "tapped and attacking. It gains indestructible until end of turn."
+        // Its controller chooses which player it attacks (rule 506.3a), not necessarily the one Winota's trigger saw.
         if (pending.lookAttacking && pending.attackDefender && s.combat && c.zone === 'battlefield') {
-          s.combat.attacks.push({ attacker: id, defender: pending.attackDefender });
-          ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender: pending.attackDefender });
           s.temporaryEffects.push({ source: sourceOf(r.item), affected: id, keywords: ['Indestructible'] });
+          const defenders = alivePlayers(s).filter((p) => p !== pending.player);
+          if (defenders.length > 1) enteredAttacker = { card: id, defenders };
+          else if (defenders[0]) {
+            s.combat.attacks.push({ attacker: id, defender: defenders[0] });
+            ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender: defenders[0] });
+          }
         }
       }
     }
@@ -3659,6 +3817,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       delete definition.toughness;
       const printing = original.printing ?? def.printing;
       createToken(ctx, original.defId, pending.player, { definition, artDefId: original.defId, copiedName: def.name, ...(printing ? { printing } : {}) });
+      quinaFrogs(ctx, pending.player, r);
     }
   } else if (pending.purpose === 'search' && pending.searchTo === 'exileFaceDown') {
     const source = sourceOf(r.item);
@@ -3685,7 +3844,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     if (cards.length > 0) {
       if (!canPayFromPool(s, pending.player, cost)) reject(`Tap mana for {${pending.payGeneric}} first, or don't pay.`);
       payMana(ctx, pending.player, cost);
-    } else drawCards(ctx, pending.drawFor, pending.drawCount ?? 1);
+    } else if (pending.drawFor !== undefined) {
+      // "You may draw a card": the Study's controller decides.
+      r.choiceQueue = [{ player: pending.drawFor, purpose: 'mayDraw', cards: [...pending.cards], min: 0, max: 1, drawCount: pending.drawCount ?? 1 }, ...(r.choiceQueue ?? [])];
+    }
   } else if (pending.purpose === 'payToAvoidCounter') {
     const spell = pending.cards[0]!;
     const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === spell);
@@ -3727,6 +3889,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const { kind: _kind, ...choice } = pending;
       if (left > 0) r.choiceQueue = [{ ...choice, counterCount: left }, ...(r.choiceQueue ?? [])];
     }
+  } else if (pending.purpose === 'mayDraw') {
+    if (cards.length) drawCards(ctx, pending.player, pending.drawCount ?? 1);
   } else if (pending.purpose === 'bounce') {
     for (const id of cards) if (s.cards[id]!.zone === 'battlefield') moveCard(ctx, id, 'hand');
   } else if (pending.purpose === 'counter') {
@@ -3749,10 +3913,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   } else if (pending.purpose === 'castOrTreasure') {
     // Choosing it: you may cast it now (as this resolves: this turn, any timing). Choosing none: a Treasure.
-    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, ignoreTiming: true };
-    if (cards.length === 0) createToken(ctx, 'treasure-token', pending.player);
+    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, ignoreTiming: true, immediate: true };
+    if (cards.length === 0) {
+      createToken(ctx, 'treasure-token', pending.player);
+      quinaFrogs(ctx, pending.player, r);
+    }
   } else if (pending.purpose === 'castFree') {
-    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true };
+    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true, immediate: true };
   } else if (pending.purpose === 'removeLore') {
     let removed = 0;
     for (const id of cards) {
@@ -3864,6 +4031,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   // Whose cards they were: the chooser's own, except when the spell's controller chose for everyone.
   const owner = cards.length ? s.cards[cards[0]!]!.owner : pending.player;
   r.chosen = [...(r.chosen ?? []), { player: pending.purpose === 'keep' ? owner : pending.player, cards }];
+  if (enteredAttacker) {
+    s.pending = { kind: 'chooseDefender', player: pending.player, card: enteredAttacker.card, defenders: enteredAttacker.defenders, entered: true };
+    return;
+  }
   continueResolving(ctx);
 }
 
@@ -3872,6 +4043,16 @@ export function chooseDefender(ctx: Ctx, playerId: PlayerId, defender: PlayerId)
   const s = ctx.s, pending = s.pending;
   if (pending.kind !== 'chooseDefender' || pending.player !== playerId || !s.resolving) reject('You have no defending player to choose.');
   if (!pending.defenders.includes(defender) || !s.players[defender] || s.players[defender]!.eliminated || defender === playerId) reject('Choose an opponent still in the game.');
+  if (pending.entered) {
+    const c = s.cards[pending.card];
+    if (c?.zone === 'battlefield' && s.combat) {
+      s.combat.attacks.push({ attacker: c.id, defender });
+      ctx.ev.push({ type: 'CreatureEnteredAttacking', card: c.id, defender });
+    }
+    s.pending = { kind: 'priority', player: playerId, passes: 0 };
+    continueResolving(ctx);
+    return;
+  }
   s.resolving.attackingDefender = defender;
   // Retry the paused ReturnToBattlefield effect after this non-target choice.
   s.resolving.next--;
@@ -4021,6 +4202,16 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
 }
 
 /** A token that's a copy of `original`; copy effects and their exceptions are themselves copiable (rule 707.2). */
+/** Quina, Qu Gourmet: "If one or more tokens would be created under your control, those tokens plus a 1/1 green Frog are created instead": one Frog per Quina, per creation. */
+function quinaFrogs(ctx: Ctx, controller: PlayerId, r?: Resolving): void {
+  const s = ctx.s;
+  const quinas = battlefield(s).filter((c) => c.controller === controller && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.extraFrogOnTokens)).length;
+  for (let i = 0; i < quinas; i++) {
+    const frog = createToken(ctx, 'frog-token', controller);
+    r?.createdTokens.push(frog);
+  }
+}
+
 function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number): InstanceId {
   const c = ctx.s.cards[original]!, definition = structuredClone(copiableDefinition(ctx.s, c));
   // Firion: "except it has 'This Equipment's equip abilities cost {2} less to activate.'"

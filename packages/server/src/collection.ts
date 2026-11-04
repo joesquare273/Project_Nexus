@@ -61,12 +61,15 @@ export const DeckInput = z.strictObject({
   }),
   /** Commander decks: the commander's printing id, which must be in `cards`. */
   commander: ScryfallId.nullable().optional(),
+  /** A second commander with Partner: its printing id, also in `cards`. */
+  partner: ScryfallId.nullable().optional(),
 });
 export type DeckInput = z.infer<typeof DeckInput>;
 
-export interface SavedDeck extends Omit<DeckInput, 'id' | 'commander'> {
+export interface SavedDeck extends Omit<DeckInput, 'id' | 'commander' | 'partner'> {
   id: string;
   commander: string | null;
+  partner: string | null;
   updatedAt: string;
 }
 
@@ -90,6 +93,11 @@ export function deckProblem(deck: DeckInput, owned: readonly OwnedCard[]): strin
   if (deck.commander) {
     if (deck.format !== 'commander') return 'Only Commander decks have a commander.';
     if (!deck.cards.some((c) => c.id === deck.commander)) return 'The commander must be one of the deck’s cards.';
+  }
+  if (deck.partner) {
+    if (!deck.commander) return 'Choose the first commander before its partner.';
+    const copies = deck.cards.filter((c) => c.id === deck.partner).reduce((n, c) => n + c.count, 0);
+    if (copies < (deck.partner === deck.commander ? 2 : 1)) return 'The partner must be one of the deck’s cards.';
   }
   return null;
 }

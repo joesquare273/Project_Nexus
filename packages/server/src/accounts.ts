@@ -73,8 +73,8 @@ export interface CardGrant {
   cards: OwnedCard[];
 }
 
-type DeckRow = { id: string; name: string; format: SavedDeck['format']; cards: SavedDeck['cards']; basics: SavedDeck['basics']; commander: string | null; updated_at: string };
-const fromRow = (r: DeckRow): SavedDeck => ({ id: r.id, name: r.name, format: r.format, cards: r.cards, basics: r.basics, commander: r.commander, updatedAt: r.updated_at });
+type DeckRow = { id: string; name: string; format: SavedDeck['format']; cards: SavedDeck['cards']; basics: SavedDeck['basics']; commander: string | null; partner?: string | null; updated_at: string };
+const fromRow = (r: DeckRow): SavedDeck => ({ id: r.id, name: r.name, format: r.format, cards: r.cards, basics: r.basics, commander: r.commander, partner: r.partner ?? null, updatedAt: r.updated_at });
 
 /** A display name from Discord's profile data, trimmed to something sensible. */
 export function displayName(meta: Record<string, unknown> | undefined, fallback: string): string {
@@ -163,7 +163,7 @@ export class SupabaseAccounts implements AccountService {
   }
 
   async saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null> {
-    const row = { name: deck.name, format: deck.format, cards: deck.cards, basics: deck.basics, commander: deck.commander ?? null, updated_at: new Date().toISOString() };
+    const row = { name: deck.name, format: deck.format, cards: deck.cards, basics: deck.basics, commander: deck.commander ?? null, partner: deck.partner ?? null, updated_at: new Date().toISOString() };
     if (deck.id) {
       const { data, error } = await this.db.from('decks').update(row).eq('id', deck.id).eq('user_id', userId).select('*');
       if (error) throw new Error(`Could not save the deck: ${error.message}`);
@@ -273,7 +273,7 @@ export class MemoryAccounts implements AccountService {
   async saveDeck(userId: string, deck: DeckInput): Promise<SavedDeck | null> {
     const list = this.savedDecks.get(userId) ?? [];
     this.savedDecks.set(userId, list);
-    const saved: SavedDeck = { id: deck.id ?? randomUUID(), name: deck.name, format: deck.format, cards: deck.cards, basics: deck.basics, commander: deck.commander ?? null, updatedAt: new Date().toISOString() };
+    const saved: SavedDeck = { id: deck.id ?? randomUUID(), name: deck.name, format: deck.format, cards: deck.cards, basics: deck.basics, commander: deck.commander ?? null, partner: deck.partner ?? null, updatedAt: new Date().toISOString() };
     const at = list.findIndex((d) => d.id === deck.id);
     if (deck.id && at < 0) return null;
     if (at >= 0) list[at] = saved;

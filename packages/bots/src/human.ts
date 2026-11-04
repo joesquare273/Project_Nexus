@@ -81,7 +81,8 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const isAbility = a.type === 'ActivateAbility';
     const adventure = a.type === 'CastSpell' && !!a.adventure;
     const alternative = a.type === 'CastSpell' && a.alternative;
-    const x = a.type === 'CastSpell' ? a.x : undefined;
+    const x = a.x;
+    const lifeForB = a.type === 'CastSpell' ? a.lifeForB : undefined;
     // Convoke and delve: one entry per number of creatures tapped or cards exiled.
     const convoked = a.type === 'CastSpell' ? (a.convoke?.length ?? 0) : 0;
     const delved = a.type === 'CastSpell' ? (a.delve?.length ?? 0) : 0;
@@ -89,14 +90,15 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const helped = `${convoked ? `, tapping ${convoked} creature${plural(convoked)} (convoke)` : ''}${delved ? `, exiling ${delved} card${plural(delved)} from your graveyard (delve)` : ''}${improvised ? `, tapping ${improvised} artifact${plural(improvised)} (improvise)` : ''}`;
     const permissionSource = a.type === 'CastSpell' ? a.graveyardSource : undefined;
     const castGroup = a.type === 'CastSpell' ? a.castGroup : undefined;
+    const permanentType = a.type === 'CastSpell' ? a.permanentType : undefined;
     const card = s.cards[a.card]!;
     const flashback = !isAbility && !castGroup && !permissionSource && card.zone==='graveyard' && card.owner===player && !(card.castPermission?.player===player && card.castPermission.turn===s.turnNumber) ? s.cardDefs[card.defId]!.flashback : undefined;
     const kicks = a.type === 'CastSpell' ? (a.kicks ?? 0) : 0;
     const kicked = kicks === 0 ? '' : kicks === 1 ? ', kicked' : `, kicked ${kicks} times`;
-    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${kicked}${helped}${castGroup ? ' (Mug: one spell from this mill)' : ''}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name})` : ''}`;
+    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${lifeForB ? `, paying ${2 * lifeForB} life for {B}` : ''}${kicked}${helped}${castGroup ? ' (Mug: one spell from this mill)' : ''}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name}${permanentType ? `, as its ${permanentType}` : ''})` : ''}`;
     const key = isAbility
-      ? `${a.card}#${a.ability}`
-      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}`;
+      ? `${a.card}#${a.ability}${x !== undefined ? `#x${x}` : ''}`
+      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${permanentType ? `#t${permanentType}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}${lifeForB ? `#l${lifeForB}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = currentDefinition(s,s.cards[a.card]!);
@@ -106,6 +108,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             kind: 'ability',
             ability: a.ability,
             label: activatedText(activatedAbilities(def)[a.ability]!),
+            ...(x !== undefined ? { detail: ` with X = ${x}` } : {}),
             choices: [],
           }
         : {

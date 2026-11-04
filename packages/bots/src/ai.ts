@@ -566,6 +566,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'removeLore') return pick([]);
   // Vaan: a Treasure is the safe choice for the basic AI.
   if (p.purpose === 'castOrTreasure') return pick([]);
+  // Rhystic Study: always draw.
+  if (p.purpose === 'mayDraw') return pick([...p.cards]);
   // Zell: return our least valuable land. Ambrosia: nothing (bouncing is only worth it with an enters ability). Zenos: their weakest creature, the likeliest to leave and flip him.
   if (p.purpose === 'bounce') return p.min === 0 ? pick([]) : pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   if (p.purpose === 'counter' || p.purpose === 'attachSource') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
@@ -709,6 +711,8 @@ export function basicAi(_seed = 0): Bot {
     if (pending.kind === 'orderTriggers') return legal[0]!;
     if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;
     if (pending.kind === 'chooseTargets') return chooseTriggerTargets(s, pending.player, legal);
+    // A copy's new targets: keep them (listed first), the way the original was aimed.
+    if (pending.kind === 'chooseCopyTargets') return legal[0]!;
     if (pending.kind === 'decide') return decideOptional(s, pending.player, legal);
     if (pending.kind === 'chooseMana') {
       const recipient = s.players[pending.recipient]!;

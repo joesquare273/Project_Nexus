@@ -101,3 +101,11 @@ describe('deckbuilding', () => {
     expect(curve(d, groups)).toEqual([0, 2, 0, 1, 0, 0, 0, 0]);
   });
 });
+
+describe('saving an edited deck', () => {
+  it('sends only the deck fields (a saved deck’s updatedAt made the server answer "That deck could not be read.")', async () => {
+    const { deckPayload } = await import('../src/packs/collection.ts');
+    const edited = { ...empty('commander'), id: '00000000-0000-4000-8000-000000000001', updatedAt: '2026-11-04T00:00:00Z', commander: null, partner: null };
+    expect(Object.keys(deckPayload(edited)).sort()).toEqual(['basics', 'cards', 'commander', 'format', 'id', 'name']);
+  });
+});

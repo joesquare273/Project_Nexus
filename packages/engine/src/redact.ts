@@ -178,6 +178,7 @@ const CARD_FIELDS = {
   exileAtEndStep: 'copy',
   sacrificeAtEndStepOf: 'copy',
   addedSubtypes: 'copy',
+  turnSubtypes: 'copy',
   linkedCreature: 'refs',
   rival: 'copy',
   crewedByThisTurn: 'copy',

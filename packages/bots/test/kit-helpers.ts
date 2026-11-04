@@ -106,13 +106,18 @@ export function rejected(s: GameState, action: Action): string {
  */
 export function settle(
   s: GameState,
-  opts: { accept?: boolean; targets?: (options: Target[][]) => Target[]; surveilToGraveyard?: boolean } = {},
+  opts: { accept?: boolean; targets?: (options: Target[][]) => Target[]; copyTargets?: (options: Target[][]) => Target[]; surveilToGraveyard?: boolean } = {},
 ): Played {
   const events: GameEvent[] = [];
   for (let guard = 0; guard < 200; guard++) {
     const p = s.pending;
     let action: Action | undefined;
-    if (p.kind === 'chooseTargets') {
+    if (p.kind === 'chooseCopyTargets') {
+      // A copy keeps its targets (the first choice) unless the test picks others.
+      const legal = getLegalActions(s).filter((a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets');
+      const targets = opts.copyTargets ? opts.copyTargets(legal.map((a) => a.targets)) : legal[0]!.targets;
+      action = { type: 'ChooseTargets', player: p.player, targets };
+    } else if (p.kind === 'chooseTargets') {
       const legal = getLegalActions(s).filter((a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets');
       const targets = opts.targets ? opts.targets(legal.map((a) => a.targets)) : legal[0]!.targets;
       action = { type: 'ChooseTargets', player: p.player, targets };

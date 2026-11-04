@@ -43,6 +43,10 @@ import {
   graveyardWay,
   castGroupsFor,
   graveyardCastSources,
+  unusedTypesFor,
+  lifePayableBlack,
+  copyTargetOptions,
+  effectsOf,
   queuedTriggerSpec,
   subsets,
   groupProblem,
@@ -56,7 +60,7 @@ import { battlefield, alivePlayers, hasKeyword, hasType, staticRule } from './st
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices, tapOtherManaTypes } from './typerules.ts';
-import { COLORS, MANA_TYPES, type Action, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
+import { COLORS, MANA_TYPES, type Action, type ActivatedSpec, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
 const MAX_BOTTOM_CHOICES = 8;
@@ -148,7 +152,14 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     // Without another permission, Sabin uses its native graveyard blitz route.
     const naturalWay = from === 'graveyard' ? graveyardWay(s, playerId, c, adventure) : null;
     const permissions: SpellChoice[] = naturalFrom && naturalWay !== 'static' ? [{}] : [];
-    if (from === 'graveyard' && c.owner === playerId) permissions.push(...graveyardCastSources(s,playerId,c,adventure).map(graveyardSource=>({graveyardSource})));
+    if (from === 'graveyard' && c.owner === playerId) {
+      for (const graveyardSource of graveyardCastSources(s,playerId,c,adventure)) {
+        // Muldrotha: an artifact creature can use either unused type.
+        const types = unusedTypesFor(s, s.cards[graveyardSource]!, c, adventure);
+        if (types.length > 1) permissions.push(...types.map((permanentType) => ({ graveyardSource, permanentType })));
+        else permissions.push({ graveyardSource });
+      }
+    }
     permissions.push(...groups.map(g=>({castGroup:g.id})));
     for (const permission of permissions) {
     const way = permission.castGroup ? 'group' : permission.graveyardSource ? 'static' : naturalWay;
@@ -236,8 +247,8 @@ function helpedPayments(
   c: CardInstance,
   cost: ManaCost,
   reserved: InstanceId[] = [],
-): { extra: Pick<SpellChoice, 'convoke' | 'delve' | 'improvise'>; cost: ManaCost }[] {
-  const out: { extra: Pick<SpellChoice, 'convoke' | 'delve' | 'improvise'>; cost: ManaCost }[] = [{ extra: {}, cost }];
+): { extra: Pick<SpellChoice, 'convoke' | 'delve' | 'improvise' | 'lifeForB'>; cost: ManaCost }[] {
+  const out: { extra: Pick<SpellChoice, 'convoke' | 'delve' | 'improvise' | 'lifeForB'>; cost: ManaCost }[] = [{ extra: {}, cost }];
   if (def.convoke) {
     const picked: CardInstance[] = [];
     for (const creature of convokeCandidates(s, playerId).filter((k) => manaChoices(s, k).length === 0)) {
@@ -261,6 +272,16 @@ function helpedPayments(
         .sort((a, b) => Number(manaChoices(s, a).length > 0) - Number(manaChoices(s, b).length > 0));
       for (let n = 1; n <= Math.min(option.cost.generic, artifacts.length); n++) {
         out.push({ extra: { ...option.extra, improvise: artifacts.slice(0, n).map((a) => a.id) }, cost: { ...option.cost, generic: option.cost.generic - n } });
+      }
+    }
+  }
+  // {B/P}, or K'rrik's "pay 2 life rather than {B}": choosing to pay life for some {B} even with the mana there.
+  const lifeable = lifePayableBlack(s, playerId, cost);
+  if (lifeable > 0) {
+    for (const option of [...out]) {
+      for (let k = 1; k <= lifeable && s.players[playerId]!.life >= 2 * k; k++) {
+        const { phyrexianB: _p, ...rest } = option.cost;
+        out.push({ extra: { ...option.extra, lifeForB: k }, cost: { ...rest, B: (option.cost.B ?? 0) - k } });
       }
     }
   }
@@ -303,6 +324,16 @@ function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alterna
   return Array.from({ length: Math.max(0, most) + 1 }, (_, i) => i);
 }
 
+/** The values of X an activated ability could be given with the mana available ({X}{X}: Gogo). */
+function abilityXChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec): (number | undefined)[] {
+  const cost = parseManaCost(spec.cost.mana);
+  if (!cost.x) return [undefined];
+  const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
+  const most = Math.min(MAX_X, Math.floor((availableMana(s, playerId) - base) / cost.x));
+  const least = spec.xMin ?? 0;
+  return most < least ? [] : Array.from({ length: most - least + 1 }, (_, i) => least + i);
+}
+
 /** Every non-mana ability the player could activate right now, ignoring mana. */
 export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const out: CostedOption[] = [];
@@ -314,12 +345,14 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
       if (activationProblem(s, playerId, c, spec, ability)) return;
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
+         for (const x of abilityXChoices(s, playerId, spec)) {
           out.push({
-            action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}) },
-            cost: abilityCost(s, spec, targets, c),
+            action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}), ...(x !== undefined ? { x } : {}) },
+            cost: abilityCost(s, spec, targets, c, x ?? 0),
             forEquipment: spec.equip ?? false,
             forArtifact: hasType(s, c, 'artifact'),
           });
+         }
         }
       }
     });
@@ -420,6 +453,16 @@ export function getLegalActions(s: GameState): Action[] {
     }
     case 'chooseModes':
       return triggerModeOptions(s, s.triggerQueue[0]!).map((modes): Action => ({ type: 'ChooseModes', player: pending.player, modes }));
+    case 'chooseCopyTargets': {
+      const player = pending.player;
+      const item = s.stack.find((x) => x.id === pending.copy);
+      if (!item) return [];
+      const needs = choosingEffects(effectsOf(s, item));
+      const combos = combine(copyTargetOptions(s, item), (ts) => !groupProblem(s, needs, ts));
+      // Keeping the copy's targets comes first.
+      const same = (ts: Target[]) => JSON.stringify(ts) === JSON.stringify(item.targets);
+      return [...combos.filter(same), ...combos.filter((ts) => !same(ts))].map((targets): Action => ({ type: 'ChooseTargets', player, targets }));
+    }
     case 'chooseTargets': {
       const player = pending.player;
       const t = s.triggerQueue[0]!;
@@ -525,7 +568,7 @@ export function getLegalActions(s: GameState): Action[] {
         const lands = [...p.hand, ...s.turnOrder.flatMap((pid) => s.players[pid]!.exile), ...p.library.slice(0, 1), ...p.graveyard].filter((id) => {
           const c = s.cards[id]!;
           const zone = playableZone(s, player, c);
-          return (zone === 'hand' || zone === 'exile' || zone === 'library' || zone === 'graveyard') && currentDefinition(s, c).types.includes('land') && !currentDefinition(s, c).notBuilt;
+          return (zone === 'hand' || (zone === 'exile' && !(c.playableFromExile?.castOnly && !c.castPermission)) || zone === 'library' || zone === 'graveyard') && currentDefinition(s, c).types.includes('land') && !currentDefinition(s, c).notBuilt;
         });
         for (const card of lands) {
           // Snarls: reveal to enter untapped, or play it tapped anyway.

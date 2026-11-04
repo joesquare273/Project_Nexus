@@ -269,6 +269,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.exiledWith;
   delete c.crewed;
   delete c.addedSubtypes;
+  delete c.turnSubtypes;
   delete c.linkedCreature;
   delete c.rival;
   delete c.attachedTo;

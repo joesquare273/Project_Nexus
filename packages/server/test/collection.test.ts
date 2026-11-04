@@ -102,6 +102,16 @@ describe('decks', () => {
     expect(deckProblem(deck({ format: 'commander', cards: cards.slice(0, 1), commander: TIFA }), owned)).toMatch(/commander/);
     expect(deckProblem(deck({ cards, commander: TIFA }), owned)).toMatch(/Commander/);
   });
+
+  it('a partner must be one of the deck’s cards, after a commander', () => {
+    const owned = [{ id: CLOUD, finish: 'nonfoil' as const, count: 1 }, { id: TIFA, finish: 'nonfoil' as const, count: 1 }];
+    const cards = owned.map((c) => ({ ...c }));
+    expect(deckProblem(deck({ format: 'commander', cards, commander: TIFA, partner: CLOUD }), owned)).toBeNull();
+    expect(deckProblem(deck({ format: 'commander', cards: cards.slice(1), commander: TIFA, partner: CLOUD }), owned)).toMatch(/partner/);
+    expect(deckProblem(deck({ format: 'commander', cards, partner: CLOUD }), owned)).toMatch(/first commander/);
+    // The same single copy can't be both commanders.
+    expect(deckProblem(deck({ format: 'commander', cards, commander: TIFA, partner: TIFA }), owned)).toMatch(/partner/);
+  });
 });
 
 describe('buying packs', () => {

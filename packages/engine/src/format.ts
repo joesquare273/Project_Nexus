@@ -76,21 +76,39 @@ export function canBeCommander(def: CardDefinition): boolean {
   return !!def.supertypes?.includes('Legendary') && (def.types.includes('creature') || !!def.subtypes?.includes('Vehicle'));
 }
 
-/** Problems with a commander and the color identity of its deck (rules 903.3-903.5). */
+/** Whether two cards can be commanders together: both have Partner, or each partners with the other (rule 702.124). */
+export function canPartner(a: CardDefinition, b: CardDefinition): boolean {
+  if (a.name === b.name) return false;
+  return (!!a.partner && !!b.partner) || (a.partnerWith === b.name && b.partnerWith === a.name);
+}
+
+/**
+ * Problems with a commander (and its partner) and the color identity of its
+ * deck (rules 903.3-903.5); with two commanders, the identity is both of theirs
+ * (rule 702.124c).
+ */
 export function validateCommander(
   deck: readonly CardDefId[],
   commander: CardDefId,
   cardDefs: Readonly<Record<CardDefId, CardDefinition>>,
+  partner?: CardDefId,
 ): string[] {
   const def = cardDefs[commander];
   if (!def) return [`Unknown commander "${commander}".`];
   const errors: string[] = [];
   if (!canBeCommander(def)) errors.push(`"${def.name}" isn't a legendary creature or legendary Vehicle, so it can't be a commander.`);
-  const identity = new Set(def.colorIdentity ?? []);
+  const second = partner !== undefined ? cardDefs[partner] : undefined;
+  if (partner !== undefined && !second) return [...errors, `Unknown commander "${partner}".`];
+  if (second) {
+    if (!canBeCommander(second)) errors.push(`"${second.name}" isn't a legendary creature or legendary Vehicle, so it can't be a commander.`);
+    if (!canPartner(def, second)) errors.push(`${def.name} and ${second.name} can't be commanders together: both need Partner (or to partner with each other).`);
+  }
+  const identity = new Set([...(def.colorIdentity ?? []), ...(second?.colorIdentity ?? [])]);
+  const names = second ? `${def.name} and ${second.name}'s` : `${def.name}'s`;
   for (const id of new Set(deck)) {
     const card = cardDefs[id];
     const outside = (card?.colorIdentity ?? []).filter((c) => !identity.has(c));
-    if (card && outside.length > 0) errors.push(`"${card.name}" is outside ${def.name}'s color identity.`);
+    if (card && outside.length > 0) errors.push(`"${card.name}" is outside ${names} color identity.`);
   }
   return errors;
 }

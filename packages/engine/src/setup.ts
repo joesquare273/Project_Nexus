@@ -20,6 +20,10 @@ export interface PlayerSetup {
   commanderFinish?: CardFinish;
   /** Commander format: the commander, which starts in the command zone. */
   commander?: CardDefId;
+  /** A second commander with Partner (rule 702.124), also in the command zone. */
+  partner?: CardDefId;
+  partnerPrinting?: CardDefinition['printing'];
+  partnerFinish?: CardFinish;
   /** Asked to order simultaneous triggers (rule 603.3b). Off for bots, which keep the order they were found in. */
   ordersTriggers?: boolean;
 }
@@ -61,11 +65,12 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       parseManaCost(def.manaCost); // Throws on unsupported symbols.
     }
     if (format.commander && !p.commander) throw new Error(`${p.id} needs a commander.`);
+    if (p.partner && !(format.commander && p.commander)) throw new Error(`${p.id}: only a Commander deck with a commander can have a partner.`);
     if (!setup.skipDeckValidation) {
-      const full = p.commander ? [...p.deck, p.commander] : p.deck;
+      const full = p.commander ? [...p.deck, p.commander, ...(p.partner ? [p.partner] : [])] : p.deck;
       const errors = [
         ...validateDeck(full, cardDefs, format),
-        ...(format.commander && p.commander ? validateCommander(full, p.commander, cardDefs) : []),
+        ...(format.commander && p.commander ? validateCommander(full, p.commander, cardDefs, p.partner) : []),
       ];
       if (errors.length > 0) throw new Error(`Deck for ${p.id} is not legal: ${errors.join(' ')}`);
     }
@@ -136,13 +141,16 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       s.players[p.id]!.library.push(id);
     }
     ctx.ev.push({ type: 'LibraryShuffled', player: p.id });
-    if (format.commander && p.commander) {
+    const commanders = format.commander && p.commander
+      ? [{ defId: p.commander, printing: p.commanderPrinting, finish: p.commanderFinish }, ...(p.partner ? [{ defId: p.partner, printing: p.partnerPrinting, finish: p.partnerFinish }] : [])]
+      : [];
+    for (const commander of commanders) {
       const id = `c${s.nextId++}`;
       s.cards[id] = {
         id,
-        defId: p.commander,
-        ...(p.commanderPrinting ? { printing: { ...p.commanderPrinting } } : {}),
-        ...(p.commanderFinish ? { finish: p.commanderFinish } : {}),
+        defId: commander.defId,
+        ...(commander.printing ? { printing: { ...commander.printing } } : {}),
+        ...(commander.finish ? { finish: commander.finish } : {}),
         owner: p.id,
         controller: p.id,
         zone: 'command',

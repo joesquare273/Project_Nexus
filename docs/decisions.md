@@ -124,8 +124,8 @@ choices keep opponents' hand identities hidden.
 | Layers | Type/color and base P/T setters use timestamps; counters and P/T modifiers apply after base setters. Keyword removal still wins over grants | Full dependency and layer/timestamp order, including ability removal (rule 613) |
 | Sacrifice the greatest power (Crackling Doom) | On a tie, the creature that has been on the battlefield longest is sacrificed | The player chooses among the tied creatures |
 | Path to Exile | The exiled creature's controller always searches for a basic land | Searching is optional ("may") |
-| Explorer's Scope | A land on top of the library is always put onto the battlefield | Optional ("you may") |
-| Armory Automaton | "Attach any number of target Equipment": all of your Equipment or none | Any subset, and other players' Equipment too |
+| Explorer's Scope | Fixed 2026-11-04: you may put the land onto the battlefield; it stays on top if you don't | Optional ("you may") |
+| Armory Automaton | Fixed 2026-11-04: any number of Equipment, anyone's (chosen as it resolves) | Any subset, and other players' Equipment too |
 | Losing keywords | "Loses flying" applies after every grant, whatever the order | Layer 6 timestamp order (rule 613) |
 | Proliferate | Adds one of each kind of counter already on your permanents, except stun counters, and a stun counter to opponents' permanents that have one | You choose any permanents and players (rule 701.27) |
 | Counter kinds | +1/+1, shield, stun, flying, page and soul counters exist; lore, vow and others don't yet | Many more kinds (rule 122) |

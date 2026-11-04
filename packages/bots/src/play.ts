@@ -391,9 +391,11 @@ async function decideTriggerTargets(s: GameState): Promise<Action[]> {
   const options = getLegalActions(s).filter(
     (a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets',
   );
-  const t = s.triggerQueue[0]!;
-  const spec = queuedTriggerSpec(s, t);
-  console.log(`\n  ${cardName(s, t.source)} triggered: ${triggerText(spec)}`);
+  if (s.pending.kind === 'chooseCopyTargets') console.log(`\n  ${cardName(s, s.pending.source)}: choose targets for the copy (1 keeps them)`);
+  else {
+    const t = s.triggerQueue[0]!;
+    console.log(`\n  ${cardName(s, t.source)} triggered: ${triggerText(queuedTriggerSpec(s, t))}`);
+  }
   options.forEach((o, i) => console.log(`    ${i + 1}) ${o.targets.map((x) => targetName(s, x, YOU)).join(', ')}`));
   for (;;) {
     const pick = options[Number(await ask('  Choose a target: ')) - 1];
@@ -543,7 +545,7 @@ async function playOneGame(gameSeed: number): Promise<void> {
       const accept = /^y/i.test(await ask('  Become a copy? [y/N] '));
       actions = [{type:'CopyCreature',player:YOU,accept}];
     } else if (pending.kind === 'chooseOpponent') {
-      console.log('  Choose the opponent who chooses the card for the bottom of your library:');
+      console.log(pending.purpose === 'memories' ? '  Choose the opponent who takes turns choosing with you:' : pending.purpose === 'rival' ? '  Choose Shinryu’s rival (when they lose, you win):' : '  Choose the opponent who chooses the card for the bottom of your library:');
       pending.opponents.forEach((id, i) => console.log('    ' + (i + 1) + ') ' + id));
       const opponent = pending.opponents[Number(await ask('  Opponent: ')) - 1];
       if (!opponent) continue;
@@ -554,7 +556,7 @@ async function playOneGame(gameSeed: number): Promise<void> {
       const defender = pending.defenders[Number(await ask('  Defending player: ')) - 1];
       if (!defender) continue;
       actions = [{ type: 'ChooseDefender', player: YOU, defender }];
-    } else if (pending.kind === 'chooseTargets') {
+    } else if (pending.kind === 'chooseTargets' || pending.kind === 'chooseCopyTargets') {
       actions = await decideTriggerTargets(s);
     } else if (pending.kind === 'decide') {
       actions = await decideYesNo(s);

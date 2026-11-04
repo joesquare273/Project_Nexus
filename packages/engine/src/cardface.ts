@@ -68,6 +68,14 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     out.toughness = c.animated.toughness;
   }
   if (c.addedSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.addedSubtypes])]; }
+  if (c.turnSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.turnSubtypes])]; }
+  // Ultima, Origin of Oblivion: "For as long as that land has a blight counter on it, it loses all land types and abilities and has '{T}: Add {C}.'"
+  if ((c.namedCounters?.blight ?? 0) > 0 && out.types.includes('land')) {
+    change();
+    out.subtypes = (out.subtypes ?? []).filter((t) => CREATURE_SUBTYPES.has(t));
+    for (const key of ['triggers', 'activated', 'statics', 'keywords', 'manaAbility', 'entersTapped', 'entersTappedUnless', 'landcycling', 'cycling', 'adventure'] as const) delete (out as Partial<CardDefinition>)[key];
+    out.produces = ['C'];
+  }
   // Type/color effects never ask for power or abilities, avoiding a recursive layer evaluation.
   const layers: { source: CardInstance; spec: StaticSpec; timestamp: number }[] = [];
   for (const source of continuousSources(s)) {

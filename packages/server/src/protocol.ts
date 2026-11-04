@@ -141,7 +141,7 @@ export interface TableView {
   host: Seat;
   you: Seat;
   phase: 'lobby' | 'playing' | 'finished';
-  seats: { id: Seat; name: string; avatar: string | null; bot: boolean; connected: boolean; deck: { name: string; commander: string | null } | null }[];
+  seats: { id: Seat; name: string; avatar: string | null; bot: boolean; connected: boolean; deck: { name: string; commander: string | null; partner?: string | null } | null }[];
   /** Who won, once the game is over (null: a draw, or not over). */
   winner: Seat | null;
 }

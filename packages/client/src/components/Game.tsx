@@ -254,8 +254,17 @@ export function Game({
 
   // Trigger targets are chosen the same way as spell targets.
   const triggerTargeting: Targeting | null = useMemo(() => {
-    if (!yourMove || pending.kind !== 'chooseTargets') return null;
+    if (!yourMove || (pending.kind !== 'chooseTargets' && pending.kind !== 'chooseCopyTargets')) return null;
     const choices = legal.filter((a): a is Extract<Action, { type: 'ChooseTargets' }> => a.type === 'ChooseTargets');
+    if (pending.kind === 'chooseCopyTargets') {
+      return {
+        title: `${cardName(s, pending.source)}: choose targets for the copy (pick the same ones to keep them)`,
+        choices: choices.map((a) => [a]),
+        targets: choices.map((a) => a.targets),
+        chosen: [],
+        ...(choices[0] ? { slots: targetSlotEffects(s, choices[0]).map(targetDescription) } : {}),
+      };
+    }
     const t = s.triggerQueue[0]!;
     return {
       title: `${cardName(s, t.source)}: ${triggerText(queuedTriggerSpec(s, t))}`,
@@ -264,7 +273,7 @@ export function Game({
       chosen: [],
       ...(choices[0] ? { slots: targetSlotEffects(s, choices[0]).map(targetDescription) } : {}),
     };
-  }, [yourMove, pending.kind, legal, s]);
+  }, [yourMove, pending, legal, s]);
   const activeTargeting = targeting ?? triggerTargeting;
   const [triggerChosen, setTriggerChosen] = useState<Target[]>([]);
   useEffect(() => {
@@ -1138,6 +1147,8 @@ function PromptBar(p: PromptProps) {
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'mayDraw'
+              ? 'to draw a card from (or none)'
             : c.purpose === 'bounce'
               ? `to return to its owner’s hand${c.min === 0 ? ' (or none)' : ''}`
             : c.purpose === 'counter'
@@ -1195,7 +1206,9 @@ function PromptBar(p: PromptProps) {
     text = cardName(s,pending.source) + ': become a copy of ' + cardName(s,pending.target) + (pending.effect.copyUntilEndOfTurn ? ' until end of turn?' : '?');
     buttons = getLegalActions(s).flatMap(action=>action.type==='CopyCreature' ? [{label:action.accept?'Become a copy':'Keep current form',onClick:()=>p.submit([action]),primary:action.accept}] : []);
   } else if (pending.kind === 'chooseOpponent') {
-    text = 'Choose the opponent who will decide which exiled card goes on the bottom of your library.';
+    text = pending.purpose === 'memories' ? 'Memories Returning: choose the opponent who takes turns choosing with you.'
+      : pending.purpose === 'rival' ? 'Shinryu: choose an opponent. When they lose the game, you win.'
+      : 'Choose the opponent who will decide which exiled card goes on the bottom of your library.';
     buttons = pending.opponents.filter(id => !s.players[id]!.eliminated).map(opponent => ({
       label: opponent, onClick: () => p.submit([{ type: 'ChooseOpponent', player: YOU, opponent }]),
     }));

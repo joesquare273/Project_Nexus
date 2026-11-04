@@ -40,7 +40,7 @@ interface TableSeat {
   userId?: string;
   avatar?: string;
   /** The player's chosen deck: its name, its commander's printing, and the game deck. */
-  deck: { id: string; name: string; commander: string | null; game: GameDeck } | null;
+  deck: { id: string; name: string; commander: string | null; partner?: string | null; game: GameDeck } | null;
 }
 
 interface Table {
@@ -160,7 +160,7 @@ export class TableHub {
     const problem = t.format === 'constructed' ? constructedDeckProblem(saved, owned) : commanderDeckProblem(saved, owned);
     if (typeof problem === 'string') return problem;
     if (this.tables.get(code) !== t || t.phase !== 'lobby') return 'The game has already started.';
-    me.deck = { id: saved.id, name: saved.name, commander: saved.commander, game: problem };
+    me.deck = { id: saved.id, name: saved.name, commander: saved.commander, partner: saved.partner ?? null, game: problem };
     this.broadcast(t);
     return null;
   }
@@ -282,7 +282,7 @@ export class TableHub {
       host: t.host,
       you: seat,
       phase: t.phase,
-      seats: t.seats.map((s) => ({ id: s.id, name: s.name, avatar: s.avatar ?? null, bot: s.bot, connected: s.bot || t.conns.has(s.id), deck: s.deck ? { name: s.deck.name, commander: s.deck.commander } : null })),
+      seats: t.seats.map((s) => ({ id: s.id, name: s.name, avatar: s.avatar ?? null, bot: s.bot, connected: s.bot || t.conns.has(s.id), deck: s.deck ? { name: s.deck.name, commander: s.deck.commander, partner: s.deck.partner ?? null } : null })),
       winner: t.winner,
     };
   }
@@ -305,7 +305,7 @@ export function constructedDeckProblem(
   if ('problem' in game) return game.problem;
   const errors = validateDeck(game.deck, CARD_DEFS, CONSTRUCTED_DUEL);
   if (errors.length) return `${saved.name} isn't a legal 60-card deck: ${errors[0]}`;
-  const { commander: _none, ...rest } = game;
+  const { commander: _none, partner: _partner, ...rest } = game;
   return rest;
 }
 
@@ -320,8 +320,8 @@ export function commanderDeckProblem(
   const game = gameDeck(saved);
   if ('problem' in game) return game.problem;
   if (!game.commander) return 'The deck has no commander.';
-  const full = [...game.deck, game.commander];
-  const errors = [...validateDeck(full, CARD_DEFS, COMMANDER), ...validateCommander(full, game.commander, CARD_DEFS)];
+  const full = [...game.deck, game.commander, ...(game.partner ? [game.partner] : [])];
+  const errors = [...validateDeck(full, CARD_DEFS, COMMANDER), ...validateCommander(full, game.commander, CARD_DEFS, game.partner)];
   if (errors.length) return `${saved.name} isn't a legal Commander deck: ${errors[0]}`;
   return game;
 }

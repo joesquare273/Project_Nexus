@@ -42,10 +42,12 @@ The counts are heuristics, so every flag was read by hand. Verdicts:
 - **Targets inside modes, random modes, reflexive or granted triggers** (the
   count doesn't look inside them): Qutrub Forayer, Coliseum Behemoth, Summon:
   Magus Sisters, Umaro, The Falcon, Eden, Galuf's Final Act, Self-Destruct,
-  Chocobo Kick, Tidus, Resourceful Defense, Nesting Grounds, Sephiroth, Joshua.
+  Chocobo Kick, Tidus, Resourceful Defense, Nesting Grounds, Sephiroth, Joshua,
+  Weapons Vendor, Prishe's Wanderings (reflexive since 2026-11-04).
 - **"Target" in a rule about targeting, not a target**: Cloud, Planet's
   Champion (equip discount), Fate of the Sun-Cryst (cheaper if it targets a
-  tapped creature).
+  tapped creature), Gogo, Master of Mimicry ("choose new targets for the
+  copies").
 - **The meld result's text isn't on the card**: Fang, Fearless l'Cie (Ragnarok
   matches its own text).
 - **Optional target first as printed**: Barret, Avalanche Leader; Raubahn.
@@ -55,12 +57,47 @@ The counts are heuristics, so every flag was read by hand. Verdicts:
   Rhystic Study, K'rrik, SOLDIER Military Program, Snuff Out, Unexpected
   Request, and the Snarl and check lands.
 
-### Known simplifications (recorded where each card was built)
+### Simplifications fixed (2026-11-04)
 
-- Fury divides its damage as it resolves instead of choosing targets on cast.
-- Armory Automaton attaches all your Equipment instead of "any number of
-  target Equipment".
-- Explorer's Scope always puts the land onto the battlefield (the card says
-  "you may").
-- Espers to Magicite, Ether and Summon: G.F. Cerberus: the copy keeps the
-  original's targets, and the exiled creature is chosen rather than targeted.
+Every recorded simplification was reviewed and these now play as printed, each
+with a test (`packages/bots/test/simplification-fixes.test.ts`, plus the card's
+own group in `fin-set-cards.test.ts`):
+
+- Fury divides its damage among up to four targets chosen as the trigger goes
+  on the stack (each gets at least 1).
+- Armory Automaton attaches any number of Equipment, anyone's.
+- Explorer's Scope's land is optional (it stays on top if you don't).
+- Ether's {T}, exile: add {U} is a mana ability; Ether, Summon: G.F. Cerberus
+  and Gogo offer new targets for each copy (`chooseCopyTargets`).
+- Gogo, Master of Mimicry is one {X}{X} ability (any X of at least 1) that
+  can't be copied.
+- Gix discards X cards as a cost; K'rrik and {B/P} let you choose how many
+  {B} to pay with life (`lifeForB`).
+- Muldrotha: you choose which unused permanent type a multi-type card uses.
+- Memories Returning and Shinryu choose their opponent; Winota's Human
+  attacks the player you choose.
+- "Cast it now" permissions (Quistis, Buster Sword, Vaan, Jodah, Gix,
+  Mizzix's Mastery) last only until you do something else.
+- Ultima keeps the abilities that trigger as it resolves (they go on the
+  stack in the cleanup step).
+- Blight removes a land's types and abilities; Quina's Frog comes with token
+  copies too; Phantom Train is a Spirit; Ragavan's land can't be played.
+- Ifrit's lore check is on chapters II and III; Emet-Selch's fourteen cards
+  are an intervening if; Tymna pays X life as a cost; Weapons Vendor and
+  Prishe's Wanderings use reflexive triggers; Town Greeter mills first;
+  Rhystic Study's draw is optional.
+- Partner: two commanders in the command zone, the deck checked against both
+  colors (engine, server, deck builder; migration `20261104120000_deck_partner.sql`).
+
+### Kept, with the reason
+
+- Phoenix, Warden of Fire chapter III chooses the cards as it resolves rather
+  than targeting them: "any number of target cards with total mana value 6 or
+  less" would be too many target combinations to list.
+- Mizzix's Mastery casts the exiled card itself rather than a copy (it ends in
+  exile either way).
+- Omega has three "one per opponent" slots (a pod has at most three opponents).
+- Kinnan adds the type its permanent made: exact here, since only lands (which
+  Kinnan ignores) make two types at once.
+- Vial Smasher hits only the player: there are no planeswalkers in the pool.
+- Shinryu wins as its rival is eliminated rather than through a trigger.

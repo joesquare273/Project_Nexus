@@ -46,4 +46,16 @@ describe('saved decks start games', () => {
     expect(deck.deckPrintings.filter((p) => p === undefined)).toHaveLength(2);
     expect(gameDeck({ cards: [{ id: '00000000-0000-4000-8000-000000000000', finish: 'nonfoil', count: 1 }], basics: { W: 0, U: 0, B: 0, R: 0, G: 0 } })).toHaveProperty('problem');
   });
+
+  it('a partner comes out of the library too, with its own printing', () => {
+    const id = (defId: string) => { const p = CARD_DEFS[defId]!.printing!; return SCRYFALL_PRINTINGS[`${p.set}/${p.number}`]!.scryfallId!; };
+    const tymna = id('tymna-the-weaver');
+    const thrasios = id('thrasios-triton-hero');
+    const deck = gameDeck({ cards: [{ id: tymna, finish: 'nonfoil', count: 1 }, { id: thrasios, finish: 'nonfoil', count: 1 }], basics: { W: 10, U: 0, B: 0, R: 0, G: 0 }, commander: tymna, partner: thrasios });
+    if ('problem' in deck) throw new Error(deck.problem);
+    expect(deck.commander).toBe('tymna-the-weaver');
+    expect(deck.partner).toBe('thrasios-triton-hero');
+    expect(deck.partnerPrinting).toEqual(CARD_DEFS['thrasios-triton-hero']!.printing && { set: CARD_DEFS['thrasios-triton-hero']!.printing!.set, number: CARD_DEFS['thrasios-triton-hero']!.printing!.number });
+    expect(deck.deck).toHaveLength(10);
+  });
 });

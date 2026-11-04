@@ -1326,23 +1326,42 @@ describe('Secret Lair: the Elemental Incarnations (evoke)', () => {
     expect(s.cards[grief]!.zone).toBe('graveyard');
   });
 
-  it('Fury, hard-cast: 4 damage divided among any number of creatures, dealt at once; Fury stays', () => {
+  it('Fury, hard-cast: 4 damage divided among up to four target creatures, dealt at once; Fury stays', () => {
     let s = newGame();
     const fury = put(s, 'P1', 'fury', 'hand');
     const a = put(s, 'P2', 'coeurl');
     const b = put(s, 'P2', 'coeurl');
+    const c = put(s, 'P2', 'coeurl');
     mana(s, 'P1', { R: 2, C: 3 });
-    s = cast(s, { type: 'CastSpell', player: 'P1', card: fury }).state;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: fury });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    // The targets are chosen as the trigger goes on the stack: a and b, not c.
+    s = settle(s, { targets: (o) => o.find((t) => t.filter((x) => x.kind === 'card').length === 2 && t.some((x) => x.kind === 'card' && x.card === a) && t.some((x) => x.kind === 'card' && x.card === b))! }).state;
+    // Each target gets 1; the other 2 are divided between them.
     expect(s.pending.kind === 'chooseCards' && s.pending.purpose).toBe('divideDamage');
-    s = choose(s, [a]);
+    expect(s.pending.kind === 'chooseCards' && [...s.pending.cards].sort()).toEqual([a, b].sort());
     s = choose(s, [a]);
     expect(s.cards[a]!.zone).toBe('battlefield'); // nothing is dealt until all 4 are divided
     s = choose(s, [b]);
-    s = choose(s, [b]);
     expect(s.cards[a]!.zone).toBe('graveyard');
     expect(s.cards[b]!.zone).toBe('graveyard');
+    expect(s.cards[c]!.zone).toBe('battlefield');
     expect(s.cards[fury]!.zone).toBe('battlefield');
     expect(hasKeyword(s, s.cards[fury]!, 'DoubleStrike')).toBe(true);
+  });
+
+  it('Fury with one target deals all 4 to it', () => {
+    let s = newGame();
+    const fury = put(s, 'P1', 'fury', 'hand');
+    const a = put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: fury });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    s = settle(s, { targets: (o) => o.find((t) => t.filter((x) => x.kind === 'card').length === 1 && t[0]!.kind === 'card' && t[0]!.card === a)! }).state;
+    expect(s.cards[a]!.zone).toBe('graveyard');
+    expect(s.pending.kind).toBe('priority');
   });
 
   it('Endurance: a player puts their whole graveyard on the bottom of their library', () => {
@@ -3025,7 +3044,8 @@ describe('S4 group 19: Equipment helpers and land search', () => {
     const body = put(s, 'P1', 'coeurl');
     const spell = put(s, 'P1', 'prishes-wanderings', 'hand');
     mana(s, 'P1', { G: 1, C: 2 });
-    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(body)] }).state;
+    // "When you search your library this way, put a +1/+1 counter on target creature you control": a reflexive trigger, targeted after the search.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === body))! }).state;
     expect(s.cards[forest]!.zone).toBe('battlefield');
     expect(s.cards[forest]!.tapped).toBe(true);
     expect(countersOf(s.cards[body]!, '+1/+1')).toBe(1);
@@ -3348,7 +3368,9 @@ describe('S4 group 24: copying your next instant or sorcery (Ether, Summon: G.F.
   it('Ether: {T}, exile it: add {U}, and the next instant or sorcery you cast this turn is copied (same targets and X); only the next one', () => {
     let s = newGame();
     const ether = put(s, 'P1', 'ether');
-    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ether, ability: 0 }).state;
+    // A mana ability: no stack, the mana and the copy promise come at once.
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: ether, mana: 'U' });
+    expect(s.stack).toHaveLength(0);
     expect(s.cards[ether]!.zone).toBe('exile');
     expect(s.players.P1!.manaPool.U).toBe(1);
     const first = comet(s, 2);
@@ -3566,7 +3588,9 @@ describe('S4 group 27: lands and growing', () => {
       const greeter = put(s, 'P1', 'town-greeter', 'hand');
       mana(s, 'P1', { G: 1, C: 1 });
       s = settle(act(s, { type: 'CastSpell', player: 'P1', card: greeter })).state;
-      expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop', cards: [land] });
+      // Mill four first (the cards really go to the graveyard), then you may take a land milled this way.
+      expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'hand', cards: [land], min: 0 });
+      expect(s.cards[land]!.zone).toBe('graveyard');
       s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [land] })).state;
       expect(s.cards[land]!.zone).toBe('hand');
       expect(s.players.P1!.graveyard.filter((id) => s.cards[id]!.defId === 'coeurl')).toHaveLength(3);
@@ -4415,8 +4439,19 @@ describe('S4 group 41: Syr Konrad, Rhystic Study, Kraum, Thrasios, Smuggler’s 
     let s = opponentBolts('rhystic-study');
     expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'payToAvoidCounter', player: 'P2', payGeneric: 1, drawFor: 'P1' });
     const hand = s.players.P1!.hand.length;
-    s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [] })).state;
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [] });
+    // "You may draw": the Study's controller decides.
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'mayDraw', player: 'P1', min: 0 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [...(s.pending as { cards: string[] }).cards] })).state;
     expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Rhystic Study: you may also decline the draw', () => {
+    let s = opponentBolts('rhystic-study');
+    const hand = s.players.P1!.hand.length;
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [] });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect(s.players.P1!.hand.length).toBe(hand);
   });
 
   it('Rhystic Study: paying {1} stops the draw', () => {
@@ -4682,6 +4717,21 @@ describe('S4 group 44: Ignis, Jenova, The Wandering Minstrel, Winota, Atraxa', (
     s = pickTop(s, [aerith]);
     expect(s.cards[aerith]).toMatchObject({ zone: 'battlefield', tapped: true });
     expect(s.combat!.attacks.some((a) => a.attacker === aerith && a.defender === 'P2')).toBe(true);
+    expect(hasKeyword(s, s.cards[aerith]!, 'Indestructible')).toBe(true);
+  });
+
+  it('Winota with two opponents: you choose which player the Human attacks', () => {
+    let s = newGame(3);
+    put(s, 'P1', 'winota-joiner-of-forces');
+    const cat = put(s, 'P1', 'coeurl');
+    const aerith = put(s, 'P1', 'aerith-gainsborough', 'library');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: cat, defender: 'P2' }] });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    s = pickTop(s, [aerith]);
+    expect(s.pending).toMatchObject({ kind: 'chooseDefender', card: aerith, entered: true, defenders: ['P2', 'P3'] });
+    s = act(s, { type: 'ChooseDefender', player: 'P1', defender: 'P3' });
+    expect(s.combat!.attacks.some((a) => a.attacker === aerith && a.defender === 'P3')).toBe(true);
     expect(hasKeyword(s, s.cards[aerith]!, 'Indestructible')).toBe(true);
   });
 
@@ -5422,12 +5472,29 @@ describe('S4 group 55: Jodah, Emet-Selch, Memories Returning', () => {
     stack(s, 'P1', [cat, kinnan, ragavan]);
     const garnet = put(s, 'P1', 'garnet-princess-of-alexandria', 'hand');
     mana(s, 'P1', { G: 1, W: 1 });
-    s = cast(s, { type: 'CastSpell', player: 'P1', card: garnet }).state;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: garnet });
+    // Resolve Jodah's trigger only; Garnet is still on the stack, and the found card is cast right away.
+    for (let i = 0; i < 6 && s.stack.at(-1)?.kind === 'ability' && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.stack.at(-1)).toMatchObject({ kind: 'spell', card: garnet });
     expect(s.cards[ragavan]!.zone).toBe('exile');
     expect([s.cards[cat]!.zone, s.cards[kinnan]!.zone]).toEqual(['library', 'library']);
     expect(s.players.P1!.library.slice(-2).sort()).toEqual([cat, kinnan].sort());
     s = cast(s, { type: 'CastSpell', player: 'P1', card: ragavan }).state;
     expect(s.cards[ragavan]!.zone).toBe('battlefield');
+  });
+
+  it('Jodah: the found card must be cast right away; passing first loses it', () => {
+    let s = newGame();
+    put(s, 'P1', 'jodah-the-unifier');
+    const ragavan = put(s, 'P1', 'ragavan-nimble-pilferer', 'library');
+    stack(s, 'P1', [ragavan]);
+    const garnet = put(s, 'P1', 'garnet-princess-of-alexandria', 'hand');
+    mana(s, 'P1', { G: 1, W: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: garnet });
+    for (let i = 0; i < 6 && s.stack.at(-1)?.kind === 'ability' && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.cards[ragavan]!.castPermission?.immediate).toBe(true);
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(s.cards[ragavan]!.castPermission).toBeUndefined();
   });
 
   it('Hades: play lands and cast spells from your graveyard on your turn; your cards go to exile instead of your graveyard', () => {
@@ -5470,6 +5537,19 @@ describe('S4 group 55: Jodah, Emet-Selch, Memories Returning', () => {
     expect(five.map((id) => s.cards[id]!.zone)).toEqual(['hand', 'library', 'hand', 'library', 'hand']);
     expect(s.players.P1!.library.slice(-2)).toEqual([five[1], five[3]]);
   });
+  it('Memories Returning with two opponents: you choose which one alternates with you', () => {
+    let s = newGame(3);
+    const five = ['coeurl', 'forest', 'sol-ring', 'lightning-bolt', 'island'].map((id) => put(s, 'P1', id, 'library'));
+    stack(s, 'P1', five);
+    const spell = put(s, 'P1', 'memories-returning', 'hand');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: spell });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseOpponent', purpose: 'memories', player: 'P1', opponents: ['P2', 'P3'] });
+    s = act(s, { type: 'ChooseOpponent', player: 'P1', opponent: 'P3' });
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [five[0]!] });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'memories', player: 'P3' });
+  });
 });
 
 describe('S4 group 56: Muldrotha, Vaan, Firion', () => {
@@ -5487,6 +5567,23 @@ describe('S4 group 56: Muldrotha, Vaan, Firion', () => {
     expect(s.cards[ring]!.zone).toBe('battlefield');
     s = act(s, { type: 'PlayLand', player: 'P1', card: forest });
     expect(s.cards[forest]!.zone).toBe('battlefield');
+  });
+
+  it('Muldrotha: an artifact creature uses the type you choose, leaving the other open', () => {
+    let s = newGame();
+    const mul = put(s, 'P1', 'muldrotha-the-gravetide');
+    const armory = put(s, 'P1', 'armory-automaton', 'graveyard');
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    const cat = put(s, 'P1', 'coeurl', 'graveyard');
+    mana(s, 'P1', { W: 2, C: 5 });
+    const ways = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === armory).map((a) => a.type === 'CastSpell' && a.permanentType);
+    expect([...new Set(ways)].sort()).toEqual(['artifact', 'creature']);
+    // Used as its creature type: the artifact permission is still there for Sol Ring.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: armory, graveyardSource: mul, permanentType: 'creature' }).state;
+    expect(s.cards[armory]!.zone).toBe('battlefield');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: cat })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.cards[ring]!.zone).toBe('battlefield');
   });
 
   it('Vaan: combat damage exiles their top card; cast it, or take a Treasure; casting a spell you don’t own grows your Scouts', () => {
@@ -5748,8 +5845,11 @@ describe('S4 group 58: Rydia, Ancient Adamantoise, Zenos', () => {
     s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
     expect(s.cards[rival]!.zone).toBe('graveyard');
     expect(s.cards[zenos]!.transformed).toBe(true);
-    expect(s.cards[zenos]!.rival).toBe('P2');
-    s.players.P2!.life = 0;
+    // "Choose an opponent": any of them, the chosen creature's controller offered first.
+    expect(s.pending).toMatchObject({ kind: 'chooseOpponent', purpose: 'rival', opponents: ['P2', 'P3'] });
+    s = settle(act(s, { type: 'ChooseOpponent', player: 'P1', opponent: 'P3' })).state;
+    expect(s.cards[zenos]!.rival).toBe('P3');
+    s.players.P3!.life = 0;
     s = settle(act(s, { type: 'PassPriority', player: s.pending.kind === 'priority' ? s.pending.player : 'P1' })).state;
     expect(s.pending.kind).toBe('gameOver');
     expect(s.winner).toBe('P1');
@@ -5849,11 +5949,39 @@ describe('S4 group 60: Kuja, Gogo, K’rrik, Gix (the last set cards)', () => {
     s = act(s, { type: 'ActivateAbility', player: 'P1', card: thrasios, ability: 0 });
     const ability = s.stack.at(-1)!.id;
     mana(s, 'P1', { C: 4 });
-    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gogo, ability: 1, targets: [{ kind: 'ability', ability }] });
+    // X can't be 0; with 4 mana X is 2.
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: gogo, ability: 0, targets: [{ kind: 'ability', ability }], x: 0 })).toMatch(/at least 1/);
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gogo, ability: 0, targets: [{ kind: 'ability', ability }], x: 2 });
     const hand = s.players.P1!.hand.length;
     s = settle(s).state;
     // The original and two copies: each scries 1 and draws the creature card.
     expect(s.players.P1!.hand.length).toBe(hand + 3);
+  });
+
+  it('Gogo: any X the mana allows, and the copies may get new targets', () => {
+    let s = newGame();
+    const gogo = put(s, 'P1', 'gogo-master-of-mimicry');
+    const shock = put(s, 'P1', 'walking-ballista');
+    s.cards[shock]!.counters = 3;
+    const a = put(s, 'P2', 'coeurl');
+    const b = put(s, 'P2', 'coeurl');
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: shock, ability: 1, targets: [{ kind: 'card', card: a }] });
+    const ping = s.stack.at(-1)!.id;
+    mana(s, 'P1', { C: 12 });
+    const xs = getLegalActions(s).filter((x) => x.type === 'ActivateAbility' && x.card === gogo).map((x) => x.type === 'ActivateAbility' ? x.x ?? 0 : 0);
+    expect(Math.min(...xs)).toBe(1);
+    expect(Math.max(...xs)).toBe(6);
+    s.players.P1!.manaPool.C = 2;
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gogo, ability: 0, targets: [{ kind: 'ability', ability: ping }], x: 1 });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    // The copy may aim at the other creature.
+    expect(s.pending).toMatchObject({ kind: 'chooseCopyTargets', player: 'P1', source: shock });
+    expect(getLegalActions(s)[0]).toMatchObject({ type: 'ChooseTargets', targets: [{ kind: 'card', card: a }] });
+    s = act(s, { type: 'ChooseTargets', player: 'P1', targets: [{ kind: 'card', card: b }] });
+    s = settle(s).state;
+    expect(s.cards[a]!.damage).toBe(1);
+    expect(s.cards[b]!.damage).toBe(1);
   });
 
   it('K’rrik: {B/P} costs and every {B} can be paid with 2 life; black spells give him counters', () => {
@@ -5873,6 +6001,25 @@ describe('S4 group 60: Kuja, Gogo, K’rrik, Gix (the last set cards)', () => {
     expect(s.cards[krrik]!.counters).toBe(1);
   });
 
+  it('K’rrik: you may pay 2 life for a {B} even with the black mana there', () => {
+    let s = newGame();
+    put(s, 'P1', 'krrik-son-of-yawgmoth');
+    const whisper = put(s, 'P1', 'nights-whisper', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const ways = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === whisper).map((a) => a.type === 'CastSpell' && (a.lifeForB ?? 0));
+    expect([...new Set(ways)].sort()).toEqual([0, 1]);
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: whisper, lifeForB: 1 }).state;
+    // 2 life for the {B} (and 2 more from Night's Whisper itself); the {B} stays in the pool.
+    expect(s.players.P1!.life).toBe(life - 4);
+    expect(s.players.P1!.manaPool.B).toBe(1);
+    // Without K'rrik or {B/P}, there's nothing to pay life for.
+    const s2 = newGame();
+    const w2 = put(s2, 'P1', 'nights-whisper', 'hand');
+    mana(s2, 'P1', { B: 1, C: 1 });
+    expect(rejected(s2, { type: 'CastSpell', player: 'P1', card: w2, lifeForB: 1 })).toBeTruthy();
+  });
+
   it('Gix: a creature hitting your opponent lets its controller pay 1 life to draw; {4}{B}{B}{B}, discard X: play their top X free', () => {
     let s = newGame();
     const gix = put(s, 'P1', 'gix-yawgmoth-praetor');
@@ -5886,9 +6033,12 @@ describe('S4 group 60: Kuja, Gogo, K’rrik, Gix (the last set cards)', () => {
     const tops = [put(s, 'P2', 'lightning-bolt', 'library'), put(s, 'P2', 'forest', 'library')];
     s.players.P2!.library = [...tops, ...s.players.P2!.library.filter((id) => !tops.includes(id))];
     mana(s, 'P1', { B: 3, C: 4 });
-    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gix, ability: 0, targets: [player('P2')] });
+    // Discarding X cards is part of the cost: they're gone before the ability resolves.
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gix, ability: 0, targets: [player('P2')], costCards: discards });
+    expect(discards.map((id) => s.cards[id]!.zone)).toEqual(['graveyard', 'graveyard']);
+    expect(s.stack.at(-1)).toMatchObject({ kind: 'ability', x: 2 });
     for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
-    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: discards })).state;
+    s = settle(s).state;
     expect(tops.map((id) => s.cards[id]!.zone)).toEqual(['exile', 'exile']);
     const life = s.players.P2!.life;
     s = cast(s, { type: 'CastSpell', player: 'P1', card: tops[0]!, targets: [player('P2')] }).state;

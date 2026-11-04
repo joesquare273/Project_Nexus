@@ -21,6 +21,10 @@ import {
   setBasics,
   artAndFinish,
   chooseCommander,
+  choosePartner,
+  hasPartner,
+  partnersWith,
+  removePartner,
   commanderIdentity,
   copiesInDeck,
   curve,
@@ -159,7 +163,7 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
       </div>
     );
   };
-  const blank = (format: DeckFormat, name: string): DeckDraft => ({ name, format, cards: [], basics: { ...NO_BASICS }, commander: null });
+  const blank = (format: DeckFormat, name: string): DeckDraft => ({ name, format, cards: [], basics: { ...NO_BASICS }, commander: null, partner: null });
   // Commander (100) and 60-card decks are built separately; Limited decks saved before stay listed.
   const sections: { format: DeckFormat; title: string; blurb: string; button: string | null }[] = [
     { format: 'commander', title: 'Commander decks', blurb: '100 cards with your commander, one of each card (basic lands excepted), in your commander’s colors.', button: 'New Commander deck' },
@@ -220,7 +224,7 @@ function CardPic({ o, size = 'small', badge }: { o: { card: BoosterCard; finish:
   );
 }
 
-type Modal = { kind: 'art'; name: string } | { kind: 'commander' } | { kind: 'basic'; color: BasicColor } | null;
+type Modal = { kind: 'art'; name: string } | { kind: 'commander' } | { kind: 'partner' } | { kind: 'basic'; color: BasicColor } | null;
 
 function DeckEditor({
   deck,
@@ -269,6 +273,9 @@ function DeckEditor({
   const inDeckGroups = groups.filter((g) => copiesInDeck(deck, g) > 0);
   const commanderCard = deck.commander ? byId.get(deck.commander) : undefined;
   const commanderEntry = deck.commander ? deck.cards.find((c) => c.id === deck.commander) : undefined;
+  const partnerCard = deck.partner ? byId.get(deck.partner) : undefined;
+  const partnerEntry = deck.partner ? deck.cards.find((c, i) => c.id === deck.partner && (deck.partner !== deck.commander || i > 0)) : undefined;
+  const canHavePartner = !!commanderCard && hasPartner(commanderCard.name);
   const bars = curve(deck, groups);
   const tallest = Math.max(1, ...bars);
   /** The art shown for a card in the deck: the one with the most copies. */
@@ -397,6 +404,20 @@ function DeckEditor({
               </div>
             </div>
           )}
+          {/* Partner (rule 702.124): a second commander; the deck uses both commanders' colors. */}
+          {deck.format === 'commander' && canHavePartner && (
+            <div className="deck-commander">
+              <button className="deck-commander-slot" onClick={() => setModal({ kind: 'partner' })} title="Choose a second commander with Partner">
+                {partnerCard && partnerEntry ? <CardPic o={{ card: partnerCard, finish: partnerEntry.finish }} size="normal" /> : <span className="deck-commander-empty">Add a partner</span>}
+              </button>
+              <div>
+                <h3>Partner</h3>
+                <p className="fineprint">{partnerCard ? partnerCard.name : `${commanderCard!.name} has Partner: a second commander can lead the deck with it.`}</p>
+                <button onClick={() => setModal({ kind: 'partner' })}>{partnerCard ? 'Change partner or art' : 'Choose a partner'}</button>
+                {partnerCard && <button onClick={() => onChange(removePartner(deck))}>No partner</button>}
+              </div>
+            </div>
+          )}
           <div className="deck-stats">
             <h3>Deck · {deckSize(deck)}</h3>
             <div className="deck-curve" aria-label="Mana curve">
@@ -410,7 +431,7 @@ function DeckEditor({
           </div>
           {inDeckGroups.length === 0 && <p className="fineprint">Your deck is empty. Click cards on the left to add them.</p>}
           {SECTIONS.map((sec) => {
-            const list = inDeckGroups.filter((g) => section(g) === sec && !(deck.commander && g.arts.some((a) => a.id === deck.commander) && copiesInDeck(deck, g) === 1));
+            const list = inDeckGroups.filter((g) => section(g) === sec && !(deck.commander && g.arts.some((a) => a.id === deck.commander) && copiesInDeck(deck, g) === 1) && !(deck.partner && g.arts.some((a) => a.id === deck.partner) && copiesInDeck(deck, g) === 1));
             if (!list.length) return null;
             const count = list.reduce((n, g) => n + copiesInDeck(deck, g), 0);
             return (
@@ -486,7 +507,20 @@ function DeckEditor({
           deck={deck}
           groups={groups.filter((g) => g.legendaryCreature)}
           onPick={(g, o) => {
-            onChange(chooseCommander(deck, g, o));
+            onChange(chooseCommander(deck, g, o, partnerCard?.name));
+            setModal(null);
+          }}
+          onPreview={onPreview}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === 'partner' && commanderCard && (
+        <CommanderPicker
+          deck={deck}
+          partner
+          groups={groups.filter((g) => g.legendaryCreature && g.name !== commanderCard.name && partnersWith(commanderCard.name, g.name))}
+          onPick={(g, o) => {
+            onChange(choosePartner(deck, g, o));
             setModal(null);
           }}
           onPreview={onPreview}
@@ -586,18 +620,18 @@ function ArtPicker({ deck, g, onChange, onPreview, onClose }: { deck: DeckDraft;
 }
 
 /** Your legendary creatures in every art you own: pick the commander and its art in one click. */
-function CommanderPicker({ deck, groups, onPick, onPreview, onClose }: { deck: DeckDraft; groups: CardGroup[]; onPick: (g: CardGroup, o: Owned) => void; onPreview: (c: BoosterCard | null) => void; onClose: () => void }) {
+function CommanderPicker({ deck, groups, onPick, onPreview, onClose, partner = false }: { deck: DeckDraft; groups: CardGroup[]; onPick: (g: CardGroup, o: Owned) => void; onPreview: (c: BoosterCard | null) => void; onClose: () => void; partner?: boolean }) {
   const [search, setSearch] = useState('');
   const shown = groups.filter((g) => g.name.toLowerCase().includes(search.trim().toLowerCase()));
   return (
-    <DeckModal title="Choose your commander" onClose={onClose}>
+    <DeckModal title={partner ? 'Choose a partner' : 'Choose your commander'} onClose={onClose}>
       <input type="search" placeholder="Search your legendary creatures" value={search} onChange={(e) => setSearch(e.target.value)} />
-      {groups.length === 0 && <p className="fineprint">You don't own a legendary creature yet.</p>}
-      <p className="deck-help">Every legendary creature you own, in every art you own. Click one to lead your deck with it.</p>
+      {groups.length === 0 && <p className="fineprint">{partner ? "You don't own a card that can partner with your commander yet." : "You don't own a legendary creature yet."}</p>}
+      <p className="deck-help">{partner ? 'Legendary creatures you own that can be commanders together with yours (both have Partner, or they partner with each other).' : 'Every legendary creature you own, in every art you own. Click one to lead your deck with it.'}</p>
       <div className="deck-art-grid">
         {shown.flatMap((g) =>
           g.arts.map((o) => {
-            const current = deck.commander === o.id && deck.cards[0]?.id === o.id && deck.cards[0]?.finish === o.finish;
+            const current = partner ? deck.partner === o.id : deck.commander === o.id && deck.cards[0]?.id === o.id && deck.cards[0]?.finish === o.finish;
             return (
               <div key={`${o.id}|${o.finish}`} className={`deck-art-option ${current ? 'chosen' : ''}`} onMouseEnter={() => onPreview(o.card)} onMouseLeave={() => onPreview(null)}>
                 <button className="deck-art-image" onClick={() => onPick(g, o)} title={`Make ${g.name} your commander`}>
@@ -608,7 +642,7 @@ function CommanderPicker({ deck, groups, onPick, onPreview, onClose }: { deck: D
                   <br />
                   {artAndFinish(o)}
                 </div>
-                {current && <span className="deck-art-tag">Your commander</span>}
+                {current && <span className="deck-art-tag">{partner ? 'Your partner' : 'Your commander'}</span>}
               </div>
             );
           }),

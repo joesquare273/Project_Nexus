@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
-import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent } from './stack.ts';
+import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -12,6 +12,26 @@ import type { Action, ActionResult, GameState } from './types.ts';
 
 function requirePriority(s: GameState, playerId: string): void {
   if (s.pending.kind !== 'priority' || s.pending.player !== playerId) reject('You do not have priority.');
+}
+
+/**
+ * "You may cast that card" with no duration (Quistis Trepe, Buster Sword,
+ * Vaan, Jodah, Gix, Mizzix's Mastery) means while the ability resolves. The
+ * engine offers it right after instead: the permission lasts until that
+ * player does anything else (passing, another spell, land or ability). Casting
+ * or playing one of those cards keeps the rest (Gix plays several in a row).
+ */
+function dropImmediatePermissions(s: GameState, action: Action): void {
+  if (!['PassPriority', 'PlayLand', 'CastSpell', 'ActivateAbility', 'Foretell'].includes(action.type)) return;
+  const who = action.player;
+  const usedCard = action.type === 'CastSpell' || action.type === 'PlayLand' ? s.cards[action.card] : undefined;
+  const usesImmediate = !!usedCard && (usedCard.castPermission?.immediate || usedCard.playableFromExile?.immediate || (s.castGroups ?? []).some((g) => g.immediate && g.player === who && g.cards.some((ref) => ref.card === usedCard.id)));
+  if (usesImmediate) return;
+  for (const c of Object.values(s.cards)) {
+    if (c.castPermission?.immediate && c.castPermission.player === who) delete c.castPermission;
+    if (c.playableFromExile?.immediate && c.playableFromExile.player === who) delete c.playableFromExile;
+  }
+  if (s.castGroups?.some((g) => g.immediate && g.player === who)) s.castGroups = s.castGroups.filter((g) => !(g.immediate && g.player === who));
 }
 
 export function applyAction(state: GameState, action: Action): ActionResult {
@@ -32,6 +52,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       stabilize(ctx);
       return { ok: true, state: s, events: ctx.ev };
     }
+
+    dropImmediatePermissions(s, action);
 
     switch (action.type) {
       case 'CopyCreature':
@@ -66,6 +88,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.improvise ? { improvise: action.improvise } : {}),
           ...(action.delve ? { delve: action.delve } : {}),
           ...(action.graveyardSource ? { graveyardSource: action.graveyardSource } : {}),
+          ...(action.permanentType ? { permanentType: action.permanentType } : {}),
+          ...(action.lifeForB !== undefined ? { lifeForB: action.lifeForB } : {}),
           ...(action.castGroup !== undefined ? { castGroup: action.castGroup } : {}),
           ...(action.kicks ? { kicks: action.kicks } : {}),
           ...(action.tapCreatures ? { tapCreatures: action.tapCreatures } : {}),
@@ -91,7 +115,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ActivateAbility':
         requirePriority(s, action.player);
-        activateAbility(ctx, action.player, action.card, action.ability, action.targets, action.costCards);
+        activateAbility(ctx, action.player, action.card, action.ability, action.targets, action.costCards, action.x);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'ChooseMana':
@@ -125,7 +149,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         bottomCards(ctx, action.player, action.cards);
         break;
       case 'ChooseTargets':
-        chooseTriggerTargets(ctx, action.player, action.targets);
+        if (s.pending.kind === 'chooseCopyTargets') chooseCopyTargets(ctx, action.player, action.targets);
+        else chooseTriggerTargets(ctx, action.player, action.targets);
         break;
       case 'ChooseDefender':
         chooseDefender(ctx, action.player, action.defender);

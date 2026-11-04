@@ -259,6 +259,9 @@ function repairPending(ctx: Ctx): void {
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else pending.opponents = pending.opponents.filter(id => !s.players[id]!.eliminated);
       break;
+    case 'chooseCopyTargets':
+      if (!s.resolving || s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
+      break;
     case 'chooseDefender':
       if (!s.resolving) givePriority(ctx, s.activePlayer);
       else pending.defenders = pending.defenders.filter((id) => !s.players[id]!.eliminated);

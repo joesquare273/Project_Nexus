@@ -760,6 +760,10 @@ export interface EffectSpec {
   toTarget?: number;
   /** ChoosePermanent: what happens to the chosen permanent. */
   choiceThen?: 'bounce' | 'link' | 'counter' | 'attachSource';
+  /** AllowPlayExiledThisWay: "you may cast" rather than "play" (no lands). */
+  castOnly?: boolean;
+  /** DivideDamage: among this ability's chosen targets (each gets at least 1), not chosen as it resolves (Fury). */
+  amongTargets?: boolean;
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -1100,6 +1104,8 @@ export interface ObjectFilter {
 }
 
 export interface TriggerSpec {
+  /** Intervening "if there are N or more cards in your graveyard" (Emet-Selch). */
+  ifYourGraveyardAtLeast?: number;
   /** "Its controller may pay ...": the triggering creature's controller decides and pays (Gix). */
   decidedBySubjectController?: boolean;
   /** Eminence: also works while the card is in the command zone. */
@@ -1182,7 +1188,7 @@ export interface TriggerSpec {
   optional?: boolean;
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
   /** `lifeOf`: pay life equal to the triggering spell's mana value ("you may pay X life, where X is that spell's mana value"). */
-  cost?: { mana?: string; life?: number; lifeOf?: 'subjectManaValue'; discard?: number; /** Exile this many cards from your graveyard, chosen as it resolves (Ultimecia). */ exileGraveyard?: number };
+  cost?: { mana?: string; life?: number; /** Or: life equal to the triggering spell's mana value, or to the number of opponents dealt combat damage this turn (Tymna). */ lifeOf?: 'subjectManaValue' | 'opponentsDealtCombatDamage'; discard?: number; /** Exile this many cards from your graveyard, chosen as it resolves (Ultimecia). */ exileGraveyard?: number };
   /** Shares its once-each-turn mark with the card's other abilities that have the same key (Carpet of Flowers: "each of your main phases"). */
   onceKey?: string;
   /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
@@ -1204,7 +1210,13 @@ export interface TriggerSpec {
 
 /** A non-mana activated ability: "[cost]: [effect]" (rule 602). */
 export interface ActivatedSpec {
+  /** The least X this ability allows ("X can't be 0"). */
+  xMin?: number;
+  /** "This ability can't be copied" (Gogo). */
+  cantBeCopied?: boolean;
   cost: {
+    /** "Discard X cards": any number of other cards from your hand, and X is how many (Gix). */
+    discardX?: boolean;
     /** Mill this many cards as a cost; a full payment requires that many cards in the library. */
     mill?: number;
     /** Tap other creatures with at least this much total power (crew). */
@@ -1417,6 +1429,10 @@ export interface CardDefinition {
    * cost whose mana value is the two front faces' total (rule 712.8g). The
    * card with `meld` has the melded card's characteristics as its `backFace`.
    */
+  /** Partner (rule 702.124): two commanders with Partner can lead one deck together. */
+  partner?: boolean;
+  /** "Partner with [name]": this card and that one can be commanders together. */
+  partnerWith?: string;
   meld?: { partner: string; result: string; resultPrinting: { set: string; number: string }; manaCost?: string };
   /** Its controller may privately look at the top card of their library. */
   lookAtLibraryTop?: boolean;
@@ -1448,6 +1464,9 @@ export interface CardDefinition {
   manaAbility?: {
     /** "{T}, Sacrifice this: Add ..." (Treasure). */
     sacrifice?: boolean;
+    /** "{T}, Exile this artifact: Add {U}" (Ether), and its "when you next cast an instant or sorcery spell this turn, copy that spell". */
+    exileSelf?: boolean;
+    copyNextInstantOrSorcery?: boolean;
     /** A separate ability: tap an untapped legendary creature you control for one mana of any color. */
     tapLegendaryCreature?: boolean;
     /** A separate ability: "Tap an untapped artifact you control: Add {U}" (Urza; summoning sickness doesn't matter). */
@@ -1784,6 +1803,8 @@ export interface CardInstance {
   linkedCreature?: { card: InstanceId };
   /** Shinryu: the opponent chosen as it transformed; when they lose, its controller wins. */
   rival?: PlayerId;
+  /** Subtypes it has until end of turn (Phantom Train: "It becomes a Spirit artifact creature ... until end of turn"). */
+  turnSubtypes?: string[];
   /** Subtypes it has gained "in addition to its other types" for as long as it stays on the battlefield (Jenova's Mutants). */
   addedSubtypes?: string[];
   /** With `sacrificeAtEndStep`: only at this player's end step ("your next end step"). */
@@ -1817,7 +1838,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean };
+  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -1861,6 +1882,8 @@ export interface CardInstance {
     manaCost?: string;
     /** A card in hand (Buster Sword: "cast a spell from your hand ... without paying its mana cost"). */
     fromHand?: boolean;
+    /** Only right away: gone once the player does anything else ("you may cast it" as an ability resolves). */
+    immediate?: boolean;
   };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;
@@ -2045,6 +2068,8 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  /** The X paid for an activated ability ({X} in its cost, or the cards discarded for "discard X cards"). */
+  x?: number;
   targetObjects?: (number | null)[];
   /** Activated abilities remain independent of subsequent source copies. */
   activatedSpec?: ActivatedSpec;
@@ -2132,6 +2157,8 @@ export interface TemporaryEffect {
 
 /** A spell or ability partway through resolving, waiting on a choice (surveil). */
 export interface Resolving {
+  /** Copies (stack item ids) still to be asked about new targets. */
+  copyTargetQueue?: string[];
   /** Memories Returning: the revealed cards still to place, and how many have been placed. */
   memories?: { pool: InstanceId[]; step: number; opponent: PlayerId };
   /** Objects returned earlier during this resolution, for linked attachments. */
@@ -2195,7 +2222,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -2267,8 +2294,10 @@ export interface CombatState {
 export type Pending =
   | { kind: 'copyCreature'; player: PlayerId; source: InstanceId; target: InstanceId; sourceObject: number; targetObject: number; effect: EffectSpec }
   | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[] }
-  | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[] }
-  | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[] }
+  /** `purpose`: who decides the Fate card (default), who picks with you for Memories Returning, or Shinryu's rival. */
+  | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[]; purpose?: 'fate' | 'memories' | 'rival' }
+  /** `entered`: the creature is already on the battlefield (Winota's Human); choosing only adds it to combat. */
+  | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[]; entered?: boolean }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
   /**
    * Rule 603.3b: the player orders their triggered abilities that go on the
@@ -2280,6 +2309,8 @@ export type Pending =
   | { kind: 'declareBlockers'; player: PlayerId }
   /** Choose targets for the first queued trigger; `then` gets priority once triggers are on the stack. */
   | { kind: 'chooseTargets'; player: PlayerId; then: PlayerId }
+  /** "You may choose new targets for the copy": the copy's targets, its current ones among the choices (rule 707.10c). */
+  | { kind: 'chooseCopyTargets'; player: PlayerId; copy: string; source: InstanceId }
   /** Answer "you may" (and pay any cost) for the ability on top of the stack. */
   | { kind: 'decide'; player: PlayerId; item: string }
   /** Privately look at a library card and optionally exile it face down. */
@@ -2321,6 +2352,8 @@ export interface CastGroup {
   anyManaType?: boolean;
   /** If the spell would be put into a graveyard, it's exiled instead (Quistis Trepe). */
   exileAfter?: boolean;
+  /** Only right away (see castPermission.immediate). */
+  immediate?: boolean;
 }
 
 export interface GameState {
@@ -2409,6 +2442,10 @@ export type Action =
       card: InstanceId;
       /** Which permanent's graveyard-casting permission is being used. */
       graveyardSource?: InstanceId;
+      /** Muldrotha: which of the card's unused permanent types this cast uses (an artifact creature is either). */
+      permanentType?: string;
+      /** How many {B} to pay with 2 life each ({B/P}, or any {B} with K'rrik); unset: only what mana can't cover. */
+      lifeForB?: number;
       /** Use this shared one-spell allowance instead of another permission. */
       castGroup?: string;
       targets?: Target[];
@@ -2432,7 +2469,8 @@ export type Action =
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId }
   /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
-  | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[] }
+  /** `x`: the value chosen for {X} in the ability's cost (Gogo); a "discard X cards" cost takes X from `costCards`. */
+  | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[]; x?: number }
   /** Foretell: pay {2} and exile a card from your hand face down (a special action during your turn). */
   | { type: 'Foretell'; player: PlayerId; card: InstanceId }
   | { type: 'PassPriority'; player: PlayerId }

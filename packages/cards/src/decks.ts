@@ -11,6 +11,8 @@ export interface SavedDeckCards {
   cards: { id: string; finish: Finish; count: number }[];
   basics: Record<'W' | 'U' | 'B' | 'R' | 'G', number> & { printings?: Partial<Record<'W' | 'U' | 'B' | 'R' | 'G', { id: string; finish: Finish }>> };
   commander?: string | null;
+  /** A second commander with Partner: its printing id, also in `cards`. */
+  partner?: string | null;
 }
 
 export interface GameDeck {
@@ -21,6 +23,10 @@ export interface GameDeck {
   commander?: CardDefId;
   commanderPrinting?: { set: string; number: string };
   commanderFinish?: CardFinish;
+  /** A second commander with Partner (rule 702.124). */
+  partner?: CardDefId;
+  partnerPrinting?: { set: string; number: string };
+  partnerFinish?: CardFinish;
 }
 
 interface Printing {
@@ -53,12 +59,19 @@ export function gameDeck(saved: SavedDeckCards): GameDeck | { problem: string } 
     const defId = printing && CARD_IDS_BY_NAME[printing.name];
     if (!printing || !defId) return { problem: 'The deck has a card the game doesn’t know yet.' };
     let count = c.count;
-    // The commander starts in the command zone, not the library.
+    // The commander (and its partner) start in the command zone, not the library.
     if (saved.commander === c.id && !out.commander) {
       out.commander = defId;
       out.commanderPrinting = { set: printing.set, number: printing.number };
       const look = finishLook(printing, c.finish);
       if (look) out.commanderFinish = look;
+      count--;
+    }
+    if (saved.partner && saved.partner === c.id && !out.partner && count > 0) {
+      out.partner = defId;
+      out.partnerPrinting = { set: printing.set, number: printing.number };
+      const look = finishLook(printing, c.finish);
+      if (look) out.partnerFinish = look;
       count--;
     }
     add(defId, printing, c.finish, count);

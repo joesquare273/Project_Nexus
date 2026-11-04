@@ -314,7 +314,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   for (const k of e.copyKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown copy keyword "${k}".`);
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   if (e.effect === 'ReflexiveTrigger') {
-    if (!e.trigger || e.trigger.when !== 'Reflexive' || !e.ifSacrificed || e.target !== 'You') err('ReflexiveTrigger needs a captured Reflexive trigger after a sacrifice, targeting You.');
+    if (!e.trigger || e.trigger.when !== 'Reflexive' || e.target !== 'You') err('ReflexiveTrigger needs a captured Reflexive trigger, targeting You.');
     else validateTrigger(e.trigger, err);
   }
   if (e.effect === 'FlipCoin' && e.target !== 'You') err('FlipCoin currently targets You.');

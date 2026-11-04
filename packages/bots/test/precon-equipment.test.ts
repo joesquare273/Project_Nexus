@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { activatedAbilities, canBlock, hasKeyword, powerOf, toughnessOf, type Action, type GameState } from '@nexus/engine';
 import { CARD_IDS_BY_NAME } from '@nexus/cards';
-import { act, card, cast, fight, mana, newGame, put, rejected } from './kit-helpers.ts';
+import { act, card, cast, fight, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const id = (name: string) => {
   const found = CARD_IDS_BY_NAME[name];
@@ -144,7 +144,10 @@ describe('Equipment and creatures with triggers', () => {
     put(s, 'P1', id("Explorer's Scope"), 'battlefield', { attachedTo: coeurl });
     const top = s.players.P1!.library[0]!;
     const r = fight(s, [{ attacker: coeurl, defender: 'P2' }]);
-    expect(r.state.cards[top]).toMatchObject({ zone: 'battlefield', tapped: true });
+    // "You may": the land is offered, and taken here.
+    expect(r.state.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop', min: 0, cards: [top] });
+    const taken = settle(act(r.state, { type: 'ChooseCards', player: 'P1', cards: [top] })).state;
+    expect(taken.cards[top]).toMatchObject({ zone: 'battlefield', tapped: true });
     // A nonland card stays on top.
     const t = newGame();
     const c2 = put(t, 'P1', 'coeurl');
@@ -188,6 +191,8 @@ describe('Equipment and creatures with triggers', () => {
     const automaton = put(s, 'P1', id('Armory Automaton'), 'hand');
     mana(s, 'P1', { C: 3 });
     s = cast(s, castSpell(automaton)).state;
+    // Any number of them: both are chosen here.
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [sledge, plate] })).state;
     expect([s.cards[sledge]!.attachedTo, s.cards[plate]!.attachedTo]).toEqual([automaton, automaton]);
     expect(stats(s, automaton)).toEqual([4, 4]);
   });

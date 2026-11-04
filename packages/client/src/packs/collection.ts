@@ -64,6 +64,8 @@ export interface SavedDeck {
   cards: { id: string; finish: Finish; count: number }[];
   basics: Basics;
   commander: string | null;
+  /** A second commander with Partner (also one of `cards`). */
+  partner?: string | null;
   updatedAt: string;
 }
 
@@ -75,11 +77,28 @@ export async function fetchDecks(token: string): Promise<SavedDeck[]> {
   return ((await res.json()) as { decks: SavedDeck[] }).decks;
 }
 
+/**
+ * The fields the server accepts for a deck. An edited deck is a copy of the
+ * saved one, so it also carries `updatedAt`, which the server's strict check
+ * rejects ("That deck could not be read.").
+ */
+export function deckPayload(deck: DeckDraft & { updatedAt?: string }): DeckDraft {
+  return {
+    ...(deck.id ? { id: deck.id } : {}),
+    name: deck.name,
+    format: deck.format,
+    cards: deck.cards,
+    basics: deck.basics,
+    commander: deck.commander ?? null,
+    ...(deck.partner ? { partner: deck.partner } : {}),
+  };
+}
+
 export async function saveDeck(token: string, deck: DeckDraft): Promise<SavedDeck> {
   const res = await fetch('/api/decks', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(deck),
+    body: JSON.stringify(deckPayload(deck)),
   });
   if (!res.ok) throw await failure(res, 'The deck could not be saved.');
   return (await res.json()) as SavedDeck;

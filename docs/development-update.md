@@ -5,6 +5,50 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Fix: "That deck could not be read." when saving an edited deck
+
+Editing a saved deck copied the whole saved record, `updatedAt` included, and
+the server's strict deck check rejects unknown fields. The client now sends
+only the deck's own fields (`deckPayload` in `client/src/packs/collection.ts`).
+
+### Recorded simplifications fixed; untested card parts tested
+
+Every simplification recorded in docs/sealed.md and docs/card-audit.md was
+reviewed. Fixed, each with a test (`bots/test/simplification-fixes.test.ts`,
+`bots/test/partner.test.ts` and the card groups in `fin-set-cards.test.ts`):
+
+- New engine pieces: activated abilities with {X} (`ActivateAbility.x`,
+  `xMin`, `cantBeCopied`) and "discard X cards" costs (`cost.discardX`); copies
+  of spells and abilities may get new targets (pending `chooseCopyTargets`,
+  answered with `ChooseTargets`); choosing how many {B} to pay with life
+  (`CastSpell.lifeForB`, for {B/P} and K'rrik); Muldrotha's type choice
+  (`CastSpell.permanentType`); `chooseOpponent` with a `purpose` (Memories
+  Returning, Shinryu); `chooseDefender` for a creature already put onto the
+  battlefield attacking (Winota); "cast it now" permissions (`immediate`) that
+  end when the player does anything else; DivideDamage `amongTargets` (Fury).
+- Partner: `partner`/`partnerWith` on cards, `canPartner`, two commanders in
+  `createGame` (`PlayerSetup.partner`), `validateCommander` with both colors,
+  saved decks with a `partner` printing (server check, accounts, migration
+  `20261104120000_deck_partner.sql`), and a Partner slot in the deck builder.
+- Card fixes: Fury, Armory Automaton, Explorer's Scope, Ether (a mana
+  ability), Summon: G.F. Cerberus, Gogo, Gix, K'rrik, Muldrotha, Memories
+  Returning, Zenos/Shinryu, Winota, Quistis, Buster Sword, Vaan, Jodah,
+  Mizzix's Mastery, Ultima (triggers kept for cleanup), blight, Quina, Phantom
+  Train, Ragavan, Clive/Ifrit, Emet-Selch, Tymna, Weapons Vendor, Prishe's
+  Wanderings, Town Greeter, Rhystic Study.
+- Kept, with the reason in docs/card-audit.md: Phoenix's chapter III (too many
+  target combinations), Mizzix's copy, Omega's three slots, Kinnan, Vial
+  Smasher, Shinryu's win.
+
+Card parts that had no test now do (`bots/test/untested-parts.test.ts`): Syr
+Konrad leaving the graveyard, Bruse Tarl attacking, Golbez (surveil; four and
+eight artifacts), Kinnan's {5}{G}{U}, Garnet's lifelink, Carpet of Flowers in
+the second main phase, Strixhaven Stadium losing a point counter, poison by
+proliferate, Kefka's entry, Najeela's extra combat, Sephiroth (both faces),
+Summon: Alexander III, Cecil's back face, Esper Maduin II and III, Sin
+attacking, Emet-Selch's loot, Bolas's Citadel, and the bot's castFree and
+removeLore choices.
+
 ### Play page: Starter Kits for new players; online is draft, Commander or your 60-card decks
 
 User rule (2026-11-04): the Starter Kits are only for new players trying the
