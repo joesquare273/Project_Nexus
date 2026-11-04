@@ -7,19 +7,36 @@ export const ECONOMY = {
   /** One free booster of the same type for every `bulkBonusEvery` bought together. */
   bulkBonusEvery: 10,
   bulkBonusPacks: 1,
+  /**
+   * Match rewards (user, 2026-11-04: raised so players can earn many more
+   * cards). Paid by the server for games it ran, once per player per game:
+   * the completion reward if the game reached round `minRounds` (every seat
+   * had that many turns) and the player didn't concede, plus the bonus for
+   * the winner. A friend match has two or more players; a bot match is one
+   * player against bots. Draft event games pay prizes instead, but count
+   * for quests and the first win.
+   */
   rewards: {
-    botMatch: { completion: 25, winBonus: 10 },
-    friendMatch: { completion: 50, winBonus: 25 },
+    botMatch: { completion: 75, winBonus: 50 },
+    friendMatch: { completion: 150, winBonus: 100 },
+    minRounds: 2,
   },
-  dailyQuestReward: 100,
-  weeklyQuestReward: 250,
-  weeklyQuestMatches: 5,
+  /** Quests: paid once per period (UTC day, or the UTC week from Monday) when the count is reached. */
+  quests: [
+    { id: 'daily-play', period: 'daily', label: 'Play 3 games', target: 3, won: false, reward: 300 },
+    { id: 'daily-win', period: 'daily', label: 'Win a game', target: 1, won: true, reward: 300 },
+    { id: 'weekly-play', period: 'weekly', label: 'Play 15 games', target: 15, won: false, reward: 1500 },
+    { id: 'weekly-win', period: 'weekly', label: 'Win 7 games', target: 7, won: true, reward: 2000 },
+  ] as { id: string; period: 'daily' | 'weekly'; label: string; target: number; won: boolean; reward: number }[],
+  /** Once per account: finishing the "Learn to play" lesson, and the first win in a game the server ran. */
+  tutorialReward: 500,
+  firstWinReward: 500,
   /** New accounts start with 5,000 with the bonus below (user, 2026-11-03; accounts made before keep what they had). */
   welcomeGrant: 4000,
   /** Once per account on top of the welcome grant (user, 2026-10-30). */
   welcomeBonus: 1000,
-  /** The first sign-in of each day (UTC). */
-  dailyLoginReward: 50,
+  /** The first sign-in of each day (UTC). Raised from 50 (user, 2026-11-04). */
+  dailyLoginReward: 100,
   /** A booster draft's entry: six Play Boosters' worth (user, 2026-11-03). Every player keeps the 84 cards they draft. */
   eventEntry: 600,
   /**

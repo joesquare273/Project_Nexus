@@ -60,6 +60,10 @@ export interface AccountService {
   dismantle(userId: string, request: DismantleRequest): Promise<{ fragments: Fragments; applied: boolean }>;
   /** Spends the fragments and adds one non-foil copy, in one step, once per `ref`; CraftingError 'not_enough' otherwise. */
   craft(userId: string, request: CraftRequest): Promise<{ fragments: Fragments; applied: boolean }>;
+  /** Records a finished game for a player; false if it was already recorded (then nothing is paid again). */
+  recordMatch(userId: string, match: MatchResult): Promise<boolean>;
+  /** The player's recorded games since a time (only wins with `won`). */
+  matchCount(userId: string, since: Date, won?: boolean): Promise<number>;
 }
 
 /** What the server has already checked and worked out for a dismantle (from the card data and the economy settings). */
@@ -116,7 +120,15 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 export type Onboarding = Partial<Record<OnboardingStep, boolean>>;
 
 /** Shard changes the game server makes on its own (draft entries and prizes); purchases go through grantCards. */
-export type ShardKind = 'event_entry' | 'event_prize';
+export type ShardKind = 'event_entry' | 'event_prize' | 'match_reward' | 'quest_reward' | 'milestone_reward';
+
+/** A finished game the server ran, for one player. */
+export interface MatchResult {
+  /** The game's own id (unique per game). */
+  ref: string;
+  kind: 'bot' | 'friend' | 'draft';
+  won: boolean;
+}
 
 export interface CardGrant {
   kind: 'pack_open' | 'draft' | 'starter_precon' | 'store_purchase' | 'admin_adjustment';
@@ -262,6 +274,23 @@ export class SupabaseAccounts implements AccountService {
     return next;
   }
 
+  async recordMatch(userId: string, match: MatchResult): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('match_results')
+      .upsert({ user_id: userId, ref: match.ref, kind: match.kind, won: match.won }, { onConflict: 'user_id,ref', ignoreDuplicates: true })
+      .select('ref');
+    if (error) throw new Error(`Could not record the game: ${error.message}`);
+    return (data ?? []).length > 0;
+  }
+
+  async matchCount(userId: string, since: Date, won?: boolean): Promise<number> {
+    let q = this.db.from('match_results').select('ref', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
+    if (won) q = q.eq('won', true);
+    const { count, error } = await q;
+    if (error) throw new Error(`Could not count games: ${error.message}`);
+    return count ?? 0;
+  }
+
   async fragments(userId: string): Promise<Fragments> {
     const { data, error } = await this.db.from('fragment_balances').select('rarity, amount').eq('user_id', userId);
     if (error) throw new Error(`Could not load the fragments: ${error.message}`);
@@ -307,6 +336,9 @@ export class MemoryAccounts implements AccountService {
   readonly onboarded = new Map<string, Onboarding>();
   readonly fragmentBalances = new Map<string, Fragments>();
   readonly fragmentLedger = new Set<string>();
+  readonly matches = new Map<string, (MatchResult & { at: Date })[]>();
+  /** For tests: the time the next recorded games get (default now). */
+  now = () => new Date();
 
   async verify(token: string): Promise<AccountUser | null> {
     return this.tokens.get(token) ?? null;
@@ -384,6 +416,18 @@ export class MemoryAccounts implements AccountService {
 
   async fragments(userId: string): Promise<Fragments> {
     return { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+  }
+
+  async recordMatch(userId: string, match: MatchResult): Promise<boolean> {
+    const list = this.matches.get(userId) ?? [];
+    if (list.some((m) => m.ref === match.ref)) return false;
+    list.push({ ...match, at: this.now() });
+    this.matches.set(userId, list);
+    return true;
+  }
+
+  async matchCount(userId: string, since: Date, won?: boolean): Promise<number> {
+    return (this.matches.get(userId) ?? []).filter((m) => m.at >= since && (!won || m.won)).length;
   }
 
   /** Like dismantle_card: checks everything first, then changes cards and fragments together. */

@@ -126,7 +126,9 @@ export type ServerMessage =
   /** The table was closed (its host left the lobby, or it finished long ago). */
   | { type: 'tableClosed'; code: string }
   | { type: 'error'; code: ErrorCode; message: string; seq?: number }
-  | { type: 'opponentLeft'; seat: Seat; name: string };
+  | { type: 'opponentLeft'; seat: Seat; name: string }
+  /** What you earned for a game the server ran (match reward, win bonus, quests, first win) and your new balance. */
+  | { type: 'rewards'; lines: { label: string; amount: number }[]; balance: number | null };
 
 export type TableFormat = 'commander' | 'constructed';
 

@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Rewards: match rewards, quests, first win, tutorial (server)
+
+Built on the server and raised (user: friends need many cards): 75 for a game
+against the computer (+50 for a win), 150 with friends (+100), daily quests
+of 300 (play 3, win 1), weekly quests of 1,500 and 2,000 (play 15, win 7),
+500 for the first win and for the lesson, 100 a day for signing in. Paid only
+for games the server ran (tables and draft events), once per player per game.
+See docs/economy.md (E2, E3). The browser summary and vs-computer games on
+the server come next.
+
 ### Fix: "The deck uses cards you do not own." with a large collection
 
 Supabase answers at most 1,000 rows per request, and the server read the

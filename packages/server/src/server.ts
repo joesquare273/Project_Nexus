@@ -16,6 +16,7 @@ import { ECONOMY, packsForPurchase } from './economy.ts';
 import { STARTER_CHOICES, STARTER_REF, claimStarter } from './starter.ts';
 import { storeItem, storeSets } from './store.ts';
 import { craftRoute, craftingRules, dismantleRoute } from './crafting.ts';
+import { questProgress, rewardTutorial } from './rewards.ts';
 
 /** Biggest message a browser may send. Actions are small. */
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -108,6 +109,7 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - POST /api/packs/open {kind, count}: buys 1 or 10 boosters (10 come with a
  *   free bonus pack), opens them on the server and adds their cards to the
  *   collection, all at once.
+ * - GET /api/rewards: quest progress, one-time rewards and match rewards (rewards.ts).
  * - GET /api/fragments, POST /api/dismantle, POST /api/craft: fragments
  *   (crafting.ts), each change once per request id.
  */
@@ -147,7 +149,23 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
       const step = (await readJson(req) as { step?: unknown } | undefined)?.step;
       if (!ONBOARDING_STEPS.includes(step as OnboardingStep)) return json(res, 400, { error: 'Unknown step.' });
       await accounts.ensure(user);
-      return json(res, 200, await accounts.finishOnboarding(user.id, step as OnboardingStep));
+      const state = await accounts.finishOnboarding(user.id, step as OnboardingStep);
+      // Finishing the lesson pays the one-time tutorial reward (rewards.ts).
+      const reward = step === 'lesson' ? await rewardTutorial(accounts, user.id) : null;
+      return json(res, 200, reward ? { ...state, reward: { ...reward, balance: (await accounts.ensure(user)).shards } } : state);
+    }
+    if (path === '/api/rewards' && method === 'GET') {
+      await accounts.ensure(user);
+      const [quests, wins] = await Promise.all([questProgress(accounts, user.id), accounts.matchCount(user.id, new Date(0), true)]);
+      const lesson = !!(await accounts.onboarding(user.id)).lesson;
+      return json(res, 200, {
+        quests,
+        milestones: [
+          { id: 'tutorial', label: 'Finish the lesson', reward: ECONOMY.tutorialReward, done: lesson },
+          { id: 'first-win', label: 'Win your first game', reward: ECONOMY.firstWinReward, done: wins > 0 },
+        ],
+        matches: ECONOMY.rewards,
+      });
     }
     if (path === '/api/store' && method === 'GET') return json(res, 200, { sets: storeSets() });
     if (path === '/api/store/buy' && method === 'POST') {
@@ -181,7 +199,7 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
-    if (['/api/account', '/api/collection', '/api/decks', '/api/onboarding', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy', '/api/fragments', '/api/dismantle', '/api/craft'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    if (['/api/account', '/api/collection', '/api/decks', '/api/onboarding', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy', '/api/fragments', '/api/dismantle', '/api/craft', '/api/rewards'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });

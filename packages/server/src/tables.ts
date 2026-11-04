@@ -17,6 +17,7 @@ import { gameDeck, type GameDeck } from '@nexus/cards/decks';
 import type { AccountService, AccountUser } from './accounts.ts';
 import { deckProblem } from './collection.ts';
 import { HostedGame } from './hostedGame.ts';
+import { eligible, rewardMatch } from './rewards.ts';
 import type { ErrorCode, Seat, ServerMessage, TableFormat, TableView } from './protocol.ts';
 import type { Action } from '@nexus/engine';
 
@@ -55,6 +56,8 @@ interface Table {
   conns: Map<Seat, TableConnection>;
   phase: 'lobby' | 'playing' | 'finished';
   game: HostedGame | null;
+  /** This game's own id, for paying rewards once (table codes can be used again). */
+  gameId?: string;
   winner: Seat | null;
 }
 
@@ -196,6 +199,7 @@ export class TableHub {
       }),
     };
     t.phase = 'playing';
+    t.gameId = [...this.opts.randomBytes(16)].map((b) => b.toString(16).padStart(2, '0')).join('');
     this.broadcast(t);
     try {
       t.game = new HostedGame({
@@ -213,6 +217,7 @@ export class TableHub {
           t.winner = alive.length === 1 ? (alive[0] as Seat) : null;
           t.phase = 'finished';
           this.broadcast(t);
+          void this.payRewards(t, state);
           this.opts.schedule(() => this.tables.get(code) === t && this.end(t), 60 * 60_000);
         },
       });
@@ -223,6 +228,28 @@ export class TableHub {
       return e instanceof Error ? e.message : String(e);
     }
     return null;
+  }
+
+  /**
+   * Pays each signed-in player for the finished game (rewards.ts): a friend
+   * game with two or more players, else a game against the computer; nothing
+   * for a player who conceded or a game that ended before the minimum round.
+   */
+  private async payRewards(t: Table, state: import('@nexus/engine').GameState): Promise<void> {
+    const accounts = this.opts.accounts;
+    if (!accounts || !t.gameId) return;
+    const humans = t.seats.filter((s) => !s.bot);
+    for (const seat of humans) {
+      if (!seat.userId) continue;
+      const p = state.players[seat.id];
+      if (!p || !eligible(state.turnNumber, t.seats.length, p.conceded)) continue;
+      try {
+        const paid = await rewardMatch(accounts, seat.userId, { ref: `table-${t.gameId}`, kind: humans.length >= 2 ? 'friend' : 'bot', won: t.winner === seat.id });
+        if (paid.lines.length) t.conns.get(seat.id)?.send({ type: 'rewards', lines: paid.lines, balance: paid.balance });
+      } catch {
+        // A reward that fails to pay can be paid again later: the game stays recorded only if recordMatch succeeded.
+      }
+    }
   }
 
   act(code: string, seat: Seat, seq: number, version: number, actions: Action[]): Problem | null {

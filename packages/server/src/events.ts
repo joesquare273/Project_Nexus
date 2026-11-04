@@ -19,6 +19,7 @@ import type { LimitedDeck } from '@nexus/cards/limited';
 import { draftSet, type DraftSetCode } from '@nexus/cards/draft';
 import type { AccountService } from './accounts.ts';
 import { ECONOMY } from './economy.ts';
+import { eligible, rewardMatch } from './rewards.ts';
 import {
   botMatch,
   changeSeats,
@@ -505,7 +506,26 @@ export class EventHub {
     if (h.games.get(g.match) !== g) return;
     h.games.delete(g.match);
     const winner = gameWinner(g.state);
+    void this.payGameRewards(h, g, winner as Seat | null);
     this.change(h.ev.code, (x) => recordGame(x.ev, g.match, winner ? g.seats[winner as Seat] : null, this.random));
+  }
+
+  /** Draft games pay prizes, not match rewards, but count for quests and the first win (rewards.ts). */
+  private async payGameRewards(h: Hosted, g: HostedGame, winner: Seat | null): Promise<void> {
+    const accounts = this.opts.accounts;
+    if (!accounts) return;
+    for (const p of SEATS) {
+      if (g.bots[p]) continue;
+      const seat = h.ev.seats.find((s) => s.id === g.seats[p]);
+      const player = g.state.players[p];
+      if (!seat?.userId || !player || !eligible(g.state.turnNumber, 2, player.conceded)) continue;
+      try {
+        const paid = await rewardMatch(accounts, seat.userId, { ref: `event-${h.id}-${g.match}-${g.number}`, kind: 'draft', won: winner === p });
+        if (paid.lines.length) h.conns.get(seat.id)?.send({ type: 'rewards', lines: paid.lines, balance: paid.balance });
+      } catch {
+        // Not paid this time; the game isn't replayed, so it stays unpaid.
+      }
+    }
   }
 
   /** Each player in the game gets their own update. */
