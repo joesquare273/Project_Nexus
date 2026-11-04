@@ -69,7 +69,7 @@ function allowedToSee(s: GameState, viewer: PlayerId): Set<InstanceId> {
     if (c.zone === 'exile' && c.foretoldTurn !== undefined && c.owner !== viewer) continue;
     if (c.zone === 'exile' && c.linkedExile && !c.linkedExile.lookers.includes(viewer)) continue;
     if (['battlefield', 'graveyard', 'exile', 'stack', 'command'].includes(c.zone)) out.add(c.id);
-    else if (c.zone === 'hand' && c.owner === viewer) out.add(c.id);
+    else if (c.zone === 'hand' && (c.owner === viewer || c.revealedInHand)) out.add(c.id);
     else if (looking.includes(c.id)) out.add(c.id);
     else if (c.zone === 'library' && materia && s.players[viewer]!.library[0] === c.id) out.add(c.id);
   }

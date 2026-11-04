@@ -42,6 +42,8 @@ export interface PlayerView {
   libraryTop?: InstanceId;
   /** Only present for the viewer's own hand. */
   hand?: InstanceId[];
+  /** Another player's revealed cards in hand (the rest are face down). */
+  revealedHand?: InstanceId[];
   battlefield: InstanceId[];
   graveyard: InstanceId[];
   exile: InstanceId[];
@@ -114,6 +116,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       libraryCount: p.library.length,
       ...(pid === viewer && visibleLibraryTop(s, viewer) ? { libraryTop: visibleLibraryTop(s, viewer) } : {}),
       ...(pid === viewer ? { hand: [...p.hand] } : {}),
+      // Cards in another player's hand that were revealed (shown face up on their hand).
+      ...(pid !== viewer && p.hand.some((id) => s.cards[id]!.revealedInHand) ? { revealedHand: p.hand.filter((id) => s.cards[id]!.revealedInHand) } : {}),
       // What they control, including permanents they took from someone else.
       commanders: Object.values(s.cards).filter(c=>c.isCommander && c.owner===pid).map(c=>({id:c.id,defId:c.defId})),
       battlefield: s.turnOrder.flatMap((owner) => s.players[owner]!.battlefield).filter((id) => s.cards[id]!.controller === pid),
@@ -136,7 +140,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer && ['hand', 'search', 'digLands', 'discard'].includes(s.pending.purpose) ? s.pending.cards : [];
   for (const c of Object.values(s.cards)) {
     const faceDown = c.zone === 'exile' && ((c.foretoldTurn !== undefined && c.owner !== viewer) || (c.linkedExile !== undefined && !c.linkedExile.lookers.includes(viewer)));
-    const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === surveilled || lookingAt.includes(c.id));
+    const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && (c.owner === viewer || c.revealedInHand)) || c.id === surveilled || lookingAt.includes(c.id));
     if (visible) cards[c.id] = { ...c };
     if (c.zone === 'battlefield') {
       const ch = characteristics(s, c);

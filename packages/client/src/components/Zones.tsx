@@ -423,16 +423,56 @@ export function CommandZone({view,pid,h}:{view:GameView;pid:PlayerId;h:ZoneHandl
   </div>;
 }
 
+/**
+ * An opponent's hand: one card back per card (a face for a card they've
+ * revealed), fanned and overlapping, with the count. Cards they play fly
+ * from here.
+ */
+export function OpponentHand({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
+  const p = view.players[pid]!;
+  const revealed = (p.revealedHand ?? []).filter((id) => view.cards[id]);
+  const hidden = Math.max(0, p.handCount - revealed.length);
+  const shown = Math.min(p.handCount, 12);
+  const backs = Math.max(0, Math.min(hidden, shown - revealed.length));
+  return (
+    <div
+      className="opp-hand"
+      data-pile={`${pid}:hand`}
+      aria-label={`${pid}: ${p.handCount} card${p.handCount === 1 ? '' : 's'} in hand${revealed.length ? `, ${revealed.length} revealed` : ''}`}
+      style={{ '--hand-count': shown } as CSSProperties}
+    >
+      <div className="opp-hand-fan">
+        {revealed.map((id) => (
+          <div
+            key={id}
+            data-card={id}
+            className={`opp-hand-card revealed ${h.markCard(id).join(' ')}`}
+            title={`${defOf(view.cards[id]!.defId).name} (revealed)`}
+            onMouseEnter={() => h.onHover(id)}
+            onMouseLeave={() => h.onHover(null)}
+          >
+            <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="small" />
+          </div>
+        ))}
+        {Array.from({ length: backs }, (_, i) => (
+          <div key={i} className="opp-hand-card">
+            <CardBack />
+          </div>
+        ))}
+      </div>
+      <span className="opp-hand-count" title="Cards in hand">
+        {p.handCount}
+      </span>
+    </div>
+  );
+}
+
 export function OpponentZone({ view, pid, h, fit = false }: { view: GameView; pid: PlayerId; h: ZoneHandlers; fit?: boolean }) {
   const p = view.players[pid]!;
   return (
     <section className={`zone opponent ${p.eliminated ? 'eliminated' : ''}`}>
       <div className="zone-top"><CommandZone view={view} pid={pid} h={h} /><PlayerHeader view={view} pid={pid} h={h} /></div>
-      <div className="opp-hand" data-pile={`${pid}:hand`}>
-        {Array.from({ length: Math.min(p.handCount, 10) }, (_, i) => (
-          <CardBack key={i} />
-        ))}
-      </div>
+      <OpponentHand view={view} pid={pid} h={h} />
       <FitBoard enabled={fit}><div className="zone-body">
         <Battlefield view={view} pid={pid} h={h} />
         <ZonePiles view={view} pid={pid} h={h} />

@@ -1886,6 +1886,8 @@ export interface CardInstance {
   xPaid?: number;
   /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
   kicksPaid?: number;
+  /** A card in a hand that was revealed ("reveal it and put it into your hand"): every player sees it until it leaves the hand. */
+  revealedInHand?: boolean;
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */

@@ -67,3 +67,31 @@ describe('event filtering', () => {
     expect(viewFor(s, 'P1').cards[bear]).toBeDefined();
   });
 });
+
+describe('cards revealed from hand', () => {
+  it('stay face up to everyone while they remain in hand, and hide again once they move', async () => {
+    const { AliasBook, playerUpdate } = await import('../src/index.ts');
+    const { moveCard } = await import('../src/state.ts');
+    const s = newGame(3, { raw: true });
+    const [shown, kept] = s.players.P2!.hand;
+    s.cards[shown!]!.revealedInHand = true;
+    for (const viewer of ['P1', 'P3']) {
+      const view = viewFor(s, viewer);
+      expect(view.players.P2!.revealedHand).toEqual([shown]);
+      expect(view.players.P2!.handCount).toBe(7);
+      expect(view.cards[shown!]?.defId).toBe(s.cards[shown!]!.defId);
+      expect(view.cards[kept!]).toBeUndefined();
+      // Online: the redacted update carries the revealed card (under an alias) and nothing else from that hand.
+      let n = 0;
+      const u = playerUpdate(s, viewer, new AliasBook(() => `a${n++}`));
+      expect(u.view.players.P2!.revealedHand).toHaveLength(1);
+      expect(Object.values(u.view.cards).filter((c) => c.zone === 'hand' && c.owner === 'P2').map((c) => c.defId)).toEqual([s.cards[shown!]!.defId]);
+    }
+    expect(viewFor(s, 'P2').players.P2!.revealedHand).toBeUndefined();
+    moveCard({ s, ev: [] }, shown!, 'library');
+    expect(s.cards[shown!]!.revealedInHand).toBeUndefined();
+    moveCard({ s, ev: [] }, shown!, 'hand');
+    expect(viewFor(s, 'P1').players.P2!.revealedHand).toBeUndefined();
+    expect(viewFor(s, 'P1').cards[shown!]).toBeUndefined();
+  });
+});

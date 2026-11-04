@@ -177,6 +177,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     // Abilities that trigger while you pay for something (a Treasure sacrificed for mana) wait
     // until the spell is cast, then go on the stack above it (rule 601.2i).
     stabilize(ctx, { holdTriggers: action.type === 'ActivateManaAbility' });
+    // A card revealed on its way into a hand stays known to everyone while it's there.
+    for (const e of ctx.ev) if (e.type === 'CardRevealed' && s.cards[e.card]?.zone === 'hand') s.cards[e.card]!.revealedInHand = true;
     return { ok: true, state: s, events: ctx.ev };
   } catch (e) {
     if (e instanceof RuleError) return { ok: false, error: e.message };

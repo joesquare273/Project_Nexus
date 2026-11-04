@@ -51,6 +51,8 @@ function zoneBox(player: PlayerId, zone: ZoneName): Box | null {
   const el = document.querySelector(`[data-pile="${zone === 'stack' ? 'stack' : `${player}:${zone}`}"]`);
   if (!el) return null;
   const r = el.getBoundingClientRect();
+  // A hidden zone has no place on screen: no flight beats one from the corner.
+  if (r.width === 0 && r.height === 0) return null;
   const width = Math.min(r.width, 64);
   const height = width * CARD_RATIO;
   return { left: r.left + r.width / 2 - width / 2, top: r.top + r.height / 2 - height / 2, width, height };

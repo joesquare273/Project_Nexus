@@ -33,7 +33,7 @@ import { cardName, stepName, targetDescription, triggerText } from '@nexus/bots/
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
-import { LifeTotals } from './LifeTotals.tsx';
+import { CenterHub } from './LifeTotals.tsx';
 import { CardFace, ManaText } from './Card.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
@@ -647,6 +647,14 @@ export function Game({
     }
   }
   const legendChoices = yourMove && pending.kind === 'chooseLegend' ? pending.cards : [];
+  const hub = (
+    <CenterHub
+      view={view}
+      top={session.opponents.slice(0, 2)}
+      bottom={[YOU, ...session.opponents.slice(2)]}
+      stack={<StackView view={view} onHover={setHovered} h={h} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />}
+    />
+  );
 
   return (
     <div className={`game ${fourPlayers ? 'four-players' : ''} ${logOpen ? 'log-open' : ''}`}>
@@ -656,7 +664,7 @@ export function Game({
             <OpponentZone key={pid} view={view} pid={pid} h={h} fit={fourPlayers} />
           ))}
         </div>
-        <div className="midline" data-pile="stack">
+        <div className="midline">
           <PhaseTrack view={view} session={session} onChange={refresh} />
           <button
             className="pause-button ghost"
@@ -672,11 +680,11 @@ export function Game({
           >
             {paused ? '▶ Resume' : '❚❚ Pause'}
           </button>
-          <LifeTotals view={view} />
-          <StackView view={view} onHover={setHovered} h={h} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />
           {fourPlayers && <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide game log' : 'Show game log'}</button>}
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
+          {!fourPlayers && hub}
         </div>
+        {fourPlayers && hub}
         {notice && (
           <section className="target-notice" aria-label="Targeting activity">
             <details>

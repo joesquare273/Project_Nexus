@@ -5,6 +5,31 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Gameplay board: center hub, opponents' hands, flights from the hand
+
+- **Center hub.** Life totals now sit in a square in the middle of the table,
+  each player where they sit (top row, bottom row), with the stack between
+  them (`CenterHub` in `components/LifeTotals.tsx`). A tile shows life,
+  poison and the most commander damage from any one commander (⚔, red from
+  15). In Commander, clicking a tile shows that player's commander damage
+  from each commander in the hub itself, with a Back button; the full-screen
+  pop-up is gone. In four-player games the hub sits where the four seats
+  meet; in two- and three-player games it sits on the midline at the right.
+- **Opponents' hands** show as a fan of card backs with the count, in every
+  layout (four-player games hid them before). A card revealed from hand shows
+  its face to everyone while it stays there: the engine marks
+  `revealedInHand` when a `CardRevealed` event leaves a card in a hand,
+  clears it when the card moves, and `PlayerView.revealedHand` lists them;
+  `redact.ts` passes the card (aliased) to every player
+  (`hidden-info.test.ts`).
+- **Flights.** The stack used to sit in the midline's top-right corner, so
+  spells flew to and from that corner; now they fly from the hand (yours, or
+  the opponent's fan) to the stack in the center, then onto the board. A
+  zone that isn't on screen no longer sends cards from the window's corner.
+- **Board preview** for development: `npm run dev`, then
+  `/preview.html?players=4&turns=8&seed=3` shows a Commander game the AI has
+  played for every seat, with no sign-in (`src/preview.tsx`).
+
 ### Edge of Eternities group E4: counters and proliferate
 
 Fourteen Counter Intelligence cards: the proliferate cards (Kilo, Surge

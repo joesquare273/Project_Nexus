@@ -125,7 +125,7 @@ export function visibleCards(s: GameState, viewer: PlayerId): Set<InstanceId> {
     const faceDown =
       c.zone === 'exile' && ((c.foretoldTurn !== undefined && c.owner !== viewer) || (c.linkedExile !== undefined && !c.linkedExile.lookers.includes(viewer)));
     if (faceDown) continue;
-    if (PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && c.owner === viewer) || c.id === top || looking.has(c.id)) visible.add(c.id);
+    if (PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && (c.owner === viewer || c.revealedInHand)) || c.id === top || looking.has(c.id)) visible.add(c.id);
   }
   return visible;
 }
@@ -204,6 +204,7 @@ const CARD_FIELDS = {
   linkedExile: 'refs',
   xPaid: 'copy',
   kicksPaid: 'copy',
+  revealedInHand: 'copy',
   isCommander: 'copy',
   commanderStays: 'copy',
   castPermission: 'copy',
