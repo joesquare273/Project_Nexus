@@ -11,6 +11,7 @@ export {
   abilitySpec,
   activatedAbilities,
   canEverCast,
+  castsAtInstantSpeed,
   canPayFromPool,
   choiceProblem,
   effectsOf,

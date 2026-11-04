@@ -9,8 +9,12 @@ import {
   COMMANDER,
   FREE_FOR_ALL,
   LIMITED,
+  activatedAbilities,
   applyAction,
+  castsAtInstantSpeed,
   createGame,
+  currentDefinition,
+  spellDefinition,
   filterEventsFor,
   getLegalActions,
   triggerLifeCost,
@@ -191,6 +195,35 @@ export class GameSession {
     return playableCards(this.state, YOU);
   }
 
+  /**
+   * What holding priority is for (rule 117.3c): spells and abilities you can
+   * cast or activate now at instant speed and pay for (rule 117.1a): instants,
+   * spells with flash (or that may be cast any time, Teferi), and activated
+   * abilities that aren't sorcery-speed. Lands and mana abilities don't count
+   * (rule 605.3a: mana abilities don't use the stack, so nobody responds).
+   */
+  instantSpeedPlays(): CardPlay[] {
+    const s = this.state;
+    return this.plays().filter((p) => {
+      const c = s.cards[p.card];
+      if (!c || p.kind === 'land') return false;
+      const def = currentDefinition(s, c);
+      if (p.kind === 'ability') {
+        const spec = activatedAbilities(def)[p.ability ?? -1];
+        return !!spec && !spec.sorcerySpeed && !spec.equip;
+      }
+      const first = p.choices[0]?.action;
+      const spell = spellDefinition(def, first?.type === 'CastSpell' && !!first.adventure);
+      const anyTime = c.castPermission?.player === YOU && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+      return anyTime || castsAtInstantSpeed(s, YOU, c, spell);
+    });
+  }
+
+  /** Whether holding priority would let you do anything (see instantSpeedPlays). */
+  canHoldPriority(): boolean {
+    return this.instantSpeedPlays().length > 0;
+  }
+
   /** Whether these actions would work right now (nothing changes). */
   canSubmit(actions: Action[]): boolean {
     return !('error' in applyAll(this.state, actions));
@@ -278,8 +311,9 @@ export class GameSession {
   private worthStopping(): boolean {
     const s = this.state;
     const top = s.stack.at(-1);
-    // Your own spell or ability on top: pass for you, unless you're holding priority.
-    if (top) return top.controller !== YOU || this.keepPriority;
+    // Your own spell or ability on top: pass for you, unless you're holding priority
+    // and could still add something at instant speed (otherwise there's nothing to hold it for).
+    if (top) return top.controller !== YOU || (this.keepPriority && this.canHoldPriority());
     if (s.activePlayer === YOU) return s.step === 'main1' || s.step === 'main2';
     return s.step === 'declareAttackers' || s.step === 'declareBlockers' || s.step === 'end';
   }

@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Hold priority only when you can act
+
+Rule 117.3c gives you priority back after you cast a spell or activate an
+ability; holding it only matters if you can still cast or activate something
+at instant speed and pay for it (rule 117.1a): an instant, a flash spell (or
+one an effect lets you cast any time), or an activated ability that isn't
+sorcery-speed. Mana abilities and land plays don't count (rule 605.3a: mana
+abilities don't use the stack). The "Hold priority" button is now available
+only then (`GameSession.canHoldPriority`), and with the setting on, the board
+still passes for you when you have nothing you could use. The same rule holds
+in every format, local or online. Test: `client/test/hold-priority.test.ts`.
+
 ### Fix: "Waiting for the server…" while paying by hand online
 
 In online games (Commander and 60-card tables, draft games), paying for a

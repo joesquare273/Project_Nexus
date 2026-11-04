@@ -899,7 +899,7 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
             />{' '}
             Tap mana automatically
           </label>
-          <label title="After you cast a spell or activate an ability, keep priority so you can add more before anyone responds (pass when you're done)">
+          <label title="After you cast a spell or activate an ability, keep priority so you can add more before anyone responds, when you have an instant, flash spell or ability you can pay for (otherwise it passes for you)">
             <input
               type="checkbox"
               checked={session.keepPriority}
@@ -1055,7 +1055,7 @@ function PromptBar(p: PromptProps) {
   const orderKey = pending.kind === 'orderTriggers' ? `${s.turnNumber}:${s.triggerQueue.map((t) => t.source).join()}` : '';
   useEffect(() => setOrderPicks([]), [orderKey]);
   let text: string;
-  let buttons: { label: string; onClick: () => void; primary?: boolean }[] = [];
+  let buttons: { label: string; onClick: () => void; primary?: boolean; disabled?: boolean; title?: string }[] = [];
 
   if (pending.kind === 'gameOver') {
     text = 'Game over.';
@@ -1344,8 +1344,14 @@ function PromptBar(p: PromptProps) {
     ];
   } else {
     // Hold priority: keep it after casting, to add more before anyone responds (rule 117.3c).
+    // Only offered when you could do something at instant speed and pay for it (rules 117.1a, 117.3c).
+    const canHold = p.session.canHoldPriority();
     const holdButton = {
-      label: p.session.keepPriority ? 'Holding priority ✓' : 'Hold priority',
+      label: p.session.keepPriority && canHold ? 'Holding priority ✓' : 'Hold priority',
+      disabled: !canHold,
+      title: canHold
+        ? 'Keep priority after you cast or activate, to add more before anyone responds'
+        : 'You have no instant, flash spell or ability you could use and pay for right now',
       onClick: () => {
         p.session.keepPriority = !p.session.keepPriority;
         setOrderPicks((x) => [...x]);
@@ -1380,7 +1386,7 @@ function PromptBar(p: PromptProps) {
       </fieldset>}
       <div className="prompt-buttons">
         {buttons.map((b) => (
-          <button key={b.label} className={b.primary ? 'primary' : ''} onClick={b.onClick}>
+          <button key={b.label} className={b.primary ? 'primary' : ''} onClick={b.onClick} disabled={b.disabled} title={b.title}>
             <ManaText text={b.label} />
           </button>
         ))}
