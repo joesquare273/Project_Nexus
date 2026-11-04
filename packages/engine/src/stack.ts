@@ -2190,7 +2190,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'SacrificeIt':
-      for (const id of onBattlefield) sacrifice(ctx, id);
+      for (const id of onBattlefield) {
+        sacrifice(ctx, id);
+        // "When you do" (the Courtyards): it was sacrificed.
+        if (s.cards[id]?.zone !== 'battlefield') r.sacrificedAny = true;
+      }
       return;
     case 'Destroy':
       for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
@@ -2529,6 +2533,19 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       else {
         r.createdTokens.push(createToken(ctx, 'treasure-token', item.controller));
         quinaFrogs(ctx, item.controller, r);
+      }
+      return;
+    }
+    case 'ReturnAllFromGraveyard': {
+      const yard = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
+      for (const id of yard) {
+        moveCard(ctx, id, 'battlefield', { controller: item.controller });
+        const c = s.cards[id]!;
+        if (c.zone !== 'battlefield') continue;
+        c.controller = item.controller;
+        c.summoningSick = true;
+        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        if (effect.keywords?.length) s.temporaryEffects.push({ source, affected: id, keywords: [...effect.keywords] });
       }
       return;
     }

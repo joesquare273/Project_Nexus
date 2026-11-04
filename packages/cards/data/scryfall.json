@@ -1163,6 +1163,28 @@
     "scryfallId": "a2de3346-9647-4540-ba41-e67c24ddf141",
     "relatedTokens": []
   },
+  "beast-3-3-token-eoc": {
+    "name": "Beast",
+    "typeLine": "Token Creature — Beast",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "5",
+    "artist": "Dave Allsop",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/5/beast?utm_source=api",
+    "scryfallId": "3b584d93-5681-4ecd-953c-5ef58307caab",
+    "relatedTokens": [
+      {
+        "name": "Beast",
+        "scryfallId": "3b584d93-5681-4ecd-953c-5ef58307caab"
+      }
+    ]
+  },
   "beast-token-eoc": {
     "name": "Beast",
     "typeLine": "Token Creature — Beast",
@@ -1316,6 +1338,28 @@
       {
         "name": "Bird",
         "scryfallId": "023cebe4-ebe4-4398-9fd7-d3507660040a"
+      }
+    ]
+  },
+  "bird-token-eoc": {
+    "name": "Bird",
+    "typeLine": "Token Creature — Bird",
+    "oracleText": "Flying",
+    "set": "teoc",
+    "number": "3",
+    "artist": "Alessandra Pisano",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/3/bird?utm_source=api",
+    "scryfallId": "2a3d4bf9-2107-4686-8df5-cd7c934d0691",
+    "relatedTokens": [
+      {
+        "name": "Bird",
+        "scryfallId": "2a3d4bf9-2107-4686-8df5-cd7c934d0691"
       }
     ]
   },

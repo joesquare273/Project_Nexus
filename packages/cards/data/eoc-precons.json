@@ -134,10 +134,8 @@
           "count": 1,
           "set": "eoc",
           "number": "46",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Chaos Warp",
@@ -190,21 +188,16 @@
           "count": 1,
           "set": "eoc",
           "number": "65",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Organic Extinction",
           "count": 1,
           "set": "eoc",
           "number": "66",
-          "implemented": false,
-          "needs": [
-            "improvise",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Resourceful Defense",
@@ -346,10 +339,8 @@
           "count": 1,
           "set": "eoc",
           "number": "87",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Alibou, Ancient Witness",
@@ -378,10 +369,8 @@
           "count": 1,
           "set": "eoc",
           "number": "128",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Astral Cornucopia",
@@ -507,10 +496,8 @@
           "count": 1,
           "set": "eoc",
           "number": "153",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Clifftop Retreat",
@@ -549,11 +536,8 @@
           "count": 1,
           "set": "eoc",
           "number": "163",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "The Mycosynth Gardens",
@@ -821,10 +805,8 @@
           "count": 1,
           "set": "eoc",
           "number": "150",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Evolving Wilds",
@@ -863,20 +845,16 @@
           "count": 1,
           "set": "eoc",
           "number": "171",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rustvale Bridge",
           "count": 1,
           "set": "eoc",
           "number": "175",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Seat of the Synod",
@@ -899,10 +877,8 @@
           "count": 1,
           "set": "eoc",
           "number": "180",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Plains",
@@ -1112,10 +1088,8 @@
           "count": 1,
           "set": "eoc",
           "number": "86",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hammer of Purphoros",
@@ -1226,10 +1200,8 @@
           "count": 1,
           "set": "eoc",
           "number": "108",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tireless Tracker",
@@ -1413,20 +1385,16 @@
           "count": 1,
           "set": "eoc",
           "number": "189",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Viridescent Bog",
           "count": 1,
           "set": "eoc",
           "number": "190",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Farseek",
@@ -1484,10 +1452,8 @@
           "count": 1,
           "set": "eoc",
           "number": "61",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Terramorphic Expanse",
@@ -1502,10 +1468,8 @@
           "count": 1,
           "set": "eoc",
           "number": "84",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Night's Whisper",
@@ -1540,10 +1504,8 @@
           "count": 1,
           "set": "eoc",
           "number": "93",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cultivate",
@@ -1602,10 +1564,8 @@
           "count": 1,
           "set": "eoc",
           "number": "107",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tear Asunder",
@@ -1643,10 +1603,8 @@
           "count": 1,
           "set": "eoc",
           "number": "124",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rakdos Charm",
@@ -1671,20 +1629,16 @@
           "count": 1,
           "set": "eoc",
           "number": "149",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cabaretti Courtyard",
           "count": 1,
           "set": "eoc",
           "number": "151",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dakmor Salvage",
@@ -1703,10 +1657,8 @@
           "count": 1,
           "set": "eoc",
           "number": "157",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Evolving Wilds",
@@ -1721,10 +1673,8 @@
           "count": 1,
           "set": "eoc",
           "number": "167",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Myriad Landscape",
@@ -1741,20 +1691,16 @@
           "count": 1,
           "set": "eoc",
           "number": "172",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rocky Tar Pit",
           "count": 1,
           "set": "eoc",
           "number": "173",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Wastes",

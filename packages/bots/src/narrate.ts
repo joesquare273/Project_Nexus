@@ -361,6 +361,8 @@ function effectText(e: EffectSpec): string {
       return 'reveal the top five cards; you and an opponent take turns putting one into your hand and one on the bottom';
     case 'CastExiledOrTreasure':
       return "you may cast it; if you don't, create a Treasure";
+    case 'ReturnAllFromGraveyard':
+      return `return all matching cards from your graveyard to the battlefield${e.entersTapped ? ' tapped' : ''}`;
     case 'AdditionalLandThisTurn':
       return 'you may play an additional land this turn';
     case 'AdditionalEndStep':

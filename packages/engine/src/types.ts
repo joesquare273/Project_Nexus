@@ -181,6 +181,8 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /** "Return all [filter] cards from your graveyard to the battlefield" (Splendid Reclamation; `entersTapped`, `keywords` until end of turn: Wake the Past). */
+  'ReturnAllFromGraveyard',
   /** "You may play an additional land this turn" (Hearthhull, the Worldseed). */
   'AdditionalLandThisTurn',
   /** Each permanent matching `filter` deals damage equal to its power to the target (Bartz and Boko's Birds). */

@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Edge of Eternities group E3: removal, board wipes and lands
+
+26 cards across both decks: spot removal (Infernal Grasp, Putrefy, Beast
+Within, Swan Song), sweepers (Fumigate, Organic Extinction, Blasphemous Act,
+Chain Reaction), returns from the graveyard (Splendid Reclamation, Wake the
+Past), Skyshroud Claim, and fifteen lands (the Bridges, filter lands,
+fetch-style lands, the Courtyards, Bojuka Bog, Buried Ruin, Karn's Bastion).
+Counter Intelligence 55/100, World Shaper 64/100.
+
 ### Rewards in the browser; games against the computer on the server
 
 "Vs. computer" Commander and 60-card games now run on the game server as a

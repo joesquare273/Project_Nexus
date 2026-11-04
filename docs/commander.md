@@ -32,8 +32,8 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 44/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 49/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 55/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 64/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -77,6 +77,15 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   (Beast 4/4, Golem 3/3, Insect 1/1, Elementals 5/5 and 5/3). Engine: the
   `LandCardsInYourGraveyard` count, `ifCount` on effects, `ifKicked` triggers
   (`kicksPaid` on the permanent), and CreateTokenCopy `entersTapped`.
+- **E3 (2026-11-04): removal, board wipes and lands.** Infernal Grasp,
+  Putrefy, Beast Within, Swan Song, Fumigate, Organic Extinction, Blasphemous
+  Act, Chain Reaction, Splendid Reclamation, Wake the Past, Skyshroud Claim;
+  Razortide, Rustvale and Silverbluff Bridge, Twilight Mire, Cascade Bluffs,
+  Viridescent Bog, Mountain Valley, Rocky Tar Pit, Escape Tunnel, Bojuka Bog,
+  Buried Ruin, Karn's Bastion, Cabaretti Courtyard, Maestros Theater and
+  Riveteers Overlook, with the Bird 2/2 and Beast 3/3 tokens (teoc). Engine:
+  `ReturnAllFromGraveyard` (tapped, or with keywords until end of turn) and
+  SacrificeIt marking "if you do" for reflexive triggers.
 
 ## Commander rules (built)
 

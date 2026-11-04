@@ -316,3 +316,182 @@ describe('E2: landfall and lands leaving', () => {
     expect(tokens(s, 'elemental-5-3-token-eoc')).toHaveLength(1);
   });
 });
+
+// Group 3: removal, board wipes and lands.
+describe('E3: removal and board wipes', () => {
+  const all = (s: GameState, defId: string) => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.defId === defId);
+
+  it('Infernal Grasp destroys a creature and you lose 2; Putrefy an artifact or creature', () => {
+    let s = newGame();
+    const cat = put(s, 'P2', 'coeurl');
+    const grasp = put(s, 'P1', 'infernal-grasp', 'hand');
+    const life = s.players.P1!.life;
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: grasp, targets: [card(cat)] }).state;
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+    expect(s.players.P1!.life).toBe(life - 2);
+    const ring = put(s, 'P2', 'sol-ring');
+    const putrefy = put(s, 'P1', 'putrefy', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: putrefy, targets: [card(ring)] }).state;
+    expect(s.cards[ring]!.zone).toBe('graveyard');
+  });
+
+  it('Beast Within: destroy any permanent; its controller gets a 3/3 Beast', () => {
+    let s = newGame();
+    const land = put(s, 'P2', 'forest');
+    const spell = put(s, 'P1', 'beast-within', 'hand');
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(land)] }).state;
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    expect(all(s, 'beast-3-3-token-eoc').map((c) => c.controller)).toEqual(['P2']);
+  });
+
+  it('Swan Song counters an instant, sorcery or enchantment spell; its controller gets a 2/2 flying Bird', () => {
+    let s = newGame();
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { R: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [{ kind: 'player', player: 'P1' }] });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    const song = put(s, 'P1', 'swan-song', 'hand');
+    mana(s, 'P1', { U: 1 });
+    const life = s.players.P1!.life;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: song, targets: [card(bolt)] });
+    s = settle(s).state;
+    expect(s.cards[bolt]!.zone).toBe('graveyard');
+    expect(s.players.P1!.life).toBe(life);
+    expect(all(s, 'bird-token-eoc').map((c) => c.controller)).toEqual(['P2']);
+    // Not a creature spell.
+    const cat = put(s, 'P2', 'coeurl', 'hand');
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: cat });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    const song2 = put(s, 'P1', 'swan-song', 'hand');
+    mana(s, 'P1', { U: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: song2, targets: [card(cat)] })).toBeTruthy();
+  });
+
+  it('Fumigate destroys all creatures and gains 1 life for each; Organic Extinction spares artifact creatures', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, i % 2 ? 'P1' : 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'fumigate', 'hand');
+    const life = s.players.P1!.life;
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(all(s, 'coeurl')).toHaveLength(0);
+    expect(s.players.P1!.life).toBe(life + 3);
+    let t = newGame();
+    const cat = put(t, 'P2', 'coeurl');
+    const bot = put(t, 'P2', 'armory-automaton');
+    const ext = put(t, 'P1', 'organic-extinction', 'hand');
+    mana(t, 'P1', { W: 2, C: 8 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: ext }).state;
+    expect([t.cards[cat]!.zone, t.cards[bot]!.zone]).toEqual(['graveyard', 'battlefield']);
+  });
+
+  it('Blasphemous Act costs {1} less per creature and deals 13 to each; Chain Reaction deals the number of creatures', () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P2', 'coeurl');
+    const act13 = put(s, 'P1', 'blasphemous-act', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: act13 }).state;
+    expect(all(s, 'coeurl')).toHaveLength(0);
+    let t = newGame();
+    const big = put(t, 'P2', 'baloth-prime');
+    const cats = [put(t, 'P1', 'coeurl'), put(t, 'P2', 'coeurl')];
+    const chain = put(t, 'P1', 'chain-reaction', 'hand');
+    mana(t, 'P1', { R: 2, C: 2 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: chain }).state;
+    // Three creatures: 3 damage each.
+    expect(cats.map((id) => t.cards[id]!.zone)).toEqual(['graveyard', 'graveyard']);
+    expect(t.cards[big]!.damage).toBe(3);
+  });
+
+  it('Splendid Reclamation returns all your land cards tapped; Wake the Past your artifacts with haste', () => {
+    let s = newGame();
+    const lands = [put(s, 'P1', 'forest', 'graveyard'), put(s, 'P1', 'island', 'graveyard')];
+    const cat = put(s, 'P1', 'coeurl', 'graveyard');
+    const spell = put(s, 'P1', 'splendid-reclamation', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(lands.map((id) => [s.cards[id]!.zone, s.cards[id]!.tapped])).toEqual([['battlefield', true], ['battlefield', true]]);
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+    let t = newGame();
+    const bot = put(t, 'P1', 'armory-automaton', 'graveyard');
+    const wake = put(t, 'P1', 'wake-the-past', 'hand');
+    mana(t, 'P1', { R: 1, W: 1, C: 5 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: wake }).state;
+    expect(t.cards[bot]!.zone).toBe('battlefield');
+    expect(hasKeyword(t, t.cards[bot]!, 'Haste')).toBe(true);
+  });
+});
+
+describe('E3: lands', () => {
+  it('the Bridges enter tapped, are indestructible and tap for either color', () => {
+    let s = newGame();
+    const bridge = put(s, 'P1', 'razortide-bridge', 'hand');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: bridge });
+    expect(s.cards[bridge]!.tapped).toBe(true);
+    expect(hasKeyword(s, s.cards[bridge]!, 'Indestructible')).toBe(true);
+    s.cards[bridge]!.tapped = false;
+    const colors = getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility' && a.card === bridge).map((a) => (a as { mana: string }).mana);
+    expect(colors.sort()).toEqual(['U', 'W']);
+  });
+
+  it('filter lands and Viridescent Bog: pay to make two mana', () => {
+    let s = newGame();
+    const mire = put(s, 'P1', 'twilight-mire');
+    const bog = put(s, 'P1', 'viridescent-bog');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: mire, mana: 'B', output: 1, payWith: 0 });
+    expect([s.players.P1!.manaPool.B, s.players.P1!.manaPool.G]).toEqual([1, 1]);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: bog, mana: 'B', output: 0, payWith: 0 });
+    expect([s.players.P1!.manaPool.B, s.players.P1!.manaPool.G, s.players.P1!.manaPool.C]).toEqual([2, 2, 0]);
+  });
+
+  it('Mountain Valley fetches a Mountain or Forest untapped; Escape Tunnel a basic tapped, or makes a small creature unblockable', () => {
+    let s = newGame();
+    const valley = put(s, 'P1', 'mountain-valley');
+    const forest = put(s, 'P1', 'forest', 'library');
+    s = settle(act(s, { type: 'ActivateAbility', player: 'P1', card: valley, ability: 0 })).state;
+    expect([s.cards[valley]!.zone, s.cards[forest]!.zone, s.cards[forest]!.tapped]).toEqual(['graveyard', 'battlefield', false]);
+    let t = newGame();
+    const tunnel = put(t, 'P1', 'escape-tunnel');
+    const cat = put(t, 'P1', 'coeurl');
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: tunnel, ability: 1, targets: [card(cat)] }).state;
+    expect(t.cards[tunnel]!.zone).toBe('graveyard');
+    expect(t.temporaryEffects.some((e) => e.affected === cat && e.flags?.includes('cantBeBlocked'))).toBe(true);
+  });
+
+  it('Bojuka Bog exiles a graveyard; Buried Ruin returns an artifact card; Karn’s Bastion proliferates', () => {
+    let s = newGame();
+    const dead = [put(s, 'P2', 'coeurl', 'graveyard'), put(s, 'P2', 'forest', 'graveyard')];
+    const bog = put(s, 'P1', 'bojuka-bog', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: bog }), { targets: (o) => o.find((x) => x[0]?.kind === 'player' && x[0].player === 'P2')! }).state;
+    expect(dead.map((id) => s.cards[id]!.zone)).toEqual(['exile', 'exile']);
+    const ruin = put(s, 'P1', 'buried-ruin');
+    const ring = put(s, 'P1', 'sol-ring', 'graveyard');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ruin, ability: 0, targets: [card(ring)] }).state;
+    expect(s.cards[ring]!.zone).toBe('hand');
+    const bastion = put(s, 'P1', 'karns-bastion');
+    const ship = put(s, 'P1', 'uthros-research-craft', 'battlefield', { namedCounters: { charge: 2 } });
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: bastion, ability: 0 }).state;
+    expect(s.cards[ship]!.namedCounters?.charge).toBe(3);
+  });
+
+  it('the Courtyards: sacrificed as they enter, then a basic of their types tapped and 1 life', () => {
+    let s = newGame();
+    const court = put(s, 'P1', 'cabaretti-courtyard', 'hand');
+    const plains = put(s, 'P1', 'plains', 'library');
+    const life = s.players.P1!.life;
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: court })).state;
+    expect(s.cards[court]!.zone).toBe('graveyard');
+    expect([s.cards[plains]!.zone, s.cards[plains]!.tapped]).toEqual(['battlefield', true]);
+    expect(s.players.P1!.life).toBe(life + 1);
+  });
+});
