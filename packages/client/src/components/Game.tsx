@@ -1128,6 +1128,8 @@ function PromptBar(p: PromptProps) {
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'attachToTarget'
+              ? `Equipment to attach to ${c.attachHost ? cardName(s, c.attachHost) : 'that creature'}${c.unattachAtEndStep ? ' (it comes off at the next end step)' : ''}; choose none to skip`
             : c.purpose === 'counterUpTo'
               ? `to put a ${c.counter ?? '+1/+1'} counter on (${c.counterCount} left); choose none to stop`
             : c.purpose === 'castOrTreasure'

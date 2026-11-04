@@ -364,6 +364,12 @@ function effectText(e: EffectSpec): string {
       return 'remember that creature';
     case 'ChooseRival':
       return 'choose an opponent';
+    case 'ExileTopToPlayFree':
+      return `${who} exiles the top ${n} cards; you may play them free this turn`;
+    case 'CopyAbility':
+      return `copy ${who} ${n === '1' ? 'once' : `${n} times`}`;
+    case 'MayAttachEquipmentToPreviousTarget':
+      return 'you may attach an Equipment you control to that creature';
     case 'EndTheTurn':
       return 'end the turn';
     case 'CreateDemonCopy':

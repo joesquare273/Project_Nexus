@@ -17,6 +17,11 @@ export function parseManaCost(text: string | undefined): ManaCost {
   for (const [, symbol] of text.matchAll(SYMBOL)) {
     if (/^\d+$/.test(symbol!)) cost.generic += Number(symbol);
     else if (symbol === 'X') cost.x = (cost.x ?? 0) + 1;
+    // Phyrexian black: {B}, or 2 life instead (rule 107.4f).
+    else if (symbol === 'B/P') {
+      cost.B = (cost.B ?? 0) + 1;
+      cost.phyrexianB = (cost.phyrexianB ?? 0) + 1;
+    }
     else if ((MANA_TYPES as readonly string[]).includes(symbol!)) {
       const t = symbol as ManaType;
       cost[t] = (cost[t] ?? 0) + 1;

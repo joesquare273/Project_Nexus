@@ -3,7 +3,7 @@
 // clones the input first, so callers never see partial mutations.
 
 import { backFaceDefinition, currentDefinition as defOf } from './cardface.ts';
-import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf } from './characteristics.ts';
+import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped } from './typerules.ts';
 import {
@@ -273,6 +273,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.rival;
   delete c.attachedTo;
   delete c.attachedTimestamp;
+  delete c.unattachAtEndStep;
   delete c.exiledUntilLeaves;
   delete c.exiledUntilOpponentMonarch;
   delete c.playableFromExile;
@@ -475,6 +476,11 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
   // Summon: Alexander: "prevent all damage that would be dealt to creatures you control this turn".
   if (target.kind === 'card' && s.cards[target.card]?.zone === 'battlefield' && s.players[s.cards[target.card]!.controller]?.preventCreatureDamageTurn === s.turnNumber && hasType(s, s.cards[target.card]!, 'creature')) return;
+  // Trance Kuja: "If a Wizard you control would deal damage to a permanent or player, it deals double that damage instead."
+  if (subtypesOf(s, source).includes('Wizard')) {
+    const kujas = battlefield(s).filter((c) => c.controller === source.controller && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.doubleWizardDamage)).length;
+    amount *= 2 ** kujas;
+  }
   // Stagger (Lightning, Army of One): damage to that player or their permanents is doubled.
   const hurt = target.kind === 'player' ? target.player : target.kind === 'card' ? s.cards[target.card]?.controller : undefined;
   if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;

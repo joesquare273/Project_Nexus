@@ -502,8 +502,9 @@ describe('Transforming into Sagas: Dion, Jill and Jecht', () => {
 describe('cards that aren’t built yet', () => {
   it('can’t be cast (creatures included) or played, and aren’t offered', () => {
     const s = newGame();
-    expect(s.cardDefs['gogo-master-of-mimicry']!.notBuilt).toBe(true);
-    const creature = put(s, 'P1', 'gogo-master-of-mimicry', 'hand');
+    // Every set card is built now: unbuilt copies stand in.
+    s.cardDefs['unbuilt-creature'] = { ...s.cardDefs['gogo-master-of-mimicry']!, id: 'unbuilt-creature', notBuilt: true };
+    const creature = put(s, 'P1', 'unbuilt-creature', 'hand');
     mana(s, 'P1', { U: 1, C: 2 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: creature })).toMatch(/isn't built yet|can't be cast/);
     // Every set land is built now: an unbuilt copy of one stands in.
@@ -3763,16 +3764,39 @@ describe('S4 group 32b: Unexpected Request', () => {
     const plate = put(s, 'P1', 'darksteel-plate');
     const spell = put(s, 'P1', 'unexpected-request', 'hand');
     mana(s, 'P1', { R: 1, C: 2 });
-    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(plate), card(titan)] }).state;
+    // Only the creature is targeted; the Equipment is chosen as the spell resolves.
+    expect(getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell).every((a) => (a as { targets: Target[] }).targets.length === 1)).toBe(true);
+    s = act(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan)] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'attachToTarget', cards: [plate], attachHost: titan, min: 0 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [plate] })).state;
     expect(s.cards[titan]!.controller).toBe('P1');
     expect(s.cards[titan]!.tapped).toBe(false);
     expect(hasKeyword(s, s.cards[titan]!, 'Haste')).toBe(true);
     expect(s.cards[plate]!.attachedTo).toBe(titan);
-    // After the turn: back to its owner, and the Equipment comes off.
-    s = goTo(goTo(s, 'end'), 'upkeep');
+    // "Unattach it at the beginning of the next end step."
+    s = goTo(s, 'end');
+    expect(s.cards[plate]!.attachedTo).toBeUndefined();
+    expect(s.cards[titan]!.controller).toBe('P1');
+    // After the turn: back to its owner.
+    s = goTo(s, 'upkeep');
     expect(s.cards[titan]!.controller).toBe('P2');
     expect(s.cards[plate]!.attachedTo).toBeUndefined();
     expect(s.cards[plate]!.controller).toBe('P1');
+  });
+});
+
+describe('Unexpected Request without Equipment', () => {
+  it('needs only the creature; with no Equipment there is nothing to choose', () => {
+    let s = newGame();
+    const titan = put(s, 'P2', 'summon-titan', 'battlefield', { tapped: true });
+    const spell = put(s, 'P1', 'unexpected-request', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(titan)] }).state;
+    expect(s.pending.kind).toBe('priority');
+    expect(s.cards[titan]).toMatchObject({ controller: 'P1', tapped: false });
+    s = goTo(s, 'declareAttackers');
+    expect(getLegalActions(s).some((a) => a.type === 'DeclareAttackers' && a.attacks.some((x) => x.attacker === titan))).toBe(true);
   });
 });
 
@@ -5773,5 +5797,83 @@ describe('S4 group 59: The Masamune, Ultima, Origin of Oblivion, Inalla', () => 
     expect(wizards.every((id) => s.cards[id]!.tapped)).toBe(true);
     s = goTo(s, 'end');
     expect(s.cards[copy]?.zone ?? 'void').not.toBe('battlefield');
+  });
+});
+
+describe('S4 group 60: Kuja, Gogo, K’rrik, Gix (the last set cards)', () => {
+  it('Kuja: at your end step, a tapped 0/1 Wizard; with four Wizards he becomes Trance Kuja, doubling your Wizards’ damage', () => {
+    let s = newGame();
+    const kuja = put(s, 'P1', 'kuja-genome-sorcerer-trance-kuja-fate-defied');
+    put(s, 'P1', 'mysidian-elder');
+    put(s, 'P1', 'laboratory-maniac');
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    const token = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'wizard-token')!;
+    expect(s.cards[token]!.tapped).toBe(true);
+    expect(s.cards[kuja]!.transformed).toBe(true);
+    expect(stats(s, kuja)).toEqual([4, 6]);
+    // The Wizard token's 1 damage for a noncreature spell is doubled.
+    const start = s.turnNumber;
+    for (let g = 0; g < 8 && !(s.activePlayer === 'P1' && s.turnNumber > start && s.step === 'main1'); g++) s = goTo(nextStep(goTo(s, 'end')), 'main1');
+    const life = s.players.P2!.life;
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.players.P2!.life).toBe(life - 2);
+  });
+
+  it('Gogo: {X}{X}, {T}: copy target activated or triggered ability you control X times', () => {
+    let s = newGame();
+    const gogo = put(s, 'P1', 'gogo-master-of-mimicry');
+    const thrasios = put(s, 'P1', 'thrasios-triton-hero');
+    s.players.P1!.library = Array.from({ length: 6 }, () => put(s, 'P1', 'coeurl', 'library'));
+    mana(s, 'P1', { C: 4 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: thrasios, ability: 0 });
+    const ability = s.stack.at(-1)!.id;
+    mana(s, 'P1', { C: 4 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gogo, ability: 1, targets: [{ kind: 'ability', ability }] });
+    const hand = s.players.P1!.hand.length;
+    s = settle(s).state;
+    // The original and two copies: each scries 1 and draws the creature card.
+    expect(s.players.P1!.hand.length).toBe(hand + 3);
+  });
+
+  it('K’rrik: {B/P} costs and every {B} can be paid with 2 life; black spells give him counters', () => {
+    let s = newGame();
+    const krrik = put(s, 'P1', 'krrik-son-of-yawgmoth', 'hand');
+    expect(manaValue(parseManaCost(s.cardDefs['krrik-son-of-yawgmoth']!.manaCost))).toBe(7);
+    const life = s.players.P1!.life;
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: krrik }).state;
+    expect(s.cards[krrik]!.zone).toBe('battlefield');
+    expect(s.players.P1!.life).toBe(life - 6);
+    // With K'rrik out, Night's Whisper's {B} can be life too.
+    const whisper = put(s, 'P1', 'nights-whisper', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: whisper }).state;
+    expect(s.cards[whisper]!.zone).toBe('graveyard');
+    expect(s.cards[krrik]!.counters).toBe(1);
+  });
+
+  it('Gix: a creature hitting your opponent lets its controller pay 1 life to draw; {4}{B}{B}{B}, discard X: play their top X free', () => {
+    let s = newGame();
+    const gix = put(s, 'P1', 'gix-yawgmoth-praetor');
+    const cat = put(s, 'P1', 'coeurl');
+    s = fight(s, [{ attacker: cat, defender: 'P2' }], {}, { accept: true }).state;
+    const hand = s.players.P1!.hand.length;
+    expect(hand).toBeGreaterThan(0);
+    s = goTo(s, 'main2');
+    s.players.P1!.hand = [];
+    const discards = [put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'forest', 'hand')];
+    const tops = [put(s, 'P2', 'lightning-bolt', 'library'), put(s, 'P2', 'forest', 'library')];
+    s.players.P2!.library = [...tops, ...s.players.P2!.library.filter((id) => !tops.includes(id))];
+    mana(s, 'P1', { B: 3, C: 4 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: gix, ability: 0, targets: [player('P2')] });
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: discards })).state;
+    expect(tops.map((id) => s.cards[id]!.zone)).toEqual(['exile', 'exile']);
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tops[0]!, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
   });
 });

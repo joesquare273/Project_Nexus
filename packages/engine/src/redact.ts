@@ -189,6 +189,7 @@ const CARD_FIELDS = {
   milledBy: 'refs',
   controlUntilEndOfTurn: 'copy',
   unattachAtEndOfTurn: 'copy',
+  unattachAtEndStep: 'copy',
   spellCopy: 'copy',
   attachedTo: 'refs',
   exiledUntilLeaves: 'refs',

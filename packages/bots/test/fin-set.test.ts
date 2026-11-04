@@ -4,7 +4,7 @@
 // plus basic lands) keep every rule invariant, built or not.
 
 import { describe, expect, it } from 'vitest';
-import { FREE_FOR_ALL, canEverCast, getLegalActions, type CardDefId, type GameSetup } from '@nexus/engine';
+import { FREE_FOR_ALL, canEverCast, getLegalActions, parseManaCost, type CardDefId, type GameSetup } from '@nexus/engine';
 import { CARD_DEFS, CARD_IDS_BY_NAME } from '@nexus/cards';
 import { BOOSTER_CARDS } from '@nexus/cards/boosters';
 import { basicAi, makeRng, playGame, randomBot } from '../src/index.ts';
@@ -23,14 +23,15 @@ describe('the Final Fantasy set for sealed', () => {
     expect(names.length).toBeGreaterThan(360);
   });
 
-  it('a card whose cost uses mana the engine can\'t pay yet is never castable', () => {
+  it('Phyrexian black ({B/P}) is payable now: K\'rrik can be cast; hybrid mana still isn\'t supported', () => {
     const krrik = CARD_DEFS[CARD_IDS_BY_NAME["K'rrik, Son of Yawgmoth"]!]!;
-    expect(krrik.uncastable).toBe(true);
-    expect(canEverCast(krrik)).toBe(false);
+    expect(krrik.uncastable).toBeUndefined();
+    expect(canEverCast(krrik)).toBe(true);
     const s = newGame(2);
     const id = put(s, 'P1', krrik.id, 'hand');
-    mana(s, 'P1', { B: 10, C: 10 });
-    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === id)).toBe(false);
+    mana(s, 'P1', { B: 3, C: 4 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === id)).toBe(true);
+    expect(() => parseManaCost('{W/U}')).toThrow(/Unsupported/);
   });
 });
 

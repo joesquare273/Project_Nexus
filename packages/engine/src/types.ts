@@ -20,7 +20,7 @@ export type ManaPool = Record<ManaType, number>;
 
 /** A parsed mana cost such as {2}{R}{W} -> { generic: 2, R: 1, W: 1 }. */
 /** `x` counts {X} symbols. */
-export type ManaCost = { generic: number; x?: number } & Partial<Record<ManaType, number>>;
+export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number } & Partial<Record<ManaType, number>>;
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -375,6 +375,12 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** "You may attach an Equipment you control to that creature" (chosen as it resolves; with `untilEndOfTurn`, unattached at the beginning of the next end step). */
+  'MayAttachEquipmentToPreviousTarget',
+  /** Each target player exiles their top `amount` cards; you may play them this turn without paying their mana costs (Gix). */
+  'ExileTopToPlayFree',
+  /** Copy the target activated or triggered ability you control `amount` times (Gogo). */
+  'CopyAbility',
   /** The source remembers the previous target as its chosen creature (Zenos). */
   'LinkPreviousTarget',
   /** Choose an opponent as the rival of this permanent (Shinryu): the chosen creature's controller, else the next opponent. */
@@ -1088,6 +1094,8 @@ export interface ObjectFilter {
 }
 
 export interface TriggerSpec {
+  /** "Its controller may pay ...": the triggering creature's controller decides and pays (Gix). */
+  decidedBySubjectController?: boolean;
   /** Eminence: also works while the card is in the command zone. */
   eminence?: boolean;
   /** Support X: target slots are fixed when the entry trigger is queued. */
@@ -1279,6 +1287,10 @@ export interface StaticSpec {
   playLandsFromGraveyard?: boolean;
   /** Hades: "If a card or token would be put into your graveyard from anywhere, exile it instead." */
   exileInsteadOfYourGraveyard?: boolean;
+  /** K'rrik: for each {B} in a cost, you may pay 2 life rather than pay that mana. */
+  payLifeForBlack?: boolean;
+  /** Trance Kuja: if a Wizard you control would deal damage, it deals double that damage instead. */
+  doubleWizardDamage?: boolean;
   /** Ultima: whenever you tap a land for {C}, add an additional {C}. */
   extraColorlessFromLands?: boolean;
   /** Kinnan: whenever you tap a nonland permanent for mana, add one more mana of a type it produced. */
@@ -1699,6 +1711,8 @@ export interface CardInstance {
   controlUntilEndOfTurn?: { previous: PlayerId };
   /** Equipment attached "until the next end step" (Unexpected Request): unattached at cleanup. */
   unattachAtEndOfTurn?: boolean;
+  /** Unattached at the beginning of the next end step (Unexpected Request). */
+  unattachAtEndStep?: boolean;
   /** Copiable values of a battlefield object; counters, damage, control and attachments remain separate. */
   copy?: BattlefieldCopy;
   /** Copied abilities as the object left the battlefield, for death/leave triggers. */
@@ -2175,7 +2189,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -2197,6 +2211,9 @@ export interface CardChoice {
   /** payToAvoidCounter: how much generic mana to pay, and whether the spell is exiled if not paid. */
   payGeneric?: number;
   exileIfCountered?: boolean;
+  /** attachToTarget: the creature the chosen Equipment is attached to, and whether it comes off at the next end step. */
+  attachHost?: InstanceId;
+  unattachAtEndStep?: boolean;
   /** The chosen cards' total mana value can't be more than this (Phoenix, Warden of Fire). */
   maxTotalManaValue?: number;
   /** payToAvoidCounter: nothing is countered; if they don't pay, this player draws `drawCount` cards instead (Rhystic Study). */

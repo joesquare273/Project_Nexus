@@ -3,6 +3,22 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-11-04
+
+### Every Final Fantasy set card built; Unexpected Request fixed
+
+The last four set cards (all 320 now): Kuja and Trance Kuja (Wizard damage
+doubled; the Wizard token is tfin 35, already used by Lindblum), Gogo
+(copies an ability on the stack, X from 1 to 4), K'rrik (the engine now
+parses {B/P}, and life can pay for {B}), and Gix (the creature's controller
+decides whether to pay life and draw).
+
+Unexpected Request had the Equipment as a first target, so in the browser
+the first click (on the creature) went to the wrong slot. It now targets
+only the creature; "you may attach an Equipment you control" is a choice as
+it resolves (`MayAttachEquipmentToPreviousTarget`), and the Equipment comes
+off at the beginning of the next end step (`unattachAtEndStep`).
+
 ## 2026-11-03
 
 ### Set cards, group 59: The Masamune, Ultima, Origin of Oblivion, Inalla

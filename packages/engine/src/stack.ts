@@ -324,7 +324,14 @@ export function isLegalTarget(
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
-  if (t.kind === 'ability') return (kind === 'TargetAbility' || kind === 'TargetSpellOrAbility') && s.stack.some((item) => item.kind === 'ability' && item.id === t.ability);
+  if (t.kind === 'ability') {
+    const ability = s.stack.find((item) => item.kind === 'ability' && item.id === t.ability);
+    if (!ability || (kind !== 'TargetAbility' && kind !== 'TargetSpellOrAbility')) return false;
+    // Gogo: "target activated or triggered ability you control"; its own ability can't be copied.
+    if (effect.filter?.controller === 'You' && ability.controller !== controller) return false;
+    if (effect.filter?.other && (ability as AbilityItem).source === source) return false;
+    return true;
+  }
   const c = s.cards[t.card];
   if (!c) return false;
   const viewpoint = {
@@ -510,8 +517,31 @@ function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
  * mana that can pay for this (`use`) is spent first. Returns how much mana
  * was spent.
  */
+/**
+ * Paying {B} with 2 life instead: {B/P} symbols, or every {B} with K'rrik.
+ * Mana is used when it's there; only the {B} the pool can't cover are paid
+ * with life. Returns the cost left for mana and the life to pay, or null.
+ */
+function lifeForBlack(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse): { cost: ManaCost; life: number } | null {
+  const pool = poolFor(s, playerId, use);
+  if (planPayment(pool, cost)) return { cost, life: 0 };
+  const krrik = battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.payLifeForBlack));
+  const able = Math.min(cost.B ?? 0, (cost.phyrexianB ?? 0) + (krrik ? (cost.B ?? 0) : 0));
+  for (let k = 1; k <= able; k++) {
+    if (s.players[playerId]!.life < 2 * k) break;
+    const reduced = { ...cost, B: (cost.B ?? 0) - k };
+    if (planPayment(pool, reduced)) return { cost: reduced, life: 2 * k };
+  }
+  return null;
+}
+
 export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}, spentScryMana?: CreatureScryMana[]): number {
   const p = player(ctx.s, playerId);
+  const withLife = lifeForBlack(ctx.s, playerId, cost, use);
+  if (withLife && withLife.life > 0) {
+    changeLife(ctx, playerId, -withLife.life);
+    cost = withLife.cost;
+  }
   const spent = planPayment(poolFor(ctx.s, playerId, use), cost);
   if (!spent) reject('Not enough mana in your mana pool.');
   for (const t of MANA_TYPES) {
@@ -541,7 +571,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 
 /** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
-  return planPayment(poolFor(s, playerId, use), cost) !== null;
+  return lifeForBlack(s, playerId, cost, use) !== null;
 }
 
 /**
@@ -2361,6 +2391,35 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       src.rival = theirs && opponents.includes(theirs) ? theirs : opponents.find((pid) => pid !== item.controller);
       return;
     }
+    case 'ExileTopToPlayFree':
+      for (const pid of targetPlayers(targets)) {
+        for (const id of topOfLibrary(s, pid, amount)) {
+          moveCard(ctx, id, 'exile');
+          s.cards[id]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber };
+          s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };
+        }
+      }
+      return;
+    case 'CopyAbility': {
+      for (const t of targets) {
+        if (t.kind !== 'ability') continue;
+        const original = s.stack.find((x): x is AbilityItem => x.kind === 'ability' && x.id === t.ability);
+        if (!original) continue;
+        // The copies keep the original's targets (choosing new ones isn't offered yet).
+        for (let i = 0; i < amount; i++) s.stack.push({ ...structuredClone(original), id: newId(s, 's') });
+      }
+      return;
+    }
+    case 'MayAttachEquipmentToPreviousTarget': {
+      const t = r.previousTarget;
+      const host = t?.kind === 'card' ? s.cards[t.card] : undefined;
+      if (!host || !isCreatureOnBattlefield(s, host)) return;
+      const equipment = battlefield(s)
+        .filter((e) => e.controller === item.controller && e.attachedTo !== host.id && currentDefinition(s, e).subtypes?.includes('Equipment') && !hasType(s, e, 'creature'))
+        .map((e) => e.id);
+      if (equipment.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'attachToTarget', cards: equipment, min: 0, max: 1, attachHost: host.id, ...(effect.untilEndOfTurn ? { unattachAtEndStep: true } : {}) }];
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -3385,7 +3444,8 @@ export function resolveTop(ctx: Ctx): void {
 
   const trigger = triggerSpec(s, item);
   if (!fizzled && trigger && (trigger.optional || trigger.cost) && item.accepted === undefined) {
-    s.pending = { kind: 'decide', player: item.controller, item: item.id };
+    const decider = trigger.decidedBySubjectController && item.subjectController && !s.players[item.subjectController]!.eliminated ? item.subjectController : item.controller;
+    s.pending = { kind: 'decide', player: decider, item: item.id };
     return;
   }
   s.stack.pop();
@@ -3636,6 +3696,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const left = (pending.counterCount ?? 1) - 1;
       const { kind: _kind, ...choice } = pending;
       if (left > 0) r.choiceQueue = [{ ...choice, counterCount: left }, ...(r.choiceQueue ?? [])];
+    }
+  } else if (pending.purpose === 'attachToTarget') {
+    const host = pending.attachHost ? s.cards[pending.attachHost] : undefined;
+    for (const id of cards) {
+      if (!host || !isCreatureOnBattlefield(s, host) || s.cards[id]!.zone !== 'battlefield') continue;
+      attach(ctx, id, host.id);
+      // Unexpected Request: "If you do, unattach it at the beginning of the next end step."
+      if (pending.unattachAtEndStep) s.cards[id]!.unattachAtEndStep = true;
     }
   } else if (pending.purpose === 'castOrTreasure') {
     // Choosing it: you may cast it now (as this resolves: this turn, any timing). Choosing none: a Treasure.
