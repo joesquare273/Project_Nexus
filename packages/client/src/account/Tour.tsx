@@ -20,6 +20,7 @@ const STEPS: Step[] = [
   { target: '[data-nav="play"]', title: 'Play', text: 'Play the computer or friends online with your 60-card or Commander decks, or a booster draft. New players can try the Starter Kits.' },
   { target: '[data-nav="collection"]', title: 'Collection', text: 'Every card you own, with its finishes. Your free precon is in here too.' },
   { target: '[data-nav="decks"]', title: 'Decks', text: 'Build and edit your own decks from your collection.' },
+  { target: '[data-nav="craft"]', title: 'Craft', text: 'Dismantle spare cards for fragments of their rarity, and spend fragments to craft the cards you want.' },
   { target: '[data-nav="shop"]', title: 'Shop', text: 'Open booster packs, and buy exclusive printings in the Store.' },
   { target: '.account-chip', title: 'Your account', text: 'Your Aether Shards. You earn them by playing and spend them on packs and events.' },
 ];

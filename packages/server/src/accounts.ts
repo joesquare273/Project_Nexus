@@ -7,6 +7,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import { ECONOMY, loginRef } from './economy.ts';
 import { MAX_DECKS, addCards, type DeckInput, type OwnedCard, type SavedDeck } from './collection.ts';
+import { NO_FRAGMENTS, type FragmentRarity, type Fragments } from '@nexus/cards/crafting';
 
 export interface AccountUser {
   id: string;
@@ -49,7 +50,58 @@ export interface AccountService {
   onboarding(userId: string): Promise<Onboarding>;
   /** Records a finished step; returns the new state. */
   finishOnboarding(userId: string, step: OnboardingStep): Promise<Onboarding>;
+  /** The player's fragment balances. */
+  fragments(userId: string): Promise<Fragments>;
+  /**
+   * Removes one copy and adds its fragments, in one step, once per `ref`
+   * (a repeat returns the balances and changes nothing). Throws a
+   * CraftingError ('not_owned', 'last_copy') and changes nothing if it can't.
+   */
+  dismantle(userId: string, request: DismantleRequest): Promise<{ fragments: Fragments; applied: boolean }>;
+  /** Spends the fragments and adds one non-foil copy, in one step, once per `ref`; CraftingError 'not_enough' otherwise. */
+  craft(userId: string, request: CraftRequest): Promise<{ fragments: Fragments; applied: boolean }>;
 }
+
+/** What the server has already checked and worked out for a dismantle (from the card data and the economy settings). */
+export interface DismantleRequest {
+  ref: string;
+  card: string;
+  finish: OwnedCard['finish'];
+  rarity: FragmentRarity;
+  amount: number;
+  /** Every printing id of the card, for the last-copy rule. */
+  named: string[];
+  protectLast: boolean;
+}
+
+export interface CraftRequest {
+  ref: string;
+  card: string;
+  rarity: FragmentRarity;
+  cost: number;
+}
+
+/** Why a dismantle or craft was refused; nothing changed. */
+export class CraftingError extends Error {
+  readonly code: 'not_owned' | 'last_copy' | 'not_enough';
+  constructor(code: CraftingError['code']) {
+    super(code);
+    this.code = code;
+  }
+}
+
+/** Balances from the database's {"common": n, ...}, every rarity present. */
+const toFragments = (raw: unknown): Fragments => {
+  const out = { ...NO_FRAGMENTS };
+  if (raw && typeof raw === 'object') for (const r of Object.keys(out) as FragmentRarity[]) out[r] = Number((raw as Record<string, unknown>)[r] ?? 0) || 0;
+  return out;
+};
+
+/** A CraftingError for the database function's refusal, or the error itself. */
+const craftingFailure = (message: string | undefined): Error => {
+  for (const code of ['not_owned', 'last_copy', 'not_enough'] as const) if (message?.includes(code)) return new CraftingError(code);
+  return new Error(`Could not change the fragments: ${message ?? 'no data'}`);
+};
 
 /** Only the known steps, as booleans (a stored value is never trusted as is). */
 function cleanOnboarding(raw: unknown): Onboarding {
@@ -195,6 +247,28 @@ export class SupabaseAccounts implements AccountService {
     if (error) throw new Error(`Could not save the account: ${error.message}`);
     return next;
   }
+
+  async fragments(userId: string): Promise<Fragments> {
+    const { data, error } = await this.db.from('fragment_balances').select('rarity, amount').eq('user_id', userId);
+    if (error) throw new Error(`Could not load the fragments: ${error.message}`);
+    return toFragments(Object.fromEntries(data.map((r) => [r.rarity, r.amount])));
+  }
+
+  async dismantle(userId: string, q: DismantleRequest): Promise<{ fragments: Fragments; applied: boolean }> {
+    const { data, error } = await this.db
+      .rpc('dismantle_card', { p_user: userId, p_ref: q.ref, p_card: q.card, p_finish: q.finish, p_rarity: q.rarity, p_amount: q.amount, p_named: q.named, p_protect_last: q.protectLast })
+      .single<{ fragments: unknown; applied: boolean }>();
+    if (error || !data) throw craftingFailure(error?.message);
+    return { fragments: toFragments(data.fragments), applied: data.applied };
+  }
+
+  async craft(userId: string, q: CraftRequest): Promise<{ fragments: Fragments; applied: boolean }> {
+    const { data, error } = await this.db
+      .rpc('craft_card', { p_user: userId, p_ref: q.ref, p_card: q.card, p_rarity: q.rarity, p_cost: q.cost })
+      .single<{ fragments: unknown; applied: boolean }>();
+    if (error || !data) throw craftingFailure(error?.message);
+    return { fragments: toFragments(data.fragments), applied: data.applied };
+  }
 }
 
 /** Accounts from the environment, or null when this server has none set up (guest play still works). */
@@ -217,6 +291,8 @@ export class MemoryAccounts implements AccountService {
   readonly grants = new Set<string>();
   readonly savedDecks = new Map<string, SavedDeck[]>();
   readonly onboarded = new Map<string, Onboarding>();
+  readonly fragmentBalances = new Map<string, Fragments>();
+  readonly fragmentLedger = new Set<string>();
 
   async verify(token: string): Promise<AccountUser | null> {
     return this.tokens.get(token) ?? null;
@@ -290,6 +366,45 @@ export class MemoryAccounts implements AccountService {
     const next = { ...(this.onboarded.get(userId) ?? {}), [step]: true };
     this.onboarded.set(userId, next);
     return { ...next };
+  }
+
+  async fragments(userId: string): Promise<Fragments> {
+    return { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+  }
+
+  /** Like dismantle_card: checks everything first, then changes cards and fragments together. */
+  async dismantle(userId: string, q: DismantleRequest): Promise<{ fragments: Fragments; applied: boolean }> {
+    if (!this.accounts.has(userId)) throw new Error(`no profile for ${userId}`);
+    const key = `${userId}|dismantle|${q.ref}`;
+    if (this.fragmentLedger.has(key)) return { fragments: await this.fragments(userId), applied: false };
+    if (q.amount <= 0) throw new Error('bad amount');
+    const cards = this.owned.get(userId) ?? [];
+    const row = cards.find((c) => c.id === q.card && c.finish === q.finish);
+    if (!row || row.count < 1) throw new CraftingError('not_owned');
+    if (q.protectLast && cards.filter((c) => q.named.includes(c.id)).reduce((n, c) => n + c.count, 0) <= 1) throw new CraftingError('last_copy');
+    row.count -= 1;
+    if (row.count === 0) cards.splice(cards.indexOf(row), 1);
+    const balances = { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+    balances[q.rarity] += q.amount;
+    this.fragmentBalances.set(userId, balances);
+    this.fragmentLedger.add(key);
+    return { fragments: { ...balances }, applied: true };
+  }
+
+  /** Like craft_card. */
+  async craft(userId: string, q: CraftRequest): Promise<{ fragments: Fragments; applied: boolean }> {
+    if (!this.accounts.has(userId)) throw new Error(`no profile for ${userId}`);
+    const key = `${userId}|craft|${q.ref}`;
+    if (this.fragmentLedger.has(key)) return { fragments: await this.fragments(userId), applied: false };
+    if (q.cost <= 0) throw new Error('bad amount');
+    const balances = { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+    if (balances[q.rarity] < q.cost) throw new CraftingError('not_enough');
+    balances[q.rarity] -= q.cost;
+    if (!this.owned.has(userId)) this.owned.set(userId, []);
+    addCards(this.owned.get(userId)!, [{ id: q.card, finish: 'nonfoil', count: 1 }]);
+    this.fragmentBalances.set(userId, balances);
+    this.fragmentLedger.add(key);
+    return { fragments: { ...balances }, applied: true };
   }
 
   async deleteDeck(userId: string, id: string): Promise<boolean> {

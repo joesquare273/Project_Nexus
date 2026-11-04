@@ -1,0 +1,140 @@
+/* The Craft tab: fragment gems (CSS for now), balances, and the card grids. */
+
+.craft {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* A faceted crystal: a tall diamond with a glow in the rarity's colors. */
+.fragment-gem {
+  display: inline-block;
+  vertical-align: -0.2em;
+  clip-path: polygon(50% 0, 100% 38%, 72% 100%, 28% 100%, 0 38%);
+  background: var(--gem);
+  filter: drop-shadow(0 0 4px var(--gem-glow));
+}
+.fragment-gem.common {
+  --gem: linear-gradient(160deg, #f4f6f8, #9aa3ad 55%, #5d6570);
+  --gem-glow: rgba(220, 226, 235, 0.7);
+}
+.fragment-gem.uncommon {
+  --gem: linear-gradient(160deg, #b9ffcb, #2fd35c 55%, #0d7a2c);
+  --gem-glow: rgba(60, 230, 110, 0.75);
+}
+.fragment-gem.rare {
+  --gem: linear-gradient(160deg, #ffc1b8, #ff3b30 55%, #9a0f0a);
+  --gem-glow: rgba(255, 70, 50, 0.75);
+}
+.fragment-gem.mythic {
+  --gem: linear-gradient(160deg, #ffe27a, #ff7ad9 35%, #6fd3ff 65%, #8a5cff);
+  --gem-glow: rgba(255, 210, 90, 0.85);
+}
+
+.fragment-balances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.fragment-balance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  min-width: 120px;
+}
+.fragment-balance strong {
+  font-size: 1.25rem;
+}
+.fragment-balance span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.fragment-balance.common strong { color: #d8dde3; }
+.fragment-balance.uncommon strong { color: #4fe27a; }
+.fragment-balance.rare strong { color: #ff5a4a; }
+.fragment-balance.mythic strong { color: var(--gold); }
+
+.craft-intro {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.craft-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.craft-filters input {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.craft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+.craft-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.craft-pic {
+  width: 100%;
+}
+.craft-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.craft-item button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.craft-why {
+  font-size: 0.8rem;
+}
+
+.craft-confirm {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.craft-confirm .craft-pic {
+  width: 140px;
+  flex: none;
+}
+.craft-confirm h3 {
+  margin: 0 0 6px;
+}
+.craft-confirm p {
+  margin: 0 0 8px;
+}
+.craft-warning {
+  color: var(--danger);
+}
+.craft-confirm-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .craft-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  .craft-confirm {
+    flex-direction: column;
+  }
+}

@@ -10,7 +10,8 @@
     "./limited": "./src/limited.ts",
     "./decks": "./src/decks.ts",
     "./rating": "./src/rating.ts",
-    "./draftSets": "./src/draftSets.ts"
+    "./draftSets": "./src/draftSets.ts",
+    "./crafting": "./src/crafting.ts"
   },
   "dependencies": {
     "@nexus/engine": "*"

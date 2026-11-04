@@ -6,6 +6,7 @@ import { ManaCost } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
+import { CraftTab } from './craft/CraftTab.tsx';
 import { StoreTab } from './packs/StoreTab.tsx';
 import { OwnCommanderDecks } from './components/CommanderDecks.tsx';
 import { TableMenu } from './components/TableMenu.tsx';
@@ -41,7 +42,7 @@ export function App() {
   return <MainApp />;
 }
 
-type Page = 'home' | 'play' | 'collection' | 'decks' | 'shop';
+type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop';
 type PlayMode = 'ai' | 'online' | 'draft';
 type ShopMode = 'packs' | 'store';
 interface Route {
@@ -55,6 +56,7 @@ const PAGES: { id: Page; label: string }[] = [
   { id: 'play', label: 'Play' },
   { id: 'collection', label: 'Collection' },
   { id: 'decks', label: 'Decks' },
+  { id: 'craft', label: 'Craft' },
   { id: 'shop', label: 'Shop' },
 ];
 
@@ -318,6 +320,13 @@ function MainApp() {
           <>
             <PageTitle title="Decks" subtitle="Build decks from the cards you own" />
             <PacksTab section="decks" />
+          </>
+        )}
+
+        {route.page === 'craft' && (
+          <>
+            <PageTitle title="Craft" subtitle="Dismantle cards for fragments, and craft the cards you want" />
+            <CraftTab />
           </>
         )}
 

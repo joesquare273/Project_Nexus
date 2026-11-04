@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Craft tab: dismantling and crafting with fragments
+
+Built from the user's spec (decisions: craft the regular non-foil printing of
+FINAL FANTASY set and precon cards, nonbasic lands included; the last copy is
+by card name; a foil dismantles for one more fragment; a saved deck's card
+only warns; CSS gems for now). See docs/economy.md, "Crafting". Files:
+`cards/src/crafting.ts` (which printings, by rarity), `server/src/economy.ts`
+(`crafting`), `server/src/crafting.ts` (routes), `server/src/accounts.ts`
+(`fragments`, `dismantle`, `craft` for Supabase and the in-memory store), the
+migration `20261104180000_crafting.sql`, and `client/src/craft/` (the tab).
+Tests: `server/test/crafting.test.ts` (every rarity, foils, ownership, last
+copy, wrong fragments, unknown cards, repeated requests, restarts) and
+`client/test/craft.test.ts`.
+
 ### Fix: "That deck could not be read." when saving an edited deck
 
 Editing a saved deck copied the whole saved record, `updatedAt` included, and

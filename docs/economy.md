@@ -46,6 +46,38 @@ five bot matches a day ≈ 2,200 a week (about 22).
   browser, where the result can't be trusted.
 - Players can always keep playing free matches with zero shards.
 
+## Crafting (built 2026-11-04)
+
+Players dismantle cards they own for fragments and spend fragments to craft
+the cards they want (user spec, 2026-11-04), in the **Craft** tab.
+
+| | Common | Uncommon | Rare | Mythic |
+|---|---:|---:|---:|---:|
+| Dismantle one copy | 1 | 1 | 1 | 1 |
+| Foil (any finish but non-foil) | +1 | +1 | +1 | +1 |
+| Craft one copy | 4 | 4 | 4 | 4 |
+
+- Four fragment currencies, one per rarity; they never convert (rare
+  fragments only craft rares). The values live in `ECONOMY.crafting`
+  (`packages/server/src/economy.ts`), with `dismantleReward` and `craftCost`.
+- **Rarity** is the printing's own (Scryfall data); `packages/cards/src/crafting.ts`
+  says which printings can be dismantled (any owned printing of a game card
+  with one of the four rarities: not basic lands, tokens or art cards) and
+  which can be crafted (the regular printing of each FINAL FANTASY set card
+  and each precon card, nonbasic lands included; always made non-foil).
+- **Last copy:** with `protectLastCopy` (on), your last copy of a card, by
+  name across every art and finish, can't be dismantled. Dismantling a copy a
+  saved deck uses only warns.
+- **Server only:** `GET /api/fragments`, `POST /api/dismantle {requestId, card, finish}`,
+  `POST /api/craft {requestId, card}` (`packages/server/src/crafting.ts`). The
+  database functions `dismantle_card` and `craft_card`
+  (`supabase/migrations/20261104180000_crafting.sql`) lock the player, check,
+  and change cards and fragments together, with a `fragment_ledger` row per
+  request id: a repeat returns the first result and changes nothing.
+- Later (not built): fragments from quests and seasons, other rarities,
+  variant-specific rewards, discounts, conversion, event currencies, and a
+  history view (the ledger already records every change).
+
 ## Steps
 
 | Step | What |

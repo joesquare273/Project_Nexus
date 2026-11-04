@@ -43,7 +43,30 @@ export const ECONOMY = {
     /** A FINAL FANTASY Commander precon (100 cards, saved as a deck): about two Collector Boosters' worth. */
     precon: 2000 as number | null,
   },
+  /**
+   * Dismantling and crafting (user spec, 2026-11-04): four fragments of a
+   * rarity craft one card of that rarity, a 25% return on dismantled cards.
+   * Each rarity has its own fragments; they don't convert.
+   */
+  crafting: {
+    /** Fragments for dismantling one copy, by its printing's rarity. */
+    dismantle: { common: 1, uncommon: 1, rare: 1, mythic: 1 },
+    /** Extra fragments of the same rarity for a foil (or any finish other than non-foil) copy. */
+    foilBonus: 1,
+    /** Fragments to craft one non-foil copy, by rarity. */
+    craft: { common: 4, uncommon: 4, rare: 4, mythic: 4 },
+    /** The player's last copy of a card (any printing or finish) can't be dismantled. */
+    protectLastCopy: true as boolean,
+  },
 } as const;
+
+/** Fragments for dismantling one copy of a printing of this rarity in this finish. */
+export function dismantleReward(rarity: keyof typeof ECONOMY.crafting.dismantle, finish: string): number {
+  return ECONOMY.crafting.dismantle[rarity] + (finish === 'nonfoil' ? 0 : ECONOMY.crafting.foilBonus);
+}
+
+/** Fragments of its rarity to craft one copy. */
+export const craftCost = (rarity: keyof typeof ECONOMY.crafting.craft): number => ECONOMY.crafting.craft[rarity];
 
 /** A new account's balance after its first sign-in: the welcome grant and bonus, and that day's login reward. */
 export const FIRST_DAY_SHARDS = ECONOMY.welcomeGrant + ECONOMY.welcomeBonus + ECONOMY.dailyLoginReward;
