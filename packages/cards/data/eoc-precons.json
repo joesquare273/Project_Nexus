@@ -8,11 +8,8 @@
         "count": 1,
         "set": "eoc",
         "number": "2",
-        "implemented": false,
-        "needs": [
-          "station",
-          "static-abilities"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "R",
@@ -58,11 +55,8 @@
           "count": 1,
           "set": "eoc",
           "number": "7",
-          "implemented": false,
-          "needs": [
-            "station",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Depthshaker Titan",
@@ -967,13 +961,8 @@
         "count": 1,
         "set": "eoc",
         "number": "1",
-        "implemented": false,
-        "needs": [
-          "station",
-          "static-abilities",
-          "activated-abilities",
-          "triggers"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "B",
@@ -1043,11 +1032,8 @@
           "count": 1,
           "set": "eoc",
           "number": "14",
-          "implemented": false,
-          "needs": [
-            "station",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Horizon Explorer",

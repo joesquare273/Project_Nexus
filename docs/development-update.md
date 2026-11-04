@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Edge of Eternities group E1: station and the Spacecraft
+
+Both commanders and the other two Spacecraft are built (Inspirit, Uthros
+Research Craft, Hearthhull, Exploration Broodship): the Station ability, "N+"
+abilities gated on charge counters (`stationLevel`), the creature threshold,
+an extra land drop this turn, and casting from the graveyard by sacrificing a
+land. Counter Intelligence is at 44/100 and World Shaper at 38/100. See
+docs/commander.md.
+
 ### Edge of Eternities precons imported
 
 The two Edge of Eternities Commander precons are imported from MTGJSON

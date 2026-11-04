@@ -43,7 +43,8 @@ The counts are heuristics, so every flag was read by hand. Verdicts:
   count doesn't look inside them): Qutrub Forayer, Coliseum Behemoth, Summon:
   Magus Sisters, Umaro, The Falcon, Eden, Galuf's Final Act, Self-Destruct,
   Chocobo Kick, Tidus, Resourceful Defense, Nesting Grounds, Sephiroth, Joshua,
-  Weapons Vendor, Prishe's Wanderings (reflexive since 2026-11-04).
+  Weapons Vendor, Prishe's Wanderings (reflexive since 2026-11-04), Inspirit,
+  Flagship Vessel.
 - **"Target" in a rule about targeting, not a target**: Cloud, Planet's
   Champion (equip discount), Fate of the Sun-Cryst (cheaper if it targets a
   tapped creature), Gogo, Master of Mimicry ("choose new targets for the

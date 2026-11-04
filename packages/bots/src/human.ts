@@ -91,14 +91,15 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const permissionSource = a.type === 'CastSpell' ? a.graveyardSource : undefined;
     const castGroup = a.type === 'CastSpell' ? a.castGroup : undefined;
     const permanentType = a.type === 'CastSpell' ? a.permanentType : undefined;
+    const sacrificeLand = a.type === 'CastSpell' ? a.sacrificeLand : undefined;
     const card = s.cards[a.card]!;
     const flashback = !isAbility && !castGroup && !permissionSource && card.zone==='graveyard' && card.owner===player && !(card.castPermission?.player===player && card.castPermission.turn===s.turnNumber) ? s.cardDefs[card.defId]!.flashback : undefined;
     const kicks = a.type === 'CastSpell' ? (a.kicks ?? 0) : 0;
     const kicked = kicks === 0 ? '' : kicks === 1 ? ', kicked' : `, kicked ${kicks} times`;
-    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${lifeForB ? `, paying ${2 * lifeForB} life for {B}` : ''}${kicked}${helped}${castGroup ? ' (Mug: one spell from this mill)' : ''}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name}${permanentType ? `, as its ${permanentType}` : ''})` : ''}`;
+    const detail = `${x !== undefined ? ` with X = ${x}` : ''}${lifeForB ? `, paying ${2 * lifeForB} life for {B}` : ''}${kicked}${helped}${castGroup ? ' (Mug: one spell from this mill)' : ''}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name}${permanentType ? `, as its ${permanentType}` : ''}${sacrificeLand ? `, sacrificing ${s.cardDefs[s.cards[sacrificeLand]!.defId]!.name}` : ''})` : ''}`;
     const key = isAbility
       ? `${a.card}#${a.ability}${x !== undefined ? `#x${x}` : ''}`
-      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${permanentType ? `#t${permanentType}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}${lifeForB ? `#l${lifeForB}` : ''}`;
+      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${permanentType ? `#t${permanentType}` : ''}${sacrificeLand ? `#s${sacrificeLand}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}${lifeForB ? `#l${lifeForB}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = currentDefinition(s,s.cards[a.card]!);

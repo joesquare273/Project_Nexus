@@ -253,6 +253,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.when !== o.when) return false;
   if (spec.fromZone && spec.fromZone !== o.from) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  // Station: a "N+" ability triggers only while its source has N or more charge counters.
+  if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).

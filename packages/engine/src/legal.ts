@@ -44,6 +44,7 @@ import {
   castGroupsFor,
   graveyardCastSources,
   unusedTypesFor,
+  graveyardCastNeedsLand,
   lifePayableBlack,
   copyTargetOptions,
   effectsOf,
@@ -156,8 +157,13 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
       for (const graveyardSource of graveyardCastSources(s,playerId,c,adventure)) {
         // Muldrotha: an artifact creature can use either unused type.
         const types = unusedTypesFor(s, s.cards[graveyardSource]!, c, adventure);
-        if (types.length > 1) permissions.push(...types.map((permanentType) => ({ graveyardSource, permanentType })));
-        else permissions.push({ graveyardSource });
+        const base: SpellChoice[] = types.length > 1 ? types.map((permanentType) => ({ graveyardSource, permanentType })) : [{ graveyardSource }];
+        // Exploration Broodship: one way per land to sacrifice (tapped ones first, a few at most).
+        if (graveyardCastNeedsLand(s, s.cards[graveyardSource]!, c, playerId, adventure)) {
+          const lands = s.players[playerId]!.battlefield.map((id) => s.cards[id]!).filter((l) => hasType(s, l, 'land') && !l.phasedOut)
+            .sort((a, b) => Number(b.tapped) - Number(a.tapped)).slice(0, 3);
+          for (const b of base) for (const land of lands) permissions.push({ ...b, sacrificeLand: land.id });
+        } else permissions.push(...base);
       }
     }
     permissions.push(...groups.map(g=>({castGroup:g.id})));

@@ -67,6 +67,13 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     out.power = c.animated.power;
     out.toughness = c.animated.toughness;
   }
+  // Station (rule 702.184): an artifact creature at its threshold, and abilities that only work with enough charge counters.
+  if (def.station) {
+    const charge = c.namedCounters?.charge ?? 0;
+    change();
+    if (charge >= def.station.creatureAt) out.types = [...new Set([...out.types, 'creature' as const])];
+    if (out.statics?.some((st) => (st.stationLevel ?? 0) > charge)) out.statics = out.statics.filter((st) => (st.stationLevel ?? 0) <= charge);
+  }
   if (c.addedSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.addedSubtypes])]; }
   if (c.turnSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.turnSubtypes])]; }
   // Ultima, Origin of Oblivion: "For as long as that land has a blight counter on it, it loses all land types and abilities and has '{T}: Add {C}.'"

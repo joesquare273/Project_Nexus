@@ -136,6 +136,8 @@ export function choosingEffects(effects: readonly EffectSpec[] | undefined): Eff
 export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
   const out = [...(def.activated ?? [])];
   if (def.crew !== undefined) out.push({ cost: { crew: def.crew }, effects: [{ effect: 'AnimateVehicle', target: 'This', sameObject: true }] });
+  // Station: tap another creature to put charge counters equal to its power on this (X is that power).
+  if (def.station) out.push({ cost: { station: true }, sorcerySpeed: true, effects: [{ effect: 'AddCounters', counter: 'charge', amount: { of: 'x' }, target: 'This' }] });
   if (def.equip) {
     out.push({
       cost: { mana: def.equip },
@@ -229,6 +231,8 @@ export interface SpellChoice {
   permanentType?: string;
   /** How many {B} are paid with 2 life each ({B/P}, K'rrik); unset: only those the mana can't cover. */
   lifeForB?: number;
+  /** The land sacrificed for a graveyard permission that needs one (Exploration Broodship). */
+  sacrificeLand?: InstanceId;
   /** The value chosen for {X}. */
   x?: number;
   mode?: number;
@@ -846,6 +850,11 @@ function unusedPermanentTypes(s: GameState, source: CardInstance, def: CardDefin
   return PERMANENT_TYPES.filter((t) => (def.types as string[]).includes(t) && !used.includes(t));
 }
 
+/** Whether this source's graveyard permission for this card needs a land sacrificed (Exploration Broodship). */
+export function graveyardCastNeedsLand(s: GameState, source: CardInstance, c: CardInstance, playerId: PlayerId, adventure = false): boolean {
+  return (defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.sacrificeLand && matchesObject(s, st.castFromGraveyard.filter, c, { controller: playerId, source: source.id }, c.owner, spellDefinition(defOf(s, c), adventure)));
+}
+
 /** Muldrotha: the types this card could use from this source now ([] when the source isn't per-type). */
 export function unusedTypesFor(s: GameState, source: CardInstance, c: CardInstance, adventure = false): string[] {
   if (!(defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.perPermanentType)) return [];
@@ -1210,6 +1219,12 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const edgar = way === 'static' ? graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure) : undefined;
   if (edgar && !edgar.unlimited) s.cards[edgar.source]!.graveyardCastTurn = s.turnNumber;
   if (edgar?.perPermanentType) markPermanentTypeUsed(s, s.cards[edgar.source]!, def, choice.permanentType);
+  // Exploration Broodship: "by sacrificing a land in addition to paying its other costs".
+  if (edgar?.sacrificeLand) {
+    const land = choice.sacrificeLand ? s.cards[choice.sacrificeLand] : undefined;
+    if (!land || land.zone !== 'battlefield' || land.controller !== playerId || !hasType(s, land, 'land')) reject('Sacrifice a land you control to cast it this way.');
+    sacrifice(ctx, land.id);
+  } else if (choice.sacrificeLand) reject('Nothing asks you to sacrifice a land for that spell.');
   // Noctis: "by paying 3 life in addition to paying their other costs". Raubahn's ward: life equal to his power.
   const citadelLife = from === 'library' && libraryTopCostsLife(s, playerId) ? manaValue(parseManaCost(def.manaCost)) : 0;
   const lifeToPay = (edgar?.payLife ?? 0) + wardLife(s, targets, playerId) + citadelLife;
@@ -1361,6 +1376,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
     return 'You do not control that permanent.';
   }
   if (zone === 'battlefield' && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
+  if (spec.stationLevel !== undefined && (c.namedCounters?.charge ?? 0) < spec.stationLevel) return `That needs ${spec.stationLevel} or more charge counters.`;
   if (spec.ifOpponentHitByLegendary && !(s.combatDamageHistory ?? []).some((h) => h.legendary && h.player !== playerId && h.sourceController === playerId)) {
     return 'Only after an opponent was dealt combat damage by a legendary creature this turn.';
   }
@@ -1423,6 +1439,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
   if (spec.cost.tapUntapped && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
+  if (spec.cost.station && crewCandidates(s, playerId, c.id).length === 0) return 'You have no other untapped creature to tap for station.';
   const n = spec.cost.discard ?? 0;
   if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
   return null;
@@ -1468,7 +1485,8 @@ export function additionalManaFor(def: CardDefinition, costCards: readonly Insta
 /** Lands a player may play this turn: one, plus Azusa's two more on their own turn (rule 305.2). */
 export function landDrops(s: GameState, playerId: PlayerId): number {
   if (s.activePlayer !== playerId) return 1;
-  let n = 1;
+  const extra = s.players[playerId]!.extraLandDrops;
+  let n = 1 + (extra?.turn === s.turnNumber ? extra.count : 0);
   for (const c of battlefield(s)) {
     if (c.controller !== playerId || c.phasedOut) continue;
     for (const st of defOf(s, c).statics ?? []) n += st.additionalLands ?? 0;
@@ -1506,6 +1524,7 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
     walk(0,[],0);return out;
   }
   if (spec.cost.tapUntapped) return subsets(tapCostCandidates(s, playerId, spec, source), spec.cost.tapUntapped.count, spec.cost.tapUntapped.count).slice(0, 50);
+  if (spec.cost.station) return crewCandidates(s, playerId, source).map((k) => [k.id]);
   if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
   if (spec.cost.sacrifice) {
     const n = spec.cost.sacrificeCount ?? 1;
@@ -1553,13 +1572,18 @@ export function activateAbility(
   const hasX = !!parseManaCost(spec.cost.mana).x;
   if (!hasX && !spec.cost.discardX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
   if (hasX && (xChosen === undefined || !Number.isInteger(xChosen) || xChosen < (spec.xMin ?? 0))) reject(`Choose a value for X${spec.xMin ? ` of at least ${spec.xMin}` : ''}.`);
-  const x = spec.cost.discardX ? costCards.length : hasX ? xChosen! : undefined;
+  // Station: X is the power of the creature tapped for it (as the cost is paid).
+  const stationCreature = spec.cost.station ? costCards[0] : undefined;
+  if (spec.cost.station && (costCards.length !== 1 || !crewCandidates(s, playerId, id).some((k) => k.id === stationCreature))) reject('Choose another untapped creature you control to tap for station.');
+  const x = spec.cost.discardX ? costCards.length : spec.cost.station ? Math.max(0, powerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
   if (spec.cost.crew !== undefined) {
     const candidates=crewCandidates(s,playerId,id).map(c=>c.id);
     if(new Set(costCards).size!==costCards.length || costCards.some(k=>!candidates.includes(k)) || costCards.reduce((sum,k)=>sum+powerOf(s,s.cards[k]!),0)<spec.cost.crew) reject('Choose other untapped creatures you control with enough total power to crew.');
+  } else if (spec.cost.station) {
+    // Checked above with X.
   } else if (spec.cost.tapUntapped) {
     const able = tapCostCandidates(s, playerId, spec, id);
     if (costCards.length !== spec.cost.tapUntapped.count || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${spec.cost.tapUntapped.count} untapped matching permanents you control to tap.`);
@@ -1595,7 +1619,7 @@ export function activateAbility(
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
-  if (spec.cost.tapUntapped) for (const k of costCards) tap(ctx, s.cards[k]!);
+  if (spec.cost.tapUntapped || spec.cost.station) for (const k of costCards) tap(ctx, s.cards[k]!);
   if (spec.cost.crew !== undefined) {
     for (const crew of costCards) tap(ctx,s.cards[crew]!);
     // "A Vehicle crewed by Balthier and Fran this turn".
@@ -1614,7 +1638,7 @@ export function activateAbility(
   const ninjutsuDefender = spec.cost.returnUnblockedAttacker ? s.combat!.attacks.find((a) => a.attacker === costCards[0])!.defender : undefined;
   if (spec.cost.returnUnblockedAttacker) moveCard(ctx, costCards[0]!, 'hand');
   else if (spec.cost.sacrifice) for (const k of costCards) sacrifice(ctx, k);
-  else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined && !spec.cost.tapUntapped) for (const discarded of costCards) discard(ctx, discarded);
+  else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined && !spec.cost.tapUntapped && !spec.cost.station) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
@@ -2506,6 +2530,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         r.createdTokens.push(createToken(ctx, 'treasure-token', item.controller));
         quinaFrogs(ctx, item.controller, r);
       }
+      return;
+    }
+    case 'AdditionalLandThisTurn': {
+      const p = player(s, item.controller);
+      p.extraLandDrops = { turn: s.turnNumber, count: (p.extraLandDrops?.turn === s.turnNumber ? p.extraLandDrops.count : 0) + 1 };
       return;
     }
     case 'AdditionalEndStep':

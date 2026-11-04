@@ -361,6 +361,8 @@ function effectText(e: EffectSpec): string {
       return 'reveal the top five cards; you and an opponent take turns putting one into your hand and one on the bottom';
     case 'CastExiledOrTreasure':
       return "you may cast it; if you don't, create a Treasure";
+    case 'AdditionalLandThisTurn':
+      return 'you may play an additional land this turn';
     case 'AdditionalEndStep':
       return 'if this is the first end step of the turn, there is an additional end step after this one';
     case 'ExileToCastFree':
@@ -420,6 +422,7 @@ function keywordText(keywords: readonly string[]): string {
 /** A plain summary of an activated ability, e.g. "{1}{W}, {T}: tap target creature". */
 export function activatedText(a: ActivatedSpec): string {
   if (a.cost.crew !== undefined) return `Crew ${a.cost.crew} — tap other creatures with total power ${a.cost.crew} or more`;
+  if (a.cost.station) return 'Station — tap another creature you control: put charge counters equal to its power on this (as a sorcery)';
   if (a.effects[0]?.unearth) return `Unearth ${a.cost.mana}`;
   const cost = [
     a.cost.mana,
@@ -428,9 +431,10 @@ export function activatedText(a: ActivatedSpec): string {
     a.cost.exileGraveyard && `exile ${a.cost.exileGraveyard.amount} creature cards from your graveyard`,
     a.cost.life && `pay ${a.cost.life} life`,
     a.cost.sacrificeThis && 'sacrifice this',
+    a.cost.sacrifice && `sacrifice ${a.cost.sacrifice.types?.includes('land') ? 'a land' : 'a permanent'}`,
     a.cost.discardThis && 'discard this card',
   ].filter(Boolean).join(', ');
-  const body = a.equip ? 'Equip' : a.effects.map(effectText).join(' and ');
+  const body = (a.stationLevel ? `(${a.stationLevel}+ charge) ` : '') + (a.equip ? 'Equip' : a.effects.map(effectText).join(' and '));
   return a.equip ? `${body} ${a.cost.mana}` : `${cost}: ${body}`;
 }
 

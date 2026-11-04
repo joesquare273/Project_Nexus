@@ -181,6 +181,8 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
 ];
 
 export const EFFECT_KINDS = [
+  /** "You may play an additional land this turn" (Hearthhull, the Worldseed). */
+  'AdditionalLandThisTurn',
   /** Each permanent matching `filter` deals damage equal to its power to the target (Bartz and Boko's Birds). */
   'EachMatchingDealsDamage',
   /** Roll a die with `amount` sides; later effects can use the result (`{ of: 'dieRoll' }`). */
@@ -1104,6 +1106,8 @@ export interface ObjectFilter {
 }
 
 export interface TriggerSpec {
+  /** Station (rule 702.184): this ability only triggers while its source has at least this many charge counters ("8+"). */
+  stationLevel?: number;
   /** Intervening "if there are N or more cards in your graveyard" (Emet-Selch). */
   ifYourGraveyardAtLeast?: number;
   /** "Its controller may pay ...": the triggering creature's controller decides and pays (Gix). */
@@ -1210,6 +1214,8 @@ export interface TriggerSpec {
 
 /** A non-mana activated ability: "[cost]: [effect]" (rule 602). */
 export interface ActivatedSpec {
+  /** Station: can only be activated while the source has at least this many charge counters. */
+  stationLevel?: number;
   /** The least X this ability allows ("X can't be 0"). */
   xMin?: number;
   /** "This ability can't be copied" (Gogo). */
@@ -1217,6 +1223,8 @@ export interface ActivatedSpec {
   cost: {
     /** "Discard X cards": any number of other cards from your hand, and X is how many (Gix). */
     discardX?: boolean;
+    /** Station: tap one other untapped creature you control (summoning sickness doesn't matter); X is its power. */
+    station?: boolean;
     /** Mill this many cards as a cost; a full payment requires that many cards in the library. */
     mill?: number;
     /** Tap other creatures with at least this much total power (crew). */
@@ -1279,6 +1287,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** Station: only applies while the source has at least this many charge counters ("8+ | Flying" is a Self static with keywords). */
+  stationLevel?: number;
   /** Layer 4: this object is not a creature while its controller has fewer graveyard cards. */
   noncreatureIfGraveyardBelow?: number;
   /** Replace creature subtypes, preserving subtypes of other card types. */
@@ -1373,7 +1383,7 @@ export interface StaticSpec {
    * from your graveyard. If you cast a spell this way, that artifact enters tapped."
    */
   /** `unlimited`: any number of times, whenever you could cast it (Noctis), not once on your turn (Edgar); `payLife` extra; `finality`: it enters with a finality counter. */
-  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean; /** Muldrotha: one permanent spell of each permanent type each turn (and one land, with `playLandsFromGraveyard`). */ perPermanentType?: boolean };
+  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean; /** Muldrotha: one permanent spell of each permanent type each turn (and one land, with `playLandsFromGraveyard`). */ perPermanentType?: boolean; /** Exploration Broodship: sacrifice a land in addition to the spell's other costs. */ sacrificeLand?: boolean };
   /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
   equipCost?: { mana: string; ifArtifactsAtLeast: number };
   /** Works while the card is in this zone instead of on the battlefield (Anger, from the graveyard). */
@@ -1433,6 +1443,12 @@ export interface CardDefinition {
   partner?: boolean;
   /** "Partner with [name]": this card and that one can be commanders together. */
   partnerWith?: string;
+  /**
+   * Station (rule 702.184, Spacecraft): "Tap another creature you control: put
+   * charge counters equal to its power on this. Station only as a sorcery."
+   * It's an artifact creature while it has `creatureAt` or more charge counters.
+   */
+  station?: { creatureAt: number };
   meld?: { partner: string; result: string; resultPrinting: { set: string; number: string }; manaCost?: string };
   /** Its controller may privately look at the top card of their library. */
   lookAtLibraryTop?: boolean;
@@ -1947,6 +1963,8 @@ export interface PlayerState {
   /** "Spend this mana only to cast an artifact spell or activate an ability of an artifact source" (Cargo Ship). */
   artifactMana?: ManaPool;
   landsPlayedThisTurn: number;
+  /** "You may play an additional land this turn": how many more, and which turn. */
+  extraLandDrops?: { turn: number; count: number };
   eliminated: boolean;
   /** This player chooses the order of their simultaneous triggers (players; bots keep the order found). */
   ordersTriggers?: boolean;
@@ -2446,6 +2464,8 @@ export type Action =
       permanentType?: string;
       /** How many {B} to pay with 2 life each ({B/P}, or any {B} with K'rrik); unset: only what mana can't cover. */
       lifeForB?: number;
+      /** The land sacrificed for a graveyard permission that needs one (Exploration Broodship). */
+      sacrificeLand?: InstanceId;
       /** Use this shared one-spell allowance instead of another permission. */
       castGroup?: string;
       targets?: Target[];

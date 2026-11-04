@@ -236,6 +236,7 @@ const PLAYER_FIELDS = {
   noncreatureSpellMana: 'copy',
   artifactMana: 'copy',
   landsPlayedThisTurn: 'copy',
+  extraLandDrops: 'copy',
   eliminated: 'copy',
   drewFromEmptyLibrary: 'copy',
   friendlyTargetAbilityTurn: 'copy',

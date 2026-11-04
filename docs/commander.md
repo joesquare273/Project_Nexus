@@ -32,8 +32,8 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 42/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 36/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 44/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 38/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -58,6 +58,18 @@ retrace, dredge, devoid, changeling, the Kindred type (Formless Genesis),
 converge, a Saga and a transforming card. The plan, as for Final Fantasy:
 the set's own mechanics first (station and Spacecraft, landfall, lands
 sacrificed), then shared-mechanic groups.
+
+Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
+
+- **E1 (2026-11-04): station and the Spacecraft.** Inspirit, Flagship Vessel;
+  Uthros Research Craft; Hearthhull, the Worldseed; Exploration Broodship.
+  Engine: `station` (the Station ability: tap another untapped creature you
+  control, summoning sick or not, for charge counters equal to its power, as a
+  sorcery; an artifact creature at its threshold), `stationLevel` on statics,
+  triggers and activated abilities ("N+"), `AdditionalLandThisTurn`, and
+  `castFromGraveyard.sacrificeLand` (CastSpell `sacrificeLand`).
+  Simplification: Inspirit's choice of a +1/+1 counter or two charge counters
+  is made as the trigger goes on the stack (a mode) rather than as it resolves.
 
 ## Commander rules (built)
 

@@ -90,6 +90,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.graveyardSource ? { graveyardSource: action.graveyardSource } : {}),
           ...(action.permanentType ? { permanentType: action.permanentType } : {}),
           ...(action.lifeForB !== undefined ? { lifeForB: action.lifeForB } : {}),
+          ...(action.sacrificeLand ? { sacrificeLand: action.sacrificeLand } : {}),
           ...(action.castGroup !== undefined ? { castGroup: action.castGroup } : {}),
           ...(action.kicks ? { kicks: action.kicks } : {}),
           ...(action.tapCreatures ? { tapCreatures: action.tapCreatures } : {}),
