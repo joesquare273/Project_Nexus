@@ -10,7 +10,7 @@ import type { FragmentRarity, Fragments } from '@nexus/cards/crafting';
 import { accessToken } from '../account/AccountBar.tsx';
 import { CardShine } from '../components/Card.tsx';
 import { fetchCollection, fetchDecks, type Collection, type SavedDeck } from '../packs/collection.ts';
-import { RARITY_NAMES, copiesOfCard, craftCard, craftStatus, deckWarnings, dismantleCard, fetchFragments, rewardFor, type CraftingRules } from './craft.ts';
+import { RARITY_NAMES, ownershipMatches, type Ownership, copiesOfCard, craftCard, craftStatus, deckWarnings, dismantleCard, fetchFragments, rewardFor, type CraftingRules } from './craft.ts';
 import '../packs/packs.css';
 import './craft.css';
 
@@ -52,6 +52,8 @@ export function CraftTab() {
   const [mode, setMode] = useState<Mode>('dismantle');
   const [search, setSearch] = useState('');
   const [rarity, setRarity] = useState<FragmentRarity | 'all'>('all');
+  /** Craft view: every craftable card, only ones you own, or only ones you don't. */
+  const [ownership, setOwnership] = useState<Ownership>('all');
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -137,6 +139,13 @@ export function CraftTab() {
       </div>
       <div className="craft-filters">
         <input type="search" placeholder="Search cards" value={search} onChange={(e) => setSearch(e.target.value)} />
+        {mode === 'craft' && (
+          <select value={ownership} onChange={(e) => setOwnership(e.target.value as Ownership)} aria-label="Owned">
+            <option value="all">Owned and not owned</option>
+            <option value="owned">Owned</option>
+            <option value="unowned">Not owned</option>
+          </select>
+        )}
         <select value={rarity} onChange={(e) => setRarity(e.target.value as FragmentRarity | 'all')} aria-label="Rarity">
           <option value="all">All rarities</option>
           {(Object.keys(RARITY_NAMES) as FragmentRarity[]).map((r) => (
@@ -187,6 +196,7 @@ export function CraftTab() {
         </div>
       )}
 
+      {/* Dismantle lists only cards you own (from your collection); Craft lists every craftable card. */}
       {mode === 'dismantle' ? (
         <div className="craft-grid">
           {owned.filter((o) => matches(o.card, o.rarity)).length === 0 && <p className="fineprint">No cards to dismantle{search || rarity !== 'all' ? ' match' : ' yet'}.</p>}
@@ -211,7 +221,7 @@ export function CraftTab() {
         </div>
       ) : (
         <div className="craft-grid">
-          {mod.CRAFTABLE.filter((c) => matches(c, c.rarity as FragmentRarity)).map((c) => {
+          {mod.CRAFTABLE.filter((c) => matches(c, c.rarity as FragmentRarity) && ownershipMatches(total(c), ownership)).map((c) => {
             const r = c.rarity as FragmentRarity;
             const status = craftStatus(rules, fragments, r);
             const have = total(c);

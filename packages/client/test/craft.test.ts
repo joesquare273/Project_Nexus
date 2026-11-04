@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ECONOMY } from '@nexus/server/economy';
 import { NO_FRAGMENTS } from '@nexus/cards/crafting';
-import { copiesOfCard, craftStatus, deckWarnings, rewardFor } from '../src/craft/craft.ts';
+import { copiesOfCard, craftStatus, deckWarnings, ownershipMatches, rewardFor } from '../src/craft/craft.ts';
 import type { Collection, SavedDeck } from '../src/packs/collection.ts';
 
 const rules = ECONOMY.crafting;
@@ -28,5 +28,11 @@ describe('Craft tab', () => {
     // Two non-foil copies: a deck with two loses one; a deck with one keeps it.
     expect(deckWarnings([deck('Two', 2), deck('One', 1)], collection, 'a', 'nonfoil')).toEqual(['Two']);
     expect(deckWarnings([deck('Two', 2)], collection, 'a', 'foil')).toEqual([]);
+  });
+
+  it('filters the craftable cards by whether you own them', () => {
+    expect([0, 1, 3].map((n) => ownershipMatches(n, 'owned'))).toEqual([false, true, true]);
+    expect([0, 1].map((n) => ownershipMatches(n, 'unowned'))).toEqual([true, false]);
+    expect([0, 1].map((n) => ownershipMatches(n, 'all'))).toEqual([true, true]);
   });
 });

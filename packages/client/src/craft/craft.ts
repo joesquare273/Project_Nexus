@@ -44,6 +44,10 @@ export function craftStatus(rules: CraftingRules, fragments: Fragments, rarity: 
   return { ok: false, reason: `Needs ${cost} ${RARITY_NAMES[rarity]} Fragments (you have ${fragments[rarity]}).` };
 }
 
+/** The Craft view's owned filter: every card, cards you own (any art or finish), or cards you don't. */
+export type Ownership = 'all' | 'owned' | 'unowned';
+export const ownershipMatches = (copies: number, ownership: Ownership) => ownership === 'all' || (copies > 0) === (ownership === 'owned');
+
 /** Copies owned of every printing of a card (any art or finish). */
 export const copiesOfCard = (collection: Collection, printingIds: readonly string[]) =>
   printingIds.reduce((n, id) => n + Object.values(collection.cards[id] ?? {}).reduce((m, k) => m + (k ?? 0), 0), 0);
