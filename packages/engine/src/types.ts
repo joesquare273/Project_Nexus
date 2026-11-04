@@ -375,6 +375,8 @@ export const EFFECT_KINDS = [
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
   'AddSubtypes',
+  /** Choose a permanent matching `filter` as this resolves (not targeted): `choiceThen` says what happens to it (bounce to its owner's hand, or remember it as the source's chosen creature); `optional` for "you may". */
+  'ChoosePermanent',
   /** "You may attach an Equipment you control to that creature" (chosen as it resolves; with `untilEndOfTurn`, unattached at the beginning of the next end step). */
   'MayAttachEquipmentToPreviousTarget',
   /** Each target player exiles their top `amount` cards; you may play them this turn without paying their mana costs (Gix). */
@@ -754,6 +756,10 @@ export interface EffectSpec {
   sacrificeAtNextUpkeep?: boolean;
   /** AddCounters: "up to N": the controller adds them one at a time and may stop (Esper Terra's lore counters). */
   upToChoice?: boolean;
+  /** AttachEquipmentTo: the creature is this earlier target (by position) rather than the effect's own target. */
+  toTarget?: number;
+  /** ChoosePermanent: what happens to the chosen permanent. */
+  choiceThen?: 'bounce' | 'link';
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -2189,7 +2195,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

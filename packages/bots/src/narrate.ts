@@ -95,6 +95,11 @@ function amountText(a: Amount | undefined): string {
   return `X (${times}the number of ${a.count.map((k) => COUNT_TEXT[k] ?? k).join(' plus ')})`;
 }
 
+/** What a target slot asks for ("target Equipment you control"). */
+export function targetDescription(e: EffectSpec): string {
+  return targetText(e);
+}
+
 function targetText(e: EffectSpec): string {
   if (e.target === 'AllPermanents' && e.filter) return `all ${subjectText(e.filter, 'permanent', true)}`;
   if (e.target === 'TargetPermanent' && e.filter) return `target ${subjectText(e.filter, 'permanent')}`;
@@ -370,6 +375,8 @@ function effectText(e: EffectSpec): string {
       return `copy ${who} ${n === '1' ? 'once' : `${n} times`}`;
     case 'MayAttachEquipmentToPreviousTarget':
       return 'you may attach an Equipment you control to that creature';
+    case 'ChoosePermanent':
+      return e.choiceThen === 'link' ? 'choose a creature' : `${e.optional ? 'you may ' : ''}return a permanent to its owner's hand`;
     case 'EndTheTurn':
       return 'end the turn';
     case 'CreateDemonCopy':

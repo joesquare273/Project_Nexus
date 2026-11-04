@@ -3,7 +3,7 @@
 // text says it does.
 
 import { describe, expect, it } from 'vitest';
-import { type Target, type GameEvent, spellOptions, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { type Target, type GameEvent, targetSlotEffects, spellOptions, AliasBook, playerUpdate, canAttack, activatedAbilities, canBlock, countersOf, currentDefinition, getLegalActions, viewFor, hasKeyword, manaValue, parseManaCost, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { dealDamage } from '../../engine/src/state.ts';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, nextStep, player, put, rejected, settle } from './kit-helpers.ts';
 
@@ -3442,6 +3442,10 @@ describe('S4 group 26: landfall, enters and attack triggers', () => {
     const ambrosia = put(s, 'P1', 'ambrosia-whiteheart', 'hand');
     mana(s, 'P1', { W: 1, C: 1 });
     s = cast(s, { type: 'CastSpell', player: 'P1', card: ambrosia }, { accept: true }).state;
+    // "You may return another permanent you control": chosen as it resolves, not targeted.
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'bounce', min: 0 });
+    expect(s.pending.kind === 'chooseCards' && s.pending.cards).not.toContain(ambrosia);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [other] })).state;
     expect(s.cards[other]!.zone).toBe('hand');
     s = playLand(s);
     expect(stats(s, ambrosia)).toEqual([3, 2]);
@@ -3824,7 +3828,9 @@ describe('S4 group 33: Zidane, Tantalus Thief and Stolen Uniform', () => {
     const body = put(s, 'P1', 'coeurl');
     const spell = put(s, 'P1', 'stolen-uniform', 'hand');
     mana(s, 'P1', { U: 1 });
-    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(plate), card(body)] }).state;
+    // "Choose target creature you control and target Equipment": the creature first, as printed.
+    expect(targetSlotEffects(s, { type: 'CastSpell', player: 'P1', card: spell }).map((e) => e.filter?.types?.[0] ?? e.filter?.subtypes?.[0])).toEqual(['creature', 'Equipment']);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(body), card(plate)] }).state;
     expect(s.cards[plate]!.controller).toBe('P1');
     expect(s.cards[plate]!.attachedTo).toBe(body);
     expect(hasKeyword(s, s.cards[body]!, 'Indestructible')).toBe(true);
@@ -4113,6 +4119,9 @@ describe('S4 group 39: Zell Dincht, Traxos, Tymna the Weaver, Torgal', () => {
     expect(lands()).toBe(base + 2);
     expect(stats(s, zell)).toEqual([lands(), 3]);
     s = settle(goTo(s, 'end')).state;
+    // "Return a land you control": chosen as it resolves.
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'bounce', min: 1 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [(s.pending as { cards: string[] }).cards[0]!] })).state;
     expect(lands()).toBe(base + 1);
   });
 
@@ -5721,7 +5730,10 @@ describe('S4 group 58: Rydia, Ancient Adamantoise, Zenos', () => {
     const small = put(s, 'P3', 'coeurl');
     const zenos = put(s, 'P1', 'zenos-yae-galvus-shinryu-transcendent-rival', 'hand');
     mana(s, 'P1', { B: 2, C: 3 });
-    s = cast(s, { type: 'CastSpell', player: 'P1', card: zenos }, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === rival))! }).state;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: zenos }).state;
+    // "Choose a creature an opponent controls" as it resolves (not targeted).
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'link' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [rival] })).state;
     expect(s.cards[small]!.zone).toBe('graveyard');
     expect(stats(s, rival)).toEqual([8, 8]);
     expect(stats(s, zenos)).toEqual([4, 4]);

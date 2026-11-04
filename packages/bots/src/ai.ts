@@ -566,6 +566,9 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'removeLore') return pick([]);
   // Vaan: a Treasure is the safe choice for the basic AI.
   if (p.purpose === 'castOrTreasure') return pick([]);
+  // Zell: return our least valuable land. Ambrosia: nothing (bouncing is only worth it with an enters ability). Zenos: their weakest creature, the likeliest to leave and flip him.
+  if (p.purpose === 'bounce') return p.min === 0 ? pick([]) : pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
+  if (p.purpose === 'link') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   // Unexpected Request: lend the borrowed creature our best Equipment.
   if (p.purpose === 'attachToTarget') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   // Esper Terra: as many lore counters as allowed (each one is another chapter).

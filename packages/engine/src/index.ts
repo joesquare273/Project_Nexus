@@ -18,6 +18,7 @@ export {
   castGroupsFor,
   queuedTriggerSpec,
   spellEffects,
+  targetSlotEffects,
   FORETELL_COST,
   foretellProblem,
   triggerLifeCost,

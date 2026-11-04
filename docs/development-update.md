@@ -5,6 +5,28 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Target sequencing scan of the Final Fantasy cards
+
+A scripted pass over every built fin, fic and fca card compared each
+ability's targets with its Oracle text (how many times it says "target",
+optional targets before required ones, and abilities with two or more
+targets side by side with the printed order). Findings and fixes:
+
+- Stolen Uniform asked for the Equipment before the creature; the card says
+  "Choose target creature you control and target Equipment". Now creature
+  first (AttachEquipmentTo `toTarget` points at it).
+- Ambrosia Whiteheart ("you may return another permanent you control"),
+  Zell Dincht ("return a land you control") and Zenos ("choose a creature an
+  opponent controls") don't target: they now choose as the ability resolves
+  (`ChoosePermanent` with `choiceThen` bounce or link).
+- The browser's targeting prompt now says what each target is for
+  ("choose target Equipment you control (1 of 2)"), from the new engine
+  helper `targetSlotEffects`, so clicks go to the intended slot.
+
+Everything else matched the printed order (Barret and Raubahn print the
+optional Equipment target first; the prompt's "No target" button skips it).
+
+
 ### Every Final Fantasy set card built; Unexpected Request fixed
 
 The last four set cards (all 320 now): Kuja and Trance Kuja (Wizard damage

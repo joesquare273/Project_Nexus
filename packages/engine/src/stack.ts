@@ -61,6 +61,7 @@ import {
   type InstanceId,
   type ManaCost,
   type ManaType,
+  type Action,
   type ObjectFilter,
   type PlayerId,
   type StaticSpec,
@@ -101,6 +102,24 @@ export function castsAtInstantSpeed(s: GameState, playerId: PlayerId, c: CardIns
   if (statics.some(({ st, controller }) => st.opponentsCastAtSorcerySpeed && controller !== playerId)) return false;
   if (hasInstantTiming(def)) return true;
   return def.types.includes('creature') && c.owner === playerId && c.zone !== 'battlefield' && statics.some(({ st, controller }) => st.ownCreatureCardsHaveFlash && controller === playerId);
+}
+
+/** For a spell, ability or trigger-target action: the effect behind each target slot, in order (for prompts like "choose target Equipment you control"). */
+export function targetSlotEffects(s: GameState, action: Action): EffectSpec[] {
+  if (action.type === 'CastSpell') {
+    const c = s.cards[action.card];
+    return c ? choosingEffects(spellEffects(defOf(s, c), action)) : [];
+  }
+  if (action.type === 'ActivateAbility') {
+    const c = s.cards[action.card];
+    const spec = c ? activatedAbilities(defOf(s, c))[action.ability] : undefined;
+    return spec ? choosingEffects(spec.effects) : [];
+  }
+  if (action.type === 'ChooseTargets') {
+    const t = s.triggerQueue[0];
+    return t ? choosingEffects(queuedTriggerSpec(s, t).effects) : [];
+  }
+  return [];
 }
 
 /** The effects whose targets are chosen, in order. A spell or ability has one target per such effect. */
@@ -2420,6 +2439,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (equipment.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'attachToTarget', cards: equipment, min: 0, max: 1, attachHost: host.id, ...(effect.untilEndOfTurn ? { unattachAtEndStep: true } : {}) }];
       return;
     }
+    case 'ChoosePermanent': {
+      const cards = battlefield(s).filter((c) => !c.phasedOut && matchesObject(s, effect.filter, c, { controller: item.controller, source })).map((c) => c.id);
+      if (cards.length === 0) return;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional ? 0 : 1, max: 1 }];
+      return;
+    }
     case 'AddSubtypes':
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
@@ -3101,8 +3126,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const t = effect.from !== undefined ? item.targets[effect.from] : undefined;
       const equipment = t?.kind === 'card' ? s.cards[t.card] : undefined;
       if (!equipment || equipment.zone !== 'battlefield' || equipment.controller !== item.controller) return;
-      for (const id of onBattlefield) attach(ctx, equipment.id, id);
-      if (effect.untilEndOfTurn && onBattlefield.length) equipment.unattachAtEndOfTurn = true;
+      // Stolen Uniform: "attach it to the chosen creature" (an earlier target, by position).
+      const hostTarget = effect.toTarget !== undefined ? item.targets[effect.toTarget] : undefined;
+      const hosts = effect.toTarget !== undefined
+        ? (hostTarget?.kind === 'card' && isCreatureOnBattlefield(s, s.cards[hostTarget.card]) && s.cards[hostTarget.card]!.controller === item.controller ? [hostTarget.card] : [])
+        : onBattlefield;
+      for (const id of hosts) attach(ctx, equipment.id, id);
+      if (effect.untilEndOfTurn && hosts.length) equipment.unattachAtEndOfTurn = true;
       return;
     }
     case 'PutFromHand':
@@ -3697,6 +3727,11 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const { kind: _kind, ...choice } = pending;
       if (left > 0) r.choiceQueue = [{ ...choice, counterCount: left }, ...(r.choiceQueue ?? [])];
     }
+  } else if (pending.purpose === 'bounce') {
+    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') moveCard(ctx, id, 'hand');
+  } else if (pending.purpose === 'link') {
+    const src = s.cards[sourceOf(r.item)]!;
+    if (cards[0] && src.zone === 'battlefield') src.linkedCreature = { card: cards[0] };
   } else if (pending.purpose === 'attachToTarget') {
     const host = pending.attachHost ? s.cards[pending.attachHost] : undefined;
     for (const id of cards) {

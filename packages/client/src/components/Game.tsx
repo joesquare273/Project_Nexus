@@ -18,6 +18,7 @@ import {
   spellDefinition,
   triggerSpec,
   queuedTriggerSpec,
+  targetSlotEffects,
   type Action,
   type GameState,
   type GameView,
@@ -28,7 +29,7 @@ import {
   type Target,
 } from '@nexus/engine';
 import { planTaps, tapActions } from '@nexus/bots';
-import { cardName, stepName, triggerText } from '@nexus/bots/narrate';
+import { cardName, stepName, targetDescription, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
@@ -67,6 +68,8 @@ interface Targeting {
   /** The targets of each choice, parallel to `choices`. */
   targets: Target[][];
   chosen: Target[];
+  /** What each target slot asks for, in order ("target Equipment you control"). */
+  slots?: string[];
 }
 
 /** A small menu in the prompt bar: which ability, or which mode. */
@@ -259,6 +262,7 @@ export function Game({
       choices: choices.map((a) => [a]),
       targets: choices.map((a) => a.targets),
       chosen: [],
+      ...(choices[0] ? { slots: targetSlotEffects(s, choices[0]).map(targetDescription) } : {}),
     };
   }, [yourMove, pending.kind, legal, s]);
   const activeTargeting = targeting ?? triggerTargeting;
@@ -440,6 +444,7 @@ export function Game({
       choices: choices.map((c) => [...c.taps, c.action]),
       targets: choices.map((c) => c.targets),
       chosen: [],
+      ...(choices[0] ? { slots: targetSlotEffects(s, choices[0].action).map(targetDescription) } : {}),
     });
   };
 
@@ -1069,7 +1074,12 @@ function PromptBar(p: PromptProps) {
       { label: 'Auto-pay', onClick: p.onAutoPay, primary: true },
     ];
   } else if (p.targeting) {
-    text = `${p.targeting.title.replace(/\.$/, '')}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card, player, or stack ability.`;
+    const slots = p.targeting.slots ?? [];
+    const slot = slots[p.chosen.length];
+    // Say which target this is ("choose target Equipment you control, 1 of 2"), so clicks go to the right slot.
+    text = slot
+      ? `${p.targeting.title.replace(/: choose a target$/, '').replace(/\.$/, '')}: choose ${slot}${slots.length > 1 ? ` (${p.chosen.length + 1} of ${slots.length})` : ''}. Click a highlighted card, player, or stack ability.`
+      : `${p.targeting.title.replace(/\.$/, '')}${p.chosen.length > 0 ? ` (target ${p.chosen.length + 1})` : ''}. Click a highlighted card, player, or stack ability.`;
     if (pending.kind === 'priority') buttons = [{ label: 'Cancel', onClick: p.onCancel }];
     // An "up to one" target can be left out.
     if (p.canSkipTarget) buttons = [...buttons, { label: 'No target', onClick: p.onSkipTarget }];
@@ -1128,6 +1138,10 @@ function PromptBar(p: PromptProps) {
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'bounce'
+              ? `to return to its owner’s hand${c.min === 0 ? ' (or none)' : ''}`
+            : c.purpose === 'link'
+              ? 'creature to choose'
             : c.purpose === 'attachToTarget'
               ? `Equipment to attach to ${c.attachHost ? cardName(s, c.attachHost) : 'that creature'}${c.unattachAtEndStep ? ' (it comes off at the next end step)' : ''}; choose none to skip`
             : c.purpose === 'counterUpTo'
