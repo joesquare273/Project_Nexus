@@ -3520,3 +3520,45 @@ button.link {
   gap: 8px;
   max-width: calc(100vw - 32px);
 }
+
+/* A page heading over its menu art (scripts/ui-art.ts): the art fills a short banner and fades into the page. */
+.page-title.with-art {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  min-height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border: 1px solid var(--line);
+}
+.page-title-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 0.55;
+}
+.page-title.with-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 14, 12, 0.15) 0%, rgba(8, 14, 12, 0.85) 100%);
+  pointer-events: none;
+}
+.page-title.with-art .page-title-text {
+  position: relative;
+  z-index: 1;
+  padding: 18px 16px 4px;
+}
+.page-title.with-art p {
+  color: #d8ddd8;
+}
+@media (max-width: 560px) {
+  .page-title.with-art {
+    min-height: 96px;
+  }
+}

@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
-import { SCRYFALL } from '@nexus/cards';
+import { UI_ART, type UiArtKey } from '@nexus/cards';
 
 const url = import.meta.env['VITE_SUPABASE_URL'] as string | undefined;
 const anonKey = import.meta.env['VITE_SUPABASE_ANON_KEY'] as string | undefined;
@@ -47,11 +47,11 @@ export function useSession(): { ready: boolean; session: Session | null } {
 
 const signIn = () => supabase?.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: window.location.origin } });
 
-const FEATURES: { title: string; text: string; art: string }[] = [
-  { title: 'Learn as you play', text: 'A guided first game teaches the rules step by step, with tips along the way.', art: 'cloud-planets-champion' },
-  { title: 'Play the computer or friends', text: 'Your 60-card and Commander decks against the AI or online; the Starter Kits for learning.', art: 'sephiroth-planets-heir' },
-  { title: 'Open packs and collect', text: 'Real Final Fantasy Play and Collector Boosters, with every card kept on your account.', art: 'tifa-lockhart' },
-  { title: 'Draft and build decks', text: 'Booster drafts for 2 to 4 players, and a deck builder for your own collection.', art: 'terra-herald-of-hope' },
+const FEATURES: { title: string; text: string; art: UiArtKey }[] = [
+  { title: 'Learn as you play', text: 'A guided first game teaches the rules step by step, with tips along the way.', art: 'learn' },
+  { title: 'Play the computer or friends', text: 'Your 60-card and Commander decks against the AI or online; the Starter Kits for learning.', art: 'playComputer' },
+  { title: 'Open packs and collect', text: 'Real Play and Collector Boosters, with every card kept on your account.', art: 'packs' },
+  { title: 'Draft and build decks', text: 'Booster drafts for 2 to 4 players, and a deck builder for your own collection.', art: 'draft' },
 ];
 
 /** The landing page, shown until you sign in. */
@@ -61,7 +61,7 @@ export function SignInPage() {
       <header className="landing-hero">
         <div className="landing-mark" aria-hidden="true">✦</div>
         <h1>Project Nexus</h1>
-        <p className="landing-tagline">Final Fantasy Magic: The Gathering, in your browser. Learn, collect, draft and play with friends.</p>
+        <p className="landing-tagline">Magic: The Gathering in your browser. Learn, collect, draft and play with friends.</p>
         <button className="primary big" onClick={signIn}>
           Sign in with Discord to play
         </button>
@@ -70,7 +70,7 @@ export function SignInPage() {
       <section className="landing-features" aria-label="What you can do">
         {FEATURES.map((f) => (
           <article key={f.title} className="landing-feature">
-            {SCRYFALL[f.art] && <img src={SCRYFALL[f.art]!.image.artCrop} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />}
+            <img src={UI_ART[f.art].artCrop} alt="" title={`${UI_ART[f.art].name}, art by ${UI_ART[f.art].artist}`} loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
             <h2>{f.title}</h2>
             <p>{f.text}</p>
           </article>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FIN_PRECONS, SCRYFALL } from '@nexus/cards';
+import { FIN_PRECONS, SCRYFALL, UI_ART, type UiArtKey } from '@nexus/cards';
 import type { GameDeck } from '@nexus/cards/decks';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
 import { ManaCost } from './components/Card.tsx';
@@ -266,7 +266,7 @@ function MainApp() {
 
         {route.page === 'play' && (
           <>
-            <PageTitle title="Play" subtitle="Against the computer, a friend online, or a booster draft" />
+            <PageTitle title="Play" subtitle="Against the computer, a friend online, or a booster draft" art={route.play === 'online' ? 'playFriends' : route.play === 'draft' ? 'draft' : 'playComputer'} />
             <SubTabs
               value={route.play}
               options={[
@@ -370,28 +370,28 @@ function MainApp() {
 
         {route.page === 'collection' && (
           <>
-            <PageTitle title="Collection" subtitle="Every card you own, by set" />
+            <PageTitle title="Collection" subtitle="Every card you own, by set" art="collection" />
             <PacksTab section="collection" />
           </>
         )}
 
         {route.page === 'decks' && (
           <>
-            <PageTitle title="Decks" subtitle="Build decks from the cards you own" />
+            <PageTitle title="Decks" subtitle="Build decks from the cards you own" art="decks" />
             <PacksTab section="decks" />
           </>
         )}
 
         {route.page === 'craft' && (
           <>
-            <PageTitle title="Craft" subtitle="Dismantle cards for fragments, and craft the cards you want" />
+            <PageTitle title="Craft" subtitle="Dismantle cards for fragments, and craft the cards you want" art="craft" />
             <CraftTab />
           </>
         )}
 
         {route.page === 'shop' && (
           <>
-            <PageTitle title="Shop" subtitle="Booster packs and exclusive printings" />
+            <PageTitle title="Shop" subtitle="Booster packs and exclusive printings" art={route.shop === 'store' ? 'store' : 'packs'} />
             <SubTabs
               value={route.shop}
               options={[
@@ -454,11 +454,16 @@ function OnlinePlay({ onStart, onBuild }: { onStart: (s: GameSession) => void; o
   );
 }
 
-function PageTitle({ title, subtitle }: { title: string; subtitle: string }) {
+/** A page's heading, with its menu art (from any Magic card, scripts/ui-art.ts) behind it. */
+function PageTitle({ title, subtitle, art }: { title: string; subtitle: string; art?: UiArtKey }) {
+  const a = art ? UI_ART[art] : undefined;
   return (
-    <div className="page-title">
-      <h1>{title}</h1>
-      <p>{subtitle}</p>
+    <div className={`page-title ${a ? 'with-art' : ''}`}>
+      {a && <img className="page-title-art" src={a.artCrop} alt="" title={`${a.name}, art by ${a.artist}`} onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />}
+      <div className="page-title-text">
+        <h1>{title}</h1>
+        <p>{subtitle}</p>
+      </div>
     </div>
   );
 }
@@ -475,13 +480,15 @@ function SubTabs<T extends string>({ value, options, onChange }: { value: T; opt
   );
 }
 
-const TILES: { title: string; text: string; art: string; to: Partial<Route> }[] = [
-  { title: 'Play the computer', text: 'Your 60-card or Commander decks, 1 to 3 opponents.', art: 'sephiroth-planets-heir', to: { page: 'play', play: 'ai' } },
-  { title: 'Play friends', text: 'Host or join a Commander or 60-card table, with bots in any empty seats.', art: 'cloud-planets-champion', to: { page: 'play', play: 'online' } },
-  { title: 'Booster draft', text: 'Host or join a draft: pick the set, then players and bots.', art: 'terra-herald-of-hope', to: { page: 'play', play: 'draft' } },
-  { title: 'Open packs', text: 'Play and Collector Boosters, kept in your collection.', art: 'tifa-lockhart', to: { page: 'shop', shop: 'packs' } },
-  { title: 'Your collection', text: 'Every card you own, with its finishes.', art: 'tidus-yunas-guardian', to: { page: 'collection' } },
-  { title: 'Your decks', text: 'Build and edit decks from your cards.', art: 'yshtola-nights-blessed', to: { page: 'decks' } },
+const TILES: { title: string; text: string; art: UiArtKey; to: Partial<Route> }[] = [
+  { title: 'Play the computer', text: 'Your 60-card or Commander decks, 1 to 3 opponents. Earns Aether Shards.', art: 'playComputer', to: { page: 'play', play: 'ai' } },
+  { title: 'Play friends', text: 'Host or join a Commander or 60-card table, with bots in any empty seats.', art: 'playFriends', to: { page: 'play', play: 'online' } },
+  { title: 'Booster draft', text: 'Host or join a draft: pick the set, then players and bots.', art: 'draft', to: { page: 'play', play: 'draft' } },
+  { title: 'Open packs', text: 'Play and Collector Boosters, kept in your collection.', art: 'packs', to: { page: 'shop', shop: 'packs' } },
+  { title: 'Your collection', text: 'Every card you own, with its finishes.', art: 'collection', to: { page: 'collection' } },
+  { title: 'Your decks', text: 'Build and edit decks from your cards.', art: 'decks', to: { page: 'decks' } },
+  { title: 'Craft', text: 'Dismantle spare cards for fragments and craft the ones you want.', art: 'craft', to: { page: 'craft' } },
+  { title: 'Store', text: 'Precons, Secret Lairs and Store-only printings.', art: 'store', to: { page: 'shop', shop: 'store' } },
 ];
 
 /** The landing page after signing in: the lesson first for new players, then shortcuts to everything. */
@@ -520,7 +527,7 @@ function HomePage({ name, lessonDone, onLearn, onPractice, go }: { name: string 
       <div className="home-tiles">
         {TILES.map((t) => (
           <button key={t.title} className="home-tile" onClick={() => go(t.to)}>
-            {SCRYFALL[t.art] && <img src={SCRYFALL[t.art]!.image.artCrop} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />}
+            <img src={UI_ART[t.art].artCrop} alt="" title={`${UI_ART[t.art].name}, art by ${UI_ART[t.art].artist}`} loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
             <span className="home-tile-title">{t.title}</span>
             <span className="home-tile-text">{t.text}</span>
           </button>

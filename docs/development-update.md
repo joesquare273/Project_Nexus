@@ -5,6 +5,22 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Menu art from all of Magic
+
+The home tiles, the page headings (Play, Collection, Decks, Craft, Shop) and
+the sign-in page now use art from cards anywhere in Magic, chosen for what
+they show (user, 2026-11-04): Single Combat (play the computer), Friendly
+Rivalry (play friends), Cogwork Librarian (draft), Booster Tutor (packs),
+Hoarding Dragon (collection), The Deck of Many Things (decks), Kenku Artificer
+(craft), Black Market Connections (Store), Teach by Example (learning).
+`node packages/cards/scripts/ui-art.ts` looks each one up on Scryfall once
+and saves its art crop and artist in `packages/cards/data/ui-art.json`
+(`UI_ART`); the images load from Scryfall's image servers, and hovering one
+names the card and artist. To change a picture, change its card in the
+script and run it again. Final Fantasy art stays where it shows a Final
+Fantasy deck (the Starter Kits, the precon commanders). Home also gets Craft
+and Store tiles.
+
 ### Edge of Eternities group E3: removal, board wipes and lands
 
 26 cards across both decks: spot removal (Infernal Grasp, Putrefy, Beast

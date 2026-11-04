@@ -15,6 +15,7 @@ import preconPrintings from '../data/precon-printings.json' with { type: 'json' 
 import scryfall from '../data/scryfall.json' with { type: 'json' };
 import storeCards from '../data/store-cards.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
+import uiArt from '../data/ui-art.json' with { type: 'json' };
 import { validateCardList } from './validate.ts';
 
 export { validateCardDefinition, validateCardList } from './validate.ts';
@@ -193,3 +194,9 @@ export function preconDeck(name: string): PrintedPrecon {
     deck: precon.cards.flatMap((c) => Array<CardDefId>(c.count).fill(id(c.name))),
   };
 }
+
+/** Menu art from cards anywhere in Magic (scripts/ui-art.ts), by where it's used. */
+export interface UiArt { name: string; set: string; number: string; artist: string; artCrop: string; scryfallUri: string; why: string }
+export type UiArtKey = 'playComputer' | 'playFriends' | 'draft' | 'packs' | 'collection' | 'decks' | 'craft' | 'store' | 'learn';
+export const UI_ART = uiArt as unknown as Record<UiArtKey, UiArt>;
+
