@@ -163,7 +163,7 @@ export function playerProtectedFromOpponents(s: GameState, pid: PlayerId): boole
 }
 
 /** Whether a static rule from any permanent applies to `c` ("doesn't untap", "can't activate its abilities"). */
-export function staticRule(s: GameState, c: CardInstance, rule: 'doesntUntap' | 'cantActivateAbilities'): boolean {
+export function staticRule(s: GameState, c: CardInstance, rule: 'doesntUntap' | 'cantActivateAbilities' | 'mustBeBlocked'): boolean {
   return battlefield(s).some((source) => (defOf(s, source).statics ?? []).some((spec) => spec[rule] && staticAffects(s, source, spec, c)));
 }
 

@@ -468,7 +468,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'attached'].includes(cond)) e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'attached', 'attacking'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   if (st.grantsMana && (st.affects === 'Self' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types, on EquippedCreature or EachMatching.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);

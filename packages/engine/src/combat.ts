@@ -12,6 +12,7 @@ import { battlefield, aliveFromActive,
   dealDamage,
   damageSourceSnapshot,
   hasKeyword,
+  staticRule,
   isCreatureOnBattlefield,
   reject,
   tap,
@@ -249,7 +250,7 @@ export function blockProblem(s: GameState, playerId: PlayerId, blocks: Block[]):
   const mine = s.players[playerId]!.battlefield.map((id) => s.cards[id]!);
   for (const a of combat.attacks) {
     const attacker = s.cards[a.attacker]!;
-    if (a.defender !== playerId || !hasFlag(s, attacker, 'mustBeBlocked')) continue;
+    if (a.defender !== playerId || !(hasFlag(s, attacker, 'mustBeBlocked') || staticRule(s, attacker, 'mustBeBlocked'))) continue;
     if (blockersPerAttacker.has(a.attacker)) continue;
     const free = mine.filter((b) => !seen.has(b.id) && canBlock(s, b, attacker));
     if (free.length >= blockersNeeded(s, attacker)) return `"${a.attacker}" must be blocked if able.`;

@@ -5713,3 +5713,65 @@ describe('S4 group 58: Rydia, Ancient Adamantoise, Zenos', () => {
     expect(s.winner).toBe('P1');
   });
 });
+
+describe('S4 group 59: The Masamune, Ultima, Origin of Oblivion, Inalla', () => {
+  it('The Masamune: attacking, first strike and must be blocked if able', () => {
+    let s = newGame();
+    const { body } = equipped(s, 'the-masamune');
+    const guard = put(s, 'P2', 'coeurl');
+    expect(hasKeyword(s, s.cards[body]!, 'FirstStrike')).toBe(false);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: body, defender: 'P2' }] })).state;
+    expect(hasKeyword(s, s.cards[body]!, 'FirstStrike')).toBe(true);
+    s = nextStep(s);
+    expect(rejected(s, { type: 'DeclareBlockers', player: 'P2', blocks: [] })).toMatch(/must be blocked/);
+    s = act(s, { type: 'DeclareBlockers', player: 'P2', blocks: [{ blocker: guard, attacker: body }] });
+    expect(s.combat!.blocks.length).toBe(1);
+  });
+
+  it('The Masamune: the equipped creature’s dying-creature triggers trigger an additional time', () => {
+    let s = newGame();
+    equipped(s, 'the-masamune', 'sephiroth-fabled-soldier-sephiroth-one-winged-angel');
+    const life = s.players.P2!.life;
+    const cat = put(s, 'P2', 'coeurl');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(cat)] }).state;
+    expect(s.players.P2!.life).toBe(life - 2);
+  });
+
+  it('Ultima, Origin of Oblivion: attacking blights a land (it taps only for {C}); your lands make an extra {C}', () => {
+    let s = newGame();
+    const ultima = put(s, 'P1', 'ultima-origin-of-oblivion');
+    const theirs = put(s, 'P2', 'forest');
+    s = fight(s, [{ attacker: ultima, defender: 'P2' }], {}, { targets: (o) => o.find((x) => x.some((y) => y.kind === 'card' && y.card === theirs))! }).state;
+    expect(countersOf(s.cards[theirs]!, 'blight')).toBe(1);
+    expect(getLegalActions({ ...s, pending: { kind: 'priority', player: 'P2', passes: 0 } } as GameState).filter((a) => a.type === 'ActivateManaAbility' && a.card === theirs).map((a) => (a as { mana: string }).mana)).toEqual(['C']);
+    const mine = put(s, 'P1', 'forest', 'battlefield', { namedCounters: { blight: 1 } });
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: mine, mana: 'C' });
+    expect(s.players.P1!.manaPool.C).toBe(2);
+  });
+
+  it('Inalla: eminence from the command zone copies an entering Wizard for {1} (haste, exiled at end step); tap five Wizards: 7 life', () => {
+    let s = newGame();
+    put(s, 'P1', 'inalla-archmage-ritualist', 'command');
+    const elder = put(s, 'P1', 'mysidian-elder', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: elder });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending.kind).toBe('decide');
+    mana(s, 'P1', { C: 1 });
+    s = settle(act(s, { type: 'Decide', player: 'P1', accept: true })).state;
+    const copy = s.players.P1!.battlefield.find((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'mysidian-elder')!;
+    expect(copy).toBeDefined();
+    expect(hasKeyword(s, s.cards[copy]!, 'Haste')).toBe(true);
+    const wizards = [elder, copy, put(s, 'P1', 'mysidian-elder'), put(s, 'P1', 'mysidian-elder'), put(s, 'P1', 'laboratory-maniac')];
+    const inalla = put(s, 'P1', 'inalla-archmage-ritualist');
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: inalla, ability: 0, costCards: wizards, targets: [player('P2')] }).state;
+    expect(s.players.P2!.life).toBe(life - 7);
+    expect(wizards.every((id) => s.cards[id]!.tapped)).toBe(true);
+    s = goTo(s, 'end');
+    expect(s.cards[copy]?.zone ?? 'void').not.toBe('battlefield');
+  });
+});

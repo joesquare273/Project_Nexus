@@ -88,7 +88,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -739,6 +739,8 @@ export interface EffectSpec {
   /** ExileUntilFound: only a card with lesser mana value than the triggering spell; the rest go on the bottom in a random order (Jodah). */
   lesserThanSubject?: boolean;
   restToBottom?: boolean;
+  /** CreateTokenCopy: the copy is exiled at the beginning of the next end step (Inalla). */
+  exileAtEndStep?: boolean;
   /** CreateTokenCopy with `sacrificeAtEndStep`: at your next end step, not just the next one. */
   atYourEndStep?: boolean;
   /** CreateTokenCopy: the copies' equip abilities cost this much less; sacrificed at the beginning of the next upkeep (Firion). */
@@ -1086,6 +1088,8 @@ export interface ObjectFilter {
 }
 
 export interface TriggerSpec {
+  /** Eminence: also works while the card is in the command zone. */
+  eminence?: boolean;
   /** Support X: target slots are fixed when the entry trigger is queued. */
   supportX?: boolean;
   when: TriggerEvent;
@@ -1215,6 +1219,8 @@ export interface ActivatedSpec {
     removeCounter?: { counter?: AnyCounter; from?: ObjectFilter };
     /** "Pay 3 life". */
     life?: number;
+    /** "Tap five untapped Wizards you control" (chosen with `costCards`; summoning sickness doesn't matter). */
+    tapUntapped?: { filter: ObjectFilter; count: number };
     /** Ninjutsu: return an unblocked attacker you control to its owner's hand (chosen with the action, `costCards`). */
     returnUnblockedAttacker?: boolean;
   };
@@ -1273,6 +1279,8 @@ export interface StaticSpec {
   playLandsFromGraveyard?: boolean;
   /** Hades: "If a card or token would be put into your graveyard from anywhere, exile it instead." */
   exileInsteadOfYourGraveyard?: boolean;
+  /** Ultima: whenever you tap a land for {C}, add an additional {C}. */
+  extraColorlessFromLands?: boolean;
   /** Kinnan: whenever you tap a nonland permanent for mana, add one more mana of a type it produced. */
   extraManaFromNonlandTaps?: boolean;
   /** Teferi, Mage of Zhalfir: creature cards its controller owns that aren't on the battlefield have flash. */
@@ -1319,7 +1327,7 @@ export interface StaticSpec {
    * a permanent matching this filter entering (Traveling Chocobo: a land or
    * Bird you control).
    */
-  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter; /** Isshin: abilities triggered by a creature attacking. */ attacking?: true };
+  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter; /** Isshin: abilities triggered by a creature attacking. */ attacking?: true; /** The Masamune: dying-creature triggers of the equipped creature (or this permanent) and of your emblems. */ dying?: true };
   /** Ward (rule 702.21): each affected permanent has ward with this cost (Bronze Guardian). */
   ward?: number;
   /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
@@ -1371,7 +1379,9 @@ export interface StaticSpec {
    * "as long as equipped creature is legendary".
    */
   /** `attached`: only while this Equipment is attached to a creature (for EachMatching abilities it grants). */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'attached')[];
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'attached' | 'attacking')[];
+  /** "Must be blocked if able" while this applies (The Masamune). */
+  mustBeBlocked?: boolean;
   power?: Amount;
   toughness?: Amount;
   keywords?: Keyword[];
@@ -1758,6 +1768,8 @@ export interface CardInstance {
   addedSubtypes?: string[];
   /** With `sacrificeAtEndStep`: only at this player's end step ("your next end step"). */
   sacrificeAtEndStepOf?: PlayerId;
+  /** Exiled at the beginning of the next end step (Inalla's token copies). */
+  exileAtEndStep?: boolean;
   /** Sacrificed at the beginning of the next upkeep (Firion's token copies). */
   sacrificeAtNextUpkeep?: boolean;
   /** A creature spell that gains haste until end of turn as it enters (Summon: Brynhildr). */
@@ -2054,6 +2066,8 @@ export type StackItem = SpellItem | AbilityItem;
 
 /** A triggered ability waiting to be put on the stack. */
 export interface QueuedTrigger {
+  /** From an emblem (a permanent delayed trigger). */
+  emblem?: boolean;
   /** Rule triggers have no physical source; source is the @monarch designation key. */
   rule?: 'monarch';
   subjectObject?: number;

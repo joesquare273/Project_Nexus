@@ -118,6 +118,8 @@ export function manaAbilityAmount(c: CardInstance, def: CardDefinition): number 
  */
 export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   const def = currentDefinition(s, c);
+  // Ultima: a land with a blight counter loses its land types and abilities and has "{T}: Add {C}."
+  if (def.types.includes('land') && (c.namedCounters?.blight ?? 0) > 0) return ['C'];
   const ability = def.manaAbility;
   const yours = () => s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === c.controller);
   // "Add {G} for each +1/+1 counter": nothing to add without counters.

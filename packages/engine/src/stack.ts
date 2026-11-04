@@ -616,6 +616,11 @@ export function activateManaAbility(
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
   if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
+  // Ultima, Origin of Oblivion: "Whenever you tap a land for {C}, add an additional {C}" (a triggered mana ability).
+  if (mana === 'C' && def.types.includes('land')) {
+    const ultimas = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.extraColorlessFromLands)).length;
+    for (let i = 0; i < ultimas; i++) addMana(ctx, playerId, 'C', id);
+  }
   kinnanBonus(ctx, playerId, c, mana, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
   if (ability?.nextCreatureCounters) {
@@ -1275,6 +1280,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   }
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length < (spec.cost.sacrificeCount ?? 1)) return 'You have nothing to sacrifice for that.';
   if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
+  if (spec.cost.tapUntapped && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   const n = spec.cost.discard ?? 0;
   if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
@@ -1337,6 +1343,11 @@ export function sacrificeCandidates(s: GameState, playerId: PlayerId, filter: Ob
 }
 
 /** Ways to pay an ability's "discard" or "sacrifice a ..." cost: one list of cards per way. */
+function tapCostCandidates(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[] {
+  const t = spec.cost.tapUntapped;
+  return t ? battlefield(s).filter((c) => c.controller === playerId && !c.tapped && !c.phasedOut && matchesObject(s, t.filter, c, { controller: playerId, source })).map((c) => c.id) : [];
+}
+
 function graveyardCostCandidates(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): InstanceId[] {
   return spec.cost.exileGraveyard ? player(s, playerId).graveyard.filter(id => matchesObject(s, spec.cost.exileGraveyard!.filter, s.cards[id]!, { controller: playerId, source })) : [];
 }
@@ -1353,6 +1364,7 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
     };
     walk(0,[],0);return out;
   }
+  if (spec.cost.tapUntapped) return subsets(tapCostCandidates(s, playerId, spec, source), spec.cost.tapUntapped.count, spec.cost.tapUntapped.count).slice(0, 50);
   if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
   if (spec.cost.sacrifice) {
     const n = spec.cost.sacrificeCount ?? 1;
@@ -1400,6 +1412,9 @@ export function activateAbility(
   if (spec.cost.crew !== undefined) {
     const candidates=crewCandidates(s,playerId,id).map(c=>c.id);
     if(new Set(costCards).size!==costCards.length || costCards.some(k=>!candidates.includes(k)) || costCards.reduce((sum,k)=>sum+powerOf(s,s.cards[k]!),0)<spec.cost.crew) reject('Choose other untapped creatures you control with enough total power to crew.');
+  } else if (spec.cost.tapUntapped) {
+    const able = tapCostCandidates(s, playerId, spec, id);
+    if (costCards.length !== spec.cost.tapUntapped.count || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${spec.cost.tapUntapped.count} untapped matching permanents you control to tap.`);
   } else if (spec.cost.exileGraveyard) {
     const available = graveyardCostCandidates(s, playerId, spec, id);
     if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
@@ -1432,6 +1447,7 @@ export function activateAbility(
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
+  if (spec.cost.tapUntapped) for (const k of costCards) tap(ctx, s.cards[k]!);
   if (spec.cost.crew !== undefined) {
     for (const crew of costCards) tap(ctx,s.cards[crew]!);
     // "A Vehicle crewed by Balthier and Fran this turn".
@@ -1450,7 +1466,7 @@ export function activateAbility(
   const ninjutsuDefender = spec.cost.returnUnblockedAttacker ? s.combat!.attacks.find((a) => a.attacker === costCards[0])!.defender : undefined;
   if (spec.cost.returnUnblockedAttacker) moveCard(ctx, costCards[0]!, 'hand');
   else if (spec.cost.sacrifice) for (const k of costCards) sacrifice(ctx, k);
-  else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined) for (const discarded of costCards) discard(ctx, discarded);
+  else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined && !spec.cost.tapUntapped) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
@@ -2633,6 +2649,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           // "At the beginning of your next end step": only the controller's.
           if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
           if (effect.sacrificeAtNextUpkeep) s.cards[token]!.sacrificeAtNextUpkeep = true;
+          if (effect.exileAtEndStep) s.cards[token]!.exileAtEndStep = true;
           r.createdTokens.push(token);
         }
       }

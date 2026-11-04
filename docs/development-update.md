@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-03
 
+### Set cards, group 59: The Masamune, Ultima, Origin of Oblivion, Inalla
+
+Three more set cards (316 of 320). Static abilities can depend on the
+creature attacking and can make it "must be blocked"; dying-creature
+triggers can trigger again (emblems too, which queued triggers now mark);
+blight counters turn a land's mana into {C}; eminence triggers work from the
+command zone; and costs can tap N untapped matching permanents.
+
 ### Set cards, group 58: Rydia, Ancient Adamantoise, Zenos
 
 Three more set cards (313 of 320). Rydia returns a Saga paying X equal to

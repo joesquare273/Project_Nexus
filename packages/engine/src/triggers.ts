@@ -364,6 +364,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     .map(([id]) => s.cards[id]!)
     .filter(c=>(c.lastDefinition??defOf(s,c)).triggers?.length);
   const inGraveyards = s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.map((id) => s.cards[id]!)).filter(withTriggers);
+  const inCommand = s.turnOrder.flatMap((pid) => s.players[pid]!.command.map((id) => s.cards[id]!)).filter((c) => defOf(s, c).triggers?.some((t) => t.eminence));
 
   const found: QueuedTrigger[] = [];
   for (const e of events) {
@@ -407,12 +408,13 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     }
   }
   const batched = new Set<string>();
-  const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard', o: Occurrence) => {
+  const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard' | 'command', o: Occurrence) => {
     if (s.players[controller]!.eliminated) return;
     const definition = zone === 'battlefield' && c.zone !== 'battlefield' ? c.lastDefinition ?? defOf(s,c) : defOf(s,c);
     definition.triggers!.forEach((original, ability) => {
       let spec = original;
-      if ((spec.zone ?? 'battlefield') !== zone || !triggersOn(spec, o, s, c.id, controller)) return;
+      const inZone = (spec.zone ?? 'battlefield') === zone || (spec.eminence && zone === 'command');
+      if (!inZone || !triggersOn(spec, o, s, c.id, controller)) return;
       const key = `${c.id}#${spec.onceKey ?? ability}`;
       if (spec.oneOrMore) {
         const batchKey=o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key;
@@ -465,6 +467,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       if (sawIt) consider(c, m.controller ?? c.owner, 'battlefield', o);
     }
     for (const c of inGraveyards) consider(c, c.owner, 'graveyard', o);
+    for (const c of inCommand) consider(c, c.owner, 'command', o);
     // Delayed triggers work even after their source has left (rule 603.7).
     for (const d of s.delayedTriggers ?? []) {
       if ((!d.emblem && d.turn !== s.turnNumber) || s.players[d.controller]!.eliminated || !triggersOn(d.spec, o, s, d.source, d.controller)) continue;
@@ -475,6 +478,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         source: d.source,
         sourceObject: d.sourceObject,
         ability: -1,
+        ...(d.emblem ? { emblem: true } : {}),
         controller: d.controller,
         sourceZone: 'battlefield',
         ...(o.subjectController ? { subjectController: o.subjectController } : {}),
@@ -497,7 +501,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
 
 /** How many extra times a found trigger triggers, from "triggers an additional time" abilities its controller has. */
 function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
-  if (t.rule || t.ability < 0) return 0;
+  if (t.rule || (t.ability < 0 && !t.emblem)) return 0;
   const source = s.cards[t.source];
   const spec = t.spec;
   let extra = 0;
@@ -511,6 +515,10 @@ function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
         if (equipped && (t.source === p.id || source?.attachedTo === p.id)) extra++;
       }
       if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack')) extra++;
+      if (more.dying && spec?.when === 'Dies') {
+        const holder = st.affects === 'EquippedCreature' ? p.attachedTo : p.id;
+        if (holder && (t.source === holder || t.emblem)) extra++;
+      }
       if (more.entering && spec?.when === 'EntersBattlefield' && t.subject) {
         const subject = s.cards[t.subject];
         if (subject && source?.controller === p.controller && matchesObject(s, more.entering, subject, { controller: p.controller, source: p.id })) extra++;
