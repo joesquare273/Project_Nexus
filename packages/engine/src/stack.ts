@@ -3729,6 +3729,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   } else if (pending.purpose === 'bounce') {
     for (const id of cards) if (s.cards[id]!.zone === 'battlefield') moveCard(ctx, id, 'hand');
+  } else if (pending.purpose === 'counter') {
+    // "Put a +1/+1 counter on a creature you control" (Sword of Truth and Justice): chosen, not targeted.
+    for (const id of cards) addCounters(ctx, id, 1, pending.player);
+  } else if (pending.purpose === 'attachSource') {
+    // "Then attach it to a creature you control" (Sidequest: Play Blitzball).
+    const src = s.cards[sourceOf(r.item)]!;
+    for (const id of cards) if (src.zone === 'battlefield' && isCreatureOnBattlefield(s, s.cards[id])) attach(ctx, src.id, id);
   } else if (pending.purpose === 'link') {
     const src = s.cards[sourceOf(r.item)]!;
     if (cards[0] && src.zone === 'battlefield') src.linkedCreature = { card: cards[0] };

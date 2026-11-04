@@ -1140,6 +1140,10 @@ function PromptBar(p: PromptProps) {
             ? 'to sacrifice'
             : c.purpose === 'bounce'
               ? `to return to its owner’s hand${c.min === 0 ? ' (or none)' : ''}`
+            : c.purpose === 'counter'
+              ? 'creature to get a +1/+1 counter'
+            : c.purpose === 'attachSource'
+              ? 'creature to attach it to'
             : c.purpose === 'link'
               ? 'creature to choose'
             : c.purpose === 'attachToTarget'

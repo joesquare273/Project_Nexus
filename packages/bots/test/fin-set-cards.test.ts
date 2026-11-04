@@ -1136,8 +1136,11 @@ describe('Secret Lair cards built so far', () => {
     expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['graveyard', 'graveyard']);
     let t = newGame();
     const c = put(t, 'P2', 'jumbo-cactuar');
-    t = castIt(t, 'star-of-extinction', { R: 2, C: 5 });
+    // "Destroy target land" too.
+    const land = put(t, 'P2', 'forest');
+    t = castIt(t, 'star-of-extinction', { R: 2, C: 5 }, [card(land)]);
     expect(t.cards[c]!.zone).toBe('graveyard');
+    expect(t.cards[land]!.zone).toBe('graveyard');
   });
 
   it('Heroic Intervention makes your permanents indestructible and hexproof this turn', () => {
@@ -1249,7 +1252,10 @@ describe('Secret Lair: Sword of Truth and Justice', () => {
     let s = newGame();
     const { body } = equipped(s, 'sword-of-truth-and-justice', 'hill-gigas');
     const other = put(s, 'P1', 'coeurl', 'battlefield', { counters: 1 });
-    s = fight(s, [{ attacker: body, defender: 'P2' }], {}, { targets: () => [card(body)] }).state;
+    s = fight(s, [{ attacker: body, defender: 'P2' }]).state;
+    // "A creature you control": chosen as the trigger resolves, not targeted.
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'counter' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [body] })).state;
     expect(s.players.P2!.life).toBe(13);
     expect(countersOf(s.cards[body]!, '+1/+1')).toBe(2);
     expect(countersOf(s.cards[other]!, '+1/+1')).toBe(2);

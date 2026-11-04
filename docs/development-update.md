@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Card audit across every card
+
+`packages/cards/scripts/card-audit.ts` checks all 704 built cards against
+their Oracle text (too many or missing targets, optional targets first,
+"you may" without an optional part) and groups every card by the engine
+features it uses (`docs/card-audit-generated.md`); `docs/card-audit.md` has
+the verdict for each flag. Fixed: Star of Extinction now destroys its target
+land; Sword of Truth and Justice and Sidequest: Play Blitzball choose their
+creature as they resolve (`ChoosePermanent` `counter` and `attachSource`).
+
+
 ### Target sequencing scan of the Final Fantasy cards
 
 A scripted pass over every built fin, fic and fca card compared each

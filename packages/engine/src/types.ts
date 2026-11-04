@@ -759,7 +759,7 @@ export interface EffectSpec {
   /** AttachEquipmentTo: the creature is this earlier target (by position) rather than the effect's own target. */
   toTarget?: number;
   /** ChoosePermanent: what happens to the chosen permanent. */
-  choiceThen?: 'bounce' | 'link';
+  choiceThen?: 'bounce' | 'link' | 'counter' | 'attachSource';
   /** AddSubtypes: the subtypes gained. */
   addSubtypes?: string[];
   /** AddCounters: then double the number of +1/+1 counters on it (Sazh Katzroy). */
@@ -2195,7 +2195,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

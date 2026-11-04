@@ -80,6 +80,9 @@ this repo, not only in local memory.
 - `docs/card-types.md`: card types and categories (permanent, nonpermanent,
   spell), the rules each brings, and whether they are built. Rules tied to a
   type or category live in the engine (`typerules.ts`), not on each card.
+- `docs/card-audit.md`: the card audit (targets and choices against Oracle
+  text) and its generated report grouping cards by engine feature;
+  `node packages/cards/scripts/card-audit.ts` reruns it.
 - `docs/packs.md`: the Packs tab (booster odds, card data, collection).
 - `docs/sealed.md`: draft events and the Final Fantasy set roadmap (S1-S4).
 - `docs/economy.md`: the Aether Shards currency plan (E1-E5): prices, rewards,
