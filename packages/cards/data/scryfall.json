@@ -1163,6 +1163,28 @@
     "scryfallId": "a2de3346-9647-4540-ba41-e67c24ddf141",
     "relatedTokens": []
   },
+  "beast-token-eoc": {
+    "name": "Beast",
+    "typeLine": "Token Creature — Beast",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "6",
+    "artist": "Xabi Gaztelua",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/6/beast?utm_source=api",
+    "scryfallId": "eb243b20-85e6-4eba-9403-42272975e8a5",
+    "relatedTokens": [
+      {
+        "name": "Beast",
+        "scryfallId": "eb243b20-85e6-4eba-9403-42272975e8a5"
+      }
+    ]
+  },
   "beast-within": {
     "name": "Beast Within",
     "typeLine": "Instant",
@@ -3838,6 +3860,50 @@
     "scryfallId": "aec83c9a-8ec4-4a5a-b27f-0e74a2b3d21e",
     "relatedTokens": []
   },
+  "elemental-5-3-token-eoc": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "7",
+    "artist": "Nils Hamm",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/7/elemental?utm_source=api",
+    "scryfallId": "0b0229d7-8635-4509-b141-12787af32855",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "0b0229d7-8635-4509-b141-12787af32855"
+      }
+    ]
+  },
+  "elemental-5-5-token-eoc": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "8",
+    "artist": "Brad Rigney",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/8/elemental?utm_source=api",
+    "scryfallId": "5e3552f9-1c22-46f7-b606-c8a59950bf75",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "5e3552f9-1c22-46f7-b606-c8a59950bf75"
+      }
+    ]
+  },
   "elemental-token": {
     "name": "Elemental",
     "typeLine": "Token Creature — Elemental",
@@ -5574,6 +5640,28 @@
     "scryfallId": "849f5716-7211-4e93-a220-f88d49f937f4",
     "relatedTokens": []
   },
+  "golem-enchantment-token-eoc": {
+    "name": "Golem",
+    "typeLine": "Token Enchantment Artifact Creature — Golem",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "13",
+    "artist": "Yeong-Hao Han",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789",
+      "normal": "https://cards.scryfall.io/normal/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789",
+      "large": "https://cards.scryfall.io/large/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/13/golem?utm_source=api",
+    "scryfallId": "51cfd1dc-b7f8-418b-9a7a-76d887f83929",
+    "relatedTokens": [
+      {
+        "name": "Golem",
+        "scryfallId": "51cfd1dc-b7f8-418b-9a7a-76d887f83929"
+      }
+    ]
+  },
   "golem-foundry": {
     "name": "Golem Foundry",
     "typeLine": "Artifact",
@@ -6492,6 +6580,28 @@
     "scryfallUri": "https://scryfall.com/card/eoc/84/infernal-grasp?utm_source=api",
     "scryfallId": "060b7e5f-5b40-4efc-9fad-4cebf40b654b",
     "relatedTokens": []
+  },
+  "insect-token-eoc": {
+    "name": "Insect",
+    "typeLine": "Token Creature — Insect",
+    "oracleText": "Flying",
+    "set": "teoc",
+    "number": "4",
+    "artist": "Deruchenko Alexander",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/4/insect?utm_source=api",
+    "scryfallId": "2172a126-2ea6-4b5c-84c2-7879c1982a3a",
+    "relatedTokens": [
+      {
+        "name": "Insect",
+        "scryfallId": "2172a126-2ea6-4b5c-84c2-7879c1982a3a"
+      }
+    ]
   },
   "insight-engine": {
     "name": "Insight Engine",

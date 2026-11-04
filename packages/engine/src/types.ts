@@ -602,6 +602,8 @@ export const COUNT_KINDS = [
   'OpponentsDealtCombatDamageThisTurn',
   /** Cards in your graveyard (Sidequest: Card Collection). */
   'CardsInYourGraveyard',
+  /** Land cards in your graveyard (Uurg, Scouring Swarm). */
+  'LandCardsInYourGraveyard',
   /** Your devotion to red: {R} symbols in the mana costs of permanents you control (rule 700.5). */
   'DevotionToRed',
   /** Creatures that died under an opponent's control this turn. */
@@ -815,6 +817,8 @@ export interface EffectSpec {
   ifPreviousTargetManaValueAtMost?: number;
   /** Revolt: only if (true) or unless (false) a permanent left the battlefield under your control this turn. */
   ifRevolt?: boolean;
+  /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
+  ifCount?: { count: CountKind; atLeast: number; not?: boolean };
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
   lookTo?: 'hand' | 'battlefield';
   /** LookAtTopPutMatching onto the battlefield: tapped (Ignis), or tapped and attacking with indestructible until end of turn (Winota). */
@@ -1169,6 +1173,8 @@ export interface TriggerSpec {
   ifNotEnteredThisTurn?: boolean;
   /** Intervening "if": "if you gained life this turn". */
   ifYouGainedLifeThisTurn?: boolean;
+  /** "When this creature enters, if it was kicked" (an intervening if on the source). */
+  ifKicked?: boolean;
   /** Intervening "if": "if a card left your graveyard this turn". */
   ifCardLeftYourGraveyardThisTurn?: boolean;
   /** Intervening "if": "if a counter was put on this creature this turn". */
@@ -1869,6 +1875,8 @@ export interface CardInstance {
   linkedExile?: { source: InstanceId; sourceObject: number; lookers: PlayerId[] };
   /** The value of {X} it was cast with, while it's on the battlefield. */
   xPaid?: number;
+  /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
+  kicksPaid?: number;
   /** A commander (Commander format). Stays true whatever zone it's in. */
   isCommander?: boolean;
   /** Its owner chose to leave this commander where it went instead of the command zone (rule 903.9). */

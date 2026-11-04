@@ -237,6 +237,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
   const p = s.players[controller]!;
   if (spec.ifYouGainedLifeThisTurn && !((p.lifeGainedThisTurn ?? 0) > 0)) return false;
   if (spec.ifYourGraveyardAtLeast !== undefined && p.graveyard.length < spec.ifYourGraveyardAtLeast) return false;
+  if (spec.ifKicked && !(s.cards[source]?.kicksPaid ?? 0)) return false;
   if (spec.ifNotEnteredThisTurn && s.cards[source]?.enteredTurn === s.turnNumber) return false;
   if (spec.ifCardLeftYourGraveyardThisTurn && p.cardLeftGraveyardTurn !== s.turnNumber) return false;
   if (spec.ifYouControlNone && battlefield(s).some((c) => c.controller === controller && matchesObject(s, spec.ifYouControlNone, c, { controller, source }))) return false;

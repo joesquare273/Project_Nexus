@@ -33,7 +33,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 | Deck | Commander | Fully built |
 |---|---|---|
 | Counter Intelligence | Inspirit, Flagship Vessel (URW) | 44/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 38/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 49/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -70,6 +70,13 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   `castFromGraveyard.sacrificeLand` (CastSpell `sacrificeLand`).
   Simplification: Inspirit's choice of a +1/+1 counter or two charge counters
   is made as the trigger goes on the stack (a mode) rather than as it resolves.
+- **E2 (2026-11-04): lands sacrificed, and landfall.** Hammer of Purphoros,
+  Uurg, Spawn of Turg, Sprouting Goblin, Baloth Prime, Harrow, Roiling
+  Regrowth, Springbloom Druid, Scouring Swarm, Rampaging Baloths, Omnath,
+  Locus of Rage, Titania, Protector of Argoth, with five tokens from teoc
+  (Beast 4/4, Golem 3/3, Insect 1/1, Elementals 5/5 and 5/3). Engine: the
+  `LandCardsInYourGraveyard` count, `ifCount` on effects, `ifKicked` triggers
+  (`kicksPaid` on the permanent), and CreateTokenCopy `entersTapped`.
 
 ## Commander rules (built)
 

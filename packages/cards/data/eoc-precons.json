@@ -1020,12 +1020,8 @@
           "count": 1,
           "set": "eoc",
           "number": "13",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Exploration Broodship",
@@ -1051,10 +1047,8 @@
           "count": 1,
           "set": "eoc",
           "number": "16",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Eumidian Hatchery",
@@ -1128,11 +1122,8 @@
           "count": 1,
           "set": "eoc",
           "number": "88",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Moraug, Fury of Akoum",
@@ -1227,11 +1218,8 @@
           "count": 1,
           "set": "eoc",
           "number": "104",
-          "implemented": false,
-          "needs": [
-            "landfall",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Splendid Reclamation",
@@ -1256,10 +1244,8 @@
           "count": 1,
           "set": "eoc",
           "number": "111",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "World Breaker",
@@ -1331,12 +1317,8 @@
           "count": 1,
           "set": "eoc",
           "number": "123",
-          "implemented": false,
-          "needs": [
-            "landfall",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Soul of Windgrace",
@@ -1459,10 +1441,8 @@
           "count": 1,
           "set": "eoc",
           "number": "51",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Binding the Old Gods",
@@ -1540,13 +1520,8 @@
           "count": 1,
           "set": "eoc",
           "number": "90",
-          "implemented": false,
-          "needs": [
-            "kicker",
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Aftermath Analyst",
@@ -1593,10 +1568,8 @@
           "count": 1,
           "set": "eoc",
           "number": "98",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Nature's Lore",
@@ -1611,10 +1584,8 @@
           "count": 1,
           "set": "eoc",
           "number": "105",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Satyr Wayfinder",
@@ -1692,14 +1663,8 @@
           "count": 1,
           "set": "eoc",
           "number": "127",
-          "implemented": false,
-          "needs": [
-            "surveil",
-            "static-abilities",
-            "triggers",
-            "activated-abilities",
-            "count-based-pt"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Bojuka Bog",

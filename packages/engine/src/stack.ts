@@ -2898,6 +2898,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
           if (effect.sacrificeAtNextUpkeep) s.cards[token]!.sacrificeAtNextUpkeep = true;
           if (effect.exileAtEndStep) s.cards[token]!.exileAtEndStep = true;
+          if (effect.entersTapped) s.cards[token]!.tapped = true;
           r.createdTokens.push(token);
         }
       }
@@ -3493,6 +3494,7 @@ function continueResolving(ctx: Ctx): void {
       if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
+    if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
     if (effect.ifNthResolutionThisTurn !== undefined) {
       // Counted once per resolution: this effect is reached once each time the ability resolves.
@@ -3615,6 +3617,7 @@ export function resolveTop(ctx: Ctx): void {
       if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
       if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
+      if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;

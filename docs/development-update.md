@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Edge of Eternities group E2: lands sacrificed, and landfall
+
+Eleven World Shaper cards (Hammer of Purphoros, Uurg, Sprouting Goblin, Baloth
+Prime, Harrow, Roiling Regrowth, Springbloom Druid, Scouring Swarm, Rampaging
+Baloths, Omnath, Titania) and their five tokens. World Shaper is at 49/100.
+See docs/commander.md.
+
 ### Edge of Eternities group E1: station and the Spacecraft
 
 Both commanders and the other two Spacecraft are built (Inspirit, Uthros

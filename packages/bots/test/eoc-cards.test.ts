@@ -165,3 +165,154 @@ describe('Exploration Broodship', () => {
 });
 
 void card;
+
+// Group 2: lands sacrificed, and landfall.
+describe('E2: sacrificing lands', () => {
+  const tokens = (s: GameState, defId: string, who = 'P1') => s.players[who]!.battlefield.filter((id) => s.cards[id]!.defId === defId);
+  const libraryOf = (s: GameState, ids: string[]) => { s.players.P1!.library = [...ids, ...s.players.P1!.library.filter((x) => !ids.includes(x))]; };
+
+  it('Hammer of Purphoros: your creatures have haste; {2}{R}, {T}, sacrifice a land: a 3/3 Golem', () => {
+    let s = newGame();
+    const hammer = put(s, 'P1', 'hammer-of-purphoros');
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { summoningSick: true });
+    const land = put(s, 'P1', 'forest');
+    expect(hasKeyword(s, s.cards[cat]!, 'Haste')).toBe(true);
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: hammer, ability: 0, costCards: [land] }).state;
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    const golem = tokens(s, 'golem-enchantment-token-eoc');
+    expect(golem).toHaveLength(1);
+    expect(currentDefinition(s, s.cards[golem[0]!]!).types).toEqual(['enchantment', 'artifact', 'creature']);
+  });
+
+  it('Uurg: power equal to the land cards in your graveyard; {B}{G}, sacrifice a land: 2 life', () => {
+    let s = newGame();
+    const uurg = put(s, 'P1', 'uurg-spawn-of-turg');
+    put(s, 'P1', 'forest', 'graveyard');
+    put(s, 'P1', 'coeurl', 'graveyard');
+    expect(powerOf(s, s.cards[uurg]!)).toBe(1);
+    const land = put(s, 'P1', 'swamp');
+    const life = s.players.P1!.life;
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: uurg, ability: 0, costCards: [land] }).state;
+    expect(s.players.P1!.life).toBe(life + 2);
+    expect(powerOf(s, s.cards[uurg]!)).toBe(2);
+  });
+
+  it('Sprouting Goblin: kicked, it finds a land with a basic land type; not kicked, nothing', () => {
+    for (const kicked of [true, false]) {
+      let s = newGame();
+      const goblin = put(s, 'P1', 'sprouting-goblin', 'hand');
+      const forest = put(s, 'P1', 'forest', 'library');
+      mana(s, 'P1', { R: 1, G: 1, C: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: goblin, ...(kicked ? { kicks: 1 } : {}) }).state;
+      expect(s.cards[forest]!.zone).toBe(kicked ? 'hand' : 'library');
+    }
+  });
+
+  it('Baloth Prime: enters tapped with six stun counters; each land you sacrifice makes a tapped 4/4 Beast and untaps it', () => {
+    let s = newGame();
+    const baloth = put(s, 'P1', 'baloth-prime', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: baloth }).state;
+    expect(s.cards[baloth]!.tapped).toBe(true);
+    expect(s.cards[baloth]!.namedCounters?.stun).toBe(6);
+    const land = put(s, 'P1', 'forest');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: baloth, ability: 0, costCards: [land] }).state;
+    const beasts = tokens(s, 'beast-token-eoc');
+    expect(beasts).toHaveLength(1);
+    expect(s.cards[beasts[0]!]!.tapped).toBe(true);
+    // Untapping with a stun counter removes one instead (rule 122.1d).
+    expect(s.cards[baloth]!.namedCounters?.stun).toBe(5);
+  });
+
+  it('Harrow: sacrifice a land as you cast it for two basic lands untapped; Roiling Regrowth, tapped', () => {
+    let s = newGame();
+    const harrow = put(s, 'P1', 'harrow', 'hand');
+    const land = put(s, 'P1', 'forest');
+    const basics = [put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'island', 'library')];
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: harrow, costCards: [land] })).state;
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    expect(basics.map((id) => [s.cards[id]!.zone, s.cards[id]!.tapped])).toEqual([['battlefield', false], ['battlefield', false]]);
+    let t = newGame();
+    const regrowth = put(t, 'P1', 'roiling-regrowth', 'hand');
+    const own = put(t, 'P1', 'forest');
+    const more = [put(t, 'P1', 'forest', 'library'), put(t, 'P1', 'forest', 'library')];
+    mana(t, 'P1', { G: 1, C: 2 });
+    t = settle(act(t, { type: 'CastSpell', player: 'P1', card: regrowth })).state;
+    for (let i = 0; i < 3 && t.pending.kind === 'chooseCards'; i++) t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: t.pending.cards.slice(0, Math.max(t.pending.min, Math.min(2, t.pending.max))) })).state;
+    expect(t.cards[own]!.zone).toBe('graveyard');
+    expect(more.map((id) => [t.cards[id]!.zone, t.cards[id]!.tapped])).toEqual([['battlefield', true], ['battlefield', true]]);
+  });
+
+  it('Springbloom Druid: if you sacrifice a land as it enters, two basic lands tapped; if not, none', () => {
+    for (const sac of [true, false]) {
+      let s = newGame();
+      const druid = put(s, 'P1', 'springbloom-druid', 'hand');
+      const land = put(s, 'P1', 'forest');
+      const basics = [put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'forest', 'library')];
+      mana(s, 'P1', { G: 1, C: 2 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: druid }).state;
+      expect(s.pending).toMatchObject({ kind: 'chooseCards', min: 0 });
+      s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: sac ? [land] : [] })).state;
+      if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: s.pending.cards.slice(0, 2) })).state;
+      expect(s.cards[land]!.zone).toBe(sac ? 'graveyard' : 'battlefield');
+      expect(basics.filter((id) => s.cards[id]!.zone === 'battlefield')).toHaveLength(sac ? 2 : 0);
+    }
+  });
+
+  it('Scouring Swarm: a sacrificed land makes a tapped 1/1 flying Insect, or a copy with seven land cards in your graveyard', () => {
+    for (const lands of [0, 7]) {
+      let s = newGame();
+      const swarm = put(s, 'P1', 'scouring-swarm');
+      for (let i = 0; i < lands; i++) put(s, 'P1', 'forest', 'graveyard');
+      const hammer = put(s, 'P1', 'hammer-of-purphoros');
+      const land = put(s, 'P1', 'forest');
+      mana(s, 'P1', { R: 1, C: 2 });
+      s = cast(s, { type: 'ActivateAbility', player: 'P1', card: hammer, ability: 0, costCards: [land] }).state;
+      const copies = s.players.P1!.battlefield.filter((id) => id !== swarm && s.cards[id]!.defId === 'scouring-swarm');
+      expect(copies).toHaveLength(lands >= 7 ? 1 : 0);
+      expect(tokens(s, 'insect-token-eoc')).toHaveLength(lands >= 7 ? 0 : 1);
+      for (const id of [...copies, ...tokens(s, 'insect-token-eoc')]) expect(s.cards[id]!.tapped).toBe(true);
+    }
+  });
+});
+
+describe('E2: landfall and lands leaving', () => {
+  const tokens = (s: GameState, defId: string) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === defId);
+
+  it('Rampaging Baloths: a land entering makes a 4/4 Beast; Omnath, a 5/5 Elemental', () => {
+    let s = newGame();
+    put(s, 'P1', 'rampaging-baloths');
+    put(s, 'P1', 'omnath-locus-of-rage');
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(tokens(s, 'beast-token-eoc')).toHaveLength(1);
+    expect(tokens(s, 'elemental-5-5-token-eoc')).toHaveLength(1);
+  });
+
+  it('Omnath: when it or another Elemental you control dies, 3 damage to any target', () => {
+    let s = newGame();
+    const omnath = put(s, 'P1', 'omnath-locus-of-rage');
+    const life = s.players.P2!.life;
+    s.cards[omnath]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' }), { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.cards[omnath]!.zone).toBe('graveyard');
+    expect(s.players.P2!.life).toBe(life - 3);
+  });
+
+  it('Titania: returns a land card from your graveyard; each land you control going to a graveyard makes a 5/3 Elemental', () => {
+    let s = newGame();
+    const old = put(s, 'P1', 'forest', 'graveyard');
+    const titania = put(s, 'P1', 'titania-protector-of-argoth', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: titania }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === old)! }).state;
+    expect(s.cards[old]!.zone).toBe('battlefield');
+    const hammer = put(s, 'P1', 'hammer-of-purphoros');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: hammer, ability: 0, costCards: [old] }).state;
+    expect(tokens(s, 'elemental-5-3-token-eoc')).toHaveLength(1);
+  });
+});

@@ -203,6 +203,7 @@ const CARD_FIELDS = {
   foretoldTurn: 'copy',
   linkedExile: 'refs',
   xPaid: 'copy',
+  kicksPaid: 'copy',
   isCommander: 'copy',
   commanderStays: 'copy',
   castPermission: 'copy',
