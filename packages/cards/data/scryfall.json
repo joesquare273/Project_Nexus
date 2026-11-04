@@ -5684,6 +5684,50 @@
     "scryfallId": "849f5716-7211-4e93-a220-f88d49f937f4",
     "relatedTokens": []
   },
+  "golem-3-3-token-eoc": {
+    "name": "Golem",
+    "typeLine": "Token Artifact Creature — Golem",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "12",
+    "artist": "Nic Klein",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789",
+      "normal": "https://cards.scryfall.io/normal/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789",
+      "large": "https://cards.scryfall.io/large/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/12/golem?utm_source=api",
+    "scryfallId": "bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d",
+    "relatedTokens": [
+      {
+        "name": "Golem",
+        "scryfallId": "bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d"
+      }
+    ]
+  },
+  "golem-9-9-token-eoc": {
+    "name": "Golem",
+    "typeLine": "Token Artifact Creature — Golem",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "14",
+    "artist": "Svetlin Velinov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788",
+      "normal": "https://cards.scryfall.io/normal/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788",
+      "large": "https://cards.scryfall.io/large/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/14/golem?utm_source=api",
+    "scryfallId": "f2f589ac-991f-4f26-8fd4-0d903683f15a",
+    "relatedTokens": [
+      {
+        "name": "Golem",
+        "scryfallId": "f2f589ac-991f-4f26-8fd4-0d903683f15a"
+      }
+    ]
+  },
   "golem-enchantment-token-eoc": {
     "name": "Golem",
     "typeLine": "Token Enchantment Artifact Creature — Golem",
@@ -14326,6 +14370,28 @@
     "scryfallUri": "https://scryfall.com/card/eoc/48/thirst-for-knowledge?utm_source=api",
     "scryfallId": "446ccc7a-fc2d-4e81-b782-31137119db00",
     "relatedTokens": []
+  },
+  "thopter-token-eoc": {
+    "name": "Thopter",
+    "typeLine": "Token Artifact Creature — Thopter",
+    "oracleText": "Flying",
+    "set": "teoc",
+    "number": "16",
+    "artist": "Svetlin Velinov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788",
+      "normal": "https://cards.scryfall.io/normal/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788",
+      "large": "https://cards.scryfall.io/large/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/16/thopter?utm_source=api",
+    "scryfallId": "8a508e59-92e1-47e4-948a-5237df162dbb",
+    "relatedTokens": [
+      {
+        "name": "Thopter",
+        "scryfallId": "8a508e59-92e1-47e4-948a-5237df162dbb"
+      }
+    ]
   },
   "thought-monitor": {
     "name": "Thought Monitor",

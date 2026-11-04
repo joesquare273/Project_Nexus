@@ -32,7 +32,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 55/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 68/100 |
 | World Shaper | Hearthhull, the Worldseed (BRG) | 64/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
@@ -86,6 +86,13 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   Riveteers Overlook, with the Bird 2/2 and Beast 3/3 tokens (teoc). Engine:
   `ReturnAllFromGraveyard` (tapped, or with keywords until end of turn) and
   SacrificeIt marking "if you do" for reflexive triggers.
+- **E4 (2026-11-04): counters and proliferate.** Kilo, Apogee Mind, Surge
+  Conductor, Thrummingbird, Experimental Augury, Lux Cannon, Titan Forge,
+  Coretapper, Golem Foundry, Steel Overseer, Insight Engine, Mindless
+  Automaton, Hangarback Walker, Darksteel Reactor, with Golem 9/9 and 3/3 and
+  Thopter tokens (teoc). Engine: the `BecomesTapped` trigger (not for
+  permanents entering tapped), `removeCounter.amount` ("remove three charge
+  counters"), and the `sourceCounters` amount.
 
 ## Commander rules (built)
 

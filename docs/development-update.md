@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Edge of Eternities group E4: counters and proliferate
+
+Fourteen Counter Intelligence cards: the proliferate cards (Kilo, Surge
+Conductor, Thrummingbird, Experimental Augury) and the counter artifacts (Lux
+Cannon, Titan Forge, Coretapper, Golem Foundry, Steel Overseer, Insight
+Engine, Mindless Automaton, Hangarback Walker, Darksteel Reactor). Counter
+Intelligence 68/100, World Shaper 64/100.
+
 ### Menu art from all of Magic
 
 The home tiles, the page headings (Play, Collection, Decks, Craft, Shop) and

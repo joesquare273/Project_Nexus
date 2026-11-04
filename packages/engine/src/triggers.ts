@@ -140,6 +140,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           ...(e.counter ? { counter: e.counter } : {}),
         });
         break;
+      case 'CardTapped':
+        out.push({ when: 'BecomesTapped', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
+        break;
       case 'CardsUntapped':
         for (const card of e.cards) out.push({ when: 'BecomesUntapped', at, subject: card, subjectController: s.cards[card]!.controller });
         break;

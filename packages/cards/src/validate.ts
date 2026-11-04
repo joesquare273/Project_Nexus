@@ -111,6 +111,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'chosenCount',
       'chosenManaValue',
       'sourceCounterKinds',
+      'sourceCounters',
       'sourcePower',
       'subjectPower',
       'subjectCounters',

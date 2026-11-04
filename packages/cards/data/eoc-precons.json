@@ -22,11 +22,8 @@
           "count": 1,
           "set": "eoc",
           "number": "3",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Patrolling Peacemaker",
@@ -45,10 +42,8 @@
           "count": 1,
           "set": "eoc",
           "number": "6",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Uthros Research Craft",
@@ -107,11 +102,8 @@
           "count": 1,
           "set": "eoc",
           "number": "19",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Glittering Massif",
@@ -401,11 +393,8 @@
           "count": 1,
           "set": "eoc",
           "number": "134",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Empowered Autogenerator",
@@ -423,13 +412,8 @@
           "count": 1,
           "set": "eoc",
           "number": "139",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers",
-            "activated-abilities",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lux Artillery",
@@ -446,20 +430,16 @@
           "count": 1,
           "set": "eoc",
           "number": "141",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Steel Overseer",
           "count": 1,
           "set": "eoc",
           "number": "144",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Threefold Thunderhulk",
@@ -478,10 +458,8 @@
           "count": 1,
           "set": "eoc",
           "number": "146",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Adarkar Wastes",
@@ -702,22 +680,16 @@
           "count": 1,
           "set": "eoc",
           "number": "73",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Thrummingbird",
           "count": 1,
           "set": "eoc",
           "number": "80",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Enthusiastic Mechanaut",
@@ -734,10 +706,8 @@
           "count": 1,
           "set": "eoc",
           "number": "132",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Etched Oracle",
@@ -764,22 +734,16 @@
           "count": 1,
           "set": "eoc",
           "number": "138",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mindless Automaton",
           "count": 1,
           "set": "eoc",
           "number": "142",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Soul-Guide Lantern",

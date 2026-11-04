@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { activatedAbilities, currentDefinition, getLegalActions, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
 
 const hasType = (s: GameState, c: CardInstance, t: string) => (currentDefinition(s, c).types as string[]).includes(t);
-import { act, card, cast, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
+import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 
 const charge = (s: GameState, id: string) => s.cards[id]!.namedCounters?.charge ?? 0;
 /** The Station ability's index on a card (it comes after the printed activated abilities). */
@@ -493,5 +493,123 @@ describe('E3: lands', () => {
     expect(s.cards[court]!.zone).toBe('graveyard');
     expect([s.cards[plains]!.zone, s.cards[plains]!.tapped]).toEqual(['battlefield', true]);
     expect(s.players.P1!.life).toBe(life + 1);
+  });
+});
+
+// Group 4: counters and proliferate.
+describe('E4: proliferate', () => {
+  it('Kilo proliferates whenever it becomes tapped (attacking, here); a permanent that enters tapped doesn’t count', () => {
+    let s = newGame();
+    const kilo = put(s, 'P1', 'kilo-apogee-mind');
+    const ship = put(s, 'P1', 'uthros-research-craft', 'battlefield', { namedCounters: { charge: 2 } });
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: kilo, defender: 'P2' }] })).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(charge(s, ship)).toBe(3);
+  });
+
+  it('Surge Conductor: another nontoken artifact of yours entering proliferates; Thrummingbird: combat damage to a player', () => {
+    let s = newGame();
+    put(s, 'P1', 'surge-conductor');
+    const ship = put(s, 'P1', 'uthros-research-craft', 'battlefield', { namedCounters: { charge: 1 } });
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(charge(s, ship)).toBe(2);
+    let t = newGame();
+    const bird = put(t, 'P1', 'thrummingbird');
+    const ship2 = put(t, 'P1', 'uthros-research-craft', 'battlefield', { namedCounters: { charge: 1 } });
+    t = fight(t, [{ attacker: bird, defender: 'P2' }]).state;
+    expect(charge(t, ship2)).toBe(2);
+  });
+
+  it('Experimental Augury: one of the top three to your hand, then proliferate', () => {
+    let s = newGame();
+    const top = [put(s, 'P1', 'coeurl', 'library'), put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'island', 'library')];
+    s.players.P1!.library = [...top, ...s.players.P1!.library.filter((x) => !top.includes(x))];
+    const ship = put(s, 'P1', 'uthros-research-craft', 'battlefield', { namedCounters: { charge: 1 } });
+    const augury = put(s, 'P1', 'experimental-augury', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: augury }).state;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top[0]!] })).state;
+    expect(s.cards[top[0]!]!.zone).toBe('hand');
+    expect(charge(s, ship)).toBe(2);
+  });
+});
+
+describe('E4: charge counters', () => {
+  const tokens = (s: GameState, defId: string) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === defId);
+
+  it('Lux Cannon: {T}: a charge counter; {T}, remove three: destroy target permanent', () => {
+    let s = newGame();
+    const cannon = put(s, 'P1', 'lux-cannon', 'battlefield', { namedCounters: { charge: 2 } });
+    const target = put(s, 'P2', 'coeurl');
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: cannon, ability: 1, targets: [card(target)] })).toMatch(/counters/);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: cannon, ability: 0 }).state;
+    expect(charge(s, cannon)).toBe(3);
+    s.cards[cannon]!.tapped = false;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: cannon, ability: 1, targets: [card(target)] }).state;
+    expect(s.cards[target]!.zone).toBe('graveyard');
+    expect(charge(s, cannon)).toBe(0);
+  });
+
+  it('Titan Forge makes a 9/9 Golem for three charge counters; Golem Foundry a 3/3 one, charging on artifact spells', () => {
+    let s = newGame();
+    const forge = put(s, 'P1', 'titan-forge', 'battlefield', { namedCounters: { charge: 3 } });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: forge, ability: 1 }).state;
+    expect(tokens(s, 'golem-9-9-token-eoc')).toHaveLength(1);
+    const foundry = put(s, 'P1', 'golem-foundry', 'battlefield', { namedCounters: { charge: 2 } });
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }, { accept: true }).state;
+    expect(charge(s, foundry)).toBe(3);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: foundry, ability: 0 }).state;
+    expect(tokens(s, 'golem-3-3-token-eoc')).toHaveLength(1);
+  });
+
+  it('Coretapper charges another artifact; Steel Overseer grows your artifact creatures; Insight Engine draws per counter', () => {
+    let s = newGame();
+    const tapper = put(s, 'P1', 'coretapper');
+    const cannon = put(s, 'P1', 'lux-cannon');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: tapper, ability: 0, targets: [card(cannon)] }).state;
+    expect(charge(s, cannon)).toBe(1);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: tapper, ability: 1, targets: [card(cannon)] }).state;
+    expect(charge(s, cannon)).toBe(3);
+    const overseer = put(s, 'P1', 'steel-overseer');
+    const bot = put(s, 'P1', 'armory-automaton');
+    const cat = put(s, 'P1', 'coeurl');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: overseer, ability: 0 }).state;
+    expect([s.cards[bot]!.counters, s.cards[overseer]!.counters, s.cards[cat]!.counters ?? 0]).toEqual([1, 1, 0]);
+    const engine = put(s, 'P1', 'insight-engine', 'battlefield', { namedCounters: { charge: 1 } });
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: engine, ability: 0 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+  });
+
+  it('Hangarback Walker enters with X counters and leaves that many Thopters; Mindless Automaton draws for two counters', () => {
+    let s = newGame();
+    const walker = put(s, 'P1', 'hangarback-walker', 'hand');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: walker, x: 2 }).state;
+    expect(s.cards[walker]!.counters).toBe(2);
+    s.cards[walker]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(tokens(s, 'thopter-token-eoc')).toHaveLength(2);
+    const automaton = put(s, 'P1', 'mindless-automaton', 'battlefield', { counters: 2 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: automaton, ability: 1 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    expect(s.cards[automaton]!.counters ?? 0).toBe(0);
+  });
+
+  it('Darksteel Reactor: indestructible; twenty charge counters win the game', () => {
+    let s = newGame();
+    const reactor = put(s, 'P1', 'darksteel-reactor', 'battlefield', { namedCounters: { charge: 19 } });
+    expect(hasKeyword(s, s.cards[reactor]!, 'Indestructible')).toBe(true);
+    const tapper = put(s, 'P1', 'coretapper');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: tapper, ability: 0, targets: [card(reactor)] }).state;
+    expect(s.pending.kind).toBe('gameOver');
+    expect(s.winner).toBe('P1');
   });
 });

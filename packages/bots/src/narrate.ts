@@ -508,6 +508,7 @@ function triggerCondition(t: TriggerSpec): string {
     OpponentGainsControlFromYou: '',
     TokensCreated: 'you create tokens',
     CountersAdded: 'gets counters',
+    BecomesTapped: 'becomes tapped',
     BecomesUntapped: 'becomes untapped',
     LeavesBattlefield: 'leaves the battlefield',
     Draws: '',

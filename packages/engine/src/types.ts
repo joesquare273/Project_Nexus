@@ -650,6 +650,8 @@ export type Amount =
         | 'chosenManaValue'
         /** Number of distinct counter kinds on the ability's source. */
         | 'sourceCounterKinds'
+        /** How many counters of `counter` (default +1/+1) are on the ability's source ("a card for each charge counter on it"). */
+        | 'sourceCounters'
         | 'sourcePower'
         | 'subjectPower'
         | 'subjectCounters'
@@ -680,6 +682,8 @@ export type Amount =
         /** OpponentLosesLife triggers: how much life was lost ("you draw that many cards"). */
         | 'lifeLostInEvent';
       plus?: number;
+      /** For `sourceCounters`: which kind. */
+      counter?: AnyCounter;
     };
 
 export const TEMPORARY_FLAGS = [
@@ -992,6 +996,8 @@ export const TRIGGER_EVENTS = [
   'EndStep',
   /** Counters were put on a permanent (with `byYou`: by a spell or ability you control). */
   'CountersAdded',
+  /** The permanent became tapped (not entering tapped): Kilo, Apogee Mind. */
+  'BecomesTapped',
   /** The permanent became untapped. */
   'BecomesUntapped',
   /** A permanent left the battlefield for any zone. */
@@ -1258,7 +1264,8 @@ export interface ActivatedSpec {
      * `from` from a permanent you control matching it (chosen with the action,
      * `costCards`). Without `counter`, any kind (the engine picks which).
      */
-    removeCounter?: { counter?: AnyCounter; from?: ObjectFilter };
+    /** `amount`: how many to remove ("remove three charge counters from this artifact"; default 1). */
+    removeCounter?: { counter?: AnyCounter; from?: ObjectFilter; amount?: number };
     /** "Pay 3 life". */
     life?: number;
     /** "Tap five untapped Wizards you control" (chosen with `costCards`; summoning sickness doesn't matter). */

@@ -1432,7 +1432,7 @@ function crewCandidates(s: GameState, playerId: PlayerId, source: InstanceId): C
 
 export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec): string | null {
   const rc = spec.cost.removeCounter;
-  if (rc && (rc.from ? counterCostCandidates(s, playerId, spec, c.id).length === 0 : !counterToRemove(c, rc.counter))) {
+  if (rc && (rc.from ? counterCostCandidates(s, playerId, spec, c.id).length === 0 : !counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) {
     return 'There is no counter to remove for that.';
   }
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length < (spec.cost.sacrificeCount ?? 1)) return 'You have nothing to sacrifice for that.';
@@ -1605,7 +1605,7 @@ export function activateAbility(
   } else {
     checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id);
   }
-  if (rc && !rc.from && !counterToRemove(c, rc.counter)) reject('There is no counter to remove for that.');
+  if (rc && !rc.from && (!counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) reject(`There ${rc.amount && rc.amount > 1 ? `aren't ${rc.amount} counters` : "is no counter"} to remove for that.`);
   payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
@@ -1628,7 +1628,7 @@ export function activateAbility(
   }
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
-    removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, 1);
+    removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, rc.amount ?? 1);
   }
   const exiledAsCost = spec.cost.exileGraveyard ? costCards.map(card => {
     moveCard(ctx, card, 'exile');
@@ -1808,6 +1808,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
             : a.of === 'sourceCounterKinds'
               ? sourceCounterKinds(s, r.item)
+              : a.of === 'sourceCounters'
+              ? countersOf(s.cards[sourceOf(r.item)]!, a.counter ?? '+1/+1')
               : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
               : a.of === 'previousTargetManaValue'
