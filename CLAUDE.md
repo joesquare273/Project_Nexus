@@ -8,8 +8,11 @@ this repo, not only in local memory.
 ## Ground rules from the user
 
 - **Work directly on `main`. No branches, no pull requests.** Commit to
-  `main`. **Stop after each commit and report the hash. The user pushes and
-  says "proceed" before the next group or implementation step.**
+  `main` and push it to GitHub yourself (user decision 2026-11-04: Claude
+  pushes `main` directly; no `claude/...` branches). **Stop after each commit
+  and report the hash; the user says "proceed" before the next group or
+  implementation step.** On the user's computers, `git pull origin main`
+  brings the work down.
   Before reporting each commit, refresh account usage and include purchased credits,
   remaining allowance, and available reset credits. Continue building the
   remaining precon cards in groups; prefer shared-mechanic batches when possible.
