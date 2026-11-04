@@ -5,6 +5,15 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Fix: "The deck uses cards you do not own." with a large collection
+
+Supabase answers at most 1,000 rows per request, and the server read the
+collection in one request, so a collection of more than 1,000 printing and
+finish rows (four precons plus packs) came back cut short: Commander decks
+were refused as using cards the player didn't own, and the Collection, Decks
+and Craft tabs missed cards. `SupabaseAccounts.collection` now reads it page
+by page (test in `server/test/accounts.test.ts`).
+
 ### Edge of Eternities group E2: lands sacrificed, and landfall
 
 Eleven World Shaper cards (Hammer of Purphoros, Uurg, Sprouting Goblin, Baloth

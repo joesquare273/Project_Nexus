@@ -84,3 +84,26 @@ describe('economy configuration', () => {
     expect(ECONOMY.eventEntry).toBe(6 * ECONOMY.playBoosterPrice);
   });
 });
+
+describe('reading a large collection from Supabase', () => {
+  it('reads every row, page by page (Supabase answers at most 1,000 rows per request)', async () => {
+    const { SupabaseAccounts } = await import('../src/accounts.ts');
+    const rows = Array.from({ length: 2313 }, (_, i) => ({ scryfall_id: `id-${String(i).padStart(5, '0')}`, finish: 'nonfoil', count: 1 }));
+    const ranges: [number, number][] = [];
+    // A stand-in for the Supabase query builder: from().select().eq().order().order().range().
+    const query = {
+      select: () => query,
+      eq: () => query,
+      order: () => query,
+      range: async (from: number, to: number) => {
+        ranges.push([from, to]);
+        return { data: rows.slice(from, Math.min(to + 1, from + 1000)), error: null };
+      },
+    };
+    const accounts = new SupabaseAccounts('https://example.supabase.co', 'service-key');
+    (accounts as unknown as { db: unknown }).db = { from: () => query };
+    const cards = await accounts.collection('user');
+    expect(cards).toHaveLength(2313);
+    expect(ranges).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
+  });
+});

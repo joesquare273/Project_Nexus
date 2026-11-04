@@ -152,6 +152,9 @@ export function discordAvatar(meta: Record<string, unknown> | undefined): string
   }
 }
 
+/** Rows per collection request (Supabase's default maximum is 1,000). */
+const COLLECTION_PAGE = 1000;
+
 /** The real store: Supabase, with the service role key (server only). */
 export class SupabaseAccounts implements AccountService {
   private readonly db: SupabaseClient;
@@ -183,9 +186,20 @@ export class SupabaseAccounts implements AccountService {
   }
 
   async collection(userId: string): Promise<OwnedCard[]> {
-    const { data, error } = await this.db.from('owned_cards').select('scryfall_id, finish, count').eq('user_id', userId);
-    if (error) throw new Error(`Could not load the collection: ${error.message}`);
-    return data.map((r) => ({ id: r.scryfall_id as string, finish: r.finish as OwnedCard['finish'], count: r.count as number }));
+    // Supabase answers at most 1,000 rows per request: read the collection page by page (in a stable order).
+    const out: OwnedCard[] = [];
+    for (let from = 0; ; from += COLLECTION_PAGE) {
+      const { data, error } = await this.db
+        .from('owned_cards')
+        .select('scryfall_id, finish, count')
+        .eq('user_id', userId)
+        .order('scryfall_id')
+        .order('finish')
+        .range(from, from + COLLECTION_PAGE - 1);
+      if (error) throw new Error(`Could not load the collection: ${error.message}`);
+      out.push(...data.map((r) => ({ id: r.scryfall_id as string, finish: r.finish as OwnedCard['finish'], count: r.count as number })));
+      if (data.length < COLLECTION_PAGE) return out;
+    }
   }
 
   async grantCards(userId: string, grant: CardGrant): Promise<{ balance: number; applied: boolean }> {
