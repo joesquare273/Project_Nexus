@@ -6,7 +6,7 @@
 import type { BoosterCard, Finish } from '@nexus/cards/boosters';
 import { finishName } from '@nexus/cards/boosters';
 import { CARD_DEFS, CARD_IDS_BY_NAME } from '@nexus/cards';
-import { canPartner, manaValue, parseManaCost } from '@nexus/engine';
+import { canBeCommander, canPartner, manaValue, parseManaCost } from '@nexus/engine';
 import type { Collection, DeckDraft } from './collection.ts';
 
 /** One owned printing in one finish, and how many copies the player has. */
@@ -73,7 +73,8 @@ export function groupCollection(collection: Collection, byId: Map<string, Booste
           types: def?.types ?? [],
           colorIdentity: def?.colorIdentity ?? [],
           manaValue: def ? manaValue(parseManaCost(def.manaCost)) : 0,
-          legendaryCreature: /Legendary/.test(card.typeLine) && /Creature/.test(card.typeLine),
+          // Anything that can be a commander: legendary creatures, Vehicles and Spacecraft (rule 903.3).
+          legendaryCreature: def ? canBeCommander(def) : /Legendary/.test(card.typeLine) && /Creature/.test(card.typeLine),
         };
         groups.set(card.name, g);
       }

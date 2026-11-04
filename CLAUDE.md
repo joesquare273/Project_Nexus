@@ -34,6 +34,9 @@ this repo, not only in local memory.
 - **The Commander precons are the next card target** (`docs/commander.md`):
   all four Final Fantasy precons are imported (`scripts/import-precons.ts`);
   build their cards step by step (C2-C5), keeping the exact decklists.
+  The two Edge of Eternities precons (Counter Intelligence, World Shaper) are
+  imported too (`import-precons.ts eoc`, data in `eoc.json` and
+  `eoc-precons.json`): build their cards in groups next (user, 2026-11-04).
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).
 - **Tokens come from Scryfall too**, matched by the exact token printing each

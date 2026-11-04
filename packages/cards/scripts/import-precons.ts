@@ -1,10 +1,10 @@
-// Imports the Final Fantasy Commander precon decklists from MTGJSON and
-// writes:
-//   data/fic.json          card definitions for every card not already defined
-//                          (cards already built in fic.json are kept as they are)
-//   data/fic-precons.json  the four decklists, with each card's build status
+// Imports Commander precon decklists from MTGJSON and writes, for a set:
+//   data/<set>.json          card definitions for every card not already defined
+//                            (cards already built there are kept as they are)
+//   data/<set>-precons.json  the decklists, with each card's build status
 //
-//   node packages/cards/scripts/import-precons.ts
+//   node packages/cards/scripts/import-precons.ts        # FINAL FANTASY (fic)
+//   node packages/cards/scripts/import-precons.ts eoc    # Edge of Eternities (eoc)
 //
 // MTGJSON's deck files are static downloads (no API rate limit). Card data
 // comes from them too; run `npm run scryfall` afterwards for images.
@@ -16,33 +16,47 @@
 // Everything else is marked `notBuilt` with what it still needs; lands and
 // mana sources still make the mana that was recognized.
 
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type { CardDefinition } from '@nexus/engine';
 import { define, type MtgjsonCard } from './recognize.ts';
 import fic from '../data/fic.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
+import finSet from '../data/fin-set.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
+import storeCards from '../data/store-cards.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 
-/**
- * Cards defined outside fic.json (Starter Kit cards, lands, tokens). fic.json
- * itself is rewritten from scratch each run, so it must not count as existing.
- */
-const CARDS = [...lands, ...fin, ...tokens] as CardDefinition[];
+const SETS = {
+  fic: {
+    label: 'Final Fantasy Commander',
+    files: ['LimitBreakFinalFantasyVii_FIC', 'RevivalTranceFinalFantasyVi_FIC', 'CounterBlitzFinalFantasyX_FIC', 'ScionsSpellcraftFinalFantasyXiv_FIC'],
+    // fic.json itself is rewritten each run, so it must not count as existing.
+    existing: [...lands, ...fin, ...tokens],
+  },
+  eoc: {
+    label: 'Edge of Eternities Commander',
+    files: ['CounterIntelligence_EOC', 'WorldShaper_EOC'],
+    // Cards any other file defines are shared (Sol Ring, Command Tower...).
+    existing: [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...tokens],
+  },
+} as const;
+const SET = (process.argv[2] ?? 'fic') as keyof typeof SETS;
+if (!SETS[SET]) throw new Error(`Unknown precon set "${SET}" (${Object.keys(SETS).join(', ')}).`);
+const dataDir = new URL('../data/', import.meta.url);
+const OWN_FILE = new URL(`${SET}.json`, dataDir);
+
+/** Cards defined outside this set's own file (Starter Kit cards, lands, tokens, other sets). */
+const CARDS = SETS[SET].existing as CardDefinition[];
 const CARD_IDS_BY_NAME: Record<string, string> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));
 
 /**
- * Precon cards already built in fic.json (by hand, step by step through
- * C2-C5) are kept as they are; only unbuilt cards are regenerated.
+ * Precon cards already built in this set's file (by hand, group by group)
+ * are kept as they are; only unbuilt cards are regenerated.
  */
-const BUILT_FIC = new Map((fic as CardDefinition[]).filter((d) => !d.notBuilt).map((d) => [d.name, d]));
+const OWN: CardDefinition[] = SET === 'fic' ? (fic as CardDefinition[]) : existsSync(OWN_FILE) ? JSON.parse(readFileSync(OWN_FILE, 'utf8')) : [];
+const BUILT_FIC = new Map(OWN.filter((d) => !d.notBuilt).map((d) => [d.name, d]));
 
-const DECK_FILES = [
-  'LimitBreakFinalFantasyVii_FIC',
-  'RevivalTranceFinalFantasyVi_FIC',
-  'CounterBlitzFinalFantasyX_FIC',
-  'ScionsSpellcraftFinalFantasyXiv_FIC',
-];
+const DECK_FILES = SETS[SET].files;
 
 
 interface MtgjsonDeck {
@@ -75,7 +89,7 @@ function cardEntry(c: MtgjsonCard) {
       status.set(c.name, { implemented: true, needs: [] });
     } else {
       const { def, built, needs } = define(c);
-      if (existingIds.has(def.id) || newDefs.has(def.id)) def.id = `${def.id}-fic`;
+      if (existingIds.has(def.id) || newDefs.has(def.id)) def.id = `${def.id}-${SET}`;
       newDefs.set(def.id, def);
       status.set(c.name, { implemented: built, needs });
     }
@@ -102,15 +116,13 @@ for (const file of DECK_FILES) {
   console.log(`${deck.name}: ${commander.name}`);
 }
 
-const dataDir = new URL('../data/', import.meta.url);
 const defs = [...newDefs.values()];
-writeFileSync(new URL('fic.json', dataDir), `[\n${defs.map((d) => `  ${JSON.stringify(d)}`).join(',\n')}\n]\n`);
+writeFileSync(OWN_FILE, `[\n${defs.map((d) => `  ${JSON.stringify(d)}`).join(',\n')}\n]\n`);
 writeFileSync(
-  new URL('fic-precons.json', dataDir),
+  new URL(`${SET}-precons.json`, dataDir),
   `${JSON.stringify(
     {
-      $comment:
-        'Final Fantasy Commander precon decklists (source: MTGJSON, generated by scripts/import-precons.ts). Each deck is 100 cards: the commander plus `cards`. `needs` lists what a card still needs before it is built.',
+      $comment: `${SETS[SET].label} precon decklists (source: MTGJSON, generated by scripts/import-precons.ts${SET === 'fic' ? '' : ' ' + SET}). Each deck is 100 cards: the commander plus \`cards\`. \`needs\` lists what a card still needs before it is built.`,
       decks,
     },
     null,

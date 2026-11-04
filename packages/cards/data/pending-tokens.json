@@ -245,5 +245,407 @@
     "colors": [
       "W"
     ]
+  },
+  "2a3d4bf9-2107-4686-8df5-cd7c934d0691": {
+    "name": "Bird",
+    "typeLine": "Token Creature — Bird",
+    "oracleText": "Flying",
+    "set": "teoc",
+    "number": "3",
+    "artist": "Alessandra Pisano",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/a/2a3d4bf9-2107-4686-8df5-cd7c934d0691.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/3/bird?utm_source=api",
+    "scryfallId": "2a3d4bf9-2107-4686-8df5-cd7c934d0691",
+    "relatedTokens": [
+      {
+        "name": "Bird",
+        "scryfallId": "2a3d4bf9-2107-4686-8df5-cd7c934d0691"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "U"
+    ]
+  },
+  "c5229eb0-9356-43a6-9b1b-6366f3c1e405": {
+    "name": "Incubator // Phyrexian",
+    "typeLine": "Token Artifact — Incubator // Token Artifact Creature — Phyrexian",
+    "oracleText": "Incubator\n{2}: Transform this artifact.\n\n//\n\nPhyrexian\n",
+    "set": "teoc",
+    "number": "15",
+    "artist": "Johann Bodin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/5/c5229eb0-9356-43a6-9b1b-6366f3c1e405.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/c/5/c5229eb0-9356-43a6-9b1b-6366f3c1e405.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/c/5/c5229eb0-9356-43a6-9b1b-6366f3c1e405.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/5/c5229eb0-9356-43a6-9b1b-6366f3c1e405.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/15/incubator-phyrexian?utm_source=api",
+    "scryfallId": "c5229eb0-9356-43a6-9b1b-6366f3c1e405",
+    "relatedTokens": [
+      {
+        "name": "Incubator // Phyrexian",
+        "scryfallId": "c5229eb0-9356-43a6-9b1b-6366f3c1e405"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Incubator",
+        "typeLine": "Token Artifact — Incubator",
+        "oracleText": "{2}: Transform this artifact.",
+        "colors": []
+      },
+      {
+        "name": "Phyrexian",
+        "typeLine": "Token Artifact Creature — Phyrexian",
+        "oracleText": "",
+        "power": "0",
+        "toughness": "0",
+        "colors": []
+      }
+    ]
+  },
+  "8a508e59-92e1-47e4-948a-5237df162dbb": {
+    "name": "Thopter",
+    "typeLine": "Token Artifact Creature — Thopter",
+    "oracleText": "Flying",
+    "set": "teoc",
+    "number": "16",
+    "artist": "Svetlin Velinov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788",
+      "normal": "https://cards.scryfall.io/normal/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788",
+      "large": "https://cards.scryfall.io/large/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/a/8a508e59-92e1-47e4-948a-5237df162dbb.jpg?1783905788"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/16/thopter?utm_source=api",
+    "scryfallId": "8a508e59-92e1-47e4-948a-5237df162dbb",
+    "relatedTokens": [
+      {
+        "name": "Thopter",
+        "scryfallId": "8a508e59-92e1-47e4-948a-5237df162dbb"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "e32673cc-bec9-49b3-bc34-e2b3982ca245": {
+    "name": "Gnome",
+    "typeLine": "Token Artifact Creature — Gnome",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "11",
+    "artist": "Racrufi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/3/e32673cc-bec9-49b3-bc34-e2b3982ca245.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/e/3/e32673cc-bec9-49b3-bc34-e2b3982ca245.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/e/3/e32673cc-bec9-49b3-bc34-e2b3982ca245.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/3/e32673cc-bec9-49b3-bc34-e2b3982ca245.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/11/gnome?utm_source=api",
+    "scryfallId": "e32673cc-bec9-49b3-bc34-e2b3982ca245",
+    "relatedTokens": [
+      {
+        "name": "Gnome",
+        "scryfallId": "e32673cc-bec9-49b3-bc34-e2b3982ca245"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "f2f589ac-991f-4f26-8fd4-0d903683f15a": {
+    "name": "Golem",
+    "typeLine": "Token Artifact Creature — Golem",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "14",
+    "artist": "Svetlin Velinov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788",
+      "normal": "https://cards.scryfall.io/normal/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788",
+      "large": "https://cards.scryfall.io/large/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/2/f2f589ac-991f-4f26-8fd4-0d903683f15a.jpg?1783905788"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/14/golem?utm_source=api",
+    "scryfallId": "f2f589ac-991f-4f26-8fd4-0d903683f15a",
+    "relatedTokens": [
+      {
+        "name": "Golem",
+        "scryfallId": "f2f589ac-991f-4f26-8fd4-0d903683f15a"
+      }
+    ],
+    "power": "9",
+    "toughness": "9",
+    "colors": []
+  },
+  "bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d": {
+    "name": "Golem",
+    "typeLine": "Token Artifact Creature — Golem",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "12",
+    "artist": "Nic Klein",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789",
+      "normal": "https://cards.scryfall.io/normal/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789",
+      "large": "https://cards.scryfall.io/large/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/c/bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d.jpg?1783905789"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/12/golem?utm_source=api",
+    "scryfallId": "bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d",
+    "relatedTokens": [
+      {
+        "name": "Golem",
+        "scryfallId": "bc1c56b2-69f3-42d9-81f4-3dbd40dd8f5d"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": []
+  },
+  "eb243b20-85e6-4eba-9403-42272975e8a5": {
+    "name": "Beast",
+    "typeLine": "Token Creature — Beast",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "6",
+    "artist": "Xabi Gaztelua",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/b/eb243b20-85e6-4eba-9403-42272975e8a5.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/6/beast?utm_source=api",
+    "scryfallId": "eb243b20-85e6-4eba-9403-42272975e8a5",
+    "relatedTokens": [
+      {
+        "name": "Beast",
+        "scryfallId": "eb243b20-85e6-4eba-9403-42272975e8a5"
+      }
+    ],
+    "power": "4",
+    "toughness": "4",
+    "colors": [
+      "G"
+    ]
+  },
+  "85ef1950-219f-401b-8ff5-914f9aaec122": {
+    "name": "Lander",
+    "typeLine": "Token Artifact — Lander",
+    "oracleText": "{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    "set": "teoe",
+    "number": "8",
+    "artist": "Jorge Jacinto",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/5/85ef1950-219f-401b-8ff5-914f9aaec122.jpg?1783905784",
+      "normal": "https://cards.scryfall.io/normal/front/8/5/85ef1950-219f-401b-8ff5-914f9aaec122.jpg?1783905784",
+      "large": "https://cards.scryfall.io/large/front/8/5/85ef1950-219f-401b-8ff5-914f9aaec122.jpg?1783905784",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/5/85ef1950-219f-401b-8ff5-914f9aaec122.jpg?1783905784"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoe/8/lander?utm_source=api",
+    "scryfallId": "85ef1950-219f-401b-8ff5-914f9aaec122",
+    "relatedTokens": [
+      {
+        "name": "Lander",
+        "scryfallId": "85ef1950-219f-401b-8ff5-914f9aaec122"
+      }
+    ],
+    "colors": []
+  },
+  "2172a126-2ea6-4b5c-84c2-7879c1982a3a": {
+    "name": "Insect",
+    "typeLine": "Token Creature — Insect",
+    "oracleText": "Flying",
+    "set": "teoc",
+    "number": "4",
+    "artist": "Deruchenko Alexander",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/1/2172a126-2ea6-4b5c-84c2-7879c1982a3a.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/4/insect?utm_source=api",
+    "scryfallId": "2172a126-2ea6-4b5c-84c2-7879c1982a3a",
+    "relatedTokens": [
+      {
+        "name": "Insect",
+        "scryfallId": "2172a126-2ea6-4b5c-84c2-7879c1982a3a"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B"
+    ]
+  },
+  "51cfd1dc-b7f8-418b-9a7a-76d887f83929": {
+    "name": "Golem",
+    "typeLine": "Token Enchantment Artifact Creature — Golem",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "13",
+    "artist": "Yeong-Hao Han",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789",
+      "normal": "https://cards.scryfall.io/normal/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789",
+      "large": "https://cards.scryfall.io/large/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/1/51cfd1dc-b7f8-418b-9a7a-76d887f83929.jpg?1783905789"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/13/golem?utm_source=api",
+    "scryfallId": "51cfd1dc-b7f8-418b-9a7a-76d887f83929",
+    "relatedTokens": [
+      {
+        "name": "Golem",
+        "scryfallId": "51cfd1dc-b7f8-418b-9a7a-76d887f83929"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": []
+  },
+  "30f46500-172a-40ce-9f8e-3738e764e3fa": {
+    "name": "Shapeshifter",
+    "typeLine": "Token Creature — Shapeshifter",
+    "oracleText": "Changeling (This token is every creature type.)\nDeathtouch",
+    "set": "teoc",
+    "number": "2",
+    "artist": "Carlos Palma Cruchaga",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/0/30f46500-172a-40ce-9f8e-3738e764e3fa.jpg?1783905792",
+      "normal": "https://cards.scryfall.io/normal/front/3/0/30f46500-172a-40ce-9f8e-3738e764e3fa.jpg?1783905792",
+      "large": "https://cards.scryfall.io/large/front/3/0/30f46500-172a-40ce-9f8e-3738e764e3fa.jpg?1783905792",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/0/30f46500-172a-40ce-9f8e-3738e764e3fa.jpg?1783905792"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/2/shapeshifter?utm_source=api",
+    "scryfallId": "30f46500-172a-40ce-9f8e-3738e764e3fa",
+    "relatedTokens": [
+      {
+        "name": "Shapeshifter",
+        "scryfallId": "30f46500-172a-40ce-9f8e-3738e764e3fa"
+      }
+    ],
+    "power": "*",
+    "toughness": "*",
+    "colors": []
+  },
+  "cf9587a6-7497-4f49-a5d0-a19fdfd969aa": {
+    "name": "Pest",
+    "typeLine": "Token Creature — Pest",
+    "oracleText": "When this creature dies, you gain 1 life.",
+    "set": "teoc",
+    "number": "9",
+    "artist": "Ilse Gort",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/f/cf9587a6-7497-4f49-a5d0-a19fdfd969aa.jpg?1783905791",
+      "normal": "https://cards.scryfall.io/normal/front/c/f/cf9587a6-7497-4f49-a5d0-a19fdfd969aa.jpg?1783905791",
+      "large": "https://cards.scryfall.io/large/front/c/f/cf9587a6-7497-4f49-a5d0-a19fdfd969aa.jpg?1783905791",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/f/cf9587a6-7497-4f49-a5d0-a19fdfd969aa.jpg?1783905791"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/9/pest?utm_source=api",
+    "scryfallId": "cf9587a6-7497-4f49-a5d0-a19fdfd969aa",
+    "relatedTokens": [
+      {
+        "name": "Pest",
+        "scryfallId": "cf9587a6-7497-4f49-a5d0-a19fdfd969aa"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B",
+      "G"
+    ]
+  },
+  "0b0229d7-8635-4509-b141-12787af32855": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "7",
+    "artist": "Nils Hamm",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/b/0b0229d7-8635-4509-b141-12787af32855.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/7/elemental?utm_source=api",
+    "scryfallId": "0b0229d7-8635-4509-b141-12787af32855",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "0b0229d7-8635-4509-b141-12787af32855"
+      }
+    ],
+    "power": "5",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ]
+  },
+  "5e3552f9-1c22-46f7-b606-c8a59950bf75": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "8",
+    "artist": "Brad Rigney",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790",
+      "normal": "https://cards.scryfall.io/normal/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790",
+      "large": "https://cards.scryfall.io/large/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/e/5e3552f9-1c22-46f7-b606-c8a59950bf75.jpg?1783905790"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/8/elemental?utm_source=api",
+    "scryfallId": "5e3552f9-1c22-46f7-b606-c8a59950bf75",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "5e3552f9-1c22-46f7-b606-c8a59950bf75"
+      }
+    ],
+    "power": "5",
+    "toughness": "5",
+    "colors": [
+      "G",
+      "R"
+    ]
+  },
+  "3b584d93-5681-4ecd-953c-5ef58307caab": {
+    "name": "Beast",
+    "typeLine": "Token Creature — Beast",
+    "oracleText": "",
+    "set": "teoc",
+    "number": "5",
+    "artist": "Dave Allsop",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793",
+      "normal": "https://cards.scryfall.io/normal/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793",
+      "large": "https://cards.scryfall.io/large/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/b/3b584d93-5681-4ecd-953c-5ef58307caab.jpg?1783905793"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoc/5/beast?utm_source=api",
+    "scryfallId": "3b584d93-5681-4ecd-953c-5ef58307caab",
+    "relatedTokens": [
+      {
+        "name": "Beast",
+        "scryfallId": "3b584d93-5681-4ecd-953c-5ef58307caab"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ]
   }
 }

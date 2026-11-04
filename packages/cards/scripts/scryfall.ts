@@ -241,6 +241,32 @@ function checkTokens(): void {
 }
 
 /** Tokens that cards not built yet make, not in tokens.json: their printings, fetched by Scryfall id. */
+/**
+ * Precon cards printed in more than one set (Sol Ring, basic lands...) show
+ * each deck's own printing: data/precon-printings.json keeps those printings
+ * by "set/number" when no card definition uses them.
+ */
+async function savePreconPrintings(): Promise<void> {
+  const { FIN_PRECONS, EOC_PRECONS, SCRYFALL_PRINTINGS } = await import('../src/index.ts');
+  const printingsFile = new URL('../data/precon-printings.json', import.meta.url);
+  const kept: Record<string, ScryfallInfo> = JSON.parse(readFileSync(printingsFile, 'utf8'));
+  const have = new Set([...Object.keys(SCRYFALL_PRINTINGS), ...Object.values(saved).map((i) => `${i.set}/${i.number}`)]);
+  const need = new Map<string, { set: string; number: string }>();
+  for (const deck of [...FIN_PRECONS, ...EOC_PRECONS]) {
+    for (const c of [deck.commander, ...deck.cards]) if (!have.has(`${c.set}/${c.number}`)) need.set(`${c.set}/${c.number}`, { set: c.set, number: c.number });
+  }
+  if (need.size === 0) return;
+  const list = [...need.values()];
+  for (let i = 0; i < list.length; i += BATCH_SIZE) {
+    await sleep(DELAY_MS);
+    const res = await fetchCollection(list.slice(i, i + BATCH_SIZE).map((p) => ({ set: p.set, collector_number: p.number })));
+    for (const card of res.data) kept[`${card.set}/${card.collector_number}`] = toInfo(card);
+    if (res.not_found.length) console.error(`Precon printings not found on Scryfall: ${JSON.stringify(res.not_found)}`);
+  }
+  writeFileSync(printingsFile, `${JSON.stringify(kept, null, 2)}\n`);
+  console.log(`Saved ${need.size} precon printing(s) to data/precon-printings.json.`);
+}
+
 async function savePendingTokens(): Promise<void> {
   const defined = new Set(CARDS.filter((d) => d.token).map((d) => saved[d.id]?.scryfallId));
   const pendingFile = new URL('../data/pending-tokens.json', import.meta.url);
@@ -269,6 +295,7 @@ async function savePendingTokens(): Promise<void> {
 
 if (wanted.length === 0) {
   console.log('Every real card is already saved. Use --refresh to fetch them all again, or --faces for double-faced cards saved without their faces.');
+  await savePreconPrintings();
   await savePendingTokens();
   checkTokens();
   process.exit(0);
@@ -298,5 +325,6 @@ if (missing.length > 0) {
   console.error(`Not found on Scryfall: ${missing.join(', ')}`);
   process.exit(1);
 }
+await savePreconPrintings();
 await savePendingTokens();
 checkTokens();

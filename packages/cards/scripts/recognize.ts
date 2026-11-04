@@ -75,13 +75,17 @@ const colorsIn = (text: string) => [...text.matchAll(/\{([WUBRGC])\}/g)].map((m)
 
 /** Builds a definition from MTGJSON data; `built` says whether every ability is covered. */
 export function define(c: MtgjsonCard): { def: CardDefinition; built: boolean; needs: string[] } {
-  const types = c.types.map((t) => t.toLowerCase()) as CardDefinition['types'];
+  // Card types the engine doesn't have yet (Kindred) are left out and noted as needed.
+  const ENGINE_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery', 'planeswalker', 'battle'];
+  const missingTypes = c.types.map((t) => t.toLowerCase()).filter((t) => !ENGINE_TYPES.includes(t));
+  const types = c.types.map((t) => t.toLowerCase()).filter((t) => ENGINE_TYPES.includes(t)) as CardDefinition['types'];
   const def: CardDefinition = {
     id: slug(c.name),
     name: c.name,
     types,
     ...(c.supertypes.length ? { supertypes: c.supertypes as CardDefinition['supertypes'] } : {}),
-    ...(c.subtypes.length ? { subtypes: c.subtypes } : {}),
+    // A Kindred card's subtypes are creature types, which the rest of its types can't have yet.
+    ...(c.subtypes.length && !missingTypes.includes('kindred') ? { subtypes: c.subtypes } : {}),
     ...(c.manaCost && !types.includes('land') ? { manaCost: c.manaCost } : {}),
     ...(c.power !== undefined ? { power: Number(c.power) || 0, toughness: Number(c.toughness) || 0 } : {}),
     colorIdentity: c.colorIdentity,
@@ -159,6 +163,7 @@ export function define(c: MtgjsonCard): { def: CardDefinition; built: boolean; n
   // Variable power/toughness ("*") needs abilities that count things.
   if (c.power === '*' || c.toughness === '*') built = false;
   if (c.manaCost?.includes('{X}')) built = false;
+  if (missingTypes.length) built = false;
   if (!built) {
     // Partly recognized cards keep what works (a land's mana), but not their abilities.
     delete def.triggers;
@@ -170,6 +175,7 @@ export function define(c: MtgjsonCard): { def: CardDefinition; built: boolean; n
   const needs = new Set<string>();
   if (!built) {
     if (c.layout !== 'normal') needs.add(c.layout);
+    for (const t of missingTypes) needs.add(`${t}-type`);
     for (const k of c.keywords ?? []) if (!supported.has(k.toLowerCase())) needs.add(k.toLowerCase());
     for (const line of unhandled) {
       if (/^(When|Whenever|At the beginning)/.test(line)) needs.add('triggers');

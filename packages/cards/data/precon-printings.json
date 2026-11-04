@@ -321,5 +321,656 @@
     "scryfallUri": "https://scryfall.com/card/fic/382/command-tower?utm_source=api",
     "scryfallId": "9ac9c12b-5135-4124-b01b-336560907940",
     "relatedTokens": []
+  },
+  "eoc/49": {
+    "name": "Chaos Warp",
+    "typeLine": "Instant",
+    "oracleText": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+    "set": "eoc",
+    "number": "49",
+    "artist": "Olivier Bernard",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/4/d4372203-b930-4e6e-a351-e5b4581eb72b.jpg?1783906051",
+      "normal": "https://cards.scryfall.io/normal/front/d/4/d4372203-b930-4e6e-a351-e5b4581eb72b.jpg?1783906051",
+      "large": "https://cards.scryfall.io/large/front/d/4/d4372203-b930-4e6e-a351-e5b4581eb72b.jpg?1783906051",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/4/d4372203-b930-4e6e-a351-e5b4581eb72b.jpg?1783906051"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/49/chaos-warp?utm_source=api",
+    "scryfallId": "d4372203-b930-4e6e-a351-e5b4581eb72b",
+    "relatedTokens": []
+  },
+  "eoc/58": {
+    "name": "Battlefield Forge",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add {C}.\n{T}: Add {R} or {W}. This land deals 1 damage to you.",
+    "set": "eoc",
+    "number": "58",
+    "artist": "Manuel Castañón",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/e/6ef04c87-8d34-49af-8b79-72e460daf71c.jpg?1783906049",
+      "normal": "https://cards.scryfall.io/normal/front/6/e/6ef04c87-8d34-49af-8b79-72e460daf71c.jpg?1783906049",
+      "large": "https://cards.scryfall.io/large/front/6/e/6ef04c87-8d34-49af-8b79-72e460daf71c.jpg?1783906049",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/e/6ef04c87-8d34-49af-8b79-72e460daf71c.jpg?1783906049"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/58/battlefield-forge?utm_source=api",
+    "scryfallId": "6ef04c87-8d34-49af-8b79-72e460daf71c",
+    "relatedTokens": []
+  },
+  "eoc/63": {
+    "name": "Angel of the Ruins",
+    "typeLine": "Artifact Creature — Angel",
+    "oracleText": "Flying\nWhen this creature enters, exile up to two target artifacts and/or enchantments.\nPlainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand, then shuffle.)",
+    "set": "eoc",
+    "number": "63",
+    "artist": "Viko Menezes",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/a/4ad8d899-5901-4fc8-b4f0-adcc0d97fc6e.jpg?1783906047",
+      "normal": "https://cards.scryfall.io/normal/front/4/a/4ad8d899-5901-4fc8-b4f0-adcc0d97fc6e.jpg?1783906047",
+      "large": "https://cards.scryfall.io/large/front/4/a/4ad8d899-5901-4fc8-b4f0-adcc0d97fc6e.jpg?1783906047",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/a/4ad8d899-5901-4fc8-b4f0-adcc0d97fc6e.jpg?1783906047"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/63/angel-of-the-ruins?utm_source=api",
+    "scryfallId": "4ad8d899-5901-4fc8-b4f0-adcc0d97fc6e",
+    "relatedTokens": []
+  },
+  "eoc/67": {
+    "name": "Resourceful Defense",
+    "typeLine": "Enchantment",
+    "oracleText": "Whenever a permanent you control leaves the battlefield, if it had counters on it, put those counters on target permanent you control.\n{4}{W}: Move any number of counters from target permanent you control onto a second target permanent you control.",
+    "set": "eoc",
+    "number": "67",
+    "artist": "Francis Tneh",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/8/78743ab3-0289-4799-b139-a37964532b92.jpg?1783906046",
+      "normal": "https://cards.scryfall.io/normal/front/7/8/78743ab3-0289-4799-b139-a37964532b92.jpg?1783906046",
+      "large": "https://cards.scryfall.io/large/front/7/8/78743ab3-0289-4799-b139-a37964532b92.jpg?1783906046",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/8/78743ab3-0289-4799-b139-a37964532b92.jpg?1783906046"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/67/resourceful-defense?utm_source=api",
+    "scryfallId": "78743ab3-0289-4799-b139-a37964532b92",
+    "relatedTokens": []
+  },
+  "eoc/76": {
+    "name": "Pull from Tomorrow",
+    "typeLine": "Instant",
+    "oracleText": "Draw X cards, then discard a card.",
+    "set": "eoc",
+    "number": "76",
+    "artist": "Sara Winters",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/2/12e1fecc-c9e4-401f-ac24-11822276c911.jpg?1783906041",
+      "normal": "https://cards.scryfall.io/normal/front/1/2/12e1fecc-c9e4-401f-ac24-11822276c911.jpg?1783906041",
+      "large": "https://cards.scryfall.io/large/front/1/2/12e1fecc-c9e4-401f-ac24-11822276c911.jpg?1783906041",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/2/12e1fecc-c9e4-401f-ac24-11822276c911.jpg?1783906041"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/76/pull-from-tomorrow?utm_source=api",
+    "scryfallId": "12e1fecc-c9e4-401f-ac24-11822276c911",
+    "relatedTokens": []
+  },
+  "eoc/155": {
+    "name": "Clifftop Retreat",
+    "typeLine": "Land",
+    "oracleText": "This land enters tapped unless you control a Mountain or a Plains.\n{T}: Add {R} or {W}.",
+    "set": "eoc",
+    "number": "155",
+    "artist": "Christine Choi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/7/f795f6fd-eac9-4c6d-90f5-bc475c8d69ac.jpg?1783906015",
+      "normal": "https://cards.scryfall.io/normal/front/f/7/f795f6fd-eac9-4c6d-90f5-bc475c8d69ac.jpg?1783906015",
+      "large": "https://cards.scryfall.io/large/front/f/7/f795f6fd-eac9-4c6d-90f5-bc475c8d69ac.jpg?1783906015",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/7/f795f6fd-eac9-4c6d-90f5-bc475c8d69ac.jpg?1783906015"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/155/clifftop-retreat?utm_source=api",
+    "scryfallId": "f795f6fd-eac9-4c6d-90f5-bc475c8d69ac",
+    "relatedTokens": []
+  },
+  "eoc/159": {
+    "name": "Exotic Orchard",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add one mana of any color that a land an opponent controls could produce.",
+    "set": "eoc",
+    "number": "159",
+    "artist": "Steven Belledin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/8/e86174cd-0291-4fca-8e22-2d2b6f921460.jpg?1783906013",
+      "normal": "https://cards.scryfall.io/normal/front/e/8/e86174cd-0291-4fca-8e22-2d2b6f921460.jpg?1783906013",
+      "large": "https://cards.scryfall.io/large/front/e/8/e86174cd-0291-4fca-8e22-2d2b6f921460.jpg?1783906013",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/8/e86174cd-0291-4fca-8e22-2d2b6f921460.jpg?1783906013"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/159/exotic-orchard?utm_source=api",
+    "scryfallId": "e86174cd-0291-4fca-8e22-2d2b6f921460",
+    "relatedTokens": []
+  },
+  "eoc/160": {
+    "name": "Glacial Fortress",
+    "typeLine": "Land",
+    "oracleText": "This land enters tapped unless you control a Plains or an Island.\n{T}: Add {W} or {U}.",
+    "set": "eoc",
+    "number": "160",
+    "artist": "James Paick",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/1/a1fc8d86-b118-46e3-92a5-8cbf2ca282f7.jpg?1783906012",
+      "normal": "https://cards.scryfall.io/normal/front/a/1/a1fc8d86-b118-46e3-92a5-8cbf2ca282f7.jpg?1783906012",
+      "large": "https://cards.scryfall.io/large/front/a/1/a1fc8d86-b118-46e3-92a5-8cbf2ca282f7.jpg?1783906012",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/1/a1fc8d86-b118-46e3-92a5-8cbf2ca282f7.jpg?1783906012"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/160/glacial-fortress?utm_source=api",
+    "scryfallId": "a1fc8d86-b118-46e3-92a5-8cbf2ca282f7",
+    "relatedTokens": []
+  },
+  "eoc/174": {
+    "name": "Rugged Prairie",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add {C}.\n{R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}.",
+    "set": "eoc",
+    "number": "174",
+    "artist": "Fred Fields",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/1/81d91591-8d44-40cc-9941-c455f9722958.jpg?1783906008",
+      "normal": "https://cards.scryfall.io/normal/front/8/1/81d91591-8d44-40cc-9941-c455f9722958.jpg?1783906008",
+      "large": "https://cards.scryfall.io/large/front/8/1/81d91591-8d44-40cc-9941-c455f9722958.jpg?1783906008",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/1/81d91591-8d44-40cc-9941-c455f9722958.jpg?1783906008"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/174/rugged-prairie?utm_source=api",
+    "scryfallId": "81d91591-8d44-40cc-9941-c455f9722958",
+    "relatedTokens": []
+  },
+  "eoc/181": {
+    "name": "Skycloud Expanse",
+    "typeLine": "Land",
+    "oracleText": "{1}, {T}: Add {W}{U}.",
+    "set": "eoc",
+    "number": "181",
+    "artist": "Rob Alexander",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/3/03f8c846-d80c-49a4-a562-e817cd0c6096.jpg?1783906004",
+      "normal": "https://cards.scryfall.io/normal/front/0/3/03f8c846-d80c-49a4-a562-e817cd0c6096.jpg?1783906004",
+      "large": "https://cards.scryfall.io/large/front/0/3/03f8c846-d80c-49a4-a562-e817cd0c6096.jpg?1783906004",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/3/03f8c846-d80c-49a4-a562-e817cd0c6096.jpg?1783906004"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/181/skycloud-expanse?utm_source=api",
+    "scryfallId": "03f8c846-d80c-49a4-a562-e817cd0c6096",
+    "relatedTokens": []
+  },
+  "eoc/183": {
+    "name": "Spire of Industry",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add {C}.\n{T}, Pay 1 life: Add one mana of any color. Activate only if you control an artifact.",
+    "set": "eoc",
+    "number": "183",
+    "artist": "John Avon",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/5/35e9ec06-a848-4230-84a2-19cb8034e0f0.jpg?1783906004",
+      "normal": "https://cards.scryfall.io/normal/front/3/5/35e9ec06-a848-4230-84a2-19cb8034e0f0.jpg?1783906004",
+      "large": "https://cards.scryfall.io/large/front/3/5/35e9ec06-a848-4230-84a2-19cb8034e0f0.jpg?1783906004",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/5/35e9ec06-a848-4230-84a2-19cb8034e0f0.jpg?1783906004"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/183/spire-of-industry?utm_source=api",
+    "scryfallId": "35e9ec06-a848-4230-84a2-19cb8034e0f0",
+    "relatedTokens": []
+  },
+  "eoc/186": {
+    "name": "Temple of Enlightenment",
+    "typeLine": "Land",
+    "oracleText": "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {W} or {U}.",
+    "set": "eoc",
+    "number": "186",
+    "artist": "Piotr Dura",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/d/dd139d4d-3a40-4015-93de-c838c64156c6.jpg?1783906003",
+      "normal": "https://cards.scryfall.io/normal/front/d/d/dd139d4d-3a40-4015-93de-c838c64156c6.jpg?1783906003",
+      "large": "https://cards.scryfall.io/large/front/d/d/dd139d4d-3a40-4015-93de-c838c64156c6.jpg?1783906003",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/d/dd139d4d-3a40-4015-93de-c838c64156c6.jpg?1783906003"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/186/temple-of-enlightenment?utm_source=api",
+    "scryfallId": "dd139d4d-3a40-4015-93de-c838c64156c6",
+    "relatedTokens": []
+  },
+  "eoc/45": {
+    "name": "Swords to Plowshares",
+    "typeLine": "Instant",
+    "oracleText": "Exile target creature. Its controller gains life equal to its power.",
+    "set": "eoc",
+    "number": "45",
+    "artist": "Nadia Hurianova",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/e/0e7ff4dc-af63-4342-9a44-d059e62bd14c.jpg?1783906053",
+      "normal": "https://cards.scryfall.io/normal/front/0/e/0e7ff4dc-af63-4342-9a44-d059e62bd14c.jpg?1783906053",
+      "large": "https://cards.scryfall.io/large/front/0/e/0e7ff4dc-af63-4342-9a44-d059e62bd14c.jpg?1783906053",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/e/0e7ff4dc-af63-4342-9a44-d059e62bd14c.jpg?1783906053"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/45/swords-to-plowshares?utm_source=api",
+    "scryfallId": "0e7ff4dc-af63-4342-9a44-d059e62bd14c",
+    "relatedTokens": []
+  },
+  "eoc/53": {
+    "name": "Arcane Signet",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "eoc",
+    "number": "53",
+    "artist": "Constantin Marin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/d/3d994115-378d-4685-a5dc-e448831da434.jpg?1783906051",
+      "normal": "https://cards.scryfall.io/normal/front/3/d/3d994115-378d-4685-a5dc-e448831da434.jpg?1783906051",
+      "large": "https://cards.scryfall.io/large/front/3/d/3d994115-378d-4685-a5dc-e448831da434.jpg?1783906051",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/d/3d994115-378d-4685-a5dc-e448831da434.jpg?1783906051"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/53/arcane-signet?utm_source=api",
+    "scryfallId": "3d994115-378d-4685-a5dc-e448831da434",
+    "relatedTokens": []
+  },
+  "eoc/57": {
+    "name": "Sol Ring",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add {C}{C}.",
+    "set": "eoc",
+    "number": "57",
+    "artist": "Steven Belledin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/e/ee6e5a35-fe21-4dee-b0ef-a8f2841511ad.jpg?1783906049",
+      "normal": "https://cards.scryfall.io/normal/front/e/e/ee6e5a35-fe21-4dee-b0ef-a8f2841511ad.jpg?1783906049",
+      "large": "https://cards.scryfall.io/large/front/e/e/ee6e5a35-fe21-4dee-b0ef-a8f2841511ad.jpg?1783906049",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/e/ee6e5a35-fe21-4dee-b0ef-a8f2841511ad.jpg?1783906049"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/57/sol-ring?utm_source=api",
+    "scryfallId": "ee6e5a35-fe21-4dee-b0ef-a8f2841511ad",
+    "relatedTokens": []
+  },
+  "eoc/59": {
+    "name": "Command Tower",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add one mana of any color in your commander's color identity.",
+    "set": "eoc",
+    "number": "59",
+    "artist": "Constantin Marin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/5/85eb4b03-305b-45a4-82e5-5fcd586cc744.jpg?1783906048",
+      "normal": "https://cards.scryfall.io/normal/front/8/5/85eb4b03-305b-45a4-82e5-5fcd586cc744.jpg?1783906048",
+      "large": "https://cards.scryfall.io/large/front/8/5/85eb4b03-305b-45a4-82e5-5fcd586cc744.jpg?1783906048",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/5/85eb4b03-305b-45a4-82e5-5fcd586cc744.jpg?1783906048"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/59/command-tower?utm_source=api",
+    "scryfallId": "85eb4b03-305b-45a4-82e5-5fcd586cc744",
+    "relatedTokens": []
+  },
+  "eoc/64": {
+    "name": "Dispatch",
+    "typeLine": "Instant",
+    "oracleText": "Tap target creature.\nMetalcraft — If you control three or more artifacts, exile that creature.",
+    "set": "eoc",
+    "number": "64",
+    "artist": "Erica Yang",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/7/27554761-8d6e-4de4-8ce3-f31b2c03708c.jpg?1783906046",
+      "normal": "https://cards.scryfall.io/normal/front/2/7/27554761-8d6e-4de4-8ce3-f31b2c03708c.jpg?1783906046",
+      "large": "https://cards.scryfall.io/large/front/2/7/27554761-8d6e-4de4-8ce3-f31b2c03708c.jpg?1783906046",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/7/27554761-8d6e-4de4-8ce3-f31b2c03708c.jpg?1783906046"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/64/dispatch?utm_source=api",
+    "scryfallId": "27554761-8d6e-4de4-8ce3-f31b2c03708c",
+    "relatedTokens": []
+  },
+  "eoc/137": {
+    "name": "Everflowing Chalice",
+    "typeLine": "Artifact",
+    "oracleText": "Multikicker {2} (You may pay an additional {2} any number of times as you cast this spell.)\nThis artifact enters with a charge counter on it for each time it was kicked.\n{T}: Add {C} for each charge counter on this artifact.",
+    "set": "eoc",
+    "number": "137",
+    "artist": "Steve Argyle",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/4/e4ed0052-d6dd-4f69-8313-10863baefac9.jpg?1783906021",
+      "normal": "https://cards.scryfall.io/normal/front/e/4/e4ed0052-d6dd-4f69-8313-10863baefac9.jpg?1783906021",
+      "large": "https://cards.scryfall.io/large/front/e/4/e4ed0052-d6dd-4f69-8313-10863baefac9.jpg?1783906021",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/4/e4ed0052-d6dd-4f69-8313-10863baefac9.jpg?1783906021"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/137/everflowing-chalice?utm_source=api",
+    "scryfallId": "e4ed0052-d6dd-4f69-8313-10863baefac9",
+    "relatedTokens": []
+  },
+  "eoc/158": {
+    "name": "Evolving Wilds",
+    "typeLine": "Land",
+    "oracleText": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    "set": "eoc",
+    "number": "158",
+    "artist": "Andreas Rocha",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/1/31181bd2-3a1f-4cb9-ba30-637ac479133a.jpg?1783906013",
+      "normal": "https://cards.scryfall.io/normal/front/3/1/31181bd2-3a1f-4cb9-ba30-637ac479133a.jpg?1783906013",
+      "large": "https://cards.scryfall.io/large/front/3/1/31181bd2-3a1f-4cb9-ba30-637ac479133a.jpg?1783906013",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/1/31181bd2-3a1f-4cb9-ba30-637ac479133a.jpg?1783906013"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/158/evolving-wilds?utm_source=api",
+    "scryfallId": "31181bd2-3a1f-4cb9-ba30-637ac479133a",
+    "relatedTokens": []
+  },
+  "eoe/267": {
+    "name": "Plains",
+    "typeLine": "Basic Land — Plains",
+    "oracleText": "({T}: Add {W}.)",
+    "set": "eoe",
+    "number": "267",
+    "artist": "Alayna Danner",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/f/df31f72c-076e-4d8e-9975-6d6281ab71f6.jpg?1783905908",
+      "normal": "https://cards.scryfall.io/normal/front/d/f/df31f72c-076e-4d8e-9975-6d6281ab71f6.jpg?1783905908",
+      "large": "https://cards.scryfall.io/large/front/d/f/df31f72c-076e-4d8e-9975-6d6281ab71f6.jpg?1783905908",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/f/df31f72c-076e-4d8e-9975-6d6281ab71f6.jpg?1783905908"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/267/plains?utm_source=api",
+    "scryfallId": "df31f72c-076e-4d8e-9975-6d6281ab71f6",
+    "relatedTokens": []
+  },
+  "eoe/268": {
+    "name": "Plains",
+    "typeLine": "Basic Land — Plains",
+    "oracleText": "({T}: Add {W}.)",
+    "set": "eoe",
+    "number": "268",
+    "artist": "Sergey Glushakov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/2/a26fd28e-d053-48b3-ab4c-2dc6fd33fa64.jpg?1783905909",
+      "normal": "https://cards.scryfall.io/normal/front/a/2/a26fd28e-d053-48b3-ab4c-2dc6fd33fa64.jpg?1783905909",
+      "large": "https://cards.scryfall.io/large/front/a/2/a26fd28e-d053-48b3-ab4c-2dc6fd33fa64.jpg?1783905909",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/2/a26fd28e-d053-48b3-ab4c-2dc6fd33fa64.jpg?1783905909"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/268/plains?utm_source=api",
+    "scryfallId": "a26fd28e-d053-48b3-ab4c-2dc6fd33fa64",
+    "relatedTokens": []
+  },
+  "eoe/269": {
+    "name": "Island",
+    "typeLine": "Basic Land — Island",
+    "oracleText": "({T}: Add {U}.)",
+    "set": "eoe",
+    "number": "269",
+    "artist": "Sergey Glushakov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/a/aaa212be-1db5-4493-86c8-c01d29348e31.jpg?1783905909",
+      "normal": "https://cards.scryfall.io/normal/front/a/a/aaa212be-1db5-4493-86c8-c01d29348e31.jpg?1783905909",
+      "large": "https://cards.scryfall.io/large/front/a/a/aaa212be-1db5-4493-86c8-c01d29348e31.jpg?1783905909",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/a/aaa212be-1db5-4493-86c8-c01d29348e31.jpg?1783905909"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/269/island?utm_source=api",
+    "scryfallId": "aaa212be-1db5-4493-86c8-c01d29348e31",
+    "relatedTokens": []
+  },
+  "eoe/270": {
+    "name": "Island",
+    "typeLine": "Basic Land — Island",
+    "oracleText": "({T}: Add {U}.)",
+    "set": "eoe",
+    "number": "270",
+    "artist": "Liiga Smilshkalne",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/f/2fb9ecfd-8025-48c0-a306-b4deebde2949.jpg?1783905909",
+      "normal": "https://cards.scryfall.io/normal/front/2/f/2fb9ecfd-8025-48c0-a306-b4deebde2949.jpg?1783905909",
+      "large": "https://cards.scryfall.io/large/front/2/f/2fb9ecfd-8025-48c0-a306-b4deebde2949.jpg?1783905909",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/f/2fb9ecfd-8025-48c0-a306-b4deebde2949.jpg?1783905909"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/270/island?utm_source=api",
+    "scryfallId": "2fb9ecfd-8025-48c0-a306-b4deebde2949",
+    "relatedTokens": []
+  },
+  "eoe/273": {
+    "name": "Mountain",
+    "typeLine": "Basic Land — Mountain",
+    "oracleText": "({T}: Add {R}.)",
+    "set": "eoe",
+    "number": "273",
+    "artist": "Sergey Glushakov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/c/5cd39b01-9a06-4575-9c63-9fb3ba9ef101.jpg?1783905908",
+      "normal": "https://cards.scryfall.io/normal/front/5/c/5cd39b01-9a06-4575-9c63-9fb3ba9ef101.jpg?1783905908",
+      "large": "https://cards.scryfall.io/large/front/5/c/5cd39b01-9a06-4575-9c63-9fb3ba9ef101.jpg?1783905908",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/c/5cd39b01-9a06-4575-9c63-9fb3ba9ef101.jpg?1783905908"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/273/mountain?utm_source=api",
+    "scryfallId": "5cd39b01-9a06-4575-9c63-9fb3ba9ef101",
+    "relatedTokens": []
+  },
+  "eoe/274": {
+    "name": "Mountain",
+    "typeLine": "Basic Land — Mountain",
+    "oracleText": "({T}: Add {R}.)",
+    "set": "eoe",
+    "number": "274",
+    "artist": "Julian Kok Joon Wen",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/e/de0ac2b0-175b-4e71-9172-ce2a72234818.jpg?1783905907",
+      "normal": "https://cards.scryfall.io/normal/front/d/e/de0ac2b0-175b-4e71-9172-ce2a72234818.jpg?1783905907",
+      "large": "https://cards.scryfall.io/large/front/d/e/de0ac2b0-175b-4e71-9172-ce2a72234818.jpg?1783905907",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/e/de0ac2b0-175b-4e71-9172-ce2a72234818.jpg?1783905907"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/274/mountain?utm_source=api",
+    "scryfallId": "de0ac2b0-175b-4e71-9172-ce2a72234818",
+    "relatedTokens": []
+  },
+  "eoc/110": {
+    "name": "Tireless Tracker",
+    "typeLine": "Creature — Human Scout",
+    "oracleText": "Landfall — Whenever a land you control enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you sacrifice a Clue, put a +1/+1 counter on this creature.",
+    "set": "eoc",
+    "number": "110",
+    "artist": "Eric Deschamps",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/6/66444549-ad9b-49c6-a7c6-34e977c1085d.jpg?1783906030",
+      "normal": "https://cards.scryfall.io/normal/front/6/6/66444549-ad9b-49c6-a7c6-34e977c1085d.jpg?1783906030",
+      "large": "https://cards.scryfall.io/large/front/6/6/66444549-ad9b-49c6-a7c6-34e977c1085d.jpg?1783906030",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/6/66444549-ad9b-49c6-a7c6-34e977c1085d.jpg?1783906030"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/110/tireless-tracker?utm_source=api",
+    "scryfallId": "66444549-ad9b-49c6-a7c6-34e977c1085d",
+    "relatedTokens": [
+      {
+        "name": "Clue",
+        "scryfallId": "15866ed4-1ca3-427f-99ba-ee26ede9ae18"
+      }
+    ]
+  },
+  "eoc/154": {
+    "name": "Cinder Glade",
+    "typeLine": "Land — Mountain Forest",
+    "oracleText": "({T}: Add {R} or {G}.)\nThis land enters tapped unless you control two or more basic lands.",
+    "set": "eoc",
+    "number": "154",
+    "artist": "Adam Paquette",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/8/7865ae5f-cfd9-4913-bcf5-aadbd6824e65.jpg?1783906016",
+      "normal": "https://cards.scryfall.io/normal/front/7/8/7865ae5f-cfd9-4913-bcf5-aadbd6824e65.jpg?1783906016",
+      "large": "https://cards.scryfall.io/large/front/7/8/7865ae5f-cfd9-4913-bcf5-aadbd6824e65.jpg?1783906016",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/8/7865ae5f-cfd9-4913-bcf5-aadbd6824e65.jpg?1783906016"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/154/cinder-glade?utm_source=api",
+    "scryfallId": "7865ae5f-cfd9-4913-bcf5-aadbd6824e65",
+    "relatedTokens": []
+  },
+  "eoc/182": {
+    "name": "Smoldering Marsh",
+    "typeLine": "Land — Swamp Mountain",
+    "oracleText": "({T}: Add {B} or {R}.)\nThis land enters tapped unless you control two or more basic lands.",
+    "set": "eoc",
+    "number": "182",
+    "artist": "Adam Paquette",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/a/ea5c3d9e-13e7-492d-80b8-d6dd42895f33.jpg?1783906005",
+      "normal": "https://cards.scryfall.io/normal/front/e/a/ea5c3d9e-13e7-492d-80b8-d6dd42895f33.jpg?1783906005",
+      "large": "https://cards.scryfall.io/large/front/e/a/ea5c3d9e-13e7-492d-80b8-d6dd42895f33.jpg?1783906005",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/a/ea5c3d9e-13e7-492d-80b8-d6dd42895f33.jpg?1783906005"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/182/smoldering-marsh?utm_source=api",
+    "scryfallId": "ea5c3d9e-13e7-492d-80b8-d6dd42895f33",
+    "relatedTokens": []
+  },
+  "eoc/185": {
+    "name": "Sulfurous Springs",
+    "typeLine": "Land",
+    "oracleText": "{T}: Add {C}.\n{T}: Add {B} or {R}. This land deals 1 damage to you.",
+    "set": "eoc",
+    "number": "185",
+    "artist": "Bruce Brenneise",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/e/eedb9df2-20d3-4cfd-8aed-336edc37d5a9.jpg?1783906003",
+      "normal": "https://cards.scryfall.io/normal/front/e/e/eedb9df2-20d3-4cfd-8aed-336edc37d5a9.jpg?1783906003",
+      "large": "https://cards.scryfall.io/large/front/e/e/eedb9df2-20d3-4cfd-8aed-336edc37d5a9.jpg?1783906003",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/e/eedb9df2-20d3-4cfd-8aed-336edc37d5a9.jpg?1783906003"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/185/sulfurous-springs?utm_source=api",
+    "scryfallId": "eedb9df2-20d3-4cfd-8aed-336edc37d5a9",
+    "relatedTokens": []
+  },
+  "eoc/50": {
+    "name": "Farseek",
+    "typeLine": "Sorcery",
+    "oracleText": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+    "set": "eoc",
+    "number": "50",
+    "artist": "Julian Kok Joon Wen",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/5/95e0760a-d285-493b-88cd-7556d9b10007.jpg?1783906051",
+      "normal": "https://cards.scryfall.io/normal/front/9/5/95e0760a-d285-493b-88cd-7556d9b10007.jpg?1783906051",
+      "large": "https://cards.scryfall.io/large/front/9/5/95e0760a-d285-493b-88cd-7556d9b10007.jpg?1783906051",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/5/95e0760a-d285-493b-88cd-7556d9b10007.jpg?1783906051"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/50/farseek?utm_source=api",
+    "scryfallId": "95e0760a-d285-493b-88cd-7556d9b10007",
+    "relatedTokens": []
+  },
+  "eoc/85": {
+    "name": "Night's Whisper",
+    "typeLine": "Sorcery",
+    "oracleText": "You draw two cards and lose 2 life.",
+    "set": "eoc",
+    "number": "85",
+    "artist": "Carlos Palma Cruchaga",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/7/67bdba19-c74a-462d-9e51-4fd7f0a6a2c3.jpg?1783906041",
+      "normal": "https://cards.scryfall.io/normal/front/6/7/67bdba19-c74a-462d-9e51-4fd7f0a6a2c3.jpg?1783906041",
+      "large": "https://cards.scryfall.io/large/front/6/7/67bdba19-c74a-462d-9e51-4fd7f0a6a2c3.jpg?1783906041",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/7/67bdba19-c74a-462d-9e51-4fd7f0a6a2c3.jpg?1783906041"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/85/nights-whisper?utm_source=api",
+    "scryfallId": "67bdba19-c74a-462d-9e51-4fd7f0a6a2c3",
+    "relatedTokens": []
+  },
+  "eoc/95": {
+    "name": "Cultivate",
+    "typeLine": "Sorcery",
+    "oracleText": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "set": "eoc",
+    "number": "95",
+    "artist": "Anthony Palumbo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/e/7ee610ee-7711-4a6b-b441-d6c73e6ef2b4.jpg?1783906035",
+      "normal": "https://cards.scryfall.io/normal/front/7/e/7ee610ee-7711-4a6b-b441-d6c73e6ef2b4.jpg?1783906035",
+      "large": "https://cards.scryfall.io/large/front/7/e/7ee610ee-7711-4a6b-b441-d6c73e6ef2b4.jpg?1783906035",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/e/7ee610ee-7711-4a6b-b441-d6c73e6ef2b4.jpg?1783906035"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/95/cultivate?utm_source=api",
+    "scryfallId": "7ee610ee-7711-4a6b-b441-d6c73e6ef2b4",
+    "relatedTokens": []
+  },
+  "eoc/101": {
+    "name": "Nature's Lore",
+    "typeLine": "Sorcery",
+    "oracleText": "Search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+    "set": "eoc",
+    "number": "101",
+    "artist": "Julie Dillon",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/b/5b42a79a-1f08-4e15-b40e-c993307ae066.jpg?1783906033",
+      "normal": "https://cards.scryfall.io/normal/front/5/b/5b42a79a-1f08-4e15-b40e-c993307ae066.jpg?1783906033",
+      "large": "https://cards.scryfall.io/large/front/5/b/5b42a79a-1f08-4e15-b40e-c993307ae066.jpg?1783906033",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/b/5b42a79a-1f08-4e15-b40e-c993307ae066.jpg?1783906033"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/101/natures-lore?utm_source=api",
+    "scryfallId": "5b42a79a-1f08-4e15-b40e-c993307ae066",
+    "relatedTokens": []
+  },
+  "eoc/191": {
+    "name": "Wastes",
+    "typeLine": "Basic Land",
+    "oracleText": "{T}: Add {C}.",
+    "set": "eoc",
+    "number": "191",
+    "artist": "Raymond Swanland",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/a/baf8f4f2-9f25-4cd2-8d78-1041e134aeac.jpg?1783906001",
+      "normal": "https://cards.scryfall.io/normal/front/b/a/baf8f4f2-9f25-4cd2-8d78-1041e134aeac.jpg?1783906001",
+      "large": "https://cards.scryfall.io/large/front/b/a/baf8f4f2-9f25-4cd2-8d78-1041e134aeac.jpg?1783906001",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/a/baf8f4f2-9f25-4cd2-8d78-1041e134aeac.jpg?1783906001"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoc/191/wastes?utm_source=api",
+    "scryfallId": "baf8f4f2-9f25-4cd2-8d78-1041e134aeac",
+    "relatedTokens": []
+  },
+  "eoe/271": {
+    "name": "Swamp",
+    "typeLine": "Basic Land — Swamp",
+    "oracleText": "({T}: Add {B}.)",
+    "set": "eoe",
+    "number": "271",
+    "artist": "Sergey Glushakov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/8/58496a56-437f-4204-9691-f63795e5cdab.jpg?1783905909",
+      "normal": "https://cards.scryfall.io/normal/front/5/8/58496a56-437f-4204-9691-f63795e5cdab.jpg?1783905909",
+      "large": "https://cards.scryfall.io/large/front/5/8/58496a56-437f-4204-9691-f63795e5cdab.jpg?1783905909",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/8/58496a56-437f-4204-9691-f63795e5cdab.jpg?1783905909"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/271/swamp?utm_source=api",
+    "scryfallId": "58496a56-437f-4204-9691-f63795e5cdab",
+    "relatedTokens": []
+  },
+  "eoe/272": {
+    "name": "Swamp",
+    "typeLine": "Basic Land — Swamp",
+    "oracleText": "({T}: Add {B}.)",
+    "set": "eoe",
+    "number": "272",
+    "artist": "Liiga Smilshkalne",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/7/07ab266b-ad6a-422e-9277-27d9f48d2c29.jpg?1783905908",
+      "normal": "https://cards.scryfall.io/normal/front/0/7/07ab266b-ad6a-422e-9277-27d9f48d2c29.jpg?1783905908",
+      "large": "https://cards.scryfall.io/large/front/0/7/07ab266b-ad6a-422e-9277-27d9f48d2c29.jpg?1783905908",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/7/07ab266b-ad6a-422e-9277-27d9f48d2c29.jpg?1783905908"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/272/swamp?utm_source=api",
+    "scryfallId": "07ab266b-ad6a-422e-9277-27d9f48d2c29",
+    "relatedTokens": []
+  },
+  "eoe/275": {
+    "name": "Forest",
+    "typeLine": "Basic Land — Forest",
+    "oracleText": "({T}: Add {G}.)",
+    "set": "eoe",
+    "number": "275",
+    "artist": "Sergey Glushakov",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/b/fb62605c-a58e-4e53-8336-b2bee316b5a6.jpg?1783905907",
+      "normal": "https://cards.scryfall.io/normal/front/f/b/fb62605c-a58e-4e53-8336-b2bee316b5a6.jpg?1783905907",
+      "large": "https://cards.scryfall.io/large/front/f/b/fb62605c-a58e-4e53-8336-b2bee316b5a6.jpg?1783905907",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/b/fb62605c-a58e-4e53-8336-b2bee316b5a6.jpg?1783905907"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/275/forest?utm_source=api",
+    "scryfallId": "fb62605c-a58e-4e53-8336-b2bee316b5a6",
+    "relatedTokens": []
+  },
+  "eoe/276": {
+    "name": "Forest",
+    "typeLine": "Basic Land — Forest",
+    "oracleText": "({T}: Add {G}.)",
+    "set": "eoe",
+    "number": "276",
+    "artist": "Julian Kok Joon Wen",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/7/673141ec-826f-4132-8282-d499990495a7.jpg?1783905910",
+      "normal": "https://cards.scryfall.io/normal/front/6/7/673141ec-826f-4132-8282-d499990495a7.jpg?1783905910",
+      "large": "https://cards.scryfall.io/large/front/6/7/673141ec-826f-4132-8282-d499990495a7.jpg?1783905910",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/7/673141ec-826f-4132-8282-d499990495a7.jpg?1783905910"
+    },
+    "scryfallUri": "https://scryfall.com/card/eoe/276/forest?utm_source=api",
+    "scryfallId": "673141ec-826f-4132-8282-d499990495a7",
+    "relatedTokens": []
   }
 }

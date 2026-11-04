@@ -8,6 +8,8 @@ import fin from '../data/fin.json' with { type: 'json' };
 import fic from '../data/fic.json' with { type: 'json' };
 import finSet from '../data/fin-set.json' with { type: 'json' };
 import ficPrecons from '../data/fic-precons.json' with { type: 'json' };
+import eoc from '../data/eoc.json' with { type: 'json' };
+import eocPrecons from '../data/eoc-precons.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import preconPrintings from '../data/precon-printings.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
@@ -25,7 +27,8 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
  * sealed play); tokens are in tokens.json.
  */
 // store-cards.json: cards sold only in the Store that no set file defines (Snapcaster Mage).
-const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...tokens];
+// eoc.json: the Edge of Eternities Commander precons' cards no other file defines (import-precons.ts eoc).
+const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...tokens];
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 
@@ -101,6 +104,12 @@ export interface PreconDeck {
 /** The four Final Fantasy Commander precons (100 cards each, including the commander). */
 export const FIN_PRECONS = ficPrecons.decks as PreconDeck[];
 
+/** The two Edge of Eternities Commander precons (Counter Intelligence, World Shaper), being built. */
+export const EOC_PRECONS = eocPrecons.decks as PreconDeck[];
+
+/** Every Commander precon the game knows, for looking one up by name. */
+const ALL_PRECONS = [...FIN_PRECONS, ...EOC_PRECONS];
+
 /** Card ids by exact card name, for turning decklists into decks. */
 export const CARD_IDS_BY_NAME: Record<string, CardDefId> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));
 
@@ -135,7 +144,7 @@ export interface CommanderChoice {
  * 903.5c). The printed commander comes first.
  */
 export function preconCommanders(name: string): CommanderChoice[] {
-  const precon = FIN_PRECONS.find((p) => p.name === name || p.name.startsWith(name));
+  const precon = ALL_PRECONS.find((p) => p.name === name || p.name.startsWith(name));
   if (!precon) throw new Error(`No precon named "${name}".`);
   const all = [precon.commander, ...precon.cards];
   const deckColors = new Set(all.flatMap((c) => CARD_DEFS[CARD_IDS_BY_NAME[c.name]!]?.colorIdentity ?? []));
@@ -170,7 +179,7 @@ export function preconDeckWithCommander(name: string, commanderName?: string): P
 
 /** A precon as a commander plus a 99-card library, for createGame. */
 export function preconDeck(name: string): PrintedPrecon {
-  const precon = FIN_PRECONS.find((p) => p.name === name || p.name.startsWith(name));
+  const precon = ALL_PRECONS.find((p) => p.name === name || p.name.startsWith(name));
   if (!precon) throw new Error(`No precon named "${name}".`);
   const id = (cardName: string) => {
     const found = CARD_IDS_BY_NAME[cardName];

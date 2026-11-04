@@ -5,6 +5,20 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Edge of Eternities precons imported
+
+The two Edge of Eternities Commander precons are imported from MTGJSON
+(`node packages/cards/scripts/import-precons.ts eoc`): 143 new cards in
+`eoc.json` (54 of 176 distinct cards play already; the rest are `notBuilt`)
+and the decklists in `eoc-precons.json` (`EOC_PRECONS`). `npm run scryfall`
+now also caches precon printings no card definition uses (reprints, the
+EOE basic lands) in `precon-printings.json`. The importer leaves out card
+types the engine doesn't have (Kindred) and lists them as needed. Legendary
+Spacecraft can be commanders (rule 903.3). Roadmap in docs/commander.md.
+
+In a cloud session, Node's built-in fetch needs `NODE_USE_ENV_PROXY=1` to go
+through the session's proxy (for the import and Scryfall scripts).
+
 ### Craft tab: dismantling and crafting with fragments
 
 Built from the user's spec (decisions: craft the regular non-foil printing of

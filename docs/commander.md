@@ -26,6 +26,39 @@ card is built it can't be cast or played (since 2026-10-29; all precon
 cards are built).
 The Starter Kit cards that also appear in the precons are shared.
 
+## Edge of Eternities Commander precons (started 2026-11-04)
+
+The next precons to build, imported with the same script (`import-precons.ts eoc`):
+
+| Deck | Commander | Fully built |
+|---|---|---|
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 42/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 36/100 |
+
+176 distinct cards: 33 shared with cards already built (Sol Ring, Command
+Tower, Swords to Plowshares, the pain and check lands...), 143 new in
+`packages/cards/data/eoc.json`; 54 play already, and the rest are marked
+`notBuilt` (shown with their real images, not castable yet). The decklists
+with each card's status are in `packages/cards/data/eoc-precons.json`
+(`EOC_PRECONS`); every printing's art is cached (`precon-printings.json` for
+the reprints, the EOE basic lands and Wastes).
+
+```bash
+node packages/cards/scripts/import-precons.ts eoc
+npm run scryfall
+```
+
+Both commanders are legendary Spacecraft, which can be commanders since
+Edge of Eternities (rule 903.3; `canBeCommander`). What the unbuilt cards
+need, most first: triggers (51), static abilities (49), activated abilities
+(43), spell effects (27), proliferate (9), X costs (6), station (4),
+improvise, mill and landfall (3 each), affinity, Phyrexian mana, sunburst
+and kicker (2 each), and one each of discover, incubate, encore, coven,
+retrace, dredge, devoid, changeling, the Kindred type (Formless Genesis),
+converge, a Saga and a transforming card. The plan, as for Final Fantasy:
+the set's own mechanics first (station and Spacecraft, landfall, lands
+sacrificed), then shared-mechanic groups.
+
 ## Commander rules (built)
 
 - Each player's commander starts in the command zone and can be cast from

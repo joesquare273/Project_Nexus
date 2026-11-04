@@ -71,9 +71,14 @@ export const COMMANDER: FormatConfig = {
   commanderDamageThreshold: 21,
 };
 
-/** A legendary creature or a legendary Vehicle can be a commander (rule 903.3). */
+/**
+ * A legendary creature, a legendary Vehicle, or a legendary Spacecraft with
+ * power and toughness can be a commander (rule 903.3, Spacecraft since Edge
+ * of Eternities).
+ */
 export function canBeCommander(def: CardDefinition): boolean {
-  return !!def.supertypes?.includes('Legendary') && (def.types.includes('creature') || !!def.subtypes?.includes('Vehicle'));
+  if (!def.supertypes?.includes('Legendary')) return false;
+  return def.types.includes('creature') || !!def.subtypes?.includes('Vehicle') || (!!def.subtypes?.includes('Spacecraft') && def.power !== undefined);
 }
 
 /** Whether two cards can be commanders together: both have Partner, or each partners with the other (rule 702.124). */
@@ -96,11 +101,11 @@ export function validateCommander(
   const def = cardDefs[commander];
   if (!def) return [`Unknown commander "${commander}".`];
   const errors: string[] = [];
-  if (!canBeCommander(def)) errors.push(`"${def.name}" isn't a legendary creature or legendary Vehicle, so it can't be a commander.`);
+  if (!canBeCommander(def)) errors.push(`"${def.name}" isn't a legendary creature, Vehicle or Spacecraft, so it can't be a commander.`);
   const second = partner !== undefined ? cardDefs[partner] : undefined;
   if (partner !== undefined && !second) return [...errors, `Unknown commander "${partner}".`];
   if (second) {
-    if (!canBeCommander(second)) errors.push(`"${second.name}" isn't a legendary creature or legendary Vehicle, so it can't be a commander.`);
+    if (!canBeCommander(second)) errors.push(`"${second.name}" isn't a legendary creature, Vehicle or Spacecraft, so it can't be a commander.`);
     if (!canPartner(def, second)) errors.push(`${def.name} and ${second.name} can't be commanders together: both need Partner (or to partner with each other).`);
   }
   const identity = new Set([...(def.colorIdentity ?? []), ...(second?.colorIdentity ?? [])]);
