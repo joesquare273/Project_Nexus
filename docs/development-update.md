@@ -5,6 +5,17 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Fix: "Waiting for the server…" while paying by hand online
+
+In online games (Commander and 60-card tables, draft games), paying for a
+spell by tapping lands one at a time sent each tap to the server alone. The
+check that casts the spell once the cost is covered ran before the server
+answered, so it never passed and the spell was never cast; tapping again
+before the answer said "Waiting for the server…". Now the taps happen on the
+board at once (held in `OnlineSession`) and go to the server together with
+the spell as one batch, the way automatic tapping already worked; if you stop
+paying, the taps are sent on their own. Test: `client/test/online-paying.test.ts`.
+
 ### Rewards: match rewards, quests, first win, tutorial (server)
 
 Built on the server and raised (user: friends need many cards): 75 for a game

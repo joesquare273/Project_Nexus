@@ -8,7 +8,7 @@
 // players' names, and outgoing actions rename them back, only in player
 // fields. The same session plays Starter Kit duels and Commander tables.
 
-import { materialize, type Action } from '@nexus/engine';
+import { getLegalActions, materialize, type Action } from '@nexus/engine';
 import { CARD_DEFS } from '@nexus/cards';
 import type { ClientMessage, Deck, Seat, ServerMessage } from '@nexus/server/protocol';
 import { GameSession, YOU, applyAll, readable, touchedCards, type Advance } from './session.ts';
@@ -80,6 +80,13 @@ export class OnlineSession extends GameSession {
   private seq = 0;
   /** A batch is on its way and hasn't been answered yet. */
   private waiting = false;
+  /**
+   * Mana abilities you activated while paying for a spell or ability by hand
+   * (holdPriority): applied to this board's copy of the game at once, and sent
+   * to the server together with what they pay for, as one batch. Sent on their
+   * own if you stop paying instead.
+   */
+  private heldTaps: Action[] = [];
   private readonly listeners = new Set<(error?: string) => void>();
   private readonly connection: GameLink;
 
@@ -107,7 +114,8 @@ export class OnlineSession extends GameSession {
 
   /** The server's legal actions: it's the authority on what you may do. */
   override legal(): Action[] {
-    return this.serverLegal;
+    // With taps held for a payment, the server's list is behind this board's copy of the game.
+    return this.heldTaps.length ? getLegalActions(this.state) : this.serverLegal;
   }
 
   /** Checks the move against your copy of the game (for quick feedback), then sends it. The server decides. */
@@ -119,8 +127,20 @@ export class OnlineSession extends GameSession {
     if (this.waiting) return 'Waiting for the server…';
     const tried = applyAll(this.state, actions);
     if ('error' in tried) return readable(this.state, tried.error);
-    this.send(actions);
+    // Paying by hand: tap now on this board; the server gets the taps with the spell.
+    if (this.holdPriority && actions.every((a) => a.type === 'ActivateManaAbility')) {
+      this.state = tried.state;
+      this.heldTaps.push(...actions);
+      this.notify();
+      return null;
+    }
+    this.send([...this.heldTaps.splice(0), ...actions]);
     return null;
+  }
+
+  /** The held taps go to the server on their own (you stopped paying). */
+  private flushTaps(): void {
+    if (this.heldTaps.length && !this.waiting) this.send(this.heldTaps.splice(0));
   }
 
   /** Your automatic passes and "no blocks" are sent to the server; otherwise the game waits on you or the other player. */
@@ -129,6 +149,10 @@ export class OnlineSession extends GameSession {
     if (s.pending.kind === 'gameOver') return 'over';
     if (this.waiting || s.pending.player !== YOU) return 'you';
     if (this.holdPriority && s.pending.kind === 'priority') return 'you';
+    if (this.heldTaps.length) {
+      this.flushTaps();
+      return 'you';
+    }
     const action = this.automaticAction();
     if (action) this.send([action]);
     return 'you';
@@ -155,6 +179,12 @@ export class OnlineSession extends GameSession {
       const update = renameIncoming(m.update, this.toName);
       const before = this.state;
       this.state = materialize(update.state, CARD_DEFS);
+      // Taps still held for a payment stay on this board's copy (dropped if they no longer apply).
+      if (this.heldTaps.length) {
+        const again = applyAll(this.state, this.heldTaps);
+        if ('error' in again) this.heldTaps = [];
+        else this.state = again.state;
+      }
       this.version = m.version;
       this.serverLegal = update.legal;
       if (m.ackSeq >= this.seq) this.waiting = false;
