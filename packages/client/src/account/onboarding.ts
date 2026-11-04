@@ -54,7 +54,12 @@ export async function finishOnboarding(step: OnboardingStep): Promise<Onboarding
       body: JSON.stringify({ step }),
     });
     if (!res.ok) return null;
-    const state = (await res.json()) as Onboarding;
+    const { reward, ...state } = (await res.json()) as Onboarding & { reward?: { label: string; amount: number; balance: number } };
+    // Finishing the lesson pays a one-time reward (the server decides).
+    if (reward) {
+      window.dispatchEvent(new CustomEvent<number>('nexus:shards', { detail: reward.balance }));
+      window.dispatchEvent(new CustomEvent('nexus:reward', { detail: { label: reward.label, amount: reward.amount } }));
+    }
     loaded = Promise.resolve(state);
     window.dispatchEvent(new CustomEvent<Onboarding>(EVENT, { detail: state }));
     return state;

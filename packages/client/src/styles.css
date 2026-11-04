@@ -3422,3 +3422,101 @@ button.link {
 .new-player p {
   margin: 0 0 12px;
 }
+
+/* Rewards: quests on Home, what a game earned, and a short notice (account/Rewards.tsx). */
+.home-quests {
+  margin: 18px 0;
+}
+.home-quests-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+.home-quests-head h2 {
+  margin: 0;
+}
+.quest-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.quest {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.quest.done {
+  border-color: var(--playable);
+}
+.quest.once {
+  border-color: var(--gold);
+}
+.quest-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.quest-reward {
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.quest-label {
+  font-weight: 600;
+}
+.quest-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.quest-bar span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+.game-rewards {
+  margin: 10px 0 14px;
+  text-align: left;
+}
+.game-rewards h3 {
+  margin: 0 0 6px;
+  color: var(--gold);
+}
+.game-rewards ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.game-rewards li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+}
+.game-rewards strong {
+  color: var(--gold);
+}
+.reward-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 10px 16px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+}

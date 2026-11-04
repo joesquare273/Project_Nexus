@@ -840,6 +840,22 @@ export function Game({
             <p>
               Turn {s.turnNumber} · seed {session.options.seed}
             </p>
+            {session.rewards && session.rewards.lines.length > 0 && (
+              <div className="game-rewards">
+                <h3>You earned</h3>
+                <ul>
+                  {session.rewards.lines.map((l) => (
+                    <li key={l.label}>
+                      <span>{l.label}</span> <strong>+{l.amount.toLocaleString()}</strong>
+                    </li>
+                  ))}
+                </ul>
+                <p className="fineprint">
+                  {session.rewards.lines.reduce((n, l) => n + l.amount, 0).toLocaleString()} Aether Shards
+                  {session.rewards.balance !== null ? ` · balance ${session.rewards.balance.toLocaleString()}` : ''}
+                </p>
+              </div>
+            )}
             <button onClick={onQuit}>Back to menu</button>
           </div>
         </div>

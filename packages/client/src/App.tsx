@@ -10,6 +10,11 @@ import { CraftTab } from './craft/CraftTab.tsx';
 import { StoreTab } from './packs/StoreTab.tsx';
 import { OwnCommanderDecks } from './components/CommanderDecks.tsx';
 import { TableMenu } from './components/TableMenu.tsx';
+import { GameLoading, LoadingScreen } from './components/LoadingScreen.tsx';
+import { hostBotGame } from './game/serverGame.ts';
+import type { OnlineSession } from './game/online.ts';
+import type { SavedDeck } from './packs/collection.ts';
+import { Quests, RewardToast } from './account/Rewards.tsx';
 import { DraftTab } from './draft/DraftTab.tsx';
 import { EventPage } from './draft/EventPage.tsx';
 import { eventLink } from './draft/eventLink.ts';
@@ -96,6 +101,12 @@ function MainApp() {
   const [precon] = useState(FIN_PRECONS[0]!.name);
   /** Commander: the saved deck you play (yours only), converted for the game. */
   const [ownDeck, setOwnDeck] = useState<GameDeck | null>(null);
+  /** The saved deck behind ownDeck: games against the computer run on the server with it (rewarded). */
+  const [savedDeck, setSavedDeck] = useState<SavedDeck | null>(null);
+  /** A server game against the computer being set up, then loaded. */
+  const [hosting, setHosting] = useState<{ cancel: () => void } | null>(null);
+  const [hosted, setHosted] = useState<OnlineSession | null>(null);
+  const [hostError, setHostError] = useState<string | null>(null);
   const [deck, setDeck] = useState<DeckChoice>('UB');
   const [opponents, setOpponents] = useState(1);
   const [bot, setBot] = useState<SessionOptions['bot']>('ai');
@@ -160,7 +171,28 @@ function MainApp() {
     play(new GameSession({ deck: kit, opponents: 1, bot: 'ai', seed: Math.floor(Math.random() * 1_000_000), coaching: true }));
   };
 
+  /**
+   * Signed in with a saved deck, the game runs on the server (so it earns
+   * rewards); a random opponent or a chosen seed is a local practice game.
+   */
+  const rewarded = account.kind === 'ready' && !!savedDeck && bot === 'ai' && seed.trim() === '';
   const start = () => {
+    if (rewarded && savedDeck) {
+      setHostError(null);
+      const h = hostBotGame({ format, deckId: savedDeck.id, bots: opponents, coaching: tips });
+      setHosting(h);
+      h.game.then(
+        (game) => {
+          setHosting(null);
+          setHosted(game);
+        },
+        (e: Error) => {
+          setHosting(null);
+          setHostError(e.message);
+        },
+      );
+      return;
+    }
     const chosenSeed = seed.trim() === '' ? Math.floor(Math.random() * 1_000_000) : Number(seed);
     play(
       new GameSession({
@@ -178,10 +210,29 @@ function MainApp() {
 
   const name = account.kind === 'ready' ? account.account.name : null;
 
+  if (hosted) {
+    return (
+      <GameLoading
+        session={hosted}
+        title={format === 'commander' ? 'Commander against the computer' : '60-card game against the computer'}
+        minMs={1200}
+        onReady={() => {
+          const game = hosted;
+          setHosted(null);
+          play(game);
+        }}
+      />
+    );
+  }
+  if (hosting) {
+    return <LoadingScreen title="Setting up your game" steps={[{ label: 'Connecting to the game server', state: 'working' }, { label: 'Shuffling your deck', state: 'waiting' }]} />;
+  }
+
   return (
     <div className="app-shell">
       <StarterPick />
       <Tour />
+      <RewardToast />
       <header className="top-bar">
         <button className="brand ghost" onClick={() => go({ page: 'home' })} aria-label="Project Nexus home">
           <span className="brand-mark" aria-hidden="true">✦</span> Project Nexus
@@ -248,16 +299,16 @@ function MainApp() {
 
                 <h2>Format</h2>
                 <div className="format-choices">
-                  <button className={format === 'constructed' ? 'chosen' : ''} onClick={() => (setFormat('constructed'), setOwnDeck(null))}>
+                  <button className={format === 'constructed' ? 'chosen' : ''} onClick={() => (setFormat('constructed'), setOwnDeck(null), setSavedDeck(null))}>
                     60-card decks <span>Decks you built · 20 life</span>
                   </button>
-                  <button className={format === 'commander' ? 'chosen' : ''} onClick={() => (setFormat('commander'), setOwnDeck(null))}>
+                  <button className={format === 'commander' ? 'chosen' : ''} onClick={() => (setFormat('commander'), setOwnDeck(null), setSavedDeck(null))}>
                     Commander <span>Your 100-card decks · 40 life</span>
                   </button>
                 </div>
 
                 <h2>Your deck</h2>
-                <OwnCommanderDecks key={format} format={format} onChoose={(d) => setOwnDeck(d)} onBuild={() => go({ page: 'decks' })} />
+                <OwnCommanderDecks key={format} format={format} onChoose={(d, saved) => (setOwnDeck(d), setSavedDeck(saved))} onBuild={() => go({ page: 'decks' })} />
                 {format === 'commander' && (
                   <p className="fineprint">
                     Commander rules: 40 life, your commander starts in the command zone (it costs {'{2}'} more each time you cast it from there), and 21 combat
@@ -303,7 +354,15 @@ function MainApp() {
                 >
                   Start game
                 </button>
-                <p className="fineprint">Card images courtesy of Scryfall.</p>
+                {hostError && <p className="account-error">{hostError}</p>}
+                <p className="fineprint">
+                  {rewarded
+                    ? 'Played on the game server: you earn Aether Shards for finishing it, more for winning, and it counts for your quests.'
+                    : account.kind === 'ready' && savedDeck
+                      ? 'A practice game (random opponent or a chosen seed): no rewards.'
+                      : null}{' '}
+                  Card images courtesy of Scryfall.
+                </p>
               </div>
             )}
           </>
@@ -457,6 +516,7 @@ function HomePage({ name, lessonDone, onLearn, onPractice, go }: { name: string 
           </button>
         </section>
       )}
+      <Quests />
       <div className="home-tiles">
         {TILES.map((t) => (
           <button key={t.title} className="home-tile" onClick={() => go(t.to)}>

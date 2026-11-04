@@ -90,7 +90,7 @@ export class OnlineSession extends GameSession {
   private readonly listeners = new Set<(error?: string) => void>();
   private readonly connection: GameLink;
 
-  constructor(connection: GameLink, first: Update, deck: Deck = 'RW', format: 'starter' | 'constructed' | 'commander' | 'limited' = 'starter') {
+  constructor(connection: GameLink, first: Update, deck: Deck = 'RW', format: 'starter' | 'constructed' | 'commander' | 'limited' = 'starter', coaching = false) {
     const seat = first.seat;
     // The other seats in turn order after yours, as the board lists opponents.
     const order = first.update.state.turnOrder as string[];
@@ -98,7 +98,7 @@ export class OnlineSession extends GameSession {
     const others = [...order.slice(at + 1), ...order.slice(0, at)];
     const toName = new Map<string, string>([[seat, YOU], ...others.map((x): [string, string] => [x, first.names[x as Seat] ?? x])]);
     const update = renameIncoming(first.update, toName);
-    super({ format, deck, opponents: others.length, seed: 0, bot: 'ai' }, { state: materialize(update.state, CARD_DEFS), bots: {}, opponents: others.map((x) => toName.get(x)!) });
+    super({ format, deck, opponents: others.length, seed: 0, bot: 'ai', ...(coaching ? { coaching: true } : {}) }, { state: materialize(update.state, CARD_DEFS), bots: {}, opponents: others.map((x) => toName.get(x)!) });
     this.seat = seat;
     this.toName = toName;
     this.toSeat = new Map([...toName].map(([k, v]) => [v, k]));
@@ -198,6 +198,10 @@ export class OnlineSession extends GameSession {
     } else if (m.type === 'error') {
       this.waiting = false;
       this.notify(m.message);
+    } else if (m.type === 'rewards') {
+      this.rewards = { lines: m.lines, balance: m.balance };
+      if (m.balance !== null) window.dispatchEvent(new CustomEvent('nexus:shards', { detail: m.balance }));
+      this.notify();
     } else if (m.type === 'opponentLeft') {
       this.push(`${m.name} left the game.`);
       this.notify(`${m.name} left the game.`);

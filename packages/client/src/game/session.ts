@@ -110,6 +110,8 @@ export class GameSession {
    * add more on top before anyone else can respond, instead of passing for you.
    */
   keepPriority = false;
+  /** What you earned for this game (games the server ran), once the server says. */
+  rewards: { lines: { label: string; amount: number }[]; balance: number | null } | null = null;
   /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
   readonly triggered: { key: number; card: InstanceId }[] = [];
   /** Cards that changed zones, in order, for the board to animate (only what you may see). */

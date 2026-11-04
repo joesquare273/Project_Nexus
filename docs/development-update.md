@@ -5,6 +5,18 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-04
 
+### Rewards in the browser; games against the computer on the server
+
+"Vs. computer" Commander and 60-card games now run on the game server as a
+table with your seat and bot seats (`hostBotGame`), so they earn match
+rewards and count for quests; bots play the precons or the Starter Kits as
+before, and "Show tips" still works. A random opponent or a chosen seed is a
+local practice game (no rewards), as are the lesson and Starter Kit practice.
+After a game the server's `rewards` message shows on the game-over screen
+("You earned"), Home lists the quests with their progress and the one-time
+rewards not yet earned, and finishing the lesson shows its reward. Tests:
+`client/test/server-bot-game.test.ts`.
+
 ### Hold priority only when you can act
 
 Rule 117.3c gives you priority back after you cast a spell or activate an
