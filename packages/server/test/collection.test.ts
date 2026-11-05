@@ -239,33 +239,37 @@ describe('the Store', () => {
     const bundle = items.find((i) => i.key === 'fin-chocobo-track-lands')!;
     expect(bundle.cards).toHaveLength(5);
     expect(bundle.price).toBe(prices.chocoboTrackLandBundle);
-    // Edge of Eternities: the two Commander Reinforcements drops and their cards, non-foil and galaxy foil.
+    // Edge of Eternities: the two Commander Reinforcements drops and their cards, galaxy foil, and the two precons.
     const eoe: Item[] = sets[1].items;
     const drops = eoe.filter((i) => i.line.startsWith('Secret Lair drop'));
-    expect(drops.map((d) => d.name)).toEqual([
-      'Commander Reinforcements: Featuring Deathburger',
-      'Commander Reinforcements: Featuring Deathburger',
-      'Commander Reinforcements: Alien Auroras',
-      'Commander Reinforcements: Alien Auroras',
-    ]);
-    expect(eoe.filter((i) => !i.line.startsWith('Secret Lair drop'))).toHaveLength(20);
-    // The Final Fantasy tab doesn't list them.
+    expect(drops.map((d) => d.name)).toEqual(['Commander Reinforcements: Featuring Deathburger', 'Commander Reinforcements: Alien Auroras']);
+    const eoeSingles = eoe.filter((i) => i.line.startsWith('Secret Lair ('));
+    expect(eoeSingles).toHaveLength(10);
+    for (const i of [...drops, ...eoeSingles]) expect(i.cards.every((c) => c.finish === 'foil')).toBe(true);
+    const precons = eoe.filter((i) => i.line.startsWith('Commander precon'));
+    expect(precons.map((p) => p.name)).toEqual(['Counter Intelligence', 'World Shaper']);
+    for (const p of precons) expect(p.cards.reduce((n, c) => n + ((c as { count?: number }).count ?? 1), 0)).toBe(100);
+    // The Final Fantasy tab doesn't list them, and its Secret Lair cards are foil too.
     expect(items.some((i) => i.name === 'Arcbound Ravager')).toBe(false);
+    for (const i of items.filter((i) => i.line.startsWith('Secret Lair'))) expect(i.cards.every((c) => c.finish === 'foil')).toBe(true);
   });
 
-  it('a galaxy foil Commander Reinforcements drop costs twice the non-foil one and adds five foil cards', async () => {
+  it('a galaxy foil Commander Reinforcements drop adds five foil cards; an Edge of Eternities precon is saved as a deck', async () => {
     const { accounts, call } = await withAccounts();
     accounts.apply('alice-id', 20000 - FIRST_DAY_SHARDS, 'admin_adjustment', 'set-balance');
     const { sets } = await (await call('token-alice', '/api/store')).json();
     const eoe: Item[] = sets[1].items;
-    const [plain, galaxy] = eoe.filter((i) => i.name === 'Commander Reinforcements: Alien Auroras');
-    expect(galaxy!.price).toBe(2 * plain!.price!);
-    const r = await call('token-alice', '/api/store/buy', 'POST', { key: galaxy!.key });
+    const drop = eoe.find((i) => i.name === 'Commander Reinforcements: Alien Auroras')!;
+    const r = await call('token-alice', '/api/store/buy', 'POST', { key: drop.key });
     expect(r.status).toBe(200);
-    expect((await r.json()).balance).toBe(20000 - galaxy!.price!);
+    expect((await r.json()).balance).toBe(20000 - drop.price!);
     const owned = await accounts.collection('alice-id');
     expect(owned).toHaveLength(5);
     expect(owned.every((c) => c.finish === 'foil')).toBe(true);
+    const precon = eoe.find((i) => i.name === 'World Shaper')!;
+    expect((await call('token-alice', '/api/store/buy', 'POST', { key: precon.key })).status).toBe(200);
+    const decks = await (await call('token-alice', '/api/decks')).json();
+    expect((decks.decks ?? decks).some((d: { name: string }) => d.name === 'World Shaper')).toBe(true);
   });
 
   it('buying charges once and adds the card; the bundle adds all five lands', async () => {
@@ -319,7 +323,7 @@ describe('basic land printings in decks', () => {
 
 describe('Secret Lairs in the Store', () => {
   type Item = { key: string; name: string; line: string; price: number | null; cards: { id: string; finish: string }[] };
-  it('sells the three FINAL FANTASY drops (5 cards and a foil bonus) and every Secret Lair card on its own', async () => {
+  it('sells the three FINAL FANTASY drops (5 cards and a bonus card, all foil) and every Secret Lair card on its own, foil', async () => {
     const { call } = await withAccounts();
     const items: Item[] = (await (await call('token-alice', '/api/store')).json()).sets[0].items;
     const drops = items.filter((i) => i.key.startsWith('sld-drop-'));
@@ -330,8 +334,7 @@ describe('Secret Lairs in the Store', () => {
     ]);
     for (const d of drops) {
       expect(d.cards).toHaveLength(6);
-      expect(d.cards.slice(0, 5).every((c) => c.finish === 'nonfoil')).toBe(true);
-      expect(d.cards[5]!.finish).toBe('foil');
+      expect(d.cards.every((c) => c.finish === 'foil')).toBe(true);
       expect(d.price).toBe(ECONOMY.storePrices.secretLairDrop);
     }
     const singles = items.filter((i) => i.line.startsWith('Secret Lair') && !i.key.startsWith('sld-drop-'));

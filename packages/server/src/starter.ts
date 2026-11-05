@@ -3,7 +3,7 @@
 // 'starter', whichever precon they pick): its exact printings go into the
 // collection and it's saved as a Commander deck.
 
-import { FIN_PRECONS, SCRYFALL_PRINTINGS, type KitCard } from '@nexus/cards';
+import { EOC_PRECONS, FIN_PRECONS, SCRYFALL_PRINTINGS, type KitCard } from '@nexus/cards';
 import type { AccountService, AccountUser } from './accounts.ts';
 import type { OwnedCard, SavedDeck } from './collection.ts';
 
@@ -23,9 +23,17 @@ const printingId = (c: KitCard): string => {
   return id;
 };
 
-/** A precon's cards (one entry per printing, nonfoil) and its commander's printing id. */
+/** A Final Fantasy precon's cards (one entry per printing, nonfoil) and its commander's printing id: the free starters. */
 export function preconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
-  const precon = FIN_PRECONS.find((p) => p.name === name);
+  return cardsOf(FIN_PRECONS.find((p) => p.name === name));
+}
+
+/** Any precon the Store sells (Final Fantasy or Edge of Eternities): its cards and commander's printing id. */
+export function storePreconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
+  return cardsOf([...FIN_PRECONS, ...EOC_PRECONS].find((p) => p.name === name));
+}
+
+function cardsOf(precon: (typeof FIN_PRECONS)[number] | undefined): { cards: OwnedCard[]; commander: string } | null {
   if (!precon) return null;
   const counts = new Map<string, number>();
   for (const c of [precon.commander, ...precon.cards]) counts.set(printingId(c), (counts.get(printingId(c)) ?? 0) + c.count);

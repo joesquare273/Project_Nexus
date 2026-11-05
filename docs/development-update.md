@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Store: Edge of Eternities precons, and foil Secret Lairs
+
+The Store's Edge of Eternities tab sells Counter Intelligence and World
+Shaper (2,000 Aether Shards each, saved as a deck), and every Secret Lair
+card is now sold foil: the Final Fantasy drops and singles, and the Commander
+Reinforcements drops in galaxy foil only (docs/economy.md). The free starter
+stays one of the four Final Fantasy precons.
+
 ### Edge of Eternities group E11: Phyrexian mana of every color
 
 Tezzeret's Gambit, Phyrexian Metamorph and Tekuthal, Inquiry Dominus. New:
