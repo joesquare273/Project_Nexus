@@ -3,6 +3,22 @@
 A running log of progress, open issues and their workarounds. Newest first.
 Longer-lived design choices go in [decisions.md](decisions.md).
 
+## 2026-11-05
+
+### Life-counter hub, and audio research
+
+- The center hub is smaller and laid out like a life-counter app (such as
+  Lotus): one colored panel per seat, meeting at a gold diamond in the
+  middle, the active player outlined in gold. In Commander, clicking a panel
+  turns the square into a map of the table: each other seat shows the
+  commander damage its commander(s) dealt to that player (red from 15); click
+  the player's own panel or Back to return. The stack sits just below the
+  square.
+- [audio.md](audio.md): research for sound effects and ambient music, using
+  free sources first (Kenney CC0 card foley, the Sonniss GDC bundles, Scott
+  Buckley CC BY, Tabletop Audio), a map from game events to sounds, and a
+  build plan. Nothing is built yet.
+
 ## 2026-11-04
 
 ### Gameplay board: center hub, opponents' hands, flights from the hand
