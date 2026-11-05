@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ECONOMY } from '@nexus/server/economy';
 import { NO_FRAGMENTS } from '@nexus/cards/crafting';
-import { copiesOfCard, craftStatus, deckWarnings, ownershipMatches, rewardFor } from '../src/craft/craft.ts';
+import { copiesOfCard, craftStatus, deckWarnings, listReward, listRoom, ownershipMatches, rewardFor, type ListEntry } from '../src/craft/craft.ts';
 import type { Collection, SavedDeck } from '../src/packs/collection.ts';
 
 const rules = ECONOMY.crafting;
@@ -34,5 +34,26 @@ describe('Craft tab', () => {
     expect([0, 1, 3].map((n) => ownershipMatches(n, 'owned'))).toEqual([false, true, true]);
     expect([0, 1].map((n) => ownershipMatches(n, 'unowned'))).toEqual([true, false]);
     expect([0, 1].map((n) => ownershipMatches(n, 'all'))).toEqual([true, true]);
+  });
+
+  it('the dismantle list: its fragments, and room for copies that keeps your last one', () => {
+    const list: ListEntry[] = [
+      { card: 'a', finish: 'nonfoil', count: 2, rarity: 'rare' },
+      { card: 'a', finish: 'foil', count: 1, rarity: 'rare' },
+      { card: 'c', finish: 'nonfoil', count: 3, rarity: 'common' },
+    ];
+    expect(listReward(rules, list)).toEqual({ ...NO_FRAGMENTS, rare: 2 * rules.dismantle.rare + rules.dismantle.rare + rules.foilBonus, common: 3 });
+    const collection: Collection = { cards: { a: { nonfoil: 2, foil: 1 }, b: { nonfoil: 1 }, c: { nonfoil: 3 } } };
+    // Card a/b (two arts): four copies, so three may go across both arts.
+    expect(listRoom(collection, ['a', 'b'], [], 'a', 'nonfoil', true)).toBe(2);
+    expect(listRoom(collection, ['a', 'b'], [{ card: 'a', finish: 'foil', count: 1, rarity: 'rare' }], 'a', 'nonfoil', true)).toBe(2);
+    expect(listRoom(collection, ['a', 'b'], [{ card: 'a', finish: 'foil', count: 1, rarity: 'rare' }, { card: 'b', finish: 'nonfoil', count: 1, rarity: 'rare' }], 'a', 'nonfoil', true)).toBe(1);
+    // One art only: all but one.
+    expect(listRoom(collection, ['c'], [], 'c', 'nonfoil', true)).toBe(2);
+    expect(listRoom(collection, ['c'], [], 'c', 'nonfoil', false)).toBe(3);
+    // A deck warning counts every copy in the list.
+    const deck: SavedDeck = { id: 'd', name: 'D', format: 'constructed', cards: [{ id: 'c', finish: 'nonfoil', count: 2 }], basics: NO_BASICS, commander: null, updatedAt: '' };
+    expect(deckWarnings([deck], collection, 'c', 'nonfoil', 1)).toEqual([]);
+    expect(deckWarnings([deck], collection, 'c', 'nonfoil', 2)).toEqual(['D']);
   });
 });

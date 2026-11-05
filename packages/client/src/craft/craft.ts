@@ -1,5 +1,5 @@
 // The Craft tab's requests and rules for showing them. The game server does
-// every change (POST /api/dismantle, /api/craft) and answers with the new
+// every change (POST /api/dismantle/batch, /api/craft) and answers with the new
 // fragment balances; the browser only asks and shows the result. Each
 // confirmed action has its own request id, kept for retries, so a repeat
 // never pays or crafts twice.
@@ -29,13 +29,41 @@ async function post(token: string, path: string, body: unknown, fallback: string
   return (await res.json()) as { fragments: Fragments; applied: boolean };
 }
 
-export const dismantleCard = (token: string, requestId: string, card: string, finish: string) =>
-  post(token, '/api/dismantle', { requestId, card, finish }, 'That card could not be dismantled. Try again.');
+/** One card in the dismantle list: `count` copies of a printing in a finish. */
+export interface ListEntry {
+  card: string;
+  finish: string;
+  count: number;
+  rarity: FragmentRarity;
+}
+
+/** Dismantles the whole list in one step (all or nothing). */
+export const dismantleList = (token: string, requestId: string, list: readonly ListEntry[]) =>
+  post(token, '/api/dismantle/batch', { requestId, items: list.map(({ card, finish, count }) => ({ card, finish, count })) }, 'Those cards could not be dismantled. Try again.');
 
 export const craftCard = (token: string, requestId: string, card: string) => post(token, '/api/craft', { requestId, card }, 'That card could not be crafted. Try again.');
 
 /** Fragments for dismantling one copy (the server's own sum, for the confirmation). */
 export const rewardFor = (rules: CraftingRules, rarity: FragmentRarity, finish: string) => rules.dismantle[rarity] + (finish === 'nonfoil' ? 0 : rules.foilBonus);
+
+/** The fragments the whole list gives, by rarity. */
+export function listReward(rules: CraftingRules, list: readonly ListEntry[]): Fragments {
+  const out: Fragments = { common: 0, uncommon: 0, rare: 0, mythic: 0 };
+  for (const e of list) out[e.rarity] += rewardFor(rules, e.rarity, e.finish) * e.count;
+  return out;
+}
+
+/**
+ * The most copies of a printing in a finish the list can hold: what you own
+ * of it, and, when your last copy of a card is kept, one copy of the card
+ * (any art or finish) left after the rest of the list.
+ */
+export function listRoom(collection: Collection, named: readonly string[], list: readonly ListEntry[], card: string, finish: string, protectLast: boolean): number {
+  const own = collection.cards[card]?.[finish as keyof Collection['cards'][string]] ?? 0;
+  if (!protectLast) return own;
+  const others = list.filter((e) => named.includes(e.card) && !(e.card === card && e.finish === finish)).reduce((n, e) => n + e.count, 0);
+  return Math.max(0, Math.min(own, copiesOfCard(collection, named) - 1 - others));
+}
 
 /** Whether a card can be crafted now, and why not when it can't. */
 export function craftStatus(rules: CraftingRules, fragments: Fragments, rarity: FragmentRarity): { ok: boolean; reason?: string } {
@@ -53,12 +81,12 @@ export const copiesOfCard = (collection: Collection, printingIds: readonly strin
   printingIds.reduce((n, id) => n + Object.values(collection.cards[id] ?? {}).reduce((m, k) => m + (k ?? 0), 0), 0);
 
 /**
- * Warnings before dismantling one copy of a printing in a finish: the saved
+ * Warnings before dismantling copies of a printing in a finish: the saved
  * decks that use more copies of it than would be left (the deck can't be
  * played until it's fixed). Dismantling is still allowed (user, 2026-11-04).
  */
-export function deckWarnings(decks: readonly SavedDeck[], collection: Collection, card: string, finish: string): string[] {
-  const left = (collection.cards[card]?.[finish as keyof Collection['cards'][string]] ?? 0) - 1;
+export function deckWarnings(decks: readonly SavedDeck[], collection: Collection, card: string, finish: string, removing = 1): string[] {
+  const left = (collection.cards[card]?.[finish as keyof Collection['cards'][string]] ?? 0) - removing;
   return decks
     .filter((d) => d.cards.filter((c) => c.id === card && c.finish === finish).reduce((n, c) => n + c.count, 0) > left)
     .map((d) => d.name);

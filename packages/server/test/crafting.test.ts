@@ -112,6 +112,74 @@ describe('dismantling', () => {
   });
 });
 
+describe('bulk dismantling', () => {
+  const batch = (items: { card: string; finish: string; count: number }[], requestId: string = randomUUID()) => ({ requestId, items });
+
+  it('dismantles a whole list at once, foils included', async () => {
+    const { accounts, call } = await withAccounts();
+    const common = sample('common');
+    const rare = sample('rare');
+    await give(accounts, common.id, 5);
+    await give(accounts, rare.id, 2);
+    await give(accounts, rare.id, 1, 'foil');
+    const r = await call('/api/dismantle/batch', 'POST', batch([
+      { card: common.id, finish: 'nonfoil', count: 4 },
+      { card: rare.id, finish: 'foil', count: 1 },
+      { card: rare.id, finish: 'nonfoil', count: 1 },
+    ]));
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body).toMatchObject({ applied: true, copies: 6 });
+    expect(body.fragments.common).toBe(4 * ECONOMY.crafting.dismantle.common);
+    expect(body.fragments.rare).toBe(2 * ECONOMY.crafting.dismantle.rare + ECONOMY.crafting.foilBonus);
+    expect(await copies(accounts, common.id)).toBe(1);
+    expect(await accounts.collection('alice')).toContainEqual({ id: rare.id, finish: 'nonfoil', count: 1 });
+  });
+
+  it('is all or nothing: one card that can’t go stops the list, and the error names it', async () => {
+    const { accounts, call } = await withAccounts();
+    const common = sample('common');
+    const rare = sample('rare');
+    await give(accounts, common.id, 3);
+    await give(accounts, rare.id, 2);
+    // Both rares would leave none (the last-copy rule counts the whole list).
+    const last = await call('/api/dismantle/batch', 'POST', batch([{ card: common.id, finish: 'nonfoil', count: 2 }, { card: rare.id, finish: 'nonfoil', count: 2 }]));
+    expect(last.status).toBe(409);
+    expect((await last.json()).error).toContain(rare.name);
+    const many = await call('/api/dismantle/batch', 'POST', batch([{ card: common.id, finish: 'nonfoil', count: 9 }]));
+    expect(many.status).toBe(409);
+    expect((await many.json()).error).toMatch(/that many copies/);
+    expect(await copies(accounts, common.id)).toBe(3);
+    expect(await copies(accounts, rare.id)).toBe(2);
+    expect(await accounts.fragments('alice')).toEqual({ common: 0, uncommon: 0, rare: 0, mythic: 0 });
+  });
+
+  it('refuses unreadable lists, a card listed twice, and basic lands', async () => {
+    const { accounts, call } = await withAccounts();
+    const common = sample('common');
+    await give(accounts, common.id, 5);
+    const one = { card: common.id, finish: 'nonfoil', count: 1 };
+    expect((await call('/api/dismantle/batch', 'POST', batch([]))).status).toBe(400);
+    expect((await call('/api/dismantle/batch', 'POST', batch([{ ...one, count: 0 }]))).status).toBe(400);
+    expect((await call('/api/dismantle/batch', 'POST', batch([one, one]))).status).toBe(400);
+    const basic = BOOSTER_CARDS.find((c) => c.typeLine.startsWith('Basic Land'))!;
+    await give(accounts, basic.id, 5);
+    expect((await call('/api/dismantle/batch', 'POST', batch([one, { card: basic.id, finish: 'nonfoil', count: 1 }]))).status).toBe(400);
+    expect(await copies(accounts, common.id)).toBe(5);
+  });
+
+  it('a repeated list pays once', async () => {
+    const { accounts, call } = await withAccounts();
+    const card = sample('uncommon');
+    await give(accounts, card.id, 5);
+    const request = batch([{ card: card.id, finish: 'nonfoil', count: 2 }]);
+    const [a, b] = await Promise.all([call('/api/dismantle/batch', 'POST', request), call('/api/dismantle/batch', 'POST', request)]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect((await accounts.fragments('alice')).uncommon).toBe(2);
+    expect(await copies(accounts, card.id)).toBe(3);
+  });
+});
+
 describe('crafting', () => {
   it.each(FRAGMENT_RARITIES)('a %s costs its fragments and adds exactly one non-foil copy', async (rarity) => {
     const { accounts, call } = await withAccounts();

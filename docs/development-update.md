@@ -18,6 +18,20 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Craft tab: bulk dismantling
+
+Dismantling now goes through a list on the right of the Craft tab: add
+cards (and copies) from your collection, check the fragments you'll get and
+the decks it affects, then dismantle them all at once. The server checks the
+whole list and applies it in one transaction, or nothing if one card can't
+go (new endpoint `/api/dismantle/batch`, migration `20261105120000_dismantle_batch.sql`).
+On phones the list is a drawer along the bottom.
+
+Sprouting Goblin (checked after a report): kicked, it finds "a land card with
+a basic land type", so World Shaper's two-type lands (Canyon Slough, Cinder
+Glade, Sheltered Thicket and the rest) are legal picks; lands without a basic
+land type are not offered. Its test now checks both.
+
 ### Edge of Eternities group E13: Counter Intelligence's artifacts
 
 Cloud Key, Gavel of the Righteous, Solar Array, Lux Artillery and The

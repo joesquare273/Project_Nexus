@@ -1,6 +1,7 @@
 // The Craft tab: dismantle cards you own for fragments of their rarity, and
 // spend four fragments of a rarity to craft a card of that rarity (the
-// numbers come from the server's economy settings). It reads your collection
+// numbers come from the server's economy settings). Dismantling goes through
+// a list on the right: add cards and copies, then dismantle them all at once. It reads your collection
 // and saved decks to show what you own and to warn before a dismantle takes
 // a card a deck uses; the server checks and applies every change.
 
@@ -10,7 +11,7 @@ import type { FragmentRarity, Fragments } from '@nexus/cards/crafting';
 import { accessToken } from '../account/AccountBar.tsx';
 import { CardShine } from '../components/Card.tsx';
 import { fetchCollection, fetchDecks, type Collection, type SavedDeck } from '../packs/collection.ts';
-import { RARITY_NAMES, ownershipMatches, type Ownership, copiesOfCard, craftCard, craftStatus, deckWarnings, dismantleCard, fetchFragments, rewardFor, type CraftingRules } from './craft.ts';
+import { RARITY_NAMES, ownershipMatches, type Ownership, copiesOfCard, craftCard, craftStatus, deckWarnings, dismantleList, fetchFragments, listReward, listRoom, rewardFor, type CraftingRules, type ListEntry } from './craft.ts';
 import '../packs/packs.css';
 import './craft.css';
 
@@ -18,8 +19,11 @@ type Crafting = typeof import('@nexus/cards/crafting');
 type Mode = 'dismantle' | 'craft';
 type Finish = 'nonfoil' | 'foil' | 'surge';
 
-/** What the player is about to confirm, with its request id (kept if they retry). */
-type Pending = { kind: 'dismantle'; card: BoosterCard; finish: Finish; rarity: FragmentRarity; requestId: string } | { kind: 'craft'; card: BoosterCard; rarity: FragmentRarity; requestId: string };
+/** The craft the player is about to confirm, with its request id (kept if they retry). */
+type Pending = { kind: 'craft'; card: BoosterCard; rarity: FragmentRarity; requestId: string };
+
+/** A card in the dismantle list, with its printing for the picture. */
+type Queued = ListEntry & { printing: BoosterCard };
 
 const FINISH_NAMES: Record<Finish, string> = { nonfoil: 'Non-foil', foil: 'Foil', surge: 'Surge foil' };
 
@@ -56,6 +60,12 @@ export function CraftTab() {
   const [ownership, setOwnership] = useState<Ownership>('all');
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The dismantle list, and its request id once confirmed (kept for retries until the list changes). */
+  const [list, setList] = useState<Queued[]>([]);
+  const [listRequest, setListRequest] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  /** Narrow screens: whether the list drawer is open. */
+  const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     import('@nexus/cards/crafting').then(setMod, () => setProblem("The card data couldn't be loaded."));
@@ -88,6 +98,50 @@ export function CraftTab() {
   const matches = (card: BoosterCard, r: FragmentRarity) => (rarity === 'all' || r === rarity) && card.name.toLowerCase().includes(search.trim().toLowerCase());
   const total = (card: BoosterCard) => copiesOfCard(collection, mod.printingsNamed(card.name));
 
+  const room = (card: BoosterCard, finish: Finish, current: readonly ListEntry[] = list) => listRoom(collection, mod.printingsNamed(card.name), current, card.id, finish, rules.protectLastCopy);
+  const inList = (card: BoosterCard, finish: Finish) => list.find((e) => e.card === card.id && e.finish === finish)?.count ?? 0;
+  /** Changes the list (a new list needs a new request id). */
+  const changeList = (next: Queued[]) => {
+    setList(next.filter((e) => e.count > 0));
+    setListRequest(null);
+    setConfirming(false);
+    setDone(null);
+  };
+  const setCount = (card: BoosterCard, finish: Finish, rarity: FragmentRarity, count: number) => {
+    const at = list.findIndex((e) => e.card === card.id && e.finish === finish);
+    const n = Math.max(0, Math.min(count, room(card, finish)));
+    if (at < 0) changeList([...list, { card: card.id, finish, rarity, count: n, printing: card }]);
+    else changeList(list.map((e, i) => (i === at ? { ...e, count: n } : e)));
+  };
+  const listCopies = list.reduce((n, e) => n + e.count, 0);
+  const listGain = listReward(rules, list);
+  const listDecks = [...new Set(list.flatMap((e) => deckWarnings(decks, collection, e.card, e.finish, e.count)))];
+
+  const dismantleAll = async () => {
+    if (list.length === 0 || busy) return;
+    const requestId = listRequest ?? crypto.randomUUID();
+    setListRequest(requestId);
+    setBusy(true);
+    setProblem(null);
+    try {
+      const token = await accessToken();
+      if (!token) throw new Error('Sign in first.');
+      const answer = await dismantleList(token, requestId, list);
+      setState({ fragments: answer.fragments, rules });
+      setCollection(await fetchCollection(token));
+      const gained = (Object.keys(RARITY_NAMES) as FragmentRarity[]).filter((r) => listGain[r] > 0).map((r) => `+${listGain[r]} ${RARITY_NAMES[r]}`);
+      setDone(`Dismantled ${listCopies} card${listCopies === 1 ? '' : 's'}: ${gained.join(', ')} Fragments.`);
+      setList([]);
+      setListRequest(null);
+      setConfirming(false);
+    } catch (e) {
+      // The request id is kept: trying again can't pay twice.
+      setProblem(e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Could not reach the game server. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirm = async () => {
     if (!pending || busy) return;
     setBusy(true);
@@ -95,15 +149,11 @@ export function CraftTab() {
     try {
       const token = await accessToken();
       if (!token) throw new Error('Sign in first.');
-      const answer = pending.kind === 'dismantle' ? await dismantleCard(token, pending.requestId, pending.card.id, pending.finish) : await craftCard(token, pending.requestId, pending.card.id);
+      const answer = await craftCard(token, pending.requestId, pending.card.id);
       setState({ fragments: answer.fragments, rules });
       // Show the server's collection after the change.
       setCollection(await fetchCollection(token));
-      setDone(
-        pending.kind === 'dismantle'
-          ? `Dismantled ${pending.card.name} for ${rewardFor(rules, pending.rarity, pending.finish)} ${RARITY_NAMES[pending.rarity]} Fragment${rewardFor(rules, pending.rarity, pending.finish) === 1 ? '' : 's'}.`
-          : `Crafted ${pending.card.name}. It's in your collection.`,
-      );
+      setDone(`Crafted ${pending.card.name}. It's in your collection.`);
       setPending(null);
     } catch (e) {
       // The request id is kept: trying again can't pay or craft twice.
@@ -132,7 +182,7 @@ export function CraftTab() {
       </p>
       <div className="binder-sets craft-modes" role="tablist" aria-label="Craft">
         {(['dismantle', 'craft'] as const).map((m) => (
-          <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'chosen' : ''} onClick={() => { setMode(m); setPending(null); setDone(null); }}>
+          <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'chosen' : ''} onClick={() => { setMode(m); setPending(null); setConfirming(false); setDone(null); }}>
             {m === 'dismantle' ? 'Dismantle' : 'Craft'}
           </button>
         ))}
@@ -160,33 +210,15 @@ export function CraftTab() {
 
       {pending && (
         <div className="craft-confirm" role="dialog" aria-label="Confirm">
-          {cardPic(pending.card, pending.kind === 'dismantle' ? pending.finish : 'nonfoil')}
+          {cardPic(pending.card)}
           <div>
-            {pending.kind === 'dismantle' ? (
-              <>
-                <h3>Dismantle {pending.card.name}?</h3>
-                <p>
-                  One {FINISH_NAMES[pending.finish].toLowerCase()} copy becomes <FragmentGem rarity={pending.rarity} /> {rewardFor(rules, pending.rarity, pending.finish)} {RARITY_NAMES[pending.rarity]} Fragment
-                  {rewardFor(rules, pending.rarity, pending.finish) === 1 ? '' : 's'}. This can't be undone.
-                </p>
-                {total(pending.card) === 2 && <p className="craft-warning">This leaves you one copy of {pending.card.name}.</p>}
-                {deckWarnings(decks, collection, pending.card.id, pending.finish).map((name) => (
-                  <p key={name} className="craft-warning">
-                    Your deck “{name}” uses this copy: it will be missing a card until you change it.
-                  </p>
-                ))}
-              </>
-            ) : (
-              <>
-                <h3>Craft {pending.card.name}?</h3>
-                <p>
-                  <FragmentGem rarity={pending.rarity} /> {rules.craft[pending.rarity]} {RARITY_NAMES[pending.rarity]} Fragments for one non-foil copy.
-                </p>
-              </>
-            )}
+            <h3>Craft {pending.card.name}?</h3>
+            <p>
+              <FragmentGem rarity={pending.rarity} /> {rules.craft[pending.rarity]} {RARITY_NAMES[pending.rarity]} Fragments for one non-foil copy.
+            </p>
             <div className="craft-confirm-buttons">
               <button className="primary" disabled={busy} onClick={() => void confirm()}>
-                {busy ? 'Working…' : pending.kind === 'dismantle' ? 'Dismantle' : 'Craft'}
+                {busy ? 'Working…' : 'Craft'}
               </button>
               <button disabled={busy} onClick={() => setPending(null)}>
                 Cancel
@@ -198,26 +230,116 @@ export function CraftTab() {
 
       {/* Dismantle lists only cards you own (from your collection); Craft lists every craftable card. */}
       {mode === 'dismantle' ? (
-        <div className="craft-grid">
-          {owned.filter((o) => matches(o.card, o.rarity)).length === 0 && <p className="fineprint">No cards to dismantle{search || rarity !== 'all' ? ' match' : ' yet'}.</p>}
-          {owned
-            .filter((o) => matches(o.card, o.rarity))
-            .map((o) => {
-              const last = rules.protectLastCopy && total(o.card) <= 1;
-              const reward = rewardFor(rules, o.rarity, o.finish);
-              return (
-                <div key={`${o.card.id}|${o.finish}`} className="craft-item">
-                  {cardPic(o.card, o.finish)}
-                  <div className="craft-name">{o.card.name}</div>
-                  <div className="fineprint">
-                    {RARITY_NAMES[o.rarity]} · {FINISH_NAMES[o.finish]} · {o.count} owned
+        <div className={`craft-body${listOpen ? ' list-open' : ''}`}>
+          <div className="craft-grid">
+            {owned.filter((o) => matches(o.card, o.rarity)).length === 0 && <p className="fineprint">No cards to dismantle{search || rarity !== 'all' ? ' match' : ' yet'}.</p>}
+            {owned
+              .filter((o) => matches(o.card, o.rarity))
+              .map((o) => {
+                const last = rules.protectLastCopy && total(o.card) <= 1;
+                const queued = inList(o.card, o.finish);
+                const full = !last && queued >= room(o.card, o.finish);
+                const reward = rewardFor(rules, o.rarity, o.finish);
+                return (
+                  <div key={`${o.card.id}|${o.finish}`} className={`craft-item${queued ? ' queued' : ''}`}>
+                    <div className="craft-pic-wrap">
+                      {cardPic(o.card, o.finish)}
+                      {queued > 0 && <span className="craft-queued" title="In the dismantle list">{queued}</span>}
+                    </div>
+                    <div className="craft-name">{o.card.name}</div>
+                    <div className="fineprint">
+                      {RARITY_NAMES[o.rarity]} · {FINISH_NAMES[o.finish]} · {o.count} owned
+                    </div>
+                    <button
+                      disabled={last || full || busy}
+                      title={last ? 'Your last copy of this card can’t be dismantled.' : full ? (rules.protectLastCopy && queued < o.count ? 'One copy of this card stays in your collection.' : 'Every copy is in the list.') : undefined}
+                      onClick={() => setCount(o.card, o.finish, o.rarity, queued + 1)}
+                    >
+                      {last ? 'Last copy' : full ? 'All in list' : <>Add: +{reward} <FragmentGem rarity={o.rarity} size={14} /></>}
+                    </button>
                   </div>
-                  <button disabled={last || busy} title={last ? 'Your last copy of this card can’t be dismantled.' : undefined} onClick={() => { setDone(null); setPending({ kind: 'dismantle', card: o.card, finish: o.finish, rarity: o.rarity, requestId: crypto.randomUUID() }); }}>
-                    {last ? 'Last copy' : <>Dismantle: +{reward} <FragmentGem rarity={o.rarity} size={14} /></>}
-                  </button>
+                );
+              })}
+          </div>
+
+          <aside className="craft-list" aria-label="Dismantle list">
+            <button className="craft-list-toggle" onClick={() => setListOpen(!listOpen)} aria-expanded={listOpen}>
+              Dismantle list{listCopies ? ` (${listCopies})` : ''} <span aria-hidden="true">{listOpen ? '▾' : '▴'}</span>
+            </button>
+            <h3>Dismantle list</h3>
+            {list.length === 0 ? (
+              <p className="fineprint">Add cards from your collection, then dismantle them all at once.</p>
+            ) : (
+              <ul className="craft-list-rows">
+                {list.map((e) => {
+                  const finish = e.finish as Finish;
+                  const max = room(e.printing, finish);
+                  return (
+                    <li key={`${e.card}|${e.finish}`} className="craft-list-row">
+                      <img src={e.printing.images[0]!.small} alt="" loading="lazy" />
+                      <div className="craft-list-text">
+                        <div className="craft-name" title={e.printing.name}>{e.printing.name}</div>
+                        <div className="fineprint">
+                          {RARITY_NAMES[e.rarity]} · {FINISH_NAMES[finish]} · +{rewardFor(rules, e.rarity, e.finish) * e.count} <FragmentGem rarity={e.rarity} size={12} />
+                        </div>
+                      </div>
+                      <div className="craft-qty">
+                        <button aria-label={`One less ${e.printing.name}`} disabled={busy} onClick={() => setCount(e.printing, finish, e.rarity, e.count - 1)}>−</button>
+                        <span aria-label="Copies">{e.count}</span>
+                        <button aria-label={`One more ${e.printing.name}`} disabled={busy || e.count >= max} onClick={() => setCount(e.printing, finish, e.rarity, e.count + 1)}>+</button>
+                      </div>
+                      <button className="craft-remove" aria-label={`Remove ${e.printing.name}`} disabled={busy} onClick={() => setCount(e.printing, finish, e.rarity, 0)}>×</button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {list.length > 0 && (
+              <>
+                <div className="craft-list-total">
+                  <span>
+                    {listCopies} card{listCopies === 1 ? '' : 's'}
+                  </span>
+                  <span className="craft-list-gain">
+                    {(Object.keys(RARITY_NAMES) as FragmentRarity[])
+                      .filter((r) => listGain[r] > 0)
+                      .map((r) => (
+                        <span key={r} title={`${RARITY_NAMES[r]} Fragments`}>
+                          +{listGain[r]} <FragmentGem rarity={r} size={14} />
+                        </span>
+                      ))}
+                  </span>
                 </div>
-              );
-            })}
+                {listDecks.map((name) => (
+                  <p key={name} className="craft-warning">
+                    Your deck “{name}” uses some of these copies: it will be missing cards until you change it.
+                  </p>
+                ))}
+                {confirming ? (
+                  <div className="craft-list-confirm" role="dialog" aria-label="Confirm">
+                    <p>Dismantle {listCopies} card{listCopies === 1 ? '' : 's'}? This can't be undone.</p>
+                    <div className="craft-confirm-buttons">
+                      <button className="primary" disabled={busy} onClick={() => void dismantleAll()}>
+                        {busy ? 'Working…' : 'Dismantle'}
+                      </button>
+                      <button disabled={busy} onClick={() => setConfirming(false)}>
+                        Back
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="craft-confirm-buttons">
+                    <button className="primary" disabled={busy} onClick={() => { setDone(null); setConfirming(true); }}>
+                      Dismantle all
+                    </button>
+                    <button disabled={busy} onClick={() => changeList([])}>
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
         </div>
       ) : (
         <div className="craft-grid">

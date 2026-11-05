@@ -214,6 +214,19 @@ describe('E2: sacrificing lands', () => {
     }
   });
 
+  it('Sprouting Goblin: a land with a basic land type, two-type lands included; never one without', () => {
+    let s = newGame();
+    const goblin = put(s, 'P1', 'sprouting-goblin', 'hand');
+    const typed = [put(s, 'P1', 'canyon-slough', 'library'), put(s, 'P1', 'forest', 'library')];
+    const untyped = ['evolving-wilds', 'command-tower', 'myriad-landscape'].map((id) => put(s, 'P1', id, 'library'));
+    mana(s, 'P1', { R: 1, G: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: goblin, kicks: 1 });
+    for (let i = 0; i < 30 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    const offered = s.pending.kind === 'chooseCards' ? s.pending.cards : [];
+    expect(typed.every((id) => offered.includes(id))).toBe(true);
+    expect(untyped.some((id) => offered.includes(id))).toBe(false);
+  });
+
   it('Baloth Prime: enters tapped with six stun counters; each land you sacrifice makes a tapped 4/4 Beast and untaps it', () => {
     let s = newGame();
     const baloth = put(s, 'P1', 'baloth-prime', 'hand');

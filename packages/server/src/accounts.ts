@@ -58,6 +58,12 @@ export interface AccountService {
    * CraftingError ('not_owned', 'last_copy') and changes nothing if it can't.
    */
   dismantle(userId: string, request: DismantleRequest): Promise<{ fragments: Fragments; applied: boolean }>;
+  /**
+   * Dismantles a list of cards (several copies of each) in one step, once per
+   * `ref`: every card is checked first and nothing changes if one can't go.
+   * CraftingError ('not_owned', 'last_copy') names the card that stopped it.
+   */
+  dismantleMany(userId: string, request: DismantleBatchRequest): Promise<{ fragments: Fragments; applied: boolean }>;
   /** Spends the fragments and adds one non-foil copy, in one step, once per `ref`; CraftingError 'not_enough' otherwise. */
   craft(userId: string, request: CraftRequest): Promise<{ fragments: Fragments; applied: boolean }>;
   /** Records a finished game for a player; false if it was already recorded (then nothing is paid again). */
@@ -78,6 +84,23 @@ export interface DismantleRequest {
   protectLast: boolean;
 }
 
+/** One card in a bulk dismantle: `amount` fragments for each of `count` copies. */
+export interface DismantleItem {
+  card: string;
+  finish: OwnedCard['finish'];
+  rarity: FragmentRarity;
+  amount: number;
+  count: number;
+  /** Every printing id of the card, for the last-copy rule. */
+  named: string[];
+}
+
+export interface DismantleBatchRequest {
+  ref: string;
+  items: DismantleItem[];
+  protectLast: boolean;
+}
+
 export interface CraftRequest {
   ref: string;
   card: string;
@@ -88,9 +111,12 @@ export interface CraftRequest {
 /** Why a dismantle or craft was refused; nothing changed. */
 export class CraftingError extends Error {
   readonly code: 'not_owned' | 'last_copy' | 'not_enough';
-  constructor(code: CraftingError['code']) {
+  /** The card that stopped a bulk dismantle. */
+  readonly card: string | undefined;
+  constructor(code: CraftingError['code'], card?: string) {
     super(code);
     this.code = code;
+    this.card = card;
   }
 }
 
@@ -103,7 +129,9 @@ const toFragments = (raw: unknown): Fragments => {
 
 /** A CraftingError for the database function's refusal, or the error itself. */
 const craftingFailure = (message: string | undefined): Error => {
-  for (const code of ['not_owned', 'last_copy', 'not_enough'] as const) if (message?.includes(code)) return new CraftingError(code);
+  for (const code of ['not_owned', 'last_copy', 'not_enough'] as const) {
+    if (message?.includes(code)) return new CraftingError(code, new RegExp(`${code}:([0-9a-f-]{36})`).exec(message)?.[1]);
+  }
   return new Error(`Could not change the fragments: ${message ?? 'no data'}`);
 };
 
@@ -305,6 +333,14 @@ export class SupabaseAccounts implements AccountService {
     return { fragments: toFragments(data.fragments), applied: data.applied };
   }
 
+  async dismantleMany(userId: string, q: DismantleBatchRequest): Promise<{ fragments: Fragments; applied: boolean }> {
+    const { data, error } = await this.db
+      .rpc('dismantle_cards', { p_user: userId, p_ref: q.ref, p_items: q.items, p_protect_last: q.protectLast })
+      .single<{ fragments: unknown; applied: boolean }>();
+    if (error || !data) throw craftingFailure(error?.message);
+    return { fragments: toFragments(data.fragments), applied: data.applied };
+  }
+
   async craft(userId: string, q: CraftRequest): Promise<{ fragments: Fragments; applied: boolean }> {
     const { data, error } = await this.db
       .rpc('craft_card', { p_user: userId, p_ref: q.ref, p_card: q.card, p_rarity: q.rarity, p_cost: q.cost })
@@ -446,6 +482,34 @@ export class MemoryAccounts implements AccountService {
     balances[q.rarity] += q.amount;
     this.fragmentBalances.set(userId, balances);
     this.fragmentLedger.add(key);
+    return { fragments: { ...balances }, applied: true };
+  }
+
+  /** Like dismantle_cards: every card is checked before anything changes. */
+  async dismantleMany(userId: string, q: DismantleBatchRequest): Promise<{ fragments: Fragments; applied: boolean }> {
+    if (!this.accounts.has(userId)) throw new Error(`no profile for ${userId}`);
+    const key = `${userId}|dismantle|${q.ref}#1`;
+    if (this.fragmentLedger.has(key)) return { fragments: await this.fragments(userId), applied: false };
+    if (q.items.length === 0 || q.items.some((i) => i.amount <= 0 || i.count <= 0)) throw new Error('bad amount');
+    const cards = this.owned.get(userId) ?? [];
+    for (const i of q.items) {
+      const row = cards.find((c) => c.id === i.card && c.finish === i.finish);
+      if (!row || row.count < i.count) throw new CraftingError('not_owned', i.card);
+      if (q.protectLast) {
+        const have = cards.filter((c) => i.named.includes(c.id)).reduce((n, c) => n + c.count, 0);
+        const going = q.items.filter((j) => i.named.includes(j.card)).reduce((n, j) => n + j.count, 0);
+        if (have - going < 1) throw new CraftingError('last_copy', i.card);
+      }
+    }
+    const balances = { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+    q.items.forEach((i, n) => {
+      const row = cards.find((c) => c.id === i.card && c.finish === i.finish)!;
+      row.count -= i.count;
+      if (row.count === 0) cards.splice(cards.indexOf(row), 1);
+      balances[i.rarity] += i.amount * i.count;
+      this.fragmentLedger.add(`${userId}|dismantle|${q.ref}#${n + 1}`);
+    });
+    this.fragmentBalances.set(userId, balances);
     return { fragments: { ...balances }, applied: true };
   }
 

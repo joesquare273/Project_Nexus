@@ -68,6 +68,18 @@ the cards they want (user spec, 2026-11-04), in the **Craft** tab.
 - **Last copy:** with `protectLastCopy` (on), your last copy of a card, by
   name across every art and finish, can't be dismantled. Dismantling a copy a
   saved deck uses only warns.
+- **Bulk dismantling (2026-11-05, user request):** the Craft tab's Dismantle
+  view adds cards to a **dismantle list** on the right (a drawer along the
+  bottom on narrow screens): each row shows the card, its finish and the
+  number of copies (+/−), with the total fragments by rarity and any decks
+  the list affects; "Dismantle all" sends the whole list at once. The list
+  holds only copies you own and, with the last-copy rule, leaves one copy of
+  each card across the whole list. `POST /api/dismantle/batch {requestId,
+  items: [{card, finish, count}]}` (at most 200 cards, 999 copies each) goes
+  through the database function `dismantle_cards`
+  (`supabase/migrations/20261105120000_dismantle_batch.sql`): every card is
+  checked first and nothing changes if one can't go (the error names it);
+  each card gets a ledger row with ref `<request id>#<n>`.
 - **Server only:** `GET /api/fragments`, `POST /api/dismantle {requestId, card, finish}`,
   `POST /api/craft {requestId, card}` (`packages/server/src/crafting.ts`). The
   database functions `dismantle_card` and `craft_card`

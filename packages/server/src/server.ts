@@ -15,7 +15,7 @@ import { DeckInput, deckProblem } from './collection.ts';
 import { ECONOMY, packsForPurchase } from './economy.ts';
 import { STARTER_CHOICES, STARTER_REF, claimStarter } from './starter.ts';
 import { storeItem, storeSets } from './store.ts';
-import { craftRoute, craftingRules, dismantleRoute } from './crafting.ts';
+import { craftRoute, craftingRules, dismantleBatchRoute, dismantleRoute } from './crafting.ts';
 import { questProgress, rewardTutorial } from './rewards.ts';
 
 /** Biggest message a browser may send. Actions are small. */
@@ -110,7 +110,7 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  *   free bonus pack), opens them on the server and adds their cards to the
  *   collection, all at once.
  * - GET /api/rewards: quest progress, one-time rewards and match rewards (rewards.ts).
- * - GET /api/fragments, POST /api/dismantle, POST /api/craft: fragments
+ * - GET /api/fragments, POST /api/dismantle (and /batch), POST /api/craft: fragments
  *   (crafting.ts), each change once per request id.
  */
 async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string, accounts: AccountService | null): Promise<void> {
@@ -189,17 +189,18 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
     }
     if (path === '/api/packs/open' && method === 'POST') return openPackRoute(res, user, accounts, await readJson(req));
     if (path === '/api/fragments' && method === 'GET') return json(res, 200, { fragments: await accounts.fragments(user.id), rules: craftingRules() });
-    if ((path === '/api/dismantle' || path === '/api/craft') && method === 'POST') {
+    if ((path === '/api/dismantle' || path === '/api/dismantle/batch' || path === '/api/craft') && method === 'POST') {
       await accounts.ensure(user);
       const body = await readJson(req);
-      const answer = path === '/api/dismantle' ? await dismantleRoute(accounts, user.id, body) : await craftRoute(accounts, user.id, body);
+      const answer =
+        path === '/api/dismantle' ? await dismantleRoute(accounts, user.id, body) : path === '/api/dismantle/batch' ? await dismantleBatchRoute(accounts, user.id, body) : await craftRoute(accounts, user.id, body);
       return json(res, answer.status, answer.body);
     }
     const deckId = /^\/api\/decks\/([0-9a-f-]{36})$/.exec(path)?.[1];
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
-    if (['/api/account', '/api/collection', '/api/decks', '/api/onboarding', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy', '/api/fragments', '/api/dismantle', '/api/craft', '/api/rewards'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
+    if (['/api/account', '/api/collection', '/api/decks', '/api/onboarding', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy', '/api/fragments', '/api/dismantle', '/api/dismantle/batch', '/api/craft', '/api/rewards'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });
