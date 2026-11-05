@@ -18,6 +18,8 @@ export interface FilterViewpoint {
   defender?: PlayerId;
   /** For triggered abilities: the object the event happened to (the spell that was cast). */
   subject?: InstanceId;
+  /** The value chosen for {X} by the spell or ability (`manaValueAtMostX`). */
+  x?: number;
 }
 
 /**
@@ -101,6 +103,7 @@ export function matchesObject(
     if (f.toughnessAtLeast !== undefined && (from.toughness ?? ch.toughness) < f.toughnessAtLeast) return false;
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
+  if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
   if (f.manaValueEqualsSubject) {
     const subject = from.subject ? s.cards[from.subject] : undefined;
     if (!subject || objectManaValue(s, obj) !== objectManaValue(s, subject)) return false;

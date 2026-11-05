@@ -1173,3 +1173,75 @@ describe('E9: artifact creatures, counters and crimes', () => {
     expect(s.cards[cop]!.counters).toBe(3);
   });
 });
+
+// Group 10: any number of permanents, and X.
+describe('E10: any number of permanents, and X', () => {
+  const isCreature = (s: GameState, id: string) => (currentDefinition(s, s.cards[id]!).types as string[]).includes('creature');
+
+  it('Depthshaker Titan: the noncreature artifacts you choose become 3/3s until the next end step; artifact creatures get trample, haste and melee', () => {
+    let s = newGame();
+    const [ringA, ringB] = [put(s, 'P1', 'sol-ring'), put(s, 'P1', 'sol-ring')];
+    const titan = put(s, 'P1', 'depthshaker-titan', 'hand');
+    mana(s, 'P1', { R: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: titan }).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect([...s.pending.cards].sort()).toEqual([ringA, ringB].sort());
+    expect(getLegalActions(s).some((a) => a.type === 'ChooseCards' && a.cards.length === 0)).toBe(true);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ringA] })).state;
+    expect(isCreature(s, ringA)).toBe(true);
+    expect(powerOf(s, s.cards[ringA]!)).toBe(3);
+    expect(hasKeyword(s, s.cards[ringA]!, 'Haste') && hasKeyword(s, s.cards[ringA]!, 'Trample')).toBe(true);
+    expect(isCreature(s, ringB)).toBe(false);
+    // Melee: attacking one opponent, +1/+1.
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: ringA, defender: 'P2' }] })).state;
+    expect(powerOf(s, s.cards[ringA]!)).toBe(4);
+    s = settle(goTo(s, 'end')).state;
+    expect(s.cards[ringA]!.zone).toBe('graveyard');
+    expect(s.cards[ringB]!.zone).toBe('battlefield');
+  });
+
+  it('the computer animates none of its artifacts with Depthshaker Titan (they would be sacrificed)', () => {
+    let s = newGame();
+    put(s, 'P1', 'sol-ring');
+    const titan = put(s, 'P1', 'depthshaker-titan', 'hand');
+    mana(s, 'P1', { R: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: titan }).state;
+    const choice = basicAi(1)(s, getLegalActions(s));
+    expect(choice).toEqual({ type: 'ChooseCards', player: 'P1', cards: [] });
+  });
+
+  it('Ripples of Potential: proliferate, then phase out any of your permanents that got a counter this way', () => {
+    let s = newGame();
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { counters: 1 });
+    const plain = put(s, 'P1', 'coeurl');
+    const rock = put(s, 'P1', 'sol-ring', 'battlefield', { namedCounters: { charge: 1 } });
+    const spell = put(s, 'P1', 'ripples-of-potential', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.cards[cat]!.counters).toBe(2);
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect([...s.pending.cards].sort()).toEqual([cat, rock].sort());
+    expect(s.pending.cards).not.toContain(plain);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [cat] })).state;
+    expect(s.cards[cat]!.phasedOut).toBe(true);
+    expect(s.cards[rock]!.phasedOut).toBeFalsy();
+  });
+
+  it('Gaze of Granite destroys each nonland permanent with mana value X or less', () => {
+    let s = newGame();
+    const cheap = put(s, 'P2', 'sol-ring'); // mana value 1
+    const mid = put(s, 'P2', 'mindless-automaton', 'battlefield', { counters: 2 }); // mana value 4
+    const land = put(s, 'P2', 'forest');
+    const mine = put(s, 'P1', 'sol-ring');
+    const gaze = put(s, 'P1', 'gaze-of-granite', 'hand');
+    mana(s, 'P1', { B: 2, G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gaze, x: 3 }).state;
+    expect(s.cards[cheap]!.zone).toBe('graveyard');
+    expect(s.cards[mine]!.zone).toBe('graveyard');
+    expect(s.cards[mid]!.zone).toBe('battlefield');
+    expect(s.cards[land]!.zone).toBe('battlefield');
+  });
+});

@@ -159,6 +159,8 @@ export const TARGET_KINDS = [
   'AllGraveyardCards',
   /** The creatures that convoked the spell (Lethal Scheme). */
   'ConvokedCreatures',
+  /** The permanents chosen by the last ChoosePermanent with `choiceThen: 'mark'` that are still on the battlefield. */
+  'ChosenCards',
   /** A card in exile linked to this permanent ("target creature card exiled with The Darkness Crystal"), matching `filter`. */
   'TargetCardExiledWithSource',
 ] as const;
@@ -777,7 +779,9 @@ export interface EffectSpec {
   /** AttachEquipmentTo: the creature is this earlier target (by position) rather than the effect's own target. */
   toTarget?: number;
   /** ChoosePermanent: what happens to the chosen permanent. */
-  choiceThen?: 'bounce' | 'link' | 'counter' | 'attachSource';
+  choiceThen?: 'bounce' | 'link' | 'counter' | 'attachSource' | 'mark';
+  /** ChoosePermanent: only among the permanents that got a counter from this ability's Proliferate (Ripples of Potential). With `anyNumber`, any number of them (none included); with `choiceThen: 'mark'`, later effects act on them (target `ChosenCards`). BecomeCreature with `sacrificeAtEndStep`: sacrificed at the beginning of the next end step (Depthshaker Titan). */
+  fromProliferated?: boolean;
   /** AllowPlayExiledThisWay: "you may cast" rather than "play" (no lands). */
   castOnly?: boolean;
   /** DivideDamage: among this ability's chosen targets (each gets at least 1), not chosen as it resolves (Fury). */
@@ -1116,6 +1120,8 @@ export interface ObjectFilter {
   toughnessAtLeast?: number;
   manaValueAtMost?: number;
   manaValueAtLeast?: number;
+  /** Mana value X or less, X being the spell's ("each nonland permanent with mana value X or less": Gaze of Granite). */
+  manaValueAtMostX?: boolean;
   /** Has no counters on it ("creatures with no counters on them"). */
   noCounters?: boolean;
   /**
@@ -2274,6 +2280,8 @@ export interface Resolving {
   subjectWasWeaker?: boolean;
   /** What each player chose in the last choosing effect. */
   chosen?: { player: PlayerId; cards: InstanceId[] }[];
+  /** The permanents this resolution's Proliferate put counters on (Ripples of Potential). */
+  proliferated?: InstanceId[];
   /** Mana value of all cards chosen in the last choosing effect, measured as they were chosen. */
   chosenManaValue?: number;
   /** Whether the cards chosen in the last choosing effect included a creature / a noncreature card. */
@@ -2294,7 +2302,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

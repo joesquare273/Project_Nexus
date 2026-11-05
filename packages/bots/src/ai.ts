@@ -596,6 +596,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     return pick(recipients.slice(0, 1));
   }
   if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
+  // "Any number" for an ability that may cost them (Depthshaker Titan sacrifices them later; Ripples of Potential phases them out): none.
+  if (p.purpose === 'mark') return pick([]);
   // Grief: choose the opponent's most expensive card for them to discard.
   if (p.purpose === 'discard' && p.cards.some((id) => s.cards[id]!.owner !== me)) {
     const mv = (id: string) => manaValue(parseManaCost(def(s, s.cards[id]!).manaCost));

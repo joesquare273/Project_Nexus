@@ -1173,6 +1173,8 @@ function PromptBar(p: PromptProps) {
             ? 'to sacrifice'
             : c.purpose === 'mayDraw'
               ? 'to draw a card from (or none)'
+            : c.purpose === 'mark'
+              ? 'for the ability (any number, or none)'
             : c.purpose === 'bounce'
               ? `to return to its owner’s hand${c.min === 0 ? ' (or none)' : ''}`
             : c.purpose === 'counter'

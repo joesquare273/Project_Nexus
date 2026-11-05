@@ -32,8 +32,8 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 87/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 78/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 89/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 79/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -144,6 +144,17 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   chosen by the engine, as Proliferate is (helpful counters on yours, stun
   and -1/-1 on opponents'). Depthshaker Titan and Ripples of Potential wait
   for a real "any number of targets" choice.
+
+- **E10 (2026-11-05): any number of permanents, and X.** Depthshaker Titan,
+  Ripples of Potential, Gaze of Granite. Engine: ChoosePermanent `anyNumber`
+  with `choiceThen: 'mark'` and the `ChosenCards` target (later effects act
+  on what was chosen), `fromProliferated` (only what this ability's
+  Proliferate put counters on), BecomeCreature `sacrificeAtEndStep`, and the
+  `manaValueAtMostX` filter. Simplifications: Depthshaker Titan's and Ripples
+  of Potential's "any number of target" permanents (your own) are chosen as
+  the ability resolves, not targeted; Depthshaker's melee, which it gives
+  your artifact creatures, is its own attack trigger (+1/+1 per opponent
+  attacked, the same result). The computer chooses none of them.
 
 ## Commander rules (built)
 

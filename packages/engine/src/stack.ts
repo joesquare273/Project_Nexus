@@ -1732,6 +1732,8 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'graveyard' ? [{ kind: 'card', card: subject }] : [];
     }
+    case 'ChosenCards':
+      return (r.chosen?.at(-1)?.cards ?? []).filter((id) => s.cards[id]?.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
     case 'ConvokedCreatures':
       return item.kind === 'spell'
         ? (item.convoked ?? []).filter((id) => isCreatureOnBattlefield(s, s.cards[id])).map((id) => ({ kind: 'card', card: id }))
@@ -1783,7 +1785,7 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return toPlayers(effect.target === 'EachOpponentWhoChose' ? opponents.filter(chose) : opponents.filter((id) => !chose(id)));
     }
     case 'AllPermanents': {
-      const viewpoint = { controller: item.controller, source: sourceOf(item), ...contextOf(item) };
+      const viewpoint = { controller: item.controller, source: sourceOf(item), ...contextOf(item), x: item.kind === 'spell' ? (item.x ?? 0) : 0 };
       return battlefield(s)
         .filter((c) => matchesObject(s, effect.filter, c, viewpoint))
         .map((c) => ({ kind: 'card', card: c.id }));
@@ -2634,9 +2636,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'ChoosePermanent': {
-      const cards = battlefield(s).filter((c) => !c.phasedOut && matchesObject(s, effect.filter, c, { controller: item.controller, source })).map((c) => c.id);
-      if (cards.length === 0) return;
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional ? 0 : 1, max: 1 }];
+      const cards = battlefield(s)
+        .filter((c) => !c.phasedOut && matchesObject(s, effect.filter, c, { controller: item.controller, source }) && (!effect.fromProliferated || (r.proliferated ?? []).includes(c.id)))
+        .map((c) => c.id);
+      if (cards.length === 0) {
+        if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
+        return;
+      }
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional || effect.anyNumber ? 0 : 1, max: effect.anyNumber ? cards.length : 1 }];
       return;
     }
     case 'AddSubtypes':
@@ -2647,7 +2654,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) s.cards[id]!.addedSubtypes = [...new Set([...(s.cards[id]!.addedSubtypes ?? []), ...(effect.addSubtypes ?? [])])];
       return;
     case 'BecomeCreature':
-      for (const id of onBattlefield) s.cards[id]!.animated = structuredClone(effect.becomes!);
+      for (const id of onBattlefield) {
+        s.cards[id]!.animated = structuredClone(effect.becomes!);
+        if (effect.sacrificeAtEndStep) s.cards[id]!.sacrificeAtEndStep = true;
+      }
       return;
     case 'RemoveCounters':
       for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
@@ -3368,7 +3378,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           for (const [kind] of allCounters(c)) {
             // Harmful kinds go on opponents' permanents, the rest on your own.
             const harmful = kind === 'stun' || kind === '-1/-1';
-            if (c.controller === pid ? !harmful : harmful) addCounters(ctx, c.id, 1, pid, kind);
+            if (c.controller === pid ? !harmful : harmful) {
+              addCounters(ctx, c.id, 1, pid, kind);
+              r.proliferated = [...new Set([...(r.proliferated ?? []), c.id])];
+            }
           }
         }
         // Players too: each opponent with poison counters gets another (rule 701.27a).
@@ -3984,6 +3997,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     // "Then attach it to a creature you control" (Sidequest: Play Blitzball).
     const src = s.cards[sourceOf(r.item)]!;
     for (const id of cards) if (src.zone === 'battlefield' && isCreatureOnBattlefield(s, s.cards[id])) attach(ctx, src.id, id);
+  } else if (pending.purpose === 'mark') {
+    // Only remembered (in r.chosen, below): the next effects act on them (target ChosenCards).
   } else if (pending.purpose === 'link') {
     const src = s.cards[sourceOf(r.item)]!;
     if (cards[0] && src.zone === 'battlefield') src.linkedCreature = { card: cards[0] };

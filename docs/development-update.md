@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E10: any number of permanents, and X
+
+Depthshaker Titan, Ripples of Potential and Gaze of Granite. New: choosing
+any number of permanents as an ability resolves, then acting on them, and
+"mana value X or less". Counter Intelligence 89/100, World Shaper 79/100.
+
 ### Edge of Eternities group E9: artifact creatures, counters and crimes
 
 Five Counter Intelligence cards: Cyberdrive Awakener, Alibou, Threefold

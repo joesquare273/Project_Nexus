@@ -50,6 +50,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   SubjectController: 'that player',
   AllGraveyardCards: 'all cards in all graveyards',
   ConvokedCreatures: 'each creature that convoked this spell',
+  ChosenCards: 'the chosen permanents',
   CreaturesPreviousTargetControls: 'each creature that player controls',
   You: 'you',
 };
