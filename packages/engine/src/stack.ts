@@ -60,6 +60,7 @@ import {
   type GameState,
   type InstanceId,
   type ManaCost,
+  type ManaPool,
   type ManaType,
   type Action,
   type ObjectFilter,
@@ -611,20 +612,46 @@ export function lifePayableBlack(s: GameState, playerId: PlayerId, cost: ManaCos
   return Math.min(cost.B ?? 0, (cost.phyrexianB ?? 0) + (krrik ? (cost.B ?? 0) : 0));
 }
 
+/**
+ * {W/P}, {U/P}, {R/P}, {G/P}: the cheapest way to pay with what the pool has,
+ * 2 life for each of those symbols the mana can't cover (rule 119.4: only
+ * with that much life). Null if no way works.
+ */
+function payPhyrexian(s: GameState, playerId: PlayerId, pool: ManaPool, cost: ManaCost, lifeSoFar: number): { cost: ManaCost; life: number } | null {
+  const colors = (Object.entries(cost.phyrexian ?? {}) as ['W' | 'U' | 'R' | 'G', number][]).filter(([, n]) => n > 0);
+  let best: { cost: ManaCost; life: number } | null = null;
+  const tryFrom = (i: number, current: ManaCost, life: number) => {
+    if (best && life >= best.life) return;
+    if (i === colors.length) {
+      if (s.players[playerId]!.life >= lifeSoFar + life && planPayment(pool, current)) best = { cost: current, life };
+      return;
+    }
+    const [color, n] = colors[i]!;
+    for (let k = 0; k <= n; k++) tryFrom(i + 1, { ...current, [color]: (current[color] ?? 0) - k }, life + 2 * k);
+  };
+  tryFrom(0, cost, 0);
+  return best;
+}
+
 function lifeForBlack(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse): { cost: ManaCost; life: number } | null {
   const pool = poolFor(s, playerId, use);
+  // Pays the rest of the cost, other colors' Phyrexian symbols with life only where the pool falls short.
+  const fit = (c: ManaCost, life: number) => {
+    const r = payPhyrexian(s, playerId, pool, c, life);
+    return r ? { cost: r.cost, life: life + r.life } : null;
+  };
   const able = lifePayableBlack(s, playerId, cost);
   if (use.lifeForB !== undefined) {
     const k = use.lifeForB;
     if (!Number.isInteger(k) || k < 0 || k > able || s.players[playerId]!.life < 2 * k) return null;
-    const reduced = { ...cost, B: (cost.B ?? 0) - k };
-    return planPayment(pool, reduced) ? { cost: reduced, life: 2 * k } : null;
+    return fit({ ...cost, B: (cost.B ?? 0) - k }, 2 * k);
   }
-  if (planPayment(pool, cost)) return { cost, life: 0 };
+  const plain = fit(cost, 0);
+  if (plain) return plain;
   for (let k = 1; k <= able; k++) {
     if (s.players[playerId]!.life < 2 * k) break;
-    const reduced = { ...cost, B: (cost.B ?? 0) - k };
-    if (planPayment(pool, reduced)) return { cost: reduced, life: 2 * k };
+    const paid = fit({ ...cost, B: (cost.B ?? 0) - k }, 2 * k);
+    if (paid) return paid;
   }
   return null;
 }
@@ -1438,7 +1465,16 @@ function crewCandidates(s: GameState, playerId: PlayerId, source: InstanceId): C
   return battlefield(s).filter(c => c.id !== source && c.controller === playerId && !c.tapped && isCreatureOnBattlefield(s,c));
 }
 
+/** Your other permanents that a "remove counters from among" cost can take counters from. */
+function counterPool(s: GameState, playerId: PlayerId, spec: ActivatedSpec, source: InstanceId): CardInstance[] {
+  const among = spec.cost.removeCountersAmong;
+  if (!among) return [];
+  return battlefield(s).filter((c) => c.id !== source && c.controller === playerId && !c.phasedOut && totalCounters(c) > 0 && matchesObject(s, among.filter, c, { controller: playerId, source }));
+}
+
 export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstance, spec: ActivatedSpec): string | null {
+  const among = spec.cost.removeCountersAmong;
+  if (among && counterPool(s, playerId, spec, c.id).reduce((n, k) => n + totalCounters(k), 0) < among.amount) return `There aren't ${among.amount} counters among your other permanents to remove.`;
   const rc = spec.cost.removeCounter;
   if (rc && (rc.from ? counterCostCandidates(s, playerId, spec, c.id).length === 0 : !counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) {
     return 'There is no counter to remove for that.';
@@ -1637,6 +1673,14 @@ export function activateAbility(
   if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
     removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, rc.amount ?? 1);
+  }
+  if (spec.cost.removeCountersAmong) {
+    for (let i = 0; i < spec.cost.removeCountersAmong.amount; i++) {
+      const from = counterPool(s, playerId, spec, id).sort((a, b) => totalCounters(b) - totalCounters(a))[0];
+      const kind = from && (counterToRemove(from, undefined) ?? allCounters(from)[0]?.[0]);
+      if (!from || !kind) reject('There are no more counters to remove.');
+      removeCounters(ctx, from.id, kind, 1);
+    }
   }
   const exiledAsCost = spec.cost.exileGraveyard ? costCards.map(card => {
     moveCard(ctx, card, 'exile');
@@ -3372,7 +3416,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Proliferate':
       // The engine chooses: every kind on your own permanents except stun counters, and stun counters on opponents'.
       // "Proliferate X times": `amount` rounds.
-      for (let round = 0; round < (effect.amount === undefined ? 1 : amount); round++)
+      // Tekuthal: "If you would proliferate, proliferate twice instead" (each one doubles again).
+      const doublers = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.proliferateTwice)).length;
+      for (let round = 0; round < (effect.amount === undefined ? 1 : amount) * 2 ** doublers; round++)
       for (const pid of targetPlayers(targets)) {
         for (const c of battlefield(s)) {
           for (const [kind] of allCounters(c)) {
@@ -3650,7 +3696,8 @@ export function resolveTop(ctx: Ctx): void {
     const entering = defOf(s, s.cards[item.card]!);
     // "You may have it enter as a copy": chosen as it resolves (rule 707.5), before it moves.
     if (entering.entersAsCopy && item.entryCopy === undefined) {
-      const creatures = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c)).map((c) => c.id);
+      const artifactOk = (c: CardInstance) => !!entering.entersAsCopyOfArtifact && !c.phasedOut && hasType(s, c, 'artifact');
+      const creatures = battlefield(s).filter((c) => artifactOk(c) || isCreatureOnBattlefield(s, c)).map((c) => c.id);
       if (creatures.length) {
         s.pending = { kind: 'chooseCards', purpose: 'copyOnEntry', player: item.controller, cards: creatures, min: 0, max: 1, item: item.id };
         return;
@@ -4235,7 +4282,8 @@ export function chooseEntryCopy(ctx: Ctx, playerId: PlayerId, cards: InstanceId[
   const problem = choiceProblem(s, p, cards);
   if (problem) reject(problem);
   const chosen = cards[0] ? s.cards[cards[0]] : undefined;
-  if (chosen && !isCreatureOnBattlefield(s, chosen)) reject('Choose a creature still on the battlefield.');
+  const artifactOk = !!chosen && !!defOf(s, s.cards[item.card]!).entersAsCopyOfArtifact && chosen.zone === 'battlefield' && hasType(s, chosen, 'artifact');
+  if (chosen && !artifactOk && !isCreatureOnBattlefield(s, chosen)) reject('Choose a creature (or, for this card, an artifact) still on the battlefield.');
   item.entryCopy = chosen ? { card: chosen.id, object: chosen.zoneChanges ?? 0 } : null;
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   resolveTop(ctx);
@@ -4262,9 +4310,15 @@ export function chooseEntryCounters(ctx: Ctx, playerId: PlayerId, cards: Instanc
 /** It enters with the copied creature's copiable values, so its own entry abilities are the copy's (rule 707.5). */
 function enterAsCopy(ctx: Ctx, c: CardInstance, chosen: { card: InstanceId; object: number }): void {
   const s = ctx.s, target = s.cards[chosen.card];
-  if (!isCreatureOnBattlefield(s, target) || (target.zoneChanges ?? 0) !== chosen.object) return;
+  const artifactsToo = !!defOf(s, c).entersAsCopyOfArtifact;
+  const artifactOk = !!target && artifactsToo && target.zone === 'battlefield' && hasType(s, target, 'artifact');
+  const copiable = artifactOk || isCreatureOnBattlefield(s, target);
+  if (!copiable || (target.zoneChanges ?? 0) !== chosen.object) return;
   const original = copiableDefinition(s, target), definition = structuredClone(original);
   definition.id = c.defId;
+  // "Except it's an artifact in addition to its other types" (Phyrexian Metamorph): part of the copy.
+  if (artifactsToo && !definition.types.includes('artifact')) definition.types = ['artifact', ...definition.types];
+  if (artifactsToo) definition.entersAsCopyOfArtifact = true;
   delete definition.token;
   const printing = target.copy?.printing ?? target.printing ?? original.printing;
   c.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };

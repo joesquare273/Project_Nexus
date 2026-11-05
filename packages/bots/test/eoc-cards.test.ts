@@ -1245,3 +1245,81 @@ describe('E10: any number of permanents, and X', () => {
     expect(s.cards[land]!.zone).toBe('battlefield');
   });
 });
+
+// Group 11: Phyrexian mana of every color.
+describe('E11: Phyrexian mana, copies and proliferating twice', () => {
+  it("Tezzeret's Gambit: {U/P} is paid with blue mana when there is some, or 2 life when there isn't; draw two, then proliferate", () => {
+    for (const withBlue of [true, false]) {
+      let s = newGame();
+      const cat = put(s, 'P1', 'coeurl', 'battlefield', { counters: 1 });
+      const spell = put(s, 'P1', 'tezzerets-gambit', 'hand');
+      const life = s.players.P1!.life;
+      const hand = s.players.P1!.hand.length;
+      mana(s, 'P1', withBlue ? { U: 1, C: 3 } : { C: 3 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+      expect(s.players.P1!.life).toBe(withBlue ? life : life - 2);
+      expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+      expect(s.cards[cat]!.counters).toBe(2);
+    }
+  });
+
+  it("can't be paid with life you don't have", () => {
+    const s = newGame();
+    const spell = put(s, 'P1', 'tezzerets-gambit', 'hand');
+    s.players.P1!.life = 1;
+    mana(s, 'P1', { C: 3 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell })).toBeTruthy();
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === spell)).toBe(false);
+  });
+
+  it('Phyrexian Metamorph enters as a copy of an artifact or a creature, and is an artifact either way', () => {
+    let s = newGame();
+    const ring = put(s, 'P2', 'sol-ring');
+    const cat = put(s, 'P2', 'coeurl');
+    const metamorph = put(s, 'P1', 'phyrexian-metamorph', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: metamorph }).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect([...s.pending.cards].sort()).toEqual([ring, cat].sort());
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect(currentDefinition(s, s.cards[metamorph]!).name).toBe('Sol Ring');
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === metamorph)).toBe(true);
+
+    const second = put(s, 'P1', 'phyrexian-metamorph', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second }).state;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [cat] })).state;
+    const def = currentDefinition(s, s.cards[second]!);
+    expect(def.name).toBe('Coeurl');
+    expect(def.types).toEqual(expect.arrayContaining(['artifact', 'creature']));
+  });
+
+  it('Tekuthal: you proliferate twice; remove three counters from among your other artifacts and creatures for an indestructible counter', () => {
+    let s = newGame();
+    const tek = put(s, 'P1', 'tekuthal-inquiry-dominus');
+    const cat = put(s, 'P1', 'coeurl', 'battlefield', { counters: 2 });
+    const rock = put(s, 'P1', 'sol-ring', 'battlefield', { namedCounters: { charge: 1 } });
+    const spell = put(s, 'P1', 'tezzerets-gambit', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.cards[cat]!.counters).toBe(4);
+    expect(s.cards[rock]!.namedCounters?.charge).toBe(3);
+    // {1}{U/P}{U/P} with no blue: {1} and 4 life.
+    const life = s.players.P1!.life;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: tek, ability: 0 }).state;
+    expect(s.players.P1!.life).toBe(life - 4);
+    expect(s.cards[tek]!.namedCounters?.indestructible).toBe(1);
+    expect((s.cards[cat]!.counters ?? 0) + (s.cards[rock]!.namedCounters?.charge ?? 0)).toBe(7 - 3);
+    expect(hasKeyword(s, s.cards[tek]!, 'Indestructible')).toBe(true);
+  });
+
+  it("Tekuthal's ability needs three counters among your other permanents", () => {
+    const s = newGame();
+    const tek = put(s, 'P1', 'tekuthal-inquiry-dominus', 'battlefield', { counters: 5 });
+    put(s, 'P1', 'coeurl', 'battlefield', { counters: 2 });
+    mana(s, 'P1', { U: 2, C: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: tek, ability: 0 })).toMatch(/counters/);
+  });
+});

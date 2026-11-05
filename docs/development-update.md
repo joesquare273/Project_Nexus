@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E11: Phyrexian mana of every color
+
+Tezzeret's Gambit, Phyrexian Metamorph and Tekuthal, Inquiry Dominus. New:
+Phyrexian mana in every color (2 life when the mana isn't there), copying
+artifacts as well as creatures, "proliferate twice instead", and "remove N
+counters from among" costs. Counter Intelligence 92/100, World Shaper
+79/100.
+
 ### Edge of Eternities group E10: any number of permanents, and X
 
 Depthshaker Titan, Ripples of Potential and Gaze of Granite. New: choosing

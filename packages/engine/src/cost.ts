@@ -17,10 +17,14 @@ export function parseManaCost(text: string | undefined): ManaCost {
   for (const [, symbol] of text.matchAll(SYMBOL)) {
     if (/^\d+$/.test(symbol!)) cost.generic += Number(symbol);
     else if (symbol === 'X') cost.x = (cost.x ?? 0) + 1;
-    // Phyrexian black: {B}, or 2 life instead (rule 107.4f).
+    // Phyrexian mana: the color, or 2 life instead (rule 107.4f).
     else if (symbol === 'B/P') {
       cost.B = (cost.B ?? 0) + 1;
       cost.phyrexianB = (cost.phyrexianB ?? 0) + 1;
+    } else if (symbol === 'W/P' || symbol === 'U/P' || symbol === 'R/P' || symbol === 'G/P') {
+      const color = symbol[0] as 'W' | 'U' | 'R' | 'G';
+      cost[color] = (cost[color] ?? 0) + 1;
+      cost.phyrexian = { ...cost.phyrexian, [color]: (cost.phyrexian?.[color] ?? 0) + 1 };
     }
     else if ((MANA_TYPES as readonly string[]).includes(symbol!)) {
       const t = symbol as ManaType;

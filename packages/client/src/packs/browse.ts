@@ -70,7 +70,7 @@ function colorsFromDefinition(c: BoosterCard): string[] {
   if (!def) return [];
   if (def.colors) return def.colors;
   const cost = parseManaCost(def.manaCost);
-  return WUBRG.filter((k) => (cost[k as keyof typeof cost] ?? 0) > 0);
+  return WUBRG.filter((k) => (cost[k as 'W' | 'U' | 'B' | 'R' | 'G'] ?? 0) > 0);
 }
 
 const byNumber = (a: BoosterCard, b: BoosterCard) => a.set.localeCompare(b.set) || parseInt(a.number, 10) - parseInt(b.number, 10) || a.number.localeCompare(b.number);

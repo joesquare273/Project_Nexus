@@ -20,7 +20,7 @@ export type ManaPool = Record<ManaType, number>;
 
 /** A parsed mana cost such as {2}{R}{W} -> { generic: 2, R: 1, W: 1 }. */
 /** `x` counts {X} symbols. */
-export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number } & Partial<Record<ManaType, number>>;
+export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>> } & Partial<Record<ManaType, number>>;
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -1292,6 +1292,11 @@ export interface ActivatedSpec {
      */
     /** `amount`: how many to remove ("remove three charge counters from this artifact"; default 1). */
     removeCounter?: { counter?: AnyCounter; from?: ObjectFilter; amount?: number };
+    /**
+     * "Remove N counters from among other artifacts, creatures, and planeswalkers you control" (Tekuthal):
+     * the engine chooses, one at a time, from the matching permanent with the most counters.
+     */
+    removeCountersAmong?: { amount: number; filter: ObjectFilter };
     /** "Pay 3 life". */
     life?: number;
     /** "Tap five untapped Wizards you control" (chosen with `costCards`; summoning sickness doesn't matter). */
@@ -1344,6 +1349,8 @@ export interface StaticSpec {
   preventCombatDamage?: boolean;
   /** "Twice that many +1/+1 counters are put on that creature instead" for each affected creature (The Earth Crystal). */
   doubleCounters?: boolean;
+  /** "If you would proliferate, proliferate twice instead" (Tekuthal, Inquiry Dominus). */
+  proliferateTwice?: boolean;
   /** "If an opponent would mill one or more cards, they mill that many cards plus N instead" (The Water Crystal). */
   opponentsMillExtra?: number;
   /** "If a nontoken creature an opponent controls would die, instead exile it and you gain N life" (The Darkness Crystal); the card is linked to this permanent. */
@@ -1747,6 +1754,8 @@ export interface CardDefinition {
   entersWithXCounters?: boolean;
   /** "You may have this creature enter as a copy of any creature on the battlefield" (Altered Ego). */
   entersAsCopy?: boolean;
+  /** With `entersAsCopy`: a copy of an artifact or a creature, and an artifact in addition to its other types (Phyrexian Metamorph). */
+  entersAsCopyOfArtifact?: boolean;
   /**
    * "As this enters, remove all counters from any number of artifacts,
    * creatures, and enchantments. It enters with twice that many +1/+1

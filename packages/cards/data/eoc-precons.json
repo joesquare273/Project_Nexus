@@ -241,11 +241,8 @@
           "count": 1,
           "set": "eoc",
           "number": "75",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "phyrexian-mana"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Pull from Tomorrow",
@@ -268,12 +265,8 @@
           "count": 1,
           "set": "eoc",
           "number": "78",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Thought Monitor",
@@ -548,12 +541,8 @@
           "count": 1,
           "set": "eoc",
           "number": "47",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "spell-effects",
-            "phyrexian-mana"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Thirst for Knowledge",

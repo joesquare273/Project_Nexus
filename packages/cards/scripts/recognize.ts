@@ -151,8 +151,8 @@ export function define(c: MtgjsonCard): { def: CardDefinition; built: boolean; n
   if (activated.length) def.activated = activated;
 
   let built = c.layout === 'normal' && unhandled.length === 0;
-  // Hybrid mana ({W/U}) and Phyrexian mana other than {B/P} can't be paid yet: no cost, can't be cast.
-  const unpayable = !!c.manaCost?.replaceAll('{B/P}', '').includes('/');
+  // Hybrid mana ({W/U}) can't be paid yet: no cost, can't be cast. Phyrexian mana ({B/P}, {U/P}...) can.
+  const unpayable = !!c.manaCost?.replace(/\{[WUBRG]\/P\}/g, '').includes('/');
   if (unpayable) {
     delete def.manaCost;
     def.uncastable = true;

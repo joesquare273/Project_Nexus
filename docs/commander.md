@@ -32,7 +32,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 89/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 92/100 |
 | World Shaper | Hearthhull, the Worldseed (BRG) | 79/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
@@ -155,6 +155,17 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   the ability resolves, not targeted; Depthshaker's melee, which it gives
   your artifact creatures, is its own attack trigger (+1/+1 per opponent
   attacked, the same result). The computer chooses none of them.
+
+- **E11 (2026-11-05): Phyrexian mana, copies and proliferating twice.**
+  Tezzeret's Gambit, Phyrexian Metamorph, Tekuthal, Inquiry Dominus.
+  Engine: {W/P}, {U/P}, {R/P} and {G/P} (rule 107.4f: 2 life for each symbol
+  the mana can't cover, only with that much life; the importer no longer
+  marks them uncastable), `entersAsCopyOfArtifact` (a copy of an artifact or
+  a creature, an artifact in addition), the static `proliferateTwice`, and
+  the cost `removeCountersAmong`. Simplifications: unlike {B/P}, the other
+  colors' Phyrexian symbols are paid with life only when the mana isn't
+  there (no choice to pay life while you have it); Tekuthal's counters are
+  removed by the engine, one at a time from the permanent with the most.
 
 ## Commander rules (built)
 
