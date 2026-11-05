@@ -69,6 +69,33 @@ async function download(url: string, to: string): Promise<boolean> {
   }
 }
 
+/** OpenGameArt copies of Kenney packs, tried when kenney.nl's page gives no link. */
+const FALLBACK_PAGES: Record<string, string> = {
+  'casino-audio': 'https://opengameart.org/content/54-casino-sound-effects-cards-dice-chips',
+};
+
+/**
+ * The zip file linked from a download page, wherever it appears (quoted or
+ * not, with or without a query string). When there is none, prints the
+ * page's lines about downloads, to show how the link is written.
+ */
+async function findZip(page: string): Promise<string | null> {
+  const html = await fetch(page, { headers: HEADERS }).then((r) => (r.ok ? r.text() : ''), () => '');
+  if (!html) {
+    console.log(`  ${page}: the page could not be opened`);
+    return null;
+  }
+  const found = [...html.matchAll(/(?:https?:)?[^"'()\s<>=]*\.zip(?:\?[^"'()\s<>]*)?/gi)].map((m) => m[0]).filter((u) => !u.startsWith('.'));
+  if (found.length) return new URL(found[0]!.replace(/&amp;/g, '&'), page).href;
+  const hints = html
+    .split(/\n|(?=<a )/)
+    .filter((line) => /download|\.zip/i.test(line))
+    .slice(0, 6)
+    .map((line) => `    ${line.trim().slice(0, 220)}`);
+  console.log(`  ${page}: no .zip link. Lines about downloads:\n${hints.join('\n') || '    (none)'}`);
+  return null;
+}
+
 function unzip(zip: string, dir: string): void {
   try {
     // bsdtar (macOS, Windows 10+) reads zip files.
@@ -97,20 +124,26 @@ const effects: Partial<Record<SoundId, string[]>> = {};
 try {
   for (const slug of KENNEY_PACKS) {
     const page = `https://kenney.nl/assets/${slug}`;
-    const html = await fetch(page, { headers: HEADERS }).then((r) => (r.ok ? r.text() : ''), () => '');
-    const href = /href="([^"]+\.zip)"/i.exec(html)?.[1];
-    if (!href) {
+    let zipUrl = await findZip(page);
+    // Kenney's casino pack is mirrored on OpenGameArt too.
+    if (!zipUrl && FALLBACK_PAGES[slug]) zipUrl = await findZip(FALLBACK_PAGES[slug]!);
+    if (!zipUrl) {
       console.log(`${slug}: no download link found on ${page} (skipped)`);
       continue;
     }
     const zip = join(work, `${slug}.zip`);
-    if (!(await download(new URL(href, page).href, zip))) {
-      console.log(`${slug}: download failed (skipped)`);
+    if (!(await download(zipUrl, zip))) {
+      console.log(`${slug}: download failed from ${zipUrl} (skipped)`);
       continue;
     }
     const dir = join(work, slug);
     mkdirSync(dir);
-    unzip(zip, dir);
+    try {
+      unzip(zip, dir);
+    } catch {
+      console.log(`${slug}: could not unpack ${zipUrl} (skipped)`);
+      continue;
+    }
     const files = walk(dir).filter((f) => extname(f).toLowerCase() === '.ogg');
     console.log(`${slug}: ${files.length} sounds`);
     credits.push(`- Kenney, "${slug}" (${page}), CC0 1.0.`);
