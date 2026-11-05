@@ -88,7 +88,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -606,6 +606,8 @@ export const COUNT_KINDS = [
   'CardsInYourGraveyard',
   /** Land cards in your graveyard (Uurg, Scouring Swarm). */
   'LandCardsInYourGraveyard',
+  /** Lands you control (Fabled Passage: "if you control four or more lands"). */
+  'LandsYouControl',
   /** Your devotion to red: {R} symbols in the mana costs of permanents you control (rule 700.5). */
   'DevotionToRed',
   /** Creatures that died under an opponent's control this turn. */
@@ -894,6 +896,8 @@ export interface EffectSpec {
   anyNumber?: boolean;
   /** Discard: "may discard their hand": all of it or none. */
   wholeHand?: boolean;
+  /** EachMatchingDealsDamage: each creature deals the damage to its own controller instead of to the targets (Rakdos Charm: `amount` 1; without `amount`, its power). */
+  toController?: boolean;
   /** Discard: "discard `amount` cards unless you discard a card matching this" (Thirst for Knowledge: an artifact card). */
   orOneMatching?: ObjectFilter;
   /** AllowCastFromGraveyard: the card isn't exiled afterwards (Emry, Lurker of the Loch). */

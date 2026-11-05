@@ -956,3 +956,120 @@ describe('E7: sunburst, converge and mana from counters', () => {
     expect(charge(s, gen)).toBe(2);
   });
 });
+
+// Group 8: World Shaper's lands and removal.
+describe('E8: lands, graveyards and removal', () => {
+  const lands = (s: GameState, who: string) => s.players[who]!.battlefield.filter((id) => (currentDefinition(s, s.cards[id]!).types as string[]).includes('land'));
+
+  it('Oracle of Mul Daya: an extra land each turn, played from the top of your library', () => {
+    let s = newGame();
+    put(s, 'P1', 'oracle-of-mul-daya');
+    const top = put(s, 'P1', 'forest', 'library');
+    const inHand = put(s, 'P1', 'island', 'hand');
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === top)).toBe(true);
+    s = act(s, { type: 'PlayLand', player: 'P1', card: top });
+    expect(s.cards[top]!.zone).toBe('battlefield');
+    // A second land this turn.
+    s = act(s, { type: 'PlayLand', player: 'P1', card: inHand });
+    expect(s.cards[inHand]!.zone).toBe('battlefield');
+    const third = put(s, 'P1', 'swamp', 'hand');
+    expect(rejected(s, { type: 'PlayLand', player: 'P1', card: third })).toBeTruthy();
+  });
+
+  it('Escape to the Wilds: exile the top five, play them until the end of your next turn, and an extra land now', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'escape-to-the-wilds', 'hand');
+    const top = [0, 1, 2, 3, 4].map(() => put(s, 'P1', 'forest', 'library'));
+    s.players.P1!.landsPlayedThisTurn = 1;
+    mana(s, 'P1', { R: 1, G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    for (const id of top) expect(s.cards[id]!.zone).toBe('exile');
+    s = act(s, { type: 'PlayLand', player: 'P1', card: top[0]! });
+    expect(s.cards[top[0]!]!.zone).toBe('battlefield');
+  });
+
+  it('Planetary Annihilation: each player keeps six lands and sacrifices the rest, then 6 damage to each creature', () => {
+    let s = newGame();
+    const mine = Array.from({ length: 8 }, () => put(s, 'P1', 'mountain'));
+    const theirs = Array.from({ length: 3 }, () => put(s, 'P2', 'forest'));
+    const cat = put(s, 'P2', 'coeurl');
+    const spell = put(s, 'P1', 'planetary-annihilation', 'hand');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    for (let guard = 0; guard < 4 && s.pending.kind === 'chooseCards'; guard++) {
+      const p = s.pending;
+      s = settle(act(s, { type: 'ChooseCards', player: p.player, cards: p.cards.slice(0, p.max) })).state;
+    }
+    expect(lands(s, 'P1')).toHaveLength(6);
+    expect(mine.filter((id) => s.cards[id]!.zone === 'graveyard')).toHaveLength(2);
+    expect(lands(s, 'P2')).toHaveLength(3);
+    for (const id of theirs) expect(s.cards[id]!.zone).toBe('battlefield');
+    expect(s.cards[cat]!.zone).toBe('graveyard');
+  });
+
+  it('Soul-Guide Lantern: exiles a graveyard card as it enters; sacrifice it to exile each opponent graveyard, or to draw', () => {
+    let s = newGame();
+    const old = put(s, 'P2', 'coeurl', 'graveyard');
+    const other = put(s, 'P2', 'forest', 'graveyard');
+    const lantern = put(s, 'P1', 'soul-guide-lantern', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: lantern }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === old)! }).state;
+    expect(s.cards[old]!.zone).toBe('exile');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: lantern, ability: 0 }).state;
+    expect(s.cards[other]!.zone).toBe('exile');
+    expect(s.cards[lantern]!.zone).toBe('graveyard');
+    const second = put(s, 'P1', 'soul-guide-lantern');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: second, ability: 1 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Eumidian Hatchery: pay 1 life for {B} and a hatchling counter; when it goes to the graveyard, a flying Insect per counter', () => {
+    let s = newGame();
+    const hatchery = put(s, 'P1', 'eumidian-hatchery');
+    const life = s.players.P1!.life;
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: hatchery, mana: 'B' });
+    expect(s.players.P1!.manaPool.B).toBe(1);
+    expect(s.players.P1!.life).toBe(life - 1);
+    expect(s.cards[hatchery]!.namedCounters?.hatchling).toBe(1);
+    s.cards[hatchery]!.namedCounters = { hatchling: 3 };
+    const hammer = put(s, 'P1', 'hammer-of-purphoros');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: hammer, ability: 0, costCards: [hatchery] }).state;
+    const insects = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'insect-token-eoc');
+    expect(insects).toHaveLength(3);
+    expect(hasKeyword(s, s.cards[insects[0]!]!, 'Flying')).toBe(true);
+  });
+
+  it('Rakdos Charm: exile a graveyard, destroy an artifact, or each creature deals 1 damage to its controller', () => {
+    let s = newGame();
+    put(s, 'P1', 'coeurl');
+    put(s, 'P2', 'coeurl');
+    put(s, 'P2', 'coeurl');
+    const charm = put(s, 'P1', 'rakdos-charm', 'hand');
+    const mine = s.players.P1!.life;
+    const theirs = s.players.P2!.life;
+    mana(s, 'P1', { B: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 2 }).state;
+    expect(s.players.P1!.life).toBe(mine - 1);
+    expect(s.players.P2!.life).toBe(theirs - 2);
+    const ring = put(s, 'P2', 'sol-ring');
+    const second = put(s, 'P1', 'rakdos-charm', 'hand');
+    mana(s, 'P1', { B: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second, mode: 1, targets: [card(ring)] }).state;
+    expect(s.cards[ring]!.zone).toBe('graveyard');
+  });
+
+  it('Fabled Passage: a basic land, tapped; untapped if you then control four or more lands', () => {
+    for (const [others, untapped] of [[2, false], [3, true]] as const) {
+      let s = newGame();
+      for (let i = 0; i < others; i++) put(s, 'P1', 'forest');
+      const passage = put(s, 'P1', 'fabled-passage');
+      const basic = put(s, 'P1', 'mountain', 'library');
+      s = cast(s, { type: 'ActivateAbility', player: 'P1', card: passage, ability: 0 }).state;
+      expect(s.cards[basic]!.zone).toBe('battlefield');
+      expect(s.cards[basic]!.tapped).toBe(!untapped);
+    }
+  });
+});

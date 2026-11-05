@@ -32,8 +32,8 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 81/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 72/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 82/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 78/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -123,6 +123,15 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   converge ("a +1/+1 counter for each color spent") uses the same rule as
   sunburst. Still to come in this area: Solar Array and Lux Artillery
   (granting sunburst), Moxite Refinery, Gavel of the Righteous.
+
+- **E8 (2026-11-05): lands, graveyards and removal.** Oracle of Mul Daya,
+  Escape to the Wilds, Planetary Annihilation, Soul-Guide Lantern, Eumidian
+  Hatchery, Rakdos Charm, Fabled Passage. Engine: the hatchling counter, the
+  `LandsYouControl` count, a library search onto the battlefield that finds
+  one card makes it the previous target ("untap that land"), and
+  EachMatchingDealsDamage `toController` ("each creature deals 1 damage to
+  its controller"). Simplification: Oracle of Mul Daya's top card is seen by
+  its controller only, not revealed to everyone.
 
 ## Commander rules (built)
 

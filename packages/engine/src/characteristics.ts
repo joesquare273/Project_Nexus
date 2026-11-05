@@ -112,6 +112,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().reduce((n, c) => n + ((s.cardDefs[c.defId]?.manaCost ?? '').match(/\{[^}]*R[^}]*\}/g)?.length ?? 0), 0);
     case 'CardsInYourGraveyard':
       return s.players[player]!.graveyard.length;
+    case 'LandsYouControl':
+      return battlefieldCards(s).filter((c) => c.controller === player && def(s, c).types.includes('land')).length;
     case 'LandCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
     case 'CreaturesOnBattlefield':

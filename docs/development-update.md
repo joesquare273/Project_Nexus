@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E8: lands, graveyards and removal
+
+Seven cards: Oracle of Mul Daya, Escape to the Wilds, Planetary
+Annihilation, Soul-Guide Lantern, Eumidian Hatchery, Rakdos Charm and Fabled
+Passage. Counter Intelligence 82/100, World Shaper 78/100.
+
 ### Edge of Eternities packs, and its Secret Lair in the Store
 
 The booster page has a set choice: Edge of Eternities Play and Collector

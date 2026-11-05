@@ -704,11 +704,8 @@
           "count": 1,
           "set": "eoc",
           "number": "143",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ancient Den",
@@ -901,10 +898,8 @@
           "count": 1,
           "set": "eoc",
           "number": "12",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Baloth Prime",
@@ -946,11 +941,8 @@
           "count": 1,
           "set": "eoc",
           "number": "20",
-          "implemented": false,
-          "needs": [
-            "activated-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Festering Thicket",
@@ -973,10 +965,8 @@
           "count": 1,
           "set": "eoc",
           "number": "60",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Braids, Arisen Nightmare",
@@ -1086,10 +1076,8 @@
           "count": 1,
           "set": "eoc",
           "number": "102",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Pest Infestation",
@@ -1152,10 +1140,8 @@
           "count": 1,
           "set": "eoc",
           "number": "115",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Gaze of Granite",
@@ -1510,10 +1496,8 @@
           "count": 1,
           "set": "eoc",
           "number": "125",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Uurg, Spawn of Turg",

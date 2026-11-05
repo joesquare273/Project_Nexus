@@ -2885,6 +2885,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'EachMatchingDealsDamage':
+      // "Each creature deals 1 damage to its controller" (Rakdos Charm).
+      if (effect.toController) {
+        for (const c of battlefield(s)) {
+          if (c.phasedOut || !hasType(s, c, 'creature') || !matchesObject(s, effect.filter, c, { controller: item.controller, source })) continue;
+          dealDamage(ctx, c.id, { kind: 'player', player: c.controller }, effect.amount !== undefined ? amount : powerOf(s, c), false);
+        }
+        return;
+      }
       for (const t of targets) {
         for (const c of battlefield(s)) {
           if (c.phasedOut || !matchesObject(s, effect.filter, c, { controller: item.controller, source })) continue;
@@ -4027,6 +4035,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.controller = pending.player;
       c.summoningSick = true;
       if (pending.searchTo === 'battlefieldTapped' || entersTapped(s, c)) c.tapped = true;
+      // A later effect can refer to the land it found ("then ... untap that land": Fabled Passage).
+      if (cards.length === 1) r.previousTarget = { kind: 'card', card: id };
     }
     shuffleInPlace(s, player(s, pending.player).library);
     ctx.ev.push({ type: 'LibraryShuffled', player: pending.player });
