@@ -165,7 +165,9 @@ describe('the free starter precon', () => {
     const { accounts, call } = await withAccounts();
     const before = await (await call('token-alice', '/api/starter')).json();
     expect(before.claimed).toBe(false);
-    expect(before.choices).toHaveLength(4);
+    // Every set's precons: Final Fantasy's four and Edge of Eternities' two.
+    expect(before.choices).toHaveLength(6);
+    expect(before.choices.map((c: { set: string }) => c.set)).toEqual(['Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Edge of Eternities', 'Edge of Eternities']);
     const name = before.choices[1].name;
     const r = await call('token-alice', '/api/starter', 'POST', { precon: name });
     expect(r.status).toBe(200);
@@ -177,7 +179,7 @@ describe('the free starter precon', () => {
     // Free, and only once: asking again, even for another precon, adds nothing.
     expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS);
     const again = await Promise.all(before.choices.map((c: { name: string }) => call('token-alice', '/api/starter', 'POST', { precon: c.name })));
-    expect(again.map((x) => x.status)).toEqual([409, 409, 409, 409]);
+    expect(again.map((x) => x.status)).toEqual([409, 409, 409, 409, 409, 409]);
     expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
     expect((await (await call('token-alice', '/api/decks')).json()).decks).toHaveLength(1);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(true);
@@ -185,7 +187,15 @@ describe('the free starter precon', () => {
     expect((await (await call('token-bob', '/api/starter')).json()).claimed).toBe(false);
   });
 
-  it('refuses anything but one of the four precons', async () => {
+  it('an Edge of Eternities precon can be the starter too', async () => {
+    const { accounts, call } = await withAccounts();
+    const r = await call('token-alice', '/api/starter', 'POST', { precon: 'World Shaper' });
+    expect(r.status).toBe(200);
+    expect((await r.json()).deck).toMatchObject({ format: 'commander', name: 'World Shaper' });
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
+  });
+
+  it('refuses anything but one of the precons', async () => {
     const { call } = await withAccounts();
     for (const precon of ['Cloud', '', 5, undefined]) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(false);

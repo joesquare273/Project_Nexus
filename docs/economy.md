@@ -115,3 +115,7 @@ that aren't built yet show as "Not built").
 
 All Secret Lair cards are sold foil (user, 2026-11-05): the Final Fantasy
 drops (5 cards and the bonus card) and singles too, at the same prices.
+
+The free starter (2026-11-05): a new account picks any one of the Commander
+precons of every set that has them (Final Fantasy's four, Edge of
+Eternities' two), not only Final Fantasy's.

@@ -5,6 +5,19 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### The free starter: any set's precon
+
+A new account picks any one of the Commander precons: Final Fantasy's four
+or Edge of Eternities' two (user, 2026-11-05). The choice window shows each
+one's set. The Store still sells each set's precons on its own tab.
+
+Checked (user report): the Edge of Eternities decks' basic-land searches
+(Cultivate, Evolving Wilds, Terramorphic Expanse, Fabled Passage, Harrow,
+Roiling Regrowth, Springbloom Druid, Escape Tunnel, the Courtyards) all
+offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
+Farseek offer any land with the named basic land type, as their Oracle text
+says.
+
 ### Edge of Eternities group E12: land creatures
 
 The Gitrog Monster, Multani, Centaur Vinecrasher, World Breaker and Augur of

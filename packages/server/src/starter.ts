@@ -1,5 +1,6 @@
-// The free starter (economy step E1c): a new player picks one of the four
-// Final Fantasy Commander precons. It's granted once per account (ledger ref
+// The free starter (economy step E1c): a new player picks any one of the
+// Commander precons of the sets that have them (Final Fantasy's four and
+// Edge of Eternities' two; user, 2026-11-05). It's granted once per account (ledger ref
 // 'starter', whichever precon they pick): its exact printings go into the
 // collection and it's saved as a Commander deck.
 
@@ -13,9 +14,14 @@ export interface StarterChoice {
   name: string;
   commander: string;
   colorIdentity: string[];
+  /** The set it's from, for the choice window. */
+  set: string;
 }
 
-export const STARTER_CHOICES: StarterChoice[] = FIN_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity }));
+export const STARTER_CHOICES: StarterChoice[] = [
+  ...FIN_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Final Fantasy' })),
+  ...EOC_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Edge of Eternities' })),
+];
 
 const printingId = (c: KitCard): string => {
   const id = SCRYFALL_PRINTINGS[`${c.set}/${c.number}`]?.scryfallId;
@@ -23,9 +29,9 @@ const printingId = (c: KitCard): string => {
   return id;
 };
 
-/** A Final Fantasy precon's cards (one entry per printing, nonfoil) and its commander's printing id: the free starters. */
+/** A precon's cards (one entry per printing, nonfoil) and its commander's printing id: any of the free starters. */
 export function preconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
-  return cardsOf(FIN_PRECONS.find((p) => p.name === name));
+  return cardsOf([...FIN_PRECONS, ...EOC_PRECONS].find((p) => p.name === name));
 }
 
 /** Any precon the Store sells (Final Fantasy or Edge of Eternities): its cards and commander's printing id. */

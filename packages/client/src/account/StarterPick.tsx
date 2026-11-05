@@ -1,5 +1,5 @@
 // The free starter (economy step E1c): until a player has picked one, a
-// window offers the four Final Fantasy Commander precons. The server grants
+// window offers every Commander precon (Final Fantasy, Edge of Eternities). The server grants
 // the chosen one once (cards and a saved Commander deck); this only asks.
 
 import { useEffect, useState } from 'react';
@@ -14,6 +14,8 @@ interface Choice {
   name: string;
   commander: string;
   colorIdentity: string[];
+  /** The set it's from. */
+  set?: string;
 }
 
 export function StarterPick() {
@@ -83,7 +85,7 @@ export function StarterPick() {
     <div className="starter-pick" role="dialog" aria-label="Choose your free precon">
       <div className="starter-box">
         <h2>Welcome! Choose your free Commander deck</h2>
-        <p>Pick one of the four Final Fantasy precons. It's yours to keep: all 100 cards go into your collection. You can only choose once.</p>
+        <p>Pick any one of the Commander precons. It's yours to keep: all 100 cards go into your collection. You can only choose once.</p>
         <div className="starter-choices">
           {choices.map((c) => {
             const art = SCRYFALL[CARD_IDS_BY_NAME[c.commander] ?? '']?.image.artCrop;
@@ -93,6 +95,7 @@ export function StarterPick() {
                 <strong>{c.name}</strong>
                 <span className="fineprint">
                   {c.commander} · {c.colorIdentity.join('')}
+                  {c.set ? ` · ${c.set}` : ''}
                 </span>
               </button>
             );

@@ -77,7 +77,7 @@ export function storeSets(): StoreSet[] {
           cards: [{ id: c.id, finish: secretLairFinish(c) }],
         })),
         // The four FINAL FANTASY Commander precons, each saved as a deck when bought.
-        ...STARTER_CHOICES.map((choice) => {
+        ...STARTER_CHOICES.filter((choice) => choice.set === 'Final Fantasy').map((choice) => {
           const precon = preconCards(choice.name)!;
           const name = choice.name.replace(/\s*\(.*\)$/, '');
           return {
