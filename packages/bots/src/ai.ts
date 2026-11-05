@@ -721,6 +721,13 @@ export function basicAi(_seed = 0): Bot {
       const best = [...counts].sort((a, b) => b[1] - a[1])[0];
       return legal.find((a) => a.type === 'ChooseColor' && a.color === best?.[0]) ?? legal[0]!;
     }
+    // "Choose a card type" (Cloud Key): the type most of its cards in hand and library are.
+    if (pending.kind === 'chooseCardType') {
+      const p = s.players[pending.player]!;
+      const count = (t: string) => [...p.hand, ...p.library].filter((id) => (def(s, s.cards[id]!).types as string[]).includes(t)).length;
+      const best = [...pending.options].sort((a, b) => count(b) - count(a))[0];
+      return legal.find((a) => a.type === 'ChooseCardType' && a.cardType === best) ?? legal[0]!;
+    }
     // Simultaneous triggers: the order they were found in (listed first).
     if (pending.kind === 'orderTriggers') return legal[0]!;
     if (pending.kind === 'chooseModes') return [...legal].sort((a, b) => (b.type === 'ChooseModes' ? b.modes.length : 0) - (a.type === 'ChooseModes' ? a.modes.length : 0))[0]!;

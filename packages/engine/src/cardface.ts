@@ -74,6 +74,12 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     if (charge >= def.station.creatureAt) out.types = [...new Set([...out.types, 'creature' as const])];
     if (out.statics?.some((st) => (st.stationLevel ?? 0) > charge)) out.statics = out.statics.filter((st) => (st.stationLevel ?? 0) <= charge);
   }
+  // "As long as this has N or more counters on it" (Gavel of the Righteous).
+  if (out.statics?.some((st) => st.ifSourceCountersAtLeast !== undefined)) {
+    const n = (c.counters ?? 0) + Object.values(c.namedCounters ?? {}).reduce((a, k) => a + (k ?? 0), 0);
+    change();
+    out.statics = out.statics!.filter((st) => st.ifSourceCountersAtLeast === undefined || n >= st.ifSourceCountersAtLeast);
+  }
   if (c.addedSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.addedSubtypes])]; }
   if (c.turnSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.turnSubtypes])]; }
   // Ultima, Origin of Oblivion: "For as long as that land has a blight counter on it, it loses all land types and abilities and has '{T}: Add {C}.'"

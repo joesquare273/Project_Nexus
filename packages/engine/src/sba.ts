@@ -29,7 +29,7 @@ import {
 import { shuffleInPlace } from './rng.ts';
 import { isLegendary } from './typerules.ts';
 import { resumeResolving } from './stack.ts';
-import type { Color, EliminationReason, GameEvent, PlayerId } from './types.ts';
+import type { CardType, Color, EliminationReason, GameEvent, PlayerId } from './types.ts';
 
 /**
  * A player leaving a multiplayer game takes everything they own with them
@@ -312,6 +312,25 @@ function checkColorChoice(ctx: Ctx): boolean {
   return true;
 }
 
+/** "As this enters, choose a card type" (Cloud Key): asks the controller of the first permanent waiting on that choice. */
+function checkCardTypeChoice(ctx: Ctx): boolean {
+  const s = ctx.s;
+  if (s.pending.kind === 'chooseCardType' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseCardType';
+  const c = battlefield(s).find((x) => !x.chosenCardType && !x.phasedOut && defOf(s, x).chooseCardTypeAsEnters?.length);
+  if (!c) return false;
+  s.pending = { kind: 'chooseCardType', player: c.controller, card: c.id, options: [...defOf(s, c).chooseCardTypeAsEnters!], resume: s.pending };
+  return true;
+}
+
+export function chooseCardType(ctx: Ctx, playerId: PlayerId, cardType: CardType): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseCardType' || pending.player !== playerId) reject('You are not choosing a card type right now.');
+  if (!pending.options.includes(cardType)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  s.cards[pending.card]!.chosenCardType = cardType;
+  s.pending = pending.resume;
+}
+
 export function chooseColor(ctx: Ctx, playerId: PlayerId, color: Color): void {
   const s = ctx.s;
   const pending = s.pending;
@@ -424,7 +443,7 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
     // These need a choice; triggers go on the stack after it's made.
-    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx)) {
+    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx) || checkCardTypeChoice(ctx)) {
       if (s.cleanupCheck) s.cleanupNeedsPriority = true;
       return;
     }

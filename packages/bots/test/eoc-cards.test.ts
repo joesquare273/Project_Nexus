@@ -1437,3 +1437,91 @@ describe('E12: land creatures', () => {
     expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === land)).toBe(true);
   });
 });
+
+// Group 13: Counter Intelligence's remaining artifacts.
+describe('E13: card type choice, sunburst grants, equipment counters and copies', () => {
+  it('Cloud Key: choose a card type as it enters; spells of that type cost {1} less (the computer picks a type too)', () => {
+    let s = newGame();
+    const key = put(s, 'P1', 'cloud-key', 'hand');
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: key }).state;
+    expect(s.pending.kind).toBe('chooseCardType');
+    const options = getLegalActions(s).flatMap((a) => (a.type === 'ChooseCardType' ? [a.cardType] : []));
+    expect(options).toEqual(['artifact', 'creature', 'enchantment', 'instant', 'sorcery']);
+    expect(basicAi(1)(s, getLegalActions(s)).type).toBe('ChooseCardType');
+    s = settle(act(s, { type: 'ChooseCardType', player: 'P1', cardType: 'artifact' })).state;
+    expect(s.cards[key]!.chosenCardType).toBe('artifact');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state; // {1} less: free
+    expect(s.cards[ring]!.zone).toBe('battlefield');
+    const grasp = put(s, 'P1', 'infernal-grasp', 'hand');
+    const cat = put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { B: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: grasp, targets: [card(cat)] })).toBeTruthy();
+  });
+
+  it('Gavel of the Righteous: a charge counter each combat; +1/+1 per counter; double strike at four; equip by removing a counter', () => {
+    let s = newGame();
+    const gavel = put(s, 'P1', 'gavel-of-the-righteous', 'battlefield', { namedCounters: { charge: 3 } });
+    const cat = put(s, 'P1', 'coeurl');
+    const base = powerOf(s, s.cards[cat]!);
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: gavel, ability: 0, targets: [card(cat)] }).state;
+    expect(powerOf(s, s.cards[cat]!)).toBe(base + 3);
+    expect(hasKeyword(s, s.cards[cat]!, 'DoubleStrike')).toBe(false);
+    s = goTo(s, 'beginCombat');
+    s = settle(s).state;
+    expect(s.cards[gavel]!.namedCounters?.charge).toBe(4);
+    expect(powerOf(s, s.cards[cat]!)).toBe(base + 4);
+    expect(hasKeyword(s, s.cards[cat]!, 'DoubleStrike')).toBe(true);
+    // Equip by removing a counter (main phase).
+    let t = newGame();
+    const g2 = put(t, 'P1', 'gavel-of-the-righteous', 'battlefield', { namedCounters: { charge: 2 } });
+    const other = put(t, 'P1', 'coeurl');
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: g2, ability: 1, targets: [card(other)] }).state;
+    expect(t.cards[g2]!.attachedTo).toBe(other);
+    expect(t.cards[g2]!.namedCounters?.charge).toBe(1);
+  });
+
+  it('Solar Array: its mana gives your next artifact spell this turn sunburst', () => {
+    let s = newGame();
+    const array = put(s, 'P1', 'solar-array');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: array, mana: 'R' });
+    const cannon = put(s, 'P1', 'lux-cannon', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cannon }).state;
+    expect(charge(s, cannon)).toBe(2); // red and white
+    const second = put(s, 'P1', 'lux-cannon', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second }).state;
+    expect(charge(s, second)).toBe(0); // only the next one
+  });
+
+  it('Lux Artillery: artifact creature spells gain sunburst; thirty counters at your end step deal 10 to each opponent', () => {
+    let s = newGame();
+    put(s, 'P1', 'lux-artillery');
+    const golem = put(s, 'P1', 'mindless-automaton', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: golem }).state;
+    expect(s.cards[golem]!.counters).toBe(2 + 2);
+    const life = s.players.P2!.life;
+    s.cards[golem]!.counters = 30;
+    s = settle(goTo(s, 'end')).state;
+    expect(s.players.P2!.life).toBe(life - 10);
+  });
+
+  it('The Mycosynth Gardens: taps for {C}, or {1} for any color; {X}: becomes a copy of your nontoken artifact with mana value X', () => {
+    let s = newGame();
+    const gardens = put(s, 'P1', 'the-mycosynth-gardens');
+    const ring = put(s, 'P1', 'sol-ring');
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === gardens && a.mana === 'C')).toBe(true);
+    // X = 2 doesn't match Sol Ring's mana value: nothing happens.
+    mana(s, 'P1', { C: 2 });
+    let t = cast(structuredClone(s), { type: 'ActivateAbility', player: 'P1', card: gardens, ability: 0, x: 2, targets: [card(ring)] }).state;
+    expect(currentDefinition(t, t.cards[gardens]!).name).toBe('The Mycosynth Gardens');
+    s.players.P1!.manaPool.C = 1;
+    t = cast(s, { type: 'ActivateAbility', player: 'P1', card: gardens, ability: 0, x: 1, targets: [card(ring)] }).state;
+    expect(currentDefinition(t, t.cards[gardens]!).name).toBe('Sol Ring');
+    expect((currentDefinition(t, t.cards[gardens]!).types as string[]).includes('land')).toBe(false);
+  });
+});

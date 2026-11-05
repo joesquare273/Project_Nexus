@@ -508,6 +508,12 @@ export const EFFECT_KINDS = [
    * own permanents, stun and -1/-1 counters on opponents'.
    */
   'DoubleCounters',
+  /**
+   * The source becomes a copy of the target (The Mycosynth Gardens), for as
+   * long as it stays on the battlefield; with `ifManaValueX`, only if the
+   * target's mana value equals the X paid.
+   */
+  'BecomeCopy',
   /** "When you next cast a creature spell this turn, that creature enters with `amount` additional +1/+1 counters" (Summon: Fenrir). */
   'NextCreatureEntersWithCounters',
   /**
@@ -585,6 +591,10 @@ export const COUNT_KINDS = [
   'InstantAndSorceryCardsInYourGraveyard',
   /** Counters of every kind on creatures you control. */
   'CountersAmongCreaturesYouControl',
+  /** Counters of every kind among artifacts and creatures you control (Lux Artillery). */
+  'CountersAmongYourArtifactsAndCreatures',
+  /** Counters of every kind on the ability's source (Gavel of the Righteous). */
+  'CountersOnThis',
   'PlayersWhoLostLifeThisTurn',
   /** Soul counters on the card with the ability (Reaper's Scythe). */
   'SoulCountersOnThis',
@@ -908,6 +918,8 @@ export interface EffectSpec {
   anyNumber?: boolean;
   /** Discard: "may discard their hand": all of it or none. */
   wholeHand?: boolean;
+  /** BecomeCopy: only if the target's mana value equals the X paid for the ability. */
+  ifManaValueX?: boolean;
   /** EachMatchingDealsDamage: each creature deals the damage to its own controller instead of to the targets (Rakdos Charm: `amount` 1; without `amount`, its power). */
   toController?: boolean;
   /** Discard: "discard `amount` cards unless you discard a card matching this" (Thirst for Knowledge: an artifact card). */
@@ -1076,6 +1088,8 @@ export interface ObjectFilter {
   notLinkedToSource?: boolean;
   /** Owned by someone other than the ability's controller ("a spell you don't own"). */
   notOwnedByYou?: boolean;
+  /** Is of the card type the source chose as it entered ("spells you cast of the chosen type": Cloud Key). */
+  ofSourceChosenType?: boolean;
   /** Excludes the card itself ("another creature"). */
   other?: boolean;
   /** Only the card itself ("when this creature dies, if it had no +1/+1 counters on it"). */
@@ -1358,6 +1372,10 @@ export interface StaticSpec {
   doubleCounters?: boolean;
   /** "If you would proliferate, proliferate twice instead" (Tekuthal, Inquiry Dominus). */
   proliferateTwice?: boolean;
+  /** Only while its source has at least this many counters of any kind ("as long as this Equipment has four or more counters on it": Gavel of the Righteous). */
+  ifSourceCountersAtLeast?: number;
+  /** "Artifact creature spells you cast gain sunburst" (Lux Artillery): your spells matching this. */
+  grantSunburst?: ObjectFilter;
   /** "If an opponent would mill one or more cards, they mill that many cards plus N instead" (The Water Crystal). */
   opponentsMillExtra?: number;
   /** "If a nontoken creature an opponent controls would die, instead exile it and you gain N life" (The Darkness Crystal); the card is linked to this permanent. */
@@ -1590,6 +1608,8 @@ export interface CardDefinition {
     paid?: { costs: string[]; outputs: string[] };
     /** "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters." */
     nextCreatureCounters?: number;
+    /** "When you next cast an artifact spell this turn, that spell gains sunburst" (Solar Array). */
+    nextArtifactSunburst?: boolean;
   };
   entersTapped?: boolean;
   /** Enters tapped unless one of these holds (checklands, battle lands, snarls). */
@@ -1621,6 +1641,8 @@ export interface CardDefinition {
   equip?: string;
   /** "Equip—Pay N life. Activate only once each turn." (Dark Knight's Greatsword), instead of a mana equip cost. */
   equipPayLife?: number;
+  /** "Equip—Remove a counter from this Equipment" (Gavel of the Righteous), besides its equip cost. */
+  equipRemoveCounter?: boolean;
   /** "Equip legendary creature {3}": a second, cheaper equip ability for legendary creatures. */
   equipLegendary?: string;
   /** "Equip abilities you activate that target this cost {N} less." */
@@ -1729,6 +1751,8 @@ export interface CardDefinition {
   winOnEmptyDraw?: boolean;
   /** "As this enters, choose a color"; its mana ability makes only that color (Crossroads Village). */
   chooseColorAsEnters?: boolean;
+  /** "As this artifact enters, choose artifact, creature, enchantment, instant, or sorcery" (Cloud Key): the types to choose from. */
+  chooseCardTypeAsEnters?: CardType[];
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
   kicker?: string;
   /** Multikicker cost: may be paid any number of times. */
@@ -1882,6 +1906,8 @@ export interface CardInstance {
   lastEquippedBy?: InstanceId[];
   /** The color chosen as it entered ("add one mana of the chosen color"). */
   chosenColor?: Color;
+  /** The card type chosen as it entered (Cloud Key). */
+  chosenCardType?: CardType;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
   /** BecomeCreature: a creature with this base power and toughness (until cleanup with `untilEndOfTurn`). */
   animated?: { power: number; toughness: number; subtypes?: string[]; untilEndOfTurn?: boolean };
@@ -2057,6 +2083,8 @@ export interface PlayerState {
   lifeLostThisTurn?: number;
   /** The next creature spell this player casts on `turn` enters with `amount` additional +1/+1 counters. */
   nextCreatureCounters?: { turn: number; amount: number };
+  /** Solar Array: the next artifact spell this player casts this turn gains sunburst. */
+  nextArtifactSunburstTurn?: number;
   /** The last turn this player put a counter on a creature. */
   counterOnCreatureTurn?: number;
   /** Life gained this turn. Reset as each turn begins. */
@@ -2150,6 +2178,8 @@ export interface SpellItem {
   manaSpent: number;
   /** Converge: how many colors of mana were spent to cast it. */
   colorsSpent?: number;
+  /** Sunburst granted as it was cast (Lux Artillery, Solar Array). */
+  sunburst?: boolean;
   /** Cast with Noctis's permission: the artifact enters with a finality counter. */
   finalityOnEnter?: true;
   /** Cast with Strago and Relm's permission: as a creature it gains haste and is sacrificed at the next end step. */
@@ -2429,6 +2459,8 @@ export type Pending =
   | { kind: 'chooseLegend'; player: PlayerId; name: string; cards: InstanceId[]; resume: Pending }
   /** "As this enters, choose a color" (Crossroads Village). */
   | { kind: 'chooseColor'; player: PlayerId; card: InstanceId; resume: Pending }
+  /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
+  | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
@@ -2586,6 +2618,7 @@ export type Action =
   | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'ChooseColor'; player: PlayerId; color: Color }
+  | { type: 'ChooseCardType'; player: PlayerId; cardType: CardType }
   /**
    * Order your simultaneous triggers: `order` lists them (by index among the
    * first `count` queued) in the order they should resolve, first to last.

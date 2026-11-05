@@ -85,10 +85,8 @@
           "count": 1,
           "set": "eoc",
           "number": "18",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Surge Conductor",
@@ -135,22 +133,16 @@
           "count": 1,
           "set": "eoc",
           "number": "54",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Gavel of the Righteous",
           "count": 1,
           "set": "eoc",
           "number": "55",
-          "implemented": false,
-          "needs": [
-            "equip",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Battlefield Forge",
@@ -361,10 +353,8 @@
           "count": 1,
           "set": "eoc",
           "number": "140",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Lux Cannon",
@@ -459,10 +449,8 @@
           "count": 1,
           "set": "eoc",
           "number": "168",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rugged Prairie",

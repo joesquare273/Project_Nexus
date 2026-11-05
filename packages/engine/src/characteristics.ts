@@ -131,6 +131,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().filter((c) => subtypesOf(s, c).includes('Artificer')).length + s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).subtypes?.includes('Artificer')).length;
     case 'CreatureCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('creature')).length;
+    case 'CountersAmongYourArtifactsAndCreatures':
+      return yours().filter((c) => creature(c) || def(s, c).types.includes('artifact')).reduce((n, c) => n + totalCounters(c), 0);
+    case 'CountersOnThis':
+      return source && s.cards[source] ? totalCounters(s.cards[source]!) : 0;
     case 'CountersAmongCreaturesYouControl':
       return yours().filter(creature).reduce((n, c) => n + totalCounters(c), 0);
     case 'PlayersWhoLostLifeThisTurn':

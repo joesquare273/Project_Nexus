@@ -1249,6 +1249,9 @@ function PromptBar(p: PromptProps) {
     text = `${cardName(s, pending.card)}: choose a color as it enters. It adds one mana of that color.`;
     const names = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' } as const;
     buttons = (['W', 'U', 'B', 'R', 'G'] as const).map((color) => ({ label: names[color], onClick: () => p.submit([{ type: 'ChooseColor', player: YOU, color }]) }));
+  } else if (pending.kind === 'chooseCardType') {
+    text = `${cardName(s, pending.card)}: choose a card type as it enters.`;
+    buttons = pending.options.map((cardType) => ({ label: cardType[0]!.toUpperCase() + cardType.slice(1), onClick: () => p.submit([{ type: 'ChooseCardType', player: YOU, cardType }]) }));
   } else if (pending.kind === 'orderTriggers') {
     // Rule 603.3b: click your triggers in the order they should resolve.
     const n = pending.count;

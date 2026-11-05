@@ -104,6 +104,10 @@ export function matchesObject(
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
   if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
+  if (f.ofSourceChosenType) {
+    const chosen = from.source ? s.cards[from.source]?.chosenCardType : undefined;
+    if (!chosen || !def.types.includes(chosen)) return false;
+  }
   if (f.manaValueEqualsSubject) {
     const subject = from.subject ? s.cards[from.subject] : undefined;
     if (!subject || objectManaValue(s, obj) !== objectManaValue(s, subject)) return false;

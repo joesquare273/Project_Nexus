@@ -222,6 +222,8 @@ function effectText(e: EffectSpec): string {
       return `${who} ${e.target === 'AllPermanents' ? 'become' : 'becomes a'} ${e.becomes?.power}/${e.becomes?.toughness} creature${e.target === 'AllPermanents' ? 's' : ''}${e.becomes?.untilEndOfTurn ? ' until end of turn' : ''}`;
     case 'DoubleCounters':
       return 'double the counters on any number of permanents';
+    case 'BecomeCopy':
+      return `this becomes a copy of ${who}`;
     case 'CopySpell':
       return 'copy that spell';
     case 'WinGame':

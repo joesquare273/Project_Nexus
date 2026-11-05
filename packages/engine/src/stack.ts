@@ -147,6 +147,14 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
       effects: [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'], controller: 'You' } }],
     });
   }
+  if (def.equipRemoveCounter) {
+    out.push({
+      cost: { removeCounter: {} },
+      sorcerySpeed: true,
+      equip: true,
+      effects: [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'], controller: 'You' } }],
+    });
+  }
   if (def.equipPayLife !== undefined) {
     out.push({
       cost: { life: def.equipPayLife },
@@ -790,6 +798,7 @@ export function activateManaAbility(
   }
   kinnanBonus(ctx, playerId, c, mana, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
   // Yuna, Grand Summoner: "When you next cast a creature spell this turn, that creature enters with N additional +1/+1 counters."
+  if (ability?.nextArtifactSunburst) player(s, playerId).nextArtifactSunburstTurn = s.turnNumber;
   if (ability?.nextCreatureCounters) {
     const p = player(s, playerId);
     const before = p.nextCreatureCounters?.turn === s.turnNumber ? p.nextCreatureCounters.amount : 0;
@@ -1227,8 +1236,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
   const spentScryMana: CreatureScryMana[] = [];
   const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
+  // Sunburst granted to this spell: Lux Artillery (artifact creature spells), Solar Array (your next artifact spell this turn).
+  const grantedSunburst = !def.sunburst && (
+    battlefield(s).some((src) => src.controller === playerId && !src.phasedOut && (defOf(s, src).statics ?? []).some((st) => st.grantSunburst && matchesObject(s, st.grantSunburst, c, { controller: playerId, source: src.id }, playerId, def)))
+    || (def.types.includes('artifact') && player(s, playerId).nextArtifactSunburstTurn === s.turnNumber));
+  if (grantedSunburst && def.types.includes('artifact')) delete player(s, playerId).nextArtifactSunburstTurn;
   // Converge: pay generic mana with colors not spent yet, while the pool still covers the cost.
-  if (def.converge || def.sunburst) {
+  if (def.converge || def.sunburst || grantedSunburst) {
     for (const color of COLORS) {
       if (cost.generic === 0 || (cost[color] ?? 0) > 0) continue;
       const tried = { ...cost, generic: cost.generic - 1, [color]: 1 };
@@ -1307,7 +1321,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     castFrom: from,
     ...(way === 'flashback' ? { flashback: true } : {}),
     manaSpent,
-    ...(def.converge || def.sunburst ? { colorsSpent } : {}),
+    ...(def.converge || def.sunburst || grantedSunburst ? { colorsSpent } : {}),
+    ...(grantedSunburst ? { sunburst: true } : {}),
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
     ...(kicks > 0 ? { kicks } : {}),
@@ -1447,7 +1462,7 @@ const COUNTER_COST_ORDER: AnyCounter[] = ['stun', 'page', 'soul', '+1/+1', 'flyi
 
 function counterToRemove(c: CardInstance, kind: AnyCounter | undefined): AnyCounter | undefined {
   if (kind) return countersOf(c, kind) > 0 ? kind : undefined;
-  return COUNTER_COST_ORDER.find((k) => countersOf(c, k) > 0);
+  return COUNTER_COST_ORDER.find((k) => countersOf(c, k) > 0) ?? allCounters(c)[0]?.[0];
 }
 
 /** Permanents a player could remove a counter from for a "remove a counter from a permanent you control" cost. */
@@ -2713,6 +2728,20 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'RemoveCounters':
       for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
       return;
+    case 'BecomeCopy': {
+      const self = s.cards[source];
+      const target = cards[0] ? s.cards[cards[0]] : undefined;
+      if (!self || self.zone !== 'battlefield' || !target || target.zone !== 'battlefield') return;
+      if (effect.ifManaValueX && objectManaValue(s, target) !== (item.kind === 'ability' ? (item.x ?? 0) : 0)) return;
+      const original = copiableDefinition(s, target), definition = structuredClone(original);
+      definition.id = self.defId;
+      delete definition.token;
+      const printing = target.copy?.printing ?? target.printing ?? original.printing;
+      self.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };
+      newTimestamp(s);
+      ctx.ev.push({ type: 'BecameCopy', card: self.id, copied: target.id, name: original.name });
+      return;
+    }
     case 'DoubleCounters':
       // The engine chooses (as for Proliferate): helpful kinds on your own permanents, harmful ones on opponents'.
       for (const c of battlefield(s)) {
@@ -3738,7 +3767,7 @@ export function resolveTop(ctx: Ctx): void {
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
       if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
       // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.
-      if (def.sunburst && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');
+      if ((def.sunburst || item.sunburst) && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;

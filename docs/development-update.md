@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities group E13: Counter Intelligence's artifacts
+
+Cloud Key, Gavel of the Righteous, Solar Array, Lux Artillery and The
+Mycosynth Gardens. New: choosing a card type as a permanent enters, equipment
+that equips by removing a counter, sunburst granted to other spells, and a
+land that becomes a copy of an artifact. Counter Intelligence 97/100 (Moxite
+Refinery, Long-Range Sensor and Chrome Host Seedshark left), World Shaper
+84/100.
+
 ### Edge of Eternities group E12: land creatures
 
 The Gitrog Monster, Multani, Centaur Vinecrasher, World Breaker and Augur of

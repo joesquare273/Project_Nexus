@@ -32,7 +32,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 92/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 97/100 |
 | World Shaper | Hearthhull, the Worldseed (BRG) | 84/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
@@ -176,6 +176,19 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   computer now takes "you may sacrifice a land" while it has three or more.
   Horizon Explorer waits ("lands you control enter untapped" touches every
   way a land enters tapped).
+
+- **E13 (2026-11-05): Counter Intelligence's artifacts.** Cloud Key, Gavel
+  of the Righteous, Solar Array, Lux Artillery, The Mycosynth Gardens.
+  Engine: `chooseCardTypeAsEnters` (a card type chosen as it enters, the
+  `ofSourceChosenType` filter), the `CountersOnThis` and
+  `CountersAmongYourArtifactsAndCreatures` counts, statics that need N
+  counters on their source (`ifSourceCountersAtLeast`), `grantSunburst`, a
+  mana ability that gives the next artifact spell sunburst, an equip cost of
+  removing a counter (`equipRemoveCounter`; an unnamed "remove a counter"
+  cost can now take any kind, charge included), and `BecomeCopy`.
+  Simplification: The Mycosynth Gardens checks the copied artifact's mana
+  value against X as the ability resolves. Moxite Refinery waits (its
+  "remove X counters" cost).
 
 ## Commander rules (built)
 
