@@ -4,7 +4,7 @@
 // groups follow below (E2-E5, docs/commander.md).
 
 import { describe, expect, it } from 'vitest';
-import { activatedAbilities, currentDefinition, getLegalActions, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
+import { activatedAbilities, currentDefinition, getLegalActions, hasFlag, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
 
 const hasType = (s: GameState, c: CardInstance, t: string) => (currentDefinition(s, c).types as string[]).includes(t);
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
@@ -733,5 +733,112 @@ describe('E5: sacrifice payoffs and lands from the graveyard', () => {
     s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top[3]!] })).state;
     expect(s.cards[top[3]!]!.zone).toBe('hand');
     for (const id of [top[0]!, top[1]!, top[2]!]) expect(s.cards[id]!.zone).toBe('graveyard');
+  });
+});
+
+// Group 6: artifacts and cost reduction.
+describe('E6: artifacts and cost reduction', () => {
+  it('Etherium Sculptor and Enthusiastic Mechanaut each make artifact spells cost {1} less, and nothing else', () => {
+    let s = newGame();
+    put(s, 'P1', 'etherium-sculptor');
+    put(s, 'P1', 'enthusiastic-mechanaut');
+    const cannon = put(s, 'P1', 'lux-cannon', 'hand');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cannon }).state;
+    expect(s.cards[cannon]!.zone).toBe('battlefield');
+    const grasp = put(s, 'P1', 'infernal-grasp', 'hand');
+    put(s, 'P2', 'coeurl');
+    mana(s, 'P1', { B: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: grasp, targets: [card(s.players.P2!.battlefield[0]!)] })).toBeTruthy();
+  });
+
+  it('Thought Monitor: affinity for artifacts, and it draws two', () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'sol-ring');
+    const monitor = put(s, 'P1', 'thought-monitor', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: monitor }).state;
+    expect(s.cards[monitor]!.zone).toBe('battlefield');
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+  });
+
+  it('Universal Surveillance: improvise pays for X; draw X', () => {
+    let s = newGame();
+    const rings = [put(s, 'P1', 'lux-cannon'), put(s, 'P1', 'lux-cannon')];
+    const spell = put(s, 'P1', 'universal-surveillance', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, x: 2, targets: [], improvise: rings }).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+    for (const id of rings) expect(s.cards[id]!.tapped).toBe(true);
+  });
+
+  it('Jhoira draws for each historic spell you cast (an artifact), not for others', () => {
+    let s = newGame();
+    put(s, 'P1', 'jhoira-weatherlight-captain');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    let hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 1);
+    const cat = put(s, 'P2', 'coeurl');
+    const grasp = put(s, 'P1', 'infernal-grasp', 'hand');
+    hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: grasp, targets: [card(cat)] }).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1);
+  });
+
+  it('Kappa Cannoneer: ward 4; it and each other artifact entering give it a +1/+1 counter and make it unblockable this turn', () => {
+    let s = newGame();
+    const kappa = put(s, 'P1', 'kappa-cannoneer', 'hand');
+    const rings = [put(s, 'P1', 'sol-ring'), put(s, 'P1', 'sol-ring')];
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kappa, targets: [], improvise: rings }).state;
+    expect(s.cards[kappa]!.counters).toBe(1);
+    expect(hasFlag(s, s.cards[kappa]!, 'cantBeBlocked')).toBe(true);
+    expect(currentDefinition(s, s.cards[kappa]!).ward).toBe(4);
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.cards[kappa]!.counters).toBe(2);
+  });
+
+  it('Emry: affinity, mills four, and lets you cast an artifact card from your graveyard this turn (it is not exiled later)', () => {
+    let s = newGame();
+    put(s, 'P1', 'sol-ring');
+    put(s, 'P1', 'sol-ring');
+    const emry = put(s, 'P1', 'emry-lurker-of-the-loch', 'hand');
+    const milled = [0, 1, 2, 3].map(() => put(s, 'P1', 'forest', 'library'));
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: emry }).state;
+    for (const id of milled) expect(s.cards[id]!.zone).toBe('graveyard');
+    const cannon = put(s, 'P1', 'lux-cannon', 'graveyard');
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === cannon)).toBe(false);
+    s.cards[emry]!.summoningSick = false; // a turn later
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: emry, ability: 0, targets: [card(cannon)] }).state;
+    expect(s.cards[cannon]!.castPermission?.exileAfter).toBeUndefined();
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cannon }).state;
+    expect(s.cards[cannon]!.zone).toBe('battlefield');
+  });
+
+  it('Thirst for Knowledge: draw three, then discard two cards, or one artifact card instead', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'thirst-for-knowledge', 'hand');
+    const land = put(s, 'P1', 'forest', 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    const choices = getLegalActions(s).flatMap((a) => (a.type === 'ChooseCards' ? [a.cards] : []));
+    expect(choices).toContainEqual([ring]);
+    expect(choices).not.toContainEqual([land]);
+    expect(choices.some((c) => c.length === 2)).toBe(true);
+    expect(rejected(s, { type: 'ChooseCards', player: 'P1', cards: [land] })).toBeTruthy();
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect(s.cards[ring]!.zone).toBe('graveyard');
+    expect(s.cards[land]!.zone).toBe('hand');
   });
 });

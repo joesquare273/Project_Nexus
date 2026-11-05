@@ -1871,8 +1871,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       if (effect.wholeHand) r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min: 0, max: hand.length, allOrNothing: true }];
       else {
         const max = effect.anyNumber ? hand.length : Math.min(amount, hand.length);
-        const min = effect.anyNumber || effect.optional ? 0 : max;
-        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max }];
+        const min = effect.anyNumber || effect.optional ? 0 : effect.orOneMatching ? Math.min(1, max) : max;
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max, ...(effect.orOneMatching ? { orOneMatching: effect.orOneMatching } : {}) }];
       }
       continue;
     }
@@ -1910,6 +1910,11 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
   if ((choice.purpose === 'distributeCounter' || choice.purpose === 'divideDamage') && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
   if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
   if (choice.allOrNothing) return cards.length === 0 || cards.length === choice.cards.length ? null : 'Choose all of them or none.';
+  if (choice.orOneMatching && cards.length < choice.max) {
+    // "Discard two cards unless you discard an artifact card": one matching card instead.
+    const one = cards.length === 1 && matchesObject(s, choice.orOneMatching, s.cards[cards[0]!]!, { controller: choice.player });
+    return one ? null : `Choose ${choice.max} cards, or one that matches instead.`;
+  }
   if (choice.differentNames && new Set(cards.map((id) => defOf(s, s.cards[id]!).name)).size !== cards.length) return 'Choose cards with different names.';
   if (cards.length < choice.min || cards.length > choice.max) {
     return choice.min === choice.max ? `Choose exactly ${choice.min}.` : `Choose between ${choice.min} and ${choice.max}.`;
@@ -2787,7 +2792,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) {
         const c = s.cards[id]!;
         if (c.zone !== 'graveyard') continue;
-        c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ...(effect.free ? { free: true } : {}) };
+        c.castPermission = { player: item.controller, turn: s.turnNumber, ...(effect.noExileAfter ? {} : { exileAfter: true }), ...(effect.free ? { free: true } : {}) };
       }
       return;
     case 'AllowCastTargetFromAnyGraveyard': {

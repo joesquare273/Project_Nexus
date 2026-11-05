@@ -894,6 +894,10 @@ export interface EffectSpec {
   anyNumber?: boolean;
   /** Discard: "may discard their hand": all of it or none. */
   wholeHand?: boolean;
+  /** Discard: "discard `amount` cards unless you discard a card matching this" (Thirst for Knowledge: an artifact card). */
+  orOneMatching?: ObjectFilter;
+  /** AllowCastFromGraveyard: the card isn't exiled afterwards (Emry, Lurker of the Loch). */
+  noExileAfter?: boolean;
   /** Discard/Sacrifice: up to amount. AddCounters: may put one counter on the chosen target. */
   optional?: boolean;
   /** KeepAndSacrificeRest: the spell's controller chooses for each player (Tragic Arrogance). Discard: they reveal their hand and you choose a card matching `filter` (Grief). */
@@ -2266,6 +2270,8 @@ export interface CardChoice {
   max: number;
   /** All of `cards` or none (discarding a whole hand). */
   allOrNothing?: boolean;
+  /** discard: `max` cards, or just one card matching this instead (Thirst for Knowledge). */
+  orOneMatching?: ObjectFilter;
   /** lookTop: where chosen cards go; every card looked at, the rest going on the bottom in a random order; then attach one to the source. */
   lookTo?: 'hand' | 'battlefield';
   attachOneToSource?: boolean;

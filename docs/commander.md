@@ -32,7 +32,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 68/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 76/100 |
 | World Shaper | Hearthhull, the Worldseed (BRG) | 72/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
@@ -101,6 +101,15 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   `Sacrificed` trigger, `playLandsFromGraveyard`, `ReturnAllFromGraveyard`,
   LookAtTopPutMatching with `restToGraveyard`). Simplification: Satyr
   Wayfinder's four cards are looked at, not revealed to the other players.
+
+- **E6 (2026-11-05): artifacts and cost reduction.** Etherium Sculptor,
+  Enthusiastic Mechanaut, Thought Monitor, Universal Surveillance, Jhoira,
+  Weatherlight Captain, Kappa Cannoneer, Emry, Lurker of the Loch, Thirst for
+  Knowledge. Engine: Discard `orOneMatching` ("discard two cards unless you
+  discard an artifact card") and AllowCastFromGraveyard `noExileAfter`
+  (Emry's card isn't exiled afterwards). Cloud Key waits for a "choose a card
+  type as it enters" decision (a new kind of choice for the board, the AI and
+  online play).
 
 ## Commander rules (built)
 

@@ -238,27 +238,16 @@
           "count": 1,
           "set": "eoc",
           "number": "71",
-          "implemented": false,
-          "needs": [
-            "affinity",
-            "mill",
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Kappa Cannoneer",
           "count": 1,
           "set": "eoc",
           "number": "74",
-          "implemented": false,
-          "needs": [
-            "improvise",
-            "ward",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Phyrexian Metamorph",
@@ -307,24 +296,16 @@
           "count": 1,
           "set": "eoc",
           "number": "79",
-          "implemented": false,
-          "needs": [
-            "affinity",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Universal Surveillance",
           "count": 1,
           "set": "eoc",
           "number": "81",
-          "implemented": false,
-          "needs": [
-            "improvise",
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Chain Reaction",
@@ -351,10 +332,8 @@
           "count": 1,
           "set": "eoc",
           "number": "118",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Wake the Past",
@@ -616,10 +595,8 @@
           "count": 1,
           "set": "eoc",
           "number": "48",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",
@@ -670,10 +647,8 @@
           "count": 1,
           "set": "eoc",
           "number": "72",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Experimental Augury",
@@ -696,10 +671,8 @@
           "count": 1,
           "set": "eoc",
           "number": "114",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Coretapper",

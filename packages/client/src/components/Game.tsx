@@ -1163,7 +1163,7 @@ function PromptBar(p: PromptProps) {
         { label: 'Discard my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]), primary: true },
       ];
     } else {
-      const how = c.min === c.max ? `${c.min}` : c.min === 0 ? `up to ${c.max}` : `${c.min} to ${c.max}`;
+      const how = c.orOneMatching ? `${c.max} cards, or one ${(c.orOneMatching.types ?? []).join(' or ')} card instead,` : c.min === c.max ? `${c.min}` : c.min === 0 ? `up to ${c.max}` : `${c.min} to ${c.max}`;
       const verb =
         c.purpose === 'discard' || c.purpose === 'handSize'
           ? (c.purpose === 'handSize' ? 'to discard down to your maximum hand size' : 'to discard (in your hand)')

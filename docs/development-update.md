@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E6: artifacts and cost reduction
+
+Eight Counter Intelligence cards: Etherium Sculptor, Enthusiastic
+Mechanaut, Thought Monitor, Universal Surveillance, Jhoira, Kappa Cannoneer,
+Emry and Thirst for Knowledge. New: the "two cards, or one artifact card"
+discard and a graveyard cast that doesn't exile the card. Counter
+Intelligence 76/100, World Shaper 72/100.
+
 ### Edge of Eternities group E5: sacrifice payoffs and lands from the graveyard
 
 Eight World Shaper cards: Juri, Mayhem Devil, Korvold, Mazirek, Szarel,
