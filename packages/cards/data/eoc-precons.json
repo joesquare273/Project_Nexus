@@ -915,11 +915,8 @@
           "count": 1,
           "set": "eoc",
           "number": "4",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Eumidian Wastewaker",
@@ -1233,20 +1230,16 @@
           "count": 1,
           "set": "eoc",
           "number": "120",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mazirek, Kraul Death Priest",
           "count": 1,
           "set": "eoc",
           "number": "122",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Omnath, Locus of Rage",
@@ -1456,12 +1449,8 @@
           "count": 1,
           "set": "eoc",
           "number": "91",
-          "implemented": false,
-          "needs": [
-            "mill",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Beast Within",
@@ -1484,10 +1473,8 @@
           "count": 1,
           "set": "eoc",
           "number": "97",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Harrow",
@@ -1518,10 +1505,8 @@
           "count": 1,
           "set": "eoc",
           "number": "106",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Skyshroud Claim",
@@ -1547,20 +1532,16 @@
           "count": 1,
           "set": "eoc",
           "number": "119",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mayhem Devil",
           "count": 1,
           "set": "eoc",
           "number": "121",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Putrefy",

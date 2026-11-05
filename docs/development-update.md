@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E5: sacrifice payoffs and lands from the graveyard
+
+Eight World Shaper cards: Juri, Mayhem Devil, Korvold, Mazirek, Szarel,
+Groundskeeper, Aftermath Analyst and Satyr Wayfinder, all from existing
+engine pieces. Counter Intelligence 68/100, World Shaper 72/100.
+
 ### Life-counter hub, and audio research
 
 - The center hub is smaller and laid out like a life-counter app (such as

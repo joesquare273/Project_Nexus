@@ -33,7 +33,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 | Deck | Commander | Fully built |
 |---|---|---|
 | Counter Intelligence | Inspirit, Flagship Vessel (URW) | 68/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 64/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 72/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -93,6 +93,14 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   Thopter tokens (teoc). Engine: the `BecomesTapped` trigger (not for
   permanents entering tapped), `removeCounter.amount` ("remove three charge
   counters"), and the `sourceCounters` amount.
+
+- **E5 (2026-11-05): sacrifice payoffs, and lands from the graveyard.**
+  Juri, Master of the Revue; Mayhem Devil; Korvold, Fae-Cursed King;
+  Mazirek, Kraul Death Priest; Szarel, Genesis Shepherd; Groundskeeper;
+  Aftermath Analyst; Satyr Wayfinder. Built from existing engine pieces (the
+  `Sacrificed` trigger, `playLandsFromGraveyard`, `ReturnAllFromGraveyard`,
+  LookAtTopPutMatching with `restToGraveyard`). Simplification: Satyr
+  Wayfinder's four cards are looked at, not revealed to the other players.
 
 ## Commander rules (built)
 

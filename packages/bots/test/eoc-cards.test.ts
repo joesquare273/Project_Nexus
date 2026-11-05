@@ -1,6 +1,7 @@
 // Edge of Eternities precon cards, built group by group (docs/commander.md).
 // Group 1: station and the Spacecraft (Inspirit, Flagship Vessel; Uthros
-// Research Craft; Hearthhull, the Worldseed; Exploration Broodship).
+// Research Craft; Hearthhull, the Worldseed; Exploration Broodship). Later
+// groups follow below (E2-E5, docs/commander.md).
 
 import { describe, expect, it } from 'vitest';
 import { activatedAbilities, currentDefinition, getLegalActions, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
@@ -611,5 +612,126 @@ describe('E4: charge counters', () => {
     s = cast(s, { type: 'ActivateAbility', player: 'P1', card: tapper, ability: 0, targets: [card(reactor)] }).state;
     expect(s.pending.kind).toBe('gameOver');
     expect(s.winner).toBe('P1');
+  });
+});
+
+// Group 5: sacrifice payoffs, and lands from the graveyard.
+describe('E5: sacrifice payoffs and lands from the graveyard', () => {
+  const toP2 = { targets: (o: { kind: string; player?: string }[][]) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! } as Parameters<typeof settle>[1];
+  /** Sacrifice a land with Hammer of Purphoros ({2}{R}, {T}). */
+  const sacLand = (s: GameState, opts: Parameters<typeof settle>[1] = {}) => {
+    const hammer = put(s, 'P1', 'hammer-of-purphoros');
+    const land = put(s, 'P1', 'forest');
+    mana(s, 'P1', { R: 1, C: 2 });
+    return { state: cast(s, { type: 'ActivateAbility', player: 'P1', card: hammer, ability: 0, costCards: [land] }, opts).state, land };
+  };
+
+  it('Juri grows when you sacrifice, Mayhem Devil pings when anyone does, Mazirek grows your team for another permanent', () => {
+    let s = newGame();
+    const juri = put(s, 'P1', 'juri-master-of-the-revue');
+    const devil = put(s, 'P1', 'mayhem-devil');
+    const mazirek = put(s, 'P1', 'mazirek-kraul-death-priest');
+    const theirs = put(s, 'P2', 'coeurl');
+    const life = s.players.P2!.life;
+    s = sacLand(s, toP2).state;
+    expect(s.players.P2!.life).toBe(life - 1);
+    expect(s.cards[juri]!.counters).toBe(2); // its own trigger, and Mazirek's
+    expect(s.cards[devil]!.counters).toBe(1);
+    expect(s.cards[mazirek]!.counters).toBe(1);
+    expect(s.cards[theirs]!.counters ?? 0).toBe(0);
+  });
+
+  it('Mayhem Devil and Mazirek see an opponent sacrifice too; Juri does not', () => {
+    let s = newGame();
+    const juri = put(s, 'P1', 'juri-master-of-the-revue');
+    put(s, 'P1', 'mayhem-devil');
+    const mazirek = put(s, 'P1', 'mazirek-kraul-death-priest');
+    const hammer = put(s, 'P2', 'hammer-of-purphoros');
+    const land = put(s, 'P2', 'forest');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { R: 1, C: 2 });
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P2', card: hammer, ability: 0, costCards: [land] }, toP2).state;
+    expect(s.players.P2!.life).toBe(life - 1);
+    expect(s.cards[mazirek]!.counters).toBe(1);
+    expect(s.cards[juri]!.counters).toBe(1); // only from Mazirek
+  });
+
+  it('Juri, dying, deals damage equal to its power', () => {
+    let s = newGame();
+    const juri = put(s, 'P1', 'juri-master-of-the-revue', 'battlefield', { counters: 3 });
+    const life = s.players.P2!.life;
+    s.cards[juri]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' }), toP2).state;
+    expect(s.cards[juri]!.zone).toBe('graveyard');
+    expect(s.players.P2!.life).toBe(life - 4);
+  });
+
+  it('Korvold sacrifices another permanent as it enters, then grows and draws', () => {
+    let s = newGame();
+    const korvold = put(s, 'P1', 'korvold-fae-cursed-king', 'hand');
+    const land = put(s, 'P1', 'forest');
+    mana(s, 'P1', { B: 1, R: 1, G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: korvold }).state;
+    const hand = s.players.P1!.hand.length;
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect(s.pending.cards).not.toContain(korvold);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [land] })).state;
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    expect(s.cards[korvold]!.counters).toBe(1);
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Szarel: play lands from your graveyard; sacrificing another nontoken permanent on your turn puts its power in counters on another creature', () => {
+    let s = newGame();
+    const szarel = put(s, 'P1', 'szarel-genesis-shepherd');
+    const cat = put(s, 'P1', 'coeurl');
+    const old = put(s, 'P1', 'mountain', 'graveyard');
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === old)).toBe(true);
+    s = sacLand(s, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === cat)! }).state;
+    expect(s.cards[cat]!.counters).toBe(powerOf(s, s.cards[szarel]!));
+    expect(s.cards[szarel]!.counters ?? 0).toBe(0);
+  });
+
+  it('Groundskeeper returns a basic land card from your graveyard; Aftermath Analyst mills three, then returns every land', () => {
+    let s = newGame();
+    const keeper = put(s, 'P1', 'groundskeeper');
+    const basic = put(s, 'P1', 'forest', 'graveyard');
+    const nonbasic = put(s, 'P1', 'buried-ruin', 'graveyard');
+    mana(s, 'P1', { G: 1, C: 1 });
+    const offered = getLegalActions(s).filter((a) => a.type === 'ActivateAbility' && a.card === keeper).flatMap((a) => (a.type === 'ActivateAbility' ? (a.targets ?? []) : []));
+    expect(offered.some((t) => t.kind === 'card' && t.card === nonbasic)).toBe(false);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: keeper, ability: 0, targets: [card(basic)] }).state;
+    expect(s.cards[basic]!.zone).toBe('hand');
+
+    const analyst = put(s, 'P1', 'aftermath-analyst', 'hand');
+    const top = [put(s, 'P1', 'island', 'library'), put(s, 'P1', 'swamp', 'library'), put(s, 'P1', 'coeurl', 'library')];
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: analyst }).state;
+    for (const id of top) expect(s.cards[id]!.zone).toBe('graveyard');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: analyst, ability: 0 }).state;
+    for (const id of [top[0]!, top[1]!, nonbasic]) {
+      expect(s.cards[id]!.zone).toBe('battlefield');
+      expect(s.cards[id]!.tapped).toBe(true);
+    }
+    expect(s.cards[top[2]!]!.zone).toBe('graveyard');
+    expect(s.cards[analyst]!.zone).toBe('graveyard');
+  });
+
+  it('Satyr Wayfinder: a land from the top four into your hand, the rest into your graveyard', () => {
+    let s = newGame();
+    const satyr = put(s, 'P1', 'satyr-wayfinder', 'hand');
+    const top = [put(s, 'P1', 'coeurl', 'library'), put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'coeurl', 'library'), put(s, 'P1', 'island', 'library')];
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: satyr }).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    if (s.pending.kind !== 'chooseCards') return;
+    expect([...s.pending.cards].sort()).toEqual([top[1]!, top[3]!].sort());
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top[3]!] })).state;
+    expect(s.cards[top[3]!]!.zone).toBe('hand');
+    for (const id of [top[0]!, top[1]!, top[2]!]) expect(s.cards[id]!.zone).toBe('graveyard');
   });
 });
