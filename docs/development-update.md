@@ -5,6 +5,13 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E12: land creatures
+
+The Gitrog Monster, Multani, Centaur Vinecrasher, World Breaker and Augur of
+Autumn. New: "put into a graveyard from anywhere" triggers, returning lands
+as a cost, coven, and the computer keeping its Gitrog by sacrificing spare
+lands. Counter Intelligence 92/100, World Shaper 84/100.
+
 ### Store: Edge of Eternities precons, and foil Secret Lairs
 
 The Store's Edge of Eternities tab sells Counter Intelligence and World

@@ -616,6 +616,8 @@ export const COUNT_KINDS = [
   'LandCardsInYourGraveyard',
   /** Lands you control (Fabled Passage: "if you control four or more lands"). */
   'LandsYouControl',
+  /** Land cards in all graveyards (Centaur Vinecrasher). */
+  'LandCardsInAllGraveyards',
   /** Your devotion to red: {R} symbols in the mana costs of permanents you control (rule 700.5). */
   'DevotionToRed',
   /** Creatures that died under an opponent's control this turn. */
@@ -919,7 +921,8 @@ export interface EffectSpec {
   /** KeepAndSacrificeRest: keep at most one of each of these types. */
   onePerType?: CardType[];
   /** Only if the last choice picked something ("If you do"), or a creature / noncreature card (Mog). */
-  ifChose?: 'any' | 'creature' | 'noncreature';
+  /** `none`: only if nothing was chosen ("sacrifice it unless you sacrifice a land": The Gitrog Monster). */
+  ifChose?: 'any' | 'none' | 'creature' | 'noncreature';
   /** ExileTopCardToPlay: playable until end of turn, not while you control the source. */
   thisTurn?: boolean;
   /** An "up to one" target left out applies to the spell or ability's first target instead ("distribute two counters among one or two targets"). */
@@ -1026,6 +1029,8 @@ export const TRIGGER_EVENTS = [
   'LeavesGraveyard',
   /** A card was put into a graveyard from anywhere other than the battlefield (subject: the card). */
   'PutIntoGraveyard',
+  /** A card was put into a graveyard from anywhere, the battlefield included (subject: the card; Gitrog, Centaur Vinecrasher). */
+  'PutIntoGraveyardAnywhere',
   /** The subject dealt damage to anything, combat or not ("whenever Cecil deals damage"). */
   'DealsDamage',
   /** The subject was declared as a blocker ("whenever this creature blocks"). */
@@ -1271,6 +1276,8 @@ export interface ActivatedSpec {
     crew?: number;
     /** Exile this many matching cards from your graveyard as a cost. */
     exileGraveyard?: { amount: number; filter: ObjectFilter };
+    /** "Return two lands you control to their owner's hand" (Multani): `count` permanents you control matching `filter`, chosen with `costCards`. */
+    returnToHand?: { count: number; filter: ObjectFilter };
     mana?: string;
     tap?: boolean;
     /** Discard this card (cycling, landcycling). */
@@ -1710,6 +1717,12 @@ export interface CardDefinition {
   creatureOnlyWithDevotion?: { color: 'W' | 'U' | 'B' | 'R' | 'G'; atLeast: number };
   /** Its power is equal to this count, everywhere (a characteristic-defining ability, rule 604.3: Adeline). */
   powerFromCount?: CountKind;
+  /** Power and toughness are each its printed values plus the sum of these counts (Multani: lands you control and land cards in your graveyard). */
+  ptPlusCounts?: CountKind[];
+  /** "This creature enters with a +1/+1 counter for each ...": the count as it enters (Centaur Vinecrasher). */
+  entersWithCountersFromCount?: CountKind;
+  /** Coven: as long as you control three or more creatures with different powers, you may also play cards matching this from the top of your library (Augur of Autumn: creature spells). */
+  playFromLibraryTopWithCoven?: ObjectFilter;
   /** "Can't be blocked except by N or more creatures" (Relentless X-ATM092: 3). */
   minBlockers?: number;
   /** "If you would draw a card while your library has no cards in it, you win the game instead" (Laboratory Maniac). */

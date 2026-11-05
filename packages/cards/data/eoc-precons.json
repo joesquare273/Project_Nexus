@@ -985,22 +985,16 @@
           "count": 1,
           "set": "eoc",
           "number": "92",
-          "implemented": false,
-          "needs": [
-            "coven",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Centaur Vinecrasher",
           "count": 1,
           "set": "eoc",
           "number": "94",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Formless Genesis",
@@ -1030,11 +1024,8 @@
           "count": 1,
           "set": "eoc",
           "number": "100",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Oracle of Mul Daya",
@@ -1092,13 +1083,8 @@
           "count": 1,
           "set": "eoc",
           "number": "112",
-          "implemented": false,
-          "needs": [
-            "devoid",
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Escape to the Wilds",
@@ -1121,11 +1107,8 @@
           "count": 1,
           "set": "eoc",
           "number": "117",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Korvold, Fae-Cursed King",

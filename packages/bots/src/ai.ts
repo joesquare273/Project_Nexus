@@ -623,6 +623,11 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   const byValue = [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!));
   if (p.purpose === 'fateBottom') return pick(byValue.reverse().slice(0, 1));
   if (p.purpose === 'reanimate') return pick(byValue.slice(0, p.min));
+  // "You may sacrifice a land" (Springbloom Druid's ramp, The Gitrog Monster's upkeep): yes, while there are lands to spare.
+  if (p.purpose === 'sacrifice' && p.min === 0 && p.cards.length > 0 && p.cards.every((id) => isLandCard(s, id))) {
+    const lands = s.players[me]!.battlefield.filter((id) => isLandCard(s, id)).length;
+    if (lands >= 3) return pick(byValue.slice(0, 1));
+  }
   if (p.purpose === 'sacrifice') return pick(byValue.slice(0, p.min));
   // Destroying an opponent's permanent of our choice: their best.
   if (p.purpose === 'destroy') return pick([...byValue].reverse().slice(0, p.max));

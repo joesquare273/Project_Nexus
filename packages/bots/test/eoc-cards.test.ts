@@ -1323,3 +1323,117 @@ describe('E11: Phyrexian mana, copies and proliferating twice', () => {
     expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: tek, ability: 0 })).toMatch(/counters/);
   });
 });
+
+// Group 12: World Shaper's land creatures.
+describe('E12: land creatures', () => {
+  /** Passes to P1's next upkeep (through P2's turn). */
+  const toMyUpkeep = (s: GameState) => {
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state; // P2's turn
+    s = settle(goTo(s, 'end')).state;
+    return goTo(s, 'upkeep');
+  };
+
+  it('The Gitrog Monster: each upkeep sacrifice a land or it; a land card going to your graveyard draws a card; an extra land each turn', () => {
+    for (const keep of [true, false]) {
+      let s = newGame();
+      const frog = put(s, 'P1', 'the-gitrog-monster');
+      const land = put(s, 'P1', 'forest');
+      s = toMyUpkeep(s);
+      expect(s.activePlayer).toBe('P1');
+      expect(s.pending.kind).toBe('chooseCards');
+      if (s.pending.kind !== 'chooseCards') return;
+      const hand = s.players.P1!.hand.length;
+      s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: keep ? [land] : [] })).state;
+      expect(s.cards[frog]!.zone).toBe(keep ? 'battlefield' : 'graveyard');
+      expect(s.cards[land]!.zone).toBe(keep ? 'graveyard' : 'battlefield');
+      // The sacrificed land drew a card.
+      expect(s.players.P1!.hand.length).toBe(hand + (keep ? 1 : 0));
+    }
+    let s = newGame();
+    put(s, 'P1', 'the-gitrog-monster');
+    const [a, b] = [put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'swamp', 'hand')];
+    s = act(s, { type: 'PlayLand', player: 'P1', card: a });
+    s = act(s, { type: 'PlayLand', player: 'P1', card: b });
+    expect(s.cards[b]!.zone).toBe('battlefield');
+  });
+
+  it('the computer keeps its Gitrog Monster by sacrificing a spare land', () => {
+    let s = newGame();
+    put(s, 'P1', 'the-gitrog-monster');
+    const lands = [put(s, 'P1', 'forest'), put(s, 'P1', 'forest'), put(s, 'P1', 'swamp')];
+    s = toMyUpkeep(s);
+    const choice = basicAi(1)(s, getLegalActions(s));
+    expect(choice.type).toBe('ChooseCards');
+    if (choice.type === 'ChooseCards') {
+      expect(choice.cards).toHaveLength(1);
+      expect(lands).toContain(choice.cards[0]);
+    }
+  });
+
+  it('Multani: +1/+1 for each land you control and land card in your graveyard; return two lands to bring it back from the graveyard', () => {
+    let s = newGame();
+    const multani = put(s, 'P1', 'multani-yavimayas-avatar');
+    const lands = [put(s, 'P1', 'forest'), put(s, 'P1', 'forest'), put(s, 'P1', 'forest')];
+    put(s, 'P1', 'swamp', 'graveyard');
+    expect(powerOf(s, s.cards[multani]!)).toBe(4);
+    moveCard({ s, ev: [] }, multani, 'graveyard');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: multani, ability: 0, costCards: [lands[0]!, lands[1]!] }).state;
+    expect(s.cards[multani]!.zone).toBe('hand');
+    expect(s.cards[lands[0]!]!.zone).toBe('hand');
+    expect(s.cards[lands[2]!]!.zone).toBe('battlefield');
+  });
+
+  it('Centaur Vinecrasher: enters with a counter per land card in all graveyards; returns to hand for {G}{G} when a land card hits a graveyard', () => {
+    let s = newGame();
+    put(s, 'P1', 'forest', 'graveyard');
+    put(s, 'P2', 'island', 'graveyard');
+    const crasher = put(s, 'P1', 'centaur-vinecrasher', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: crasher }).state;
+    expect(s.cards[crasher]!.counters).toBe(2);
+    expect(powerOf(s, s.cards[crasher]!)).toBe(3);
+    s.cards[crasher]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(s.cards[crasher]!.zone).toBe('graveyard');
+    // An opponent's land going to their graveyard counts too.
+    const hammer = put(s, 'P2', 'hammer-of-purphoros');
+    const theirLand = put(s, 'P2', 'mountain');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { R: 1, C: 2 });
+    mana(s, 'P1', { G: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P2', card: hammer, ability: 0, costCards: [theirLand] }, { accept: true }).state;
+    expect(s.cards[crasher]!.zone).toBe('hand');
+  });
+
+  it('World Breaker: casting it exiles an artifact, enchantment or land; {2}{C} and a land bring it back from the graveyard', () => {
+    let s = newGame();
+    const ring = put(s, 'P2', 'sol-ring');
+    const breaker = put(s, 'P1', 'world-breaker', 'hand');
+    mana(s, 'P1', { G: 1, C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: breaker }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === ring)! }).state;
+    expect(s.cards[ring]!.zone).toBe('exile');
+    expect(s.cards[breaker]!.zone).toBe('battlefield');
+    expect(currentDefinition(s, s.cards[breaker]!).colors).toEqual([]);
+    moveCard({ s, ev: [] }, breaker, 'graveyard');
+    const land = put(s, 'P1', 'forest');
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: breaker, ability: 0, costCards: [land] }).state;
+    expect(s.cards[breaker]!.zone).toBe('hand');
+  });
+
+  it('Augur of Autumn: play lands from the top; with three creatures of different powers, cast creatures from the top too', () => {
+    let s = newGame();
+    put(s, 'P1', 'augur-of-autumn'); // power 2
+    const top = put(s, 'P1', 'coeurl', 'library');
+    mana(s, 'P1', { W: 3, U: 3, B: 3, R: 3, G: 3, C: 3 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === top)).toBe(false);
+    put(s, 'P1', 'mindless-automaton', 'battlefield', { counters: 3 }); // 3
+    put(s, 'P1', 'juri-master-of-the-revue'); // 1
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === top)).toBe(true);
+    const land = put(s, 'P1', 'forest', 'library');
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === land)).toBe(true);
+  });
+});

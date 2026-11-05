@@ -112,6 +112,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return yours().reduce((n, c) => n + ((s.cardDefs[c.defId]?.manaCost ?? '').match(/\{[^}]*R[^}]*\}/g)?.length ?? 0), 0);
     case 'CardsInYourGraveyard':
       return s.players[player]!.graveyard.length;
+    case 'LandCardsInAllGraveyards':
+      return Object.values(s.players).reduce((n, p) => n + p.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('land')).length, 0);
     case 'LandsYouControl':
       return battlefieldCards(s).filter((c) => c.controller === player && def(s, c).types.includes('land')).length;
     case 'LandCardsInYourGraveyard':
@@ -264,6 +266,11 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   };
   // "Adeline's power is equal to the number of creatures you control" (rule 604.3: in every zone).
   if (d.powerFromCount) out.power = countOf(s, d.powerFromCount, c.controller, c.id);
+  if (d.ptPlusCounts) {
+    const n = d.ptPlusCounts.reduce((sum, k) => sum + countOf(s, k, c.controller, c.id), 0);
+    out.power += n;
+    out.toughness += n;
+  }
   if (c.zone !== 'battlefield') return out;
 
   const removed: Keyword[] = [];

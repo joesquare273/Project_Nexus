@@ -517,6 +517,7 @@ function triggerCondition(t: TriggerSpec): string {
     Draws: '',
     LeavesGraveyard: 'leaves your graveyard',
     PutIntoGraveyard: 'is put into a graveyard from anywhere but the battlefield',
+    PutIntoGraveyardAnywhere: 'is put into a graveyard from anywhere',
     Blocks: 'blocks',
     DealsDamage: 'deals damage',
     YouAttack: '',

@@ -1481,6 +1481,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   }
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length < (spec.cost.sacrificeCount ?? 1)) return 'You have nothing to sacrifice for that.';
   if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
+  if (spec.cost.returnToHand && sacrificeCandidates(s, playerId, spec.cost.returnToHand.filter, c.id).length < spec.cost.returnToHand.count) return `You don't control ${spec.cost.returnToHand.count} of them to return.`;
   if (spec.cost.tapUntapped && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   if (spec.cost.station && crewCandidates(s, playerId, c.id).length === 0) return 'You have no other untapped creature to tap for station.';
@@ -1575,6 +1576,7 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
     return n === 1 ? sacrificeCandidates(s, playerId, spec.cost.sacrifice, source).map((id) => [id]) : subsets(sacrificeCandidates(s, playerId, spec.cost.sacrifice, source), n, n);
   }
   if (spec.cost.returnUnblockedAttacker) return unblockedAttackers(s, playerId).map((id) => [id]);
+  if (spec.cost.returnToHand) return subsets(sacrificeCandidates(s, playerId, spec.cost.returnToHand.filter, source), spec.cost.returnToHand.count, spec.cost.returnToHand.count);
   if (spec.cost.removeCounter?.from) return counterCostCandidates(s, playerId, spec, source).map((id) => [id]);
   // "Discard X cards": any number of them (capped by `subsets` for huge hands).
   if (spec.cost.discardX) { const hand = player(s, playerId).hand.filter((id) => id !== source); return subsets(hand, 0, hand.length); }
@@ -1636,6 +1638,10 @@ export function activateAbility(
     if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
   } else if (spec.cost.returnUnblockedAttacker) {
     if (costCards.length !== 1 || !unblockedAttackers(s, playerId).includes(costCards[0]!)) reject('Choose an unblocked attacker you control to return.');
+  } else if (spec.cost.returnToHand) {
+    const { count, filter } = spec.cost.returnToHand;
+    const able = sacrificeCandidates(s, playerId, filter, id);
+    if (costCards.length !== count || new Set(costCards).size !== count || costCards.some((k) => !able.includes(k))) reject(`Choose ${count} different matching permanents you control to return.`);
   } else if (spec.cost.sacrifice) {
     const n = spec.cost.sacrificeCount ?? 1;
     const able = sacrificeCandidates(s, playerId, spec.cost.sacrifice, id);
@@ -1689,8 +1695,9 @@ export function activateAbility(
   // Ninjutsu: the Ninja attacks whoever the returned creature was attacking.
   const ninjutsuDefender = spec.cost.returnUnblockedAttacker ? s.combat!.attacks.find((a) => a.attacker === costCards[0])!.defender : undefined;
   if (spec.cost.returnUnblockedAttacker) moveCard(ctx, costCards[0]!, 'hand');
+  else if (spec.cost.returnToHand) for (const k of costCards) moveCard(ctx, k, 'hand');
   else if (spec.cost.sacrifice) for (const k of costCards) sacrifice(ctx, k);
-  else if (!rc?.from && !spec.cost.exileGraveyard && spec.cost.crew === undefined && !spec.cost.tapUntapped && !spec.cost.station) for (const discarded of costCards) discard(ctx, discarded);
+  else if (!rc?.from && !spec.cost.returnToHand && !spec.cost.exileGraveyard && spec.cost.crew === undefined && !spec.cost.tapUntapped && !spec.cost.station) for (const discarded of costCards) discard(ctx, discarded);
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
@@ -3594,7 +3601,7 @@ function continueResolving(ctx: Ctx): void {
     if (effect.onlyFirstCombat && effect.effect !== 'AdditionalCombat' && (s.combatsThisTurn ?? 0) !== 1) continue;
     if (effect.ifChose) {
       const any = (r.chosen ?? []).some((c) => c.cards.length > 0);
-      const ok = effect.ifChose === 'any' ? any : !!r.chosenTypes?.[effect.ifChose];
+      const ok = effect.ifChose === 'any' ? any : effect.ifChose === 'none' ? !any : !!r.chosenTypes?.[effect.ifChose];
       if (!ok) continue;
     }
     if (effect.ifLifeGainedThisTurn) {
@@ -3729,6 +3736,7 @@ export function resolveTop(ctx: Ctx): void {
       if (item.x) c.xPaid = item.x;
       if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
+      if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
       // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.
       if (def.sunburst && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);

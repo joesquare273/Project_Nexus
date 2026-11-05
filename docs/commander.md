@@ -33,7 +33,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 | Deck | Commander | Fully built |
 |---|---|---|
 | Counter Intelligence | Inspirit, Flagship Vessel (URW) | 92/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 79/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 84/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -166,6 +166,16 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   colors' Phyrexian symbols are paid with life only when the mana isn't
   there (no choice to pay life while you have it); Tekuthal's counters are
   removed by the engine, one at a time from the permanent with the most.
+
+- **E12 (2026-11-05): land creatures.** The Gitrog Monster, Multani,
+  Yavimaya's Avatar, Centaur Vinecrasher, World Breaker, Augur of Autumn.
+  Engine: the `PutIntoGraveyardAnywhere` trigger (from the battlefield too),
+  the `returnToHand` cost, `ptPlusCounts`, `entersWithCountersFromCount`
+  (and the `LandCardsInAllGraveyards` count), `playFromLibraryTopWithCoven`,
+  and `ifChose: 'none'` ("sacrifice it unless you sacrifice a land"). The
+  computer now takes "you may sacrifice a land" while it has three or more.
+  Horizon Explorer waits ("lands you control enter untapped" touches every
+  way a land enters tapped).
 
 ## Commander rules (built)
 

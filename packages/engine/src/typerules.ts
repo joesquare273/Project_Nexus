@@ -6,6 +6,7 @@
 import { currentDefinition } from './cardface.ts';
 import { manaValue, parseManaCost } from './cost.ts';
 import { matchesObject } from './filters.ts';
+import { powerOf } from './characteristics.ts';
 import {
   COLORS,
   MANA_TYPES,
@@ -229,6 +230,11 @@ export function tapOtherManaTypes(s: GameState, source: CardInstance): ManaType[
 }
 
 /** Active permanents whose abilities apply to their controller. */
+/** The creatures a player controls on the battlefield (for coven). */
+function battlefieldCreaturesOf(s: GameState, player: string): CardInstance[] {
+  return librarySources(s, player).filter((c) => currentDefinition(s, c).types.includes('creature'));
+}
+
 function librarySources(s: GameState, player: string): CardInstance[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player);
 }
@@ -242,6 +248,12 @@ export function canCastLibraryTop(s: GameState, player: string, c: CardInstance,
   // "You may play lands and cast Bird spells from the top of your library" (Traveling Chocobo).
   if (librarySources(s, player).some((source) => {
     const filter = currentDefinition(s, source).playFromLibraryTop;
+    return !!filter && matchesObject(s, filter, c, { controller: player, source: source.id });
+  })) return true;
+  // Coven (Augur of Autumn): three or more creatures you control with different powers.
+  const coven = new Set(battlefieldCreaturesOf(s, player).map((k) => powerOf(s, k))).size >= 3;
+  if (coven && librarySources(s, player).some((source) => {
+    const filter = currentDefinition(s, source).playFromLibraryTopWithCoven;
     return !!filter && matchesObject(s, filter, c, { controller: player, source: source.id });
   })) return true;
   if (!definition.types.includes('creature')) return false;
