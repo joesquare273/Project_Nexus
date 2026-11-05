@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities packs, and its Secret Lair in the Store
+
+The booster page has a set choice: Edge of Eternities Play and Collector
+Boosters, with Wizards' exact odds (docs/packs.md), the user's pack photos
+(their white background made transparent) and the set's showcase art behind
+the page. The server opens them (`set: 'eoe'`); the binder's Edge of
+Eternities tab is open. Final Fantasy packs are unchanged (a test compares
+them). The Store's Edge of Eternities tab sells the two Commander
+Reinforcements Secret Lair drops (docs/economy.md), non-foil and galaxy foil.
+
 ### Edge of Eternities card data, for its packs
 
 `booster-data.ts` now also saves the Edge of Eternities printings (EOE, EOS

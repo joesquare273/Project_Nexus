@@ -1,4 +1,5 @@
-// Imports the Final Fantasy Secret Lair printings from Scryfall (one
+// Imports the Secret Lair printings the Store sells (Final Fantasy's drops and
+// singles; Edge of Eternities' Commander Reinforcements) from Scryfall (one
 // collection request) into data/secret-lair.json: each printing's details
 // and images, its drop, and the Store groups. Cards no data file defines yet
 // are added to data/store-cards.json, marked notBuilt, so they show (and can
@@ -12,11 +13,21 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import type { CardDefinition } from '@nexus/engine';
 import { CARDS } from '../src/index.ts';
 
-/** The drops (June 2025) by Scryfall collector number, and their bonus cards; other FINAL FANTASY Secret Lair cards are sold as singles. */
-export const DROPS: { name: string; numbers: string[]; bonus: string }[] = [
-  { name: 'Secret Lair x FINAL FANTASY: Game Over', numbers: ['1858', '1859', '1860', '1861', '1862'], bonus: '7001' },
-  { name: 'Secret Lair x FINAL FANTASY: Weapons', numbers: ['1863', '1864', '1865', '1866', '1867'], bonus: '7002' },
-  { name: 'Secret Lair x FINAL FANTASY: Grimoire', numbers: ['1868', '1869', '1870', '1871', '1872'], bonus: '7003' },
+/**
+ * The drops by Scryfall collector number, their bonus cards, and the Store
+ * set they're sold under. FINAL FANTASY (June 2025): other FINAL FANTASY
+ * Secret Lair cards are sold as singles. Edge of Eternities: Secret Lair
+ * Chaos Vault: Commander Reinforcements (July 2025), one drop for each
+ * Commander deck, in non-foil and galaxy foil, without a bonus card.
+ */
+export const DROPS: { name: string; numbers: string[]; bonus?: string; set: 'fin' | 'eoe'; galaxyFoil?: true }[] = [
+  { name: 'Secret Lair x FINAL FANTASY: Game Over', numbers: ['1858', '1859', '1860', '1861', '1862'], bonus: '7001', set: 'fin' },
+  { name: 'Secret Lair x FINAL FANTASY: Weapons', numbers: ['1863', '1864', '1865', '1866', '1867'], bonus: '7002', set: 'fin' },
+  { name: 'Secret Lair x FINAL FANTASY: Grimoire', numbers: ['1868', '1869', '1870', '1871', '1872'], bonus: '7003', set: 'fin' },
+  // For Counter Intelligence.
+  { name: 'Commander Reinforcements: Featuring Deathburger', numbers: ['2102', '2103', '2104', '2105', '2106'], set: 'eoe', galaxyFoil: true },
+  // For World Shaper.
+  { name: 'Commander Reinforcements: Alien Auroras', numbers: ['2107', '2108', '2109', '2110', '2111'], set: 'eoe', galaxyFoil: true },
 ];
 const SINGLES = ['909', '7004', '7005', '7006', '7007', '7008'];
 
@@ -44,7 +55,7 @@ interface ScryfallCard {
   card_faces?: { image_uris?: { small: string; normal: string; large: string; art_crop: string } }[];
 }
 
-const numbers = [...DROPS.flatMap((d) => [...d.numbers, d.bonus]), ...SINGLES];
+const numbers = [...DROPS.flatMap((d) => [...d.numbers, ...(d.bonus ? [d.bonus] : [])]), ...SINGLES];
 const res = await fetch('https://api.scryfall.com/cards/collection', {
   method: 'POST',
   headers: HEADERS,
@@ -58,7 +69,8 @@ const images = (c: ScryfallCard) => {
   const faces = c.image_uris ? [c.image_uris] : (c.card_faces ?? []).flatMap((f) => (f.image_uris ? [f.image_uris] : []));
   return faces.map((i) => ({ small: i.small, normal: i.normal, large: i.large, artCrop: i.art_crop }));
 };
-const dropOf = (n: string) => DROPS.find((d) => d.numbers.includes(n) || d.bonus === n)?.name;
+const dropFor = (n: string) => DROPS.find((d) => d.numbers.includes(n) || d.bonus === n);
+const dropOf = (n: string) => dropFor(n)?.name;
 const printings = data.map((c) => ({
   id: c.id,
   name: c.name,
@@ -74,6 +86,8 @@ const printings = data.map((c) => ({
   ...(c.artist ? { artist: c.artist } : {}),
   images: images(c),
   ...(dropOf(c.collector_number) ? { drop: dropOf(c.collector_number) } : {}),
+  // The Store set it's sold under (singles are Final Fantasy's).
+  series: dropFor(c.collector_number)?.set ?? 'fin',
 }));
 const OUT = new URL('../data/secret-lair.json', import.meta.url);
 writeFileSync(OUT, JSON.stringify({ drops: DROPS, singles: SINGLES, printings }, null, 1) + '\n');

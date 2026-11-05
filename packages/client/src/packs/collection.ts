@@ -2,7 +2,7 @@
 // (GET /api/collection). Packs are bought and opened by the server
 // (POST /api/packs/open), which adds the cards; the browser only shows them.
 
-import type { Finish, Pack, PackKind } from '@nexus/cards/boosters';
+import type { BoosterSet, Finish, Pack, PackKind } from '@nexus/cards/boosters';
 
 export interface Collection {
   /** Copies owned, by Scryfall printing id and finish. */
@@ -41,11 +41,11 @@ export async function fetchCollection(token: string): Promise<Collection> {
 }
 
 /** Buys and opens 1 or 10 boosters on the server (10 come with a free one). */
-export async function buyPacks(token: string, kind: PackKind, count: 1 | 10): Promise<{ packs: Pack[]; balance: number }> {
+export async function buyPacks(token: string, kind: PackKind, count: 1 | 10, set: BoosterSet = 'fin'): Promise<{ packs: Pack[]; balance: number }> {
   const res = await fetch('/api/packs/open', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind, count }),
+    body: JSON.stringify({ kind, count, set }),
   });
   if (!res.ok) throw await failure(res, 'The packs could not be opened. Try again.');
   return (await res.json()) as { packs: Pack[]; balance: number };

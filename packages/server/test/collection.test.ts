@@ -145,6 +145,19 @@ describe('buying packs', () => {
     expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'starter' })).status).toBe(400);
     expect((await call('nobody', '/api/packs/open', 'POST', { kind: 'play' })).status).toBe(401);
   });
+  it('opens Edge of Eternities packs at the same prices, from that set only; unknown sets are refused', async () => {
+    const { accounts, call } = await withAccounts();
+    const r = await call('token-alice', '/api/packs/open', 'POST', { kind: 'collector', set: 'eoe' });
+    expect(r.status).toBe(200);
+    const { packs, balance } = await r.json();
+    expect(balance).toBe(FIRST_DAY_SHARDS - ECONOMY.collectorBoosterPrice);
+    expect(packs[0].set).toBe('eoe');
+    expect(packs[0].cards).toHaveLength(16);
+    const sets = new Set(packs[0].cards.map((p: { card: { set: string } }) => p.card.set));
+    for (const set of sets) expect(['eoe', 'eos', 'eoc', 'spg', 'teoe', 'aeoe']).toContain(set);
+    expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(16);
+    expect((await call('token-alice', '/api/packs/open', 'POST', { kind: 'play', set: 'xyz' })).status).toBe(400);
+  });
 });
 
 describe('the free starter precon', () => {
@@ -215,7 +228,7 @@ describe('the Store', () => {
     const { sets } = await (await call('token-alice', '/api/store')).json();
     expect(sets.map((s: { name: string; ready: boolean }) => [s.name, s.ready])).toEqual([
       ['Final Fantasy', true],
-      ['Edge of Eternities', false],
+      ['Edge of Eternities', true],
     ]);
     const items: Item[] = sets[0].items;
     const singles = items.filter((i) => i.line === 'Chocobo Track foil');
@@ -226,7 +239,33 @@ describe('the Store', () => {
     const bundle = items.find((i) => i.key === 'fin-chocobo-track-lands')!;
     expect(bundle.cards).toHaveLength(5);
     expect(bundle.price).toBe(prices.chocoboTrackLandBundle);
-    expect(sets[1].items).toEqual([]);
+    // Edge of Eternities: the two Commander Reinforcements drops and their cards, non-foil and galaxy foil.
+    const eoe: Item[] = sets[1].items;
+    const drops = eoe.filter((i) => i.line.startsWith('Secret Lair drop'));
+    expect(drops.map((d) => d.name)).toEqual([
+      'Commander Reinforcements: Featuring Deathburger',
+      'Commander Reinforcements: Featuring Deathburger',
+      'Commander Reinforcements: Alien Auroras',
+      'Commander Reinforcements: Alien Auroras',
+    ]);
+    expect(eoe.filter((i) => !i.line.startsWith('Secret Lair drop'))).toHaveLength(20);
+    // The Final Fantasy tab doesn't list them.
+    expect(items.some((i) => i.name === 'Arcbound Ravager')).toBe(false);
+  });
+
+  it('a galaxy foil Commander Reinforcements drop costs twice the non-foil one and adds five foil cards', async () => {
+    const { accounts, call } = await withAccounts();
+    accounts.apply('alice-id', 20000 - FIRST_DAY_SHARDS, 'admin_adjustment', 'set-balance');
+    const { sets } = await (await call('token-alice', '/api/store')).json();
+    const eoe: Item[] = sets[1].items;
+    const [plain, galaxy] = eoe.filter((i) => i.name === 'Commander Reinforcements: Alien Auroras');
+    expect(galaxy!.price).toBe(2 * plain!.price!);
+    const r = await call('token-alice', '/api/store/buy', 'POST', { key: galaxy!.key });
+    expect(r.status).toBe(200);
+    expect((await r.json()).balance).toBe(20000 - galaxy!.price!);
+    const owned = await accounts.collection('alice-id');
+    expect(owned).toHaveLength(5);
+    expect(owned.every((c) => c.finish === 'foil')).toBe(true);
   });
 
   it('buying charges once and adds the card; the bundle adds all five lands', async () => {

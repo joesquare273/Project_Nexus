@@ -102,3 +102,12 @@ the cards they want (user spec, 2026-11-04), in the **Craft** tab.
   doesn't persist, which is fine because the data lives in Supabase.
   Games in progress live in the server's memory and would be lost on a
   restart.
+
+Edge of Eternities (2026-11-05): the Secret Lair Chaos Vault: Commander
+Reinforcements drops, one per Commander deck (Featuring Deathburger for
+Counter Intelligence: Ethersworn Canonist, Goblin Engineer, Dance of the
+Manse, Arcbound Ravager, Foundry Inspector; Alien Auroras for World Shaper:
+Reprocess, Aggressive Mining, Sylvan Safekeeper, Crucible of Worlds, Zuran
+Orb; SLD 2102-2111). Each drop and each card is sold non-foil (3,500 /
+1,000 Aether Shards) and galaxy foil (7,000 / 2,000: twice, as in the real
+Secret Lair store). Their cards are `notBuilt` until built.

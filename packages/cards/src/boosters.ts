@@ -71,10 +71,10 @@ export function otherFace(card: BoosterCard, all: readonly BoosterCard[] = BOOST
   return { name: result.name, image: result.images[0], meld: { partner: partner ?? 'its partner' } };
 }
 
-/** FINAL FANTASY Secret Lair printings (scripts/import-secret-lairs.ts), each with its drop if it belongs to one. */
-export const SECRET_LAIR_CARDS = secretLair.printings as (BoosterCard & { drop?: string })[];
-/** The Secret Lair drops: Scryfall collector numbers and the bonus card's. */
-export const SECRET_LAIR_DROPS = secretLair.drops;
+/** The Store's Secret Lair printings (scripts/import-secret-lairs.ts), each with its drop if it belongs to one and the Store set it's under. */
+export const SECRET_LAIR_CARDS = secretLair.printings as (BoosterCard & { drop?: string; series: BoosterSet })[];
+/** The Secret Lair drops: Scryfall collector numbers, the bonus card's (if any), the Store set, and whether they come in galaxy foil. */
+export const SECRET_LAIR_DROPS = secretLair.drops as { name: string; numbers: string[]; bonus?: string; set: BoosterSet; galaxyFoil?: true }[];
 
 export type PackKind = 'play' | 'collector';
 export type Finish = 'nonfoil' | 'foil' | 'surge';
@@ -86,6 +86,10 @@ export type Finish = 'nonfoil' | 'foil' | 'surge';
  */
 export const SPECIAL_FOILS: Record<string, { name: string; look: CardFinish }> = {
   chocobotrackfoil: { name: 'Chocobo Track foil', look: 'chocobotrack' },
+  // Edge of Eternities: their own printings, shown with the regular foil shine for now.
+  galaxyfoil: { name: 'Galaxy foil', look: 'foil' },
+  fracturefoil: { name: 'Fracture foil', look: 'foil' },
+  singularityfoil: { name: 'Singularity foil', look: 'foil' },
 };
 
 /** How a copy looks, for the shine: undefined for non-foil. */
@@ -117,8 +121,14 @@ export interface Pull {
 
 export interface Pack {
   kind: PackKind;
+  /** Which set's booster (absent: Final Fantasy, as packs opened before Edge of Eternities). */
+  set?: BoosterSet;
   cards: Pull[];
 }
+
+/** The sets with boosters on the Packs tab. */
+export type BoosterSet = 'fin' | 'eoe';
+export const BOOSTER_SETS: readonly BoosterSet[] = ['fin', 'eoe'];
 
 /** A random number in [0, 1). Tests pass a seeded one. */
 export type Rng = () => number;
@@ -198,19 +208,21 @@ export function buildSheets(all: readonly BoosterCard[] = BOOSTER_CARDS): Sheets
 }
 
 /** One outcome of a slot: its chance (any scale), the sheet, the finish and how special it is. */
-export interface Outcome {
+export interface Outcome<S = Sheets> {
   label: string;
   weight: number;
-  sheet: (s: Sheets) => BoosterCard[];
+  sheet: (s: S) => BoosterCard[];
   finish: Finish;
   hype: Pull['hype'];
   stamped?: true;
   /** Not in real boosters: our own addition for the Packs tab (Scene Box cards, surge foil tokens). Drafts leave these out. */
   unofficial?: true;
 }
-export interface Slot {
+export interface Slot<S = Sheets> {
   name: string;
-  outcomes: Outcome[];
+  outcomes: Outcome<S>[];
+  /** Slots that never repeat each other's cards, if not just the slots with this name (all of a pack's commons). */
+  group?: string;
 }
 
 const o = (label: string, weight: number, sheet: Outcome['sheet'], finish: Finish = 'nonfoil', hype: Pull['hype'] = 0, extra: Partial<Outcome> = {}): Outcome => ({ label, weight, sheet, finish, hype, ...extra });
@@ -387,7 +399,7 @@ function pick<T>(rng: Rng, items: readonly T[]): T {
 }
 
 /** Draws one outcome by weight, skipping outcomes whose sheet is empty (and, with `nonfoilOnly`, foil ones). */
-export function rollSlot(slot: Slot, sheets: Sheets, rng: Rng, nonfoilOnly = false, officialOnly = false): Pull {
+export function rollSlot<S>(slot: Slot<S>, sheets: S, rng: Rng, nonfoilOnly = false, officialOnly = false): Pull {
   const live = slot.outcomes.filter((x) => x.sheet(sheets).length > 0 && (!nonfoilOnly || x.finish === 'nonfoil') && (!officialOnly || !x.unofficial));
   const total = live.reduce((n, x) => n + x.weight, 0);
   let roll = rng() * total;
@@ -429,8 +441,12 @@ export function openPack(
 
 /** Each slot's outcomes as percentages, for the "Pack odds" screen. */
 export function packOdds(kind: PackKind, sheets: Sheets = (cachedSheets ??= buildSheets())): { slot: string; count: number; outcomes: { label: string; percent: number; cards: number }[] }[] {
+  return oddsOf(BOOSTERS[kind], sheets);
+}
+
+function oddsOf<S>(slots: readonly Slot<S>[], sheets: S): { slot: string; count: number; outcomes: { label: string; percent: number; cards: number }[] }[] {
   const out: { slot: string; count: number; outcomes: { label: string; percent: number; cards: number }[] }[] = [];
-  for (const slot of BOOSTERS[kind]) {
+  for (const slot of slots) {
     const last = out.at(-1);
     if (last && last.slot === slot.name) {
       last.count++;
@@ -441,4 +457,251 @@ export function packOdds(kind: PackKind, sheets: Sheets = (cachedSheets ??= buil
     out.push({ slot: slot.name, count: 1, outcomes: live.map((x) => ({ label: x.label, percent: (100 * x.weight) / total, cards: x.sheet(sheets).length })) });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Edge of Eternities (Wizards' "Collecting Edge of Eternities", 2025)
+// ---------------------------------------------------------------------------
+
+type RM = Record<'rare' | 'mythic', BoosterCard[]>;
+
+/** Edge of Eternities' print sheets, by Scryfall collector number. */
+export interface EoeSheets {
+  /** EOE 1-261, booster cards: 81 commons, 100 uncommons, 60 rares, 20 mythics. */
+  commons: BoosterCard[];
+  uncommons: BoosterCard[];
+  rares: BoosterCard[];
+  mythics: BoosterCard[];
+  /** Default-frame basics (EOE 267-276) and borderless celestial basics (262-266; galaxy foil 367-371). */
+  basics: BoosterCard[];
+  celestial: BoosterCard[];
+  galaxyCelestial: BoosterCard[];
+  /** Borderless viewport lands (277-286; galaxy foil 372-381), triumphant cards (287-302), surreal space cards (303-316). */
+  viewport: RM;
+  galaxyViewport: RM;
+  triumphant: RM;
+  surreal: RM;
+  /** Extended art from the main set (317-356). */
+  extended: RM;
+  /** Japan Showcase (357-366) and their fracture foils (383-392). */
+  japan: BoosterCard[];
+  fractureJapan: BoosterCard[];
+  /** The textless singularity foil Sothera, the Supervoid (382). */
+  singularity: BoosterCard[];
+  /** Stellar Sights (EOS): 1-45, posters 46-90, galaxy foil 91-135, galaxy foil posters 136-180. */
+  stellar: RM;
+  stellarPoster: RM;
+  galaxyStellar: RM;
+  galaxyStellarPoster: RM;
+  /** Edge of Eternities Commander: borderless mythics (EOC 1-4) and extended-art rares (25-44). */
+  commanderBorderless: BoosterCard[];
+  commanderExtended: BoosterCard[];
+  /** The ten Special Guests (SPG 119-128). */
+  specialGuests: BoosterCard[];
+  tokens: BoosterCard[];
+  artCards: BoosterCard[];
+}
+
+export function buildEoeSheets(all: readonly BoosterCard[] = BOOSTER_CARDS): EoeSheets {
+  const set = (code: string, from: number, to: number) => all.filter((c) => c.set === code && num(c) >= from && num(c) <= to);
+  const rm = (list: BoosterCard[]): RM => ({ rare: list.filter((c) => c.rarity === 'rare'), mythic: list.filter((c) => c.rarity === 'mythic') });
+  const main = set('eoe', 1, 261).filter((c) => c.booster);
+  const r = (rarity: Rarity) => main.filter((c) => c.rarity === rarity);
+  return {
+    commons: r('common'),
+    uncommons: r('uncommon'),
+    rares: r('rare'),
+    mythics: r('mythic'),
+    basics: set('eoe', 267, 276),
+    celestial: set('eoe', 262, 266),
+    galaxyCelestial: set('eoe', 367, 371),
+    viewport: rm(set('eoe', 277, 286)),
+    galaxyViewport: rm(set('eoe', 372, 381)),
+    triumphant: rm(set('eoe', 287, 302)),
+    surreal: rm(set('eoe', 303, 316)),
+    extended: rm(set('eoe', 317, 356)),
+    japan: set('eoe', 357, 366),
+    fractureJapan: set('eoe', 383, 392),
+    singularity: set('eoe', 382, 382),
+    stellar: rm(set('eos', 1, 45)),
+    stellarPoster: rm(set('eos', 46, 90)),
+    galaxyStellar: rm(set('eos', 91, 135)),
+    galaxyStellarPoster: rm(set('eos', 136, 180)),
+    commanderBorderless: set('eoc', 1, 4),
+    commanderExtended: set('eoc', 25, 44),
+    specialGuests: set('spg', 119, 128),
+    tokens: all.filter((c) => c.set === 'teoe'),
+    artCards: all.filter((c) => c.set === 'aeoe'),
+  };
+}
+
+const e = (label: string, weight: number, sheet: (s: EoeSheets) => BoosterCard[], finish: Finish = 'nonfoil', hype: Pull['hype'] = 0, extra: Partial<Outcome<EoeSheets>> = {}): Outcome<EoeSheets> => ({ label, weight, sheet, finish, hype, ...extra });
+
+const EOE_COMMON: Slot<EoeSheets> = { name: 'Common', outcomes: [e('Common', 1, (s) => s.commons)] };
+const EOE_UNCOMMON: Slot<EoeSheets> = { name: 'Uncommon', outcomes: [e('Uncommon', 1, (s) => s.uncommons)] };
+
+/*
+ * Wizards gives some outcomes as "less than 1%". Those share what the slot's
+ * listed odds leave over (e.g. the wildcard's 0.9%), split as noted beside
+ * each; everything else is Wizards' number.
+ */
+
+/** Edge of Eternities Play Booster: 14 Magic cards and a double-sided token. */
+export const EOE_PLAY_BOOSTER: Slot<EoeSheets>[] = [
+  ...Array.from({ length: 6 }, () => EOE_COMMON),
+  // "In 1.8% of Play Boosters, 1 of 10 non-foil Special Guests cards will replace a common."
+  { name: 'Common or Special Guests', group: 'Common', outcomes: [e('Common', 98.2, (s) => s.commons), e('Special Guests card', 1.8, (s) => s.specialGuests, 'nonfoil', 3)] },
+  EOE_UNCOMMON,
+  EOE_UNCOMMON,
+  EOE_UNCOMMON,
+  {
+    name: 'Wildcard',
+    outcomes: [
+      e('Common', 12.5, (s) => s.commons),
+      e('Uncommon', 62.5, (s) => s.uncommons),
+      e('Rare', 10.6, (s) => s.rares, 'nonfoil', 1),
+      e('Mythic', 0.5, (s) => s.mythics, 'nonfoil', 2), // "less than 1%"
+      e('Stellar Sights rare', 10, (s) => s.stellar.rare, 'nonfoil', 2),
+      e('Stellar Sights mythic', 2.5, (s) => s.stellar.mythic, 'nonfoil', 3),
+      e('Borderless viewport land rare', 1, (s) => s.viewport.rare, 'nonfoil', 2),
+      e('Borderless viewport land mythic', 0.1, (s) => s.viewport.mythic, 'nonfoil', 3), // "less than 1%"
+      e('Borderless triumphant or surreal space rare', 0.2, (s) => [...s.triumphant.rare, ...s.surreal.rare], 'nonfoil', 2), // "less than 1%"
+      e('Borderless triumphant or surreal space mythic', 0.1, (s) => [...s.triumphant.mythic, ...s.surreal.mythic], 'nonfoil', 3), // "less than 1%"
+    ],
+  },
+  {
+    name: 'Rare',
+    outcomes: [
+      e('Rare', 80.4, (s) => s.rares, 'nonfoil', 1),
+      e('Mythic', 14.2, (s) => s.mythics, 'nonfoil', 2),
+      e('Borderless triumphant rare', 2, (s) => s.triumphant.rare, 'nonfoil', 2),
+      e('Borderless triumphant mythic', 0.5, (s) => s.triumphant.mythic, 'nonfoil', 3), // "less than 1%"
+      e('Borderless surreal space rare', 2, (s) => s.surreal.rare, 'nonfoil', 2),
+      e('Borderless surreal space mythic', 0.5, (s) => s.surreal.mythic, 'nonfoil', 3), // "less than 1%"
+      e('Borderless viewport land mythic', 0.4, (s) => s.viewport.mythic, 'nonfoil', 3), // "less than 1%"
+    ],
+  },
+  {
+    name: 'Foil',
+    outcomes: [
+      e('Foil common', 58, (s) => s.commons, 'foil'),
+      e('Foil uncommon', 32, (s) => s.uncommons, 'foil'),
+      e('Foil rare', 6.4, (s) => s.rares, 'foil', 1),
+      e('Foil mythic', 1.1, (s) => s.mythics, 'foil', 2),
+      e('Foil Stellar Sights rare', 1, (s) => s.stellar.rare, 'foil', 2),
+      e('Foil Stellar Sights mythic', 0.5, (s) => s.stellar.mythic, 'foil', 3), // "less than 1%"
+      e('Foil borderless rare', 0.7, (s) => [...s.viewport.rare, ...s.triumphant.rare, ...s.surreal.rare], 'foil', 2), // "less than 1%"
+      e('Foil borderless mythic', 0.3, (s) => [...s.viewport.mythic, ...s.triumphant.mythic, ...s.surreal.mythic], 'foil', 3), // "less than 1%"
+    ],
+  },
+  {
+    name: 'Land',
+    outcomes: [
+      e('Basic land', 64, (s) => s.basics),
+      e('Foil basic land', 16, (s) => s.basics, 'foil'),
+      e('Celestial basic land', 16, (s) => s.celestial, 'nonfoil', 1),
+      e('Foil celestial basic land', 4, (s) => s.celestial, 'foil', 1),
+    ],
+  },
+  { name: 'Double-sided token', outcomes: [e('Double-sided token', 1, (s) => s.tokens)] },
+];
+
+/** Edge of Eternities Collector Booster: 15 Magic cards and an art card or foil token. */
+export const EOE_COLLECTOR_BOOSTER: Slot<EoeSheets>[] = [
+  ...Array.from({ length: 5 }, (): Slot<EoeSheets> => ({ name: 'Foil common', outcomes: [e('Foil common', 1, (s) => s.commons, 'foil')] })),
+  ...Array.from({ length: 4 }, (): Slot<EoeSheets> => ({ name: 'Foil uncommon', outcomes: [e('Foil uncommon', 1, (s) => s.uncommons, 'foil')] })),
+  {
+    name: 'Foil celestial basic land',
+    outcomes: [e('Foil celestial basic land', 66.6, (s) => s.celestial, 'foil', 1), e('Galaxy foil celestial basic land', 33.3, (s) => s.galaxyCelestial, 'foil', 2)],
+  },
+  { name: 'Foil rare or mythic', outcomes: [e('Foil rare', 86, (s) => s.rares, 'foil', 1), e('Foil mythic', 14, (s) => s.mythics, 'foil', 2)] },
+  {
+    name: 'Commander card',
+    outcomes: [e('Commander borderless mythic', 9, (s) => s.commanderBorderless, 'nonfoil', 3), e('Commander extended-art rare', 91, (s) => s.commanderExtended, 'nonfoil', 2)],
+  },
+  {
+    name: 'Booster Fun card',
+    outcomes: [
+      e('Extended-art rare', 47, (s) => s.extended.rare, 'nonfoil', 2),
+      e('Extended-art mythic', 5, (s) => s.extended.mythic, 'nonfoil', 3),
+      e('Borderless viewport land rare', 7, (s) => s.viewport.rare, 'nonfoil', 2),
+      e('Borderless viewport land mythic', 4, (s) => s.viewport.mythic, 'nonfoil', 3),
+      e('Borderless triumphant rare', 17, (s) => s.triumphant.rare, 'nonfoil', 2),
+      e('Borderless triumphant mythic', 3, (s) => s.triumphant.mythic, 'nonfoil', 3),
+      e('Borderless surreal space rare', 15, (s) => s.surreal.rare, 'nonfoil', 2),
+      e('Borderless surreal space mythic', 2, (s) => s.surreal.mythic, 'nonfoil', 3),
+    ],
+  },
+  {
+    name: 'Stellar Sights land',
+    outcomes: [
+      e('Stellar Sights rare', 36, (s) => s.stellar.rare, 'nonfoil', 2),
+      e('Stellar Sights mythic', 9, (s) => s.stellar.mythic, 'nonfoil', 3),
+      e('Poster Stellar Sights rare', 18, (s) => s.stellarPoster.rare, 'nonfoil', 2),
+      e('Poster Stellar Sights mythic', 4, (s) => s.stellarPoster.mythic, 'nonfoil', 3),
+      e('Foil Stellar Sights rare', 12, (s) => s.stellar.rare, 'foil', 2),
+      e('Foil Stellar Sights mythic', 3, (s) => s.stellar.mythic, 'foil', 3),
+      e('Foil poster Stellar Sights rare', 6, (s) => s.stellarPoster.rare, 'foil', 3),
+      e('Foil poster Stellar Sights mythic', 1.5, (s) => s.stellarPoster.mythic, 'foil', 3),
+      e('Galaxy foil Stellar Sights rare', 6, (s) => s.galaxyStellar.rare, 'foil', 3),
+      e('Galaxy foil Stellar Sights mythic', 1.5, (s) => s.galaxyStellar.mythic, 'foil', 3),
+      e('Galaxy foil poster Stellar Sights rare', 3, (s) => s.galaxyStellarPoster.rare, 'foil', 3),
+      e('Galaxy foil poster Stellar Sights mythic', 0.8, (s) => s.galaxyStellarPoster.mythic, 'foil', 3), // "less than 1%"; posters total 33.3%
+    ],
+  },
+  {
+    name: 'Foil Booster Fun card',
+    outcomes: [
+      e('Foil extended-art rare', 38, (s) => s.extended.rare, 'foil', 2),
+      e('Foil extended-art mythic', 4, (s) => s.extended.mythic, 'foil', 3),
+      e('Foil borderless viewport land rare', 6, (s) => s.viewport.rare, 'foil', 2),
+      e('Foil borderless viewport land mythic', 3, (s) => s.viewport.mythic, 'foil', 3),
+      e('Foil borderless triumphant rare', 13, (s) => s.triumphant.rare, 'foil', 2),
+      e('Foil borderless triumphant mythic', 2, (s) => s.triumphant.mythic, 'foil', 3),
+      e('Foil borderless surreal space rare', 12, (s) => s.surreal.rare, 'foil', 2),
+      e('Foil borderless surreal space mythic', 2, (s) => s.surreal.mythic, 'foil', 3),
+      e('Foil Special Guests card', 6, (s) => s.specialGuests, 'foil', 3),
+      e('Foil Japan Showcase card', 9, (s) => s.japan, 'foil', 3),
+      e('Fracture foil Japan Showcase card', 1, (s) => s.fractureJapan, 'foil', 3),
+      e('Galaxy foil borderless viewport land rare', 2, (s) => s.galaxyViewport.rare, 'foil', 3),
+      e('Galaxy foil borderless viewport land mythic', 1, (s) => s.galaxyViewport.mythic, 'foil', 3),
+      e('Textless singularity foil Sothera, the Supervoid', 0.5, (s) => s.singularity, 'foil', 3), // "less than 1%"
+    ],
+  },
+  {
+    name: 'Art card or foil token',
+    outcomes: [
+      e('Foil double-sided token', 65, (s) => s.tokens, 'foil'),
+      e('Art card', 30, (s) => s.artCards),
+      e('Gold-stamped art card', 5, (s) => s.artCards, 'nonfoil', 1, { stamped: true }),
+    ],
+  },
+];
+
+let cachedEoeSheets: EoeSheets | undefined;
+
+/** Opens one Edge of Eternities pack. Slots of the same kind never repeat a card, as in print. */
+export function openEoePack(kind: PackKind, rng: Rng = Math.random, sheets: EoeSheets = (cachedEoeSheets ??= buildEoeSheets())): Pack {
+  const slots = kind === 'play' ? EOE_PLAY_BOOSTER : EOE_COLLECTOR_BOOSTER;
+  const cards: Pull[] = [];
+  slots.forEach((slot, i) => {
+    const groupOf = (x: Slot<EoeSheets>) => x.group ?? x.name;
+    const same = cards.filter((_, k) => groupOf(slots[k]!) === groupOf(slot));
+    let pull = rollSlot(slot, sheets, rng);
+    for (let tries = 0; tries < 20 && same.some((c) => c.card.id === pull.card.id); tries++) pull = rollSlot(slot, sheets, rng);
+    cards[i] = pull;
+  });
+  return { kind, set: 'eoe', cards };
+}
+
+/** Opens one pack of a set's booster. */
+export function openSetPack(set: BoosterSet, kind: PackKind, rng: Rng = Math.random): Pack {
+  return set === 'eoe' ? openEoePack(kind, rng) : openPack(kind, rng);
+}
+
+/** A set's slots as percentages, for the "Pack odds" screen. */
+export function setPackOdds(set: BoosterSet, kind: PackKind): ReturnType<typeof packOdds> {
+  if (set !== 'eoe') return packOdds(kind);
+  const sheets = (cachedEoeSheets ??= buildEoeSheets());
+  return oddsOf(kind === 'play' ? EOE_PLAY_BOOSTER : EOE_COLLECTOR_BOOSTER, sheets);
 }

@@ -57,18 +57,18 @@ export function storeSets(): StoreSet[] {
             cards: [{ id: c.id, finish: 'foil' as const }],
           })),
         // The Secret Lair drops: five cards non-foil and the bonus card (foil only).
-        ...SECRET_LAIR_DROPS.map((drop) => ({
+        ...SECRET_LAIR_DROPS.filter((d) => d.set === 'fin').map((drop) => ({
           key: `sld-drop-${drop.numbers[0]}`,
           name: drop.name,
           line: 'Secret Lair drop: 5 cards and a foil bonus card',
           price: prices.secretLairDrop,
-          cards: [...drop.numbers, drop.bonus].map((n) => {
+          cards: [...drop.numbers, ...(drop.bonus ? [drop.bonus] : [])].map((n) => {
             const c = SECRET_LAIR_CARDS.find((p) => p.number === n)!;
             return { id: c.id, finish: secretLairFinish(c) };
           }),
         })),
         // Every Secret Lair card on its own.
-        ...SECRET_LAIR_CARDS.map((c) => ({
+        ...SECRET_LAIR_CARDS.filter((c) => c.series === 'fin').map((c) => ({
           key: c.id,
           name: c.name,
           line: c.drop ? `Secret Lair (${c.drop.replace('Secret Lair x FINAL FANTASY: ', '')})` : 'Secret Lair',
@@ -99,7 +99,28 @@ export function storeSets(): StoreSet[] {
         },
       ],
     },
-    { name: 'Edge of Eternities', ready: false, items: [] },
+    {
+      name: 'Edge of Eternities',
+      ready: true,
+      items: [
+        // Secret Lair Chaos Vault: Commander Reinforcements, one drop for each Commander deck, in non-foil and galaxy foil.
+        ...SECRET_LAIR_DROPS.filter((d) => d.set === 'eoe').flatMap((drop) => {
+          const cards = drop.numbers.map((n) => SECRET_LAIR_CARDS.find((p) => p.number === n)!);
+          return [
+            { key: `sld-drop-${drop.numbers[0]}`, name: drop.name, line: 'Secret Lair drop: 5 cards, non-foil', price: prices.secretLairDrop, cards: cards.map((c) => ({ id: c.id, finish: 'nonfoil' as const })) },
+            { key: `sld-drop-${drop.numbers[0]}-galaxy`, name: drop.name, line: 'Secret Lair drop: 5 cards, galaxy foil', price: prices.secretLairGalaxyDrop, cards: cards.map((c) => ({ id: c.id, finish: 'foil' as const })) },
+          ];
+        }),
+        // Each of their cards on its own, non-foil and galaxy foil.
+        ...SECRET_LAIR_CARDS.filter((c) => c.series === 'eoe').flatMap((c) => {
+          const drop = c.drop?.replace('Commander Reinforcements: ', '') ?? 'Secret Lair';
+          return [
+            { key: c.id, name: c.name, line: `Secret Lair (${drop}), non-foil`, price: prices.secretLairSingle, cards: [{ id: c.id, finish: 'nonfoil' as const }] },
+            { key: `${c.id}-galaxy`, name: c.name, line: `Secret Lair (${drop}), galaxy foil`, price: prices.secretLairGalaxySingle, cards: [{ id: c.id, finish: 'foil' as const }] },
+          ];
+        }),
+      ],
+    },
   ];
 }
 

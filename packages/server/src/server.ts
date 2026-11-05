@@ -10,7 +10,7 @@ import { WebSocketServer } from 'ws';
 import { Lobby, type LobbyOptions } from './rooms.ts';
 import { ONBOARDING_STEPS, type AccountService, type AccountUser, type OnboardingStep } from './accounts.ts';
 import { randomInt, randomUUID } from 'node:crypto';
-import { openPack, type PackKind } from '@nexus/cards/boosters';
+import { BOOSTER_SETS, openSetPack, type BoosterSet, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
 import { ECONOMY, packsForPurchase } from './economy.ts';
 import { STARTER_CHOICES, STARTER_REF, claimStarter } from './starter.ts';
@@ -212,14 +212,15 @@ const PACK_PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, 
 const cryptoRandom = () => randomInt(2 ** 48 - 1) / 2 ** 48;
 
 async function openPackRoute(res: ServerResponse, user: AccountUser, accounts: AccountService, body: unknown): Promise<void> {
-  const { kind, count = 1 } = (body ?? {}) as { kind?: unknown; count?: unknown };
+  const { kind, count = 1, set = 'fin' } = (body ?? {}) as { kind?: unknown; count?: unknown; set?: unknown };
   if (kind !== 'play' && kind !== 'collector') return json(res, 400, { error: 'Choose a Play or Collector Booster.' });
+  if (!(BOOSTER_SETS as readonly unknown[]).includes(set)) return json(res, 400, { error: 'Choose a set with booster packs.' });
   if (count !== 1 && count !== 10) return json(res, 400, { error: 'Buy 1 or 10 packs at a time.' });
   await accounts.ensure(user);
   const { paid, total } = packsForPurchase(count);
   const price = paid * PACK_PRICES[kind];
-  // The same packs as the Packs tab has always opened, Scene Box extras included.
-  const packs = Array.from({ length: total }, () => openPack(kind, cryptoRandom));
+  // Final Fantasy: the same packs as the Packs tab has always opened, Scene Box extras included.
+  const packs = Array.from({ length: total }, () => openSetPack(set as BoosterSet, kind, cryptoRandom));
   const cards = packs.flatMap((pack) => pack.cards.map((p) => ({ id: p.card.id, finish: p.finish, count: 1 })));
   try {
     const { balance } = await accounts.grantCards(user.id, { kind: 'pack_open', ref: randomUUID(), cost: price, cards });

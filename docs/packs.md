@@ -37,16 +37,54 @@ The game never calls the Scryfall API; run the script again only to refresh
 the data. `packages/cards/src/boosters.ts` sorts the printings into print
 sheets and opens packs (`openPack('play')`); the client loads it on demand.
 
-## Edge of Eternities (in progress, 2026-11-05)
+## Edge of Eternities (built 2026-11-05)
 
-The set's printings are in `booster-cards.json` (above) and its 261 main-set
-cards that no other file defines are in `data/eoe-set.json`
-(`node packages/cards/scripts/import-sets.ts eoe`; 3 built, the rest
-`notBuilt`, Tezzeret, Cruel Captain included: the engine has no
-planeswalkers yet, so that type is allowed only on unbuilt cards). Next: its
-Play and Collector Boosters from Wizards' "Collecting Edge of Eternities"
-odds, and a set choice on the booster page with the Edge of Eternities
-showcase behind it.
+The booster page has a set choice (Final Fantasy, Edge of Eternities); each
+set shows its own pack photos and showcase art behind the page and while its
+packs open. Edge of Eternities packs cost the same as Final Fantasy's (100
+and 500 Aether Shards) and are opened by the server (`/api/packs/open` with
+`set: 'eoe'`). The Collection binder's Edge of Eternities tab groups the
+main set, Booster Fun, Stellar Sights, Commander Booster Fun, Special Guests,
+and tokens and art cards.
+
+Card data: the printings are in `booster-cards.json` (EOE, EOS, EOC, TEOE,
+AEOE, SPG 119-128), and the main set's 261 cards no other file defines are in
+`data/eoe-set.json` (`node packages/cards/scripts/import-sets.ts eoe`; 3
+built, the rest `notBuilt`, Tezzeret, Cruel Captain included: the engine has
+no planeswalkers yet, so that type is allowed only on unbuilt cards).
+
+Odds follow Wizards' "Collecting Edge of Eternities" exactly (`EOE_PLAY_BOOSTER`,
+`EOE_COLLECTOR_BOOSTER` in `src/boosters.ts`). Where Wizards writes "less than
+1%", those outcomes share what the slot's listed odds leave over (noted
+beside each in the code; e.g. the Play Booster wildcard's 0.9% is mythic
+0.5, viewport mythic 0.1, triumphant/surreal rare 0.2, mythic 0.1).
+
+| Play Booster slot | Contents |
+|---|---|
+| 6 commons | Main-set commons (81), no duplicates |
+| Common or Special Guests | A non-foil Special Guests card in 1.8% of packs |
+| 3 uncommons | Main-set uncommons (100) |
+| Wildcard | Common 12.5%, uncommon 62.5%, rare 10.6%, Stellar Sights rare 10% or mythic 2.5% (1 in 8 packs), borderless viewport land 1%, and smaller chances |
+| Rare | Rare 80.4%, mythic 14.2%, borderless triumphant or surreal space rare 2% each |
+| Foil | Common 58%, uncommon 32%, rare 6.4%, mythic 1.1%, Stellar Sights 1%+ |
+| Land | Basic 64% (foil 16%), celestial basic 16% (foil 4%) |
+| Token | A double-sided token |
+
+| Collector Booster slot | Contents |
+|---|---|
+| 5 + 4 | Foil commons and uncommons |
+| Celestial basic | Foil 66.6%, galaxy foil 33.3% |
+| Foil rare | Rare 86%, mythic 14% |
+| Commander card | Non-foil: borderless mythic 9%, extended-art rare 91% |
+| Booster Fun | Extended art 52%, viewport lands 11%, triumphant 20%, surreal space 17% |
+| Stellar Sights land | Non-foil, foil or galaxy foil; poster versions in 33.3% |
+| Foil Booster Fun | Extended art, borderless, Special Guests 6%, Japan Showcase 9% (fracture foil 1%), galaxy viewport lands 3%, the singularity foil Sothera |
+| Art card or token | Foil token 65%, art card 30%, gold-stamped art card 5% |
+
+Galaxy, fracture and singularity foils are their own printings; they're named
+as such and shown with the regular foil shine for now. Japan Showcase cards
+are in English (real non-Japanese boosters have them in Japanese a third of
+the time).
 
 ## Play Booster (built 2026-10-27)
 

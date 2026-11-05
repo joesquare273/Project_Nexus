@@ -19,9 +19,9 @@ export const SORTS: { by: SortBy; label: string }[] = [
 ];
 
 /** Sets in the collection; ones that aren't finished show greyed out as Coming soon. */
-export const SETS: { name: string; ready: boolean }[] = [
-  { name: 'Final Fantasy', ready: true },
-  { name: 'Edge of Eternities', ready: false },
+export const SETS: { code: 'fin' | 'eoe'; name: string; ready: boolean }[] = [
+  { code: 'fin', name: 'Final Fantasy', ready: true },
+  { code: 'eoe', name: 'Edge of Eternities', ready: true },
 ];
 
 /** Every printing the game knows (precons, Starter Kits), shown like booster cards. */

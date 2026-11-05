@@ -1,6 +1,7 @@
 // The Store tab (economy step E4): exclusive printings, divided by set (Final
-// Fantasy: each Chocobo Track foil on its own, and the five Chocobo Track
-// basic lands as a bundle).
+// Fantasy: Chocobo Track foils, Secret Lair drops and singles, the precons;
+// Edge of Eternities: the Commander Reinforcements Secret Lair drops and
+// their cards, non-foil and galaxy foil).
 // The game server holds the catalog and prices; an item without a price yet
 // says "Price coming soon". Buying asks first, then the server charges the
 // shards and adds the card to the collection together.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOSTER_CARDS, COLLECTOR_BOOSTER, PLAY_BOOSTER, buildSheets, openPack, otherFace, packOdds } from '../src/boosters.ts';
+import { BOOSTER_CARDS, COLLECTOR_BOOSTER, EOE_PLAY_BOOSTER, PLAY_BOOSTER, buildEoeSheets, buildSheets, openPack, openSetPack, otherFace, packOdds, setPackOdds } from '../src/boosters.ts';
 
 /** A small seeded generator (mulberry32), so the tests are repeatable. */
 function seeded(seed: number) {
@@ -139,5 +139,64 @@ describe('the other side of a pulled card', () => {
   });
   it('single-faced cards, Adventures and the melded card itself have no other side', () => {
     for (const n of ['1', '283', '99b']) expect(otherFace(byNumber(n))).toBeUndefined();
+  });
+});
+
+describe('Edge of Eternities boosters', () => {
+  const sheets = buildEoeSheets();
+  const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+
+  it('sorts the printings into the sheets Wizards describes', () => {
+    expect([sheets.commons.length, sheets.uncommons.length, sheets.rares.length, sheets.mythics.length]).toEqual([81, 100, 60, 20]);
+    expect([sheets.extended.rare.length, sheets.extended.mythic.length]).toEqual([33, 7]);
+    expect([sheets.triumphant.rare.length, sheets.triumphant.mythic.length]).toEqual([12, 4]);
+    expect([sheets.surreal.rare.length, sheets.surreal.mythic.length]).toEqual([11, 3]);
+    expect([sheets.commanderBorderless.length, sheets.commanderExtended.length]).toEqual([4, 20]);
+    expect(sheets.specialGuests).toHaveLength(10);
+    expect(sheets.japan).toHaveLength(10);
+    expect(sheets.artCards).toHaveLength(54);
+    for (const list of [sheets.stellar, sheets.stellarPoster, sheets.galaxyStellar, sheets.galaxyStellarPoster]) expect(list.rare.length + list.mythic.length).toBe(45);
+    for (const c of sheets.galaxyStellar.rare) expect(c.promoTypes).toContain('galaxyfoil');
+  });
+
+  it('a Play Booster: 14 Magic cards and a token, only from Edge of Eternities sheets', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = openSetPack('eoe', 'play', seeded(seed));
+      expect(pack.set).toBe('eoe');
+      expect(pack.cards).toHaveLength(EOE_PLAY_BOOSTER.length);
+      expect(pack.cards.filter((p) => p.card.set !== 'teoe')).toHaveLength(14);
+      for (const p of pack.cards) expect(['eoe', 'eos', 'spg', 'teoe']).toContain(p.card.set);
+      expect(pack.cards.filter((p) => p.finish === 'foil').length).toBeLessThanOrEqual(2); // the foil slot, and a foil land
+      // The commons never repeat.
+      const commons = pack.cards.slice(0, 7).map((p) => p.card.id);
+      expect(new Set(commons).size).toBe(7);
+    }
+  });
+
+  it('a Collector Booster: 15 Magic cards (10+ foils, a Stellar Sights land, a Commander card) and an art card or foil token', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = openSetPack('eoe', 'collector', seeded(seed));
+      expect(pack.cards).toHaveLength(16);
+      expect(pack.cards.filter((p) => p.card.set === 'eos')).toHaveLength(1);
+      expect(pack.cards.filter((p) => p.card.set === 'eoc')).toHaveLength(1);
+      expect(pack.cards.filter((p) => p.finish === 'foil' && p.card.set !== 'teoe').length).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it("each slot's odds add up to 100%, and the listed numbers are Wizards'", () => {
+    for (const kind of ['play', 'collector'] as const) {
+      for (const slot of setPackOdds('eoe', kind)) expect(slot.outcomes.reduce((n, x) => n + x.percent, 0)).toBeCloseTo(100, 5);
+    }
+    const wildcard = setPackOdds('eoe', 'play').find((s) => s.slot === 'Wildcard')!;
+    expect(wildcard.outcomes.find((x) => x.label === 'Stellar Sights rare')!.percent).toBeCloseTo(10, 5);
+    expect(wildcard.outcomes.find((x) => x.label === 'Uncommon')!.percent).toBeCloseTo(62.5, 5);
+    // Stellar Sights in 1 of 8 Play Boosters.
+    const stellar = wildcard.outcomes.filter((x) => x.label.startsWith('Stellar Sights')).reduce((n, x) => n + x.percent, 0);
+    expect(stellar).toBeCloseTo(12.5, 5);
+  });
+
+  it('Final Fantasy packs are unchanged by the second set', () => {
+    expect(openSetPack('fin', 'play', seeded(7))).toEqual(openPack('play', seeded(7)));
+    expect(setPackOdds('fin', 'collector')).toEqual(packOdds('collector'));
   });
 });

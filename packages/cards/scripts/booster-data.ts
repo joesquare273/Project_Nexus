@@ -2,8 +2,8 @@
 // data/booster-cards.json. Final Fantasy: the main set (FIN), Through the
 // Ages (FCA), the Commander set's printings (FIC), tokens (TFIN), art cards
 // (AFIN) and the Scene Box cards (AFIC). Edge of Eternities: the main set
-// (EOE), Stellar Sights (EOS), the Commander set (EOC), tokens (TEOE) and art
-// cards (AEOE). The Packs tab opens boosters from this file, so
+// (EOE), Stellar Sights (EOS), the Commander set (EOC), tokens (TEOE), art
+// cards (AEOE) and its ten Special Guests (SPG 119-128). The Packs tab opens boosters from this file, so
 // the game itself never calls api.scryfall.com.
 //
 //   npm run scryfall:boosters
@@ -14,7 +14,8 @@
 import { writeFileSync } from 'node:fs';
 import type { BoosterCard } from '../src/boosters.ts';
 
-const SETS = ['fin', 'fca', 'fic', 'tfin', 'afin', 'afic', 'eoe', 'eos', 'eoc', 'teoe', 'aeoe'];
+/** Scryfall searches: a whole set, or part of one (`spg cn>=119 cn<=128`: Edge of Eternities' Special Guests). */
+const SETS = ['fin', 'fca', 'fic', 'tfin', 'afin', 'afic', 'eoe', 'eos', 'eoc', 'teoe', 'aeoe', 'spg cn>=119 cn<=128'];
 const HEADERS = { 'User-Agent': 'ProjectNexus/0.1 (personal project; card data script)', Accept: 'application/json' };
 const DELAY_MS = 600;
 const LOCKOUT_MS = 31_000;

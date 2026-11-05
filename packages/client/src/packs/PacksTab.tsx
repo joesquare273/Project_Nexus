@@ -1,10 +1,10 @@
-// The Packs tab: choose a Final Fantasy booster, tear it open, flip through
+// The Packs tab: choose a set and a booster, tear it open, flip through
 // the cards (the best one waits at the back), see what was new, and browse
 // the collection. Packs cost Aether Shards: the game server opens them and
 // adds the cards to your account's collection (packs/collection.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { finishLook, otherFace, type BoosterCard, type OtherFace, type Pack, type PackKind, type Pull } from '@nexus/cards/boosters';
+import { finishLook, otherFace, type BoosterCard, type BoosterSet, type OtherFace, type Pack, type PackKind, type Pull } from '@nexus/cards/boosters';
 import { CardShine } from '../components/Card.tsx';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
@@ -17,11 +17,23 @@ import './packs.css';
 type Boosters = typeof import('@nexus/cards/boosters');
 
 /** Photos of the real packs (packages/client/public/packs). Until they're there, the drawn pack shows. */
-const PACK_PHOTOS: Record<PackKind, string> = { play: '/packs/ff-play-booster.png', collector: '/packs/ff-collector-booster.png' };
+const PACK_PHOTOS: Record<BoosterSet, Record<PackKind, string>> = {
+  fin: { play: '/packs/ff-play-booster.png', collector: '/packs/ff-collector-booster.png' },
+  eoe: { play: '/packs/eoe-play-booster.png', collector: '/packs/eoe-collector-booster.png' },
+};
+
+/** Each set's name on the shop's set choice and on the drawn pack. */
+const SET_NAMES: Record<BoosterSet, { name: string; brand: string }> = {
+  fin: { name: 'Final Fantasy', brand: 'FINAL FANTASY' },
+  eoe: { name: 'Edge of Eternities', brand: 'EDGE OF ETERNITIES' },
+};
 
 const PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };
 
-const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready: boolean }[] = [
+type PackInfo = { kind: PackKind; title: string; blurb: string; art: string; ready: boolean };
+
+const PACKS: Record<BoosterSet, PackInfo[]> = {
+ fin: [
   {
     kind: 'play',
     title: 'Play Booster',
@@ -36,7 +48,24 @@ const PACKS: { kind: PackKind; title: string; blurb: string; art: string; ready:
     art: 'Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel',
     ready: true,
   },
-];
+],
+  eoe: [
+    {
+      kind: 'play',
+      title: 'Play Booster',
+      blurb: '14 cards and a double-sided token. One rare or mythic, one foil, a Stellar Sights land in 1 of 8 packs, and a chance at Special Guests.',
+      art: 'Sothera, the Supervoid',
+      ready: true,
+    },
+    {
+      kind: 'collector',
+      title: 'Collector Booster',
+      blurb: '15 cards and an art card or foil token: 10+ foils, a Stellar Sights land in every pack, extended art, borderless, Japan Showcase and galaxy foils.',
+      art: 'Tezzeret, Cruel Captain',
+      ready: true,
+    },
+  ],
+};
 
 /** The Magic card back, from Scryfall's image servers. */
 const CARD_BACK = 'https://backs.scryfall.io/large/0/a/0aeebaf5-8c7d-4636-9e82-8c27447861f7.jpg';
@@ -63,6 +92,8 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
   const [view, setView] = useState<View>(viewFor(section));
   useEffect(() => setView(viewFor(section)), [section]);
   const [odds, setOdds] = useState<PackKind | null>(null);
+  /** The set whose boosters the shop shows. */
+  const [set, setSet] = useState<BoosterSet>('fin');
   const [preview, setPreview] = useState<BoosterCard | null>(null);
   const [muted, setMuted] = useState(!soundOn());
 
@@ -75,14 +106,14 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
       .then(setCollection, (e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server. Is it running (npm run server)?' : e.message));
   }, []);
 
-  const open = async (kind: PackKind, count: 1 | 10 = 1) => {
+  const open = async (kind: PackKind, count: 1 | 10 = 1, from: BoosterSet = set) => {
     if (!collection || busy) return;
     setBusy(true);
     setProblem(null);
     try {
       const token = await accessToken();
       if (!token) throw new Error('Sign in first.');
-      const { packs, balance } = await buyPacks(token, kind, count);
+      const { packs, balance } = await buyPacks(token, kind, count, from);
       showShards(balance);
       // Each pack's NEW badges count the packs opened before it.
       let next = collection;
@@ -105,8 +136,10 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
   if (!collection && problem) return <p className="packs-loading">{problem}</p>;
   if (!mod || !collection) return <p className="packs-loading">Shuffling the print sheets…</p>;
 
+  // While packs are open, their own set's art stays behind them.
+  const shownSet: BoosterSet = view.kind === 'open' || view.kind === 'summary' ? (view.opened[0]?.pack.set ?? 'fin') : set;
   return (
-    <div className={`packs ${section === 'packs' ? 'with-showcase set-fin' : ''}`}>
+    <div className={`packs ${section === 'packs' ? `with-showcase set-${shownSet}` : ''}`}>
       {section === 'packs' && <div className="set-showcase" aria-hidden="true" />}
       {section === 'packs' && (
         <div className="packs-bar">
@@ -125,7 +158,16 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
       )}
 
       {problem && view.kind === 'shop' && <p className="account-error">{problem}</p>}
-      {view.kind === 'shop' && <Shop mod={mod} busy={busy} onOpen={(k, n) => void open(k, n)} onOdds={setOdds} />}
+      {view.kind === 'shop' && (
+        <div className="pack-sets" role="tablist" aria-label="Set">
+          {(Object.keys(SET_NAMES) as BoosterSet[]).map((code) => (
+            <button key={code} role="tab" aria-selected={set === code} className={set === code ? 'chosen' : ''} onClick={() => setSet(code)}>
+              {SET_NAMES[code].name}
+            </button>
+          ))}
+        </div>
+      )}
+      {view.kind === 'shop' && <Shop mod={mod} set={set} busy={busy} onOpen={(k, n) => void open(k, n)} onOdds={setOdds} />}
       {view.kind === 'open' && (
         <>
           {view.opened.length > 1 && (
@@ -140,7 +182,7 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
             key={view.index}
             pack={view.opened[view.index]!.pack}
             fresh={view.opened[view.index]!.fresh}
-            art={packArt(mod, view.opened[view.index]!.pack.kind)}
+            art={packArt(mod, view.opened[view.index]!.pack.set ?? 'fin', view.opened[view.index]!.pack.kind)}
             onDone={() => setView(view.index + 1 < view.opened.length ? { ...view, index: view.index + 1 } : { kind: 'summary', opened: view.opened })}
           />
         </>
@@ -149,7 +191,7 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
         <Summary
           opened={view.opened}
           onPreview={setPreview}
-          onAgain={() => void open(view.opened[0]!.pack.kind)}
+          onAgain={() => void open(view.opened[0]!.pack.kind, 1, view.opened[0]!.pack.set ?? 'fin')}
           onCollection={() => (onSection ? onSection('collection') : setView({ kind: 'collection' }))}
           onShop={() => setView({ kind: 'shop' })}
         />
@@ -157,7 +199,7 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
       {view.kind === 'collection' && <Binder mod={mod} collection={collection} onPreview={setPreview} />}
       {view.kind === 'decks' && <DecksView mod={mod} collection={collection} onPreview={setPreview} />}
 
-      {odds && <Odds mod={mod} kind={odds} onClose={() => setOdds(null)} />}
+      {odds && <Odds mod={mod} set={set} kind={odds} onClose={() => setOdds(null)} />}
       {preview && (
         <div className="packs-preview" aria-hidden="true">
           <img src={preview.images[0]!.large} alt="" />
@@ -172,14 +214,14 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
 // Choosing a pack
 // ---------------------------------------------------------------------------
 
-function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onOpen: (k: PackKind, count: 1 | 10) => void; onOdds: (k: PackKind) => void }) {
+function Shop({ mod, set, busy, onOpen, onOdds }: { mod: Boosters; set: BoosterSet; busy: boolean; onOpen: (k: PackKind, count: 1 | 10) => void; onOdds: (k: PackKind) => void }) {
   return (
     <div className="pack-shop">
-      {PACKS.map((p) => {
-        const art = packArt(mod, p.kind);
+      {PACKS[set].map((p) => {
+        const art = packArt(mod, set, p.kind);
         return (
           <div key={p.kind} className={`pack-tile ${p.ready ? '' : 'soon'}`}>
-            <PackArt kind={p.kind} art={art} />
+            <PackArt set={set} kind={p.kind} art={art} />
             <h3>{p.title}</h3>
             <p>{p.blurb}</p>
             <div className="pack-tile-buttons">
@@ -207,17 +249,17 @@ function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onO
 }
 
 /** The artwork on a pack's front (never a card from inside it). */
-function packArt(mod: Boosters, kind: PackKind): BoosterCard | undefined {
-  const name = PACKS.find((p) => p.kind === kind)!.art;
-  return mod.BOOSTER_CARDS.find((c) => c.name === name && c.set === 'fin');
+function packArt(mod: Boosters, set: BoosterSet, kind: PackKind): BoosterCard | undefined {
+  const name = PACKS[set].find((p) => p.kind === kind)!.art;
+  return mod.BOOSTER_CARDS.find((c) => c.name === name && c.set === set);
 }
 
-function PackArt({ kind, art, glow = 0, tear = 0 }: { kind: PackKind; art: BoosterCard | undefined; glow?: number; tear?: number }) {
+function PackArt({ set, kind, art, glow = 0, tear = 0 }: { set: BoosterSet; kind: PackKind; art: BoosterCard | undefined; glow?: number; tear?: number }) {
   const [photo, setPhoto] = useState(true);
   if (photo) {
     return (
       <div className={`pack-art pack-photo pack-${kind} glow-${glow}`} style={{ ['--tear' as string]: tear }}>
-        <img src={PACK_PHOTOS[kind]} alt={`FINAL FANTASY ${kind === 'play' ? 'Play' : 'Collector'} Booster`} draggable={false} onError={() => setPhoto(false)} />
+        <img src={PACK_PHOTOS[set][kind]} alt={`${SET_NAMES[set].brand} ${kind === 'play' ? 'Play' : 'Collector'} Booster`} draggable={false} onError={() => setPhoto(false)} />
         <div className="pack-seam" />
       </div>
     );
@@ -227,7 +269,7 @@ function PackArt({ kind, art, glow = 0, tear = 0 }: { kind: PackKind; art: Boost
       <div className="pack-crimp top" />
       <div className="pack-window">{art && <img src={art.images[0]!.artCrop} alt="" draggable={false} />}</div>
       <div className="pack-label">
-        <span className="pack-brand">FINAL FANTASY</span>
+        <span className="pack-brand">{SET_NAMES[set].brand}</span>
         <span className="pack-kind">{kind === 'play' ? 'Play Booster' : 'Collector Booster'}</span>
       </div>
       <div className="pack-crimp bottom" />
@@ -236,12 +278,14 @@ function PackArt({ kind, art, glow = 0, tear = 0 }: { kind: PackKind; art: Boost
   );
 }
 
-function Odds({ mod, kind, onClose }: { mod: Boosters; kind: PackKind; onClose: () => void }) {
-  const odds = useMemo(() => mod.packOdds(kind), [mod, kind]);
+function Odds({ mod, set, kind, onClose }: { mod: Boosters; set: BoosterSet; kind: PackKind; onClose: () => void }) {
+  const odds = useMemo(() => mod.setPackOdds(set, kind), [mod, set, kind]);
   return (
     <div className="packs-modal" role="dialog" aria-label="Pack odds" onClick={onClose}>
       <div className="packs-modal-body" onClick={(e) => e.stopPropagation()}>
-        <h3>{kind === 'play' ? 'Play Booster' : 'Collector Booster'} odds</h3>
+        <h3>
+          {SET_NAMES[set].name} {kind === 'play' ? 'Play Booster' : 'Collector Booster'} odds
+        </h3>
         {odds.map((s, i) => (
           <div key={i} className="odds-slot">
             <div className="odds-slot-name">
@@ -262,8 +306,16 @@ function Odds({ mod, kind, onClose }: { mod: Boosters; kind: PackKind; onClose: 
           </div>
         ))}
         <p className="fineprint">
-          Odds follow Wizards of the Coast's published Final Fantasy booster odds. Scene Box cards aren't in real boosters; they're added here at small odds.
-          {kind === 'collector' && ' At most one of the three Booster Fun rare slots is foil.'}
+          {set === 'eoe' ? (
+            <>
+              Odds follow Wizards of the Coast's "Collecting Edge of Eternities" article. Where it says "less than 1%", those outcomes share what the slot's other odds leave over. Japan Showcase cards are in English here.
+            </>
+          ) : (
+            <>
+              Odds follow Wizards of the Coast's published Final Fantasy booster odds. Scene Box cards aren't in real boosters; they're added here at small odds.
+              {kind === 'collector' && ' At most one of the three Booster Fun rare slots is foil.'}
+            </>
+          )}
         </p>
         <button className="primary" onClick={onClose}>
           Close
@@ -370,7 +422,7 @@ function Opening({ pack, fresh, art, onDone }: { pack: Pack; fresh: boolean[]; a
             if (tear < 1) setTear(0);
           }}
         >
-          <PackArt kind={pack.kind} art={art} glow={best} tear={tear} />
+          <PackArt set={pack.set ?? 'fin'} kind={pack.kind} art={art} glow={best} tear={tear} />
         </div>
         <p className="pack-hint">Drag across the top of the pack to tear it open, or press Space.</p>
         <button onClick={rip}>Tear open</button>
@@ -510,7 +562,10 @@ function Summary({
   );
 }
 
-const GROUPS: { name: string; test: (c: BoosterCard) => boolean; precons?: true; secretLair?: true }[] = [
+type Group = { name: string; test: (c: BoosterCard) => boolean; precons?: true; secretLair?: true };
+const n = (c: BoosterCard) => parseInt(c.number, 10);
+
+const GROUPS: Group[] = [
   { name: 'Main set', test: (c) => c.set === 'fin' && !!c.booster },
   { name: 'Booster Fun', test: (c) => c.set === 'fin' && !c.booster && !c.promoTypes?.includes('starterdeck') },
   { name: 'Through the Ages', test: (c) => c.set === 'fca' },
@@ -524,6 +579,18 @@ const GROUPS: { name: string; test: (c: BoosterCard) => boolean; precons?: true;
   { name: 'Tokens and art cards', test: (c) => c.set === 'tfin' || c.set === 'afin' },
 ];
 
+/** Edge of Eternities, sheet by sheet (cards/src/boosters.ts). */
+const EOE_GROUPS: Group[] = [
+  { name: 'Main set', test: (c) => c.set === 'eoe' && n(c) <= 276 },
+  { name: 'Booster Fun', test: (c) => c.set === 'eoe' && n(c) >= 277 && n(c) <= 392 },
+  { name: 'Stellar Sights', test: (c) => c.set === 'eos' },
+  { name: 'Commander Booster Fun', test: (c) => c.set === 'eoc' && ((n(c) >= 1 && n(c) <= 4) || (n(c) >= 25 && n(c) <= 44)) },
+  { name: 'Special Guests', test: (c) => c.set === 'spg' },
+  { name: 'Secret Lair', test: () => true, secretLair: true },
+  { name: 'Tokens and art cards', test: (c) => c.set === 'teoe' || c.set === 'aeoe' },
+];
+const GROUPS_BY_SET: Record<'fin' | 'eoe', Group[]> = { fin: GROUPS, eoe: EOE_GROUPS };
+
 const SHOWS: { show: Show; label: string }[] = [
   { show: 'all', label: 'All' },
   { show: 'owned', label: 'Owned' },
@@ -531,11 +598,16 @@ const SHOWS: { show: Show; label: string }[] = [
 ];
 
 function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Collection; onPreview: (c: BoosterCard | null) => void }) {
+  const [binderSet, setBinderSet] = useState<'fin' | 'eoe'>('fin');
   const [group, setGroup] = useState(0);
   const [show, setShow] = useState<Show>('all');
   const [sort, setSort] = useState<SortBy>('number');
-  const g = GROUPS[group]!;
-  const cards = useMemo(() => (g.precons ? PRECON_CARDS : g.secretLair ? mod.SECRET_LAIR_CARDS : mod.BOOSTER_CARDS.filter(g.test)), [mod, g]);
+  const groups = GROUPS_BY_SET[binderSet];
+  const g = groups[group] ?? groups[0]!;
+  const cards = useMemo(
+    () => (g.precons ? PRECON_CARDS : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
+    [mod, g, binderSet],
+  );
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;
   const shown = useMemo(() => browse(cards, collection, show, sort), [cards, collection, show, sort]);
   return (
@@ -543,14 +615,25 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
       <div className="binder-head">
         <div className="binder-sets" role="tablist" aria-label="Sets">
           {SETS.map((set) => (
-            <button key={set.name} role="tab" aria-selected={set.ready} className={set.ready ? 'chosen' : 'soon'} disabled={!set.ready} title={set.ready ? undefined : 'Coming soon'}>
+            <button
+              key={set.name}
+              role="tab"
+              aria-selected={binderSet === set.code}
+              className={!set.ready ? 'soon' : binderSet === set.code ? 'chosen' : ''}
+              disabled={!set.ready}
+              title={set.ready ? undefined : 'Coming soon'}
+              onClick={() => {
+                setBinderSet(set.code);
+                setGroup(0);
+              }}
+            >
               {set.name}
               {!set.ready && <span className="tag">Coming soon</span>}
             </button>
           ))}
         </div>
         <div className="binder-groups">
-          {GROUPS.map((x, i) => (
+          {groups.map((x, i) => (
             <button key={x.name} className={i === group ? 'chosen' : ''} onClick={() => setGroup(i)}>
               {x.name}
             </button>
