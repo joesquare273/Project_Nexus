@@ -18,10 +18,6 @@
 .packs.set-fin {
   --set-showcase: url('/packs/ff-showcase.jpg');
 }
-/* The body's own background would cover the art; the window's (the same color) shows instead. */
-body:has(.set-showcase) {
-  background: none;
-}
 .set-showcase {
   position: fixed;
   inset: 0;
@@ -34,16 +30,37 @@ body:has(.set-showcase) {
   position: absolute;
   inset: -24px;
   background: var(--set-showcase) center 20% / cover no-repeat;
-  filter: blur(4px) saturate(1) brightness(0.62);
-  opacity: 0.62;
+  filter: blur(4px) saturate(0.8) brightness(0.8);
+  opacity: 0.75;
 }
 .set-showcase::after {
   content: '';
   position: absolute;
   inset: 0;
-  /* Fades into the table color at the edges and behind the text. */
-  background: radial-gradient(ellipse at 50% 35%, rgba(8, 14, 24, 0.15), rgba(8, 14, 24, 0.75) 75%), linear-gradient(rgba(8, 14, 24, 0.55), transparent 30%, transparent 70%, rgba(8, 14, 24, 0.8));
+  /* A soft neutral gray wash (not the table's navy), a little deeper at the edges. */
+  background: radial-gradient(ellipse at 50% 35%, rgba(58, 60, 64, 0.25), rgba(44, 46, 50, 0.55) 80%), linear-gradient(rgba(40, 42, 46, 0.35), transparent 25%, transparent 75%, rgba(40, 42, 46, 0.5));
 }
+/* Light text over the lighter art. */
+.packs.with-showcase .pack-tile p,
+.page:has(.with-showcase) .page-title p {
+  color: #f1efe9;
+}
+.page:has(.with-showcase) .page-title h1,
+.page:has(.with-showcase) .page-title p,
+.packs.with-showcase .pack-tile h3,
+.packs.with-showcase .pack-tile p,
+.packs.with-showcase .reveal-caption,
+.packs.with-showcase .pack-hint,
+.packs.with-showcase .reveal-count {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.5);
+}
+html:has(.set-showcase) {
+  background: #2c2e32;
+}
+body:has(.set-showcase) {
+  background: none;
+}
+
 .packs-loading {
   color: var(--muted);
   padding: 60px 0;
@@ -88,7 +105,45 @@ body:has(.set-showcase) {
 }
 .pack-tile-buttons {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
+  align-items: stretch;
+}
+.pack-tile-buttons .pack-odds {
+  flex-basis: 100%;
+  padding: 2px 8px;
+  font-size: 0.85em;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: #f1efe9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+/* "1 pack" / "10 + 1 pack", with the price underneath. */
+.buy-pack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 104px;
+  padding: 6px 14px;
+  line-height: 1.15;
+}
+.buy-pack-count {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pack-tile-buttons > button {
+  white-space: nowrap;
+}
+.buy-pack-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85em;
+  opacity: 0.9;
 }
 .pack-tile .pack-art {
   animation: pack-float 4s ease-in-out infinite;

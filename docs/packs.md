@@ -1,9 +1,10 @@
 # Packs tab: Final Fantasy booster packs
 
 The booster page and pack opening show the set's showcase art behind them,
-fixed to the window, blurred and darkened (`.set-showcase` in
+fixed to the window, blurred under a soft gray wash (lighter and grayer at the user's request, 2026-11-05; `.set-showcase` in
 `packs/packs.css`; each set's class picks its picture: `set-fin` uses
-`public/packs/ff-showcase.jpg`). The pack and showcase pictures in
+`public/packs/ff-showcase.jpg`). The buy buttons read "1 pack" and "10 + 1 pack" with the Aether Shard price
+underneath (user, 2026-11-05). The pack and showcase pictures in
 `public/packs/` were supplied by the user (2026-11-05).
 
 The menu's **Packs** tab opens Final Fantasy booster packs for collecting.

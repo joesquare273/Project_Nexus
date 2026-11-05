@@ -185,13 +185,15 @@ function Shop({ mod, busy, onOpen, onOdds }: { mod: Boosters; busy: boolean; onO
             <div className="pack-tile-buttons">
               {p.ready ? (
                 <>
-                  <button className="primary" disabled={busy} onClick={() => onOpen(p.kind, 1)}>
-                    Buy and open <ShardIcon size={16} /> {PRICES[p.kind]}
+                  <button className="primary buy-pack" disabled={busy} aria-label={`Buy and open 1 ${p.title} for ${PRICES[p.kind]} Aether Shards`} onClick={() => onOpen(p.kind, 1)}>
+                    <span className="buy-pack-count">1 pack</span>
+                    <span className="buy-pack-price"><ShardIcon size={14} /> {PRICES[p.kind].toLocaleString()}</span>
                   </button>
-                  <button disabled={busy} title="Ten packs and one more free" onClick={() => onOpen(p.kind, 10)}>
-                    Buy 10 (+1 free) <ShardIcon size={16} /> {(PRICES[p.kind] * 10).toLocaleString()}
+                  <button className="buy-pack" disabled={busy} title="Ten packs and one more free" aria-label={`Buy and open 10 ${p.title}s plus 1 free for ${(PRICES[p.kind] * 10).toLocaleString()} Aether Shards`} onClick={() => onOpen(p.kind, 10)}>
+                    <span className="buy-pack-count">10 + 1 pack</span>
+                    <span className="buy-pack-price"><ShardIcon size={14} /> {(PRICES[p.kind] * 10).toLocaleString()}</span>
                   </button>
-                  <button onClick={() => onOdds(p.kind)}>Pack odds</button>
+                  <button className="ghost pack-odds" onClick={() => onOdds(p.kind)}>Pack odds</button>
                 </>
               ) : (
                 <span className="tag">Coming next</span>
