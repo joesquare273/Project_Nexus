@@ -1,7 +1,9 @@
-// Saves every printing of the Final Fantasy sets that booster packs can hold
-// to data/booster-cards.json: the main set (FIN), Through the Ages (FCA), the
-// Commander set's printings (FIC), tokens (TFIN), art cards (AFIN) and the
-// Scene Box cards (AFIC). The Packs tab opens boosters from this file, so
+// Saves every printing of the sets that booster packs can hold to
+// data/booster-cards.json. Final Fantasy: the main set (FIN), Through the
+// Ages (FCA), the Commander set's printings (FIC), tokens (TFIN), art cards
+// (AFIN) and the Scene Box cards (AFIC). Edge of Eternities: the main set
+// (EOE), Stellar Sights (EOS), the Commander set (EOC), tokens (TEOE) and art
+// cards (AEOE). The Packs tab opens boosters from this file, so
 // the game itself never calls api.scryfall.com.
 //
 //   npm run scryfall:boosters
@@ -12,7 +14,7 @@
 import { writeFileSync } from 'node:fs';
 import type { BoosterCard } from '../src/boosters.ts';
 
-const SETS = ['fin', 'fca', 'fic', 'tfin', 'afin', 'afic'];
+const SETS = ['fin', 'fca', 'fic', 'tfin', 'afin', 'afic', 'eoe', 'eos', 'eoc', 'teoe', 'aeoe'];
 const HEADERS = { 'User-Agent': 'ProjectNexus/0.1 (personal project; card data script)', Accept: 'application/json' };
 const DELAY_MS = 600;
 const LOCKOUT_MS = 31_000;

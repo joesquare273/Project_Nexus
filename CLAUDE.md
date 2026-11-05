@@ -37,6 +37,8 @@ this repo, not only in local memory.
   The two Edge of Eternities precons (Counter Intelligence, World Shaper) are
   imported too (`import-precons.ts eoc`, data in `eoc.json` and
   `eoc-precons.json`): build their cards in groups next (user, 2026-11-04).
+  The Edge of Eternities main set is imported for its packs
+  (`import-sets.ts eoe`, `eoe-set.json`; 2026-11-05).
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).
 - **Tokens come from Scryfall too**, matched by the exact token printing each

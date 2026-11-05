@@ -1,39 +1,52 @@
-// Imports the Final Fantasy main set (FIN) and Final Fantasy: Through the
-// Ages (FCA) from MTGJSON, for sealed play, and writes data/fin-set.json:
-// definitions for every card that isn't already defined elsewhere (the
-// Starter Kits, the precons, lands, tokens).
+// Imports a set's cards from MTGJSON and writes their definitions: every
+// card that isn't already defined elsewhere (the Starter Kits, the precons,
+// lands, tokens, the other imported sets).
 //
-//   node packages/cards/scripts/import-sets.ts
+//   node packages/cards/scripts/import-sets.ts        # Final Fantasy (FIN, FCA) -> data/fin-set.json
+//   node packages/cards/scripts/import-sets.ts eoe    # Edge of Eternities (EOE) -> data/eoe-set.json
 //
 // MTGJSON's set files are static downloads (no API rate limit). Run
 // `npm run scryfall` afterwards for images and Oracle text.
 //
 // Cards are built automatically only when the engine covers all of their
 // text (see recognize.ts); the rest are marked `notBuilt`. Cards built by
-// hand in fin-set.json are kept as they are when this runs again.
+// hand in a set's file are kept as they are when this runs again.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import type { CardDefinition } from '@nexus/engine';
 import { define, type MtgjsonCard } from './recognize.ts';
+import eoc from '../data/eoc.json' with { type: 'json' };
 import fic from '../data/fic.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 
-/** Sets to import, and which collector numbers are the set's own cards (not showcase variants). */
-const SETS: { code: string; maxNumber: number }[] = [
-  { code: 'FIN', maxNumber: 309 },
-  { code: 'FCA', maxNumber: 64 },
-];
+/** Each import: its sets, which collector numbers are the set's own cards (not showcase variants), and the output file. */
+const IMPORTS = {
+  fin: { sets: [{ code: 'FIN', maxNumber: 309 }, { code: 'FCA', maxNumber: 64 }], file: 'fin-set.json' },
+  // 1-276: the main set with its basic lands; 277+ are borderless, extended-art and Japan Showcase variants.
+  eoe: { sets: [{ code: 'EOE', maxNumber: 276 }], file: 'eoe-set.json' },
+} as const;
+const which = (process.argv[2] ?? 'fin') as keyof typeof IMPORTS;
+if (!IMPORTS[which]) throw new Error(`Unknown import "${which}"; use ${Object.keys(IMPORTS).join(' or ')}.`);
+const SETS = IMPORTS[which].sets;
+const OUT = new URL(`../data/${IMPORTS[which].file}`, import.meta.url);
 
-const OUT = new URL('../data/fin-set.json', import.meta.url);
+/** Sets imported before this one (earlier in IMPORTS): a card they already define (a reprint) isn't defined again. */
+const order = Object.keys(IMPORTS) as (keyof typeof IMPORTS)[];
+const otherSets = order
+  .slice(0, order.indexOf(which))
+  .map((k) => IMPORTS[k])
+  .map((i) => new URL(`../data/${i.file}`, import.meta.url))
+  .filter((u) => existsSync(u))
+  .flatMap((u) => JSON.parse(readFileSync(u, 'utf8')) as CardDefinition[]);
 
-/** Cards defined elsewhere keep their definitions; fin-set.json only adds what's missing. */
-const OTHER = [...lands, ...fin, ...fic, ...tokens] as CardDefinition[];
+/** Cards defined elsewhere keep their definitions; this set's file only adds what's missing. */
+const OTHER = [...lands, ...fin, ...fic, ...eoc, ...tokens, ...otherSets] as CardDefinition[];
 const definedNames = new Set(OTHER.map((c) => c.name));
 const usedIds = new Set(OTHER.map((c) => c.id));
 
-/** Cards already built by hand in fin-set.json survive a re-import. */
+/** Cards already built by hand in this set's file survive a re-import. */
 const previous = existsSync(OUT) ? (JSON.parse(readFileSync(OUT, 'utf8')) as CardDefinition[]) : [];
 const handBuilt = new Map(previous.filter((d) => !d.notBuilt).map((d) => [d.name, d]));
 
@@ -71,4 +84,4 @@ for (const { code, maxNumber } of SETS) {
 }
 
 writeFileSync(OUT, `[\n${defs.map((d) => `  ${JSON.stringify(d)}`).join(',\n')}\n]\n`);
-console.log(`\n${defs.length} definitions in fin-set.json; ${built} fully built, ${defs.length - built} not built yet.`);
+console.log(`\n${defs.length} definitions in ${IMPORTS[which].file}; ${built} fully built, ${defs.length - built} not built yet.`);

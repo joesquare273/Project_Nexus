@@ -37,6 +37,8 @@ const SUBTYPES_BY_TYPE: Partial<Record<CardType, readonly string[]>> = {
   sorcery: typeLists.spell,
 };
 const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
+/** Subtypes of the card types only unbuilt cards may have (a planeswalker's "Tezzeret"). */
+const UNBUILT_SUBTYPES: Record<string, readonly string[]> = { planeswalker: typeLists.planeswalker, battle: typeLists.battle };
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
@@ -162,6 +164,9 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
 }
 
 /** Returns a list of problems with one card. Empty means valid. */
+/** Card types the engine doesn't play yet. */
+const UNBUILT_TYPES = ['planeswalker', 'battle'] as const;
+
 export function validateCardDefinition(raw: unknown): string[] {
   const errors: string[] = [];
   if (typeof raw !== 'object' || raw === null) return ['Card must be an object.'];
@@ -171,13 +176,16 @@ export function validateCardDefinition(raw: unknown): string[] {
 
   if (typeof c.id !== 'string' || !ID_PATTERN.test(c.id)) err('id must be lowercase-kebab-case.');
   if (typeof c.name !== 'string' || c.name.trim() === '') err('name is required.');
-  if (!Array.isArray(c.types) || c.types.length === 0 || c.types.some((t) => !CARD_TYPES.includes(t))) {
-    err(`types must be a non-empty list drawn from ${CARD_TYPES.join(', ')}.`);
+  // A card type the engine doesn't have yet (planeswalker, battle) is allowed only on a card that isn't built:
+  // it shows everywhere with its real image but can't be played (Tezzeret, Cruel Captain).
+  const notYet = (t: string) => c.notBuilt === true && (UNBUILT_TYPES as readonly string[]).includes(t);
+  if (!Array.isArray(c.types) || c.types.length === 0 || c.types.some((t) => !CARD_TYPES.includes(t) && !notYet(t))) {
+    err(`types must be a non-empty list drawn from ${CARD_TYPES.join(', ')} (or ${UNBUILT_TYPES.join(', ')} on a card marked notBuilt).`);
     return errors;
   }
   for (const st of c.supertypes ?? []) if (!SUPERTYPES.includes(st)) err(`unknown supertype "${st}".`);
   // Each subtype must belong to one of the card's types (rule 205.3d), per Scryfall's official lists.
-  const allowed = new Set(c.types.flatMap((t) => SUBTYPES_BY_TYPE[t] ?? []));
+  const allowed = new Set(c.types.flatMap((t) => SUBTYPES_BY_TYPE[t] ?? UNBUILT_SUBTYPES[t] ?? []));
   for (const sub of c.subtypes ?? []) {
     if (!allowed.has(sub)) err(`"${sub}" is not a ${c.types.join(' or ')} subtype.`);
   }

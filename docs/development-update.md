@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities card data, for its packs
+
+`booster-data.ts` now also saves the Edge of Eternities printings (EOE, EOS
+Stellar Sights, EOC, TEOE, AEOE: 837 more, 2,100 in all), and
+`import-sets.ts eoe` writes `eoe-set.json`, the main set's 261 cards no other
+file defines (`notBuilt` but for 3). Each set import defers only to sets
+imported before it, so rerunning the Final Fantasy import never drops a
+reprint. The pack odds come next, from Wizards' article (magic.wizards.com
+must be allowed in the cloud session's network settings).
+
 ### Final Fantasy showcase art behind the packs
 
 The Shop's booster page and pack opening show the Final Fantasy showcase

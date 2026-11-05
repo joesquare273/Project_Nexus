@@ -10,6 +10,7 @@ import finSet from '../data/fin-set.json' with { type: 'json' };
 import ficPrecons from '../data/fic-precons.json' with { type: 'json' };
 import eoc from '../data/eoc.json' with { type: 'json' };
 import eocPrecons from '../data/eoc-precons.json' with { type: 'json' };
+import eoeSet from '../data/eoe-set.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import preconPrintings from '../data/precon-printings.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
@@ -29,7 +30,8 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
  */
 // store-cards.json: cards sold only in the Store that no set file defines (Snapcaster Mage).
 // eoc.json: the Edge of Eternities Commander precons' cards no other file defines (import-precons.ts eoc).
-const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...tokens];
+// eoe-set.json: the rest of the Edge of Eternities main set, for its packs (import-sets.ts eoe).
+const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...tokens];
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 

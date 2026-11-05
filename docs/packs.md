@@ -27,10 +27,26 @@ servers):
 | TFIN | Tokens (37) |
 | AFIN | Art cards (53) |
 | AFIC | Scene Box art cards (24) |
+| EOE | Edge of Eternities (400): 1–276 main set with basics, 277–316 borderless, 317–356 extended art, 357–366 and 383–392 Japan Showcase, 367–381 galaxy foils, 382 the Sothera headliner, 393+ promos |
+| EOS | Stellar Sights (180): the bonus sheet's 45 lands, with borderless, poster and galaxy foil versions |
+| EOC | The Commander set (191) |
+| TEOE | Tokens (12) |
+| AEOE | Art cards (54) |
 
 The game never calls the Scryfall API; run the script again only to refresh
 the data. `packages/cards/src/boosters.ts` sorts the printings into print
 sheets and opens packs (`openPack('play')`); the client loads it on demand.
+
+## Edge of Eternities (in progress, 2026-11-05)
+
+The set's printings are in `booster-cards.json` (above) and its 261 main-set
+cards that no other file defines are in `data/eoe-set.json`
+(`node packages/cards/scripts/import-sets.ts eoe`; 3 built, the rest
+`notBuilt`, Tezzeret, Cruel Captain included: the engine has no
+planeswalkers yet, so that type is allowed only on unbuilt cards). Next: its
+Play and Collector Boosters from Wizards' "Collecting Edge of Eternities"
+odds, and a set choice on the booster page with the Edge of Eternities
+showcase behind it.
 
 ## Play Booster (built 2026-10-27)
 
