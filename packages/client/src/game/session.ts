@@ -4,7 +4,6 @@
 // would get the same view and send the same actions through a server.
 
 import { eventTargetNotices, targetNotice, type TargetNotice } from './targeting.ts';
-import { soundsFor, type SoundCue } from '../audio/cues.ts';
 import { actionDelay, type AiPace } from './pacing.ts';
 import {
   COMMANDER,
@@ -117,9 +116,6 @@ export class GameSession {
   readonly triggered: { key: number; card: InstanceId }[] = [];
   /** Cards that changed zones, in order, for the board to animate (only what you may see). */
   readonly moves: CardMove[] = [];
-  /** The sounds each shown batch of events makes, in order, for the board to play (`key` is unique). */
-  readonly sounds: { key: number; cues: SoundCue[] }[] = [];
-  private nextSoundKey = 1;
   private nextMoveKey = 1;
   private nextTriggerKey = 1;
   /** Cards the last bot action touched, for highlighting. */
@@ -335,11 +331,6 @@ export class GameSession {
       draws = null;
     };
     for (const e of filterEventsFor(events, YOU)) this.recordMove(e);
-    const cues = soundsFor(filterEventsFor(events, YOU), YOU);
-    if (cues.length) {
-      this.sounds.push({ key: this.nextSoundKey++, cues });
-      if (this.sounds.length > 100) this.sounds.splice(0, this.sounds.length - 100);
-    }
     for (const e of filterEventsFor(events, YOU)) {
       if (e.type === 'CardDrawn') {
         if (draws?.player !== e.player) flush();

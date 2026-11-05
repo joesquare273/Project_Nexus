@@ -97,8 +97,8 @@ this repo, not only in local memory.
 - `docs/economy.md`: the Aether Shards currency plan (E1-E5): prices, rewards,
   quests, and the server-side rules that keep it safe. Crafting (fragments, the
   Craft tab) is there too.
-- `docs/audio.md`: sound effects and music research (free sources, sound
-  map, build plan).
+- `docs/audio.md`: the sounds the game needs (the user is choosing and
+  supplying them; build the sound system once they arrive).
 - `packages/server`: online play (rooms, protocol, authority); `npm run server`.
 - `HOW-TO-RUN.txt`: instructions for the user.
 

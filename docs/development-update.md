@@ -5,17 +5,6 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
-### Sound effects and music
-
-Built from the free plan in [audio.md](audio.md). Sound is off until turned
-on (in-game ⚙ or the account menu), with Effects, Ambience and Music volumes.
-Game events become a few sounds per batch (`audio/cues.ts`), played as the
-board draws them. `npm run audio` downloads Kenney's CC0 packs and some
-Kevin MacLeod music (CC BY) on your computer. Effects without a file are
-synthesized in the browser, so sound works before the download. The cloud
-session couldn't reach the audio sites, so the download script hasn't been
-run yet (it reports each pack it skips).
-
 ### Life-counter hub, and audio research
 
 - The center hub is smaller and laid out like a life-counter app (such as
@@ -25,10 +14,9 @@ run yet (it reports each pack it skips).
   commander damage its commander(s) dealt to that player (red from 15); click
   the player's own panel or Back to return. The stack sits just below the
   square.
-- [audio.md](audio.md): research for sound effects and ambient music, using
-  free sources first (Kenney CC0 card foley, the Sonniss GDC bundles, Scott
-  Buckley CC BY, Tabletop Audio), a map from game events to sounds, and a
-  build plan. Nothing is built yet.
+- Sound: a first sound system (synthesized effects, a download script) was
+  built and then removed at the user's request; the user is choosing the
+  sounds instead. [audio.md](audio.md) lists the files the game needs.
 
 ## 2026-11-04
 

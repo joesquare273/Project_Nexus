@@ -4,7 +4,6 @@
 // sign-in with Supabase; the browser only displays it.
 
 import { useEffect, useState } from 'react';
-import { SoundSettings } from '../audio/SoundSettings.tsx';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { UI_ART, type UiArtKey } from '@nexus/cards';
 
@@ -171,9 +170,6 @@ export function AccountChip({ status }: { status: Status }) {
           <button role="menuitem" onClick={() => window.dispatchEvent(new Event('nexus:tour'))}>
             Replay the tour
           </button>
-          <div onClick={(e) => e.stopPropagation()}>
-            <SoundSettings />
-          </div>
           <button role="menuitem" onClick={() => supabase!.auth.signOut()}>
             Sign out
           </button>

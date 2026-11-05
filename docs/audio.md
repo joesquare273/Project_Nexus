@@ -1,162 +1,97 @@
-# Sound effects and music
+# Sounds wanted
 
-Research (2026-11-05) and how the game's sound is built: what to play when,
-where to get it for free, and how it fits together.
+The user is choosing the game's sounds (2026-11-05); this is the list the
+game needs. No game audio is built yet (the only sounds are the older
+synthesized pack-opening ones in `client/src/packs/sound.ts`, off by
+default). Once the files arrive, the sound system is built around them:
+each sound plays as its card animates, with separate volumes for effects,
+ambience and music, and sound stays off until the player turns it on.
 
-## Built (2026-11-05)
+## How to hand them over
 
-- **Turn it on** in the in-game settings (⚙) or the account menu: Sound on,
-  then Effects, Ambience and Music volumes (saved on this device). Off by
-  default.
-- **`npm run audio`** (on your own computer) unpacks Kenney's CC0 packs
-  (casino, RPG, impact, interface) from your Downloads folder (Kenney's site
-  downloads through a donation prompt, so they're downloaded in the browser:
-  Download, then "Continue without donating"; the casino pack falls back to
-  its OpenGameArt copy) and downloads a few Kevin MacLeod tracks (CC BY 4.0)
-  into `packages/client/public/audio/`, and writes `manifest.json` and
-  `CREDITS.md` there. The files aren't committed; run it once per computer
-  (the cloud sessions can't reach those sites). Your own music and ambience
-  loops go in `public/audio/music/` and `public/audio/ambience/`; run it
-  again so the manifest lists them.
-- **Every effect works without files:** a sound with no downloaded file is
-  synthesized in the browser (`audio/mixer.ts`), so the game has sound before
-  `npm run audio` is run.
-- `audio/cues.ts`: the sound map below as a pure function (`soundsFor`), at
-  most four sounds per batch of events; `GameSession.sounds` records them and
-  `audio/GameSounds.tsx` plays them as the board draws each batch, as the
-  card flights start. Other players' sounds are quieter.
-- Menus play music; a game switches to ambience (or quiet music when there's
-  no ambience). Both fade rather than cut.
-- Not yet: land sounds per color, the Credits page in the app (credits are in
-  `public/audio/CREDITS.md`), and running `npm run audio` in the Render
-  build.
+- **Name each file by its id** from the tables below, e.g. `draw.ogg`,
+  `land.mp3`. For a sound you'd like varied, add numbers: `draw-1.ogg`,
+  `draw-2.ogg`, `draw-3.ogg` (the game picks one at random each time).
+- **Format:** `.ogg` or `.mp3` (`.wav` is fine too; it gets converted).
+- **Put them in** `packages/client/public/audio/` on your computer, then
+  commit and push them, or send them in the chat.
+- **Licenses:** the files will be committed to GitHub, so use sounds whose
+  license allows sharing them in a project: CC0, CC BY (note the author),
+  the Pixabay License, or the Sonniss GDC bundles. Add one line per file to
+  `packages/client/public/audio/CREDITS.md`: file, where it came from,
+  author, license.
+- **Trim** silence from the start of each effect, so it lands on the
+  animation.
 
-User direction (2026-11-05): use **free resources**, unless something better
-is worth it (see "Upgrades" at the end).
+## Effects
 
-## What good card-game audio does
+Short and quiet unless noted. The **Must** ones matter most; the rest can
+wait (a similar sound stands in until they arrive).
 
-- **Every action makes one short, physical sound.** A card leaving the hand,
-  landing on the table, tapping, going to the graveyard. Real tabletop foley
-  (card slides, flicks, chips, dice) suits a tabletop game better than
-  synthetic UI beeps.
-- **Timing follows the animation.** Hearthstone's sound team designs around
-  fixed moments, such as dragging a card out of the hand and dropping it into
-  play. Here, that means firing sounds from the same moves `Flights.tsx`
-  animates: lift on take-off, thud on landing.
-- **Don't overdo it.** PC Gamer's early look at MTG Arena found its
-  ever-present effects "overdone". Keep most sounds quiet and short, save big
-  sounds for big moments (a board wipe, a commander entering, lethal), and
-  let players turn each group down separately.
-- **Ambience over songs during play.** TTRPG tables use long, quiet ambient
-  loops (a tavern, a forest, a storm) rather than tracks with strong melodies,
-  so music doesn't compete with thinking. Save melodic music for menus and the
-  win/lose screen.
+| Id | When it plays | What it should sound like | Length | Priority |
+| --- | --- | --- | --- | --- |
+| `draw` | a card is drawn | card sliding off a deck | < 0.4 s | Must (2-3 variations) |
+| `shuffle` | a library is shuffled | riffle shuffle | ~1 s | Must |
+| `land` | a land is played | card placed firmly on a table | < 0.4 s | Must (2-3 variations) |
+| `cast` | a spell is cast | card flick plus a faint magical shimmer | < 0.8 s | Must |
+| `castBig` | a spell of 5+ mana is cast | bigger magical swell | ~1 s | Nice |
+| `commander` | a commander is cast | a short signature sting, grand | 1-2 s | Nice |
+| `permanent` | a creature or other permanent enters | solid card thud, a little weight | < 0.5 s | Must |
+| `resolve` | an instant or sorcery resolves | short magical burst or chime | < 0.8 s | Must |
+| `countered` | a spell is countered | muffled "puff", magic fizzling out | < 0.8 s | Nice |
+| `tap` | a card is tapped | very soft card turn or click | < 0.2 s | Must (very quiet) |
+| `untap` | your untap step | soft brush of cards | < 0.4 s | Nice |
+| `attack` | attackers are declared | sword drawn, or a war horn | < 1 s | Must |
+| `block` | a blocker is declared | shield bump, wood or metal | < 0.5 s | Nice |
+| `damage` | combat or spell damage (1-4) | hit or punch impact | < 0.5 s | Must |
+| `damageBig` | 5+ damage at once | heavy impact | < 1 s | Nice |
+| `die` | a creature dies | low thump, falling | < 0.8 s | Must |
+| `wipe` | 3+ permanents die at once | large crash or rumble | 1-2 s | Nice |
+| `exile` | a card is exiled | airy whoosh, disappearing | < 0.8 s | Nice |
+| `lifeGain` | life is gained | soft rising chime | < 0.8 s | Must |
+| `lifeLoss` | life is lost (not from damage) | soft falling tone | < 0.8 s | Nice |
+| `counter` | +1/+1, poison or other counters | poker chip clack | < 0.3 s | Nice |
+| `token` | a token is created | light "pop" | < 0.4 s | Nice |
+| `yourTurn` | your turn starts | gentle bell or chime | < 1 s | Must |
+| `dice` | a die is rolled | dice rolling on a table | < 1 s | Nice |
+| `coin` | a coin is flipped | coin flip and ring | < 1 s | Nice |
+| `win` | you win | short fanfare | 2-4 s | Must |
+| `lose` | you lose | short low sting | 2-4 s | Must |
 
-## Sound map (game events to sounds)
+Menu sounds (optional):
 
-The engine already emits events for all of these (`GameEvent` in
-`engine/src/types.ts`), and online players get the same events, redacted.
+| Id | When it plays | What it should sound like | Length |
+| --- | --- | --- | --- |
+| `click` | buttons in menus | soft click | < 0.2 s |
+| `packOpen` | opening a booster pack | foil wrapper tearing | < 1 s |
+| `rare` | a rare or mythic in a pack | sparkle chime | < 1.5 s |
 
-| Moment | Sound | Notes |
-| --- | --- | --- |
-| Draw | soft card slide | one per card, quieter for opponents |
-| Shuffle | riffle | |
-| Play a land | card placed on felt | optional: a light color tint (birds for Forest, wind for Plains, water for Island, crickets for Swamp, embers for Mountain) |
-| Cast a spell (to the stack) | card flick + faint magical swell | swell louder for higher mana value |
-| Spell resolves | permanents: card thud; instants/sorceries: a short burst | |
-| Countered / fizzles | muffled "puff" | |
-| Tap / untap | short click / soft brush | untap step plays one, not one per card |
-| Attack declared | weapon draw / war horn for big attacks | |
-| Combat damage | impact, scaled by damage | |
-| Creature dies / goes to graveyard | low thump | board wipe: one big sound, not twenty |
-| Exile | airy whoosh | |
-| Life gain / loss | rising / falling tone | |
-| Counters (+1/+1, poison) | small chip clack | Kenney's casino chips fit this well |
-| Tokens created | pop | |
-| Your priority / your turn | gentle chime | important when the computer is fast |
-| Commander cast | signature sting | |
-| Win / lose | short fanfare / low sting | |
+## Ambience (during games)
 
-## Free sources
+Long, quiet loops with no strong melody, so they don't distract from
+playing. Put them in `packages/client/public/audio/ambience/` (any names).
+One or two is enough to start, 2-10 minutes each, looping cleanly. Ideas: a
+quiet tavern or library, a wizard's study (fire crackling, pages), a forest
+at night, distant wind.
 
-Licenses checked on 2026-11-05. Recheck before adding files, and record each
-file's source and license in a `CREDITS` file next to the audio.
+## Music (menus)
 
-### Sound effects
+Calm fantasy music for the menus and the win/lose screens. Put it in
+`packages/client/public/audio/music/` (any names): two to four tracks, 2-5
+minutes each.
 
-- **Kenney: Casino Audio and RPG Audio** (kenney.nl), **CC0**: no credit
-  needed. Casino Audio is card, chip and dice handling foley (about 50 files);
-  RPG Audio is footsteps, weapons and more. **Best starting point**: real card
-  sounds, free, and safe to commit to the repo.
-- **OpenGameArt: "54 casino sound effects (cards, dice, chips)"**: Kenney's
-  casino set mirrored there, plus a "boardgame pack". Check each file's
-  license on its page.
-- **Sonniss GameAudioGDC bundles** (sonniss.com): large professional
-  libraries (tens of GB a year) released free each year for GDC. Royalty-free,
-  commercial use allowed, no credit required, lifetime licence. One catch:
-  they can't be used to train AI. The best free source for magic, impacts,
-  whooshes and ambience. Read the licence at sonniss.com/gdc-bundle-license
-  before using.
-- **Freesound** (freesound.org): huge, but the license varies per file (CC0,
-  CC BY, CC BY-NC). Filter to CC0 or CC BY and keep the credits.
-- **Pixabay sound effects and music**: the Pixabay License allows use
-  without credit, commercial use included. Selling the files on their own
-  isn't allowed (shipping them in a game is fine).
+## Where to look (free)
 
-### Music and ambience
+- Kenney (kenney.nl): Casino Audio (cards, chips, dice), RPG Audio, Impact
+  Sounds, Interface Sounds. CC0.
+- Sonniss GDC bundles (sonniss.com): professional magic, impacts, ambience.
+- Freesound (freesound.org): filter to CC0 or CC BY.
+- Pixabay sound effects and music.
+- Music: Kevin MacLeod (incompetech.com, CC BY), Scott Buckley (CC BY).
+- Ambience: Tabletop Audio (check its terms first).
 
-- **Scott Buckley** (scottbuckley.com.au): orchestral and ambient fantasy,
-  **CC BY 4.0**: free in any project with a credit line. Calm pieces such as
-  "In Dreams", "Sanctum", "A Dragon's Lullabye" suit menus and quiet play.
-- **Alexander Nakarada** (CC BY 4.0, on free-stock-music.com and itch.io):
-  fantasy and medieval tracks ("Traversing the White Peaks", "Forest Walk").
-  Credit required.
-- **Kevin MacLeod / Incompetech**: a large CC BY catalog; credit required.
-- **Tabletop Audio** (tabletopaudio.com): ambience made for TTRPG tables,
-  exactly the right style. Free, ad-free and supported by patrons; reported
-  as free for **non-commercial** use, and SoundPad sounds are excluded from
-  its Creative Commons license. This is a personal, non-commercial project,
-  so it likely fits, but its terms page couldn't be opened from this
-  session. Read it before using any track.
+## Starting smaller
 
-### Recommendation
-
-1. **Effects:** Kenney Casino Audio for all card, chip and dice foley (CC0, commit
-   the files), plus a handful of magic and impact sounds from the Sonniss GDC
-   bundle.
-2. **Music:** two or three Scott Buckley tracks for the menus, and quiet
-   ambient loops during games (Tabletop Audio if its terms allow, otherwise
-   Sonniss ambience or Pixabay). Credits go on a small Credits page.
-3. Keep the files small: OGG or MP3, effects under ~50 KB each, music
-   streamed rather than preloaded.
-
-## Upgrades (if free isn't good enough)
-
-Worth it only if the free sets sound thin once built. Prices change, so check
-each site:
-
-- **Paid Sonniss / A Sound Effect libraries**: professional magic and
-  fantasy packs, bought once and royalty-free.
-- **Humble Bundle audio bundles**: big game-audio libraries for a few
-  dollars when one is on; watch for one with a fantasy theme.
-- **Tabletop Audio Patreon**: supporting it also covers wider use, and
-  patrons get ambience-only versions of the tracks.
-- **Syrinscape**: the TTRPG standard for live soundscapes, but it is
-  built to play through its own app. Unless its license says otherwise, plan
-  on it being for listening at the table, not for putting in the game.
-
-## How it was planned
-
-- `client/src/audio/`: one small mixer on the Web Audio API with three
-  groups: **Effects**, **Ambience**, **Music**. Each has its own volume, kept
-  in `localStorage` (per-device preference). Sound stays off until the player
-  turns it on, as the pack sounds already do; browsers block audio before the
-  first click anyway.
-- A table from event type to sound id (the sound map above), played from the
-  same place as card flights, so the sounds match the animations; opponents'
-  sounds a little quieter.
-- Audio files in `client/public/audio/` (CC0 and CC BY files may be
-  committed; keep a `CREDITS.md` there), loaded on first use.
-- Respect the system mute and `prefers-reduced-motion` (no sounds for skipped
-  animations); never more than a few sounds at once.
+If finding all of these is a lot, these cover most of a game: `draw`,
+`land`, `cast`, `permanent`, `resolve`, `attack`, `damage`, `die`,
+`yourTurn`, `win`, `lose`, and one ambience loop.

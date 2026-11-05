@@ -37,8 +37,6 @@ import { CenterHub } from './LifeTotals.tsx';
 import { CardFace, ManaText } from './Card.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
-import { GameSounds } from '../audio/GameSounds.tsx';
-import { SoundSettings } from '../audio/SoundSettings.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
 import { currentTip } from '../tutorial/tips.ts';
 import { GameLog, Inspector } from './Sidebar.tsx';
@@ -739,7 +737,6 @@ export function Game({
         {coach}
       </main>
       <CardFlights moves={session.moves} />
-      <GameSounds sounds={session.sounds} />
       <Inspector view={view} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
       <aside className="sidebar">
         <GameLog entries={session.log} />
@@ -945,7 +942,6 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
               <option value="fast">Fast</option>
             </select>
           </label>
-          <SoundSettings />
           <div className="settings-foot">
             <span className="seed">Seed {session.options.seed}</span>
             <button className="ghost" onClick={onQuit}>
