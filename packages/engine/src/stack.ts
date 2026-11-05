@@ -264,6 +264,13 @@ export interface SpellChoice {
  * (overload), the chosen modes in printed order (rule 700.2), or its effects.
  */
 export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): EffectSpec[] {
+  const effects = spellEffectsBase(def, choice);
+  if (!effects.some((e) => e.repeatX)) return effects;
+  // "Up to X targets": one "up to one" target per X.
+  return effects.flatMap((e) => (e.repeatX ? Array.from({ length: choice.x ?? 0 }, () => ({ ...e, repeatX: false, upTo: true, group: e.group ?? 'x' })) : [e]));
+}
+
+function spellEffectsBase(def: CardDefinition, choice: SpellChoice): EffectSpec[] {
   def = spellDefinition(def, choice.adventure);
   if (choice.alternative && def.alternativeCost?.effects) return def.alternativeCost.effects;
   if (def.modes && def.chooseModes) return [...(choice.modes ?? [])].sort((a, b) => a - b).flatMap((m) => def.modes![m] ?? []);
@@ -1923,7 +1930,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
                 : (r.chosenManaValue ?? 0);
-    return base + (a.plus ?? 0);
+    return (base + (a.plus ?? 0)) * (a.times ?? 1);
   }
   return amountOf(s, a, r.item.controller, sourceOf(r.item));
 }
@@ -1934,6 +1941,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
  * before the next effect.
  */
 function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: PlayerId[], amount: number): void {
+  const chosenBefore = (r.chosen ?? []).flatMap((c) => c.cards);
   r.chosen = [];
   r.chosenManaValue = 0;
   r.chosenTypes = { creature: false, noncreature: false };
@@ -1944,8 +1952,12 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       const defender = effect.enchantmentsEnterAttacking && r.item.kind === 'ability' ? r.item.defender : undefined;
       if (defender) r.putAttackingDefender = defender;
       else delete r.putAttackingDefender;
-      const cards = s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
-      if (cards.length === 0) continue;
+      if (effect.alsoFromGraveyard) r.putTapped = true;
+      else delete r.putTapped;
+      const from = effect.alsoFromGraveyard ? [...s.players[pid]!.hand, ...s.players[pid]!.graveyard] : s.players[pid]!.hand;
+      const cards = from.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
+      // "Up to X": none when X is 0.
+      if (cards.length === 0 || (effect.alsoFromGraveyard && amount <= 0)) continue;
       const max = Math.min(Math.max(1, amount), cards.length);
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'battlefield', cards, min: effect.optional ? 0 : max, max }];
       continue;
@@ -1958,7 +1970,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       continue;
     }
     if (effect.effect === 'Discard') {
-      const hand = s.players[pid]!.hand;
+      // "Discard one or more land cards" (Loamcrafter Faun): only matching cards.
+      const hand = effect.filter ? s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid })) : s.players[pid]!.hand;
       if (hand.length === 0) continue;
       if (effect.wholeHand) r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min: 0, max: hand.length, allOrNothing: true }];
       else {
@@ -1970,16 +1983,18 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
     }
     // Each player picks among their own permanents, or the spell's controller picks for them (Tragic Arrogance, Meteor).
     const chooser = effect.chooser === 'You' || effect.effect === 'ChooseAndDestroy' ? r.item.controller : pid;
+    // Braids: "a permanent ... that shares a card type with it".
+    const shared = effect.sharesTypeWithChosen ? new Set(chosenBefore.flatMap((id) => defOf(s, s.cards[id]!).types)) : undefined;
     const cards = battlefield(s)
-      .filter((c) => c.controller === pid && matchesObject(s, effect.filter, c, { controller: pid, source }))
+      .filter((c) => c.controller === pid && matchesObject(s, effect.filter, c, { controller: pid, source }) && (!shared || defOf(s, c).types.some((t) => shared.has(t))))
       .map((c) => c.id);
     if (cards.length === 0) continue;
     if (effect.effect === 'Sacrifice' || effect.effect === 'ChooseAndDestroy') {
       // Zodiark: half of them, rounded down.
-      const max = effect.halfOfMatching ? Math.floor(cards.length / 2) : Math.min(Math.max(1, amount), cards.length);
+      const max = effect.halfOfMatching ? Math.floor(cards.length / 2) : effect.anyNumber ? cards.length : Math.min(Math.max(1, amount), cards.length);
       if (max === 0) continue;
       const purpose = effect.effect === 'Sacrifice' ? 'sacrifice' : 'destroy';
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional ? 0 : max, max }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional || effect.anyNumber ? 0 : max, max }];
     } else {
       const max = effect.onePerType ? effect.onePerType.length : Math.min(amount, cards.length);
       r.choiceQueue = [
@@ -2087,6 +2102,12 @@ function subjectAmount(s: GameState, item: StackItem, of: 'subjectPower' | 'subj
 const HELPFUL_COUNTERS: AnyCounter[] = ['+1/+1', 'shield', 'flying', 'page', 'soul', 'stun', 'lore', 'charge', 'vow'];
 const HARMFUL_COUNTERS: AnyCounter[] = ['stun', 'page', 'soul', 'flying', 'shield', '+1/+1', 'lore', 'charge', 'vow'];
 
+/** Braids: the opponents who chose nothing in the last choice (or had nothing to choose). */
+function opponentsWhoChoseNone(s: GameState, r: Resolving): PlayerId[] {
+  const chose = new Set((r.chosen ?? []).filter((c) => c.cards.length > 0).map((c) => c.player));
+  return alivePlayers(s).filter((pid) => pid !== r.item.controller && !chose.has(pid));
+}
+
 /** The players among an effect's targets (searches act for these players). */
 function targetPlayers(targets: Target[]): PlayerId[] {
   return targets.flatMap((t) => (t.kind === 'player' ? [t.player] : []));
@@ -2190,6 +2211,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of cardsThere) moveCard(ctx, id, 'library');
       }
       return;
+    case 'PutIntoLibraryNthFromTop':
+      for (const t of targets) {
+        if (t.kind !== 'card') continue;
+        const c = s.cards[t.card]!;
+        if (c.zone !== 'graveyard' && c.zone !== 'exile') continue;
+        moveCard(ctx, c.id, 'library');
+        const library = player(s, c.owner).library;
+        library.splice(library.indexOf(c.id), 1);
+        library.splice(Math.min(Math.max(0, amount - 1), library.length), 0, c.id);
+      }
+      return;
     case 'ChooseGraveyardCards': {
       r.chosen = [];
       const order = alivePlayers(s);
@@ -2232,7 +2264,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'DrawCards':
-      for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount);
+      for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
       return;
     case 'GainLife':
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, amount);
@@ -2240,6 +2272,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'LoseLife':
       for (const t of targets) {
         if (t.kind !== 'player') continue;
+        if (effect.perOpponentWhoChoseNone && !opponentsWhoChoseNone(s, r).includes(t.player)) continue;
         const before = s.players[t.player]!.life;
         changeLife(ctx, t.player, -amount);
         r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
@@ -4208,7 +4241,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const c = s.cards[id]!;
       c.controller = pending.player;
       c.summoningSick = true;
-      if (entersTapped(s, c)) c.tapped = true;
+      if (r.putTapped || entersTapped(s, c)) c.tapped = true;
       const defender = r.putAttackingDefender;
       if (defender && s.combat && !s.players[defender]!.eliminated && defOf(s, c).types.includes('enchantment')) {
         c.tapped = true;

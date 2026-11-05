@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities group E15: sacrifice and X targets
+
+Braids, Arisen Nightmare; God-Eternal Bontu; Loamcrafter Faun; Pest
+Infestation; Worldsoul's Rage. New: "each opponent may sacrifice a permanent
+that shares a card type", "for each opponent who doesn't", "sacrifice any
+number", "up to X targets", "twice X", and lands from both hand and graveyard.
+World Shaper 95/100, Counter Intelligence 97/100.
+
 ### Edge of Eternities group E14: World Shaper's removal, retrace and lands
 
 Tear Asunder, Windgrace's Judgment, Binding the Old Gods, Myriad Landscape,

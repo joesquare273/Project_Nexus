@@ -1653,3 +1653,116 @@ describe('E14: World Shaper removal, retrace and lands', () => {
     expect(s.cards[genesis]!.zone).toBe('graveyard');
   });
 });
+
+describe('E15: World Shaper sacrifice, X targets and lands from the graveyard', () => {
+  /** Answers the pending card choices in order with these picks (by a function of the offered cards). */
+  const answer = (s: GameState, ...picks: ((offered: readonly string[]) => string[])[]): GameState => {
+    for (const pick of picks) {
+      for (let i = 0; i < 30 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+      if (s.pending.kind !== 'chooseCards') throw new Error(`no choice pending (${s.pending.kind})`);
+      s = act(s, { type: 'ChooseCards', player: s.pending.player, cards: pick(s.pending.cards) });
+    }
+    return settle(s).state;
+  };
+
+  it('Braids: sacrifice a land; an opponent who sacrifices a land is spared, one who doesn’t loses 2 and you draw', () => {
+    let s = newGame(3);
+    const braids = put(s, 'P1', 'braids-arisen-nightmare');
+    const mine = put(s, 'P1', 'forest');
+    const p2land = put(s, 'P2', 'forest');
+    put(s, 'P3', 'forest');
+    const p3bear = put(s, 'P3', 'coeurl');
+    s = goTo(s, 'end');
+    const hand = s.players.P1!.hand.length;
+    const [life2, life3] = [s.players.P2!.life, s.players.P3!.life];
+    // P1 sacrifices the Forest; P2 sacrifices a land, P3 declines (its creature isn't offered: no shared type).
+    s = answer(s, (o) => { expect(o).toContain(braids); return [mine]; }, (o) => { expect(o).toEqual([p2land]); return [p2land]; }, (o) => { expect(o).not.toContain(p3bear); return []; });
+    expect(s.cards[mine]!.zone).toBe('graveyard');
+    expect(s.cards[p2land]!.zone).toBe('graveyard');
+    expect([s.players.P2!.life, s.players.P3!.life]).toEqual([life2, life3 - 2]);
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Braids: nothing happens if you don’t sacrifice', () => {
+    let s = newGame();
+    put(s, 'P1', 'braids-arisen-nightmare');
+    put(s, 'P1', 'forest');
+    s = goTo(s, 'end');
+    const life = s.players.P2!.life;
+    s = answer(s, () => []);
+    expect(s.players.P2!.life).toBe(life);
+  });
+
+  it('God-Eternal Bontu: sacrifice any number of other permanents and draw that many; when it dies, third from the top', () => {
+    let s = newGame();
+    const bontu = put(s, 'P1', 'god-eternal-bontu', 'hand');
+    const a = put(s, 'P1', 'forest');
+    const b = put(s, 'P1', 'sol-ring');
+    put(s, 'P1', 'mountain');
+    mana(s, 'P1', { B: 2, C: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: bontu });
+    s = answer(s, (o) => { expect(o).not.toContain(bontu); return [a, b]; });
+    expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['graveyard', 'graveyard']);
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+    // Dies (lethal damage): you may put it into your library third from the top.
+    s.cards[bontu]!.damage = 6;
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect(s.players.P1!.library.indexOf(bontu)).toBe(2);
+    // Exiled from the battlefield: the same.
+    const again = put(s, 'P1', 'god-eternal-bontu');
+    const tear = put(s, 'P2', 'tear-asunder', 'hand');
+    mana(s, 'P2', { G: 1, B: 1, C: 2 });
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: tear, kicks: 1, targets: [card(again)] }).state;
+    expect(s.players.P1!.library.indexOf(again)).toBe(2);
+  });
+
+  it('Loamcrafter Faun: discard land cards to return that many nonland permanent cards from your graveyard', () => {
+    let s = newGame();
+    const faun = put(s, 'P1', 'loamcrafter-faun', 'hand');
+    const l1 = put(s, 'P1', 'forest', 'hand');
+    const l2 = put(s, 'P1', 'mountain', 'hand');
+    const spell = put(s, 'P1', 'sol-ring', 'hand');
+    const g1 = put(s, 'P1', 'coeurl', 'graveyard');
+    const g2 = put(s, 'P1', 'sol-ring', 'graveyard');
+    const g3 = put(s, 'P1', 'forest', 'graveyard');
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: faun });
+    s = answer(s, (o) => { expect(o).not.toContain(spell); return [l1, l2]; }, (o) => { expect(o).not.toContain(g3); expect(o).toHaveLength(2); return [g1, g2]; });
+    expect([g1, g2].map((id) => s.cards[id]!.zone)).toEqual(['hand', 'hand']);
+    expect([l1, l2].map((id) => s.cards[id]!.zone)).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Pest Infestation: up to X artifacts and enchantments, and twice X Pests that gain life when they die', () => {
+    let s = newGame();
+    const pests = put(s, 'P1', 'pest-infestation', 'hand');
+    const r1 = put(s, 'P2', 'sol-ring');
+    const r2 = put(s, 'P2', 'sol-ring');
+    mana(s, 'P1', { G: 1, C: 4 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: pests, x: 2, targets: [card(r1), card(r1)] })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: pests, x: 2, targets: [card(r1), card(r2)] }).state;
+    expect([s.cards[r1]!.zone, s.cards[r2]!.zone]).toEqual(['graveyard', 'graveyard']);
+    const tokens = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'pest-token-eoc');
+    expect(tokens).toHaveLength(4);
+    const life = s.players.P1!.life;
+    s.cards[tokens[0]!]!.damage = 1;
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect(s.players.P1!.life).toBe(life + 1);
+  });
+
+  it("Worldsoul's Rage: X damage, and up to X land cards from hand and graveyard onto the battlefield tapped", () => {
+    let s = newGame();
+    const rage = put(s, 'P1', 'worldsouls-rage', 'hand');
+    const fromHand = put(s, 'P1', 'forest', 'hand');
+    const fromYard = put(s, 'P1', 'mountain', 'graveyard');
+    const extra = put(s, 'P1', 'swamp', 'graveyard');
+    mana(s, 'P1', { R: 1, G: 1, C: 2 });
+    const life = s.players.P2!.life;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: rage, x: 2, targets: [{ kind: 'player', player: 'P2' }] });
+    s = answer(s, (o) => { expect(o).toEqual(expect.arrayContaining([fromHand, fromYard, extra])); return [fromHand, fromYard]; });
+    expect(s.players.P2!.life).toBe(life - 2);
+    expect([fromHand, fromYard].map((id) => [s.cards[id]!.zone, s.cards[id]!.tapped])).toEqual([['battlefield', true], ['battlefield', true]]);
+    expect(s.cards[extra]!.zone).toBe('graveyard');
+  });
+});

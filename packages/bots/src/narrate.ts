@@ -315,6 +315,7 @@ function effectText(e: EffectSpec): string {
     case 'PayHalfLifeToCounter': return 'any player may pay half their life, rounded up, to counter this spell';
     case 'SearchLibraryToExileFaceDown': return "search that player's library for a card and exile it face down; you may look at and play it while it stays exiled";
     case 'DivideDamage': return `deal ${n} damage divided as you choose among any number of target creatures`;
+    case 'PutIntoLibraryNthFromTop': return `put it into its owner's library ${['first', 'second', 'third', 'fourth'][(typeof e.amount === 'number' ? e.amount : 1) - 1] ?? 'third'} from the top`;
     case 'GraveyardToLibraryBottom': return 'put all the cards from their graveyard on the bottom of their library in a random order';
     case 'CantCastSpellsThisTurn': return "they can't cast spells this turn";
     case 'Transform': return `${e.optional ? 'you may ' : ''}transform it`;

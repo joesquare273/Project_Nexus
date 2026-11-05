@@ -308,7 +308,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (PLAYER_ONLY_EFFECTS.has(e.effect) && !PLAYER_TARGETS.has(e.target)) err(`${e.effect} can only affect players.`);
   if (e.effect === 'Discard' && e.amount === undefined && !e.anyNumber && !e.wholeHand && !e.entireHand) err('Discard needs an amount (or anyNumber, wholeHand or entireHand).');
   if ((e.effect === 'Sacrifice' || e.effect === 'KeepAndSacrificeRest') && !e.filter) err(`${e.effect} needs a filter saying what qualifies.`);
-  if (e.effect === 'Sacrifice' && e.amount === undefined && !e.halfOfMatching) err('Sacrifice needs an amount (or halfOfMatching).');
+  if (e.effect === 'Sacrifice' && e.amount === undefined && !e.halfOfMatching && !e.anyNumber) err('Sacrifice needs an amount (or halfOfMatching, anyNumber).');
   if (e.effect === 'KeepAndSacrificeRest' && e.amount === undefined && !e.onePerType) err('KeepAndSacrificeRest needs an amount (or onePerType).');
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
   if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');

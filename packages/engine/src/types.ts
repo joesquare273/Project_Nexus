@@ -255,6 +255,8 @@ export const EFFECT_KINDS = [
   'DivideDamage',
   /** Each target player puts all the cards from their graveyard on the bottom of their library in a random order. */
   'GraveyardToLibraryBottom',
+  /** Put the target card into its owner's library `amount`th from the top (God-Eternal Bontu: third). */
+  'PutIntoLibraryNthFromTop',
   'ChooseGraveyardCards',
   'ReturnChosenToBattlefield',
   'PutIntoLibrary',
@@ -704,6 +706,8 @@ export type Amount =
         /** OpponentLosesLife triggers: how much life was lost ("you draw that many cards"). */
         | 'lifeLostInEvent';
       plus?: number;
+      /** Multiplies the result ("twice X"). */
+      times?: number;
       /** For `sourceCounters`: which kind. */
       counter?: AnyCounter;
     };
@@ -732,6 +736,17 @@ export interface EffectSpec {
   halfOfMatching?: boolean;
   /** CreateToken: one for each opponent, tapped and attacking that player (Adeline). */
   attackingEachOpponent?: boolean;
+  /** "Up to X targets" (Pest Infestation): the effect is repeated once per X chosen, each an "up to one" target of one group. */
+  repeatX?: boolean;
+  /** Sacrifice: only permanents sharing a card type with the cards chosen in the last choice (Braids). */
+  sharesTypeWithChosen?: boolean;
+  /**
+   * "For each opponent who doesn't" (Braids), after a choice each opponent made:
+   * LoseLife hits only the opponents who chose nothing; DrawCards draws `amount` for each of them.
+   */
+  perOpponentWhoChoseNone?: boolean;
+  /** PutFromHand: from your graveyard too, and the cards enter tapped (Worldsoul's Rage). */
+  alsoFromGraveyard?: boolean;
   /** CreateToken: an X/X token, X being this count as it's created (Formless Genesis: land cards in your graveyard). */
   tokenSizeFromCount?: CountKind;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
@@ -1181,6 +1196,8 @@ export interface TriggerSpec {
   when: TriggerEvent;
   /** The zone a spell was cast or a land was played from. */
   fromZone?: ZoneName;
+  /** LeavesBattlefield: only when it goes to this zone ("is put into exile from the battlefield"). */
+  leavesTo?: ZoneName;
   /**
    * Subjects that trigger it. Absent means the card itself ("when this
    * creature enters"). Ignored for BeginCombat and Upkeep.
@@ -2312,6 +2329,8 @@ export interface Resolving {
   controlChanged?: boolean;
   /** PutFromHand with enchantmentsEnterAttacking: the player a chosen enchantment card attacks. */
   putAttackingDefender?: PlayerId;
+  /** PutFromHand with alsoFromGraveyard: the chosen cards enter tapped. */
+  putTapped?: boolean;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
   distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number>; damage?: true };
   item: StackItem;

@@ -33,7 +33,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 | Deck | Commander | Fully built |
 |---|---|---|
 | Counter Intelligence | Inspirit, Flagship Vessel (URW) | 97/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 90/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 95/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -202,6 +202,21 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   from a graveyard", not "target"); Formless Genesis is a plain sorcery
   (no Kindred type or changeling yet) and its Shapeshifter token has no
   changeling (deathtouch only).
+
+- **E15 (2026-11-05): sacrifice, X targets and lands from the graveyard.**
+  Braids, Arisen Nightmare; God-Eternal Bontu; Loamcrafter Faun; Pest
+  Infestation; Worldsoul's Rage. Engine: `sharesTypeWithChosen` (a
+  sacrifice that shares a card type with what was sacrificed before),
+  `perOpponentWhoChoseNone` ("for each opponent who doesn't"), Sacrifice
+  `anyNumber`, `repeatX` ("up to X targets"), amounts `times` ("twice X"),
+  a Discard `filter` ("discard one or more land cards"), PutFromHand
+  `alsoFromGraveyard` (tapped), `PutIntoLibraryNthFromTop`, and the
+  LeavesBattlefield trigger's `leavesTo` ("is put into exile from the
+  battlefield"). Simplifications: Loamcrafter Faun's "return up to that
+  many target" cards are chosen as the ability resolves rather than by a
+  reflexive trigger with targets; the computer never sacrifices for Braids or
+  Bontu. Evendo Brushrazer waits (its exiled cards are playable only while
+  you've sacrificed a nontoken permanent this turn).
 
 ## Commander rules (built)
 

@@ -45,6 +45,8 @@ interface Occurrence {
   equippedBy?: InstanceId[];
   /** EntersBattlefield: the zone it came from. */
   from?: string;
+  /** LeavesBattlefield: the zone it went to. */
+  to?: string;
   /** CountersAdded: who put them there. */
   by?: PlayerId;
   /** Draws: who drew, and how many cards they've drawn this turn counting this one. */
@@ -104,7 +106,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
             ...(e.equippedBy ? { equippedBy: e.equippedBy } : {}),
           });
         }
-        if (e.from === 'battlefield') out.push({ when: 'LeavesBattlefield', at, subject: e.card, subjectController: e.controller ?? e.owner });
+        if (e.from === 'battlefield') out.push({ when: 'LeavesBattlefield', at, subject: e.card, subjectController: e.controller ?? e.owner, to: e.to });
         if (e.sacrificed) out.push({ when: 'Sacrificed', at, subject: e.card, subjectController: e.controller ?? e.owner });
         if (e.from === 'graveyard') out.push({ when: 'LeavesGraveyard', at, subject: e.card, subjectController: e.owner });
         // "A card is put into a graveyard from anywhere other than the battlefield" (Syr Konrad).
@@ -273,6 +275,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
 function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: InstanceId, controller: PlayerId): boolean {
   if (spec.when !== o.when) return false;
   if (spec.fromZone && spec.fromZone !== o.from) return false;
+  if (spec.leavesTo && spec.leavesTo !== o.to) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;

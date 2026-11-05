@@ -926,20 +926,16 @@
           "count": 1,
           "set": "eoc",
           "number": "82",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "God-Eternal Bontu",
           "count": 1,
           "set": "eoc",
           "number": "83",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Blasphemous Act",
@@ -997,10 +993,8 @@
           "count": 1,
           "set": "eoc",
           "number": "99",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Multani, Yavimaya's Avatar",
@@ -1023,11 +1017,8 @@
           "count": 1,
           "set": "eoc",
           "number": "103",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rampaging Baloths",
@@ -1138,11 +1129,8 @@
           "count": 1,
           "set": "eoc",
           "number": "130",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Canyon Slough",
