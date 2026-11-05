@@ -218,7 +218,9 @@ function effectText(e: EffectSpec): string {
     case 'RemoveCounters':
       return `remove ${plural(`${e.counter ?? '+1/+1'} counter`)} from ${who}`;
     case 'BecomeCreature':
-      return `${who} becomes a ${e.becomes?.power}/${e.becomes?.toughness} creature`;
+      return `${who} ${e.target === 'AllPermanents' ? 'become' : 'becomes a'} ${e.becomes?.power}/${e.becomes?.toughness} creature${e.target === 'AllPermanents' ? 's' : ''}${e.becomes?.untilEndOfTurn ? ' until end of turn' : ''}`;
+    case 'DoubleCounters':
+      return 'double the counters on any number of permanents';
     case 'CopySpell':
       return 'copy that spell';
     case 'WinGame':
@@ -522,8 +524,10 @@ function triggerCondition(t: TriggerSpec): string {
     Sacrificed: 'is sacrificed',
     OpponentLosesLife: '',
     LifeGained: '',
+    OpponentCommitsCrime: '',
   }[t.when] ?? '';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
+  if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';
   if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";
   if (t.when === 'Chapter') return `Chapter ${(t.chapters ?? []).map((n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][n] ?? n).join(', ')}`;
   if (t.when === 'YouAttack') return `Whenever you attack with ${t.attackersAtLeast ?? 1} or more creatures`;

@@ -270,6 +270,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.linkedExile;
   delete c.exiledWith;
   delete c.crewed;
+  // A new object (rule 400.7): "becomes a creature" doesn't follow it.
+  delete c.animated;
   delete c.addedSubtypes;
   delete c.turnSubtypes;
   delete c.linkedCreature;

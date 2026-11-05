@@ -9,6 +9,7 @@ import { activatedAbilities, applyAction, currentDefinition, getLegalActions, ha
 const hasType = (s: GameState, c: CardInstance, t: string) => (currentDefinition(s, c).types as string[]).includes(t);
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 import { planTaps } from '../src/mana.ts';
+import { moveCard } from '../../engine/src/state.ts';
 import { basicAi } from '../src/index.ts';
 
 const charge = (s: GameState, id: string) => s.cards[id]!.namedCounters?.charge ?? 0;
@@ -1071,5 +1072,104 @@ describe('E8: lands, graveyards and removal', () => {
       expect(s.cards[basic]!.zone).toBe('battlefield');
       expect(s.cards[basic]!.tapped).toBe(!untapped);
     }
+  });
+});
+
+// Group 9: artifact creatures, counters and crimes.
+describe('E9: artifact creatures, counters and crimes', () => {
+  const isCreature = (s: GameState, id: string) => (currentDefinition(s, s.cards[id]!).types as string[]).includes('creature');
+
+  it('Cyberdrive Awakener: noncreature artifacts become 4/4s until end of turn; other artifact creatures have flying', () => {
+    let s = newGame();
+    const ring = put(s, 'P1', 'sol-ring');
+    const theirs = put(s, 'P2', 'sol-ring');
+    const golem = put(s, 'P1', 'mindless-automaton', 'battlefield', { counters: 2 });
+    const awakener = put(s, 'P1', 'cyberdrive-awakener', 'hand');
+    mana(s, 'P1', { U: 1, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: awakener }).state;
+    expect(isCreature(s, ring)).toBe(true);
+    expect(powerOf(s, s.cards[ring]!)).toBe(4);
+    expect(hasKeyword(s, s.cards[ring]!, 'Flying')).toBe(true);
+    expect(hasKeyword(s, s.cards[golem]!, 'Flying')).toBe(true);
+    expect(isCreature(s, theirs)).toBe(false);
+    // At cleanup it's an artifact again (the next turn has begun).
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    expect(s.activePlayer).toBe('P2');
+    expect(isCreature(s, ring)).toBe(false);
+  });
+
+  it('a permanent it animated, leaving and returning, is a new object: no longer a creature', () => {
+    const s = newGame();
+    const ring = put(s, 'P1', 'sol-ring');
+    s.cards[ring]!.animated = { power: 4, toughness: 4 };
+    expect(isCreature(s, ring)).toBe(true);
+    moveCard({ s, ev: [] }, ring, 'hand');
+    moveCard({ s, ev: [] }, ring, 'battlefield');
+    expect(isCreature(s, ring)).toBe(false);
+  });
+
+  it('Alibou: other artifact creatures have haste; attacking with artifact creatures deals X and scries X (tapped artifacts)', () => {
+    let s = newGame();
+    put(s, 'P1', 'alibou-ancient-witness');
+    const golem = put(s, 'P1', 'mindless-automaton', 'battlefield', { counters: 2, summoningSick: true });
+    put(s, 'P1', 'sol-ring', 'battlefield', { tapped: true });
+    expect(hasKeyword(s, s.cards[golem]!, 'Haste')).toBe(true);
+    const life = s.players.P2!.life;
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: golem, defender: 'P2' }] });
+    s = settle(s, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    // The attacking golem (tapped) and the tapped Sol Ring: 2.
+    expect(s.players.P2!.life).toBe(life - 2);
+  });
+
+  it('Threefold Thunderhulk: enters with three counters and makes Gnomes equal to its power; grows by sacrificing artifacts', () => {
+    let s = newGame();
+    const hulk = put(s, 'P1', 'threefold-thunderhulk', 'hand');
+    mana(s, 'P1', { C: 7 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: hulk }).state;
+    expect(s.cards[hulk]!.counters).toBe(3);
+    const gnomes = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'gnome-token-eoc');
+    expect(gnomes()).toHaveLength(3);
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: hulk, ability: 0, costCards: [gnomes()[0]!] }).state;
+    expect(s.cards[hulk]!.counters).toBe(4);
+    expect(gnomes()).toHaveLength(2);
+  });
+
+  it('Deepglow Skate doubles the counters on your permanents (and stun counters on theirs)', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'coeurl', 'battlefield', { counters: 2 });
+    const rock = put(s, 'P1', 'sol-ring', 'battlefield', { namedCounters: { charge: 3 } });
+    const theirs = put(s, 'P2', 'coeurl', 'battlefield', { counters: 1, namedCounters: { stun: 1 } });
+    const skate = put(s, 'P1', 'deepglow-skate', 'hand');
+    mana(s, 'P1', { U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: skate }).state;
+    expect(s.cards[mine]!.counters).toBe(4);
+    expect(s.cards[rock]!.namedCounters?.charge).toBe(6);
+    expect(s.cards[theirs]!.counters).toBe(1);
+    expect(s.cards[theirs]!.namedCounters?.stun).toBe(2);
+  });
+
+  it('Patrolling Peacemaker: enters with two counters; proliferates whenever an opponent commits a crime, not for your own', () => {
+    let s = newGame();
+    const cop = put(s, 'P1', 'patrolling-peacemaker', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cop }).state;
+    expect(s.cards[cop]!.counters).toBe(2);
+    // Your own spell targeting an opponent's creature: your crime, no trigger.
+    const target = put(s, 'P2', 'coeurl');
+    const grasp = put(s, 'P1', 'infernal-grasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: grasp, targets: [card(target)] }).state;
+    expect(s.cards[cop]!.counters).toBe(2);
+    // An opponent targets your creature: a crime, so it proliferates.
+    const bolt = put(s, 'P2', 'infernal-grasp', 'hand');
+    const victim = put(s, 'P1', 'coeurl');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [card(victim)] }).state;
+    expect(s.cards[cop]!.counters).toBe(3);
   });
 });

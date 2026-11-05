@@ -647,5 +647,134 @@
     "colors": [
       "G"
     ]
+  },
+  "c46f9a07-005c-44b7-8057-b2f00b274dd6": {
+    "name": "Robot",
+    "typeLine": "Token Artifact Creature — Robot",
+    "oracleText": "",
+    "set": "teoe",
+    "number": "10",
+    "artist": "Leonardo Santanna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/4/c46f9a07-005c-44b7-8057-b2f00b274dd6.jpg?1783905782",
+      "normal": "https://cards.scryfall.io/normal/front/c/4/c46f9a07-005c-44b7-8057-b2f00b274dd6.jpg?1783905782",
+      "large": "https://cards.scryfall.io/large/front/c/4/c46f9a07-005c-44b7-8057-b2f00b274dd6.jpg?1783905782",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/4/c46f9a07-005c-44b7-8057-b2f00b274dd6.jpg?1783905782"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoe/10/robot?utm_source=api",
+    "scryfallId": "c46f9a07-005c-44b7-8057-b2f00b274dd6",
+    "relatedTokens": [
+      {
+        "name": "Robot",
+        "scryfallId": "c46f9a07-005c-44b7-8057-b2f00b274dd6"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": []
+  },
+  "631c2c16-132d-4607-ab7e-207a6af188e5": {
+    "name": "Human Soldier",
+    "typeLine": "Token Creature — Human Soldier",
+    "oracleText": "",
+    "set": "teoe",
+    "number": "2",
+    "artist": "Deruchenko Alexander",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/3/631c2c16-132d-4607-ab7e-207a6af188e5.jpg?1783905788",
+      "normal": "https://cards.scryfall.io/normal/front/6/3/631c2c16-132d-4607-ab7e-207a6af188e5.jpg?1783905788",
+      "large": "https://cards.scryfall.io/large/front/6/3/631c2c16-132d-4607-ab7e-207a6af188e5.jpg?1783905788",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/3/631c2c16-132d-4607-ab7e-207a6af188e5.jpg?1783905788"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoe/2/human-soldier?utm_source=api",
+    "scryfallId": "631c2c16-132d-4607-ab7e-207a6af188e5",
+    "relatedTokens": [
+      {
+        "name": "Dinosaur",
+        "scryfallId": "f918b740-1984-4090-8886-9e290a698b95"
+      },
+      {
+        "name": "Human Soldier",
+        "scryfallId": "631c2c16-132d-4607-ab7e-207a6af188e5"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "3fcf8950-117a-4587-8522-79001dffa500": {
+    "name": "Drone",
+    "typeLine": "Token Artifact Creature — Drone",
+    "oracleText": "Flying\nThis token can block only creatures with flying.",
+    "set": "teoe",
+    "number": "3",
+    "artist": "Artur Nakhodkin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/f/3fcf8950-117a-4587-8522-79001dffa500.jpg?1783905787",
+      "normal": "https://cards.scryfall.io/normal/front/3/f/3fcf8950-117a-4587-8522-79001dffa500.jpg?1783905787",
+      "large": "https://cards.scryfall.io/large/front/3/f/3fcf8950-117a-4587-8522-79001dffa500.jpg?1783905787",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/f/3fcf8950-117a-4587-8522-79001dffa500.jpg?1783905787"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoe/3/drone?utm_source=api",
+    "scryfallId": "3fcf8950-117a-4587-8522-79001dffa500",
+    "relatedTokens": [
+      {
+        "name": "Drone",
+        "scryfallId": "3fcf8950-117a-4587-8522-79001dffa500"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "a16f931a-9fa3-45b1-8d54-04b6b5bf7b71": {
+    "name": "Munitions",
+    "typeLine": "Token Artifact",
+    "oracleText": "When this token leaves the battlefield, it deals 2 damage to any target.",
+    "set": "teoe",
+    "number": "9",
+    "artist": "Leonardo Santanna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/1/a16f931a-9fa3-45b1-8d54-04b6b5bf7b71.jpg?1783905784",
+      "normal": "https://cards.scryfall.io/normal/front/a/1/a16f931a-9fa3-45b1-8d54-04b6b5bf7b71.jpg?1783905784",
+      "large": "https://cards.scryfall.io/large/front/a/1/a16f931a-9fa3-45b1-8d54-04b6b5bf7b71.jpg?1783905784",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/1/a16f931a-9fa3-45b1-8d54-04b6b5bf7b71.jpg?1783905784"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoe/9/munitions?utm_source=api",
+    "scryfallId": "a16f931a-9fa3-45b1-8d54-04b6b5bf7b71",
+    "relatedTokens": [
+      {
+        "name": "Munitions",
+        "scryfallId": "a16f931a-9fa3-45b1-8d54-04b6b5bf7b71"
+      }
+    ],
+    "colors": []
+  },
+  "bf7501ee-783d-49c6-b381-1db056360b40": {
+    "name": "Sliver",
+    "typeLine": "Token Creature — Sliver",
+    "oracleText": "",
+    "set": "teoe",
+    "number": "1",
+    "artist": "Igor Grechanyi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/f/bf7501ee-783d-49c6-b381-1db056360b40.jpg?1783905787",
+      "normal": "https://cards.scryfall.io/normal/front/b/f/bf7501ee-783d-49c6-b381-1db056360b40.jpg?1783905787",
+      "large": "https://cards.scryfall.io/large/front/b/f/bf7501ee-783d-49c6-b381-1db056360b40.jpg?1783905787",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/f/bf7501ee-783d-49c6-b381-1db056360b40.jpg?1783905787"
+    },
+    "scryfallUri": "https://scryfall.com/card/teoe/1/sliver?utm_source=api",
+    "scryfallId": "bf7501ee-783d-49c6-b381-1db056360b40",
+    "relatedTokens": [
+      {
+        "name": "Sliver",
+        "scryfallId": "bf7501ee-783d-49c6-b381-1db056360b40"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
   }
 }

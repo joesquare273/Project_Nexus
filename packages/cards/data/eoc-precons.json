@@ -30,12 +30,8 @@
           "count": 1,
           "set": "eoc",
           "number": "5",
-          "implemented": false,
-          "needs": [
-            "proliferate",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Insight Engine",
@@ -216,22 +212,16 @@
           "count": 1,
           "set": "eoc",
           "number": "69",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Deepglow Skate",
           "count": 1,
           "set": "eoc",
           "number": "70",
-          "implemented": false,
-          "needs": [
-            "double",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Emry, Lurker of the Loch",
@@ -320,12 +310,8 @@
           "count": 1,
           "set": "eoc",
           "number": "113",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Jhoira, Weatherlight Captain",
@@ -414,12 +400,8 @@
           "count": 1,
           "set": "eoc",
           "number": "145",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Titan Forge",

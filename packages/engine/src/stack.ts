@@ -2652,6 +2652,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'RemoveCounters':
       for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
       return;
+    case 'DoubleCounters':
+      // The engine chooses (as for Proliferate): helpful kinds on your own permanents, harmful ones on opponents'.
+      for (const c of battlefield(s)) {
+        if (c.phasedOut) continue;
+        for (const [kind, n] of allCounters(c)) {
+          const harmful = kind === 'stun' || kind === '-1/-1';
+          if (n > 0 && (c.controller === item.controller ? !harmful : harmful)) addCounters(ctx, c.id, n, item.controller, kind);
+        }
+      }
+      return;
     case 'ShuffleLibrary':
       for (const pid of targetPlayers(targets)) {
         shuffleInPlace(s, s.players[pid]!.library);

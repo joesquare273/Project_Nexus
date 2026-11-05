@@ -66,6 +66,17 @@ interface Occurrence {
   loreTo?: number;
 }
 
+/** Rule 700.13: targeting another player, something another player controls, or a card in another player's graveyard. */
+function isCrime(s: GameState, player: PlayerId, targets: readonly Target[]): boolean {
+  return targets.some((t) => {
+    if (t.kind === 'player') return t.player !== player;
+    if (t.kind !== 'card') return false;
+    const c = s.cards[t.card];
+    if (!c) return false;
+    return c.zone === 'graveyard' ? c.owner !== player : c.controller !== player;
+  });
+}
+
 function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[] {
   const out: Occurrence[] = [];
   events.forEach((e, at) => {
@@ -111,6 +122,10 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'AbilityActivated':
         out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller });
+        if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
+        break;
+      case 'AbilityTriggered':
+        if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
         break;
       case 'ManaAdded':
         // A mana ability was activated (one occurrence per source in a batch).
@@ -156,6 +171,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         out.push({ when: 'LandPlayed', at, subject: e.card, subjectController: e.player, from: e.from });
         break;
       case 'SpellCast':
+        if (isCrime(s, e.player, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.player });
         out.push({
           when: 'SpellCast',
           from: e.castFrom,
@@ -267,6 +283,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   // "Whenever one or more opponents lose life".
   if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
+  if (o.when === 'OpponentCommitsCrime') return o.subjectController !== undefined && o.subjectController !== controller;
   if (o.when === 'LifeGained') return o.subjectController === controller;
   if (o.when === 'ScryOrSurveil') return o.subjectController === controller;
   // "Whenever an opponent gains control of a permanent from you".

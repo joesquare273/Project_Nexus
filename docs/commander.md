@@ -32,7 +32,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 82/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 87/100 |
 | World Shaper | Hearthhull, the Worldseed (BRG) | 78/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
@@ -132,6 +132,18 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   EachMatchingDealsDamage `toController` ("each creature deals 1 damage to
   its controller"). Simplification: Oracle of Mul Daya's top card is seen by
   its controller only, not revealed to everyone.
+
+- **E9 (2026-11-05): artifact creatures, counters and crimes.** Cyberdrive
+  Awakener, Alibou, Ancient Witness, Threefold Thunderhulk, Deepglow Skate,
+  Patrolling Peacemaker, with the Gnome token (teoc 11). Engine:
+  `BecomeCreature` until end of turn (`becomes.untilEndOfTurn`), animation no
+  longer follows a card to a new zone (rule 400.7), `DoubleCounters`, and the
+  `OpponentCommitsCrime` trigger (rule 700.13: an opponent's spell or
+  ability targeting another player, their permanent or their graveyard).
+  Simplification: Deepglow Skate's "any number of target permanents" is
+  chosen by the engine, as Proliferate is (helpful counters on yours, stun
+  and -1/-1 on opponents'). Depthshaker Titan and Ripples of Potential wait
+  for a real "any number of targets" choice.
 
 ## Commander rules (built)
 

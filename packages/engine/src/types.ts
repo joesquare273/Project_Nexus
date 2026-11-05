@@ -498,8 +498,14 @@ export const EFFECT_KINDS = [
   'RevealTopLandOrDraw',
   /** Remove `amount` (default 1) counters of kind `counter` from the target (removing lore counters doesn't trigger chapters). */
   'RemoveCounters',
-  /** The permanent becomes a creature (`becomes`), in addition to its other types, from now on (Ride the Shoopuf). */
+  /** The permanent becomes a creature (`becomes`), in addition to its other types, from now on (Ride the Shoopuf), or until end of turn (`becomes.untilEndOfTurn`: Cyberdrive Awakener). */
   'BecomeCreature',
+  /**
+   * Double the number of each kind of counter on target permanents (Deepglow
+   * Skate). The engine chooses, as for Proliferate: helpful counters on your
+   * own permanents, stun and -1/-1 counters on opponents'.
+   */
+  'DoubleCounters',
   /** "When you next cast a creature spell this turn, that creature enters with `amount` additional +1/+1 counters" (Summon: Fenrir). */
   'NextCreatureEntersWithCounters',
   /**
@@ -737,7 +743,7 @@ export interface EffectSpec {
   /** Only if a card chosen in the last choice has this subtype ("if you put a Town card into your hand this way"). */
   ifChoseSubtype?: string;
   /** BecomeCreature: the permanent becomes a creature with this base power and toughness and these subtypes, in addition to its other types (no end). */
-  becomes?: { power: number; toughness: number; subtypes?: string[] };
+  becomes?: { power: number; toughness: number; subtypes?: string[]; untilEndOfTurn?: boolean };
   /** Only if you control the creature with the greatest power or tied for it (Summon: Fenrir). */
   ifYouControlGreatestPower?: boolean;
   /** CreateDelayedTrigger: "when you next ..." (it triggers only once). */
@@ -1032,6 +1038,12 @@ export const TRIGGER_EVENTS = [
   'OpponentLosesLife',
   /** You gained life (once per life-gain event; lifelink damage is one event per source). */
   'LifeGained',
+  /**
+   * An opponent committed a crime (rule 700.13): their spell or ability
+   * targets another player, something another player controls, or a card in
+   * another player's graveyard. Once per spell or ability.
+   */
+  'OpponentCommitsCrime',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -1843,7 +1855,8 @@ export interface CardInstance {
   /** The color chosen as it entered ("add one mana of the chosen color"). */
   chosenColor?: Color;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
-  animated?: { power: number; toughness: number; subtypes?: string[] };
+  /** BecomeCreature: a creature with this base power and toughness (until cleanup with `untilEndOfTurn`). */
+  animated?: { power: number; toughness: number; subtypes?: string[]; untilEndOfTurn?: boolean };
   /** The turn this permanent was last dealt damage. */
   damagedTurn?: number;
   /** How many times one of its abilities resolved this turn (`turn:ability` key). */

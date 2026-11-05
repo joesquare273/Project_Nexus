@@ -213,6 +213,7 @@ export function cleanupDamage(ctx: Ctx): void {
     }
     delete c.crewed;
     delete c.turnSubtypes;
+    if (c.animated?.untilEndOfTurn) delete c.animated;
     // Ancient Adamantoise: "Damage isn't removed from this creature during cleanup steps."
     if (!defOf(ctx.s, c).keepsDamage) c.damage = 0;
     c.deathtouched = false;

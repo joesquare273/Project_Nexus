@@ -5,6 +5,14 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E9: artifact creatures, counters and crimes
+
+Five Counter Intelligence cards: Cyberdrive Awakener, Alibou, Threefold
+Thunderhulk, Deepglow Skate and Patrolling Peacemaker. New: crimes, counter
+doubling, and "becomes a creature until end of turn"; an animated permanent
+that changes zones is no longer a creature. Counter Intelligence 87/100,
+World Shaper 78/100.
+
 ### Edge of Eternities group E8: lands, graveyards and removal
 
 Seven cards: Oracle of Mul Daya, Escape to the Wilds, Planetary
