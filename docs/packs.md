@@ -1,5 +1,11 @@
 # Packs tab: Final Fantasy booster packs
 
+The booster page and pack opening show the set's showcase art behind them,
+fixed to the window, blurred and darkened (`.set-showcase` in
+`packs/packs.css`; each set's class picks its picture: `set-fin` uses
+`public/packs/ff-showcase.jpg`). The pack and showcase pictures in
+`public/packs/` were supplied by the user (2026-11-05).
+
 The menu's **Packs** tab opens Final Fantasy booster packs for collecting.
 Each pack costs Aether Shards (100 for a Play Booster, 500 for a Collector
 Booster; buying 10 at once adds an 11th free); the game server opens it and adds the cards to your account's

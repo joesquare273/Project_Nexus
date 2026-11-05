@@ -106,7 +106,8 @@ export function PacksTab({ section = 'packs', onSection }: { section?: PacksSect
   if (!mod || !collection) return <p className="packs-loading">Shuffling the print sheets…</p>;
 
   return (
-    <div className="packs">
+    <div className={`packs ${section === 'packs' ? 'with-showcase set-fin' : ''}`}>
+      {section === 'packs' && <div className="set-showcase" aria-hidden="true" />}
       {section === 'packs' && (
         <div className="packs-bar">
           <button

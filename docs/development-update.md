@@ -5,6 +5,12 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Final Fantasy showcase art behind the packs
+
+The Shop's booster page and pack opening show the Final Fantasy showcase
+art behind everything, blurred and darkened. The Edge of Eternities pack and
+showcase images are in `public/packs/` too, for its packs page next.
+
 ### Edge of Eternities group E7: sunburst and mana from counters
 
 Five Counter Intelligence artifacts: Pentad Prism, Etched Oracle,
