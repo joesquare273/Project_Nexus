@@ -4,10 +4,12 @@
 // groups follow below (E2-E5, docs/commander.md).
 
 import { describe, expect, it } from 'vitest';
-import { activatedAbilities, currentDefinition, getLegalActions, hasFlag, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
+import { activatedAbilities, applyAction, currentDefinition, getLegalActions, hasFlag, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
 
 const hasType = (s: GameState, c: CardInstance, t: string) => (currentDefinition(s, c).types as string[]).includes(t);
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
+import { planTaps } from '../src/mana.ts';
+import { basicAi } from '../src/index.ts';
 
 const charge = (s: GameState, id: string) => s.cards[id]!.namedCounters?.charge ?? 0;
 /** The Station ability's index on a card (it comes after the printed activated abilities). */
@@ -840,5 +842,117 @@ describe('E6: artifacts and cost reduction', () => {
     s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
     expect(s.cards[ring]!.zone).toBe('graveyard');
     expect(s.cards[land]!.zone).toBe('hand');
+  });
+
+  it('the computer answers Thirst for Knowledge legally: an artifact card if it has one, otherwise two cards', () => {
+    for (const withArtifact of [true, false]) {
+      let s = newGame();
+      const spell = put(s, 'P1', 'thirst-for-knowledge', 'hand');
+      put(s, 'P1', 'forest', 'hand');
+      put(s, 'P1', 'coeurl', 'hand');
+      const ring = withArtifact ? put(s, 'P1', 'sol-ring', 'hand') : undefined;
+      mana(s, 'P1', { U: 1, C: 2 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+      const choice = basicAi(1)(s, getLegalActions(s));
+      expect(applyAction(s, choice).ok).toBe(true);
+      if (choice.type !== 'ChooseCards') throw new Error(choice.type);
+      expect(choice.cards).toEqual(ring ? [ring] : expect.arrayContaining([expect.any(String), expect.any(String)]));
+      if (!ring) expect(choice.cards).toHaveLength(2);
+    }
+  });
+});
+
+// Group 7: charge counters and mana artifacts.
+describe('E7: sunburst, converge and mana from counters', () => {
+  const pool = (s: GameState) => s.players.P1!.manaPool;
+  const manaAction = (s: GameState, id: string) => getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === id);
+
+  it('Pentad Prism: sunburst charge counters; remove one for any color, even while tapped', () => {
+    let s = newGame();
+    const prism = put(s, 'P1', 'pentad-prism', 'hand');
+    mana(s, 'P1', { W: 1, U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: prism }).state;
+    expect(charge(s, prism)).toBe(2);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: prism, mana: 'R' });
+    expect(pool(s).R).toBe(1);
+    expect(charge(s, prism)).toBe(1);
+    s.cards[prism]!.tapped = true;
+    expect(manaAction(s, prism)).toBe(true);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: prism, mana: 'G' });
+    expect(pool(s).G).toBe(1);
+    expect(manaAction(s, prism)).toBe(false);
+    expect(rejected(s, { type: 'ActivateManaAbility', player: 'P1', card: prism, mana: 'G' })).toBeTruthy();
+  });
+
+  it('automatic payment uses a tapped Pentad Prism, and a summoning-sick Crystalline Crawler, for a colored cost', () => {
+    const s = newGame();
+    const prism = put(s, 'P1', 'pentad-prism', 'battlefield', { tapped: true, namedCounters: { charge: 1 } });
+    const crawler = put(s, 'P1', 'crystalline-crawler', 'battlefield', { summoningSick: true, counters: 1 });
+    const taps = planTaps(s, 'P1', '{U}{R}');
+    expect(taps?.map((t) => t.card).sort()).toEqual([crawler, prism].sort());
+  });
+
+  it('sunburst counts colors only: generic paid with colorless adds nothing', () => {
+    let s = newGame();
+    const prism = put(s, 'P1', 'pentad-prism', 'hand');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: prism }).state;
+    expect(charge(s, prism)).toBe(0);
+  });
+
+  it('Etched Oracle: sunburst +1/+1 counters; {1} and four counters: a player draws three', () => {
+    let s = newGame();
+    const oracle = put(s, 'P1', 'etched-oracle', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: oracle }).state;
+    expect(s.cards[oracle]!.counters).toBe(4);
+    expect(powerOf(s, s.cards[oracle]!)).toBe(4);
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: oracle, ability: 0, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 3);
+    expect(s.cards[oracle]!.zone).toBe('graveyard'); // a 0/0 with no counters left
+  });
+
+  it('Crystalline Crawler: converge counters; remove one for mana while summoning sick; {T} for a counter', () => {
+    let s = newGame();
+    const crawler = put(s, 'P1', 'crystalline-crawler', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: crawler }).state;
+    expect(s.cards[crawler]!.counters).toBe(3);
+    expect(s.cards[crawler]!.summoningSick).toBe(true);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: crawler, mana: 'G' });
+    expect(pool(s).G).toBe(1);
+    expect(s.cards[crawler]!.counters).toBe(2);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: crawler, ability: 0 })).toMatch(/summoning sickness/);
+    s.cards[crawler]!.summoningSick = false;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crawler, ability: 0 }).state;
+    expect(s.cards[crawler]!.counters).toBe(3);
+  });
+
+  it('Astral Cornucopia: {X}{X}{X} for X charge counters; tap for that much of one color', () => {
+    let s = newGame();
+    const horn = put(s, 'P1', 'astral-cornucopia', 'hand');
+    mana(s, 'P1', { C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: horn, x: 2 }).state;
+    expect(charge(s, horn)).toBe(2);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: horn, mana: 'G' });
+    expect(pool(s).G).toBe(2);
+  });
+
+  it('Empowered Autogenerator: enters tapped; each tap adds a charge counter, then that much mana', () => {
+    let s = newGame();
+    const gen = put(s, 'P1', 'empowered-autogenerator', 'hand');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gen }).state;
+    expect(s.cards[gen]!.tapped).toBe(true);
+    s.cards[gen]!.tapped = false;
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: gen, mana: 'U' });
+    expect(pool(s).U).toBe(1);
+    expect(charge(s, gen)).toBe(1);
+    s.cards[gen]!.tapped = false;
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: gen, mana: 'U' });
+    expect(pool(s).U).toBe(3);
+    expect(charge(s, gen)).toBe(2);
   });
 });

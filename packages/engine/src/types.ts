@@ -1528,6 +1528,14 @@ export interface CardDefinition {
     yourLandColors?: boolean;
     /** "If this creature has a +1/+1 counter on it, add three mana instead." */
     amountWithCounters?: number;
+    /**
+     * "Remove a [kind] counter from this: Add one mana of any color" (Pentad
+     * Prism, Crystalline Crawler): no {T}, so it works while tapped or
+     * summoning sick, once per counter.
+     */
+    removeCounter?: AnyCounter;
+    /** `addCounter` happens before the mana is counted ("Put a charge counter on this artifact. Add X mana, where X is the number of charge counters"). */
+    addCounterFirst?: boolean;
     /** "Add {G} for each +1/+1 counter on this creature" (none when it has no counters). */
     amountPerCounter?: boolean | CounterKind;
     /** "Activate only if you control five or more lands." */
@@ -1701,6 +1709,12 @@ export interface CardDefinition {
    * pool allows.
    */
   converge?: boolean;
+  /**
+   * Sunburst (rule 702.44): it enters with a counter for each color of mana
+   * spent to cast it: +1/+1 counters if it's a creature, charge counters
+   * otherwise. Generic mana is paid with new colors first, as for converge.
+   */
+  sunburst?: boolean;
   /** Rebound (rule 702.88): cast from your hand, it's exiled as it resolves and can be cast free during your next turn. */
   rebound?: boolean;
   /** Unearth cost (rule 702.84): an ability that works from the graveyard. */
@@ -1719,7 +1733,7 @@ export interface CardDefinition {
   entersRemovingCounters?: boolean;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
   saga?: number;
-  /** The kind of those counters, if not +1/+1 ("enters with a page counter on it"). */
+  /** The kind of those counters (entersWithCounters or entersWithXCounters), if not +1/+1 ("enters with a page counter on it", "X charge counters"). */
   entersWithCounterKind?: CounterKind;
   /** A token's definition, created by effects rather than played from a deck. */
   token?: boolean;

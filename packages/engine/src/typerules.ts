@@ -100,12 +100,24 @@ export function isBasicLand(def: CardDefinition): boolean {
   return (def.supertypes?.includes('Basic') ?? false) && def.types.includes('land');
 }
 
+/** A mana ability paid by removing counters ("Remove a charge counter from this: Add one mana of any color") instead of tapping. */
+export const tapFreeManaAbility = (def: CardDefinition): boolean => !!def.manaAbility?.removeCounter;
+
+/** How many times a counter-removing mana ability can still be activated: the counters of its kind on the permanent. */
+export function manaCounters(c: CardInstance, def: CardDefinition): number {
+  const kind = def.manaAbility?.removeCounter;
+  if (!kind) return 0;
+  return kind === '+1/+1' ? (c.counters ?? 0) : (c.namedCounters?.[kind as keyof NonNullable<CardInstance['namedCounters']>] ?? 0);
+}
+
 /** How much one activation of a permanent's mana ability adds: one, a fixed amount, or one per counter. */
 export function manaAbilityAmount(c: CardInstance, def: CardDefinition): number {
   const ability = def.manaAbility;
+  if (ability?.removeCounter) return 1;
   if (ability?.amountPerCounter) {
     const kind = ability.amountPerCounter === true ? undefined : ability.amountPerCounter;
-    return kind ? (c.namedCounters?.[kind] ?? 0) : (c.counters ?? 0);
+    // Empowered Autogenerator: the counter it adds first counts too.
+    return (kind ? (c.namedCounters?.[kind] ?? 0) : (c.counters ?? 0)) + (ability.addCounterFirst ? 1 : 0);
   }
   if (ability?.amountWithCounters && (c.counters ?? 0) > 0) return ability.amountWithCounters;
   return ability?.amount ?? 1;
@@ -124,6 +136,8 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   const yours = () => s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === c.controller);
   // "Add {G} for each +1/+1 counter": nothing to add without counters.
   if (ability?.amountPerCounter && manaAbilityAmount(c, def) === 0) return [];
+  // "Remove a charge counter: Add one mana": nothing to remove, no mana.
+  if (ability?.removeCounter && manaCounters(c, def) === 0) return [];
   // "Activate only if you control five or more lands."
   if (ability?.ifLandsAtLeast && yours().filter((x) => currentDefinition(s, x).types.includes('land')).length < ability.ifLandsAtLeast) return [];
   // "Add one mana of the chosen color" (Crossroads Village): nothing until a color is chosen.

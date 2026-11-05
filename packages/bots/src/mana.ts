@@ -61,12 +61,14 @@ export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions =
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === playerId)
     .filter((c) => {
       const def = currentDefinition(s,c);
-      if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || c.tapped || c.controller !== playerId) return false;
+      // "Remove a counter: Add one mana" needs no {T}.
+      const tapFree = !!def.manaAbility?.removeCounter;
+      if (opts.exclude?.includes(c.id) || manaChoices(s, c).length === 0 || (c.tapped && !tapFree) || c.controller !== playerId) return false;
       if (def.manaAbility?.onlyForEquipment && !opts.forEquipment) return false;
       if (def.manaAbility?.onlyForNoncreatureSpells && !opts.forNoncreatureSpell) return false;
       if (def.manaAbility?.onlyForArtifacts && !opts.forArtifact) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
-      return !sick;
+      return !sick || tapFree;
     });
 }
 

@@ -5,6 +5,16 @@ Longer-lived design choices go in [decisions.md](decisions.md).
 
 ## 2026-11-05
 
+### Edge of Eternities group E7: sunburst and mana from counters
+
+Five Counter Intelligence artifacts: Pentad Prism, Etched Oracle,
+Crystalline Crawler, Astral Cornucopia and Empowered Autogenerator. New:
+sunburst, and mana abilities that remove a counter instead of tapping (they
+work while tapped or summoning sick, and automatic payment uses them).
+Playing the two Edge of Eternities decks against each other found the
+computer answering Thirst for Knowledge's discard illegally; it now discards
+an artifact card if it has one, otherwise two cards. Counter Intelligence 81/100, World Shaper 72/100.
+
 ### Edge of Eternities group E6: artifacts and cost reduction
 
 Eight Counter Intelligence cards: Etherium Sculptor, Enthusiastic

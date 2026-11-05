@@ -348,24 +348,16 @@
           "count": 1,
           "set": "eoc",
           "number": "131",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Crystalline Crawler",
           "count": 1,
           "set": "eoc",
           "number": "133",
-          "implemented": false,
-          "needs": [
-            "converge",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Darksteel Reactor",
@@ -380,11 +372,8 @@
           "count": 1,
           "set": "eoc",
           "number": "135",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Hangarback Walker",
@@ -611,12 +600,8 @@
           "count": 1,
           "set": "eoc",
           "number": "56",
-          "implemented": false,
-          "needs": [
-            "sunburst",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Sol Ring",
@@ -687,12 +672,8 @@
           "count": 1,
           "set": "eoc",
           "number": "136",
-          "implemented": false,
-          "needs": [
-            "sunburst",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Everflowing Chalice",

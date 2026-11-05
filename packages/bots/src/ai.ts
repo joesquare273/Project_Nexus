@@ -601,6 +601,13 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     const mv = (id: string) => manaValue(parseManaCost(def(s, s.cards[id]!).manaCost));
     return pick([...p.cards].sort((a, b) => mv(b) - mv(a)).slice(0, p.min));
   }
+  // "Discard two cards unless you discard an artifact card": one matching card if we have one, else the full amount.
+  if (p.purpose === 'discard' && p.orOneMatching) {
+    const one = p.cards.filter((id) => matchesObject(s, p.orOneMatching, s.cards[id]!, { controller: me })).sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!))[0];
+    if (one) return pick([one]);
+    const ranked = (chooseBottom(s, me, p.max) as Extract<Action, { type: 'BottomCards' }>).cards.filter((id) => p.cards.includes(id));
+    return pick([...ranked, ...p.cards.filter((id) => !ranked.includes(id))].slice(0, p.max));
+  }
   if (p.purpose === 'discard' || p.purpose === 'handSize') {
     if (p.max === 0) return pick([]);
     // "Any number": only cards we'd rather not have (surplus lands).

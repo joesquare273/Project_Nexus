@@ -239,7 +239,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   validateCounterKind(c.entersWithCounterKind, err);
   if (c.saga !== undefined && !c.subtypes?.includes('Saga')) err('only Sagas have "saga".');
   if (c.subtypes?.includes('Saga') && !c.notBuilt && !c.saga) err('a Saga needs "saga": its final chapter number.');
-  if (c.entersWithCounterKind && !c.entersWithCounters) err('entersWithCounterKind needs entersWithCounters.');
+  if (c.entersWithCounterKind && !c.entersWithCounters && !c.entersWithXCounters) err('entersWithCounterKind needs entersWithCounters or entersWithXCounters.');
   const ma = c.manaAbility;
   for (const key of ['amount', 'amountWithCounters', 'nextCreatureCounters'] as const) {
     if (ma?.[key] !== undefined && (!isNonNegativeInt(ma[key]) || ma[key] === 0)) err(`manaAbility ${key} must be a positive whole number.`);

@@ -63,6 +63,8 @@ export {
   tapOtherManaTypes,
   manaProduced,
   manaAbilityAmount,
+  manaCounters,
+  tapFreeManaAbility,
   objectManaValue,
   colorsOf,
 } from './typerules.ts';

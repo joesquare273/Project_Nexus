@@ -32,7 +32,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 76/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 81/100 |
 | World Shaper | Hearthhull, the Worldseed (BRG) | 72/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
@@ -110,6 +110,19 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   (Emry's card isn't exiled afterwards). Cloud Key waits for a "choose a card
   type as it enters" decision (a new kind of choice for the board, the AI and
   online play).
+
+- **E7 (2026-11-05): sunburst, converge and mana from counters.** Pentad
+  Prism, Etched Oracle, Crystalline Crawler, Astral Cornucopia, Empowered
+  Autogenerator. Engine: `sunburst` (rule 702.44: a counter per color spent,
+  +1/+1 on a creature, charge otherwise; generic is paid with new colors
+  first, as for converge), the mana ability `removeCounter` ("Remove a
+  counter: Add one mana of any color", no {T}, so it works while tapped or
+  summoning sick; legal actions, the mana count and automatic payment all
+  know it), `addCounterFirst` (the new charge counter counts toward the
+  mana), and `entersWithCounterKind` for X counters. Crystalline Crawler's
+  converge ("a +1/+1 counter for each color spent") uses the same rule as
+  sunburst. Still to come in this area: Solar Array and Lux Artillery
+  (granting sunburst), Moxite Refinery, Gavel of the Righteous.
 
 ## Commander rules (built)
 

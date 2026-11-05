@@ -729,12 +729,19 @@ export function activateManaAbility(
   const produced = manaChoices(s, c);
   if (produced.length === 0) reject('That permanent has no mana ability.');
   if (!produced.includes(mana)) reject(`That permanent can't produce {${mana}}.`);
+  const ability = def.manaAbility;
+  // "Remove a charge counter from this: Add one mana of any color": no tapping, so being tapped or summoning sick doesn't matter.
+  if (ability?.removeCounter) {
+    if (removeCounters(ctx, id, ability.removeCounter, 1) === 0) reject('There is no counter to remove.');
+    addMana(ctx, playerId, mana, id);
+    kinnanBonus(ctx, playerId, c, mana);
+    return;
+  }
   if (c.tapped) reject('That permanent is already tapped.');
   if (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) {
     reject('Creatures with summoning sickness can’t use tap abilities.');
   }
   tap(ctx, c);
-  const ability = def.manaAbility;
   // Ether: "When you next cast an instant or sorcery spell this turn, copy that spell" comes with the mana.
   if (ability?.copyNextInstantOrSorcery) {
     s.delayedTriggers = [...(s.delayedTriggers ?? []), { source: id, sourceObject: c.zoneChanges ?? 0, controller: playerId, turn: s.turnNumber, next: true,
@@ -747,6 +754,7 @@ export function activateManaAbility(
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
+  // With `addCounterFirst`, the amount above already counted this counter.
   if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
   // Ultima, Origin of Oblivion: "Whenever you tap a land for {C}, add an additional {C}" (a triggered mana ability).
   if (mana === 'C' && def.types.includes('land')) {
@@ -1193,7 +1201,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const spentScryMana: CreatureScryMana[] = [];
   const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
   // Converge: pay generic mana with colors not spent yet, while the pool still covers the cost.
-  if (def.converge) {
+  if (def.converge || def.sunburst) {
     for (const color of COLORS) {
       if (cost.generic === 0 || (cost[color] ?? 0) > 0) continue;
       const tried = { ...cost, generic: cost.generic - 1, [color]: 1 };
@@ -1272,7 +1280,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     castFrom: from,
     ...(way === 'flashback' ? { flashback: true } : {}),
     manaSpent,
-    ...(def.converge ? { colorsSpent } : {}),
+    ...(def.converge || def.sunburst ? { colorsSpent } : {}),
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
     ...(kicks > 0 ? { kicks } : {}),
@@ -3642,7 +3650,9 @@ export function resolveTop(ctx: Ctx): void {
       if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
       if (item.kicks) c.kicksPaid = item.kicks;
-      if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller);
+      if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
+      // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.
+      if (def.sunburst && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;

@@ -60,7 +60,7 @@ import {
 import { battlefield, alivePlayers, hasKeyword, hasType, staticRule } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
 import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
-import { canReveal, manaAbilityAmount, grantedManaAbilities, legendaryManaCreatures, manaChoices, tapOtherManaTypes } from './typerules.ts';
+import { canReveal, manaAbilityAmount, manaCounters, grantedManaAbilities, legendaryManaCreatures, manaChoices, tapFreeManaAbility, tapOtherManaTypes } from './typerules.ts';
 import { COLORS, MANA_TYPES, type Action, type ActivatedSpec, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
 const MAX_TARGET_COMBOS = 96;
@@ -300,6 +300,11 @@ function availableMana(s: GameState, playerId: PlayerId, improvisedSpell?: CardI
   let available = MANA_TYPES.reduce((n, t) => n + p.manaPool[t], 0);
   for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === playerId)) {
     const d = currentDefinition(s,c);
+    // "Remove a charge counter: Add one mana": once per counter, tapped or not.
+    if (tapFreeManaAbility(d)) {
+      if (manaChoices(s, c).length > 0) available += manaCounters(c, d);
+      continue;
+    }
     if (c.tapped || c.controller !== playerId) continue;
     if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
     if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d);
@@ -375,6 +380,11 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
     const sick = def.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste');
     for (const creature of legendaryManaCreatures(s, c)) {
       for (const mana of tapOtherManaTypes(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, tapCreature: creature.id });
+    }
+    // "Remove a counter: Add one mana" needs no {T}: tapped or summoning sick doesn't matter.
+    if (tapFreeManaAbility(def)) {
+      for (const mana of manaChoices(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
+      continue;
     }
     if (c.tapped || c.controller !== player || sick) continue;
     for (const ability of grantedManaAbilities(s, c)) for (const mana of ability.mana) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, grantedBy: ability.source });
