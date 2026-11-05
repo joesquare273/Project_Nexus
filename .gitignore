@@ -10,3 +10,4 @@ Thumbs.db
 # Downloaded by npm run audio (each computer runs it).
 packages/client/public/audio/*
 !packages/client/public/audio/README.md
+audio-packs/

@@ -8,8 +8,11 @@ where to get it for free, and how it fits together.
 - **Turn it on** in the in-game settings (⚙) or the account menu: Sound on,
   then Effects, Ambience and Music volumes (saved on this device). Off by
   default.
-- **`npm run audio`** (on your own computer) downloads Kenney's CC0 packs
-  (casino, RPG, impact, interface) and a few Kevin MacLeod tracks (CC BY 4.0)
+- **`npm run audio`** (on your own computer) unpacks Kenney's CC0 packs
+  (casino, RPG, impact, interface) from your Downloads folder (Kenney's site
+  downloads through a donation prompt, so they're downloaded in the browser:
+  Download, then "Continue without donating"; the casino pack falls back to
+  its OpenGameArt copy) and downloads a few Kevin MacLeod tracks (CC BY 4.0)
   into `packages/client/public/audio/`, and writes `manifest.json` and
   `CREDITS.md` there. The files aren't committed; run it once per computer
   (the cloud sessions can't reach those sites). Your own music and ambience

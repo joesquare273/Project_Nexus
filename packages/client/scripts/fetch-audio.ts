@@ -5,7 +5,10 @@
 //   npm run audio
 //
 // Effects: Kenney's CC0 packs (casino, RPG, impact, interface sounds; no
-// credit required). Music: a few Kevin MacLeod tracks from incompetech.com
+// credit required). Kenney's site downloads through its donation prompt, so
+// download each pack in the browser (Download, then "Continue without
+// donating"); this picks the zips up from your Downloads folder (or an
+// audio-packs/ folder in the repository). Music: a few Kevin MacLeod tracks from incompetech.com
 // (CC BY 4.0, credited in public/audio/CREDITS.md). Your own files work too:
 // put music in public/audio/music/ and ambience loops (Tabletop Audio, Scott
 // Buckley, Sonniss...) in public/audio/ambience/, then run this again so the
@@ -13,7 +16,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { basename, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SOUND_IDS, type SoundId } from '../src/audio/cues.ts';
@@ -85,7 +88,8 @@ async function findZip(page: string): Promise<string | null> {
     console.log(`  ${page}: the page could not be opened`);
     return null;
   }
-  const found = [...html.matchAll(/(?:https?:)?[^"'()\s<>=]*\.zip(?:\?[^"'()\s<>]*)?/gi)].map((m) => m[0]).filter((u) => !u.startsWith('.'));
+  // A real link has a path (https://…/files/pack.zip or /files/pack.zip), not just a file name in the page text.
+  const found = [...html.matchAll(/(?:https?:)?[^"'()\s<>=]*\.zip(?:\?[^"'()\s<>]*)?/gi)].map((m) => m[0]).filter((u) => u.includes('/'));
   if (found.length) return new URL(found[0]!.replace(/&amp;/g, '&'), page).href;
   const hints = html
     .split(/\n|(?=<a )/)
@@ -93,6 +97,21 @@ async function findZip(page: string): Promise<string | null> {
     .slice(0, 6)
     .map((line) => `    ${line.trim().slice(0, 220)}`);
   console.log(`  ${page}: no .zip link. Lines about downloads:\n${hints.join('\n') || '    (none)'}`);
+  return null;
+}
+
+/** Where downloaded packs are looked for: your Downloads folder, and an audio-packs folder in the repository. */
+const PACK_DIRS = [join(homedir(), 'Downloads'), fileURLToPath(new URL('../../../audio-packs/', import.meta.url))];
+
+/** A Kenney pack zip downloaded in the browser (kenney_casino-audio.zip, kenney_casino-audio (1).zip...). */
+function localZip(slug: string): string | null {
+  for (const dir of PACK_DIRS) {
+    if (!existsSync(dir)) continue;
+    const hit = readdirSync(dir)
+      .filter((f) => f.toLowerCase().endsWith('.zip') && f.toLowerCase().replace(/[^a-z]/g, '').includes(slug.replace(/[^a-z]/g, '')))
+      .sort()[0];
+    if (hit) return join(dir, hit);
+  }
   return null;
 }
 
@@ -120,20 +139,25 @@ mkdirSync(join(OUT, 'ambience'), { recursive: true });
 const work = mkdtempSync(join(tmpdir(), 'nexus-audio-'));
 const credits: string[] = [];
 const effects: Partial<Record<SoundId, string[]>> = {};
+const missing: string[] = [];
 
 try {
   for (const slug of KENNEY_PACKS) {
     const page = `https://kenney.nl/assets/${slug}`;
-    let zipUrl = await findZip(page);
-    // Kenney's casino pack is mirrored on OpenGameArt too.
-    if (!zipUrl && FALLBACK_PAGES[slug]) zipUrl = await findZip(FALLBACK_PAGES[slug]!);
-    if (!zipUrl) {
-      console.log(`${slug}: no download link found on ${page} (skipped)`);
-      continue;
+    // Kenney's Download button runs a script (after its donation prompt), so
+    // the packs are downloaded in the browser and picked up from here.
+    let zip = localZip(slug);
+    if (zip) console.log(`${slug}: using ${zip}`);
+    else {
+      const url = FALLBACK_PAGES[slug] ? await findZip(FALLBACK_PAGES[slug]!) : null;
+      const to = join(work, `${slug}.zip`);
+      if (url && (await download(url, to))) {
+        console.log(`${slug}: downloaded from ${url}`);
+        zip = to;
+      }
     }
-    const zip = join(work, `${slug}.zip`);
-    if (!(await download(zipUrl, zip))) {
-      console.log(`${slug}: download failed from ${zipUrl} (skipped)`);
+    if (!zip) {
+      missing.push(`${slug}: open ${page}, press Download, then "Continue without donating"`);
       continue;
     }
     const dir = join(work, slug);
@@ -141,7 +165,7 @@ try {
     try {
       unzip(zip, dir);
     } catch {
-      console.log(`${slug}: could not unpack ${zipUrl} (skipped)`);
+      console.log(`${slug}: could not unpack ${zip} (skipped)`);
       continue;
     }
     const files = walk(dir).filter((f) => extname(f).toLowerCase() === '.ogg');
@@ -178,4 +202,5 @@ writeFileSync(
 
 const synthesized = SOUND_IDS.filter((id) => !effects[id]?.length);
 console.log(`\nEffects from files: ${SOUND_IDS.length - synthesized.length} of ${SOUND_IDS.length}. Synthesized: ${synthesized.join(', ') || 'none'}.`);
+if (missing.length) console.log(`\nTo add the missing packs, download each one in your browser, then run npm run audio again:\n${missing.map((m) => `  ${m}`).join('\n')}`);
 console.log(`Music: ${music.length} file(s). Ambience: ${ambience.length} file(s)${ambience.length ? '' : ' (put loops in public/audio/ambience/ and run this again)'}.`);
