@@ -19,7 +19,8 @@
     "play": "node packages/bots/src/play.ts",
     "scryfall": "node packages/cards/scripts/scryfall.ts",
     "scryfall:boosters": "node packages/cards/scripts/booster-data.ts",
-    "server": "node packages/server/src/main.ts"
+    "server": "node packages/server/src/main.ts",
+    "audio": "node packages/client/scripts/fetch-audio.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

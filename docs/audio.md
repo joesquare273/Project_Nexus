@@ -1,9 +1,32 @@
-# Sound effects and music (research, 2026-11-05)
+# Sound effects and music
 
-Research for adding sound to the game: what to play when, where to get it for
-free, and how to build it. Nothing here is built yet. The only sounds in the
-game today are the synthesized pack-opening ones (`client/src/packs/sound.ts`,
-off by default).
+Research (2026-11-05) and how the game's sound is built: what to play when,
+where to get it for free, and how it fits together.
+
+## Built (2026-11-05)
+
+- **Turn it on** in the in-game settings (⚙) or the account menu: Sound on,
+  then Effects, Ambience and Music volumes (saved on this device). Off by
+  default.
+- **`npm run audio`** (on your own computer) downloads Kenney's CC0 packs
+  (casino, RPG, impact, interface) and a few Kevin MacLeod tracks (CC BY 4.0)
+  into `packages/client/public/audio/`, and writes `manifest.json` and
+  `CREDITS.md` there. The files aren't committed; run it once per computer
+  (the cloud sessions can't reach those sites). Your own music and ambience
+  loops go in `public/audio/music/` and `public/audio/ambience/`; run it
+  again so the manifest lists them.
+- **Every effect works without files:** a sound with no downloaded file is
+  synthesized in the browser (`audio/mixer.ts`), so the game has sound before
+  `npm run audio` is run.
+- `audio/cues.ts`: the sound map below as a pure function (`soundsFor`), at
+  most four sounds per batch of events; `GameSession.sounds` records them and
+  `audio/GameSounds.tsx` plays them as the board draws each batch, as the
+  card flights start. Other players' sounds are quieter.
+- Menus play music; a game switches to ambience (or quiet music when there's
+  no ambience). Both fade rather than cut.
+- Not yet: land sounds per color, the Credits page in the app (credits are in
+  `public/audio/CREDITS.md`), and running `npm run audio` in the Render
+  build.
 
 User direction (2026-11-05): use **free resources**, unless something better
 is worth it (see "Upgrades" at the end).
@@ -120,7 +143,7 @@ each site:
   built to play through its own app. Unless its license says otherwise, plan
   on it being for listening at the table, not for putting in the game.
 
-## How to build it (plan)
+## How it was planned
 
 - `client/src/audio/`: one small mixer on the Web Audio API with three
   groups: **Effects**, **Ambience**, **Music**. Each has its own volume, kept

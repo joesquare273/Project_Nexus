@@ -3656,3 +3656,9 @@ button.link {
 }
 .four-players .opp-hand { --opp-card-w: 16px; padding: 0 4px; flex-shrink: 0; }
 .four-players .opp-hand-card.revealed { --opp-card-w: 26px; }
+
+/* ---------- Sound settings ---------- */
+.sound-settings { border: 1px solid rgba(154, 130, 77, 0.35); border-radius: 8px; padding: 6px 10px 8px; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.sound-settings legend { font-size: 11px; color: var(--gold); padding: 0 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.sound-slider { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; font-size: 12px; }
+.sound-slider input { width: 100%; accent-color: var(--gold); }

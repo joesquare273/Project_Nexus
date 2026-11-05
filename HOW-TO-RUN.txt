@@ -46,6 +46,12 @@ You need Node.js 24 or newer.
   Then open http://localhost:5173 in your browser. Leave the terminal open
   while you play; press Ctrl+C in it to stop the game server.
 
+  Sound: turn it on in the game's settings (the gear) or the account menu.
+  For real card sounds and music, run this once on each computer (it
+  downloads free sound packs; without it the game makes simple sounds):
+
+    npm run audio
+
   New to Magic? Press "Learn to play" on the menu. A coach walks you
   through one turn with the Red-White Starter Kit: playing a land, casting
   an Equipment, aiming a spell, and attacking for the win. Then "Play a

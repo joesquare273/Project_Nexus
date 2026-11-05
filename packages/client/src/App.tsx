@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { setScene } from './audio/mixer.ts';
 import { FIN_PRECONS, SCRYFALL, UI_ART, type UiArtKey } from '@nexus/cards';
 import type { GameDeck } from '@nexus/cards/decks';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
@@ -96,6 +97,8 @@ function useRoute(): [Route, (next: Partial<Route>) => void] {
 }
 
 function MainApp() {
+  // Menu music (when sound is on and music has been downloaded); a game switches to ambience.
+  useEffect(() => setScene('menu'), []);
   const [session, setSession] = useState<GameSession | null>(null);
   const [format, setFormat] = useState<'constructed' | 'commander'>('constructed');
   const [precon] = useState(FIN_PRECONS[0]!.name);
