@@ -34,6 +34,8 @@ import {
   type SpellChoice,
   choiceProblem,
   costCardChoices,
+  discardCandidates,
+  RETRACE_DISCARD,
   castingForbidden,
   convokeCandidates,
   convokeCost,
@@ -192,12 +194,13 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
           ...(extraModes > 0 ? { tapCreatures } : {}),
         };
         // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
-        const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
+        const retrace = way === 'retrace';
+        const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (retrace ? 1 : 0);
         const discards = alternative && def.alternativeCost?.exileFromHand
           ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
           : def.additionalCost?.sacrifice || def.kickerSacrifice
             ? spellSacrificeChoices(s, playerId, def, c.id, kicks)
-            : discard > 0 ? subsets(p.hand.filter((id) => id !== c.id), discard, discard) : [[]];
+            : discard > 0 ? subsets(discardCandidates(s, playerId, c.id, retrace ? RETRACE_DISCARD : undefined), discard, discard) : [[]];
         for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
           const baseCost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {

@@ -1538,3 +1538,118 @@ describe('E13: card type choice, sunburst grants, equipment counters and copies'
     expect((currentDefinition(t, t.cards[gardens]!).types as string[]).includes('land')).toBe(false);
   });
 });
+
+describe('E14: World Shaper removal, retrace and lands', () => {
+  /** Plays until the pending choice is a card choice (a library search), passing priority. */
+  const untilChoice = (s: GameState): GameState => {
+    for (let i = 0; i < 30 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    return s;
+  };
+
+  it('Tear Asunder: an artifact or enchantment; kicked, any nonland permanent', () => {
+    let s = newGame();
+    const tear = put(s, 'P1', 'tear-asunder', 'hand');
+    const bear = put(s, 'P2', 'coeurl');
+    const ring = put(s, 'P2', 'sol-ring');
+    mana(s, 'P1', { G: 1, B: 1, C: 2 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tear, targets: [card(bear)] })).toBeTruthy();
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: tear, targets: [card(ring)] }).state;
+    expect(t.cards[ring]!.zone).toBe('exile');
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: tear, kicks: 1, targets: [card(bear)] }).state;
+    expect(t.cards[bear]!.zone).toBe('exile');
+    // Kicked, a land still isn't a legal target.
+    const land = put(s, 'P2', 'forest');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tear, kicks: 1, targets: [card(land)] })).toBeTruthy();
+  });
+
+  it("Windgrace's Judgment: one nonland permanent for each of any number of opponents", () => {
+    let s = newGame(3);
+    const judgment = put(s, 'P1', 'windgraces-judgment', 'hand');
+    const a = put(s, 'P2', 'coeurl');
+    const b = put(s, 'P2', 'sol-ring');
+    const c = put(s, 'P3', 'coeurl');
+    mana(s, 'P1', { B: 1, G: 1, C: 3 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: judgment, targets: [card(a), card(b), { kind: 'none' }] })).toMatch(/different players/);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: judgment, targets: [card(a), card(c), { kind: 'none' }] }).state;
+    expect([a, b, c].map((id) => s.cards[id]!.zone)).toEqual(['graveyard', 'battlefield', 'graveyard']);
+  });
+
+  it('Binding the Old Gods: I destroys a nonland permanent an opponent controls, II fetches a Forest tapped', () => {
+    let s = newGame();
+    const saga = put(s, 'P1', 'binding-the-old-gods', 'hand');
+    const bear = put(s, 'P2', 'coeurl');
+    const forest = put(s, 'P1', 'forest', 'library');
+    mana(s, 'P1', { B: 1, G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: saga }).state;
+    expect(s.cards[bear]!.zone).toBe('graveyard');
+    expect(s.cards[saga]!.namedCounters?.lore).toBe(1);
+    // Chapter II after P1's next draw step (the Forest at the bottom, so it isn't drawn).
+    const lib = s.players.P1!.library;
+    lib.splice(lib.indexOf(forest), 1);
+    lib.push(forest);
+    const turn = s.turnNumber;
+    for (let guard = 0; guard < 10 && !(s.activePlayer === 'P1' && s.turnNumber > turn && s.step === 'main1'); guard++) s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.cards[saga]!.namedCounters?.lore).toBe(2);
+    expect(s.cards[forest]!.zone).toBe('battlefield');
+    expect(s.cards[forest]!.tapped).toBe(true);
+  });
+
+  it('Myriad Landscape: up to two basic lands that share a land type, tapped', () => {
+    let s = newGame();
+    const myriad = put(s, 'P1', 'myriad-landscape');
+    const forest = put(s, 'P1', 'forest', 'library');
+    const mountain = put(s, 'P1', 'mountain', 'library');
+    mana(s, 'P1', { C: 2 });
+    s = untilChoice(act(s, { type: 'ActivateAbility', player: 'P1', card: myriad, ability: 0 }));
+    expect(s.pending.kind).toBe('chooseCards');
+    expect(rejected(s, { type: 'ChooseCards', player: 'P1', cards: [forest, mountain] })).toMatch(/share a land type/);
+    const islands = s.players.P1!.library.filter((id) => s.cards[id]!.defId === 'island').slice(0, 2);
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: islands });
+    expect(islands.map((id) => [s.cards[id]!.zone, s.cards[id]!.tapped])).toEqual([['battlefield', true], ['battlefield', true]]);
+    expect(s.cards[myriad]!.zone).toBe('graveyard');
+  });
+
+  it('Soul of Windgrace: enters and returns a land card from any graveyard; discards a land card to gain life', () => {
+    let s = newGame();
+    const soul = put(s, 'P1', 'soul-of-windgrace', 'hand');
+    const theirs = put(s, 'P2', 'forest', 'graveyard');
+    mana(s, 'P1', { B: 1, R: 1, G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: soul }).state;
+    expect(s.cards[theirs]!.zone).toBe('battlefield');
+    expect(s.cards[theirs]!.controller).toBe('P1');
+    expect(s.cards[theirs]!.tapped).toBe(true);
+    const spell = put(s, 'P1', 'sol-ring', 'hand');
+    const land = put(s, 'P1', 'mountain', 'hand');
+    mana(s, 'P1', { G: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: soul, ability: 0, costCards: [spell] })).toMatch(/matching card/);
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: soul, ability: 0, costCards: [land] }).state;
+    expect(s.players.P1!.life).toBe(life + 3);
+    expect(s.cards[land]!.zone).toBe('graveyard');
+  });
+
+  it('Formless Genesis: an X/X deathtouch Shapeshifter (land cards in your graveyard); retrace casts it again by discarding a land', () => {
+    let s = newGame();
+    const genesis = put(s, 'P1', 'formless-genesis', 'hand');
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'forest', 'graveyard');
+    put(s, 'P2', 'forest', 'graveyard');
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: genesis }).state;
+    const shapes = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'shapeshifter-token-eoc');
+    expect(shapes()).toHaveLength(1);
+    expect([powerOf(s, s.cards[shapes()[0]!]!), hasKeyword(s, s.cards[shapes()[0]!]!, 'Deathtouch')]).toEqual([3, true]);
+    expect(s.cards[genesis]!.zone).toBe('graveyard');
+    // Retrace: from the graveyard, discarding a land card; it goes back to the graveyard.
+    const land = put(s, 'P1', 'mountain', 'hand');
+    const spell = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { G: 1, C: 2 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: genesis })).toBeTruthy();
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: genesis, costCards: [spell] })).toBeTruthy();
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === genesis && a.costCards?.[0] === land)).toBe(true);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: genesis, costCards: [land] }).state;
+    expect(shapes()).toHaveLength(2);
+    // The second counts the discarded Mountain too.
+    expect(powerOf(s, s.cards[shapes()[1]!]!)).toBe(4);
+    expect(s.cards[genesis]!.zone).toBe('graveyard');
+  });
+});

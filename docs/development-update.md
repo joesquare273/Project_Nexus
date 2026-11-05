@@ -18,6 +18,13 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities group E14: World Shaper's removal, retrace and lands
+
+Tear Asunder, Windgrace's Judgment, Binding the Old Gods, Myriad Landscape,
+Soul of Windgrace and Formless Genesis. New: kicker that changes a spell's
+target, retrace, "discard a land card" costs, searches for lands that share a
+land type, and X/X tokens. World Shaper 90/100, Counter Intelligence 97/100.
+
 ### Craft tab: bulk dismantling
 
 Dismantling now goes through a list on the right of the Craft tab: add

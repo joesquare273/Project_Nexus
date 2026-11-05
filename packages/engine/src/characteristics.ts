@@ -262,8 +262,8 @@ function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): In
 export function characteristics(s: GameState, c: CardInstance): Characteristics {
   const d = def(s, c);
   const out: Characteristics = {
-    power: d.power ?? 0,
-    toughness: d.toughness ?? 0,
+    power: c.tokenSize ?? d.power ?? 0,
+    toughness: c.tokenSize ?? d.toughness ?? 0,
     keywords: new Set(d.keywords ?? []),
     subtypes: subtypesOf(s, c),
     ward: d.ward ?? 0,

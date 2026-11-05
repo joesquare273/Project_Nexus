@@ -33,7 +33,7 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 | Deck | Commander | Fully built |
 |---|---|---|
 | Counter Intelligence | Inspirit, Flagship Vessel (URW) | 97/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 84/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 90/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -189,6 +189,19 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   Simplification: The Mycosynth Gardens checks the copied artifact's mana
   value against X as the ability resolves. Moxite Refinery waits (its
   "remove X counters" cost).
+
+- **E14 (2026-11-05): World Shaper's removal, retrace and lands.** Tear
+  Asunder, Windgrace's Judgment, Binding the Old Gods, Myriad Landscape, Soul
+  of Windgrace, Formless Genesis. Engine: `kickedEffects` (kicked, the spell
+  has other effects and targets), retrace (rule 702.81: cast from your
+  graveyard by discarding a land card), the `discardFilter` cost ("discard a
+  land card"), the `shareLandType` search, X/X tokens
+  (`tokenSizeFromCount`, the card's `tokenSize`), and target groups whose
+  permanents must have different controllers. Simplifications: Soul of
+  Windgrace targets the land card it returns (the card says "a land card
+  from a graveyard", not "target"); Formless Genesis is a plain sorcery
+  (no Kindred type or changeling yet) and its Shapeshifter token has no
+  changeling (deathtouch only).
 
 ## Commander rules (built)
 

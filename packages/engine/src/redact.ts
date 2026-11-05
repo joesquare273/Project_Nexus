@@ -187,6 +187,7 @@ const CARD_FIELDS = {
   animated: 'copy',
   chosenColor: 'copy',
   chosenCardType: 'copy',
+  tokenSize: 'copy',
   returnToHandAtEndStep: 'copy',
   milledBy: 'refs',
   controlUntilEndOfTurn: 'copy',

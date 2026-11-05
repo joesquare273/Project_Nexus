@@ -656,6 +656,11 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Cards for our hand: the best.
   if (p.purpose === 'hand') return pick(byValue.reverse().slice(0, p.max));
   if (p.purpose === 'lookTop') return pick([...byValue].reverse().slice(0, p.max));
+  // Myriad Landscape: the basic land type with the most cards offered.
+  if (p.purpose === 'search' && p.shareLandType) {
+    const groups = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].map((t) => p.cards.filter((id) => (currentDefinition(s, s.cards[id]!).subtypes ?? []).includes(t)));
+    return pick(groups.sort((a, b) => b.length - a.length)[0]!.slice(0, p.max));
+  }
   // A library search: the best matching cards, as many as allowed.
   if (p.purpose === 'search') return pick(byValue.reverse().slice(0, p.max));
   // Choco: every land.

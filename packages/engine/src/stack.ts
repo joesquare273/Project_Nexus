@@ -268,6 +268,7 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): Eff
   if (choice.alternative && def.alternativeCost?.effects) return def.alternativeCost.effects;
   if (def.modes && def.chooseModes) return [...(choice.modes ?? [])].sort((a, b) => a - b).flatMap((m) => def.modes![m] ?? []);
   if (def.modes) return def.modes[choice.mode ?? 0] ?? [];
+  if (def.kickedEffects && (choice.kicks ?? 0) > 0) return def.kickedEffects;
   if (def.enchant) return [{ effect: 'Attach', target: 'TargetPermanent', filter: def.enchant }, ...(def.effects ?? [])];
   return def.effects ?? [];
 }
@@ -527,7 +528,9 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
     if (!group || t?.kind !== 'card') continue;
     const g = seen.get(group) ?? { cards: new Set(), owners: new Set() };
     if (g.cards.has(t.card)) return 'Choose different targets.';
-    const owner = s.cards[t.card]?.owner ?? '';
+    // A permanent's controller ("target permanent that player controls"), a card's owner elsewhere.
+    const obj = s.cards[t.card];
+    const owner = (obj?.zone === 'battlefield' ? obj.controller : obj?.owner) ?? '';
     if (needs[i]!.groupOwnersDiffer && g.owners.has(owner)) return 'Choose targets belonging to different players.';
     if (needs[i]!.groupSameOwner && g.owners.size > 0 && !g.owners.has(owner)) return 'Choose targets from a single graveyard.';
     g.cards.add(t.card);
@@ -872,7 +875,7 @@ export function addCosts(a: ManaCost, b: ManaCost): ManaCost {
 }
 
 /** How a card in a graveyard can be cast: flashback, blitz (Sabin), a permission (Gearhulk, Emet-Selch), or Edgar's static. */
-export type GraveyardWay = 'flashback' | 'blitz' | 'permission' | 'static' | 'adventure' | 'group';
+export type GraveyardWay = 'flashback' | 'retrace' | 'blitz' | 'permission' | 'static' | 'adventure' | 'group';
 
 export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, adventure = false): GraveyardWay | null {
   if (c.zone !== 'graveyard') return null;
@@ -881,6 +884,7 @@ export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, 
   if (c.owner !== playerId) return null;
   const def = spellDefinition(defOf(s, c), adventure);
   if (def.flashback) return 'flashback';
+  if (def.retrace) return 'retrace';
   if (def.alternativeCost?.fromGraveyard) return 'blitz';
   if (graveyardCastStatic(s, playerId, c, undefined, adventure)) return 'static';
   return null;
@@ -1183,8 +1187,9 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
       reject(ways.length === 0 ? `You have nothing to sacrifice for ${def.name}.` : `Choose a permanent to sacrifice for ${def.name}.`);
     }
   } else {
-    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0);
-    checkDiscardCost(s, playerId, discardCount, costCards, id);
+    // Retrace: a land card, in addition to its other costs.
+    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (way === 'retrace' ? 1 : 0);
+    checkDiscardCost(s, playerId, discardCount, costCards, id, way === 'retrace' ? RETRACE_DISCARD : undefined);
   }
   const x = choice.x ?? 0;
   if (!Number.isInteger(x) || x < 0) reject('X must be a whole number, 0 or more.');
@@ -1501,17 +1506,28 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   if (spec.cost.station && crewCandidates(s, playerId, c.id).length === 0) return 'You have no other untapped creature to tap for station.';
   const n = spec.cost.discard ?? 0;
-  if (n > 0 && player(s, playerId).hand.filter((id) => id !== c.id).length < n) return "You don't have enough cards to discard.";
+  if (n > 0 && discardCandidates(s, playerId, c.id, spec.cost.discardFilter).length < n) return spec.cost.discardFilter ? "You don't have a matching card to discard." : "You don't have enough cards to discard.";
   return null;
+}
+
+/** The basic land types (rule 205.3i). */
+const BASIC_LAND_TYPES = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
+
+/** Retrace's extra cost: a land card. */
+export const RETRACE_DISCARD: ObjectFilter = { types: ['land'] };
+
+/** Other cards in your hand that could pay a discard cost (matching `filter`, if any). */
+export function discardCandidates(s: GameState, playerId: PlayerId, source: InstanceId, filter?: ObjectFilter): InstanceId[] {
+  return player(s, playerId).hand.filter((id) => id !== source && (!filter || matchesObject(s, filter, s.cards[id]!, { controller: playerId, source })));
 }
 
 /** Activates a non-mana ability: pay its costs and put it on the stack (rule 602). */
 /** Checks the cards chosen to pay a "discard N cards" cost: other cards in your hand. */
-function checkDiscardCost(s: GameState, playerId: PlayerId, count: number, cards: InstanceId[], source: InstanceId): void {
+function checkDiscardCost(s: GameState, playerId: PlayerId, count: number, cards: InstanceId[], source: InstanceId, filter?: ObjectFilter): void {
   if (cards.length !== count) reject(count ? `Choose ${count} card(s) to discard.` : 'Nothing needs to be discarded.');
-  const hand = player(s, playerId).hand;
-  if (new Set(cards).size !== cards.length || cards.some((c) => c === source || !hand.includes(c))) {
-    reject('The cards to discard must be other cards in your hand.');
+  const able = discardCandidates(s, playerId, source, filter);
+  if (new Set(cards).size !== cards.length || cards.some((c) => !able.includes(c))) {
+    reject(filter ? 'Discard a matching card from your hand.' : 'The cards to discard must be other cards in your hand.');
   }
 }
 
@@ -1597,7 +1613,7 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
   if (spec.cost.discardX) { const hand = player(s, playerId).hand.filter((id) => id !== source); return subsets(hand, 0, hand.length); }
   const n = spec.cost.discard ?? 0;
   if (n === 0) return [[]];
-  return subsets(player(s, playerId).hand.filter((id) => id !== source), n, n);
+  return subsets(discardCandidates(s, playerId, source, spec.cost.discardFilter), n, n);
 }
 
 /** Every subset of `items` with between `min` and `max` elements, in order (capped for huge hands). */
@@ -1668,7 +1684,7 @@ export function activateAbility(
       reject('Choose a permanent you control to remove a counter from.');
     }
   } else {
-    checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id);
+    checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id, spec.cost.discardFilter);
   }
   if (rc && !rc.from && (!counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) reject(`There ${rc.amount && rc.amount > 1 ? `aren't ${rc.amount} counters` : "is no counter"} to remove for that.`);
   payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
@@ -1992,6 +2008,7 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
     return one ? null : `Choose ${choice.max} cards, or one that matches instead.`;
   }
   if (choice.differentNames && new Set(cards.map((id) => defOf(s, s.cards[id]!).name)).size !== cards.length) return 'Choose cards with different names.';
+  if (choice.shareLandType && cards.length > 1 && !BASIC_LAND_TYPES.some((t) => cards.every((id) => subtypesOf(s, s.cards[id]!).includes(t)))) return 'Choose lands that share a land type.';
   if (cards.length < choice.min || cards.length > choice.max) {
     return choice.min === choice.max ? `Choose exactly ${choice.min}.` : `Choose between ${choice.min} and ${choice.max}.`;
   }
@@ -2819,9 +2836,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (amount > 0) quinaFrogs(ctx, item.controller, r);
         return;
       }
+      const size = effect.tokenSizeFromCount ? countOf(s, effect.tokenSizeFromCount, item.controller, source) : undefined;
       for (const pid of players.length > 0 ? players : [item.controller]) {
         for (let i = 0; i < amount; i++) {
           const id = createToken(ctx, effect.token!, pid);
+          if (size !== undefined) s.cards[id]!.tokenSize = size;
           if (effect.entersTapped) s.cards[id]!.tapped = true;
           const defender = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
           if (defender && s.combat && !s.players[defender]!.eliminated) {
@@ -4308,7 +4327,7 @@ function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: Eff
   const where = effect.alsoGraveyard ? [...p.library, ...p.graveyard] : p.library;
   const cards = where.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: searcher }));
   const max = Math.min(effect.amount === undefined ? 1 : amount, cards.length);
-  r.choiceQueue = [...(r.choiceQueue ?? []), { player: searcher, purpose: 'search', cards, min: 0, max, searchTo, ...(effect.differentNames ? { differentNames: true } : {}) }];
+  r.choiceQueue = [...(r.choiceQueue ?? []), { player: searcher, purpose: 'search', cards, min: 0, max, searchTo, ...(effect.differentNames ? { differentNames: true } : {}), ...(effect.shareLandType ? { shareLandType: true } : {}) }];
 }
 
 /** The ChooseCards answer for "enter as a copy": none, or one creature still on the battlefield. */

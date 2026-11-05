@@ -732,6 +732,8 @@ export interface EffectSpec {
   halfOfMatching?: boolean;
   /** CreateToken: one for each opponent, tapped and attacking that player (Adeline). */
   attackingEachOpponent?: boolean;
+  /** CreateToken: an X/X token, X being this count as it's created (Formless Genesis: land cards in your graveyard). */
+  tokenSizeFromCount?: CountKind;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
   spellOrPermanent?: boolean;
   /** ShuffleGraveyardIntoLibrary: you gain 1 life for each card shuffled in (Elixir). */
@@ -754,6 +756,8 @@ export interface EffectSpec {
   alsoGraveyard?: boolean;
   /** SearchLibraryTo...: the cards found must have different names. */
   differentNames?: boolean;
+  /** SearchLibraryTo...: the cards found must share a basic land type (Myriad Landscape). */
+  shareLandType?: boolean;
   /** Only if a card chosen in the last choice has this subtype ("if you put a Town card into your hand this way"). */
   ifChoseSubtype?: string;
   /** BecomeCreature: the permanent becomes a creature with this base power and toughness and these subtypes, in addition to its other types (no end). */
@@ -954,7 +958,8 @@ export interface EffectSpec {
   /**
    * Targets of effects sharing a `group` are one "up to N target" phrase, so
    * each must be a different object (rule 115.3). With `groupOwnersDiffer`,
-   * the objects must also belong to different players ("for each opponent,
+   * the objects must also belong to different players (controlled, for
+   * permanents: "for any number of opponents, ... that player controls") ("for each opponent,
    * up to one target creature card from that player's graveyard").
    */
   group?: string;
@@ -1302,6 +1307,8 @@ export interface ActivatedSpec {
     sacrificeThis?: boolean;
     /** "Discard a card": the cards are chosen with the action (`costCards`). */
     discard?: number;
+    /** "Discard a land card": the discarded cards must match this. */
+    discardFilter?: ObjectFilter;
     /** "Sacrifice a creature": one permanent you control matching this, chosen with the action (`costCards`). */
     sacrifice?: ObjectFilter;
     /** "Sacrifice two artifacts": how many permanents `sacrifice` takes (default 1). */
@@ -1657,6 +1664,10 @@ export interface CardDefinition {
   anyNumberInDeck?: boolean;
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
+  /** Retrace (rule 702.81): cast from your graveyard by discarding a land card in addition to its other costs (it returns to the graveyard as usual). */
+  retrace?: boolean;
+  /** Kicker that changes the spell (Tear Asunder): kicked, these effects (and their targets) replace its effects. */
+  kickedEffects?: EffectSpec[];
   /** Alternative characteristics used only when casting/resolving the Adventure (rule 715). */
   adventure?: { name: string; manaCost: string; types: ('instant' | 'sorcery')[]; effects: EffectSpec[] };
   /**
@@ -1908,6 +1919,8 @@ export interface CardInstance {
   chosenColor?: Color;
   /** The card type chosen as it entered (Cloud Key). */
   chosenCardType?: CardType;
+  /** "Create an X/X token": the X it was created with (its base power and toughness). */
+  tokenSize?: number;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
   /** BecomeCreature: a creature with this base power and toughness (until cleanup with `untilEndOfTurn`). */
   animated?: { power: number; toughness: number; subtypes?: string[]; untilEndOfTurn?: boolean };
@@ -2388,6 +2401,8 @@ export interface CardChoice {
   drawCount?: number;
   /** search: the chosen cards must all have different names (Reach the Horizon). */
   differentNames?: boolean;
+  /** search: the chosen cards must share a basic land type (Myriad Landscape). */
+  shareLandType?: boolean;
   onePerType?: CardType[];
   /** copyOnEntry: the permanent spell waiting on the stack for the choice. */
   item?: string;

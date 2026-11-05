@@ -989,13 +989,8 @@
           "count": 1,
           "set": "eoc",
           "number": "96",
-          "implemented": false,
-          "needs": [
-            "kindred-type",
-            "changeling",
-            "retrace",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Loamcrafter Faun",
@@ -1127,21 +1122,16 @@
           "count": 1,
           "set": "eoc",
           "number": "126",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Windgrace's Judgment",
           "count": 1,
           "set": "eoc",
           "number": "129",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Worldsoul's Rage",
@@ -1247,11 +1237,8 @@
           "count": 1,
           "set": "eoc",
           "number": "52",
-          "implemented": false,
-          "needs": [
-            "saga",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",
@@ -1394,11 +1381,8 @@
           "count": 1,
           "set": "eoc",
           "number": "109",
-          "implemented": false,
-          "needs": [
-            "kicker",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Juri, Master of the Revue",
@@ -1497,10 +1481,8 @@
           "count": 1,
           "set": "eoc",
           "number": "169",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Riveteers Overlook",
