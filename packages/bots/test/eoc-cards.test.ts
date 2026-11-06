@@ -1854,3 +1854,123 @@ describe('E16: discover, incubate, remove X counters, Landers', () => {
     expect(s.cards[found!]!.tapped).toBe(false);
   });
 });
+
+describe('E17: extra combats, dredge, encore and sacrifice-fuelled exile', () => {
+  const passUntil = (s: GameState, done: (s: GameState) => boolean): GameState => {
+    for (let i = 0; i < 60 && !done(s); i++) {
+      const legal = getLegalActions(s);
+      s = act(s, legal.find((a) => a.type === 'PassPriority') ?? legal[0]!);
+    }
+    return s;
+  };
+
+  it('Moraug: a land in the first main phase adds a combat that untaps your creatures; +1/+0 per attack this turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'moraug-fury-of-akoum');
+    const bear = put(s, 'P1', 'coeurl');
+    const land = put(s, 'P1', 'mountain', 'hand');
+    s = goTo(s, 'main1');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(s.extraCombats).toBe(1);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2' }] })).state;
+    expect(powerOf(s, s.cards[bear]!)).toBe(3);
+    // The second combat: the creature untaps, attacks again and has attacked twice.
+    s = passUntil(s, (t) => t.pending.kind === 'declareAttackers' && (t.combatsThisTurn ?? 0) === 2);
+    expect(s.cards[bear]!.tapped).toBe(false);
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2' }] })).state;
+    expect(powerOf(s, s.cards[bear]!)).toBe(4);
+    s = passUntil(s, (t) => t.step === 'main2');
+    expect(s.step).toBe('main2');
+  });
+
+  it('Moraug: a land in the second main phase gives a combat after it, then the end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'moraug-fury-of-akoum');
+    const bear = put(s, 'P1', 'coeurl', 'battlefield', { tapped: true });
+    const land = put(s, 'P1', 'mountain', 'hand');
+    s = goTo(s, 'main2');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    s = passUntil(s, (t) => t.step === 'declareAttackers' || t.step === 'end');
+    expect(s.step).toBe('declareAttackers');
+    expect(s.cards[bear]!.tapped).toBe(false);
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [] })).state;
+    s = passUntil(s, (t) => t.step === 'end' || t.step === 'main2');
+    expect(s.step).toBe('end');
+  });
+
+  it('Dakmor Salvage: dredge 2 instead of the draw-step draw, or draw as usual', () => {
+    let s = newGame();
+    const salvage = put(s, 'P1', 'dakmor-salvage', 'graveyard');
+    s = passUntil(s, (t) => t.pending.kind === 'chooseCards' && t.pending.purpose === 'dredge');
+    expect(s.pending.kind === 'chooseCards' && [s.pending.player, s.pending.cards]).toEqual(['P1', [salvage]]);
+    const [hand, yard] = [s.players.P1!.hand.length, s.players.P1!.graveyard.length];
+    const drew = act(s, { type: 'ChooseCards', player: 'P1', cards: [] });
+    expect([drew.players.P1!.hand.length, drew.cards[salvage]!.zone]).toEqual([hand + 1, 'graveyard']);
+    const dredged = act(s, { type: 'ChooseCards', player: 'P1', cards: [salvage] });
+    expect(dredged.cards[salvage]!.zone).toBe('hand');
+    expect(dredged.players.P1!.hand.length).toBe(hand + 1);
+    // Two milled, the Salvage gone: one more card in the graveyard.
+    expect(dredged.players.P1!.graveyard.length).toBe(yard + 1);
+  });
+
+  it('Evendo Brushrazer: sacrificing a nontoken permanent exiles the top card, playable on your turn after such a sacrifice', () => {
+    let s = newGame();
+    const razer = put(s, 'P1', 'evendo-brushrazer');
+    const land = put(s, 'P1', 'mountain');
+    s = goTo(s, 'main1');
+    const top = s.players.P1!.library[0]!;
+    // {T}, Sacrifice a land: Add {R}{R}.
+    const ways = getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility' && a.card === razer);
+    expect(ways.map((a) => a.type === 'ActivateManaAbility' && a.sacrifice)).toEqual([land]);
+    s = act(s, ways[0]!);
+    expect(s.players.P1!.manaPool.R).toBe(2);
+    // The trigger waits for the mana ability to finish, then goes on the stack with the next action.
+    s = passUntil(s, (t) => t.cards[top]!.zone === 'exile');
+    expect(s.cards[land]!.zone).toBe('graveyard');
+    expect(s.cards[top]!.zone).toBe('exile');
+    // An Island: playable now (a nontoken permanent was sacrificed this turn, on your turn).
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === top)).toBe(true);
+    // Next turn, without a sacrifice: not playable.
+    const later = { ...s, turnNumber: s.turnNumber + 2 };
+    expect(getLegalActions(later).some((a) => a.type === 'PlayLand' && a.card === top)).toBe(false);
+  });
+
+  it('Eumidian Wastewaker: you and the defending player each discard or sacrifice; a card for each land card', () => {
+    let s = newGame();
+    const waker = put(s, 'P1', 'eumidian-wastewaker');
+    const myLand = put(s, 'P1', 'forest', 'hand');
+    const theirLand = put(s, 'P2', 'forest');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: waker, defender: 'P2' }] });
+    s = passUntil(s, (t) => t.pending.kind === 'chooseCards' && t.pending.purpose === 'discardOrSacrifice');
+    expect(s.pending.kind === 'chooseCards' && s.pending.player).toBe('P1');
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [myLand] });
+    expect(s.pending.kind === 'chooseCards' && s.pending.player).toBe('P2');
+    const hand = s.players.P1!.hand.length;
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [theirLand] });
+    s = settle(s).state;
+    expect([s.cards[myLand]!.zone, s.cards[theirLand]!.zone]).toEqual(['graveyard', 'graveyard']);
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+  });
+
+  it('Eumidian Wastewaker: encore makes a hasty copy for each opponent that must attack that opponent', () => {
+    let s = newGame(3);
+    const waker = put(s, 'P1', 'eumidian-wastewaker', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 2, C: 6 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: waker, ability: 0 }).state;
+    expect(s.cards[waker]!.zone).toBe('exile');
+    const copies = s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken && currentDefinition(s, s.cards[id]!).name === 'Eumidian Wastewaker');
+    expect(copies).toHaveLength(2);
+    expect(copies.map((id) => hasKeyword(s, s.cards[id]!, 'Haste'))).toEqual([true, true]);
+    const targets = copies.map((id) => s.cards[id]!.mustAttackPlayer!.player).sort();
+    expect(targets).toEqual(['P2', 'P3']);
+    s = goTo(s, 'declareAttackers');
+    const p2copy = copies.find((id) => s.cards[id]!.mustAttackPlayer!.player === 'P2')!;
+    const p3copy = copies.find((id) => s.cards[id]!.mustAttackPlayer!.player === 'P3')!;
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: p2copy, defender: 'P3' }, { attacker: p3copy, defender: 'P3' }] })).toMatch(/opponent it was made for/);
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [] })).toBeTruthy();
+    expect(applyAction(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: p2copy, defender: 'P2' }, { attacker: p3copy, defender: 'P3' }] }).ok).toBe(true);
+  });
+});

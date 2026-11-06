@@ -13,6 +13,7 @@ import {
   discard,
   reject,
   emptyAllManaPools,
+  hasType,
   moveCard,
   nextAlive,
   phaseInFor,
@@ -56,7 +57,17 @@ export function enterStep(ctx: Ctx, step: Step): void {
     case 'draw': {
       // In a two-player game the player who goes first skips their first draw (rule 103.8a).
       const skip = s.turnNumber === 1 && s.turnOrder.length === 2;
-      if (!skip) drawCards(ctx, s.activePlayer, 1);
+      if (skip) {
+        givePriority(ctx, s.activePlayer);
+        return;
+      }
+      // Dredge (rule 702.52): "If you would draw a card, you may mill N cards instead" (offered for this draw).
+      const dredgers = dredgeCards(s, s.activePlayer);
+      if (dredgers.length > 0) {
+        s.pending = { kind: 'chooseCards', purpose: 'dredge', player: s.activePlayer, cards: dredgers, min: 0, max: 1 };
+        return;
+      }
+      drawCards(ctx, s.activePlayer, 1);
       givePriority(ctx, s.activePlayer);
       return;
     }
@@ -137,6 +148,19 @@ export function enterStep(ctx: Ctx, step: Step): void {
   }
 }
 
+/** An additional combat phase begins; Moraug's untaps all creatures its controller controls. */
+function beginExtraCombat(ctx: Ctx): void {
+  const s = ctx.s;
+  const who = s.extraCombatUntaps?.shift();
+  if (s.extraCombatUntaps?.length === 0) delete s.extraCombatUntaps;
+  if (who) {
+    const untapped: string[] = [];
+    for (const c of battlefield(s)) if (c.controller === who && hasType(s, c, 'creature') && untap(ctx, c)) untapped.push(c.id);
+    if (untapped.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: who, cards: untapped });
+  }
+  enterStep(ctx, 'beginCombat');
+}
+
 /** Called when every living player passes in succession with an empty stack. */
 export function advanceStep(ctx: Ctx): void {
   const s = ctx.s;
@@ -148,7 +172,21 @@ export function advanceStep(ctx: Ctx): void {
   if (s.step === 'endCombat' && (s.extraCombats ?? 0) > 0) {
     s.extraCombats = s.extraCombats! - 1;
     s.combat = null;
-    enterStep(ctx, 'beginCombat');
+    beginExtraCombat(ctx);
+    return;
+  }
+  // Moraug in the second main phase: a combat after it, then the end step (no more main phases).
+  if (s.step === 'main2' && (s.combatsAfterMain2 ?? 0) > 0) {
+    s.combatsAfterMain2 = s.combatsAfterMain2! - 1;
+    s.combat = null;
+    s.endAfterCombat = true;
+    beginExtraCombat(ctx);
+    return;
+  }
+  if (s.step === 'endCombat' && s.endAfterCombat) {
+    delete s.endAfterCombat;
+    s.combat = null;
+    enterStep(ctx, (s.combatsAfterMain2 ?? 0) > 0 ? 'main2' : 'end');
     return;
   }
   // Y'shtola Rhul: "there is an additional end step after this step".
@@ -175,6 +213,29 @@ function completeCleanup(ctx: Ctx): void {
   cleanupDamage(ctx);
   ctx.s.cleanupCheck = true;
   givePriority(ctx, ctx.s.activePlayer);
+}
+
+/** Cards in a player's graveyard they could dredge now (dredge N needs N cards in their library). */
+export function dredgeCards(s: GameState, playerId: PlayerId): InstanceId[] {
+  const p = s.players[playerId]!;
+  return p.graveyard.filter((id) => {
+    const n = defOf(s, s.cards[id]!).dredge;
+    return n !== undefined && p.library.length >= n;
+  });
+}
+
+/** The draw-step choice: dredge one of the offered cards (mill N, return it to hand), or none to draw. */
+export function chooseDredge(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s, pending = s.pending;
+  if (pending.kind !== 'chooseCards' || pending.purpose !== 'dredge' || pending.player !== playerId) reject('You are not choosing whether to dredge.');
+  if (cards.length > 1 || cards.some((id) => !pending.cards.includes(id))) reject('Choose one card to dredge, or none to draw.');
+  const chosen = cards[0];
+  if (chosen) {
+    const n = defOf(s, s.cards[chosen]!).dredge ?? 0;
+    for (const top of s.players[playerId]!.library.slice(0, n)) moveCard(ctx, top, 'graveyard');
+    moveCard(ctx, chosen, 'hand');
+  } else drawCards(ctx, playerId, 1);
+  givePriority(ctx, playerId);
 }
 
 export function discardToHandSize(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
@@ -258,6 +319,9 @@ export function startNextTurn(ctx: Ctx): void {
   delete s.endStepsThisTurn;
   delete s.extraEndSteps;
   s.extraCombats = 0;
+  delete s.combatsAfterMain2;
+  delete s.endAfterCombat;
+  delete s.extraCombatUntaps;
   delete s.players[s.activePlayer]!.attackTaxes;
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;

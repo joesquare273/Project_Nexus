@@ -301,6 +301,8 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       if ((spec.zone ?? 'battlefield') !== source.zone || !staticAffects(s, source, spec, c)) continue;
       out.power += amountOf(s, spec.power, source.controller, source.id);
       out.toughness += amountOf(s, spec.toughness, source.controller, source.id);
+      // Moraug: "+1/+0 for each time it has attacked this turn".
+      if (spec.powerPerAttackThisTurn && c.attacksThisTurn?.turn === s.turnNumber) out.power += spec.powerPerAttackThisTurn * c.attacksThisTurn.n;
       for (const k of spec.keywords ?? []) out.keywords.add(k);
       out.ward += spec.ward ?? 0;
       removed.push(...(spec.removeKeywords ?? []));

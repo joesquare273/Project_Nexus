@@ -5,7 +5,7 @@ import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCardType, chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
 import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
-import { discardToHandSize, passPriority } from './turn.ts';
+import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
 import { cloneState, moveCard, reject, RuleError, type Ctx } from './state.ts';
 import type { Action, ActionResult, GameState } from './types.ts';
@@ -108,11 +108,11 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         // And while choosing whether to pay to keep a spell from being countered (Syncopate).
         const payingToKeep = s.pending.kind === 'chooseCards' && s.pending.purpose === 'payToAvoidCounter';
         if ((s.pending.kind === 'decide' || s.pending.kind === 'declareAttackers' || payingToKeep) && 'player' in s.pending && s.pending.player === action.player) {
-          activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy);
+          activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy, action.sacrifice);
           break;
         }
         requirePriority(s, action.player);
-        activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy);
+        activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy, action.sacrifice);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'Foretell':
@@ -151,6 +151,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         break;
       case 'ChooseCards':
         if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'handSize') discardToHandSize(ctx, action.player, action.cards);
+        else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'dredge') chooseDredge(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'copyOnEntry') chooseEntryCopy(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'removeCountersOnEntry') chooseEntryCounters(ctx, action.player, action.cards);
         else chooseCards(ctx, action.player, action.cards);

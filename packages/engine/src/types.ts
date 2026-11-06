@@ -257,6 +257,10 @@ export const EFFECT_KINDS = [
   'GraveyardToLibraryBottom',
   /** Put the target card into its owner's library `amount`th from the top (God-Eternal Bontu: third). */
   'PutIntoLibraryNthFromTop',
+  /** Each target player discards a card or sacrifices a permanent, their choice (Eumidian Wastewaker); land cards put into a graveyard are counted. */
+  'DiscardOrSacrifice',
+  /** Encore (rule 702.141): for each opponent, a token copy of this card that attacks that opponent this turn if able, with haste, sacrificed at the next end step. */
+  'Encore',
   'ChooseGraveyardCards',
   'ReturnChosenToBattlefield',
   'PutIntoLibrary',
@@ -704,7 +708,9 @@ export type Amount =
         /** How many permanents matching the effect's `filter` the previous target player controls (Carpet of Flowers: Islands target opponent controls). */
         | 'previousTargetPlayerMatching'
         /** OpponentLosesLife triggers: how much life was lost ("you draw that many cards"). */
-        | 'lifeLostInEvent';
+        | 'lifeLostInEvent'
+        /** Land cards put into a graveyard by DiscardOrSacrifice earlier in the same ability. */
+        | 'landsToGraveyardThisWay';
       plus?: number;
       /** Multiplies the result ("twice X"). */
       times?: number;
@@ -854,6 +860,12 @@ export interface EffectSpec {
   toughnessFromAmount?: boolean;
   /** AdditionalCombat: "if it's the first combat phase of your turn". */
   onlyFirstCombat?: boolean;
+  /** AdditionalCombat: "after this phase", in a main phase of your turn (Moraug's landfall). */
+  afterThisMain?: boolean;
+  /** AdditionalCombat: "At the beginning of that combat, untap all creatures you control." */
+  untapCreatures?: boolean;
+  /** ExileTopCardToPlay: playable only during your turn while you've sacrificed a nontoken permanent this turn, and while you control the source (Evendo Brushrazer). */
+  whileSacrificedNontoken?: boolean;
   /** Only if the triggering creature's power is less than (or, 'notLess', at least) the source's (Shelinda). */
   subjectPowerVsSource?: 'less' | 'notLess';
   /** Only if you gained at least / less than this much life this turn (Aerith). */
@@ -1496,6 +1508,8 @@ export interface StaticSpec {
   ifYouControlAtLeast?: { filter: ObjectFilter; atLeast: number };
   /** The Wandering Minstrel: lands you control enter untapped (overrides their own "enters tapped"). */
   yourLandsEnterUntapped?: boolean;
+  /** Moraug: affected creatures get +N/+0 for each time they've attacked this turn. */
+  powerPerAttackThisTurn?: number;
   /** Authority of the Consuls: creatures your opponents control enter tapped. */
   opponentCreaturesEnterTapped?: boolean;
   /** "Enchanted creature loses all abilities" (layer 6; abilities granted by other effects still apply). */
@@ -1623,6 +1637,8 @@ export interface CardDefinition {
     amountPerCounter?: boolean | CounterKind;
     /** "Activate only if you control five or more lands." */
     ifLandsAtLeast?: number;
+    /** "{T}, Sacrifice a land: Add {R}{R}" (Evendo Brushrazer): the land is chosen with the action (`sacrifice`). */
+    sacrificeLand?: boolean;
     /** Spire of Industry: "Add one mana of any color. Activate only if you control an artifact." */
     anyColorIfControls?: ObjectFilter;
     /** Producing one of these costs 1 life ("{T}, Pay 1 life: Add one mana of any color"). */
@@ -1688,6 +1704,8 @@ export interface CardDefinition {
   flashback?: string;
   /** Retrace (rule 702.81): cast from your graveyard by discarding a land card in addition to its other costs (it returns to the graveyard as usual). */
   retrace?: boolean;
+  /** Dredge N (rule 702.52): instead of your draw step's draw, mill N and return this card from your graveyard to your hand. */
+  dredge?: number;
   /** Kicker that changes the spell (Tear Asunder): kicked, these effects (and their targets) replace its effects. */
   kickedEffects?: EffectSpec[];
   /** Alternative characteristics used only when casting/resolving the Adventure (rule 715). */
@@ -1972,6 +1990,10 @@ export interface CardInstance {
   hasteOnEnter?: boolean;
   /** The turn this creature was last declared as an attacker (boast). */
   attackedTurn?: number;
+  /** How many times it has been declared as an attacker this turn (Moraug). */
+  attacksThisTurn?: { turn: number; n: number };
+  /** Encore: "attacks that opponent this turn if able". */
+  mustAttackPlayer?: { player: PlayerId; turn: number };
   /** A creature spell that will enter with this many additional +1/+1 counters (Yuna, Grand Summoner). */
   extraCountersOnEnter?: number;
   /** A token rather than a card. */
@@ -1993,7 +2015,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean };
+  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -2122,6 +2144,8 @@ export interface PlayerState {
   nextCreatureCounters?: { turn: number; amount: number };
   /** Solar Array: the next artifact spell this player casts this turn gains sunburst. */
   nextArtifactSunburstTurn?: number;
+  /** The last turn this player sacrificed a nontoken permanent (Evendo Brushrazer). */
+  sacrificedNontokenTurn?: number;
   /** The last turn this player put a counter on a creature. */
   counterOnCreatureTurn?: number;
   /** Life gained this turn. Reset as each turn begins. */
@@ -2338,6 +2362,8 @@ export interface Resolving {
   putAttackingDefender?: PlayerId;
   /** PutFromHand with alsoFromGraveyard: the chosen cards enter tapped. */
   putTapped?: boolean;
+  /** DiscardOrSacrifice: land cards put into a graveyard so far. */
+  landsToGraveyard?: number;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
   distribution?: { source: InstanceId; remaining: number; assigned: Record<InstanceId, number>; damage?: true };
   item: StackItem;
@@ -2393,7 +2419,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark';
+  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -2568,6 +2594,12 @@ export interface GameState {
   /** End steps begun this turn, and additional end steps still to come (Y'shtola Rhul). */
   endStepsThisTurn?: number;
   extraEndSteps?: number;
+  /** Moraug: additional combat phases after this turn's second main phase (then the end step, rule 500.8). */
+  combatsAfterMain2?: number;
+  /** Set during such a combat: the end step follows it instead of another main phase. */
+  endAfterCombat?: boolean;
+  /** Moraug: "At the beginning of that combat, untap all creatures you control": whose, for each additional combat to come. */
+  extraCombatUntaps?: PlayerId[];
   /** Ultima: "End the turn" (rule 724) happens as the resolving spell finishes. */
   endingTurn?: boolean;
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
@@ -2646,7 +2678,7 @@ export type Action =
       tapCreatures?: InstanceId[];
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
-  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId }
+  | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId; sacrifice?: InstanceId }
   /** `costCards`: the cards discarded or the permanent sacrificed to pay the cost. */
   /** `x`: the value chosen for {X} in the ability's cost (Gogo); a "discard X cards" cost takes X from `costCards`. */
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[]; x?: number }

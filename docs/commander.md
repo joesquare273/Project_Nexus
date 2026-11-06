@@ -26,19 +26,18 @@ card is built it can't be cast or played (since 2026-10-29; all precon
 cards are built).
 The Starter Kit cards that also appear in the precons are shared.
 
-## Edge of Eternities Commander precons (started 2026-11-04)
+## Edge of Eternities Commander precons (complete 2026-11-06)
 
-The next precons to build, imported with the same script (`import-precons.ts eoc`):
+Imported with the same script (`import-precons.ts eoc`); every card is built:
 
 | Deck | Commander | Fully built |
 |---|---|---|
 | Counter Intelligence | Inspirit, Flagship Vessel (URW) | 100/100 (complete) |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 96/100 |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 100/100 (complete) |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
-`packages/cards/data/eoc.json`; 54 play already, and the rest are marked
-`notBuilt` (shown with their real images, not castable yet). The decklists
+`packages/cards/data/eoc.json`, all built (groups E1-E17 below). The decklists
 with each card's status are in `packages/cards/data/eoc-precons.json`
 (`EOC_PRECONS`); every printing's art is cached (`precon-printings.json` for
 the reprints, the EOE basic lands and Wastes).
@@ -230,6 +229,29 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   Refinery's "choose one" is two abilities with the same cost (the same
   choice). "Lander" is added to the artifact types in `types.json` (Scryfall's
   catalog gains it on the next `npm run scryfall -- --refresh`).
+
+- **E17 (2026-11-06): World Shaper complete.** Moraug, Fury of Akoum;
+  Dakmor Salvage; Evendo Brushrazer; Eumidian Wastewaker. Engine:
+  - Additional combats from a main phase (`afterThisMain`): after the first
+    main phase it's a second combat right after the turn's combat (the same
+    two combats in a row); after the second main phase, a combat and then
+    the end step (`combatsAfterMain2`, `endAfterCombat`). "At the beginning
+    of that combat, untap all creatures you control" (`untapCreatures`,
+    `extraCombatUntaps`). Creatures count their attacks this turn
+    (`attacksThisTurn`) for the static `powerPerAttackThisTurn`.
+  - Dredge N (rule 702.52, `dredge`): offered instead of the draw step's
+    draw (a `chooseCards` choice, purpose `dredge`). Simplification: other
+    draws (from spells and abilities) can't be dredged yet.
+  - "{T}, Sacrifice a land: Add {R}{R}" (`manaAbility.sacrificeLand`, the
+    action's `sacrifice`; never used by automatic payment), the player's
+    `sacrificedNontokenTurn`, and cards exiled to play "during your turn, as
+    long as you've sacrificed a nontoken permanent this turn"
+    (`whileSacrificedNontoken`).
+  - `DiscardOrSacrifice` (each player discards a card or sacrifices a
+    permanent; land cards put into a graveyard are counted for
+    `landsToGraveyardThisWay`) and encore (`Encore`: a hasty token copy for
+    each opponent, which must attack that opponent this turn if able,
+    `mustAttackPlayer`, and is sacrificed at the next end step).
 
 ## Commander rules (built)
 

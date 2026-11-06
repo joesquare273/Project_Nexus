@@ -89,7 +89,13 @@ export function hasGoad(s: GameState): boolean {
 }
 
 export function hasAttackRequirements(s: GameState): boolean {
-  return hasGoad(s) || s.temporaryEffects.some(e=>e.flags?.includes('mustAttack'));
+  return hasGoad(s) || s.temporaryEffects.some(e=>e.flags?.includes('mustAttack')) || battlefield(s).some((c) => mustAttackPlayerNow(s, c) !== undefined);
+}
+
+/** Encore: the opponent this token must attack this turn if able. */
+function mustAttackPlayerNow(s: GameState, c: CardInstance): PlayerId | undefined {
+  const m = c.mustAttackPlayer;
+  return m && m.turn === s.turnNumber && !s.players[m.player]?.eliminated ? m.player : undefined;
 }
 
 export function goadedBy(s: GameState, c: CardInstance): PlayerId[] {
@@ -110,6 +116,9 @@ function goadScore(goaders: PlayerId[], defender: PlayerId): number {
 /** Best free attacks: a player is never required to pay an attack tax to meet a requirement. */
 export function requiredAttackDefenders(s: GameState, c: CardInstance): PlayerId[] {
   const goaders = goadedBy(s,c);
+  // Encore: "attacks that opponent this turn if able".
+  const encore = mustAttackPlayerNow(s, c);
+  if (encore && canAttack(s, c, c.controller) && canAttackPlayer(s, c, encore) && attackTaxFor(s, encore) === 0) return [encore];
   if ((!goaders.length && !hasFlag(s,c,'mustAttack')) || !canAttack(s,c,c.controller)) return [];
   const free = alivePlayers(s).filter(p=>p!==c.controller && canAttackPlayer(s,c,p) && attackTaxFor(s,p)===0);
   const best = Math.max(0,...free.map(p=>goadScore(goaders,p)));
@@ -124,6 +133,7 @@ export function attackRequirementProblem(s: GameState, player: PlayerId, attacks
     if (!required.length) continue;
     const attack = attacks.find(a=>a.attacker===c.id);
     if (!attack) return 'A creature required to attack must attack this combat if able.';
+    if (mustAttackPlayerNow(s, c) && !required.includes(attack.defender)) return 'That token must attack the opponent it was made for, if able.';
     if (goadScore(goadedBy(s,c),attack.defender) < goadScore(goadedBy(s,c),required[0]!)) return 'A goaded creature must attack a player other than its goader if able.';
   }
   return null;
@@ -185,6 +195,7 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     const c = s.cards[a.attacker]!;
     if (!hasKeyword(s, c, 'Vigilance')) tap(ctx, c);
     c.attackedTurn = s.turnNumber;
+    c.attacksThisTurn = { turn: s.turnNumber, n: (c.attacksThisTurn?.turn === s.turnNumber ? c.attacksThisTurn.n : 0) + 1 };
     ctx.ev.push({ type: 'AttackDeclared', attacker: a.attacker, defendingPlayer: a.defender });
   }
   if (attacks.length === 0) {

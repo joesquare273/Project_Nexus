@@ -35,6 +35,7 @@ import {
   choiceProblem,
   costCardChoices,
   discardCandidates,
+  manaSacrificeLands,
   RETRACE_DISCARD,
   castingForbidden,
   convokeCandidates,
@@ -397,6 +398,11 @@ function manaAbilities(s: GameState, player: PlayerId): Action[] {
     }
     if (c.tapped || c.controller !== player || sick) continue;
     for (const ability of grantedManaAbilities(s, c)) for (const mana of ability.mana) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, grantedBy: ability.source });
+    // "{T}, Sacrifice a land": one action per land to sacrifice.
+    if (def.manaAbility?.sacrificeLand) {
+      for (const land of manaSacrificeLands(s, player, id)) for (const mana of manaChoices(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana, sacrifice: land });
+      continue;
+    }
     for (const mana of manaChoices(s, c)) actions.push({ type: 'ActivateManaAbility', player, card: id, mana });
     // Paid mana abilities, for each way to pay that the pool covers.
     const paid = def.manaAbility?.paid;

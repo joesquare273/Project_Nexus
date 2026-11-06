@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities precons complete (group E17)
+
+Moraug, Fury of Akoum (extra combats that untap your creatures), Dakmor
+Salvage (dredge, at the draw step), Evendo Brushrazer (sacrifice a land for
+{R}{R}; cards exiled with it playable on turns you sacrificed a nontoken
+permanent) and Eumidian Wastewaker (discard or sacrifice; encore). Counter
+Intelligence and World Shaper are both 100/100: all 176 distinct cards are
+built.
+
 ### Edge of Eternities group E16: Counter Intelligence complete
 
 Long-Range Sensor (discover 4), Chrome Host Seedshark (incubate), Moxite

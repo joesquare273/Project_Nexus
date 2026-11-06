@@ -598,6 +598,18 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.allOrNothing) return pick(p.cards.length <= 2 ? [...p.cards] : []);
   // "Any number" for an ability that may cost them (Depthshaker Titan sacrifices them later; Ripples of Potential phases them out): none.
   if (p.purpose === 'mark') return pick([]);
+  // Dredge (Dakmor Salvage): take the land back while short on lands and the library is deep.
+  if (p.purpose === 'dredge') {
+    const landsInHand = s.players[me]!.hand.filter((id) => isLandCard(s, id)).length;
+    return pick(landsInHand < 2 && s.players[me]!.library.length > 12 ? p.cards.slice(0, 1) : []);
+  }
+  // Eumidian Wastewaker: discard a land card if we can, else our least valuable card, else our least valuable permanent.
+  if (p.purpose === 'discardOrSacrifice') {
+    const hand = p.cards.filter((id) => s.cards[id]!.zone === 'hand');
+    const land = hand.find((id) => isLandCard(s, id));
+    const worst = (ids: string[]) => [...ids].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!))[0];
+    return pick([land ?? worst(hand) ?? worst(p.cards)!]);
+  }
   // Grief: choose the opponent's most expensive card for them to discard.
   if (p.purpose === 'discard' && p.cards.some((id) => s.cards[id]!.owner !== me)) {
     const mv = (id: string) => manaValue(parseManaCost(def(s, s.cards[id]!).manaCost));

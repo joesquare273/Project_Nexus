@@ -88,6 +88,7 @@ function amountText(a: Amount | undefined): string {
     if (a.of === 'sourceCounterKinds') return 'the number of kinds of counters on this creature';
     if (a.of === 'sourcePower') return "this creature's power";
     if (a.of === 'subjectCounters' || a.of === 'lifeLostInEvent') return 'that many';
+    if (a.of === 'landsToGraveyardThisWay') return 'a card for each land card put into a graveyard this way';
     if (a.of === 'chosenCardTypes') return 'the number of card types among the discarded cards';
     return 'the number of permanents destroyed this way';
   }
@@ -315,6 +316,8 @@ function effectText(e: EffectSpec): string {
     case 'PayHalfLifeToCounter': return 'any player may pay half their life, rounded up, to counter this spell';
     case 'SearchLibraryToExileFaceDown': return "search that player's library for a card and exile it face down; you may look at and play it while it stays exiled";
     case 'DivideDamage': return `deal ${n} damage divided as you choose among any number of target creatures`;
+    case 'DiscardOrSacrifice': return 'discard a card or sacrifice a permanent';
+    case 'Encore': return 'for each opponent, create a token copy of this that attacks that opponent this turn if able; they gain haste; sacrifice them at the next end step';
     case 'PutIntoLibraryNthFromTop': return `put it into its owner's library ${['first', 'second', 'third', 'fourth'][(typeof e.amount === 'number' ? e.amount : 1) - 1] ?? 'third'} from the top`;
     case 'GraveyardToLibraryBottom': return 'put all the cards from their graveyard on the bottom of their library in a random order';
     case 'CantCastSpellsThisTurn': return "they can't cast spells this turn";

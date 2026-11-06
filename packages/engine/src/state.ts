@@ -588,6 +588,9 @@ export function destroy(ctx: Ctx, id: InstanceId): boolean {
 
 /** Sacrifice: put it into its owner's graveyard; indestructible doesn't help (rule 701.17). */
 export function sacrifice(ctx: Ctx, id: InstanceId): void {
+  const c = ctx.s.cards[id];
+  // Evendo Brushrazer: "as long as you've sacrificed a nontoken permanent this turn".
+  if (c?.zone === 'battlefield' && !c.isToken) player(ctx.s, c.controller).sacrificedNontokenTurn = ctx.s.turnNumber;
   putIntoGraveyard(ctx, id, true);
 }
 

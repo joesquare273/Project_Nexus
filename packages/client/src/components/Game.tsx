@@ -336,7 +336,7 @@ export function Game({
   };
 
   /** Taps a mana source for one mana type (or a paid mana ability's output); finishes paying once the pool covers the cost. */
-  const tapForMana = (id: InstanceId, mana: ManaType, paid?: { output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId }) => {
+  const tapForMana = (id: InstanceId, mana: ManaType, paid?: { output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId; sacrifice?: InstanceId }) => {
     const err = session.submit([{ type: 'ActivateManaAbility', player: YOU, card: id, mana, ...(paid ?? {}) }]);
     if (err) {
       showError(err);
@@ -356,7 +356,7 @@ export function Game({
     const actions = getLegalActions(s).filter((a): a is Extract<Action, { type: 'ActivateManaAbility' }> => a.type === 'ActivateManaAbility' && a.card === id);
     const choose = (a: Extract<Action, { type: 'ActivateManaAbility' }>) => {
       setMenu(null);
-      tapForMana(id, a.mana, { output: a.output, payWith: a.payWith, tapCreature: a.tapCreature, grantedBy: a.grantedBy });
+      tapForMana(id, a.mana, { output: a.output, payWith: a.payWith, tapCreature: a.tapCreature, grantedBy: a.grantedBy, ...(a.sacrifice ? { sacrifice: a.sacrifice } : {}) });
     };
     if (actions.length === 1) return choose(actions[0]!);
     const def = defOf(s.cards[id]!.defId);
@@ -365,6 +365,7 @@ export function Game({
       options: [
         ...actions.filter((a) => !a.tapCreature).map((a) => ({
           label: a.output !== undefined ? `Pay ${def.manaAbility!.paid!.costs[a.payWith ?? 0]}: add ${def.manaAbility!.paid!.outputs[a.output]}`
+            : a.sacrifice ? `Sacrifice ${cardName(s, a.sacrifice)}: add ${`{${a.mana}}`.repeat(manaAbilityAmount(s.cards[id]!, def))}`
             : `Add ${`{${a.mana}}`.repeat(a.grantedBy ? 1 : manaAbilityAmount(s.cards[id]!, def))}${a.grantedBy ? ` via ${cardName(s, a.grantedBy)}` : ''}`,
           pick: () => choose(a),
         })),
@@ -1175,6 +1176,10 @@ function PromptBar(p: PromptProps) {
               ? 'to draw a card from (or none)'
             : c.purpose === 'mark'
               ? 'for the ability (any number, or none)'
+            : c.purpose === 'dredge'
+              ? `to dredge instead of drawing (mill ${c.cards[0] ? (s.cardDefs[s.cards[c.cards[0]]!.defId]?.dredge ?? '') : ''} and return it to your hand), or none to draw`
+            : c.purpose === 'discardOrSacrifice'
+              ? 'to discard (in your hand) or sacrifice (on the battlefield)'
             : c.purpose === 'bounce'
               ? `to return to its owner’s hand${c.min === 0 ? ' (or none)' : ''}`
             : c.purpose === 'counter'

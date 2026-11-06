@@ -742,10 +742,13 @@ export function activateManaAbility(
   payWith = 0,
   tapCreature?: InstanceId,
   grantedBy?: InstanceId,
+  sacrificed?: InstanceId,
 ): void {
   const s = ctx.s;
   const c = card(s, id);
   const def = defOf(s, c);
+  if (sacrificed !== undefined && !def.manaAbility?.sacrificeLand) reject('That mana ability has no sacrifice cost.');
+  if (def.manaAbility?.sacrificeLand && !manaSacrificeLands(s, playerId, id).includes(sacrificed!)) reject('Choose a land you control to sacrifice.');
   if (c.zone !== 'battlefield' || c.phasedOut || c.controller !== playerId) reject('You do not control that permanent.');
   if (staticRule(s, c, 'cantActivateAbilities')) reject("That permanent's activated abilities can't be activated.");
   if (grantedBy !== undefined) {
@@ -793,6 +796,7 @@ export function activateManaAbility(
       spec: { when: 'SpellCast', what: { controller: 'You', anyOf: [{ types: ['instant'] }, { types: ['sorcery'] }] }, effects: [{ effect: 'CopySpell', target: 'You' }] } }];
   }
   if (ability?.sacrifice) sacrifice(ctx, id);
+  if (ability?.sacrificeLand) sacrifice(ctx, sacrificed!);
   // Ether: "{T}, Exile this artifact: Add {U}."
   if (ability?.exileSelf) moveCard(ctx, id, 'exile');
   // Nyxbloom Ancient: three times as much (each one triples again).
@@ -819,6 +823,11 @@ export function activateManaAbility(
   if (ability?.lifeFor?.includes(mana)) changeLife(ctx, playerId, -1);
   // Millikin: "{T}, Mill a card".
   for (const top of s.players[playerId]!.library.slice(0, ability?.mill ?? 0)) moveCard(ctx, top, 'graveyard');
+}
+
+/** "{T}, Sacrifice a land: Add {R}{R}": the lands a player could sacrifice for it. */
+export function manaSacrificeLands(s: GameState, playerId: PlayerId, source: InstanceId): InstanceId[] {
+  return battlefield(s).filter((l) => l.id !== source && l.controller === playerId && !l.phasedOut && hasType(s, l, 'land')).map((l) => l.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -869,6 +878,8 @@ export function playableZone(
     if (p.untilReplaced) return 'exile';
     // "For as long as that card remains exiled, you may play it" (Praetor's Grasp).
     if (p.whileExiled) return 'exile';
+    // Evendo Brushrazer: "During your turn, as long as you've sacrificed a nontoken permanent this turn".
+    if (p.whileSacrificedNontoken && (s.activePlayer !== playerId || s.players[playerId]!.sacrificedNontokenTurn !== s.turnNumber)) return null;
     const source = s.cards[p.source];
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
@@ -1930,6 +1941,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                         ? subjectManaValue(s, r.item)
                         : a.of === 'previousTargetPowerOverSubject'
                           ? powerOver(s, r)
+                        : a.of === 'landsToGraveyardThisWay'
+                          ? (r.landsToGraveyard ?? 0)
                         : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
@@ -2215,6 +2228,25 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         shuffleInPlace(s, cardsThere);
         for (const id of cardsThere) moveCard(ctx, id, 'library');
       }
+      return;
+    case 'DiscardOrSacrifice':
+      // "You and defending player each discard a card or sacrifice a permanent": each chooses one card in hand or one permanent.
+      for (const pid of aliveFromActive(s).filter((p) => targetPlayers(targets).includes(p))) {
+        const cards = [...s.players[pid]!.hand, ...battlefield(s).filter((c) => c.controller === pid && !c.phasedOut).map((c) => c.id)];
+        if (cards.length > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discardOrSacrifice', cards, min: 1, max: 1 }];
+      }
+      return;
+    case 'Encore':
+      // For each opponent: a token copy that attacks that opponent this turn if able, with haste, sacrificed at the next end step.
+      for (const opponent of alivePlayers(s).filter((p) => p !== item.controller)) {
+        const token = createTokenCopy(ctx, source, item.controller);
+        const c = s.cards[token]!;
+        c.sacrificeAtEndStep = true;
+        c.mustAttackPlayer = { player: opponent, turn: s.turnNumber };
+        s.temporaryEffects.push({ source: token, affected: token, keywords: ['Haste'] });
+        r.createdTokens.push(token);
+      }
+      if (r.createdTokens.length) quinaFrogs(ctx, item.controller, r);
       return;
     case 'PutIntoLibraryNthFromTop':
       for (const t of targets) {
@@ -2504,7 +2536,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'AdditionalCombat':
       if (effect.onlyFirstCombat && ((s.combatsThisTurn ?? 0) !== 1 || s.activePlayer !== item.controller)) return;
-      s.extraCombats = (s.extraCombats ?? 0) + 1;
+      if (effect.afterThisMain) {
+        // Moraug: "if it's your main phase, there's an additional combat phase after this phase".
+        if (s.activePlayer !== item.controller || (s.step !== 'main1' && s.step !== 'main2')) return;
+        // After the first main phase it comes before the turn's combat: two combats in a row, as when it follows that combat.
+        if (s.step === 'main1') s.extraCombats = (s.extraCombats ?? 0) + 1;
+        else s.combatsAfterMain2 = (s.combatsAfterMain2 ?? 0) + 1;
+      } else s.extraCombats = (s.extraCombats ?? 0) + 1;
+      if (effect.untapCreatures) s.extraCombatUntaps = [...(s.extraCombatUntaps ?? []), item.controller];
       return;
     case 'GainControl': {
       const chosen = effect.giveTo === 'TargetPlayer' ? item.targets[effect.from ?? 0] : undefined;
@@ -3189,6 +3228,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ...(effect.playUntil === 'endOfYourNextTurn' ? { throughTurn: (s.players[item.controller]!.turnsTaken ?? 0) + 1 } : {}),
           ...(effect.untilNextFromSource ? { untilReplaced: true } : {}),
           ...(effect.whileSourceGetsLore ? { loreTurn: s.turnNumber } : {}),
+          ...(effect.whileSacrificedNontoken ? { whileSacrificedNontoken: true } : {}),
         };
         // Urza: "you may play that card without paying its mana cost".
         if (effect.free) s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };
@@ -4257,6 +4297,15 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       }
     }
     delete r.putAttackingDefender;
+  }
+  else if (pending.purpose === 'discardOrSacrifice') {
+    for (const id of cards) {
+      const c = s.cards[id]!;
+      if (c.zone === 'hand') discard(ctx, id);
+      else if (c.zone === 'battlefield') sacrifice(ctx, id);
+      // "For each land card put into a graveyard this way" (a token isn't a card).
+      if (c.zone === 'graveyard' && defOf(s, c).types.includes('land')) r.landsToGraveyard = (r.landsToGraveyard ?? 0) + 1;
+    }
   }
   else if (pending.purpose === 'sacrifice') {
     for (const id of cards) sacrifice(ctx, id);
