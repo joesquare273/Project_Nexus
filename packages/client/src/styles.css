@@ -1242,6 +1242,19 @@ button.zone-link:hover {
   cursor: pointer;
   animation: pulse 1.2s infinite;
 }
+/* A card to pick from a list: plain until picked, then a bright border. */
+.list-card.choice {
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.list-card.choice:hover {
+  transform: translateY(-3px);
+}
+.list-card.selected {
+  cursor: pointer;
+  box-shadow: 0 0 0 3px var(--target), 0 0 18px rgba(242, 201, 76, 0.6);
+  transform: translateY(-3px);
+}
 .surveil-card {
   position: fixed;
   left: 50%;

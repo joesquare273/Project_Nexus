@@ -20,6 +20,7 @@ import {
   queuedTriggerSpec,
   targetSlotEffects,
   type Action,
+  type EffectSpec,
   type GameState,
   type GameView,
   type InstanceId,
@@ -29,7 +30,7 @@ import {
   type Target,
 } from '@nexus/engine';
 import { planTaps, tapActions } from '@nexus/bots';
-import { cardName, stepName, targetDescription, triggerText } from '@nexus/bots/narrate';
+import { cardName, modeText, stepName, targetDescription, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
@@ -93,10 +94,14 @@ function costText(s: GameState, action: Paying['action']): string {
   return option ? formatManaCost(option.cost) : (defOf(s.cards[action.card]!.defId).manaCost ?? '');
 }
 
-/** The texts of a modal spell's modes, from its Oracle text bullets when they match. */
-function modeLabels(defId: string, count: number): string[] {
+/**
+ * The texts of a modal spell's or ability's modes: its Oracle text bullets
+ * when it has them, otherwise what each mode does, from its effects
+ * (Inspirit: "put your choice of a +1/+1 counter or two charge counters").
+ */
+function modeLabels(defId: string, modes: readonly (readonly EffectSpec[])[] | undefined): string[] {
   const bullets = (scryfallOf(defId)?.oracleText ?? '').split('\n').filter((l) => l.startsWith('•'));
-  return Array.from({ length: count }, (_, i) => bullets[i]?.replace(/^•\s*/, '') ?? `Mode ${i + 1}`);
+  return (modes ?? []).map((m, i) => bullets[i]?.replace(/^•\s*/, '') ?? (modeText(m) || `Mode ${i + 1}`));
 }
 
 export function Game({
@@ -402,7 +407,7 @@ export function Game({
     const keyOf = (c: PlayChoice) => c.modes?.join('+');
     const keys = [...new Set(play.choices.map(keyOf).filter((k): k is string => k !== undefined))];
     if (modeKey === undefined && keys.length > 1) {
-      const labels = modeLabels(def.id, def.modes?.length ?? 0);
+      const labels = modeLabels(def.id, def.modes);
       const how = def.chooseModes
         ? def.chooseModes.maxWithCommander !== undefined && keys.some((k) => k.includes('+'))
           ? 'choose one, or both (you control a commander)'
@@ -508,7 +513,11 @@ export function Game({
     markCard: (id) => {
       const marks: Mark[] = [];
       if (bottoming && s.cards[id]?.zone === 'hand') marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
-      if (choosing?.cards.includes(id)) marks.push(bottomPicks.includes(id) ? 'selected' : 'target');
+      if (choosing?.cards.includes(id)) {
+        // In a list (library, graveyard, exile) only the picked cards get a border; on the board and in hand the offered cards glow.
+        const inList = !['hand', 'battlefield', 'command'].includes(s.cards[id]?.zone ?? '');
+        marks.push(bottomPicks.includes(id) ? 'selected' : inList ? 'choice' : 'target');
+      }
       if (playable.has(id) && !activeTargeting && !menu && !paying) marks.push('playable');
       if (paying && !menu && manaIds.has(id)) marks.push('mana');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
@@ -1026,7 +1035,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: Game
                 {item.targets.length > 0 && ` → ${item.targets.map((t) => targetLabel(view, t)).join(', ')}`}
               </div>
               {item.kind === 'spell' && c && (item.modes || item.mode !== undefined) && <div className="stack-modes">
-                {(item.modes ?? [item.mode!]).map(mode => <div key={mode}>• {modeLabels(c.defId, defOf(c.defId).modes?.length ?? 0)[mode]}</div>)}
+                {(item.modes ?? [item.mode!]).map(mode => <div key={mode}>• {modeLabels(c.defId, defOf(c.defId).modes)[mode]}</div>)}
               </div>}
             </div>
           </div>
@@ -1225,7 +1234,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
                     : 'to keep; the others are sacrificed';
       const problem = choiceProblem(s, c, picks);
-      text = `${c.purpose === 'handSize' ? 'Cleanup: ' : ''}Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. Click the glowing cards (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
+      text = `${c.purpose === 'handSize' ? 'Cleanup: ' : ''}Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. ${c.cards.every((id) => ['hand', 'battlefield', 'command'].includes(s.cards[id]?.zone ?? '')) ? 'Click the glowing cards' : 'Click a card to choose it, again to unchoose it'} (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
       buttons = [
         ...(picks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
         ...(!problem
@@ -1292,7 +1301,7 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseModes') {
     const t = s.triggerQueue[0]!;
     const spec = queuedTriggerSpec(s, t);
-    const labels = modeLabels(s.cards[t.source]!.defId, spec.modes?.length ?? 0);
+    const labels = modeLabels(s.cards[t.source]!.defId, spec.modes);
     text = `${cardName(s, t.source)}: choose its modes before it goes on the stack.`;
     buttons = getLegalActions(s).flatMap((action) => action.type === 'ChooseModes'
       ? [{ label: action.modes.length > 1 ? 'Both modes' : labels[action.modes[0]!] ?? `Mode ${action.modes[0]! + 1}`, onClick: () => p.submit([action]), primary: action.modes.length > 1 }]

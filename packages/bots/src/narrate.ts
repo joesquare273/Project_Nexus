@@ -104,7 +104,7 @@ export function targetDescription(e: EffectSpec): string {
 
 function targetText(e: EffectSpec): string {
   if (e.target === 'AllPermanents' && e.filter) return `all ${subjectText(e.filter, 'permanent', true)}`;
-  if (e.target === 'TargetPermanent' && e.filter) return `target ${subjectText(e.filter, 'permanent')}`;
+  if (e.target === 'TargetPermanent' && e.filter) return `${e.upTo ? 'up to one ' : ''}${e.filter.other ? 'other ' : ''}target ${subjectText(e.filter, 'permanent')}`;
   if (e.target === 'TargetSpellOrAbility' && e.filter) return `target activated ability, triggered ability, or ${subjectText(e.filter, 'spell')}`;
   if (e.target === 'TargetCardInGraveyard' && e.filter) {
     return `target ${subjectText({ ...e.filter, controller: undefined }, 'card')} from ${e.filter.controller === 'You' ? 'your' : 'a'} graveyard`;
@@ -557,6 +557,12 @@ function triggerCondition(t: TriggerSpec): string {
 }
 
 /** A plain summary of one triggered ability. */
+/** One mode of a modal spell or ability, as a sentence ("Put two charge counters on up to one target ..."). */
+export function modeText(effects: readonly EffectSpec[]): string {
+  const text = effects.map(effectText).join(' and ');
+  return text ? text[0]!.toUpperCase() + text.slice(1) : '';
+}
+
 export function triggerText(t: TriggerSpec): string {
   if (t.supportX) return "When this artifact enters, support X (up to X target creatures each get a +1/+1 counter).";
   const effects = t.randomModes

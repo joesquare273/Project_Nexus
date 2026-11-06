@@ -18,6 +18,16 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Card choices in lists; mode labels
+
+Choosing cards from a list (a library search, a graveyard) no longer makes
+every card glow: the cards stay plain until you pick one, which gets the
+highlighted border (on the board and in hand, offered cards still glow).
+Modal abilities without bullet points in their Oracle text show what each
+mode does instead of "Mode 1 / Mode 2" (Inspirit, Flagship Vessel: "Put a
++1/+1 counter on up to one other target artifact" / "Put 2 charge counters
+on up to one other target artifact").
+
 ### Online games reconnect after a drop; a server log
 
 A dropped connection in a Commander table, a game against the computer or a

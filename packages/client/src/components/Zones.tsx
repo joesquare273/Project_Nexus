@@ -20,7 +20,9 @@ export type Mark = 'effect-source' | 'effect-target'
   | 'defender'
   | 'focus'
   /** A mana source you can tap while paying a cost. */
-  | 'mana';
+  | 'mana'
+  /** A card you may pick in a list (a library search): no border until it's picked (then `selected`). */
+  | 'choice';
 
 export interface ZoneHandlers {
   tokenStackKey: (id: InstanceId) => string | null;
