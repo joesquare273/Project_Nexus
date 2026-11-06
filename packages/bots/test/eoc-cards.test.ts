@@ -1766,3 +1766,91 @@ describe('E15: World Shaper sacrifice, X targets and lands from the graveyard', 
     expect(s.cards[extra]!.zone).toBe('graveyard');
   });
 });
+
+describe('E16: discover, incubate, remove X counters, Landers', () => {
+  const attackEach = (s: GameState, attacks: { attacker: string; defender: string }[]): GameState => {
+    s = goTo(s, 'declareAttackers');
+    return settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks })).state;
+  };
+
+  it('Long-Range Sensor: a charge counter for each player you attack; two of them discover 4', () => {
+    let s = newGame(3);
+    const sensor = put(s, 'P1', 'long-range-sensor');
+    const a = put(s, 'P1', 'coeurl');
+    const b = put(s, 'P1', 'coeurl');
+    s = attackEach(s, [{ attacker: a, defender: 'P2' }, { attacker: b, defender: 'P3' }]);
+    expect(s.cards[sensor]!.namedCounters?.charge).toBe(2);
+    // Discover 4 in the next main phase: lands and bigger cards go to the bottom; Sol Ring is found.
+    s = goTo(s, 'main2');
+    const lib = s.players.P1!.library;
+    const ring = put(s, 'P1', 'sol-ring', 'library');
+    const big = put(s, 'P1', 'god-eternal-bontu', 'library');
+    const land = put(s, 'P1', 'forest', 'library');
+    expect(lib.slice(0, 3)).toEqual([land, big, ring]);
+    mana(s, 'P1', { C: 1 });
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: sensor, ability: 0 });
+    s = settle(s).state;
+    // The found card may be cast free right away; passing instead puts it into your hand.
+    expect(s.cards[ring]!.zone).toBe('exile');
+    expect(getLegalActions(s).some((x) => x.type === 'CastSpell' && x.card === ring)).toBe(true);
+    const cast2 = act(s, { type: 'CastSpell', player: 'P1', card: ring });
+    expect(settle(cast2).state.cards[ring]!.zone).toBe('battlefield');
+    const passed = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(passed.cards[ring]!.zone).toBe('hand');
+    expect([passed.cards[big]!.zone, passed.cards[land]!.zone]).toEqual(['library', 'library']);
+    expect(passed.players.P1!.library.slice(-2).sort()).toEqual([big, land].sort());
+    expect(passed.cards[sensor]!.namedCounters?.charge ?? 0).toBe(0);
+  });
+
+  it('Chrome Host Seedshark: a noncreature spell incubates its mana value; {2} transforms the Incubator into a Phyrexian', () => {
+    let s = newGame();
+    put(s, 'P1', 'chrome-host-seedshark');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    const inc = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'incubator-token-eoc')!;
+    expect(s.cards[inc]!.counters).toBe(1);
+    expect(hasType(s, s.cards[inc]!, 'creature')).toBe(false);
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: inc, ability: 0 }).state;
+    expect(currentDefinition(s, s.cards[inc]!).name).toBe('Phyrexian');
+    expect([powerOf(s, s.cards[inc]!), hasType(s, s.cards[inc]!, 'creature')]).toEqual([1, true]);
+    // A creature spell doesn't incubate.
+    const bear = put(s, 'P1', 'coeurl', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    const before = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'incubator-token-eoc').length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bear }).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'incubator-token-eoc').length).toBe(before);
+  });
+
+  it('Moxite Refinery: remove X counters from one of your artifacts or creatures to put X charge or +1/+1 counters', () => {
+    let s = newGame();
+    const refinery = put(s, 'P1', 'moxite-refinery');
+    const gavel = put(s, 'P1', 'gavel-of-the-righteous', 'battlefield', { namedCounters: { charge: 3 } });
+    const bear = put(s, 'P1', 'coeurl');
+    mana(s, 'P1', { C: 2 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: refinery, ability: 1, costCards: [gavel], x: 4, targets: [card(bear)] })).toMatch(/aren't 4 counters/);
+    expect(getLegalActions(s).filter((a) => a.type === 'ActivateAbility' && a.card === refinery && a.ability === 1 && a.costCards?.[0] === gavel).map((a) => a.type === 'ActivateAbility' && a.x)).toEqual([1, 2, 3]);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: refinery, ability: 1, costCards: [gavel], x: 2, targets: [card(bear)] }).state;
+    expect(s.cards[gavel]!.namedCounters?.charge).toBe(1);
+    expect(s.cards[bear]!.counters).toBe(2);
+  });
+
+  it('Horizon Explorer: a Lander for each player you attack, and lands you control enter untapped (even from a Lander)', () => {
+    let s = newGame(3);
+    put(s, 'P1', 'horizon-explorer');
+    const a = put(s, 'P1', 'coeurl');
+    const b = put(s, 'P1', 'coeurl');
+    s = attackEach(s, [{ attacker: a, defender: 'P2' }, { attacker: b, defender: 'P3' }]);
+    const landers = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'lander-token-eoe');
+    expect(landers).toHaveLength(2);
+    s = goTo(s, 'main2');
+    put(s, 'P1', 'forest', 'library');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: landers[0]!, ability: 0 }).state;
+    expect(s.cards[landers[0]!]!.zone).not.toBe('battlefield');
+    const found = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'forest' || s.cards[id]!.defId === 'island');
+    expect(found).toBeDefined();
+    expect(s.cards[found!]!.tapped).toBe(false);
+  });
+});

@@ -185,6 +185,18 @@ export function canReveal(s: GameState, c: CardInstance, controller: string = c.
  * (checklands, battle lands, snarls). For snarls, `reveal` is the player's
  * choice; by default they reveal when they can.
  */
+/**
+ * The Wandering Minstrel, Horizon Explorer: "Lands you control enter untapped"
+ * (its controller orders the replacement effects, and untapped wins), also
+ * over an effect that puts the land onto the battlefield tapped.
+ */
+export function landEntersUntapped(s: GameState, c: CardInstance): boolean {
+  return currentDefinition(s, c).types.includes('land') && !!s.players[c.controller]?.battlefield.some((id) => {
+    const o = s.cards[id]!;
+    return o.id !== c.id && o.controller === c.controller && !o.phasedOut && !!currentDefinition(s, o).statics?.some((st) => st.yourLandsEnterUntapped);
+  });
+}
+
 export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): boolean {
   // Authority of the Consuls: "Creatures your opponents control enter tapped."
   if (currentDefinition(s,c).types.includes('creature')) {
@@ -197,11 +209,7 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
     }
   }
   const def = currentDefinition(s, c);
-  // The Wandering Minstrel: "Lands you control enter untapped" (its controller orders the replacements; untapped wins).
-  if (def.types.includes('land') && s.players[c.controller]?.battlefield.some((id) => {
-    const o = s.cards[id]!;
-    return o.id !== c.id && o.controller === c.controller && !o.phasedOut && currentDefinition(s, o).statics?.some((st) => st.yourLandsEnterUntapped);
-  })) return false;
+  if (landEntersUntapped(s, c)) return false;
   if (def.entersTapped) return true;
   const unless = def.entersTappedUnless;
   if (!unless) return false;

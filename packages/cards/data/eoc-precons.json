@@ -62,23 +62,16 @@
           "count": 1,
           "set": "eoc",
           "number": "11",
-          "implemented": false,
-          "needs": [
-            "discover",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Moxite Refinery",
           "count": 1,
           "set": "eoc",
           "number": "17",
-          "implemented": false,
-          "needs": [
-            "activated-abilities",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Solar Array",
@@ -189,12 +182,8 @@
           "count": 1,
           "set": "eoc",
           "number": "68",
-          "implemented": false,
-          "needs": [
-            "incubate",
-            "transform",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cyberdrive Awakener",
@@ -875,11 +864,8 @@
           "count": 1,
           "set": "eoc",
           "number": "15",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Scouring Swarm",

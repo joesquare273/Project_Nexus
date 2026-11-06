@@ -798,6 +798,8 @@ export interface EffectSpec {
   /** ExileUntilFound: only a card with lesser mana value than the triggering spell; the rest go on the bottom in a random order (Jodah). */
   lesserThanSubject?: boolean;
   restToBottom?: boolean;
+  /** ExileUntilFound: discover (rule 701.57): cast the card free right away, or it goes to your hand. */
+  discover?: boolean;
   /** CreateTokenCopy: the copy is exiled at the beginning of the next end step (Inalla). */
   exileAtEndStep?: boolean;
   /** CreateTokenCopy with `sacrificeAtEndStep`: at your next end step, not just the next one. */
@@ -1069,6 +1071,8 @@ export const TRIGGER_EVENTS = [
   'Blocks',
   /** You attacked with at least `attackersAtLeast` creatures ("whenever you attack with four or more creatures"). */
   'YouAttack',
+  /** "Whenever you attack a player": once for each player you attacked (the defender is that player). */
+  'YouAttackPlayer',
   /** A Saga's chapter ability (rule 714.2): a lore counter brought it to one of `chapters`. */
   'Chapter',
   /** A permanent was sacrificed. */
@@ -1336,7 +1340,8 @@ export interface ActivatedSpec {
      * `costCards`). Without `counter`, any kind (the engine picks which).
      */
     /** `amount`: how many to remove ("remove three charge counters from this artifact"; default 1). */
-    removeCounter?: { counter?: AnyCounter; from?: ObjectFilter; amount?: number };
+    /** `amountX`: "Remove X counters" (Moxite Refinery): X chosen with the action, any kinds. */
+    removeCounter?: { counter?: AnyCounter; from?: ObjectFilter; amount?: number; amountX?: boolean };
     /**
      * "Remove N counters from among other artifacts, creatures, and planeswalkers you control" (Tekuthal):
      * the engine chooses, one at a time, from the matching permanent with the most counters.
@@ -2038,6 +2043,8 @@ export interface CardInstance {
     fromHand?: boolean;
     /** Only right away: gone once the player does anything else ("you may cast it" as an ability resolves). */
     immediate?: boolean;
+    /** Discover: not cast right away, the card goes to its owner's hand. */
+    orHand?: boolean;
   };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;

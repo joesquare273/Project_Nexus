@@ -524,6 +524,7 @@ function triggerCondition(t: TriggerSpec): string {
     Blocks: 'blocks',
     DealsDamage: 'deals damage',
     YouAttack: '',
+    YouAttackPlayer: '',
     Chapter: '',
     AbilityActivated: 'has an ability activated',
     Sacrificed: 'is sacrificed',
@@ -535,6 +536,7 @@ function triggerCondition(t: TriggerSpec): string {
   if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';
   if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";
   if (t.when === 'Chapter') return `Chapter ${(t.chapters ?? []).map((n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][n] ?? n).join(', ')}`;
+  if (t.when === 'YouAttackPlayer') return 'Whenever you attack a player';
   if (t.when === 'YouAttack') return `Whenever you attack with ${t.attackersAtLeast ?? 1} or more creatures`;
   if (t.when === 'Draws') {
     const who = t.drawer === 'Opponent' ? 'an opponent draws' : t.drawer === 'You' ? 'you draw' : 'a player draws';

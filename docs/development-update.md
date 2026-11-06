@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities group E16: Counter Intelligence complete
+
+Long-Range Sensor (discover 4), Chrome Host Seedshark (incubate), Moxite
+Refinery ("remove X counters") and Horizon Explorer (Lander tokens; lands you
+control enter untapped, even from effects that say tapped). Counter
+Intelligence 100/100; World Shaper 96/100 (Eumidian Wastewaker, Evendo
+Brushrazer, Moraug and Dakmor Salvage left).
+
 ### Edge of Eternities group E15: sacrifice and X targets
 
 Braids, Arisen Nightmare; God-Eternal Bontu; Loamcrafter Faun; Pest

@@ -43,7 +43,7 @@ import {
   playerProtectedFromOpponents,
 } from './state.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { canReveal, colorsOf, entersTapped, isPermanentCard, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue, tapOtherManaTypes } from './typerules.ts';
+import { canReveal, colorsOf, entersTapped, isPermanentCard, landEntersUntapped, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue, tapOtherManaTypes } from './typerules.ts';
 import {
   CHOSEN_TARGET_KINDS,
   COLORS,
@@ -1653,7 +1653,7 @@ export function activateAbility(
   const problem = activationProblem(s, playerId, c, spec, index);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
-  const hasX = !!parseManaCost(spec.cost.mana).x;
+  const hasX = !!parseManaCost(spec.cost.mana).x || !!spec.cost.removeCounter?.amountX;
   if (!hasX && !spec.cost.discardX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
   if (hasX && (xChosen === undefined || !Number.isInteger(xChosen) || xChosen < (spec.xMin ?? 0))) reject(`Choose a value for X${spec.xMin ? ` of at least ${spec.xMin}` : ''}.`);
   // Station: X is the power of the creature tapped for it (as the cost is paid).
@@ -1714,7 +1714,12 @@ export function activateAbility(
     const prior = c.crewedByThisTurn?.turn === s.turnNumber ? c.crewedByThisTurn.by : [];
     c.crewedByThisTurn = { turn: s.turnNumber, by: [...new Set([...prior, ...costCards])] };
   }
-  if (rc) {
+  if (rc?.amountX) {
+    // "Remove X counters": any kinds, one at a time.
+    const from = s.cards[rc.from ? costCards[0]! : id]!;
+    if (totalCounters(from) < (x ?? 0)) reject(`There aren't ${x} counters on that to remove.`);
+    for (let i = 0; i < (x ?? 0); i++) removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, 1);
+  } else if (rc) {
     const from = s.cards[rc.from ? costCards[0]! : id]!;
     removeCounters(ctx, from.id, counterToRemove(from, rc.counter)!, rc.amount ?? 1);
   }
@@ -2677,7 +2682,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (c.zone !== 'battlefield') continue;
         c.controller = item.controller;
         c.summoningSick = true;
-        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
         if (effect.keywords?.length) s.temporaryEffects.push({ source, affected: id, keywords: [...effect.keywords] });
       }
       return;
@@ -3321,7 +3326,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             free: true,
             ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
             // Jodah: cast as the trigger resolves, so timing doesn't apply, and only right away.
-            ...(effect.lesserThanSubject ? { ignoreTiming: true, immediate: true } : {}),
+            ...(effect.lesserThanSubject || effect.discover ? { ignoreTiming: true, immediate: true } : {}),
+            // Discover: or put it into your hand.
+            ...(effect.discover ? { orHand: true } : {}),
           };
           break;
         }
@@ -3433,7 +3440,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (effect.underYourControl) c.controller = item.controller;
         if (attaching && host && canAttach(s, c, host)) attach(ctx, id, host.id);
         c.summoningSick = true;
-        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
         if (effect.attacking && s.combat && defender && defenders.includes(defender)) {
           s.combat.attacks.push({ attacker: id, defender });
           ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });
@@ -3547,7 +3554,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
         moveCard(ctx, top, 'battlefield');
         c.controller = pid;
-        if (effect.entersTapped || entersTapped(s, c)) c.tapped = true;
+        if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
       }
       return;
     case 'AttachAllEquipment':
@@ -4009,7 +4016,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       if (pending.lookTo === 'battlefield') {
         const c = s.cards[id]!;
         c.controller = pending.player;
-        if (pending.lookTapped || entersTapped(s, c)) c.tapped = true;
+        if ((pending.lookTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
         // Winota: "tapped and attacking. It gains indestructible until end of turn."
         // Its controller chooses which player it attacks (rule 506.3a), not necessarily the one Winota's trigger saw.
         if (pending.lookAttacking && pending.attackDefender && s.combat && c.zone === 'battlefield') {
@@ -4195,7 +4202,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const c = s.cards[id]!;
       c.controller = pending.player;
       c.summoningSick = true;
-      if (pending.searchTo === 'battlefieldTapped' || entersTapped(s, c)) c.tapped = true;
+      if ((pending.searchTo === 'battlefieldTapped' && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
       // A later effect can refer to the land it found ("then ... untap that land": Fabled Passage).
       if (cards.length === 1) r.previousTarget = { kind: 'card', card: id };
     }
@@ -4241,7 +4248,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const c = s.cards[id]!;
       c.controller = pending.player;
       c.summoningSick = true;
-      if (r.putTapped || entersTapped(s, c)) c.tapped = true;
+      if ((r.putTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
       const defender = r.putAttackingDefender;
       if (defender && s.combat && !s.players[defender]!.eliminated && defOf(s, c).types.includes('enchantment')) {
         c.tapped = true;

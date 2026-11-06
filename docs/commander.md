@@ -32,8 +32,8 @@ The next precons to build, imported with the same script (`import-precons.ts eoc
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 97/100 |
-| World Shaper | Hearthhull, the Worldseed (BRG) | 95/100 |
+| Counter Intelligence | Inspirit, Flagship Vessel (URW) | 100/100 (complete) |
+| World Shaper | Hearthhull, the Worldseed (BRG) | 96/100 |
 
 176 distinct cards: 33 shared with cards already built (Sol Ring, Command
 Tower, Swords to Plowshares, the pain and check lands...), 143 new in
@@ -217,6 +217,19 @@ Groups built (tests in `packages/bots/test/eoc-cards.test.ts`):
   reflexive trigger with targets; the computer never sacrifices for Braids or
   Bontu. Evendo Brushrazer waits (its exiled cards are playable only while
   you've sacrificed a nontoken permanent this turn).
+
+- **E16 (2026-11-06): discover, incubate, remove X counters, Landers.**
+  Long-Range Sensor, Chrome Host Seedshark, Moxite Refinery, Horizon
+  Explorer, and the Incubator and Lander tokens: Counter Intelligence is
+  complete. Engine: the `YouAttackPlayer` trigger ("whenever you attack a
+  player", once per player attacked), discover (rule 701.57:
+  ExileUntilFound `discover`, cast free right away or the card goes to your
+  hand), the cost `removeCounter.amountX` ("remove X counters", any kinds),
+  and "lands you control enter untapped" now also wins over effects that put
+  a land onto the battlefield tapped (`landEntersUntapped`). Moxite
+  Refinery's "choose one" is two abilities with the same cost (the same
+  choice). "Lander" is added to the artifact types in `types.json` (Scryfall's
+  catalog gains it on the next `npm run scryfall -- --refresh`).
 
 ## Commander rules (built)
 

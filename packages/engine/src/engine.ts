@@ -7,7 +7,7 @@ import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, acti
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
-import { cloneState, reject, RuleError, type Ctx } from './state.ts';
+import { cloneState, moveCard, reject, RuleError, type Ctx } from './state.ts';
 import type { Action, ActionResult, GameState } from './types.ts';
 
 function requirePriority(s: GameState, playerId: string): void {
@@ -21,14 +21,20 @@ function requirePriority(s: GameState, playerId: string): void {
  * player does anything else (passing, another spell, land or ability). Casting
  * or playing one of those cards keeps the rest (Gix plays several in a row).
  */
-function dropImmediatePermissions(s: GameState, action: Action): void {
+function dropImmediatePermissions(ctx: Ctx, action: Action): void {
+  const s = ctx.s;
   if (!['PassPriority', 'PlayLand', 'CastSpell', 'ActivateAbility', 'Foretell'].includes(action.type)) return;
   const who = action.player;
   const usedCard = action.type === 'CastSpell' || action.type === 'PlayLand' ? s.cards[action.card] : undefined;
   const usesImmediate = !!usedCard && (usedCard.castPermission?.immediate || usedCard.playableFromExile?.immediate || (s.castGroups ?? []).some((g) => g.immediate && g.player === who && g.cards.some((ref) => ref.card === usedCard.id)));
   if (usesImmediate) return;
   for (const c of Object.values(s.cards)) {
-    if (c.castPermission?.immediate && c.castPermission.player === who) delete c.castPermission;
+    if (c.castPermission?.immediate && c.castPermission.player === who) {
+      // Discover: a card not cast goes to its owner's hand.
+      const toHand = c.castPermission.orHand && c.zone === 'exile';
+      delete c.castPermission;
+      if (toHand) moveCard(ctx, c.id, 'hand');
+    }
     if (c.playableFromExile?.immediate && c.playableFromExile.player === who) delete c.playableFromExile;
   }
   if (s.castGroups?.some((g) => g.immediate && g.player === who)) s.castGroups = s.castGroups.filter((g) => !(g.immediate && g.player === who));
@@ -53,7 +59,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return { ok: true, state: s, events: ctx.ev };
     }
 
-    dropImmediatePermissions(s, action);
+    dropImmediatePermissions(ctx, action);
 
     switch (action.type) {
       case 'CopyCreature':

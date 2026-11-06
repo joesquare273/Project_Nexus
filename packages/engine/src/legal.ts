@@ -8,7 +8,7 @@
 
 import { currentDefinition, spellDefinition } from './cardface.ts';
 import { canAttackPlayer, hasAttackRequirements, completeRequiredAttacks, attackRequirementProblem } from './combat.ts';
-import { isEquipment } from './characteristics.ts';
+import { isEquipment, totalCounters } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
 import { canPay, manaValue, parseManaCost } from './cost.ts';
@@ -339,7 +339,13 @@ function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alterna
 }
 
 /** The values of X an activated ability could be given with the mana available ({X}{X}: Gogo). */
-function abilityXChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec): (number | undefined)[] {
+function abilityXChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, costCards: InstanceId[] = []): (number | undefined)[] {
+  // "Remove X counters from an artifact or creature you control": 1 to the counters on the chosen permanent.
+  if (spec.cost.removeCounter?.amountX) {
+    const from = costCards[0] ? s.cards[costCards[0]] : undefined;
+    const most = Math.min(MAX_X, from ? totalCounters(from) : 0);
+    return Array.from({ length: most }, (_, i) => i + 1);
+  }
   const cost = parseManaCost(spec.cost.mana);
   if (!cost.x) return [undefined];
   const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
@@ -359,7 +365,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
       if (activationProblem(s, playerId, c, spec, ability)) return;
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
-         for (const x of abilityXChoices(s, playerId, spec)) {
+         for (const x of abilityXChoices(s, playerId, spec, costCards)) {
           out.push({
             action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}), ...(x !== undefined ? { x } : {}) },
             cost: abilityCost(s, spec, targets, c, x ?? 0),

@@ -229,7 +229,11 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
   });
   // "Attacks alone": the only creature declared as an attacker (rule 506.5).
   for (const o of out) if (o.when === 'Attacks' && o.subjectController && attackers.get(o.subjectController)?.n === 1) o.alone = true;
-  for (const [pid, { at, n, attacking }] of attackers) out.push({ when: 'YouAttack', at, subjectController: pid, attackers: n, attacking });
+  for (const [pid, { at, n, attacking }] of attackers) {
+    out.push({ when: 'YouAttack', at, subjectController: pid, attackers: n, attacking });
+    // "Whenever you attack a player": once per player attacked.
+    for (const defender of Object.keys(attacking)) out.push({ when: 'YouAttackPlayer', at, subjectController: pid, defender });
+  }
   return out;
 }
 
@@ -295,6 +299,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
   if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
   if (spec.ifEvoked && !s.cards[source]!.evoked) return false;
+  if (o.when === 'YouAttackPlayer') return o.subjectController === controller;
   if (o.when === 'YouAttack') {
     // Mangara: "whenever an opponent attacks with creatures, if two or more of those creatures are attacking you".
     if (spec.byOpponent) return o.subjectController !== controller && (o.attacking?.[controller] ?? 0) >= (spec.attackingYouAtLeast ?? 1);
