@@ -149,6 +149,20 @@ You need Node.js 24 or newer.
   If "Join room" says it can't reach the game server, start it with
   "npm run server" first (the browser board looks for it on port 8787).
 
+  Dropped connections and the server log: if the connection to the game
+  server drops during a Commander table, a game against the computer or a
+  draft event, the board says "Connection lost. Reconnecting..." and gets
+  your seat back by itself (for about a minute and a half), then says
+  "Reconnected." If something still goes wrong, the server keeps a log of
+  connections, disconnects and errors:
+    - logs/server.log in the project folder (entries older than 30 days are
+      deleted), also printed in the "npm run server" terminal;
+    - http://localhost:8787/api/debug/log shows the latest entries (only on
+      the computer running the server);
+    - the browser keeps its own connection log: press F12, open Console and
+      type nexusConnectionLog()
+  Sending those to Claude helps find the cause.
+
 
 4. PLAY IN THE TERMINAL
 -----------------------

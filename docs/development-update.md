@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Online games reconnect after a drop; a server log
+
+A dropped connection in a Commander table, a game against the computer or a
+draft event no longer leaves the board waiting on the server: it reconnects,
+takes your seat back and carries on. The server pings connections every 20
+seconds, bots that error or pick an illegal move no longer stall the game or
+crash the server, and `logs/server.log` (30 days kept) records connections,
+drops and errors. See docs/decisions.md (2026-11-06).
+
 ### Edge of Eternities precons complete (group E17)
 
 Moraug, Fury of Akoum (extra combats that untap your creatures), Dakmor

@@ -41,6 +41,8 @@ class EventLink {
   pendingGame: Update | null = null;
   private sessionKey: string | null = null;
   private sessionListener: ((m: ServerMessage) => void) | null = null;
+  /** The link the game on the board talks through (told when the connection drops or comes back). */
+  private gameLink: GameLink | null = null;
   private readonly subscribers = new Set<() => void>();
 
   subscribe(fn: () => void): () => void {
@@ -71,7 +73,20 @@ class EventLink {
     this.notify();
     c.onClose = () => {
       if (this.conn !== c) return;
+      this.gameLink?.onClose();
       this.reset('Lost the connection to the game server. Rejoin with the event code.');
+    };
+    // A dropped connection reconnects and takes your seat in the event back.
+    c.setRejoin(async () => {
+      const code = this.view?.code;
+      const fresh = await accessToken();
+      return code && fresh ? { type: 'eventJoin', token: fresh, code } : null;
+    });
+    c.onStatus = (status) => {
+      if (this.conn !== c) return;
+      this.error = status === 'dropped' ? 'Connection lost. Reconnecting…' : null;
+      this.gameLink?.onStatus?.(status);
+      this.notify();
     };
     c.listen((m) => this.receive(m));
     c.send(first(token));
@@ -117,9 +132,11 @@ class EventLink {
       close: () => {
         this.sessionListener = null;
         this.sessionKey = null;
+        if (this.gameLink === link) this.gameLink = null;
       },
       onClose: () => {},
     };
+    this.gameLink = link;
     this.sessionKey = gameKey(first);
     return new OnlineSession(link, first, 'RW', 'limited');
   }
@@ -145,6 +162,7 @@ class EventLink {
     this.conn = null;
     this.sessionListener = null;
     this.sessionKey = null;
+    this.gameLink = null;
     c?.close();
   }
 }

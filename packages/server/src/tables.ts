@@ -17,6 +17,7 @@ import { gameDeck, type GameDeck } from '@nexus/cards/decks';
 import type { AccountService, AccountUser } from './accounts.ts';
 import { deckProblem } from './collection.ts';
 import { HostedGame } from './hostedGame.ts';
+import { errorDetails, log } from './log.ts';
 import { eligible, rewardMatch } from './rewards.ts';
 import type { ErrorCode, Seat, ServerMessage, TableFormat, TableView } from './protocol.ts';
 import type { Action } from '@nexus/engine';
@@ -79,8 +80,15 @@ export class TableHub {
 
   constructor(opts: TableHubOptions) {
     this.opts = {
+      // A timer's error is logged, never left to take the whole server down.
       schedule: (fn, ms) => {
-        const t = setTimeout(fn, ms);
+        const t = setTimeout(() => {
+          try {
+            fn();
+          } catch (e) {
+            log('timer-error', { where: 'tables', ...errorDetails(e) });
+          }
+        }, ms);
         return () => clearTimeout(t);
       },
       botDelayMs: 450,
@@ -212,6 +220,7 @@ export class TableHub {
         botDelayMs: this.opts.botDelayMs,
         botGameLimit: this.opts.botGameLimit,
         send: (s, m) => t.conns.get(s)?.send(m),
+        where: `table ${code}`,
         onOver: (state) => {
           const alive = state.turnOrder.filter((p) => !state.players[p]!.eliminated);
           t.winner = alive.length === 1 ? (alive[0] as Seat) : null;

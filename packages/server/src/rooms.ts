@@ -25,6 +25,7 @@ import { ClientMessage, type Deck, type ErrorCode, type LobbyPlayer, type Seat, 
 import type { AccountService } from './accounts.ts';
 import { EventHub, type EventHubOptions } from './events.ts';
 import { TableHub } from './tables.ts';
+import { errorDetails, log } from './log.ts';
 import type { DraftSetCode } from '@nexus/cards/draft';
 
 /** Starter Kit rooms are duels. */
@@ -99,8 +100,9 @@ export class Lobby {
     const { now: _now, ...tableOpts } = opts.events ?? {};
     this.tables = new TableHub({ accounts: this.accounts, randomBytes: this.randomBytes, alias: () => this.alias(), ...tableOpts });
   }
-  connect(conn: Connection): Client {
-    return new Client(this, conn);
+  /** `id` numbers the connection in the server log. */
+  connect(conn: Connection, id = 0): Client {
+    return new Client(this, conn, id);
   }
   /** A fresh random alias: 12 base-36 characters (62 bits). */
   alias(): string {
@@ -122,9 +124,20 @@ export class Client {
   private table: { code: string; seat: Seat } | null = null;
   /** Messages are handled one at a time, in order (checking a sign-in takes a moment). */
   private queue: Promise<void> = Promise.resolve();
-  constructor(lobby: Lobby, conn: Connection) {
+  private readonly id: number;
+  constructor(lobby: Lobby, conn: Connection, id = 0) {
     this.lobby = lobby;
     this.conn = conn;
+    this.id = id;
+  }
+
+  /** Which table, event or room this connection is in, for the server log. */
+  where(): Record<string, string> {
+    return {
+      ...(this.table ? { table: this.table.code, seat: this.table.seat } : {}),
+      ...(this.event ? { event: this.event.code, seat: this.event.seat } : {}),
+      ...(this.room ? { room: this.room.code } : {}),
+    };
   }
 
   private error(code: ErrorCode, message: string, seq?: number): void {
@@ -157,16 +170,23 @@ export class Client {
       else if (m.type.startsWith('table')) await this.tableMessage(m);
       else if (m.type === 'actions' && this.table) {
         const problem = this.lobby.tables.act(this.table.code, this.table.seat, m.seq, m.version, m.actions as unknown as Action[]);
-        if (problem) this.error(problem.error, problem.message, m.seq);
+        if (problem) {
+          if (problem.error !== 'illegal') log('action-refused', { connection: this.id, ...this.where(), code: problem.error, message: problem.message });
+          this.error(problem.error, problem.message, m.seq);
+        }
       }
       else if (m.type === 'join') await this.join(m.token, m.room);
       else if (m.type === 'pickDeck') this.pickDeck(m.deck);
       else if (m.type === 'actions' && this.event) {
         const problem = this.lobby.events.act(this.event.code, this.event.seat, m.seq, m.version, m.actions as unknown as Action[]);
-        if (problem) this.error(problem.code, problem.message, m.seq);
+        if (problem) {
+          if (problem.code !== 'illegal') log('action-refused', { connection: this.id, ...this.where(), code: problem.code, message: problem.message });
+          this.error(problem.code, problem.message, m.seq);
+        }
       } else if (m.type === 'actions') this.act(m.seq, m.version, m.actions as unknown as Action[]);
     } catch (e) {
       // A bug in the server must not take the room down with it.
+      log('message-error', { connection: this.id, message: m.type, ...this.where(), ...errorDetails(e) });
       this.error('illegal', `The server could not handle that: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
@@ -193,12 +213,17 @@ export class Client {
     this.table = null;
     if ('code' in which) {
       const r = this.lobby.tables.join(user, which.code, this.conn);
-      if ('error' in r) return this.error(r.error, r.message);
+      if ('error' in r) {
+        log('table-join-failed', { connection: this.id, table: which.code, reason: r.error });
+        return this.error(r.error, r.message);
+      }
       this.table = { code: which.code, seat: r.seat };
+      log('table-join', { connection: this.id, table: which.code, seat: r.seat });
     } else {
       const r = this.lobby.tables.create(user, which.players, which.bots, this.conn, which.format);
       if ('error' in r) return this.error(r.error, r.message);
       this.table = r;
+      log('table-create', { connection: this.id, table: r.code, format: which.format, bots: which.bots });
     }
   }
 
@@ -231,11 +256,16 @@ export class Client {
       const r = await this.lobby.events.create(user, which, this.conn);
       if ('error' in r) return this.error(r.error, r.message);
       this.event = r;
+      log('event-create', { connection: this.id, event: r.code });
       return;
     }
     const r = await this.lobby.events.join(user, which.code, this.conn);
-    if ('error' in r) return this.error(r.error, r.message);
+    if ('error' in r) {
+      log('event-join-failed', { connection: this.id, event: which.code, reason: r.error });
+      return this.error(r.error, r.message);
+    }
     this.event = { code: which.code, seat: r.seat };
+    log('event-join', { connection: this.id, event: which.code, seat: r.seat });
   }
 
   private async eventMessage(m: ClientMessage): Promise<void> {

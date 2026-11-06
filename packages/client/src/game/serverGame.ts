@@ -39,6 +39,12 @@ export function hostBotGame(request: BotGameRequest): { game: Promise<OnlineSess
       c.onClose = () => fail('Lost the connection to the game server. Is it running (npm run server)?');
       c.listen((m: ServerMessage) => {
         if (m.type === 'table') {
+          // If the connection drops during the game, it reconnects and takes this seat back.
+          const tableCode = m.table.code;
+          c.setRejoin(async () => {
+            const fresh = request.token ?? (await accessToken());
+            return fresh ? { type: 'tableJoin', token: fresh, code: tableCode } : null;
+          });
           const mine = m.table.seats.find((s) => s.id === m.table.you);
           if (m.table.phase !== 'lobby') return;
           if (!deckSent) {

@@ -378,6 +378,44 @@ cards than before. Tests that need a particular random outcome set
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
 
+## 2026-11-06: Reconnecting, and the server log (user report)
+
+Commander and draft games sometimes showed "disconnected from server" and
+then waited forever. Causes found and fixed:
+
+- The browser never reconnected: a dropped WebSocket left the board waiting
+  for the answer to its last move. `OnlineConnection` (client
+  `game/online.ts`) now reconnects with backoff (about 80 seconds in all,
+  sooner when the network comes back), sends a rejoin message first
+  (`tableJoin` / `eventJoin` with a fresh sign-in token; the server already
+  gave the seat back and resent the game), drops moves queued for the game
+  as it was, and the session takes the resent game as the truth (it stops
+  waiting even if the lost move was never answered). The board says
+  "Connection lost. Reconnecting..." and "Reconnected.".
+- No heartbeat: the server now pings every connection every 20 seconds
+  (keeps idle connections open through proxies; one that misses a ping is
+  closed, and the browser reconnects).
+- Bots could stall a game or crash the server: a bot move the engine
+  rejected stopped the bot loop silently, and an error thrown in a bot's
+  timer was uncaught (the whole process, and every game, went down).
+  `botMove` (server `hostedGame.ts`, used by tables and draft events) logs
+  the problem and plays the first legal action the engine accepts (passing
+  first), or concedes for the bot if nothing works; every server timer
+  catches and logs its errors; `npm run server` logs uncaught errors and
+  keeps running.
+- The server log (`server/src/log.ts`): one JSON line per connection,
+  disconnect (close code, how long it lasted, the table or event), rejoin,
+  refused move, message error and bot problem, in the terminal and in
+  `logs/server.log` (git ignores it). Entries older than 30 days are deleted
+  (at startup and daily; user, 2026-11-06). The latest 500 are at
+  `GET /api/debug/log`, from the server's own computer only. The browser
+  keeps the last 100 connection entries from the last 30 days
+  (localStorage, `nexusConnectionLog()` in the console).
+
+Still lost on a server restart: games live in the server's memory, so a
+restarted server has no table to rejoin (the board then says the
+connection was lost).
+
 ## 2026-11-02: The Crystals
 
 - The Earth Crystal's doubling is applied after "that many plus one"

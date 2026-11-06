@@ -19,6 +19,8 @@ import type { LimitedDeck } from '@nexus/cards/limited';
 import { draftSet, type DraftSetCode } from '@nexus/cards/draft';
 import type { AccountService } from './accounts.ts';
 import { ECONOMY } from './economy.ts';
+import { botMove } from './hostedGame.ts';
+import { errorDetails, log } from './log.ts';
 import { eligible, rewardMatch } from './rewards.ts';
 import {
   botMatch,
@@ -116,8 +118,15 @@ export class EventHub {
   constructor(opts: EventHubOptions) {
     this.opts = {
       now: () => Date.now(),
+      // A timer's error is logged, never left to take the whole server down.
       schedule: (fn, ms) => {
-        const t = setTimeout(fn, ms);
+        const t = setTimeout(() => {
+          try {
+            fn();
+          } catch (e) {
+            log('timer-error', { where: 'events', ...errorDetails(e) });
+          }
+        }, ms);
         return () => clearTimeout(t);
       },
       botDelayMs: 450,
@@ -443,8 +452,8 @@ export class EventHub {
       const s = g.state;
       if (!('player' in s.pending)) break;
       const bot = g.bots[s.pending.player as Seat]!;
-      const r = applyAction(s, bot(s, getLegalActions(s)));
-      if (!r.ok) break;
+      const r = botMove(s, bot, `event ${h.ev.code}`);
+      if (!r) break;
       g.state = r.state;
       n++;
     }
@@ -461,8 +470,8 @@ export class EventHub {
     const bot = who ? g.bots[who] : undefined;
     if (!bot) return;
     g.cancel = this.opts.schedule(() => {
-      const r = applyAction(g.state, bot(g.state, getLegalActions(g.state)));
-      if (!r.ok) return;
+      const r = botMove(g.state, bot, `event ${h.ev.code}`);
+      if (!r) return;
       g.state = r.state;
       g.version++;
       this.sendGame(h, g, r.events);

@@ -9,7 +9,58 @@
 
 import { AliasBook, applyAction, createGame, getLegalActions, playerUpdate, resolveAction, type Action, type GameEvent, type GameSetup, type GameState } from '@nexus/engine';
 import type { Bot } from '@nexus/bots';
+import { errorDetails, log } from './log.ts';
 import type { ErrorCode, Seat, ServerMessage } from './protocol.ts';
+
+type Applied = { state: GameState; events: GameEvent[] };
+
+/**
+ * A bot's move, applied. If the bot throws or picks something the engine
+ * rejects, the problem is logged and the first legal action the engine
+ * accepts is played instead (passing first); if none works, the bot concedes,
+ * so a game never stalls or takes the server down. `where` names the game in
+ * the log. Null only if even conceding fails.
+ */
+export function botMove(state: GameState, bot: Bot, where: string): Applied | null {
+  const player = 'player' in state.pending ? state.pending.player : undefined;
+  const context = { where, player, pending: state.pending.kind, turn: state.turnNumber, step: state.step };
+  const legal = getLegalActions(state);
+  const attempt = (action: Action): Applied | string => {
+    try {
+      const r = applyAction(state, action);
+      return r.ok ? r : r.error;
+    } catch (e) {
+      log('engine-error', { ...context, action: action.type, ...errorDetails(e) });
+      return 'engine error';
+    }
+  };
+  let chosen: Action | undefined;
+  try {
+    chosen = bot(state, legal);
+  } catch (e) {
+    log('bot-error', { ...context, ...errorDetails(e) });
+  }
+  if (chosen) {
+    const r = attempt(chosen);
+    if (typeof r !== 'string') return r;
+    log('bot-illegal', { ...context, action: chosen.type, error: r });
+  }
+  const ordered = [...legal.filter((a) => a.type === 'PassPriority'), ...legal.filter((a) => a.type !== 'PassPriority')];
+  for (const action of ordered.slice(0, 50)) {
+    const r = attempt(action);
+    if (typeof r !== 'string') {
+      log('bot-fallback', { ...context, action: action.type });
+      return r;
+    }
+  }
+  if (player) {
+    log('bot-stuck', { ...context, legal: legal.length });
+    const r = attempt({ type: 'Concede', player });
+    if (typeof r !== 'string') return r;
+  }
+  log('game-stuck', context);
+  return null;
+}
 
 export interface HostedGameOptions {
   setup: GameSetup;
@@ -26,6 +77,8 @@ export interface HostedGameOptions {
   send: (seat: Seat, message: ServerMessage) => void;
   /** Called once when the game ends. */
   onOver: (state: GameState) => void;
+  /** Names the game in the server log ("table C1234"). */
+  where?: string;
 }
 
 const CHUNK = 250;
@@ -109,8 +162,8 @@ export class HostedGame {
   }
 
   private botStep(bot: Bot): void {
-    const r = applyAction(this.state, bot(this.state, getLegalActions(this.state)));
-    if (!r.ok) return;
+    const r = botMove(this.state, bot, this.opts.where ?? 'table');
+    if (!r) return;
     this.state = r.state;
     this.version++;
     this.sendAll(r.events);
@@ -124,8 +177,8 @@ export class HostedGame {
       const s = this.state;
       const bot = 'player' in s.pending ? this.opts.bots[s.pending.player as Seat] : undefined;
       if (!bot) break;
-      const r = applyAction(s, bot(s, getLegalActions(s)));
-      if (!r.ok) break;
+      const r = botMove(s, bot, this.opts.where ?? 'table');
+      if (!r) break;
       this.state = r.state;
       events.push(...r.events);
       n++;

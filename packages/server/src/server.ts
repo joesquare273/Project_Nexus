@@ -7,6 +7,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
+import { errorDetails, log, recentLog } from './log.ts';
 import { Lobby, type LobbyOptions } from './rooms.ts';
 import { ONBOARDING_STEPS, type AccountService, type AccountUser, type OnboardingStep } from './accounts.ts';
 import { randomInt, randomUUID } from 'node:crypto';
@@ -42,11 +43,15 @@ export interface ServerOptions extends LobbyOptions {
   staticDir?: string;
   /** Player accounts (Supabase); without them, /api/account answers that accounts aren't set up. */
   accounts?: AccountService | null;
+  /** How often to ping each connection (default 20 seconds); one that misses a ping is closed. */
+  heartbeatMs?: number;
 }
 
 export interface RunningServer {
   port: number;
   lobby: Lobby;
+  /** Cuts every connection at once, as a network drop would (for tests). */
+  dropConnections(): void;
   close(): Promise<void>;
 }
 
@@ -238,6 +243,12 @@ export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
   const root = opts.staticDir && existsSync(join(opts.staticDir, 'index.html')) ? resolve(opts.staticDir) : null;
   const http: Server = createServer((req, res) => {
     const apiPath = (req.url ?? '').split('?')[0]!;
+    // The server log's last entries, for this computer only (connections, errors, stuck bots).
+    if (apiPath === '/api/debug/log') {
+      const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
+      if (!local) return json(res, 403, { error: 'Only from the computer running the server.' });
+      return json(res, 200, { entries: recentLog() });
+    }
     if (apiPath.startsWith('/api/')) {
       void apiRoute(req, res, apiPath, opts.accounts ?? null);
       return;
@@ -274,27 +285,63 @@ export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
   });
 
   const wss = new WebSocketServer({ server: http, path: '/ws', maxPayload: MAX_MESSAGE_BYTES });
+  let nextConnection = 1;
+  const alive = new WeakMap<object, boolean>();
   wss.on('connection', (ws) => {
+    const id = nextConnection++;
+    const opened = Date.now();
+    alive.set(ws, true);
+    log('ws-open', { connection: id, open: wss.clients.size });
     const client = lobby.connect({
       send: (m) => {
         if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(m));
       },
-    });
+    }, id);
+    ws.on('pong', () => alive.set(ws, true));
     ws.on('message', (data, isBinary) => {
+      alive.set(ws, true);
       if (isBinary) return client.handle('');
       client.handle(data.toString());
     });
-    ws.on('close', () => client.disconnect());
-    ws.on('error', () => client.disconnect());
+    ws.on('close', (code, reason) => {
+      log('ws-close', { connection: id, code, reason: reason.toString().slice(0, 120), seconds: Math.round((Date.now() - opened) / 1000), ...client.where() });
+      client.disconnect();
+    });
+    ws.on('error', (e) => {
+      log('ws-error', { connection: id, ...errorDetails(e) });
+      client.disconnect();
+    });
   });
+  // Heartbeat: a ping every 20 seconds keeps idle connections open through proxies,
+  // and a connection that missed the last one (a sleeping laptop, a dropped network) is closed.
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (alive.get(ws) === false) {
+        log('ws-timeout', {});
+        ws.terminate();
+        continue;
+      }
+      alive.set(ws, false);
+      try {
+        ws.ping();
+      } catch {
+        // It's closing anyway.
+      }
+    }
+  }, opts.heartbeatMs ?? 20_000);
+  heartbeat.unref();
 
   return new Promise((done) => {
     http.listen(opts.port ?? 8787, opts.host, () => {
       done({
         port: (http.address() as AddressInfo).port,
         lobby,
+        dropConnections: () => {
+          for (const ws of wss.clients) ws.terminate();
+        },
         close: () =>
           new Promise<void>((closed) => {
+            clearInterval(heartbeat);
             for (const ws of wss.clients) ws.terminate();
             wss.close();
             http.close(() => closed());

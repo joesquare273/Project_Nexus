@@ -17,35 +17,159 @@ import { setPlayerAvatars } from './avatars.ts';
 
 type Update = Extract<ServerMessage, { type: 'update' }>;
 
+/** The connection dropped and is trying again, or it's back (and has rejoined your seat). */
+export type ConnectionStatus = 'dropped' | 'reconnected';
+
 /** What a game session talks through: the WebSocket itself, or a draft event's link to it (shared between games). */
 export interface GameLink {
   send(m: ClientMessage): void;
   listen(listener: (m: ServerMessage) => void): void;
   close(): void;
+  /** Called once if the connection is lost for good (reconnecting failed or isn't possible). */
   onClose: () => void;
+  /** Called when the connection drops and when it comes back. */
+  onStatus?: (status: ConnectionStatus) => void;
 }
 
-/** The WebSocket to the game server, at /ws on the page's own host (Vite forwards it in development). */
+const LOG_KEY = 'nexus:connectionLog';
+
+/** Entries older than this are deleted (user, 2026-11-06). */
+const LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * The browser's side of the connection log (the server keeps its own in
+ * logs/server.log): the last 100 entries from the last 30 days are kept in
+ * this browser (localStorage) and printed to the console.
+ * `nexusConnectionLog()` in the browser console shows them.
+ */
+export function connectionLog(event: string, details: Record<string, unknown> = {}): void {
+  const entry = { at: new Date().toISOString(), event, ...details };
+  console.info('[connection]', entry);
+  try {
+    const cutoff = Date.now() - LOG_RETENTION_MS;
+    const list = (JSON.parse(localStorage.getItem(LOG_KEY) ?? '[]') as { at?: string }[]).filter((e) => Date.parse(e.at ?? '') >= cutoff);
+    list.push(entry);
+    localStorage.setItem(LOG_KEY, JSON.stringify(list.slice(-100)));
+  } catch {
+    // The log is a convenience; play goes on without it.
+  }
+}
+
+/** The saved connection log, oldest first. */
+export function savedConnectionLog(): unknown[] {
+  try {
+    return JSON.parse(localStorage.getItem(LOG_KEY) ?? '[]') as unknown[];
+  } catch {
+    return [];
+  }
+}
+
+if (typeof window !== 'undefined') (window as unknown as { nexusConnectionLog: () => unknown[] }).nexusConnectionLog = savedConnectionLog;
+
+/** Waits before each reconnection attempt, in milliseconds (about 80 seconds in all). */
+const RETRY_DELAYS = [300, 1000, 2000, 4000, 8000, 15000, 20000, 30000];
+
+/**
+ * The WebSocket to the game server, at /ws on the page's own host (Vite
+ * forwards it in development). If it drops while `rejoin` is set (you're
+ * seated at a table or in a draft event), it reconnects on its own: it opens
+ * a new socket, sends the rejoin message first (the server puts you back in
+ * your seat and sends the game again), then anything queued meanwhile except
+ * game moves (they were for the game as it was; the board asks again).
+ */
 export class OnlineConnection implements GameLink {
-  private readonly ws: WebSocket;
+  private ws!: WebSocket;
   private listener: (m: ServerMessage) => void = () => {};
-  /** Called once if the connection drops. */
+  /** Called once if the connection is lost for good. */
   onClose: () => void = () => {};
-  private readonly queue: string[] = [];
+  onStatus: (status: ConnectionStatus) => void = () => {};
+  private queue: ClientMessage[] = [];
+  private rejoin: (() => Promise<ClientMessage | null>) | null = null;
+  private closed = false;
+  private attempt = 0;
+  private reconnecting = false;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly url: string;
+  private readonly onOnline = () => {
+    // The network is back: try now rather than waiting out the delay.
+    if (this.reconnecting && this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+      this.open();
+    }
+  };
 
   constructor(url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`) {
-    this.ws = new WebSocket(url);
-    this.ws.onopen = () => {
-      for (const m of this.queue.splice(0)) this.ws.send(m);
-    };
-    this.ws.onmessage = (e) => {
+    this.url = url;
+    if (typeof window !== 'undefined') window.addEventListener('online', this.onOnline);
+    this.open();
+  }
+
+  /** How to get your seat back after a drop (a fresh sign-in token and the table or event code). */
+  setRejoin(rejoin: (() => Promise<ClientMessage | null>) | null): void {
+    this.rejoin = rejoin;
+  }
+
+  private open(): void {
+    const ws = new WebSocket(this.url);
+    this.ws = ws;
+    ws.onopen = () => void this.opened(ws);
+    ws.onmessage = (e) => {
       try {
         this.listener(JSON.parse(String(e.data)) as ServerMessage);
       } catch {
         // A message we can't read is ignored.
       }
     };
-    this.ws.onclose = () => this.onClose();
+    ws.onclose = (e) => {
+      if (this.ws !== ws || this.closed) return;
+      this.dropped(e.code, e.reason);
+    };
+  }
+
+  private async opened(ws: WebSocket): Promise<void> {
+    if (this.reconnecting) {
+      const message = this.rejoin ? await this.rejoin().catch(() => null) : null;
+      if (this.ws !== ws || this.closed) return;
+      if (!message) {
+        connectionLog('rejoin-impossible', { attempt: this.attempt });
+        return this.giveUp();
+      }
+      ws.send(JSON.stringify(message));
+      // Moves made for the game as it was are dropped; the board asks again once the game arrives.
+      this.queue = this.queue.filter((m) => m.type !== 'actions');
+      connectionLog('reconnected', { attempt: this.attempt, rejoin: message.type });
+      this.reconnecting = false;
+      this.attempt = 0;
+      this.onStatus('reconnected');
+    } else connectionLog('connected');
+    for (const m of this.queue.splice(0)) ws.send(JSON.stringify(m));
+  }
+
+  private dropped(code: number, reason: string): void {
+    connectionLog('dropped', { code, reason, reconnecting: !!this.rejoin, attempt: this.attempt });
+    if (!this.rejoin || this.attempt >= RETRY_DELAYS.length) return this.giveUp();
+    if (!this.reconnecting) {
+      this.reconnecting = true;
+      this.onStatus('dropped');
+    }
+    const delay = RETRY_DELAYS[this.attempt++]!;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (!this.closed) this.open();
+    }, delay);
+  }
+
+  private giveUp(): void {
+    connectionLog('gave-up', { attempts: this.attempt });
+    this.shutDown();
+    this.onClose();
+  }
+
+  private shutDown(): void {
+    this.closed = true;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    if (typeof window !== 'undefined') window.removeEventListener('online', this.onOnline);
   }
 
   /** Who hears the server's messages (the menu, then the game). */
@@ -54,13 +178,13 @@ export class OnlineConnection implements GameLink {
   }
 
   send(m: ClientMessage): void {
-    const text = JSON.stringify(m);
-    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(text);
-    else this.queue.push(text);
+    if (this.ws.readyState === WebSocket.OPEN && !this.reconnecting) this.ws.send(JSON.stringify(m));
+    else this.queue.push(m);
   }
 
   close(): void {
     this.onClose = () => {};
+    this.shutDown();
     this.ws.close();
   }
 }
@@ -80,6 +204,10 @@ export class OnlineSession extends GameSession {
   private seq = 0;
   /** A batch is on its way and hasn't been answered yet. */
   private waiting = false;
+  /** The connection dropped and is reconnecting: moves wait until the game arrives again. */
+  private offline = false;
+  /** Just reconnected: the next update is the game as it is now, whatever happened to the last move. */
+  private resyncing = false;
   /**
    * Mana abilities you activated while paying for a spell or ability by hand
    * (holdPriority): applied to this board's copy of the game at once, and sent
@@ -109,7 +237,16 @@ export class OnlineSession extends GameSession {
     this.connection = connection;
     this.narrate(update.events);
     connection.listen((m) => this.receive(m));
-    connection.onClose = () => this.notify('The connection to the game server was lost.');
+    connection.onClose = () => this.notify('The connection to the game server was lost. Reload the page and rejoin the table or event.');
+    connection.onStatus = (status) => {
+      if (status === 'dropped') {
+        this.offline = true;
+        this.notify('Connection lost. Reconnecting…');
+      } else {
+        this.resyncing = true;
+        this.notify('Reconnected.');
+      }
+    };
   }
 
   /** The server's legal actions: it's the authority on what you may do. */
@@ -120,10 +257,11 @@ export class OnlineSession extends GameSession {
 
   /** Checks the move against your copy of the game (for quick feedback), then sends it. The server decides. */
   override canSubmit(actions: Action[]): boolean {
-    return !this.waiting && super.canSubmit(actions);
+    return !this.waiting && !this.offline && super.canSubmit(actions);
   }
 
   override submit(actions: Action[]): string | null {
+    if (this.offline) return 'Reconnecting to the game server…';
     if (this.waiting) return 'Waiting for the server…';
     const tried = applyAll(this.state, actions);
     if ('error' in tried) return readable(this.state, tried.error);
@@ -140,14 +278,14 @@ export class OnlineSession extends GameSession {
 
   /** The held taps go to the server on their own (you stopped paying). */
   private flushTaps(): void {
-    if (this.heldTaps.length && !this.waiting) this.send(this.heldTaps.splice(0));
+    if (this.heldTaps.length && !this.waiting && !this.offline) this.send(this.heldTaps.splice(0));
   }
 
   /** Your automatic passes and "no blocks" are sent to the server; otherwise the game waits on you or the other player. */
   override advance(): Advance {
     const s = this.state;
     if (s.pending.kind === 'gameOver') return 'over';
-    if (this.waiting || s.pending.player !== YOU) return 'you';
+    if (this.waiting || this.offline || s.pending.player !== YOU) return 'you';
     if (this.holdPriority && s.pending.kind === 'priority') return 'you';
     if (this.heldTaps.length) {
       this.flushTaps();
@@ -187,7 +325,10 @@ export class OnlineSession extends GameSession {
       }
       this.version = m.version;
       this.serverLegal = update.legal;
-      if (m.ackSeq >= this.seq) this.waiting = false;
+      // After a reconnection the game arrives again: a move lost on the way is simply made again.
+      if (m.ackSeq >= this.seq || this.resyncing) this.waiting = false;
+      this.resyncing = false;
+      this.offline = false;
       const notices = eventTargetNotices(this.state, update.events);
       this.targetHistory.unshift(...notices.reverse());
       this.targetHistory.splice(8);

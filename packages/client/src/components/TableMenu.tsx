@@ -84,6 +84,12 @@ export function TableMenu({ onStart, onBuild, format = 'commander' }: { onStart:
         setConnecting(false);
         setTable(m.table);
         remember(m.table.code);
+        // If the connection drops, it reconnects and takes this seat back.
+        const tableCode = m.table.code;
+        c.setRejoin(async () => {
+          const fresh = await accessToken();
+          return fresh ? { type: 'tableJoin', token: fresh, code: tableCode } : null;
+        });
         // Bring your chosen deck to the table as soon as you're seated.
         if (!seated) {
           seated = true;
