@@ -1758,6 +1758,12 @@ export interface CardDefinition {
     blitz?: boolean;
     /** Dash (rule 702.109): the creature gains haste and returns to its owner's hand at the beginning of the next end step. */
     dash?: boolean;
+    /**
+     * Warp (rule 702.185): cast from your hand for this cost; the permanent is
+     * exiled at the beginning of the next end step, and its owner may cast it
+     * from exile on a later turn (for its mana cost).
+     */
+    warp?: boolean;
     /** "You may cast this card from your graveyard using its blitz ability" (Sabin): this way only. */
     fromGraveyard?: boolean;
     /** "Exile a white card from your hand": another card in hand matching this, chosen with the action (`costCards`). */
@@ -2081,6 +2087,10 @@ export interface CardInstance {
   /** Sacrificed at the beginning of the next end step (a creature cast with Strago and Relm's permission). */
   /** Return it to its owner's hand at the beginning of the next end step (Random Encounter). */
   returnToHandAtEndStep?: boolean;
+  /** Cast for its warp cost: exiled at the beginning of the next end step. */
+  warped?: boolean;
+  /** Exiled by warp on this turn: its owner may cast it from exile on a later turn, for as long as it stays exiled. */
+  warpExiledTurn?: number;
   /** The source that milled it, and on which turn ("milled this way"). */
   milledBy?: { source: InstanceId; turn: number };
   sacrificeAtEndStep?: boolean;
@@ -2148,6 +2158,8 @@ export interface PlayerState {
   nextCreatureCounters?: { turn: number; amount: number };
   /** Solar Array: the next artifact spell this player casts this turn gains sunburst. */
   nextArtifactSunburstTurn?: number;
+  /** The last turn this player cast a spell for its warp cost (void). */
+  warpedSpellTurn?: number;
   /** The last turn this player sacrificed a nontoken permanent (Evendo Brushrazer). */
   sacrificedNontokenTurn?: number;
   /** The last turn this player put a counter on a creature. */

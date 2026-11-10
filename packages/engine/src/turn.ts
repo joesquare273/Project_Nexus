@@ -139,7 +139,11 @@ export function enterStep(ctx: Ctx, step: Step): void {
           delete c.attachedTo;
           delete c.attachedTimestamp;
         }
-        if (c.unearthed || c.exileAtEndStep) moveCard(ctx, c.id, 'exile');
+        if (c.warped) {
+          // Warp: exiled, and castable from exile on a later turn (a token just leaves).
+          moveCard(ctx, c.id, 'exile');
+          if (c.zone === 'exile') c.warpExiledTurn = s.turnNumber;
+        } else if (c.unearthed || c.exileAtEndStep) moveCard(ctx, c.id, 'exile');
         else if (c.returnToHandAtEndStep) moveCard(ctx, c.id, 'hand');
         else if (c.blitzed || (c.sacrificeAtEndStep && (!c.sacrificeAtEndStepOf || c.sacrificeAtEndStepOf === s.activePlayer))) sacrifice(ctx, c.id);
       }

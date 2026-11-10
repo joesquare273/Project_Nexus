@@ -375,6 +375,8 @@ export function alternativeCostProblem(s: GameState, def: CardDefinition, player
   if (alt.life !== undefined && s.players[playerId]!.life < alt.life) return "You don't have enough life to pay.";
   if (alt.ifOpponentLostLife && !s.turnOrder.some((pid) => pid !== playerId && (s.players[pid]!.lifeLostThisTurn ?? 0) > 0)) return 'No opponent has lost life this turn (spectacle).';
   if (alt.exileFromHand && exileFromHandChoices(s, def, playerId, cardId).length === 0) return `You have no card in hand to exile for ${def.name}.`;
+  // Warp works only from your hand (from exile, the card is cast for its mana cost).
+  if (alt.warp && cardId && s.cards[cardId]?.zone !== 'hand') return `${def.name} can be cast for its warp cost only from your hand.`;
   return null;
 }
 
@@ -862,6 +864,8 @@ export function playableZone(
   if (c.zone === 'exile' && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'exile';
   // A foretold card can be cast on a later turn than the one it was foretold on.
   if (c.owner === playerId && c.zone === 'exile' && c.foretoldTurn !== undefined) return c.foretoldTurn < s.turnNumber ? 'exile' : null;
+  // Warp: its owner may cast it from exile on a later turn than the one it was exiled on.
+  if (c.owner === playerId && c.zone === 'exile' && c.warpExiledTurn !== undefined && !adventure) return c.warpExiledTurn < s.turnNumber ? 'exile' : null;
   const p = c.playableFromExile;
   if (c.zone === 'exile' && p?.player === playerId) {
     if (p.loreTurn !== undefined) return p.loreTurn === s.turnNumber ? 'exile' : null;
@@ -1322,6 +1326,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (from === 'graveyard') c.castFromGraveyard = true;
   const caster = player(s, playerId);
   caster.spellsCastThisTurn = (caster.spellsCastThisTurn ?? 0) + 1;
+  if (alternative && def.alternativeCost?.warp) caster.warpedSpellTurn = s.turnNumber;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
@@ -3887,6 +3892,7 @@ export function resolveTop(ctx: Ctx): void {
       }
       // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
       if (item.alternative && def.alternativeCost?.evoke) c.evoked = true;
+      if (item.alternative && def.alternativeCost?.warp) c.warped = true;
       if (item.alternative && def.alternativeCost?.dash) {
         c.returnToHandAtEndStep = true;
         s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'], whileControlledBy: item.controller });

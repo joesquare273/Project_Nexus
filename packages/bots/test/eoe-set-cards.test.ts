@@ -312,3 +312,134 @@ describe('M2: shock lands, second spells, Robots', () => {
     }
   });
 });
+
+describe('M3: warp', () => {
+  it('warp: cast from hand for the warp cost, exiled at the next end step, castable from exile on a later turn for its mana cost', () => {
+    let s = newGame();
+    const tiger = put(s, 'P1', 'red-tiger-mechan', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 1 });
+    // {3}{R} isn't affordable; the warp cost {1}{R} is.
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tiger })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tiger, alternative: true }).state;
+    expect(zone(s, tiger)).toBe('battlefield');
+    expect(s.cards[tiger]!.warped).toBe(true);
+    const turn = s.turnNumber;
+    s = goTo(s, 'end');
+    expect(zone(s, tiger)).toBe('exile');
+    // Not this turn, and never for the opponent.
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === tiger)).toBe(false);
+    // Your next turn: from exile for {3}{R} (not for the warp cost again).
+    for (let i = 0; i < 12 && !(s.activePlayer === 'P1' && s.turnNumber > turn && s.step === 'main1'); i++) s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.turnNumber).toBeGreaterThan(turn);
+    mana(s, 'P1', { R: 1, C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tiger, alternative: true })).toMatch(/only from your hand/);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tiger })).toBeTruthy();
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tiger }).state;
+    expect(zone(s, tiger)).toBe('battlefield');
+    // Cast normally this time: it stays.
+    s = goTo(s, 'end');
+    expect(zone(s, tiger)).toBe('battlefield');
+  });
+
+  it('cast for its full cost from hand, a warp creature isn’t exiled', () => {
+    let s = newGame();
+    const wurm = put(s, 'P1', 'germinating-wurm', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, C: 4 });
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: wurm }).state;
+    expect(s.players.P1!.life).toBe(life + 2);
+    s = goTo(s, 'end');
+    expect(zone(s, wurm)).toBe('battlefield');
+  });
+
+  it('enter triggers work each time: Knight Luminary, Nova Hellkite, Sinister Cryologist, Mechanozoa, Codecracker Hound', () => {
+    let s = newGame();
+    const knight = put(s, 'P1', 'knight-luminary', 'hand');
+    const kite = put(s, 'P1', 'nova-hellkite', 'hand');
+    const cryo = put(s, 'P1', 'sinister-cryologist', 'hand');
+    const zoa = put(s, 'P1', 'mechanozoa', 'hand');
+    const hound = put(s, 'P1', 'codecracker-hound', 'hand');
+    const small = put(s, 'P2', 'virus-beetle');
+    const big = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 3, U: 6, B: 3, R: 3, G: 3, C: 12 });
+    const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: knight, alternative: true }).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'human-soldier-token-eoe')).toHaveLength(1);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kite, alternative: true }, pick(small)).state;
+    expect(zone(s, small)).toBe('graveyard');
+    const p = powerOf(s, s.cards[big]!);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cryo, alternative: true }, pick(big)).state;
+    expect(powerOf(s, s.cards[big]!)).toBe(p - 3);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: zoa, alternative: true }, pick(big)).state;
+    expect([s.cards[big]!.tapped, s.cards[big]!.namedCounters?.stun]).toEqual([true, 1]);
+    const [hand, yard] = [s.players.P1!.hand.length, s.players.P1!.graveyard.length];
+    s = act(s, { type: 'CastSpell', player: 'P1', card: hound, alternative: true });
+    for (let i = 0; i < 10 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    expect(s.pending.kind === 'chooseCards' && s.pending.cards.length).toBe(2);
+    if (s.pending.kind === 'chooseCards') s = cast(s, { type: 'ChooseCards', player: 'P1', cards: s.pending.cards.slice(0, 1) }).state;
+    // The Hound left the hand; one card kept, one into the graveyard.
+    expect([s.players.P1!.hand.length, s.players.P1!.graveyard.length]).toEqual([hand, yard + 1]);
+  });
+
+  it('statics and triggers: Drix Fatemaker, Memorial Team Leader, Weftstalker Ardent, Susurian Voidborn, Eusocial Engineering, Rayblade Trooper', () => {
+    let s = newGame();
+    const fate = put(s, 'P1', 'drix-fatemaker');
+    const leader = put(s, 'P1', 'memorial-team-leader');
+    const ardent = put(s, 'P1', 'weftstalker-ardent');
+    put(s, 'P1', 'susurian-voidborn');
+    put(s, 'P1', 'eusocial-engineering');
+    put(s, 'P1', 'rayblade-trooper');
+    const marked = put(s, 'P1', 'thawbringer', 'battlefield', { counters: 1 });
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = goTo(s, 'main1');
+    expect(hasKeyword(s, s.cards[marked]!, 'Trample')).toBe(true);
+    expect(hasKeyword(s, s.cards[fate]!, 'Trample')).toBe(false);
+    // Your turn: other creatures get +1/+0, the Leader itself doesn't.
+    expect(powerOf(s, s.cards[ardent]!)).toBe((CARD_DEFS['weftstalker-ardent']!.power ?? 0) + 1);
+    expect(powerOf(s, s.cards[leader]!)).toBe(CARD_DEFS['memorial-team-leader']!.power ?? 0);
+    // Landfall makes a Robot (an artifact creature entering): Ardent pings each opponent.
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'robot-token-eoe')).toBe(true);
+    expect(s.players.P2!.life).toBe(life - 1);
+    // A nontoken creature with a +1/+1 counter dies: a Soldier (Rayblade), and a drain (Voidborn).
+    const [mine, theirs] = [s.players.P1!.life, s.players.P2!.life];
+    s.cards[marked]!.damage = 9;
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect(zone(s, marked)).toBe('graveyard');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'human-soldier-token-eoe')).toBe(true);
+    // The Soldier entering pings again; the death drains 1.
+    expect([s.players.P1!.life, s.players.P2!.life]).toEqual([mine + 1, theirs - 2]);
+  });
+
+  it('All-Fates Stalker exiles a non-Assassin creature until it leaves (also when it is warped away); Weftblade Enhancer puts two counters', () => {
+    let s = newGame();
+    const stalker = put(s, 'P1', 'all-fates-stalker', 'hand');
+    const enhancer = put(s, 'P1', 'weftblade-enhancer', 'hand');
+    const a = put(s, 'P1', 'thawbringer');
+    const b = put(s, 'P1', 'virus-beetle');
+    const victim = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: stalker, alternative: true }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === victim)! }).state;
+    expect(zone(s, victim)).toBe('exile');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: enhancer, alternative: true }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === a && t[1]?.kind === 'card' && t[1].card === b)! }).state;
+    expect([s.cards[a]!.counters, s.cards[b]!.counters]).toEqual([1, 1]);
+    // End step: both warped creatures are exiled, and the Stalker's victim comes back.
+    s = goTo(s, 'end');
+    expect([zone(s, stalker), zone(s, enhancer), zone(s, victim)]).toEqual(['exile', 'exile', 'battlefield']);
+  });
+
+  it('the computer can use warp (it is offered as a play)', () => {
+    let s = newGame();
+    const colossus = put(s, 'P1', 'bygone-colossus', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 3 });
+    const ways = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === colossus);
+    expect(ways.map((a) => a.type === 'CastSpell' && !!a.alternative)).toContain(true);
+  });
+});

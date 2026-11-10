@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M3: warp
+
+Warp is built: cast a card from your hand for its cheaper warp cost, it's
+exiled at the next end step, and you can cast it from exile on a later turn
+for its full cost. 17 warp cards: 64 of 261 built.
+
 ### Edge of Eternities main set, group M2
 
 The five shock lands (pay 2 life as you play one, or it enters tapped), the
