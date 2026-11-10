@@ -173,6 +173,7 @@ with their real images but can't be played. Tests:
 | Group | Cards | Built so far |
 |---|---|---|
 | M1 (2026-11-10) | 27 cards the engine already had the pieces for: Bombard, Gravkill, Beyond the Quiet, Annul, Honor, Radiant Strike, Rig for War; Virus Beetle, Nebula Dragon, Blooming Stinger, Eumidian Terrabotanist, Remnant Elemental, Icecave Crasher, Dual-Sun Adepts, Intrepid Tenderfoot, Kavaron Turbodrone, Zookeeper Mechan, Mechan Navigator, Starfighter Pilot, Molecular Modifier, Thawbringer, Dockworker Drone, Meltstrider Eulogist, Lightless Evangel, Umbral-Collar Zealot, Slagdrill Scrapper, Mmmenon, Uthros Exile | 30 of 261 |
+| M2 (2026-11-10) | 17 cards: the shock lands (Breeding Pool, Godless Shrine, Sacred Foundry, Stomping Ground, Watery Grave: `entersTappedUnless.payLife`, chosen as you play it; put onto the battlefield by an effect they enter tapped); second-spell cards (Illvoi Operative, Sunstar Lightsmith, Cosmogrand Zenith, Uthros Psionicist, Gigastorm Titan `costReduction.ifCastAnotherSpell`, Brightspear Zealot `twoSpellsThisTurn`); Robot tokens (Gravpack Monoist, Mechan Assembler, Melded Moxite, Sami, Ship's Engineer) and Flight-Deck Coordinator, Frontline War-Rager | 47 of 261 |
 
 Still to come, by mechanic: warp (32 cards), station and Spacecraft (about
-35), void (14), Lander tokens (20), the shock lands, and the rest.
+35), void (14), Lander tokens (20), and the rest.

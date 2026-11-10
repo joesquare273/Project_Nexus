@@ -174,6 +174,9 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
 
 /** For lands like snarls: whether you have a card you could reveal to have it enter untapped. */
 export function canReveal(s: GameState, c: CardInstance, controller: string = c.controller): boolean {
+  // Shock lands: the choice is paying life (only with that much life).
+  const payLife = currentDefinition(s, c).entersTappedUnless?.payLife;
+  if (payLife) return s.players[controller]!.life >= payLife;
   const subtypes = currentDefinition(s, c).entersTappedUnless?.revealSubtypes;
   if (!subtypes) return false;
   const hand = s.players[controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
@@ -220,6 +223,8 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
     return false;
   }
   if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
+  // Shock lands: untapped only when the player chose to pay the life (playLand pays it).
+  if (unless.payLife && reveal === true) return false;
   if (unless.yourTurnAtMost !== undefined && s.activePlayer === c.controller && (s.players[c.controller]!.turnsTaken ?? 0) <= unless.yourTurnAtMost) return false;
   return true;
 }

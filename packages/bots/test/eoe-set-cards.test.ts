@@ -198,3 +198,117 @@ describe('M1: creatures', () => {
     expect(s.players.P1!.graveyard.length).toBeGreaterThanOrEqual(yard + 1);
   });
 });
+
+describe('M2: shock lands, second spells, Robots', () => {
+  it('shock lands: pay 2 life to enter untapped, or enter tapped; both basic land types', () => {
+    let s = newGame();
+    const pool = put(s, 'P1', 'breeding-pool', 'hand');
+    s = goTo(s, 'main1');
+    const ways = getLegalActions(s).filter((a) => a.type === 'PlayLand' && a.card === pool);
+    expect(ways.map((a) => a.type === 'PlayLand' && a.reveal)).toEqual([true, false]);
+    const life = s.players.P1!.life;
+    const paid = act(s, { type: 'PlayLand', player: 'P1', card: pool, reveal: true });
+    expect([paid.cards[pool]!.tapped, paid.players.P1!.life]).toEqual([false, life - 2]);
+    const not = act(s, { type: 'PlayLand', player: 'P1', card: pool, reveal: false });
+    expect([not.cards[pool]!.tapped, not.players.P1!.life]).toEqual([true, life]);
+    expect(CARD_DEFS['breeding-pool']!.subtypes).toEqual(['Forest', 'Island']);
+    // With 1 life the payment isn't offered.
+    s.players.P1!.life = 1;
+    expect(getLegalActions(s).filter((a) => a.type === 'PlayLand' && a.card === pool).map((a) => a.type === 'PlayLand' && a.reveal)).toEqual([undefined]);
+    expect(act(s, { type: 'PlayLand', player: 'P1', card: pool }).cards[pool]!.tapped).toBe(true);
+  });
+
+  it('your second spell each turn: Illvoi Operative and Sunstar Lightsmith grow, Uthros Psionicist makes it cost {2} less, Brightspear Zealot gets +2/+0', () => {
+    let s = newGame();
+    const op = put(s, 'P1', 'illvoi-operative');
+    const smith = put(s, 'P1', 'sunstar-lightsmith');
+    put(s, 'P1', 'uthros-psionicist');
+    const zealot = put(s, 'P1', 'brightspear-zealot');
+    const first = put(s, 'P1', 'honor', 'hand');
+    const second = put(s, 'P1', 'bombard', 'hand');
+    const victim = put(s, 'P2', 'thawbringer');
+    s = goTo(s, 'main1');
+    const base = powerOf(s, s.cards[zealot]!);
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: first, targets: [card(zealot)] }).state;
+    expect(s.cards[op]!.counters ?? 0).toBe(0);
+    // Bombard costs {2}{R}: as the second spell, {R} is enough.
+    mana(s, 'P1', { R: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: second, targets: [card(victim)] }).state;
+    expect(zone(s, victim)).toBe('graveyard');
+    expect([s.cards[op]!.counters, s.cards[smith]!.counters]).toEqual([1, 1]);
+    // Bombard left the hand, the Lightsmith drew one.
+    expect(s.players.P1!.hand.length).toBe(hand);
+    // +1 from Honor's counter, +2 for two spells this turn.
+    expect(powerOf(s, s.cards[zealot]!)).toBe(base + 3);
+  });
+
+  it('Gigastorm Titan costs {3} less after another spell; Cosmogrand Zenith chooses Soldiers or counters', () => {
+    let s = newGame();
+    const zenith = put(s, 'P1', 'cosmogrand-zenith');
+    const titan = put(s, 'P1', 'gigastorm-titan', 'hand');
+    const honor = put(s, 'P1', 'honor', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, U: 1, C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: titan })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: honor, targets: [card(zenith)] }).state;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: titan });
+    // The second spell: Zenith's trigger asks for a mode.
+    expect(s.pending.kind).toBe('chooseModes');
+    s = cast(s, { type: 'ChooseModes', player: 'P1', modes: [0] } as never).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'human-soldier-token-eoe')).toHaveLength(2);
+    expect(zone(s, titan)).toBe('battlefield');
+  });
+
+  it('Robots: Gravpack Monoist leaves a tapped one, Mechan Assembler makes one a turn, Melded Moxite loots and becomes one', () => {
+    const robots = (s: GameState) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe');
+    let s = newGame();
+    const mono = put(s, 'P1', 'gravpack-monoist');
+    s = goTo(s, 'main1');
+    s.cards[mono]!.damage = 9;
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect(robots(s).map((id) => s.cards[id]!.tapped)).toEqual([true]);
+
+    let t = newGame();
+    put(t, 'P1', 'mechan-assembler');
+    const r1 = put(t, 'P1', 'sol-ring', 'hand');
+    const r2 = put(t, 'P1', 'sol-ring', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { C: 2 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: r1 }).state;
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: r2 }).state;
+    // Once each turn (the token entering doesn't make another either).
+    expect(robots(t)).toHaveLength(1);
+
+    let u = newGame();
+    const moxite = put(u, 'P1', 'melded-moxite', 'hand');
+    const junk = put(u, 'P1', 'forest', 'hand');
+    u = goTo(u, 'main1');
+    mana(u, 'P1', { R: 1, C: 4 });
+    const hand = u.players.P1!.hand.length;
+    u = act(u, { type: 'CastSpell', player: 'P1', card: moxite });
+    for (let i = 0; i < 10 && u.pending.kind !== 'chooseCards'; i++) u = act(u, getLegalActions(u).find((a) => a.type === 'PassPriority') ?? getLegalActions(u)[0]!);
+    u = cast(u, { type: 'ChooseCards', player: 'P1', cards: [junk] }).state;
+    // Moxite and the discard left the hand; two cards drawn.
+    expect(u.players.P1!.hand.length).toBe(hand);
+    u = cast(u, { type: 'ActivateAbility', player: 'P1', card: moxite, ability: 0 }).state;
+    expect(robots(u).map((id) => u.cards[id]!.tapped)).toEqual([true]);
+  });
+
+  it('two or more tapped creatures at your end step: Sami makes a Robot, Flight-Deck Coordinator gains 2, Frontline War-Rager grows', () => {
+    for (const tapped of [2, 1]) {
+      let s = newGame();
+      put(s, 'P1', 'sami-ships-engineer');
+      put(s, 'P1', 'flight-deck-coordinator');
+      const rager = put(s, 'P1', 'frontline-war-rager');
+      for (let i = 0; i < tapped; i++) put(s, 'P1', 'thawbringer', 'battlefield', { tapped: true });
+      s = goTo(s, 'main2');
+      const life = s.players.P1!.life;
+      s = goTo(s, 'end');
+      s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+      const made = s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'robot-token-eoe');
+      expect([made, s.players.P1!.life - life, s.cards[rager]!.counters ?? 0]).toEqual(tapped === 2 ? [true, 2, 1] : [false, 0, 0]);
+    }
+  });
+});

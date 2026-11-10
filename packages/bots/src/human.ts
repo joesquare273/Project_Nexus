@@ -69,7 +69,8 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
   const plays: CardPlay[] = [];
   for (const a of getLegalActions(s)) {
     if (a.type !== 'PlayLand') continue;
-    const label = a.reveal === true ? `Play untapped (reveal a ${revealable(s, a.card, player)})` : a.reveal === false ? 'Play tapped' : 'Play';
+    const payLife = s.cardDefs[s.cards[a.card]!.defId]!.entersTappedUnless?.payLife;
+    const label = a.reveal === true ? (payLife ? `Play untapped (pay ${payLife} life)` : `Play untapped (reveal a ${revealable(s, a.card, player)})`) : a.reveal === false ? 'Play tapped' : 'Play';
     plays.push({ card: a.card, kind: 'land', label, choices: [{ taps: [], action: a, targets: [] }] });
   }
   const grouped = new Map<string, CardPlay>();

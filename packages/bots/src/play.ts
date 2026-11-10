@@ -221,7 +221,8 @@ function priorityOptions(s: GameState): Option[] {
   for (const a of legal) {
     if (a.type !== 'PlayLand') continue;
     const name = cardName(s, a.card);
-    const how = a.reveal === true ? ' untapped (reveal a matching card)' : a.reveal === false ? ' tapped' : '';
+    const payLife = s.cardDefs[s.cards[a.card]!.defId]!.entersTappedUnless?.payLife;
+    const how = a.reveal === true ? (payLife ? ` untapped (pay ${payLife} life)` : ' untapped (reveal a matching card)') : a.reveal === false ? ' tapped' : '';
     if (seenLand.has(name + how)) continue;
     seenLand.add(name + how);
     options.push({ label: `Play ${name}${how}`, choose: async () => [a] });

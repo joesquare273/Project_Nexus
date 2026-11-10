@@ -784,7 +784,9 @@ export function basicAi(_seed = 0): Bot {
 
     // Prefer a land that enters untapped when we could use the mana this turn.
     // (Snarls: reveal so they enter untapped.)
-    const lands = legal.filter((a): a is Extract<Action, { type: 'PlayLand' }> => a.type === 'PlayLand' && a.reveal !== false);
+    // Shock lands: pay the 2 life only while comfortably ahead on life.
+    const pays = (a: Extract<Action, { type: 'PlayLand' }>) => !s.cardDefs[s.cards[a.card]!.defId]!.entersTappedUnless?.payLife || s.players[me]!.life > 10;
+    const lands = legal.filter((a): a is Extract<Action, { type: 'PlayLand' }> => a.type === 'PlayLand' && (a.reveal === undefined || (a.reveal === pays(a))));
     if (lands.length > 0) {
       const untapped = lands.find((a) => !s.cardDefs[s.cards[a.card]!.defId]!.entersTapped);
       return untapped ?? lands[0]!;

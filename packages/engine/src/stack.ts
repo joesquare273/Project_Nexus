@@ -1041,7 +1041,9 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   if (defOf(s, c).notBuilt) reject(`${defOf(s, c).name} isn't built yet.`);
   if (!canActAtSorcerySpeed(s, playerId)) reject('Lands can only be played in your main phase with an empty stack.');
   if (p.landsPlayedThisTurn >= landDrops(s, playerId)) reject('You have already played a land this turn.');
-  if (reveal && !canReveal(s, c, playerId)) reject('You have no card to reveal for that land.');
+  const payLife = defOf(s, c).entersTappedUnless?.payLife;
+  if (reveal && !canReveal(s, c, playerId)) reject(payLife ? `You need ${payLife} life to pay for that land.` : 'You have no card to reveal for that land.');
+  if (reveal && payLife) changeLife(ctx, playerId, -payLife);
   p.landsPlayedThisTurn += 1;
   if (from === 'graveyard') {
     const source = graveyardLandSource(s, playerId, c);
@@ -1117,6 +1119,8 @@ export function spellCost(
     const opponents = s.turnOrder.filter((pid) => pid !== payer! && !s.players[pid]!.eliminated);
     if (opponents.some((pid) => s.players[pid]!.graveyard.length >= opponentGraveyard)) cost = reduceGeneric(cost, def.costReduction!.generic);
   }
+  // "Costs {3} less to cast if you've cast another spell this turn" (Gigastorm Titan).
+  if (def.costReduction?.ifCastAnotherSpell && card && (s.players[payer!]!.spellsCastThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.perMatching && card) {
     const f = def.costReduction.perMatching;
     const n = battlefield(s).filter((c) => c.controller === payer && !c.phasedOut && matchesObject(s, f, c, { controller: payer! })).length;

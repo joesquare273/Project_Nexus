@@ -253,6 +253,7 @@ function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): In
     if (condition === 'attacking' && !s.combat?.attacks.some((a) => a.attacker === affected)) return null;
     if (condition === 'equipped' && !isEquipped(s, s.cards[affected]!)) return null;
     if (condition === 'legendary' && !def(s, s.cards[affected]!).supertypes?.includes('Legendary')) return null;
+    if (condition === 'twoSpellsThisTurn' && (s.players[source.controller]!.spellsCastThisTurn ?? 0) < 2) return null;
     if (condition === 'twoNoncreatureSpellsThisTurn' && (s.players[source.controller]!.noncreatureSpellsThisTurn ?? 0) < 2) return null;
   }
   return affected;

@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M2
+
+The five shock lands (pay 2 life as you play one, or it enters tapped), the
+"second spell each turn" cards, and the Robot-token cards: 17 more, 47 of
+261 built. The computer pays the 2 life only above 10 life.
+
 ### Edge of Eternities main set, group M1
 
 The first 27 main-set cards (removal, tricks and creatures the engine

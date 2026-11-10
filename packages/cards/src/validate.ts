@@ -275,7 +275,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
-    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined) {
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell) {
       err('costReduction needs a condition, perCount or perMatching.');
     }
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
@@ -478,7 +478,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'attached', 'attacking'].includes(cond)) e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   if (st.grantsMana && (st.affects === 'Self' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types, on EquippedCreature or EachMatching.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);

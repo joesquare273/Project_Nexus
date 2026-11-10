@@ -1535,7 +1535,8 @@ export interface StaticSpec {
    * "as long as equipped creature is legendary".
    */
   /** `attached`: only while this Equipment is attached to a creature (for EachMatching abilities it grants). */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'attached' | 'attacking')[];
+  /** `twoSpellsThisTurn`: "as long as you've cast two or more spells this turn". */
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking')[];
   /** "Must be blocked if able" while this applies (The Masamune). */
   mustBeBlocked?: boolean;
   power?: Amount;
@@ -1667,6 +1668,8 @@ export interface CardDefinition {
     yourTurnAtMost?: number;
     /** "you may reveal a Forest or Plains card from your hand. If you don't, ...". */
     revealSubtypes?: string[];
+    /** Shock lands: "As this land enters, you may pay 2 life. If you don't, it enters tapped" (chosen with PlayLand's `reveal`: true pays). Put onto the battlefield by an effect, it enters tapped (the engine doesn't offer the payment then). */
+    payLife?: number;
   };
   /** Effects applied, in order, when an instant or sorcery resolves. */
   effects?: EffectSpec[];
@@ -1726,7 +1729,8 @@ export interface CardDefinition {
    * "costs {N} less for each [count]" (Vanquish the Horde).
    */
   /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number };
+  /** `ifCastAnotherSpell`: "if you've cast another spell this turn" (Gigastorm Titan). */
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };

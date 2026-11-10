@@ -100,6 +100,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
         condition === 'yourTurn' ? s.activePlayer !== source.controller :
         condition === 'legendary' ? !def.supertypes?.includes('Legendary') :
         condition === 'twoNoncreatureSpellsThisTurn' ? (s.players[source.controller]!.noncreatureSpellsThisTurn ?? 0) < 2 :
+        condition === 'twoSpellsThisTurn' ? (s.players[source.controller]!.spellsCastThisTurn ?? 0) < 2 :
         condition === 'attached' ? !source.attachedTo :
         condition === 'equipped' ? !s.turnOrder.some(p => s.players[p]!.battlefield.some(id => s.cards[id]!.attachedTo === c.id && copiableDefinition(s,s.cards[id]!).subtypes?.includes('Equipment'))) : false)) continue;
       layers.push({ source, spec, timestamp: (spec.affects === 'EquippedCreature' ? source.attachedTimestamp : undefined) ?? source.enteredTimestamp ?? 0 });
