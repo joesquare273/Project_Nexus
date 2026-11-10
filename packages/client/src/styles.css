@@ -3669,3 +3669,30 @@ button.link {
 }
 .four-players .opp-hand { --opp-card-w: 16px; padding: 0 4px; flex-shrink: 0; }
 .four-players .opp-hand-card.revealed { --opp-card-w: 26px; }
+
+/* The board couldn't be drawn: a way out instead of a blank page. */
+.board-error {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg);
+  color: var(--text, #eee);
+}
+.board-error p {
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.board-error-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* 3 and 4 players: a seat's command zone in its bottom corner (top seats). */
+.zone-bottom { display:flex; flex-shrink:0; padding-top:4px; align-self:stretch; width:100%; box-sizing:border-box; grid-column:1 / -1; }
+.zone.command-bottom-right .zone-bottom { justify-content:flex-end; }

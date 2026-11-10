@@ -18,6 +18,31 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Commander corners at 3- and 4-player tables
+
+So the life totals in the middle stay clear, each seat's command zone sits
+in its own corner: yours (bottom left) top left, the top-left seat's bottom
+left, the top-right seat's bottom right, and the bottom-right seat's top
+right (`OpponentZone` `commandCorner`). Two-player games are unchanged.
+
+### Millikin online, the blank screen, and station wording
+
+- Tapping Millikin ("{T}, Mill a card: Add {C}") while paying by hand in an
+  online game put a hidden card into the graveyard on the board's own copy
+  of the game, and drawing it crashed the board (a blank page). A mana
+  ability that moves a hidden card now goes to the server at once (with any
+  taps held before it); the board draws a hidden card as a card back rather
+  than crashing; and if drawing the board ever fails, it shows "Something
+  went wrong drawing the game" with "Try again" and "Back to the menu"
+  instead of a blank page (logged in the browser's connection log).
+- Every built card with a mana ability is now tested
+  (`bots/test/mana-abilities.test.ts`): it can be tapped, it adds mana, and
+  it works on an online board's copy (136 cards; only Millikin moved a
+  hidden card).
+- Cost choices say what they do: Inspirit's station asks "tap to station
+  with which card?" (not "discard"), and the same for tapping, returning to
+  hand and removing counters.
+
 ### Card choices in lists; mode labels
 
 Choosing cards from a list (a library search, a graveyard) no longer makes

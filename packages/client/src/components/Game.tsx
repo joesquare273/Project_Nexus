@@ -435,7 +435,15 @@ export function Game({
     if (costKey === undefined && costKeys.length > 1) {
       const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
       const spellSacrifice = play.kind !== 'ability' && (!!def.additionalCost?.sacrifice || !!def.kickerSacrifice);
-      const verb = ability?.cost.crew !== undefined ? 'tap to crew with' : ability?.cost.exileGraveyard ? 'exile from your graveyard' : def.kickerReturnsToHand && spellSacrifice ? 'return to your hand' : ability?.cost.sacrifice || spellSacrifice ? 'sacrifice' : 'discard';
+      const cost = ability?.cost;
+      const verb = cost?.crew !== undefined ? 'tap to crew with'
+        : cost?.station ? 'tap to station with'
+        : cost?.tapUntapped ? 'tap'
+        : cost?.exileGraveyard ? 'exile from your graveyard'
+        : cost?.returnToHand || cost?.returnUnblockedAttacker || (def.kickerReturnsToHand && spellSacrifice) ? 'return to your hand'
+        : cost?.removeCounter?.from ? 'remove counters from'
+        : cost?.sacrifice || spellSacrifice ? 'sacrifice'
+        : 'discard';
       // No sacrifice: paying the mana instead ("or pay {2}"), or not kicking.
       const none = def.additionalCost?.orMana ? `Pay ${def.additionalCost.orMana} instead` : def.kickerSacrifice ? 'Don’t kick it' : 'None';
       setMenu({
@@ -670,8 +678,16 @@ export function Game({
     <div className={`game ${fourPlayers ? 'four-players' : ''} ${logOpen ? 'log-open' : ''}`}>
       <main className="table">
         <div className={`opponents n${session.opponents.length}`}>
-          {session.opponents.map((pid) => (
-            <OpponentZone key={pid} view={view} pid={pid} h={h} fit={fourPlayers} />
+          {session.opponents.map((pid, i) => (
+            <OpponentZone
+              key={pid}
+              view={view}
+              pid={pid}
+              h={h}
+              fit={fourPlayers}
+              // 3 and 4 players: top left and top right seats keep their commander in their bottom corner, the bottom right seat in its top right corner (yours stays top left).
+              commandCorner={session.opponents.length >= 2 ? (['bottom-left', 'bottom-right', 'top-right'] as const)[i] ?? 'top-left' : 'top-left'}
+            />
           ))}
         </div>
         <div className="midline">

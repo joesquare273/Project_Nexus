@@ -8,7 +8,7 @@
 // players' names, and outgoing actions rename them back, only in player
 // fields. The same session plays Starter Kit duels and Commander tables.
 
-import { getLegalActions, materialize, type Action } from '@nexus/engine';
+import { getLegalActions, HIDDEN_CARD, materialize, type Action } from '@nexus/engine';
 import { CARD_DEFS } from '@nexus/cards';
 import type { ClientMessage, Deck, Seat, ServerMessage } from '@nexus/server/protocol';
 import { GameSession, YOU, applyAll, readable, touchedCards, type Advance } from './session.ts';
@@ -266,7 +266,11 @@ export class OnlineSession extends GameSession {
     const tried = applyAll(this.state, actions);
     if ('error' in tried) return readable(this.state, tried.error);
     // Paying by hand: tap now on this board; the server gets the taps with the spell.
-    if (this.holdPriority && actions.every((a) => a.type === 'ActivateManaAbility')) {
+    // A mana ability that moves a hidden card (Millikin: "{T}, Mill a card") goes to the server now instead:
+    // only the server knows what that card is.
+    const touchesHidden = tried.events.some((e) => e.type === 'CardMoved' && (e.from === 'library' || e.from === 'hand'))
+      || Object.values(tried.state.cards).some((c) => c.defId === HIDDEN_CARD.id && c.zone !== 'library' && c.zone !== 'hand');
+    if (this.holdPriority && actions.every((a) => a.type === 'ActivateManaAbility') && !touchesHidden) {
       this.state = tried.state;
       this.heldTaps.push(...actions);
       this.notify();

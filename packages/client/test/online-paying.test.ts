@@ -33,6 +33,8 @@ function table() {
     return id;
   };
   const lands = [add('mountain', 'battlefield'), add('mountain', 'battlefield')];
+  // Millikin: "{T}, Mill a card: Add {C}" (the milled card is hidden from this board's copy).
+  add('millikin', 'battlefield');
   const spellDef = Object.values(CARD_DEFS).find((d) => d.types.includes('creature') && d.manaCost === '{1}{R}' && !d.notBuilt && !d.token)!;
   const spell = add(spellDef.id, 'hand');
   const book = new AliasBook(() => `a${Math.random().toString(36).slice(2, 10)}`);
@@ -77,5 +79,18 @@ describe('paying by hand online', () => {
     session.advance();
     expect(sent).toHaveLength(1);
     expect((sent[0] as Extract<ClientMessage, { type: 'actions' }>).actions.map((a) => a.type)).toEqual(['ActivateManaAbility']);
+  });
+
+  it('a mana ability that mills (Millikin) goes to the server at once, with any taps held before it', () => {
+    const { session, sent, lands } = table();
+    const millikin = session.state.players[YOU]!.battlefield.find((id) => session.state.cards[id]!.defId === 'millikin')!;
+    session.holdPriority = true;
+    expect(session.submit([{ type: 'ActivateManaAbility', player: YOU, card: lands[0]!, mana: 'R' }])).toBeNull();
+    expect(sent).toHaveLength(0);
+    expect(session.submit([{ type: 'ActivateManaAbility', player: YOU, card: millikin, mana: 'C' }])).toBeNull();
+    // Only the server knows the milled card: both taps were sent, and this board never shows a hidden card in the graveyard.
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.type === 'actions' && sent[0]!.actions.map((a) => a.type)).toEqual(['ActivateManaAbility', 'ActivateManaAbility']);
+    expect(session.state.players[YOU]!.graveyard.some((id) => session.state.cards[id]!.defId === '?hidden')).toBe(false);
   });
 });

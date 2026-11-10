@@ -469,16 +469,26 @@ export function OpponentHand({ view, pid, h }: { view: GameView; pid: PlayerId; 
   );
 }
 
-export function OpponentZone({ view, pid, h, fit = false }: { view: GameView; pid: PlayerId; h: ZoneHandlers; fit?: boolean }) {
+/** Which corner of a seat its command zone sits in (away from the life totals in the middle of a 3- or 4-player table). */
+export type CommandCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+export function OpponentZone({ view, pid, h, fit = false, commandCorner = 'top-left' }: { view: GameView; pid: PlayerId; h: ZoneHandlers; fit?: boolean; commandCorner?: CommandCorner }) {
   const p = view.players[pid]!;
+  const command = <CommandZone view={view} pid={pid} h={h} />;
+  const top = commandCorner.startsWith('top');
   return (
-    <section className={`zone opponent ${p.eliminated ? 'eliminated' : ''}`}>
-      <div className="zone-top"><CommandZone view={view} pid={pid} h={h} /><PlayerHeader view={view} pid={pid} h={h} /></div>
+    <section className={`zone opponent ${p.eliminated ? 'eliminated' : ''} command-${commandCorner}`}>
+      <div className="zone-top">
+        {commandCorner === 'top-left' && command}
+        <PlayerHeader view={view} pid={pid} h={h} />
+        {commandCorner === 'top-right' && command}
+      </div>
       <OpponentHand view={view} pid={pid} h={h} />
       <FitBoard enabled={fit}><div className="zone-body">
         <Battlefield view={view} pid={pid} h={h} />
         <ZonePiles view={view} pid={pid} h={h} />
       </div></FitBoard>
+      {!top && <div className="zone-bottom">{command}</div>}
     </section>
   );
 }

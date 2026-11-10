@@ -1,3 +1,4 @@
+import { GameErrorBoundary } from './components/GameErrorBoundary.tsx';
 import { useEffect, useState } from 'react';
 import { FIN_PRECONS, SCRYFALL, UI_ART, type UiArtKey } from '@nexus/cards';
 import type { GameDeck } from '@nexus/cards/decks';
@@ -147,6 +148,7 @@ function MainApp() {
 
   if (session) {
     return (
+      <GameErrorBoundary key={gameNumber} onQuit={quit}>
       <Game
         key={gameNumber}
         session={session}
@@ -162,6 +164,7 @@ function MainApp() {
             }
           : {})}
       />
+      </GameErrorBoundary>
     );
   }
 
