@@ -18,6 +18,18 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M1
+
+The first 27 main-set cards (removal, tricks and creatures the engine
+already had the pieces for): 30 of 261 built. See docs/sealed.md.
+
+### Craft tab gems; a commander in a library online
+
+The fragment gems use the user's gem art (`client/public/gems`). Found by
+playing full Commander games as each seat's online board sees them: a
+commander put into its owner's library couldn't be sent to the command zone
+online (fixed; 14 further games ran clean).
+
 ### Reconnecting: no more stuck "Reconnecting to the game server"
 
 After a dropped connection the board could stay on "Reconnecting to the

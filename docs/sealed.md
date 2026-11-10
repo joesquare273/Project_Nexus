@@ -162,3 +162,17 @@ Of the cards that appear in Play Boosters:
 
 Run `node packages/cards/scripts/import-sets.ts` to re-import: cards built
 by hand in fin-set.json are kept, the rest are regenerated.
+
+## Edge of Eternities main set (started 2026-11-10)
+
+The 261 cards of the main set (`data/eoe-set.json`, `import-sets.ts eoe`)
+are built in groups, like the Final Fantasy set; cards not built yet show
+with their real images but can't be played. Tests:
+`packages/bots/test/eoe-set-cards.test.ts`.
+
+| Group | Cards | Built so far |
+|---|---|---|
+| M1 (2026-11-10) | 27 cards the engine already had the pieces for: Bombard, Gravkill, Beyond the Quiet, Annul, Honor, Radiant Strike, Rig for War; Virus Beetle, Nebula Dragon, Blooming Stinger, Eumidian Terrabotanist, Remnant Elemental, Icecave Crasher, Dual-Sun Adepts, Intrepid Tenderfoot, Kavaron Turbodrone, Zookeeper Mechan, Mechan Navigator, Starfighter Pilot, Molecular Modifier, Thawbringer, Dockworker Drone, Meltstrider Eulogist, Lightless Evangel, Umbral-Collar Zealot, Slagdrill Scrapper, Mmmenon, Uthros Exile | 30 of 261 |
+
+Still to come, by mechanic: warp (32 cards), station and Spacecraft (about
+35), void (14), Lander tokens (20), the shock lands, and the rest.
