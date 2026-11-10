@@ -7,7 +7,7 @@
 // coming back to the page) waits in `pendingGame` until the page starts it.
 
 import type { ClientMessage, EventView, ServerMessage } from '@nexus/server/protocol';
-import { accessToken } from '../account/AccountBar.tsx';
+import { accessToken, freshAccessToken } from '../account/AccountBar.tsx';
 import { OnlineConnection, OnlineSession, type GameLink } from '../game/online.ts';
 
 type Update = Extract<ServerMessage, { type: 'update' }>;
@@ -79,7 +79,7 @@ class EventLink {
     // A dropped connection reconnects and takes your seat in the event back.
     c.setRejoin(async () => {
       const code = this.view?.code;
-      const fresh = await accessToken();
+      const fresh = await freshAccessToken();
       return code && fresh ? { type: 'eventJoin', token: fresh, code } : null;
     });
     c.onStatus = (status) => {
@@ -135,6 +135,7 @@ class EventLink {
         if (this.gameLink === link) this.gameLink = null;
       },
       onClose: () => {},
+      retry: () => this.conn?.retry(),
     };
     this.gameLink = link;
     this.sessionKey = gameKey(first);

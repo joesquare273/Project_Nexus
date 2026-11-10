@@ -82,3 +82,30 @@ describe('a dropped connection', () => {
     session.close();
   }, 30_000);
 });
+
+describe('a rejoin the server refuses', () => {
+  it('says why (the table is gone) instead of “Reconnecting” for ever', async () => {
+    const accounts = new MemoryAccounts();
+    const user = { id: 'alice', name: 'Alice' };
+    accounts.tokens.set('token-alice', user);
+    await accounts.ensure(user);
+    const claimed = await claimStarter(accounts, user, STARTER_CHOICES[0]!.name);
+    server = await startServer({ port: 0, host: '127.0.0.1', accounts });
+    const { game } = hostBotGame({ format: 'commander', deckId: claimed!.deck!.id, bots: 1, token: 'token-alice', url: `ws://127.0.0.1:${server.port}/ws` });
+    const session = await game;
+    const notices: (string | undefined)[] = [];
+    session.subscribe((e) => notices.push(e));
+    // As if the server had restarted: the table is gone when we come back.
+    (server.lobby.tables as unknown as { tables: Map<string, unknown> }).tables.clear();
+    server.dropConnections();
+    const end = Date.now() + 8000;
+    while (!notices.some((n) => n?.startsWith('Couldn’t get back into the game'))) {
+      if (Date.now() > end) throw new Error(`timed out: ${JSON.stringify(notices)}`);
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(notices.find((n) => n?.startsWith('Couldn’t'))).toMatch(/no table|Reload the page/);
+    const any = session.legal()[0] ?? { type: 'PassPriority', player: 'You' };
+    expect(session.submit([any as never])).toMatch(/Reload the page/);
+    session.close();
+  }, 30_000);
+});

@@ -3,7 +3,7 @@
 // deck, started at once. The board plays it like any online game.
 
 import type { ServerMessage } from '@nexus/server/protocol';
-import { accessToken } from '../account/AccountBar.tsx';
+import { accessToken, freshAccessToken } from '../account/AccountBar.tsx';
 import { OnlineConnection, OnlineSession } from './online.ts';
 
 export interface BotGameRequest {
@@ -42,7 +42,7 @@ export function hostBotGame(request: BotGameRequest): { game: Promise<OnlineSess
           // If the connection drops during the game, it reconnects and takes this seat back.
           const tableCode = m.table.code;
           c.setRejoin(async () => {
-            const fresh = request.token ?? (await accessToken());
+            const fresh = request.token ?? (await freshAccessToken());
             return fresh ? { type: 'tableJoin', token: fresh, code: tableCode } : null;
           });
           const mine = m.table.seats.find((s) => s.id === m.table.you);

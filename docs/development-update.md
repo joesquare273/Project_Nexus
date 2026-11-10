@@ -18,6 +18,16 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reconnecting: no more stuck "Reconnecting to the game server"
+
+After a dropped connection the board could stay on "Reconnecting to the
+game server…" for ever: if the server refused the rejoin (the table gone
+after a restart, a sign-in that expired while the computer slept), or if the
+game never arrived after reconnecting. Now the sign-in is refreshed before
+rejoining; if the game doesn't arrive within 12 seconds it reconnects again
+(three tries); and a refused rejoin says why ("Couldn't get back into the
+game: There is no table ...") and to reload and rejoin from the menu.
+
 ### Choose and confirm your own mana; cast spells shown for 4 seconds
 
 No more Auto-pay: you click the lands and other mana sources to pay with

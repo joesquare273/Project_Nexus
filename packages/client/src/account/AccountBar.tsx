@@ -22,6 +22,19 @@ export async function accessToken(): Promise<string | null> {
   return (await supabase?.auth.getSession())?.data.session?.access_token ?? null;
 }
 
+/**
+ * A token that's good for a while yet: refreshed first if it expires within
+ * two minutes (a laptop that slept can come back with an expired one).
+ * Used when rejoining a game after a dropped connection.
+ */
+export async function freshAccessToken(): Promise<string | null> {
+  const session = (await supabase?.auth.getSession())?.data.session;
+  if (!session) return null;
+  if ((session.expires_at ?? 0) * 1000 - Date.now() > 120_000) return session.access_token;
+  const refreshed = await supabase!.auth.refreshSession().catch(() => null);
+  return refreshed?.data.session?.access_token ?? session.access_token;
+}
+
 /** Tells the account bar the server's new balance (after buying a pack, say). */
 export function showShards(balance: number): void {
   window.dispatchEvent(new CustomEvent<number>('nexus:shards', { detail: balance }));

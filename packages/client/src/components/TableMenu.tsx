@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ServerMessage, TableView } from '@nexus/server/protocol';
-import { accessToken } from '../account/AccountBar.tsx';
+import { accessToken, freshAccessToken } from '../account/AccountBar.tsx';
 import { OnlineConnection, OnlineSession } from '../game/online.ts';
 import type { SavedDeck } from '../packs/collection.ts';
 import { OwnCommanderDecks, commanderArt } from './CommanderDecks.tsx';
@@ -87,7 +87,7 @@ export function TableMenu({ onStart, onBuild, format = 'commander' }: { onStart:
         // If the connection drops, it reconnects and takes this seat back.
         const tableCode = m.table.code;
         c.setRejoin(async () => {
-          const fresh = await accessToken();
+          const fresh = await freshAccessToken();
           return fresh ? { type: 'tableJoin', token: fresh, code: tableCode } : null;
         });
         // Bring your chosen deck to the table as soon as you're seated.

@@ -29,6 +29,8 @@ export interface GameLink {
   onClose: () => void;
   /** Called when the connection drops and when it comes back. */
   onStatus?: (status: ConnectionStatus) => void;
+  /** Drop the socket and reconnect (and rejoin) now: the game didn't arrive after a reconnection. */
+  retry?: () => void;
 }
 
 const LOG_KEY = 'nexus:connectionLog';
@@ -103,6 +105,23 @@ export class OnlineConnection implements GameLink {
     this.url = url;
     if (typeof window !== 'undefined') window.addEventListener('online', this.onOnline);
     this.open();
+  }
+
+  /** Reconnects now (closing the current socket, which then reconnects and rejoins like any drop). */
+  retry(): void {
+    if (this.closed) return;
+    connectionLog('retry', { attempt: this.attempt });
+    // The old socket is dropped quietly (its close mustn't start a second reconnection).
+    const old = this.ws;
+    old.onclose = null;
+    old.onmessage = null;
+    old.onopen = null;
+    try {
+      old.close();
+    } catch {
+      // Already closing.
+    }
+    this.dropped(4000, 'retry');
   }
 
   /** How to get your seat back after a drop (a fresh sign-in token and the table or event code). */
@@ -208,6 +227,11 @@ export class OnlineSession extends GameSession {
   private offline = false;
   /** Just reconnected: the next update is the game as it is now, whatever happened to the last move. */
   private resyncing = false;
+  /** Waits for the game after a reconnection; tries again if it doesn't come. */
+  private resyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private resyncTries = 0;
+  /** The server wouldn't take us back (the table is gone, the sign-in is no good): why, shown instead of "Reconnecting". */
+  private lost: string | null = null;
   /**
    * Mana abilities you activated while paying for a spell or ability by hand
    * (holdPriority): applied to this board's copy of the game at once, and sent
@@ -245,6 +269,7 @@ export class OnlineSession extends GameSession {
       } else {
         this.resyncing = true;
         this.notify('Reconnected.');
+        this.watchResync();
       }
     };
   }
@@ -257,10 +282,34 @@ export class OnlineSession extends GameSession {
 
   /** Checks the move against your copy of the game (for quick feedback), then sends it. The server decides. */
   override canSubmit(actions: Action[]): boolean {
-    return !this.waiting && !this.offline && super.canSubmit(actions);
+    return !this.waiting && !this.offline && !this.lost && super.canSubmit(actions);
+  }
+
+  /**
+   * After a reconnection the server sends the game again. If it hasn't come
+   * within 12 seconds, reconnect again (three tries), then say so.
+   */
+  private watchResync(): void {
+    if (this.resyncTimer) clearTimeout(this.resyncTimer);
+    this.resyncTimer = setTimeout(() => {
+      this.resyncTimer = null;
+      if (!this.resyncing) return;
+      connectionLog('resync-timeout', { tries: this.resyncTries });
+      if (this.resyncTries++ < 3 && this.connection.retry) this.connection.retry();
+      else this.giveUp('The game server took us back but didn’t send the game.');
+    }, 12_000);
+  }
+
+  private giveUp(reason: string): void {
+    this.lost = `${reason} Reload the page, then rejoin the table or event from the menu (your seat is kept while the game is on).`;
+    this.offline = false;
+    this.resyncing = false;
+    connectionLog('rejoin-failed', { reason });
+    this.notify(this.lost);
   }
 
   override submit(actions: Action[]): string | null {
+    if (this.lost) return this.lost;
     if (this.offline) return 'Reconnecting to the game server…';
     if (this.waiting) return 'Waiting for the server…';
     const tried = applyAll(this.state, actions);
@@ -332,7 +381,9 @@ export class OnlineSession extends GameSession {
       // After a reconnection the game arrives again: a move lost on the way is simply made again.
       if (m.ackSeq >= this.seq || this.resyncing) this.waiting = false;
       this.resyncing = false;
+      this.resyncTries = 0;
       this.offline = false;
+      this.lost = null;
       const notices = eventTargetNotices(this.state, update.events);
       this.targetHistory.unshift(...notices.reverse());
       this.targetHistory.splice(8);
@@ -342,6 +393,8 @@ export class OnlineSession extends GameSession {
       this.notify();
     } else if (m.type === 'error') {
       this.waiting = false;
+      // The rejoin was refused (no such table, a sign-in problem): don't keep saying "Reconnecting".
+      if (this.resyncing && m.seq === undefined) return this.giveUp(`Couldn’t get back into the game: ${m.message}`);
       this.notify(m.message);
     } else if (m.type === 'rewards') {
       this.rewards = { lines: m.lines, balance: m.balance };
