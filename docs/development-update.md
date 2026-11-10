@@ -18,6 +18,16 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Choose and confirm your own mana; cast spells shown for 4 seconds
+
+No more Auto-pay: you click the lands and other mana sources to pay with
+(click again to change your mind), then press Confirm, which taps them and
+casts the spell in one go. The same goes for "you may pay" costs, attack
+taxes and "counter it unless you pay". Cast spells no longer fly around the
+board: the card appears at the side of the table for 4 seconds and fades.
+Under each player's hand size: their floating mana, what you're choosing to
+tap, and what they just tapped for. See docs/decisions.md (2026-11-10).
+
 ### Commander corners at 3- and 4-player tables
 
 So the life totals in the middle stay clear, each seat's command zone sits

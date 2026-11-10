@@ -58,7 +58,7 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
       id: 'cast',
       title: 'Casting spells',
       text:
-        "Glowing cards are ones you can afford right now. Click one to cast it, then click your glowing lands to tap them for mana (or press Auto-pay). " +
+        "Glowing cards are ones you can afford right now. Click one to cast it, then click your glowing lands to choose the mana and press Confirm (click a land again to unchoose it). " +
         'Hover over a card to read what it does. When you\'re done, press "Pass priority". The step advances after everyone passes in succession.',
     });
   }
@@ -107,7 +107,7 @@ export function currentTip(s: GameState, dismissed: ReadonlySet<string>, canPlay
     candidates.push({
       id: 'you-may',
       title: '"You may"',
-      text: 'This ability is optional. Choose Yes or No; if it has a cost, your lands tap for it automatically.',
+      text: 'This ability is optional. Choose Yes or No; if it costs mana, choose the lands to pay with and press Confirm.',
     });
   }
   if (p.kind === 'commanderZone' && p.player === YOU) {

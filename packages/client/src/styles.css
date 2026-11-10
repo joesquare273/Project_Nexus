@@ -3696,3 +3696,53 @@ button.link {
 /* 3 and 4 players: a seat's command zone in its bottom corner (top seats). */
 .zone-bottom { display:flex; flex-shrink:0; padding-top:4px; align-self:stretch; width:100%; box-sizing:border-box; grid-column:1 / -1; }
 .zone.command-bottom-right .zone-bottom { justify-content:flex-end; }
+
+/* A spell just cast: shown at the side of the table for 4 seconds, then it fades (no flying). */
+.cast-show {
+  position: fixed;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 39;
+  animation: cast-show 4s ease forwards;
+}
+.cast-show-card {
+  width: min(240px, 40vw, calc(55vh / var(--card-ratio)));
+  aspect-ratio: 1 / var(--card-ratio);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--gold), 0 14px 44px rgba(0, 0, 0, 0.7);
+}
+.cast-show-card .card-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.cast-show-label {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--gold);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 3px 12px;
+  border-radius: 99px;
+}
+@keyframes cast-show {
+  0% { opacity: 0; }
+  6%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Under the hand size: floating mana, mana being chosen, mana just tapped for. */
+.mana-line { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:2px; font-size:11px; min-height:16px; }
+.mana-line-item { display:inline-flex; align-items:center; gap:4px; }
+.mana-line-label { color:var(--muted); text-transform:uppercase; font-size:9px; letter-spacing:.04em; }
+.mana-line-item.choosing .mana-line-label { color:var(--gold); }
+.mana-line-item.tapped { animation: mana-tapped 4s ease forwards; }
+@keyframes mana-tapped { 0%, 75% { opacity:1; } 100% { opacity:0; visibility:hidden; } }
+
+/* A button that can't be pressed yet (Confirm before enough mana is chosen). */
+.prompt button:disabled { opacity:.45; cursor:not-allowed; filter:grayscale(.6); box-shadow:none; }

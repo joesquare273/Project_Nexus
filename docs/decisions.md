@@ -135,7 +135,7 @@ choices keep opponents' hand identities hidden.
 | Scholar of New Horizons | Puts the Plains onto the battlefield whenever it may | Optional ("you may") |
 | Yuna, Grand Summoner's mana | "When you next cast a creature spell this turn" is applied as the spell is cast, not as a trigger | A delayed triggered ability |
 | Demolition Field | Both players always search for a basic land | Each search is optional ("may") |
-| Auto-pay with paid mana abilities | Works in at most two of them, and only when plain taps can't pay | Any combination |
+| Computer players' mana with paid mana abilities | Their planner works in at most two of them, and only when plain taps can't pay (players choose their own mana: there is no auto-pay) | Any combination |
 | Partner with (Alphinaud, Alisaie) | You may search for the partner; the "target player" is always you | Any target player may |
 | Cut a Deal | You draw one card for each opponent still in the game | One for each opponent who actually drew |
 | Yuna's Whistle | The creature to get counters is chosen when the spell is cast | It's chosen when the card is revealed (a reflexive trigger) |
@@ -377,6 +377,27 @@ cards than before. Tests that need a particular random outcome set
   shrink messages (a starting update is about 24 KB, mostly placeholder
   library cards) but rewrites much of the board, which the tutorial and
   local games also use.
+
+## 2026-11-10: Choosing your own mana; cast spells shown; mana under the hand size (user)
+
+- **No automatic payment.** Casting a spell or activating an ability with a
+  mana cost (and "you may pay" costs, attack taxes, "counter it unless you
+  pay") opens a payment: clicking a land or other mana source only marks it
+  (a "+{R}" label, and "Tapping" under your hand size); clicking it again
+  unmarks it (a source that could give more asks first). **Confirm** is
+  enabled once the marked mana and any floating mana pay the whole cost, and
+  then the taps and the play go to the engine (or the server) as one batch;
+  **Clear** unmarks everything; **Cancel** leaves everything untapped.
+  Confirm is always required for a mana cost, even when floating mana covers
+  it. The "Tap mana automatically" setting and the Auto-pay button are gone.
+  Tapping a land outside a payment still floats its mana. Computer players
+  plan their own mana as before.
+- **Cast spells:** no card flies to or from the stack any more. A cast spell
+  is shown at the left of the table for 4 seconds, then it fades ("You cast",
+  "Bot1 casts"); a newer cast replaces it.
+- **Mana under the hand size:** each player's floating mana, the mana you've
+  chosen while paying, and what a player just tapped for (shown for 4
+  seconds, then it fades).
 
 ## 2026-11-06: Reconnecting, and the server log (user report)
 

@@ -35,6 +35,8 @@ export interface ZoneHandlers {
   onHover: (id: InstanceId | null) => void;
   /** Open a list of a player's graveyard or exile. */
   onZone: (player: PlayerId, zone: 'graveyard' | 'exile') => void;
+  /** Under the hand size: the mana you've chosen while paying, and what the player just tapped for. */
+  manaNote?: (id: PlayerId) => { choosing?: string; tapped?: { key: number; mana: string } } | null;
 }
 
 export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceId; h: ZoneHandlers }) {
@@ -337,6 +339,38 @@ function ManaPool({ pool, equipment, noncreature, artifact }: { pool: GameView['
   );
 }
 
+/**
+ * Under the hand size: the mana a player has floating, what you've chosen
+ * while paying, and what they just tapped for (shown for a few seconds, then
+ * it fades), so everyone can see the mana going around.
+ */
+function ManaLine({ p, note }: { p: GameView['players'][string]; note: { choosing?: string; tapped?: { key: number; mana: string } } | null }) {
+  const floating = [p.manaPool, p.equipmentMana, p.noncreatureSpellMana, p.artifactMana].some((pool) => pool && Object.values(pool).some((n) => n > 0));
+  if (!floating && !note?.choosing && !note?.tapped) return null;
+  return (
+    <div className="mana-line">
+      {floating && (
+        <span className="mana-line-item" title="Mana in their pool (it empties at the end of each step)">
+          <span className="mana-line-label">Floating</span>
+          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} {...(p.artifactMana ? { artifact: p.artifactMana } : {})} />
+        </span>
+      )}
+      {note?.choosing && (
+        <span className="mana-line-item choosing" title="The mana you've chosen to pay with (tapped when you confirm)">
+          <span className="mana-line-label">Tapping</span>
+          <ManaCost cost={note.choosing} size={13} />
+        </span>
+      )}
+      {note?.tapped && (
+        <span key={note.tapped.key} className="mana-line-item tapped" title="The mana they just tapped for">
+          <span className="mana-line-label">Tapped</span>
+          <ManaCost cost={note.tapped.mana} size={13} />
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** A life total that flashes and shows how much it changed ("-3" floating up). */
 export function Life({ life }: { life: number }) {
   const previous = useRef(life);
@@ -380,7 +414,6 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
         </div>
         <div className="counts">
           <span title={p.maximumHandSize === null ? "Cards in hand: no maximum hand size" : `Cards in hand: discard down to ${p.maximumHandSize} during your cleanup step`}>✋ {p.handCount}/{p.maximumHandSize ?? "∞"}</span>
-          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} {...(p.artifactMana ? { artifact: p.artifactMana } : {})} />
           {Object.entries(p.commanderDamage)
             .filter(([, n]) => n > 0)
             .map(([cmd, n]) => (
@@ -389,6 +422,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
               </span>
             ))}
         </div>
+        <ManaLine p={p} note={h.manaNote?.(pid) ?? null} />
       </div>
 
       {p.eliminated && <div className="out">Out of the game</div>}

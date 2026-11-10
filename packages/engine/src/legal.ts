@@ -382,6 +382,11 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
 }
 
 /** Mana abilities the player could activate right now. */
+/** Every mana ability the player could activate right now (also while paying a cost outside priority). */
+export function manaAbilityActions(s: GameState, player: PlayerId): Action[] {
+  return manaAbilities(s, player);
+}
+
 function manaAbilities(s: GameState, player: PlayerId): Action[] {
   const actions: Action[] = [];
   for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === player && !staticRule(s, card, 'cantActivateAbilities'))) {

@@ -22,6 +22,7 @@ import {
   viewFor,
   type Action,
   type CardDefId,
+  type CardDefinition,
   type GameEvent,
   type GameState,
   type GameView,
@@ -101,7 +102,6 @@ export class GameSession {
   /** Priority stops on these steps, on any player's turn. Never skips turn-based actions. */
   readonly phaseStops = new Set<Step>();
   /** Tap mana sources for you when you cast or activate, instead of you choosing which to tap. */
-  autoTap = false;
   /** You're partway through paying a cost: keep priority until you finish or cancel. */
   holdPriority = false;
   /**
@@ -114,6 +114,10 @@ export class GameSession {
   rewards: { lines: { label: string; amount: number }[]; balance: number | null } | null = null;
   /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
   readonly triggered: { key: number; card: InstanceId }[] = [];
+  /** The mana each player tapped for most recently (one batch of moves), shown under their hand size for a few seconds. */
+  readonly manaTapped: Record<PlayerId, { key: number; mana: string }> = {};
+  /** Spells cast, in order, for the board to show for a few seconds (`key` is unique). */
+  readonly casts: { key: number; card: InstanceId; defId: string; printing?: CardDefinition['printing']; player: PlayerId }[] = [];
   /** Cards that changed zones, in order, for the board to animate (only what you may see). */
   readonly moves: CardMove[] = [];
   private nextMoveKey = 1;
@@ -321,7 +325,17 @@ export class GameSession {
   }
 
   protected narrate(events: GameEvent[]): void {
-    for (const e of events) if (e.type === 'AbilityTriggered') this.triggered.push({ key: this.nextTriggerKey++, card: e.card });
+    const tapped: Record<PlayerId, string> = {};
+    for (const e of events) if (e.type === 'ManaAdded') tapped[e.player] = (tapped[e.player] ?? '') + `{${e.mana}}`;
+    for (const [pid, mana] of Object.entries(tapped)) this.manaTapped[pid] = { key: this.nextTriggerKey++, mana };
+    for (const e of events) {
+      if (e.type === 'AbilityTriggered') this.triggered.push({ key: this.nextTriggerKey++, card: e.card });
+      if (e.type === 'SpellCast') {
+        const printing = this.state.cards[e.card]?.printing;
+        this.casts.push({ key: this.nextTriggerKey++, card: e.card, defId: e.defId, player: e.player, ...(printing ? { printing: { ...printing } } : {}) });
+        if (this.casts.length > 50) this.casts.splice(0, this.casts.length - 50);
+      }
+    }
     let draws = null as { player: PlayerId; names: string[]; hidden: number } | null;
     const flush = () => {
       if (!draws) return;
@@ -363,7 +377,8 @@ export class GameSession {
       // Face down: only its owner sees which card it is.
       const c = this.state.cards[e.card];
       add({ card: e.card, ...(e.player === YOU && c ? { defId: c.defId } : {}), fromPlayer: e.player, toPlayer: e.player, from: 'hand', to: 'exile' });
-    } else if (e.type === 'CardMoved' && e.from !== e.to && e.to !== 'void' && e.from !== 'void') {
+    } else if (e.type === 'CardMoved' && e.from !== e.to && e.to !== 'void' && e.from !== 'void' && e.from !== 'stack' && e.to !== 'stack') {
+      // Spells don't fly to and from the stack: a cast spell is shown in place for a few seconds instead (the board's cast display).
       const hidden = !e.card || !e.defId;
       // Hidden moves between two hidden zones (an opponent's mulligan) aren't worth showing.
       if (hidden && e.from !== 'library' && e.to !== 'library') return;

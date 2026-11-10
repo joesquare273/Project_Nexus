@@ -12,6 +12,7 @@ import {
   cardsToBottom,
   formatManaCost,
   getLegalActions,
+  manaAbilityActions,
   manaChoices,
   manaAbilityAmount,
   spellOptions,
@@ -32,7 +33,7 @@ import {
 import { planTaps, tapActions } from '@nexus/bots';
 import { cardName, modeText, stepName, targetDescription, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
-import { YOU, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
+import { YOU, applyAll, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
 import { CenterHub } from './LifeTotals.tsx';
 import { CardFace, ManaText } from './Card.tsx';
@@ -45,6 +46,8 @@ import { CardList, ExileList, Hand, OpponentZone, PlayerHeader, YourZone, type M
 
 /** How long a triggering card stays in the middle of the table. */
 const SPOTLIGHT_MS = 2000;
+/** How long a cast spell stays on screen before it has faded (user, 2026-11-10). */
+const CAST_SHOW_MS = 4000;
 
 const sameTarget = (a: Target, b: Target) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -80,14 +83,24 @@ interface Menu {
   options: { label: string; pick: () => void }[];
 }
 
-/** A spell or ability you've chosen, waiting for you to tap mana for it. */
+type ManaTap = Extract<Action, { type: 'ActivateManaAbility' }>;
+
+/**
+ * Something you've chosen that costs mana, waiting while you pick the mana
+ * to pay with: the sources you click are only marked (`taps`, in order) and
+ * can be unmarked; nothing is tapped until you confirm, then the taps and
+ * the action go together (user, 2026-11-10: no automatic payment).
+ */
 interface Paying {
   title: string;
-  action: Extract<Action, { type: 'CastSpell' | 'ActivateAbility' }>;
+  action: Action;
+  /** The cost as shown ("{2}{R}"). */
+  cost: string;
+  taps: ManaTap[];
 }
 
 /** What an action costs right now, e.g. "{3}{R}" (commander tax and discounts included), as the engine lists it. */
-function costText(s: GameState, action: Paying['action']): string {
+function costText(s: GameState, action: Extract<Action, { type: 'CastSpell' | 'ActivateAbility' }>): string {
   const key = JSON.stringify(action);
   const options = action.type === 'CastSpell' ? spellOptions(s, YOU) : abilityOptions(s, YOU);
   const option = options.find((o) => JSON.stringify(o.action) === key);
@@ -129,6 +142,9 @@ export function Game({
   const [paying, setPaying] = useState<Paying | null>(null);
   /** A card whose ability just triggered, shown large in the middle of the table for a moment. */
   const [spotlight, setSpotlight] = useState<{ key: number; card: InstanceId } | null>(null);
+  /** The spell just cast, shown for 4 seconds, then it fades (a newer cast replaces it). */
+  const [castShown, setCastShown] = useState<GameSession['casts'][number] | null>(null);
+  const castsSeen = useRef(session.casts.length);
   const spotlighted = useRef(0);
   const [zoneView, setZoneView] = useState<{ player: PlayerId; zone: 'graveyard' | 'exile' } | null>(null);
   const [attackers, setAttackers] = useState<Map<InstanceId, PlayerId>>(new Map());
@@ -207,6 +223,16 @@ export function Game({
     const t = window.setTimeout(() => setSpotlight(null), SPOTLIGHT_MS);
     return () => window.clearTimeout(t);
   }, [spotlight]);
+  useEffect(() => {
+    if (session.casts.length === castsSeen.current) return;
+    castsSeen.current = session.casts.length;
+    setCastShown(session.casts.at(-1) ?? null);
+  });
+  useEffect(() => {
+    if (!castShown) return;
+    const t = window.setTimeout(() => setCastShown(null), CAST_SHOW_MS);
+    return () => window.clearTimeout(t);
+  }, [castShown]);
 
   // Any change of decision clears half-made selections.
   const decisionKey = `${s.turnNumber}|${s.step}|${pending.kind}|${s.stack.length}|${s.triggerQueue.length}|${s.nextId}|${s.combat?.damageStep ?? ''}`;
@@ -317,22 +343,27 @@ export function Game({
   };
 
   /**
-   * Pays for a chosen play. With "Tap mana automatically" on, the suggested
-   * taps go with it. Otherwise it's done at once if your mana pool already
-   * covers it, or the board waits while you tap mana sources yourself.
+   * Pays for a chosen play: a spell or ability with a mana cost waits while
+   * you pick the mana to pay with and confirm it (always, even when floating
+   * mana covers it). Free ones go at once.
    */
   const pay = (choice: PlayChoice, title: string) => {
     const { action } = choice;
-    if (session.autoTap || (action.type !== 'CastSpell' && action.type !== 'ActivateAbility')) {
-      submit([...choice.taps, action]);
-      return;
-    }
-    if (session.canSubmit([action])) {
+    if (action.type !== 'CastSpell' && action.type !== 'ActivateAbility') {
       submit([action]);
       return;
     }
+    const cost = costText(s, action);
+    if (!/[1-9WUBRGCSX]/.test(cost.replace(/\{0\}/g, ''))) {
+      submit([action]);
+      return;
+    }
+    startPaying({ title, action, cost, taps: [] });
+  };
+
+  const startPaying = (p: Paying) => {
     session.holdPriority = true;
-    setPaying({ title, action });
+    setPaying(p);
   };
 
   const stopPaying = () => {
@@ -340,28 +371,47 @@ export function Game({
     session.holdPriority = false;
   };
 
-  /** Taps a mana source for one mana type (or a paid mana ability's output); finishes paying once the pool covers the cost. */
-  const tapForMana = (id: InstanceId, mana: ManaType, paid?: { output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId; sacrifice?: InstanceId }) => {
-    const err = session.submit([{ type: 'ActivateManaAbility', player: YOU, card: id, mana, ...(paid ?? {}) }]);
+  /** The game as it would be after the marked taps (they aren't made until you confirm). */
+  const planned = paying ? applyAll(s, paying.taps) : null;
+  const planState = planned && !('error' in planned) ? planned.state : s;
+  const canConfirm = !!paying && session.canSubmit([...paying.taps, paying.action]);
+
+  /** Marks a mana ability to use for the payment. */
+  const markTap = (tap: ManaTap) => {
+    if (!paying) return;
+    setPaying({ ...paying, taps: [...paying.taps, tap] });
+  };
+
+  /** Unmarks a source's taps (and any later ones that only worked because of them). */
+  const unmarkSource = (id: InstanceId) => {
+    if (!paying) return;
+    const kept: ManaTap[] = [];
+    for (const t of paying.taps) {
+      if (t.card === id || t.tapCreature === id || t.sacrifice === id) continue;
+      if (!('error' in applyAll(s, [...kept, t]))) kept.push(t);
+    }
+    setPaying({ ...paying, taps: kept });
+  };
+
+  /** Tapping a source for mana outside a payment: it floats until the step ends. */
+  const tapForMana = (tap: ManaTap) => {
+    const err = session.submit([tap]);
     if (err) {
       showError(err);
       refresh();
       return;
     }
-    if (paying && session.canSubmit([paying.action])) {
-      stopPaying();
-      submit([paying.action]);
-      return;
-    }
     run();
   };
 
-  /** Offer each legal mana ability, including a Relic's choice of creature to tap. */
+  /** Offer each legal mana ability, including a Relic's choice of creature to tap. While paying, choosing one marks it. */
   const useManaSource = (id: InstanceId) => {
-    const actions = getLegalActions(s).filter((a): a is Extract<Action, { type: 'ActivateManaAbility' }> => a.type === 'ActivateManaAbility' && a.card === id);
-    const choose = (a: Extract<Action, { type: 'ActivateManaAbility' }>) => {
+    const actions = (paying ? manaAbilityActions(planState, YOU) : getLegalActions(s)).filter((a): a is ManaTap => a.type === 'ActivateManaAbility' && a.card === id);
+    if (actions.length === 0) return showError(paying ? 'That source has no mana left to give for this.' : 'That source can’t make mana right now.');
+    const choose = (a: ManaTap) => {
       setMenu(null);
-      tapForMana(id, a.mana, { output: a.output, payWith: a.payWith, tapCreature: a.tapCreature, grantedBy: a.grantedBy, ...(a.sacrifice ? { sacrifice: a.sacrifice } : {}) });
+      if (paying) markTap(a);
+      else tapForMana(a);
     };
     if (actions.length === 1) return choose(actions[0]!);
     const def = defOf(s.cards[id]!.defId);
@@ -387,14 +437,12 @@ export function Game({
     });
   };
 
-  /** Taps whatever the planner suggests for the rest of the cost. */
-  const autoPay = () => {
+  /** Taps the marked sources and makes the play, all at once. */
+  const confirmPayment = () => {
     if (!paying) return;
-    const key = JSON.stringify(paying.action);
-    const choice = session.plays().flatMap((p) => p.choices).find((c) => JSON.stringify(c.action) === key);
-    if (!choice) return showError("You don't have enough untapped mana sources to pay for that.");
+    const actions = [...paying.taps, paying.action];
     stopPaying();
-    submit([...choice.taps, paying.action]);
+    submit(actions);
   };
 
   /**
@@ -501,10 +549,14 @@ export function Game({
   const currentDefender = livingOpponents.includes(defender) ? defender : livingOpponents[0]!;
   const playable = new Set(plays.map((p) => p.card));
   // Your untapped mana sources, while you could tap them.
+  // While paying: the sources that could still be marked, and the ones already marked (to unmark).
+  const markedIds = new Set(paying ? paying.taps.map((t) => t.card) : []);
   const manaIds = new Set(
-    yourMove && pending.kind === 'priority'
-      ? getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility').map((a) => a.card)
-      : [],
+    paying
+      ? manaAbilityActions(planState, YOU).map((a) => (a as ManaTap).card)
+      : yourMove && pending.kind === 'priority'
+        ? getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility').map((a) => a.card)
+        : [],
   );
   // Cards castable from outside your hand appear next to it; commanders stay in the command zone by your name.
   const libraryTop = view.players[YOU]!.libraryTop;
@@ -527,7 +579,8 @@ export function Game({
         marks.push(bottomPicks.includes(id) ? 'selected' : inList ? 'choice' : 'target');
       }
       if (playable.has(id) && !activeTargeting && !menu && !paying) marks.push('playable');
-      if (paying && !menu && manaIds.has(id)) marks.push('mana');
+      if (paying && markedIds.has(id)) marks.push('selected');
+      else if (paying && !menu && manaIds.has(id)) marks.push('mana');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
       if (canAttackIds.has(id)) marks.push(attackers.has(id) ? 'attacking' : 'can-attack');
       if (view.combat?.attacks.some((a) => a.attacker === id)) marks.push('attacking');
@@ -549,7 +602,17 @@ export function Game({
       }
       return marks;
     },
+    manaNote: (pid) => {
+      const choosing = pid === YOU && paying ? paying.taps.map((t) => `{${t.mana}}`.repeat(t.output === undefined && !t.grantedBy ? manaAbilityAmount(s.cards[t.card]!, defOf(s.cards[t.card]!.defId)) : 1)).join('') : '';
+      const tapped = session.manaTapped[pid];
+      return { ...(choosing ? { choosing } : {}), ...(tapped ? { tapped } : {}) };
+    },
     cardNote: (id) => {
+      // Paying: the mana a chosen source will make ("+{R}").
+      if (paying && markedIds.has(id)) {
+        const mine = paying.taps.filter((t) => t.card === id);
+        return `+${mine.map((t) => `{${t.mana}}`.repeat(t.output === undefined && !t.grantedBy ? manaAbilityAmount(s.cards[id]!, defOf(s.cards[id]!.defId)) : 1)).join('')}`;
+      }
       if (bottomPicks.includes(id)) return choosing ? 'Chosen' : `Bottom ${bottomPicks.indexOf(id) + 1}`;
       const planned = attackers.get(id);
       if (planned) return livingOpponents.length > 1 ? `→ ${planned}` : 'Attacking';
@@ -571,6 +634,19 @@ export function Game({
     },
     onCard: (id) => {
       if (!yourMove) return;
+      // Paying: clicks choose and unchoose mana sources, nothing else.
+      if (paying) {
+        if (menu) return;
+        // A marked source: click again to unmark it (Pentad Prism-like sources that can give more ask first).
+        if (markedIds.has(id) && !manaIds.has(id)) return unmarkSource(id);
+        if (markedIds.has(id)) {
+          return setMenu({ title: `${cardName(s, id)}`, options: [
+            { label: 'Use it again', pick: () => { setMenu(null); useManaSource(id); } },
+            { label: 'Unmark it', pick: () => { setMenu(null); unmarkSource(id); } },
+          ] });
+        }
+        return manaIds.has(id) ? useManaSource(id) : undefined;
+      }
       if (legendChoices.includes(id)) return submit([{ type: 'ChooseLegend', player: YOU, keep: id }]);
       if (choosing?.cards.includes(id)) {
         setBottomPicks(bottomPicks.includes(id) ? bottomPicks.filter((x) => x !== id) : [...bottomPicks, id]);
@@ -584,7 +660,6 @@ export function Game({
       const option = nextOptions.find((t) => t.kind === 'card' && t.card === id);
       if (option) return pickTarget(option);
       if (activeTargeting || menu) return;
-      if (paying) return manaIds.has(id) ? useManaSource(id) : undefined;
       const cardPlays = playsFor(id);
       if (cardPlays.length > 0) return usePlays(id, cardPlays);
       // Tapping a land (or other mana source) on its own floats the mana until the step ends.
@@ -730,7 +805,11 @@ export function Game({
           menu={menu}
           chosen={chosen}
           paying={paying}
-          onAutoPay={autoPay}
+          planState={planState}
+          canConfirm={canConfirm}
+          onConfirmPayment={confirmPayment}
+          onClearPayment={() => paying && setPaying({ ...paying, taps: [] })}
+          onPay={(title, action, cost) => startPaying({ title, action, cost, taps: [] })}
           canSkipTarget={nextOptions.some((t) => t.kind === 'none')}
           onSkipTarget={() => pickTarget({ kind: 'none' })}
           onCancel={() => {
@@ -752,6 +831,14 @@ export function Game({
           <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>
         {error && <div className="toast">{error}</div>}
+        {castShown && (
+          <div key={castShown.key} className="cast-show" aria-live="polite">
+            <div className="cast-show-label">{castShown.player === YOU ? 'You cast' : `${castShown.player} casts`}</div>
+            <div className="cast-show-card">
+              <CardFace printing={castShown.printing} defId={castShown.defId} size="large" />
+            </div>
+          </div>
+        )}
         {spotlight && view.cards[spotlight.card] && (
           <div key={spotlight.key} className="spotlight" aria-live="polite">
             <div className="spotlight-label">{cardName(s, spotlight.card)} triggers</div>
@@ -938,17 +1025,6 @@ function Settings({ session, onChange, onQuit }: { session: GameSession; onChang
             />{' '}
             Full control: pause for priority
           </label>
-          <label title="Tap your lands for you when you cast a spell, instead of choosing which to tap">
-            <input
-              type="checkbox"
-              checked={session.autoTap}
-              onChange={(e) => {
-                session.autoTap = e.target.checked;
-                onChange();
-              }}
-            />{' '}
-            Tap mana automatically
-          </label>
           <label title="After you cast a spell or activate an ability, keep priority so you can add more before anyone responds, when you have an instant, flash spell or ability you can pay for (otherwise it passes for you)">
             <input
               type="checkbox"
@@ -1080,7 +1156,13 @@ interface PromptProps {
   targeting: Targeting | null;
   menu: Menu | null;
   paying: Paying | null;
-  onAutoPay: () => void;
+  /** The game as it would be after the marked taps. */
+  planState: GameState;
+  canConfirm: boolean;
+  onConfirmPayment: () => void;
+  onClearPayment: () => void;
+  /** Start paying for something that costs mana outside casting (a "pay {1}" choice, an attack tax). */
+  onPay: (title: string, action: Action, cost: string) => void;
   canSkipTarget: boolean;
   onSkipTarget: () => void;
   chosen: Target[];
@@ -1123,14 +1205,19 @@ function PromptBar(p: PromptProps) {
       ];
     } else buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
   } else if (p.paying) {
-    const pool = p.view.players[YOU]!.manaPool;
-    const floating = Object.entries(pool).flatMap(([m, n]) => Array.from({ length: n }, () => `{${m}}`)).join('');
+    // The mana you'd have once the marked sources are tapped (floating mana included).
+    const pl = p.planState.players[YOU]!;
+    const ready = [pl.manaPool, pl.equipmentMana, pl.artifactMana ?? {}, pl.noncreatureSpellMana]
+      .flatMap((pool) => Object.entries(pool).flatMap(([m, n]) => Array.from({ length: n as number }, () => `{${m}}`)))
+      .join('');
     text =
-      `${p.paying.title}: pay ${costText(s, p.paying.action)}. Click your glowing lands and other mana sources to tap them` +
-      (floating ? ` (in your mana pool: ${floating}).` : '.');
+      `${p.paying.title}: pay ${p.paying.cost}. Click your lands and other mana sources to choose them (click again to unchoose). ` +
+      (ready ? `Chosen: ${ready}. ` : '') +
+      (p.canConfirm ? 'Press Confirm to tap them and go ahead.' : 'Choose enough mana, then Confirm.');
     buttons = [
       { label: 'Cancel', onClick: p.onCancel },
-      { label: 'Auto-pay', onClick: p.onAutoPay, primary: true },
+      ...(p.paying.taps.length ? [{ label: 'Clear', onClick: p.onClearPayment }] : []),
+      { label: 'Confirm', onClick: p.onConfirmPayment, primary: true, disabled: !p.canConfirm },
     ];
   } else if (p.targeting) {
     const slots = p.targeting.slots ?? [];
@@ -1160,13 +1247,14 @@ function PromptBar(p: PromptProps) {
     const picks = p.bottomPicks;
     if (c.purpose === 'payToAvoidCounter') {
       const x = c.payGeneric ?? 0;
-      const taps = planTaps(s, YOU, { generic: x });
+      const can = !!planTaps(s, YOU, { generic: x });
       text = c.drawFor
         ? `Its controller draws a card from ${cardName(s, c.cards[0]!)} unless you pay {${x}}.`
         : `${cardName(s, c.cards[0]!)} will be countered unless you pay {${x}}.`;
+      const payIt: Action = { type: 'ChooseCards', player: YOU, cards: [...c.cards] };
       buttons = [
-        ...(taps ? [{ label: `Pay {${x}}`, onClick: () => p.submit([...tapActions(YOU, taps), { type: 'ChooseCards', player: YOU, cards: [...c.cards] }]), primary: true }] : []),
-        { label: taps ? 'Don’t pay' : `Can’t pay {${x}}`, onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
+        ...(can ? [{ label: `Pay {${x}}`, onClick: () => (x > 0 ? p.onPay(`Pay {${x}}`, payIt, `{${x}}`) : p.submit([payIt])), primary: true }] : []),
+        { label: can ? 'Don’t pay' : `Can’t pay {${x}}`, onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
       ];
     } else if (c.purpose === 'payHalfLife') {
       const half = Math.ceil((s.players[YOU]?.life ?? 0) / 2);
@@ -1363,10 +1451,11 @@ function PromptBar(p: PromptProps) {
     const all = new Map([...p.canAttackIds].filter((id) => canAttackPlayer(s, s.cards[id]!, p.attackers.get(id) ?? p.currentDefender)).map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
     const declare = (m: Map<InstanceId, PlayerId>) => {
       const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender }));
-      // Propaganda and friends: tap for the tax along with the declaration.
+      // Propaganda and friends: choose the mana for the tax, then the declaration goes with the taps.
       const tax = attackTax(s, attacks);
-      const taps = tax > 0 ? planTaps(s, YOU, { generic: tax }) : [];
-      p.submit([...tapActions(YOU, taps ?? []), { type: 'DeclareAttackers', player: YOU, attacks }]);
+      const declaration: Action = { type: 'DeclareAttackers', player: YOU, attacks };
+      if (tax > 0) p.onPay('Attack', declaration, `{${tax}}`);
+      else p.submit([declaration]);
     };
     const taxed = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated && attackTaxFor(s, o) > 0);
     if (taxed.length > 0) text += ` Attacking ${taxed.map((o) => `${o} costs {${attackTaxFor(s, o)}}`).join(', ')} for each creature.`;
@@ -1392,12 +1481,14 @@ function PromptBar(p: PromptProps) {
     const spec = item.kind === 'ability' ? triggerSpec(s, item) : undefined;
     const source = item.kind === 'ability' ? item.source : item.card;
     text = `${cardName(s, source)}: ${spec ? triggerText(spec) : ''}`;
-    const taps = planTaps(s, YOU, spec?.cost?.mana) ?? [];
+    const yes: Action = { type: 'Decide', player: YOU, accept: true };
+    const mana = spec?.cost?.mana;
     buttons = [
       { label: 'No', onClick: () => p.submit([{ type: 'Decide', player: YOU, accept: false }]) },
       {
         label: spec?.cost ? 'Yes, pay' : 'Yes',
-        onClick: () => p.submit([...tapActions(YOU, taps), { type: 'Decide', player: YOU, accept: true }]),
+        // A mana cost: choose the mana to pay it with, then confirm.
+        onClick: () => (mana && /[1-9WUBRGC]/.test(mana) ? p.onPay(`${cardName(s, source)}: pay`, yes, mana) : p.submit([yes])),
         primary: true,
       },
     ];
