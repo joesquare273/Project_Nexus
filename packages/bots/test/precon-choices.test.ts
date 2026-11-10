@@ -155,6 +155,27 @@ describe('discarding cards of your choice', () => {
     expect(s.players.P1!.hand).toHaveLength(1);
     expect(s.players.P1!.battlefield.filter((c) => s.cards[c]!.defId === 'moogle-token')).toHaveLength(1);
   });
+
+  it('Mog: a creature and a noncreature discarded: a Moogle, then a +1/+1 counter on each Moogle (the new one too)', () => {
+    let s = newGame();
+    const mog = put(s, 'P1', id('Mog, Moogle Warrior'));
+    const rat = put(s, 'P1', 'undercity-dire-rat', 'hand');
+    const ring = put(s, 'P2', 'sol-ring', 'hand');
+    s = goTo(s, 'end');
+    s = choose(s, [rat]);
+    s = choose(s, [ring]);
+    const token = s.players.P1!.battlefield.find((c) => s.cards[c]!.defId === 'moogle-token')!;
+    expect([s.cards[mog]!.counters, s.cards[token]!.counters]).toEqual([1, 1]);
+    // Only a noncreature: counters, no token.
+    let t = newGame();
+    const mog2 = put(t, 'P1', id('Mog, Moogle Warrior'));
+    const ring2 = put(t, 'P2', 'sol-ring', 'hand');
+    t = goTo(t, 'end');
+    // P1 has no cards in hand, so only P2 is asked.
+    t = choose(t, [ring2]);
+    expect(t.cards[mog2]!.counters).toBe(1);
+    expect(t.players.P1!.battlefield.some((c) => t.cards[c]!.defId === 'moogle-token')).toBe(false);
+  });
 });
 
 describe('sacrificing permanents of your choice', () => {
