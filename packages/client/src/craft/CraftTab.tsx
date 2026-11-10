@@ -27,9 +27,9 @@ type Queued = ListEntry & { printing: BoosterCard };
 
 const FINISH_NAMES: Record<Finish, string> = { nonfoil: 'Non-foil', foil: 'Foil', surge: 'Surge foil' };
 
-/** One fragment balance as a glowing gem. */
+/** A rarity's fragment gem (the user's art, public/gems: common triangle, uncommon diamond, rare pentagon, mythic hexagon). */
 export function FragmentGem({ rarity, size = 20 }: { rarity: FragmentRarity; size?: number }) {
-  return <span className={`fragment-gem ${rarity}`} style={{ width: size * 0.7, height: size }} aria-hidden="true" />;
+  return <img className={`fragment-gem ${rarity}`} src={`/gems/${rarity}.png`} width={size} height={size} alt="" aria-hidden="true" draggable={false} />;
 }
 
 function Balances({ fragments }: { fragments: Fragments }) {
@@ -37,7 +37,7 @@ function Balances({ fragments }: { fragments: Fragments }) {
     <div className="fragment-balances" aria-label="Your fragments">
       {(Object.keys(RARITY_NAMES) as FragmentRarity[]).map((r) => (
         <div key={r} className={`fragment-balance ${r}`} title={`${RARITY_NAMES[r]} Fragments`}>
-          <FragmentGem rarity={r} size={26} />
+          <FragmentGem rarity={r} size={36} />
           <strong>{fragments[r]}</strong>
           <span>{RARITY_NAMES[r]}</span>
         </div>
@@ -255,7 +255,7 @@ export function CraftTab() {
                       title={last ? 'Your last copy of this card can’t be dismantled.' : full ? (rules.protectLastCopy && queued < o.count ? 'One copy of this card stays in your collection.' : 'Every copy is in the list.') : undefined}
                       onClick={() => setCount(o.card, o.finish, o.rarity, queued + 1)}
                     >
-                      {last ? 'Last copy' : full ? 'All in list' : <>Add: +{reward} <FragmentGem rarity={o.rarity} size={14} /></>}
+                      {last ? 'Last copy' : full ? 'All in list' : <>Add: +{reward} <FragmentGem rarity={o.rarity} size={18} /></>}
                     </button>
                   </div>
                 );
@@ -280,7 +280,7 @@ export function CraftTab() {
                       <div className="craft-list-text">
                         <div className="craft-name" title={e.printing.name}>{e.printing.name}</div>
                         <div className="fineprint">
-                          {RARITY_NAMES[e.rarity]} · {FINISH_NAMES[finish]} · +{rewardFor(rules, e.rarity, e.finish) * e.count} <FragmentGem rarity={e.rarity} size={12} />
+                          {FINISH_NAMES[finish]} · +{rewardFor(rules, e.rarity, e.finish) * e.count}&nbsp;<FragmentGem rarity={e.rarity} size={14} />
                         </div>
                       </div>
                       <div className="craft-qty">
@@ -305,7 +305,7 @@ export function CraftTab() {
                       .filter((r) => listGain[r] > 0)
                       .map((r) => (
                         <span key={r} title={`${RARITY_NAMES[r]} Fragments`}>
-                          +{listGain[r]} <FragmentGem rarity={r} size={14} />
+                          +{listGain[r]} <FragmentGem rarity={r} size={18} />
                         </span>
                       ))}
                   </span>
@@ -355,7 +355,7 @@ export function CraftTab() {
                   {RARITY_NAMES[r]} · {have ? `${have} owned` : 'Not owned'}
                 </div>
                 <button className={status.ok ? 'primary' : ''} disabled={!status.ok || busy} title={status.reason} onClick={() => { setDone(null); setPending({ kind: 'craft', card: c, rarity: r, requestId: crypto.randomUUID() }); }}>
-                  Craft: {rules.craft[r]} <FragmentGem rarity={r} size={14} />
+                  Craft: {rules.craft[r]} <FragmentGem rarity={r} size={18} />
                 </button>
                 {!status.ok && <div className="fineprint craft-why">{status.reason}</div>}
               </div>

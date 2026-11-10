@@ -6,30 +6,17 @@
   gap: 14px;
 }
 
-/* A faceted crystal: a tall diamond with a glow in the rarity's colors. */
+/* A rarity's fragment gem (an image in public/gems), with a soft glow in its color. */
 .fragment-gem {
   display: inline-block;
-  vertical-align: -0.2em;
-  clip-path: polygon(50% 0, 100% 38%, 72% 100%, 28% 100%, 0 38%);
-  background: var(--gem);
-  filter: drop-shadow(0 0 4px var(--gem-glow));
+  vertical-align: -0.25em;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px var(--gem-glow));
 }
-.fragment-gem.common {
-  --gem: linear-gradient(160deg, #f4f6f8, #9aa3ad 55%, #5d6570);
-  --gem-glow: rgba(220, 226, 235, 0.7);
-}
-.fragment-gem.uncommon {
-  --gem: linear-gradient(160deg, #b9ffcb, #2fd35c 55%, #0d7a2c);
-  --gem-glow: rgba(60, 230, 110, 0.75);
-}
-.fragment-gem.rare {
-  --gem: linear-gradient(160deg, #ffc1b8, #ff3b30 55%, #9a0f0a);
-  --gem-glow: rgba(255, 70, 50, 0.75);
-}
-.fragment-gem.mythic {
-  --gem: linear-gradient(160deg, #ffe27a, #ff7ad9 35%, #6fd3ff 65%, #8a5cff);
-  --gem-glow: rgba(255, 210, 90, 0.85);
-}
+.fragment-gem.common { --gem-glow: rgba(220, 226, 235, 0.45); }
+.fragment-gem.uncommon { --gem-glow: rgba(60, 230, 110, 0.5); }
+.fragment-gem.rare { --gem-glow: rgba(255, 70, 50, 0.5); }
+.fragment-gem.mythic { --gem-glow: rgba(190, 140, 255, 0.55); }
 
 .fragment-balances {
   display: flex;
