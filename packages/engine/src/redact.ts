@@ -119,7 +119,11 @@ export function visibleCards(s: GameState, viewer: PlayerId): Set<InstanceId> {
         ? [...p.cards, ...(p.looked ?? [])]
         : p.kind === 'chooseLegend' && p.player === viewer
           ? p.cards
-          : [],
+          // A commander waiting for its owner's command-zone choice (rule 903.9): everyone saw it go to that
+          // library or hand, and its owner's board needs the card itself to answer.
+          : p.kind === 'commanderZone'
+            ? [p.card]
+            : [],
   );
   for (const c of Object.values(s.cards)) {
     const faceDown =

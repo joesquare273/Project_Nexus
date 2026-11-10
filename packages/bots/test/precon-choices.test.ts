@@ -324,3 +324,23 @@ describe('paying with mana abilities', () => {
     expect(s.stack.map((i) => i.kind)).toEqual(['spell', 'ability']);
   });
 });
+
+describe('a commander put into its owner’s library, on an online board', () => {
+  it('the owner’s own copy of the game can answer the command-zone choice (it sees the card)', async () => {
+    const { AliasBook, applyAction, materialize, playerUpdate } = await import('@nexus/engine');
+    const { CARD_DEFS } = await import('@nexus/cards');
+    const s = newGame();
+    const cmd = put(s, 'P1', 'undercity-dire-rat', 'library', { isCommander: true });
+    s.pending = { kind: 'commanderZone', player: 'P1', card: cmd, zone: 'library', resume: { kind: 'priority', player: 'P1', passes: 0 } };
+    let n = 0;
+    const u = playerUpdate(s, 'P1', new AliasBook(() => `a${n++}`));
+    const local = materialize(u.state, CARD_DEFS);
+    expect(u.legal.map((a) => a.type)).toEqual(['CommanderZone', 'CommanderZone']);
+    for (const a of u.legal) {
+      const r = applyAction(local, a);
+      expect(r.ok).toBe(true);
+    }
+    const moved = applyAction(local, u.legal.find((a) => a.type === 'CommanderZone' && a.toCommand)!);
+    expect(moved.ok && moved.state.players.P1!.command).toHaveLength(1);
+  });
+});
