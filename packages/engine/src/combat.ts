@@ -43,11 +43,14 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
   for (const source of battlefield(s)) {
     for (const spec of currentDefinition(s, source).statics ?? []) {
+      if (spec.cantBeBlocked && staticAffects(s, source, spec, attacker)) return false;
       if (spec.cantBeBlockedByGreaterPower && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) > powerOf(s, attacker)) return false;
       const most = spec.cantBeBlockedByPowerAtMost;
       if (most !== undefined && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) <= most) return false;
     }
   }
+  // Drone tokens: "can block only creatures with flying".
+  if (currentDefinition(s, blocker).canBlockOnlyFlying && !hasKeyword(s, attacker, 'Flying')) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
   }

@@ -1124,6 +1124,10 @@ export function spellCost(
     if (opponents.some((pid) => s.players[pid]!.graveyard.length >= opponentGraveyard)) cost = reduceGeneric(cost, def.costReduction!.generic);
   }
   if (def.costReduction?.ifVoid && card && s.voidTurn === s.turnNumber) cost = reduceGeneric(cost, def.costReduction.generic);
+  if (def.costReduction?.ifYourTurn && card && s.activePlayer === payer) cost = reduceGeneric(cost, def.costReduction.generic);
+  const opposing = def.costReduction?.ifOpponentsControlCreatures;
+  if (opposing !== undefined && card && battlefield(s).filter((c) => c.controller !== payer && !c.phasedOut && isCreatureOnBattlefield(s, c)).length >= opposing) cost = reduceGeneric(cost, def.costReduction!.generic);
+  if (def.costReduction?.ifTargetsBlockingCreature && targets.some((t) => t.kind === 'card' && !!s.combat?.blocks.some((b) => b.blocker === t.card))) cost = reduceGeneric(cost, def.costReduction.generic);
   // "Costs {3} less to cast if you've cast another spell this turn" (Gigastorm Titan).
   if (def.costReduction?.ifCastAnotherSpell && card && (s.players[payer!]!.spellsCastThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.perMatching && card) {

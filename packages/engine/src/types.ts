@@ -649,6 +649,14 @@ export const COUNT_KINDS = [
   'ArtifactsYouControl',
   /** The greatest mana value among artifacts you control (Edgar). */
   'GreatestManaValueAmongYourArtifacts',
+  /** The same, not counting the source (Emissary Escort). */
+  'GreatestManaValueAmongYourOtherArtifacts',
+  'YourLifeTotal',
+  /** Cards you own in exile (Cosmogoyf). */
+  'CardsYouOwnInExile',
+  'DifferentlyNamedLandsYouControl',
+  /** Other creatures and/or artifacts you control (Luxknight Breacher). */
+  'OtherCreaturesAndArtifactsYouControl',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -1492,6 +1500,8 @@ export interface StaticSpec {
   basePowerToughness?: [number, number];
   /** "Can't be blocked by creatures with power 2 or less." */
   cantBeBlockedByPowerAtMost?: number;
+  /** Affected creatures can't be blocked (with `conditions`: Illvoi Infiltrator, "if you've cast two or more spells this turn"). */
+  cantBeBlocked?: boolean;
   /** A blocker with greater power than the affected attacker cannot block it. */
   cantBeBlockedByGreaterPower?: boolean;
   /** Conqueror's Flail: while it applies, its controller's opponents can't cast spells during that player's turn. */
@@ -1735,7 +1745,7 @@ export interface CardDefinition {
    */
   /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
   /** `ifCastAnotherSpell`: "if you've cast another spell this turn" (Gigastorm Titan). */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };
@@ -1813,6 +1823,8 @@ export interface CardDefinition {
   playFromLibraryTopWithCoven?: ObjectFilter;
   /** "Can't be blocked except by N or more creatures" (Relentless X-ATM092: 3). */
   minBlockers?: number;
+  /** "This token can block only creatures with flying" (Drone). */
+  canBlockOnlyFlying?: boolean;
   /** "If you would draw a card while your library has no cards in it, you win the game instead" (Laboratory Maniac). */
   winOnEmptyDraw?: boolean;
   /** "As this enters, choose a color"; its mana ability makes only that color (Crossroads Village). */

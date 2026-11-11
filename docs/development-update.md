@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M7
+
+13 cards with conditional cost reductions, new counts, a conditional "can't
+be blocked" and the Drone token: 144 of 261 built.
+
 ### Edge of Eternities main set, group M6
 
 25 more spells and creatures: 131 of 261 built (half the set).

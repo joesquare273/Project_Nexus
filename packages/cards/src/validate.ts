@@ -275,7 +275,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
-    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell && !c.costReduction.ifVoid) {
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell && !c.costReduction.ifVoid && c.costReduction.ifOpponentsControlCreatures === undefined && !c.costReduction.ifYourTurn && !c.costReduction.ifTargetsBlockingCreature) {
       err('costReduction needs a condition, perCount or perMatching.');
     }
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);

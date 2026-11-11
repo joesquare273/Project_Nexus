@@ -2,7 +2,8 @@
 // Group M1: cards the engine already had the pieces for.
 
 import { describe, expect, it } from 'vitest';
-import { currentDefinition, getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
+import { applyAction, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { canBlock } from '../../engine/src/combat.ts';
 import { CARD_DEFS } from '@nexus/cards';
 import { act, card, cast, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
 import { moveCard } from '../../engine/src/state.ts';
@@ -898,5 +899,124 @@ describe('M6: more spells and creatures', () => {
     expect(s.players.P1!.hand.length).toBe(hand + 1);
     // Comet Crawler: +2 for its sacrifice, +3 from the Mite (1 and two counters).
     expect(powerOf(s, s.cards[crawler]!)).toBe(base('comet-crawler') + 2 + base('hemosymbic-mite') + 2);
+  });
+});
+
+describe('M7: conditions and counts', () => {
+  const costs = (s: GameState, id: string, pool: Record<string, number>, extra: object = {}) => {
+    s.players.P1!.manaPool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0, ...pool };
+    return applyAction(s, { type: 'CastSpell', player: 'P1', card: id, ...extra } as never).ok;
+  };
+
+  it('cost reductions: Lashwhip Predator, Mental Modulation, Fungal Colossus, Dark Endurance', () => {
+    let s = newGame();
+    const whip = put(s, 'P1', 'lashwhip-predator', 'hand');
+    const mod = put(s, 'P1', 'mental-modulation', 'hand');
+    const colossus = put(s, 'P1', 'fungal-colossus', 'hand');
+    const target = put(s, 'P2', 'thawbringer');
+    s = goTo(s, 'main1');
+    // Lashwhip {4}{G}{G}: {2} less with three opposing creatures.
+    expect(costs(s, whip, { G: 2, C: 2 })).toBe(false);
+    put(s, 'P2', 'virus-beetle');
+    put(s, 'P2', 'virus-beetle');
+    expect(costs(s, whip, { G: 2, C: 2 })).toBe(true);
+    // Mental Modulation {1}{U}: {U} on your turn.
+    expect(costs(s, mod, { U: 1 }, { targets: [card(target)] })).toBe(true);
+    // Fungal Colossus {6}{G}: one less for each differently named land (two Forests count once).
+    put(s, 'P1', 'forest');
+    put(s, 'P1', 'forest');
+    put(s, 'P1', 'mountain');
+    expect(costs(s, colossus, { G: 1, C: 3 })).toBe(false);
+    expect(costs(s, colossus, { G: 1, C: 4 })).toBe(true);
+  });
+
+  it('Dark Endurance costs {1} less on a blocking creature; Mental Modulation costs full on an opponent’s turn', () => {
+    let s = newGame();
+    const attacker = put(s, 'P1', 'thawbringer');
+    const blocker = put(s, 'P2', 'icecave-crasher');
+    const endure = put(s, 'P2', 'dark-endurance', 'hand');
+    const mod = put(s, 'P2', 'mental-modulation', 'hand');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker, defender: 'P2' }] });
+    for (let i = 0; i < 10 && s.pending.kind !== 'declareBlockers'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    s = act(s, { type: 'DeclareBlockers', player: 'P2', blocks: [{ blocker, attacker }] });
+    for (let i = 0; i < 6 && !(s.pending.kind === 'priority' && s.pending.player === 'P2'); i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    const pay = (id: string, pool: Record<string, number>, t: string) => {
+      s.players.P2!.manaPool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0, ...pool };
+      return applyAction(s, { type: 'CastSpell', player: 'P2', card: id, targets: [card(t)] }).ok;
+    };
+    expect(pay(endure, { B: 1 }, attacker)).toBe(false);
+    expect(pay(endure, { B: 1 }, blocker)).toBe(true);
+    expect(pay(mod, { U: 1 }, attacker)).toBe(false);
+    expect(pay(mod, { U: 1, C: 1 }, attacker)).toBe(true);
+  });
+
+  it('counts: Cosmogoyf, Emissary Escort, Luxknight Breacher, Space-Time Anomaly, All-Fates Scroll', () => {
+    let s = newGame();
+    const goyf = put(s, 'P1', 'cosmogoyf');
+    const escort = put(s, 'P1', 'emissary-escort');
+    const breacher = put(s, 'P1', 'luxknight-breacher', 'hand');
+    const anomaly = put(s, 'P1', 'space-time-anomaly', 'hand');
+    const scroll = put(s, 'P1', 'all-fates-scroll');
+    put(s, 'P1', 'forest');
+    put(s, 'P1', 'mountain');
+    put(s, 'P1', 'honor', 'exile');
+    put(s, 'P1', 'honor', 'exile');
+    put(s, 'P2', 'honor', 'exile');
+    expect([powerOf(s, s.cards[goyf]!), toughnessOf(s, s.cards[goyf]!)]).toEqual([2, 3]);
+    // All-Fates Scroll (mana value 3) is the greatest among the Escort's other artifacts.
+    expect(powerOf(s, s.cards[escort]!)).toBe(3);
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 2, U: 1, C: 12 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: breacher }).state;
+    // Other creatures and artifacts: Cosmogoyf, the Escort, the Scroll.
+    expect(s.cards[breacher]!.counters).toBe(3);
+    s.players.P1!.life = 5;
+    const lib = s.players.P2!.library.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: anomaly, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.library.length).toBe(lib - 5);
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: scroll, ability: 0 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
+  });
+
+  it('Illvoi Infiltrator can’t be blocked after two spells; Station Monitor makes a Drone that blocks only flyers; Depressurize; Chrome Companion', () => {
+    let s = newGame();
+    const inf = put(s, 'P1', 'illvoi-infiltrator');
+    put(s, 'P1', 'station-monitor');
+    const comp = put(s, 'P1', 'chrome-companion');
+    const h1 = put(s, 'P1', 'honor', 'hand');
+    const dep = put(s, 'P1', 'depressurize', 'hand');
+    const wall = put(s, 'P2', 'icecave-crasher');
+    const weak = put(s, 'P2', 'thawbringer', 'battlefield', { counters: 0 });
+    const buried = put(s, 'P2', 'honor', 'graveyard');
+    s = goTo(s, 'main1');
+    expect(canBlock(s, s.cards[wall]!, s.cards[inf]!)).toBe(true);
+    mana(s, 'P1', { W: 1, B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: h1, targets: [card(inf)] }).state;
+    // Icecave Crasher has power 4: -3/-0 leaves 1 and it lives; nothing is destroyed.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dep, targets: [card(wall)] }).state;
+    expect(zone(s, wall)).toBe('battlefield');
+    expect(canBlock(s, s.cards[wall]!, s.cards[inf]!)).toBe(false);
+    const drone = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'drone-token-eoe')!;
+    expect(drone).toBeDefined();
+    // The Drone can't block a ground creature, but can block a flyer.
+    const flyer = put(s, 'P2', 'nebula-dragon');
+    expect([canBlock(s, s.cards[drone]!, s.cards[weak]!), canBlock(s, s.cards[drone]!, s.cards[flyer]!)]).toEqual([false, true]);
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: comp, ability: 0, targets: [card(buried)] }).state;
+    expect(zone(s, buried)).toBe('library');
+    expect(s.players.P2!.library.at(-1)).toBe(buried);
+    expect(s.players.P1!.life).toBe(life + 1);
+  });
+
+  it('Depressurize destroys a creature whose power drops to 0 or less', () => {
+    let s = newGame();
+    const dep = put(s, 'P1', 'depressurize', 'hand');
+    const small = put(s, 'P2', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dep, targets: [card(small)] }).state;
+    expect(zone(s, small)).toBe('graveyard');
   });
 });

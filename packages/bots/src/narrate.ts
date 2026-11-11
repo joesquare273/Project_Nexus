@@ -73,6 +73,11 @@ const COUNT_TEXT: Record<string, string> = {
   SoulCountersOnThis: 'soul counters on this',
   ArtifactsYouControl: 'artifacts you control',
   GreatestManaValueAmongYourArtifacts: 'the greatest mana value among artifacts you control',
+  GreatestManaValueAmongYourOtherArtifacts: 'the greatest mana value among other artifacts you control',
+  YourLifeTotal: 'your life total',
+  CardsYouOwnInExile: 'the number of cards you own in exile',
+  DifferentlyNamedLandsYouControl: 'the number of differently named lands you control',
+  OtherCreaturesAndArtifactsYouControl: 'the number of other creatures and artifacts you control',
 };
 
 /** "a +1/+1 counter", "2 shield counters". */
