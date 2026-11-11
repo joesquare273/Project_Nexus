@@ -2,7 +2,7 @@
 // Group M1: cards the engine already had the pieces for.
 
 import { describe, expect, it } from 'vitest';
-import { getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
+import { currentDefinition, getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
 import { CARD_DEFS } from '@nexus/cards';
 import { act, card, cast, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
 import { moveCard } from '../../engine/src/state.ts';
@@ -589,5 +589,148 @@ describe('M4: void and Landers', () => {
     expect(s.cards[agr]!.counters).toBe(1);
     expect(powerOf(s, s.cards[agr]!)).toBe(base + 2);
     expect(hasKeyword(s, s.cards[agr]!, 'Haste')).toBe(true);
+  });
+});
+
+describe('M5: station, Spacecraft and a Planet', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const isCreature = (s: GameState, id: string) => (currentDefinition(s, s.cards[id]!).types as string[]).includes('creature');
+
+  it('stationing a Spacecraft: charge counters from a creature’s power, abilities at their levels, a creature at the top one', () => {
+    let s = newGame();
+    const frigate = put(s, 'P1', 'lumen-class-frigate');
+    const crew = put(s, 'P1', 'thawbringer');
+    const other = put(s, 'P1', 'virus-beetle');
+    s = goTo(s, 'main1');
+    const base = powerOf(s, s.cards[other]!);
+    // Thawbringer has power 4: four charge counters, past the 2+ level.
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: frigate, ability: 0, costCards: [crew] }).state;
+    expect(s.cards[frigate]!.namedCounters?.charge).toBe(CARD_DEFS['thawbringer']!.power);
+    expect(s.cards[crew]!.tapped).toBe(true);
+    expect(powerOf(s, s.cards[other]!)).toBe(base + 1);
+    expect(isCreature(s, frigate)).toBe(false);
+    s.cards[frigate]!.namedCounters = { charge: 12 };
+    expect(isCreature(s, frigate)).toBe(true);
+    expect([hasKeyword(s, s.cards[frigate]!, 'Flying'), hasKeyword(s, s.cards[frigate]!, 'Lifelink')]).toEqual([true, true]);
+    // It doesn't pump itself ("other creatures").
+    expect(powerOf(s, s.cards[frigate]!)).toBe(CARD_DEFS['lumen-class-frigate']!.power);
+  });
+
+  it('enter effects: Wedgelight Rammer, Uthros Scanship, Atmospheric Greenhouse, Wurmwall Sweeper, Warmaker Gunship, Pinnacle Kill-Ship, Debris-Field Crusher', () => {
+    let s = newGame();
+    const rammer = put(s, 'P1', 'wedgelight-rammer', 'hand');
+    const green = put(s, 'P1', 'atmospheric-greenhouse', 'hand');
+    const gun = put(s, 'P1', 'warmaker-gunship', 'hand');
+    const kill = put(s, 'P1', 'pinnacle-kill-ship', 'hand');
+    const crusher = put(s, 'P1', 'debris-field-crusher', 'hand');
+    const mine = put(s, 'P1', 'thawbringer');
+    const small = put(s, 'P2', 'virus-beetle');
+    const big = put(s, 'P2', 'bygone-colossus');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, R: 3, G: 1, C: 30 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rammer }).state;
+    const robot = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'robot-token-eoe')!;
+    expect(robot).toBeDefined();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: green }).state;
+    expect([s.cards[mine]!.counters, s.cards[robot]!.counters]).toEqual([1, 1]);
+    // Artifacts you control: Rammer, the Robot, the Greenhouse and the Gunship itself.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gun }, pick(small)).state;
+    expect(zone(s, small)).toBe('graveyard');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kill }, pick(big)).state;
+    expect(zone(s, big)).toBe('graveyard');
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: crusher }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+    // Its {1}{R} ability needs 8 charge counters.
+    mana(s, 'P1', { R: 1, C: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: crusher, ability: 0 })).toBeTruthy();
+    s.cards[crusher]!.namedCounters = { charge: 8 };
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crusher, ability: 0 }).state;
+    expect(powerOf(s, s.cards[crusher]!)).toBe((CARD_DEFS['debris-field-crusher']!.power ?? 0) + 2);
+  });
+
+  it('graveyards and hands: Rescue Skiff, Fell Gravship, Specimen Freighter, Susurian Dirgecraft, Extinguisher Battleship', () => {
+    let s = newGame();
+    const skiff = put(s, 'P1', 'rescue-skiff', 'hand');
+    const freighter = put(s, 'P1', 'specimen-freighter', 'hand');
+    const dirge = put(s, 'P1', 'susurian-dirgecraft', 'hand');
+    const battleship = put(s, 'P1', 'extinguisher-battleship', 'hand');
+    const dead = put(s, 'P1', 'nebula-dragon', 'graveyard');
+    const a = put(s, 'P2', 'thawbringer');
+    const b = put(s, 'P2', 'virus-beetle');
+    const ring = put(s, 'P2', 'sol-ring');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, C: 30 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: skiff }, pick(dead)).state;
+    expect(zone(s, dead)).toBe('battlefield');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: freighter }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === a && t[1]?.kind === 'card' && t[1].card === dead) ?? o.find((t) => t[0]?.kind === 'card' && t[0].card === a)! }).state;
+    expect(zone(s, a)).toBe('hand');
+    // Each opponent sacrifices a nontoken creature.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dirge }).state;
+    if (s.pending.kind === 'chooseCards') s = cast(s, { type: 'ChooseCards', player: s.pending.player, cards: [b] }).state;
+    expect(zone(s, b)).toBe('graveyard');
+    // Destroys a noncreature permanent, then 4 damage to each creature.
+    const mine = put(s, 'P1', 'virus-beetle');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: battleship }, pick(ring)).state;
+    expect([zone(s, ring), zone(s, mine)]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('attack triggers need their level: Sledge-Class Seedship puts a creature from hand, Dawnsire deals 100, Specimen Freighter mills four', () => {
+    let s = newGame();
+    const seed = put(s, 'P1', 'sledge-class-seedship', 'battlefield', { namedCounters: { charge: 7 } });
+    const dawn = put(s, 'P1', 'dawnsire-sunstar-dreadnought', 'battlefield', { namedCounters: { charge: 10 } });
+    const freighter = put(s, 'P1', 'specimen-freighter', 'battlefield', { namedCounters: { charge: 9 } });
+    const guest = put(s, 'P1', 'nebula-dragon', 'hand');
+    const victim = put(s, 'P2', 'bygone-colossus');
+    // Dawnsire isn't a creature at 10 (it needs 20), but its "whenever you attack" works.
+    expect(isCreature(s, dawn)).toBe(false);
+    s = goTo(s, 'declareAttackers');
+    const lib = s.players.P2!.library.length;
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: seed, defender: 'P2' }, { attacker: freighter, defender: 'P2' }] });
+    for (let i = 0; i < 40 && s.step === 'declareAttackers'; i++) {
+      const p = s.pending;
+      if (p.kind === 'chooseTargets') {
+        const legal = getLegalActions(s).filter((x) => x.type === 'ChooseTargets');
+        s = act(s, legal.find((x) => x.type === 'ChooseTargets' && x.targets[0]?.kind === 'card' && x.targets[0].card === victim) ?? legal[0]!);
+      } else if (p.kind === 'chooseCards') s = act(s, { type: 'ChooseCards', player: p.player, cards: p.cards.includes(guest) ? [guest] : p.cards.slice(0, p.min) });
+      else if (p.kind === 'priority' && s.stack.length > 0) s = act(s, { type: 'PassPriority', player: p.player });
+      else break;
+    }
+    expect(zone(s, victim)).toBe('graveyard');
+    expect(zone(s, guest)).toBe('battlefield');
+    expect(s.players.P2!.library.length).toBe(lib - 4);
+  });
+
+  it('The Seriema finds a legendary creature; Larval Scoutlander trades a land for two basics; Kavaron, Memorial World needs 12 counters', () => {
+    let s = newGame();
+    const seriema = put(s, 'P1', 'the-seriema', 'hand');
+    const scout = put(s, 'P1', 'larval-scoutlander', 'hand');
+    const planet = put(s, 'P1', 'kavaron-memorial-world');
+    const legend = put(s, 'P1', 'mmmenon-uthros-exile', 'library');
+    const land = put(s, 'P1', 'forest');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 2, G: 1, R: 1, C: 6 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: seriema });
+    for (let i = 0; i < 10 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    expect(s.pending.kind === 'chooseCards' && s.pending.cards).toEqual([legend]);
+    s = cast(s, { type: 'ChooseCards', player: 'P1', cards: [legend] }).state;
+    expect(zone(s, legend)).toBe('hand');
+    const lands = () => s.players.P1!.battlefield.filter((id) => (CARD_DEFS[s.cards[id]!.defId]!.types as string[]).includes('land')).length;
+    const before = lands();
+    s = act(s, { type: 'CastSpell', player: 'P1', card: scout });
+    for (let i = 0; i < 10 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [land] });
+    for (let i = 0; i < 10 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    if (s.pending.kind === 'chooseCards') s = cast(s, { type: 'ChooseCards', player: 'P1', cards: s.pending.cards.slice(0, 2) }).state;
+    expect(lands()).toBe(before + 1);
+    // The Planet: a land with station; its ability unlocks at 12.
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: planet, ability: 0, costCards: [planet] })).toBeTruthy();
+    expect(isCreature(s, planet)).toBe(false);
+    s.cards[planet]!.namedCounters = { charge: 12 };
+    expect(isCreature(s, planet)).toBe(false);
+    const fodder = s.players.P1!.battlefield.find((id) => id !== planet && (CARD_DEFS[s.cards[id]!.defId]!.types as string[]).includes('land'))!;
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: planet, ability: 0, costCards: [fodder] }).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'robot-token-eoe')).toBe(true);
   });
 });

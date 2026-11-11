@@ -1569,7 +1569,8 @@ export interface CardDefinition {
    * charge counters equal to its power on this. Station only as a sorcery."
    * It's an artifact creature while it has `creatureAt` or more charge counters.
    */
-  station?: { creatureAt: number };
+  /** Planets (lands) have station but never become creatures: no `creatureAt`. */
+  station?: { creatureAt?: number };
   meld?: { partner: string; result: string; resultPrinting: { set: string; number: string }; manaCost?: string };
   /** Its controller may privately look at the top card of their library. */
   lookAtLibraryTop?: boolean;

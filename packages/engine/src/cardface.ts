@@ -71,7 +71,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   if (def.station) {
     const charge = c.namedCounters?.charge ?? 0;
     change();
-    if (charge >= def.station.creatureAt) out.types = [...new Set([...out.types, 'creature' as const])];
+    if (def.station.creatureAt !== undefined && charge >= def.station.creatureAt) out.types = [...new Set([...out.types, 'creature' as const])];
     if (out.statics?.some((st) => (st.stationLevel ?? 0) > charge)) out.statics = out.statics.filter((st) => (st.stationLevel ?? 0) <= charge);
   }
   // "As long as this has N or more counters on it" (Gavel of the Righteous).
