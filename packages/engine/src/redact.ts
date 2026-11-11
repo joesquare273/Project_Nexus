@@ -266,6 +266,7 @@ const PLAYER_FIELDS = {
   lifeGainedThisTurn: 'copy',
   cardLeftGraveyardTurn: 'copy',
   permanentLeftTurn: 'copy',
+  artifactEnteredTurn: 'copy',
   spacecraftAttackedTurn: 'copy',
   landsEntered: 'copy',
   landsEnteredTurn: 'copy',

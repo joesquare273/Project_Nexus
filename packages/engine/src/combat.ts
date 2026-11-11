@@ -29,7 +29,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
   return (
     isCreatureOnBattlefield(s, c) &&
     !cantAttackOrBlock(s, c) &&
-    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0)) &&
+    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfArtifactEntered) && s.players[c.controller]!.artifactEnteredTurn === s.turnNumber)) &&
     c.controller === playerId &&
     !c.tapped &&
     (!c.summoningSick || hasKeyword(s, c, 'Haste'))

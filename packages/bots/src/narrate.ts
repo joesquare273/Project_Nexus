@@ -526,6 +526,7 @@ function triggerCondition(t: TriggerSpec): string {
     BecomesUntapped: 'becomes untapped',
     LeavesBattlefield: 'leaves the battlefield',
     Draws: '',
+    Discards: 'a player discards a card',
     LeavesGraveyard: 'leaves your graveyard',
     PutIntoGraveyard: 'is put into a graveyard from anywhere but the battlefield',
     PutIntoGraveyardAnywhere: 'is put into a graveyard from anywhere',

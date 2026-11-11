@@ -657,6 +657,8 @@ export const COUNT_KINDS = [
   'DifferentlyNamedLandsYouControl',
   /** Other creatures and/or artifacts you control (Luxknight Breacher). */
   'OtherCreaturesAndArtifactsYouControl',
+  /** Permanents you control with two or more colors (Infinite Guideline Station). */
+  'MulticoloredPermanentsYouControl',
   /** Lands that entered the battlefield under your control this turn (Bioengineered Future). */
   'LandsEnteredUnderYourControlThisTurn',
 ] as const;
@@ -828,7 +830,7 @@ export interface EffectSpec {
   /** AttachEquipmentTo: the creature is this earlier target (by position) rather than the effect's own target. */
   toTarget?: number;
   /** ChoosePermanent: what happens to the chosen permanent. */
-  choiceThen?: 'bounce' | 'link' | 'counter' | 'attachSource' | 'mark';
+  choiceThen?: 'bounce' | 'link' | 'counter' | 'attachSource' | 'mark' | 'tap';
   /** ChoosePermanent: only among the permanents that got a counter from this ability's Proliferate (Ripples of Potential). With `anyNumber`, any number of them (none included); with `choiceThen: 'mark'`, later effects act on them (target `ChosenCards`). BecomeCreature with `sacrificeAtEndStep`: sacrificed at the beginning of the next end step (Depthshaker Titan). */
   fromProliferated?: boolean;
   /** AllowPlayExiledThisWay: "you may cast" rather than "play" (no lands). */
@@ -1103,6 +1105,8 @@ export const TRIGGER_EVENTS = [
   'LeavesBattlefield',
   /** A player drew a card (`drawer` says who). */
   'Draws',
+  /** A player discarded a card (subject: the card; `discarder` says whose discards count). */
+  'Discards',
   /** A card left a graveyard (subject: the card; its owner's graveyard). */
   'LeavesGraveyard',
   /** A card was put into a graveyard from anywhere other than the battlefield (subject: the card). */
@@ -1267,6 +1271,10 @@ export interface TriggerSpec {
   duringYourTurn?: boolean;
   /** Draws: whose draws count. */
   drawer?: 'You' | 'Opponent';
+  /** Discards: whose discards count. */
+  discarder?: 'You' | 'Opponent';
+  /** Blocks: only when blocking a creature matching this (Skystinger: a creature with flying). */
+  blockingMatching?: ObjectFilter;
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
   /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you. */
@@ -1473,6 +1481,12 @@ export interface StaticSpec {
   exileOpponentCreaturesThatDie?: { gainLife: number };
   /** "As long as this creature has a counter on it, it can attack as though it didn't have defender" (Demon Wall). */
   attacksDespiteDefenderWithCounters?: boolean;
+  /** Mechan Shieldmate: it can attack as though it didn't have defender while an artifact entered the battlefield under your control this turn. */
+  attacksDespiteDefenderIfArtifactEntered?: boolean;
+  /** Frenzied Baloth: creature spells you control can't be countered. */
+  creatureSpellsCantBeCountered?: boolean;
+  /** Frenzied Baloth: combat damage can't be prevented. */
+  combatDamageCantBePrevented?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
   additionalLands?: number;
   /** Hades: during your turn, you may play lands from your graveyard (spells come from `castFromGraveyard`). */
@@ -2237,6 +2251,8 @@ export interface PlayerState {
   turnsTaken?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
+  /** The last turn an artifact entered the battlefield under this player's control (Mechan Shieldmate). */
+  artifactEnteredTurn?: number;
   /** The last turn this player attacked with a Spacecraft (Thaumaton Torpedo). */
   spacecraftAttackedTurn?: number;
   /** How many lands entered the battlefield under this player's control during turn `landsEnteredTurn`. */
@@ -2503,7 +2519,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice';
+  purpose: 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

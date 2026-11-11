@@ -49,6 +49,8 @@ interface Occurrence {
   to?: string;
   /** CountersAdded: who put them there. */
   by?: PlayerId;
+  /** Blocks: the attacker it blocked. */
+  blocked?: InstanceId;
   /** Draws: who drew, and how many cards they've drawn this turn counting this one. */
   drawer?: PlayerId;
   drawNumber?: number;
@@ -114,7 +116,10 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         if (e.to === 'graveyard' && e.from !== 'graveyard') out.push({ when: 'PutIntoGraveyardAnywhere', at, subject: e.card, subjectController: e.owner, from: e.from });
         break;
       case 'BlockDeclared':
-        out.push({ when: 'Blocks', at, subject: e.blocker, subjectController: s.cards[e.blocker]!.controller, defender: s.cards[e.attacker]!.controller });
+        out.push({ when: 'Blocks', at, subject: e.blocker, subjectController: s.cards[e.blocker]!.controller, defender: s.cards[e.attacker]!.controller, blocked: e.attacker });
+        break;
+      case 'Discarded':
+        out.push({ when: 'Discards', at, subject: e.card, subjectController: e.player });
         break;
       case 'TokenCreated':
         out.push({ when: 'EntersBattlefield', at, subject: e.card, subjectController: e.controller });
@@ -306,6 +311,12 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     if (spec.byOpponent) return o.subjectController !== controller && (o.attacking?.[controller] ?? 0) >= (spec.attackingYouAtLeast ?? 1);
     return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
   }
+  if (o.when === 'Discards') {
+    if (spec.discarder === 'You' && o.subjectController !== controller) return false;
+    if (spec.discarder === 'Opponent' && o.subjectController === controller) return false;
+    return true;
+  }
+  if (spec.blockingMatching && (o.when !== 'Blocks' || !o.blocked || !s.cards[o.blocked] || !matchesObject(s, spec.blockingMatching, s.cards[o.blocked]!, { controller, source }))) return false;
   if (o.when === 'Draws') {
     // "Whenever you draw a card", "whenever an opponent draws a card, if it isn't that player's turn".
     if (spec.drawer === 'You' && o.drawer !== controller) return false;

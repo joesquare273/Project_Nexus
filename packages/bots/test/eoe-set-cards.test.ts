@@ -1672,3 +1672,103 @@ describe('M11: cost reductions, combat Robots and spells', () => {
     expect([powerOf(u, u.cards[mine]!), zone(u, theirs)]).toEqual([6, 'graveyard']);
   });
 });
+
+// Group M12: Spacecraft, Command Bridge and combat statics.
+describe('M12: Spacecraft, Command Bridge and combat statics', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const charge = (n: number) => ({ namedCounters: { charge: n } }) as never;
+
+  it('Synthesizer Labship (2+) animates another artifact as a 2/2 flier at combat; Mechan Shieldmate attacks once an artifact entered', () => {
+    let s = newGame();
+    put(s, 'P1', 'synthesizer-labship', 'battlefield', charge(2));
+    const ring = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'beginCombat', pick(ring));
+    s = settle(s, pick(ring)).state;
+    expect([toughnessOf(s, s.cards[ring]!), hasKeyword(s, s.cards[ring]!, 'Flying')]).toEqual([2, true]);
+
+    let t = newGame();
+    const mate = put(t, 'P1', 'mechan-shieldmate');
+    const ring2 = put(t, 'P1', 'sol-ring', 'hand');
+    t = goTo(t, 'main1');
+    const attackAll = (st: GameState) => {
+      try {
+        const a = goTo(structuredClone(st), 'declareAttackers');
+        return a.pending.kind === 'declareAttackers' && applyAction(a, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: mate, defender: 'P2' }] }).ok;
+      } catch {
+        return false;
+      }
+    };
+    expect(attackAll(t)).toBe(false);
+    mana(t, 'P1', { C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: ring2 }).state;
+    expect(attackAll(t)).toBe(true);
+  });
+
+  it('Entropic Battlecruiser (8+): attacking makes each opponent discard (losing 3 for it at 1+), or lose 3 if they can’t', () => {
+    const attack = (cards: number) => {
+      let s = newGame();
+      const ship = put(s, 'P1', 'entropic-battlecruiser', 'battlefield', charge(8));
+      s.players.P2!.hand = [];
+      for (let i = 0; i < cards; i++) put(s, 'P2', 'plasma-bolt', 'hand');
+      s = goTo(s, 'declareAttackers');
+      const life = s.players.P2!.life;
+      s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: ship, defender: 'P2' }] })).state;
+      if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [s.pending.cards[0]!] })).state;
+      return [life - s.players.P2!.life, s.players.P2!.hand.length];
+    };
+    expect(attack(1)).toEqual([3, 0]);
+    expect(attack(0)).toEqual([3, 0]);
+  });
+
+  it('Infinite Guideline Station makes a tapped Robot for each multicolored permanent you control', () => {
+    let s = newGame();
+    const station = put(s, 'P1', 'infinite-guideline-station', 'hand');
+    put(s, 'P1', 'pinnacle-emissary');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, R: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: station }).state;
+    // The Emissary and the Station itself.
+    const robots = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe');
+    expect([robots.length, robots.every((id) => s.cards[id]!.tapped)]).toEqual([2, true]);
+  });
+
+  it('Command Bridge is sacrificed unless you tap an untapped permanent you control', () => {
+    let s = newGame();
+    const bridge = put(s, 'P1', 'command-bridge', 'hand');
+    const ring = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: bridge }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'tap' });
+    let t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect([zone(t, bridge), t.cards[ring]!.tapped]).toEqual(['battlefield', true]);
+    t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [bridge] })).state;
+    expect(zone(t, bridge)).toBe('graveyard');
+  });
+
+  it('Skystinger gets +5/+0 blocking a flier; Frenzied Baloth’s creature spells can’t be countered', () => {
+    let s = newGame();
+    const flier = put(s, 'P1', 'quantum-riddler');
+    const stinger = put(s, 'P2', 'skystinger');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: flier, defender: 'P2' }] });
+    for (let i = 0; i < 10 && s.pending.kind !== 'declareBlockers'; i++) s = act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player });
+    s = settle(act(s, { type: 'DeclareBlockers', player: 'P2', blocks: [{ blocker: stinger, attacker: flier }] })).state;
+    expect(powerOf(s, s.cards[stinger]!)).toBe(8);
+
+    let t = newGame();
+    put(t, 'P1', 'frenzied-baloth');
+    const bear = put(t, 'P1', 'meltstrider-eulogist', 'hand');
+    const divert = put(t, 'P2', 'divert-disaster', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { G: 1, C: 2 });
+    mana(t, 'P2', { U: 1, C: 1 });
+    t = act(t, { type: 'CastSpell', player: 'P1', card: bear });
+    t = act(t, { type: 'PassPriority', player: 'P1' });
+    t = act(t, { type: 'CastSpell', player: 'P2', card: divert, targets: [card(bear)] });
+    for (let i = 0; i < 6 && t.pending.kind === 'priority'; i++) t = act(t, { type: 'PassPriority', player: t.pending.player });
+    t = settle(t).state;
+    expect(zone(t, bear)).toBe('battlefield');
+  });
+});
+

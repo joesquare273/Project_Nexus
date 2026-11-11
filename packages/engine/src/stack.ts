@@ -2396,7 +2396,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'CounterUnlessPays':
       // The spell's controller chooses: pay (choose the spell) or let it be countered.
       for (const id of cards) {
-        if (!s.stack.some((i) => i.kind === 'spell' && i.card === id) || defOf(s, s.cards[id]!).cantBeCountered) continue;
+        if (!s.stack.some((i) => i.kind === 'spell' && i.card === id) || cantBeCountered(s, id)) continue;
         const owner = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem).controller;
         r.choiceQueue = [...(r.choiceQueue ?? []), { player: owner, purpose: 'payToAvoidCounter', cards: [id], min: 0, max: 1, payGeneric: amount, ...(effect.exileCountered ? { exileIfCountered: true } : {}), ...(effect.tokenIfPaid ? { tokenIfPaid: effect.tokenIfPaid, tokenFor: item.controller } : {}) }];
       }
@@ -3025,7 +3025,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       for (const id of cards) {
         const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === id);
-        if (index < 0 || defOf(s, s.cards[id]!).cantBeCountered) continue;
+        if (index < 0 || cantBeCountered(s, id)) continue;
         const countered = s.stack[index] as SpellItem;
         s.stack.splice(index, 1);
         ctx.ev.push({ type: 'SpellCountered', card: id, defId: s.cards[id]!.defId, by: source });
@@ -4268,6 +4268,9 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     // "Then attach it to a creature you control" (Sidequest: Play Blitzball).
     const src = s.cards[sourceOf(r.item)]!;
     for (const id of cards) if (src.zone === 'battlefield' && isCreatureOnBattlefield(s, s.cards[id])) attach(ctx, src.id, id);
+  } else if (pending.purpose === 'tap') {
+    // "Unless you tap an untapped permanent you control" (Command Bridge).
+    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') tap(ctx, s.cards[id]!);
   } else if (pending.purpose === 'mark') {
     // Only remembered (in r.chosen, below): the next effects act on them (target ChosenCards).
   } else if (pending.purpose === 'link') {
@@ -4606,4 +4609,13 @@ function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, e
   if (equipCostsLess) definition.equipCostsLess = (definition.equipCostsLess ?? 0) + equipCostsLess;
   const printing = c.copy?.printing ?? c.printing ?? definition.printing;
   return createToken(ctx, c.defId, controller, { definition, artDefId: c.copy?.artDefId ?? c.defId, copiedName: definition.name, ...(printing ? { printing } : {}) });
+}
+
+/** "This spell can't be countered", or a creature spell of a player with Frenzied Baloth. */
+function cantBeCountered(s: GameState, id: InstanceId): boolean {
+  const c = s.cards[id]!;
+  if (defOf(s, c).cantBeCountered) return true;
+  if (!defOf(s, c).types.includes('creature')) return false;
+  const controller = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem | undefined)?.controller ?? c.owner;
+  return battlefield(s).some((p) => p.controller === controller && !p.phasedOut && !!defOf(s, p).statics?.some((st) => st.creatureSpellsCantBeCountered));
 }

@@ -202,6 +202,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return Object.values(s.cards).filter((c) => c.zone === 'exile' && c.owner === player && !c.isToken).length;
     case 'DifferentlyNamedLandsYouControl':
       return new Set(yours().filter((c) => def(s, c).types.includes('land')).map((c) => def(s, c).name)).size;
+    case 'MulticoloredPermanentsYouControl':
+      return yours().filter((c) => colorsOf(def(s, c)).length >= 2).length;
     case 'OtherCreaturesAndArtifactsYouControl':
       return yours().filter((c) => c.id !== source && (creature(c) || def(s, c).types.includes('artifact'))).length;
     case 'GreatestManaValueAmongYourArtifacts':

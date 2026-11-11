@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M12
+
+Seven more cards: 205 of 261 built. New trigger event `Discards` (Entropic
+Battlecruiser), a Blocks condition on the blocked creature (Skystinger),
+"tap an untapped permanent you control" as a choice (Command Bridge), the
+count `MulticoloredPermanentsYouControl`, statics that let creature spells
+dodge counters and stop combat damage prevention (Frenzied Baloth), and
+defender lifted after an artifact entered this turn (Mechan Shieldmate).
+
 ### Edge of Eternities main set, group M11
 
 12 more cards: 198 of 261 built. Activated abilities can now cost less

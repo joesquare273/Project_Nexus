@@ -359,6 +359,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       }
     }
     if (d.types.includes('land')) landEntered(s, c.controller);
+    if (d.types.includes('artifact') && s.players[c.controller]) s.players[c.controller]!.artifactEnteredTurn = s.turnNumber;
   }
 }
 
@@ -490,10 +491,12 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     const shell = victim ? battlefield(s).find((c) => c.controller === victim && !c.phasedOut && defOf(s, c).absorbsDamage && hasType(s, c, 'creature') && c.id !== hit?.id) : undefined;
     if (shell) target = { kind: 'card', card: shell.id };
   }
+  // Frenzied Baloth: "Combat damage can't be prevented."
+  const unpreventable = combat && battlefield(s).some((c) => !c.phasedOut && !!defOf(s, c).statics?.some((st) => st.combatDamageCantBePrevented));
   // "Prevent all damage that would be dealt to you this turn" (Ultimate Magic: Holy).
-  if (target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
+  if (!unpreventable && target.kind === 'player' && s.players[target.player]!.preventDamageTurn === s.turnNumber) return;
   // Summon: Alexander: "prevent all damage that would be dealt to creatures you control this turn".
-  if (target.kind === 'card' && s.cards[target.card]?.zone === 'battlefield' && s.players[s.cards[target.card]!.controller]?.preventCreatureDamageTurn === s.turnNumber && hasType(s, s.cards[target.card]!, 'creature')) return;
+  if (!unpreventable && target.kind === 'card' && s.cards[target.card]?.zone === 'battlefield' && s.players[s.cards[target.card]!.controller]?.preventCreatureDamageTurn === s.turnNumber && hasType(s, s.cards[target.card]!, 'creature')) return;
   // Trance Kuja: "If a Wizard you control would deal damage to a permanent or player, it deals double that damage instead."
   if (subtypesOf(s, source).includes('Wizard')) {
     const kujas = battlefield(s).filter((c) => c.controller === source.controller && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.doubleWizardDamage)).length;
@@ -503,21 +506,21 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   const hurt = target.kind === 'player' ? target.player : target.kind === 'card' ? s.cards[target.card]?.controller : undefined;
   if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;
   // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
-  if (target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
+  if (!unpreventable && target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
     const victim = s.cards[target.card]!;
     // Protection prevents damage from sources of that color (rule 702.16e).
-    if (protectedFrom(s, victim, source)) return;
+    if (!unpreventable && protectedFrom(s, victim, source)) return;
     // Diamond Weapon: "Prevent all combat damage that would be dealt to Diamond Weapon".
-    if (combat && defOf(s, victim).statics?.some((st) => st.affects === 'Self' && st.preventCombatDamage)) return;
+    if (!unpreventable && combat && defOf(s, victim).statics?.some((st) => st.affects === 'Self' && st.preventCombatDamage)) return;
     // A shield counter is removed instead (rule 122.1c).
-    if (countersOf(victim, 'shield') > 0) {
+    if (!unpreventable && countersOf(victim, 'shield') > 0) {
       removeCounters(ctx, victim.id, 'shield', 1);
       return;
     }
     // Gatta and Luzzu: prevent it and put that many +1/+1 counters on it.
     const into = s.temporaryEffects.find((e) => e.affected === victim.id && e.flags?.includes('damageBecomesCounters'));
-    if (into) {
+    if (into && !unpreventable) {
       addCounters(ctx, victim.id, amount, s.cards[into.source]?.controller);
       return;
     }
@@ -715,6 +718,7 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
     if(source.id!==id && spec.entersWithExtraCountersFromCount && staticAffects(s,source,spec,c)) addCounters(ctx,id,countOf(s,spec.entersWithExtraCountersFromCount,source.controller,source.id));
   }
   if(d.types.includes('land')) landEntered(s,controller);
+  if(d.types.includes('artifact')) player(s,controller).artifactEnteredTurn=s.turnNumber;
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
   // A Saga token's first lore counter comes after it exists, so its own chapter I sees it (rule 714.3a; Esper Terra's copies).
   if(d.saga) addCounters(ctx,id,1,controller,'lore');
