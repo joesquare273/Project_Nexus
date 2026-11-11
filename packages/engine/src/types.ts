@@ -728,6 +728,8 @@ export type Amount =
         /** Land cards put into a graveyard by DiscardOrSacrifice earlier in the same ability. */
         | 'landsToGraveyardThisWay'
         /** The power (or mana value) of the permanent sacrificed to pay this activated ability's cost, as it last was. */
+        /** CountersAdded triggers: how many counters were put on ("draw that many cards": Terrasymbiosis). */
+        | 'countersAddedInEvent'
         | 'sacrificedPower'
         | 'sacrificedManaValue';
       plus?: number;
@@ -944,7 +946,8 @@ export interface EffectSpec {
    * damage equal to its power"), or the previous chosen target ("it deals
    * damage equal to its power to each other creature"), which isn't dealt any itself.
    */
-  damageSource?: 'TriggeringObject' | 'PreviousTarget';
+  /** `EquippedCreature`: the creature the source Aura or Equipment is attached to deals it, equal to its power when the amount is `sourcePower` (Pain for All), or fights (Meltstrider's Resolve). */
+  damageSource?: 'TriggeringObject' | 'PreviousTarget' | 'EquippedCreature';
   /** SearchLibraryToHand: onto the battlefield tapped instead if an opponent controls more lands than you (Scholar of New Horizons). */
   toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
@@ -1005,6 +1008,10 @@ export interface EffectSpec {
   payCost?: boolean;
   /** ChoosePermanent: the previous target player chooses instead of you ("target opponent may have you ...": Terrapact Intimidator). */
   chosenByPreviousTargetPlayer?: boolean;
+  /** AddCounters: the same number of those counters is removed at the beginning of the next end step (Systems Override). */
+  removeAtEndStep?: boolean;
+  /** CreateTokenCopy: "except it's legendary" (Adagia). */
+  copyLegendary?: boolean;
   /** Counter: you draw a card if less mana was spent on the countered spell than its mana value (Unravel). */
   drawIfUnderpaid?: boolean;
   /** CreateToken: the tokens are sacrificed at end of combat (Kavaron Harrier). */
@@ -1557,7 +1564,7 @@ export interface StaticSpec {
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
    * turn ("the second spell you cast each turn costs {2} less").
    */
-  spellCostReduction?: { generic: number; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean };
+  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean };
   /**
    * "... triggers an additional time": a triggered ability of a permanent
    * this one's controller controls triggers once more. `selfAndEquipment`:
@@ -1571,6 +1578,8 @@ export interface StaticSpec {
   ward?: number;
   /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
   basePowerToughness?: [number, number];
+  /** "Can't be blocked by more than one creature." */
+  cantBeBlockedByMoreThanOne?: boolean;
   /** "Can't be blocked by creatures with power 2 or less." */
   cantBeBlockedByPowerAtMost?: number;
   /** Affected creatures can't be blocked (with `conditions`: Illvoi Infiltrator, "if you've cast two or more spells this turn"). */
@@ -2194,6 +2203,8 @@ export interface CardInstance {
   unearthed?: boolean;
   /** A myriad token: exiled at end of combat. */
   exileAtEndOfCombat?: boolean;
+  /** Counters removed at the beginning of the next end step (Systems Override's charge counters). */
+  removeCountersAtEndStep?: { counter: AnyCounter; amount: number };
   /** Sacrificed at end of combat (Kavaron Harrier's Robot). */
   sacrificeAtEndOfCombat?: boolean;
   /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */

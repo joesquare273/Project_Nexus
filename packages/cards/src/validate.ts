@@ -131,6 +131,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetPlayerMatching',
       'lifeLostInEvent',
       'landsToGraveyardThisWay',
+      'countersAddedInEvent',
       'sacrificedPower',
       'sacrificedManaValue',
     ];

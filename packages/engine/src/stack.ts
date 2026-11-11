@@ -1175,7 +1175,7 @@ export function spellCost(
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
-        cost = reduceGeneric(cost, r.generic);
+        cost = reduceGeneric(cost, r.generic * (r.perCount ? countOf(s, r.perCount, source.controller, source.id) : 1));
       }
     }
   }
@@ -2000,7 +2000,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                           ? powerOver(s, r)
                         : a.of === 'landsToGraveyardThisWay'
                           ? (r.landsToGraveyard ?? 0)
-                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent'
+                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent' || a.of === 'countersAddedInEvent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
@@ -2353,10 +2353,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const subject = item.kind === 'ability' ? item.subject : undefined;
       const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined;
       if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
-      const from = effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source;
+      const host = effect.damageSource === 'EquippedCreature' ? s.cards[source]?.attachedTo : undefined;
+      if (effect.damageSource === 'EquippedCreature' && (!host || s.cards[host]?.zone !== 'battlefield')) return;
+      const from = host ?? (effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source);
       let excess = false;
       // "Deals damage equal to its power": its power now, if it's still on the battlefield (rule 608.2h).
-      let damage = amount;
+      let damage = host && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'sourcePower' ? Math.max(0, powerOf(s, s.cards[host]!)) : amount;
       if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetPower') damage = Math.max(0, powerOf(s, s.cards[chosen]!)) * (effect.doubleIfKicked && item.kind === 'spell' && (item.kicks ?? 0) > 0 ? 2 : 1);
       // Cut Propulsion: "If that creature has flying, it deals twice that much damage to itself instead."
       if (effect.doubleIfPreviousTargetIs && chosen && matchesObject(s, effect.doubleIfPreviousTargetIs, s.cards[chosen]!, { controller: item.controller, source })) damage *= 2;
@@ -2483,7 +2485,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'Fight': {
       // Both must still be creatures on the battlefield (rule 701.14b). "Target creature you control fights": the earlier target fights.
-      const fighter = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : source;
+      const fighter = effect.damageSource === 'EquippedCreature' ? (s.cards[source]?.attachedTo ?? source) : effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : source;
       const src = s.cards[fighter];
       if (!isCreatureOnBattlefield(s, src)) return;
       for (const id of onBattlefield) {
@@ -2554,6 +2556,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       for (const id of onBattlefield) {
         addCounters(ctx, id, amount, item.controller, effect.counter);
+        if (effect.removeAtEndStep && s.cards[id]!.zone === 'battlefield') s.cards[id]!.removeCountersAtEndStep = { counter: effect.counter ?? '+1/+1', amount };
         // Sazh Katzroy: "then double the number of +1/+1 counters on that creature".
         if (effect.thenDouble && s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, s.cards[id]!.counters ?? 0, item.controller);
       }
@@ -3221,7 +3224,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'CreateTokenCopy':
       for (const id of onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
-          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess);
+          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess, effect.copyLegendary);
           if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
           // "At the beginning of your next end step": only the controller's.
           if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
@@ -4615,10 +4618,12 @@ function quinaFrogs(ctx: Ctx, controller: PlayerId, r?: Resolving): void {
   }
 }
 
-function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number): InstanceId {
+function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number, legendary?: boolean): InstanceId {
   const c = ctx.s.cards[original]!, definition = structuredClone(copiableDefinition(ctx.s, c));
   // Firion: "except it has 'This Equipment's equip abilities cost {2} less to activate.'"
   if (equipCostsLess) definition.equipCostsLess = (definition.equipCostsLess ?? 0) + equipCostsLess;
+  // Adagia: "except it's legendary".
+  if (legendary) definition.supertypes = [...new Set([...(definition.supertypes ?? []), 'Legendary' as const])];
   const printing = c.copy?.printing ?? c.printing ?? definition.printing;
   return createToken(ctx, c.defId, controller, { definition, artDefId: c.copy?.artDefId ?? c.defId, copiedName: definition.name, ...(printing ? { printing } : {}) });
 }

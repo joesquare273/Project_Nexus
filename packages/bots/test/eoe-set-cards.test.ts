@@ -2051,3 +2051,127 @@ describe('M14: one-off designs', () => {
     expect([zone(t, a), zone(t, b), t.cards[a]!.counters, t.cards[b]!.counters]).toEqual(['battlefield', 'battlefield', 1, 1]);
   });
 });
+
+// Group M15: Auras, affinity and more one-offs.
+describe('M15: Auras, affinity and more one-offs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const atP2 = { targets: (o: { kind: string; player?: string }[][]) => o.find((x) => x[0]?.kind === 'player' && x[0].player === 'P2')! } as never;
+  const charge = (n: number) => ({ namedCounters: { charge: n } }) as never;
+
+  it('Starfield Vocalist: an entering permanent’s trigger happens twice; Sami gives every spell affinity for artifacts', () => {
+    let s = newGame();
+    put(s, 'P1', 'starfield-vocalist');
+    const captain = put(s, 'P1', 'honored-knight-captain', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: captain }).state;
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'human-soldier-token-eoe')).toHaveLength(2);
+
+    let t = newGame();
+    put(t, 'P1', 'sami-wildcat-captain');
+    put(t, 'P1', 'sol-ring');
+    put(t, 'P1', 'sol-ring');
+    const bear = put(t, 'P1', 'meltstrider-eulogist', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { G: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bear }).state;
+    expect(zone(t, bear)).toBe('battlefield');
+  });
+
+  it('Rust Harvester exiles an artifact card to grow and deal damage equal to its power; Gene Pollinator taps another permanent for any color', () => {
+    let s = newGame();
+    const harvester = put(s, 'P1', 'rust-harvester');
+    const scrap = put(s, 'P1', 'sol-ring', 'graveyard');
+    const bug = put(s, 'P1', 'gene-pollinator');
+    const land = put(s, 'P1', 'forest');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 2 });
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: harvester, ability: 0, costCards: [scrap], targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect([zone(s, scrap), s.cards[harvester]!.counters, s.players.P2!.life]).toEqual(['exile', 1, life - 2]);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: bug, ability: 0, costCards: [land] }).state;
+    expect([s.pending.kind, s.cards[land]!.tapped, s.cards[bug]!.tapped]).toEqual(['chooseMana', true, true]);
+  });
+
+  it('Systems Override steals until end of turn; a Spacecraft gets ten charge counters that are removed at the end step', () => {
+    let s = newGame();
+    const override = put(s, 'P1', 'systems-override', 'hand');
+    const ship = put(s, 'P2', 'lumen-class-frigate', 'battlefield', charge(3));
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: override, targets: [card(ship)] }).state;
+    expect([s.cards[ship]!.controller, s.cards[ship]!.namedCounters?.charge, hasKeyword(s, s.cards[ship]!, 'Haste')]).toEqual(['P1', 13, true]);
+    s = goTo(s, 'end');
+    expect(s.cards[ship]!.namedCounters?.charge).toBe(3);
+    s = goTo(s, 'main1');
+    expect(s.cards[ship]!.controller).toBe('P2');
+  });
+
+  it('Terrasymbiosis draws that many cards, once each turn; Adagia (12+) makes a legendary copy', () => {
+    let s = newGame();
+    put(s, 'P1', 'terrasymbiosis');
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    const honor = put(s, 'P1', 'archenemys-charm', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: honor, mode: 2, targets: [card(bear)] } as never, { accept: true }).state;
+    expect([s.cards[bear]!.counters, s.players.P1!.hand.length]).toEqual([2, hand - 1 + 2]);
+
+    let t = newGame();
+    const adagia = put(t, 'P1', 'adagia-windswept-bastion', 'battlefield', charge(12));
+    const ring = put(t, 'P1', 'sol-ring');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, C: 3 });
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: adagia, ability: 0, targets: [card(ring)] }).state;
+    const copy = t.players.P1!.battlefield.find((id) => t.cards[id]!.isToken)!;
+    expect(currentDefinition(t, t.cards[copy]!).supertypes).toContain('Legendary');
+    expect(currentDefinition(t, t.cards[copy]!).name).toBe('Sol Ring');
+  });
+
+  it('Tractor Beam taps and takes the creature, which doesn’t untap; it goes back when the Aura leaves', () => {
+    let s = newGame();
+    const beam = put(s, 'P1', 'tractor-beam', 'hand');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: beam, targets: [card(foe)] }).state;
+    expect([s.cards[foe]!.controller, s.cards[foe]!.tapped, s.cards[beam]!.attachedTo]).toEqual(['P1', true, foe]);
+    s = goTo(goTo(goTo(goTo(s, 'end'), 'main1'), 'end'), 'main1');
+    expect([s.activePlayer, s.cards[foe]!.tapped]).toEqual(['P1', true]);
+    moveCard({ s, ev: [] }, beam, 'graveyard');
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(s.cards[foe]!.controller).toBe('P2');
+  });
+
+  it('Meltstrider’s Resolve: the enchanted creature fights, gets +0/+2 and can’t be double-blocked; Pain for All passes damage on to each opponent', () => {
+    let s = newGame();
+    const resolve = put(s, 'P1', 'meltstriders-resolve', 'hand');
+    const mine = put(s, 'P1', 'icecave-crasher');
+    const foe = put(s, 'P2', 'meltstrider-eulogist');
+    const b1 = put(s, 'P2', 'starport-security');
+    const b2 = put(s, 'P2', 'starport-security');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: resolve, targets: [card(mine)] }, pick(foe)).state;
+    expect([zone(s, foe), s.cards[mine]!.damage, toughnessOf(s, s.cards[mine]!)]).toEqual(['graveyard', 3, 6]);
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: mine, defender: 'P2' }] });
+    for (let i = 0; i < 6 && s.pending.kind !== 'declareBlockers'; i++) s = settle(act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player })).state;
+    expect(rejected(s, { type: 'DeclareBlockers', player: 'P2', blocks: [{ blocker: b1, attacker: mine }, { blocker: b2, attacker: mine }] })).toMatch(/more than one/);
+
+    let t = newGame();
+    const pain = put(t, 'P1', 'pain-for-all', 'hand');
+    const host = put(t, 'P1', 'icecave-crasher');
+    const bolt = put(t, 'P1', 'plasma-bolt', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { R: 2, C: 2 });
+    const life = t.players.P2!.life;
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: pain, targets: [card(host)] }, atP2).state;
+    expect(t.players.P2!.life).toBe(life - 4);
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(host)] }).state;
+    for (let i = 0; i < 4 && t.stack.length > 0 && t.pending.kind === 'priority'; i++) t = settle(act(t, { type: 'PassPriority', player: t.pending.player })).state;
+    expect(t.players.P2!.life).toBe(life - 4 - 2);
+  });
+});

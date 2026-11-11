@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M15
+
+Ten more cards: 237 of 261 built. An Aura's enchanted creature can deal
+damage or fight (`damageSource: 'EquippedCreature'`), counters can be
+removed again at the next end step, every spell can get affinity
+(`spellCostReduction.perCount`), token copies can be legendary, and a
+creature can be limited to one blocker.
+
 ### Edge of Eternities main set, group M14
 
 Eight one-off designs: 227 of 261 built. Cards remember the mana spent to

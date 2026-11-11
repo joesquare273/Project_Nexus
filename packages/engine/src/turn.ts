@@ -19,6 +19,7 @@ import {
   phaseInFor,
   player,
   sacrifice,
+  removeCounters,
   untap,
   type Ctx,
   staticRule,
@@ -135,6 +136,10 @@ export function enterStep(ctx: Ctx, step: Step): void {
     }
       // Blitz and unearth: "at the beginning of the next end step" (done as the step begins, without using the stack).
       for (const c of battlefield(s)) {
+        if (c.removeCountersAtEndStep) {
+          removeCounters(ctx, c.id, c.removeCountersAtEndStep.counter, c.removeCountersAtEndStep.amount);
+          delete c.removeCountersAtEndStep;
+        }
         if (c.unattachAtEndStep) {
           delete c.unattachAtEndStep;
           delete c.attachedTo;

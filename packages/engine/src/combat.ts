@@ -257,6 +257,9 @@ export function blockProblem(s: GameState, playerId: PlayerId, blocks: Block[]):
     if (count === 1 && hasKeyword(s, s.cards[attackerId]!, 'Menace')) {
       return `"${attackerId}" has menace and can't be blocked except by two or more creatures.`;
     }
+    if (count > 1 && battlefield(s).some((src) => (currentDefinition(s, src).statics ?? []).some((spec) => spec.cantBeBlockedByMoreThanOne && staticAffects(s, src, spec, s.cards[attackerId]!)))) {
+      return `"${attackerId}" can't be blocked by more than one creature.`;
+    }
     const need = blockersNeeded(s, s.cards[attackerId]!);
     if (count < need) return `"${attackerId}" can't be blocked except by ${need} or more creatures.`;
   }

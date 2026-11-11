@@ -161,6 +161,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           subjectController: s.cards[e.card]!.controller,
           ...(e.by ? { by: e.by } : {}),
           ...(e.counter ? { counter: e.counter } : {}),
+          amount: e.amount,
         });
         break;
       case 'CardTapped':
