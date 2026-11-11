@@ -2425,3 +2425,72 @@ describe('M19: Close Encounter, Terminal Velocity and Sothera', () => {
     expect([zone(s, sothera), zone(s, theirs), s.cards[theirs]!.controller, s.cards[theirs]!.counters]).toEqual(['graveyard', 'battlefield', 'P1', 2]);
   });
 });
+
+// Group M20: Famished Worldsire, Ragost and Weftwalking.
+describe('M20: devour, Foods and Weftwalking', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('Famished Worldsire devours lands for three counters each, then puts lands from the top X cards onto the battlefield tapped', () => {
+    let s = newGame();
+    const sire = put(s, 'P1', 'famished-worldsire', 'hand');
+    const lands = [put(s, 'P1', 'forest'), put(s, 'P1', 'forest')];
+    s = goTo(s, 'main1');
+    const top = put(s, 'P1', 'island', 'library');
+    s.players.P1!.library = [top, ...s.players.P1!.library.filter((id) => id !== top)];
+    mana(s, 'P1', { G: 3, C: 5 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: sire });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'devourOnEntry' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: lands })).state;
+    expect([zone(s, sire), s.cards[sire]!.counters, zone(s, lands[0]!)]).toEqual(['battlefield', 6, 'graveyard']);
+    s = drain(s);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop' });
+    expect((s.pending as { cards: string[] }).cards).toContain(top);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top] })).state;
+    expect([zone(s, top), s.cards[top]!.tapped]).toEqual(['battlefield', true]);
+  });
+
+  it('Ragost: your artifacts are Foods that can be eaten for 3 life, he throws one for 3 damage, and untaps at end step if you gained life', () => {
+    let s = newGame();
+    const ragost = put(s, 'P1', 'ragost-deft-gastronaut');
+    const a = put(s, 'P1', 'sol-ring');
+    const b = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    expect(currentDefinition(s, s.cards[a]!).subtypes).toContain('Food');
+    mana(s, 'P1', { C: 3 });
+    const life = s.players.P1!.life;
+    const foe = s.players.P2!.life;
+    const eat = currentDefinition(s, s.cards[a]!).activated!.length - 1;
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: a, ability: eat }).state);
+    expect([zone(s, a), s.players.P1!.life]).toEqual(['graveyard', life + 3]);
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: ragost, ability: 0, costCards: [b] }).state);
+    expect([zone(s, b), s.players.P2!.life, s.cards[ragost]!.tapped]).toEqual(['graveyard', foe - 3, true]);
+    s = drain(settle(goTo(s, 'end')).state);
+    expect(s.cards[ragost]!.tapped).toBe(false);
+  });
+
+  it('Weftwalking: cast, it refills your hand; the first spell each player casts on their turn is free', () => {
+    let s = newGame();
+    const weft = put(s, 'P1', 'weftwalking', 'hand');
+    put(s, 'P1', 'sol-ring', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: weft }).state);
+    expect([s.players.P1!.hand.length, s.players.P1!.graveyard.length]).toEqual([7, 0]);
+    // P1 already cast a spell this turn: the next one isn't free. On P2's turn, their first spell is.
+    const mine = put(s, 'P1', 'quantum-riddler', 'hand');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: mine })).toBeTruthy();
+    moveCard({ s, ev: [] }, mine, 'graveyard');
+    const theirs = put(s, 'P2', 'quantum-riddler', 'hand');
+    const second = put(s, 'P2', 'quantum-riddler', 'hand');
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.activePlayer).toBe('P2');
+    s = drain(cast(s, { type: 'CastSpell', player: 'P2', card: theirs }).state);
+    expect(zone(s, theirs)).toBe('battlefield');
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: second })).toBeTruthy();
+  });
+});

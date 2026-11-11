@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCardType, chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
-import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
+import { chooseCopy, chooseEntryCopy, chooseEntryCounters, chooseDevour, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -154,6 +154,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'dredge') chooseDredge(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'copyOnEntry') chooseEntryCopy(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'removeCountersOnEntry') chooseEntryCounters(ctx, action.player, action.cards);
+        else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'devourOnEntry') chooseDevour(ctx, action.player, action.cards);
         else chooseCards(ctx, action.player, action.cards);
         break;
       case 'BottomCards':

@@ -40,7 +40,7 @@ export function continuousSources(s: GameState): CardInstance[] {
   const cached = sourceCache.get(s);
   if (cached?.version === version && cached.count === count && cached.defs === s.cardDefs) return cached.sources;
   const sources = s.turnOrder.flatMap(p=>s.players[p]!.battlefield.map(id=>s.cards[id]!)).filter(c=>
-    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.noncreatureIfGraveyardBelow !== undefined));
+    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.noncreatureIfGraveyardBelow !== undefined));
   sourceCache.set(s,{version,count,defs:s.cardDefs,sources});
   return sources;
 }
@@ -97,6 +97,12 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     out.subtypes = (out.subtypes ?? []).filter((t) => CREATURE_SUBTYPES.has(t));
     for (const key of ['triggers', 'activated', 'statics', 'keywords', 'manaAbility', 'entersTapped', 'entersTappedUnless', 'landcycling', 'cycling', 'adventure'] as const) delete (out as Partial<CardDefinition>)[key];
     out.produces = ['C'];
+  }
+  // Ragost: "Artifacts you control are Foods in addition to their other types and have '{2}, {T}, Sacrifice this artifact: You gain 3 life.'"
+  if (out.types.includes('artifact') && continuousSources(s).some((src) => src.controller === c.controller && !src.phasedOut && copiableDefinition(s, src).statics?.some((st) => st.artifactsAreFoods))) {
+    change();
+    out.subtypes = [...new Set([...(out.subtypes ?? []), 'Food'])];
+    out.activated = [...(out.activated ?? []), { cost: { mana: '{2}', tap: true, sacrificeThis: true }, effects: [{ effect: 'GainLife', amount: 3, target: 'You' }] }];
   }
   // Type/color effects never ask for power or abilities, avoiding a recursive layer evaluation.
   const layers: { source: CardInstance; spec: StaticSpec; timestamp: number }[] = [];

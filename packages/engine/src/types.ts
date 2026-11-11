@@ -791,6 +791,8 @@ export interface EffectSpec {
   tokenSizeFromCount?: CountKind;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
   spellOrPermanent?: boolean;
+  /** ShuffleGraveyardIntoLibrary: your hand too (Weftwalking). */
+  alsoHand?: boolean;
   /** ShuffleGraveyardIntoLibrary: you gain 1 life for each card shuffled in (Elixir). */
   gainLifePerCard?: boolean;
   /** CantCastSpellsThisTurn: only noncreature spells. */
@@ -1375,6 +1377,8 @@ export interface TriggerSpec {
   ifSubjectControllerHasMoreLands?: boolean;
   /** Dies / LeavesBattlefield of the source: only if its power was at least this as it left (Syr Vondam). */
   ifLastPowerAtLeast?: number;
+  /** "When this enters, if you cast it". */
+  ifCast?: boolean;
   /** Intervening "if": some player controls no creatures (Sothera). */
   ifAPlayerControlsNoCreatures?: boolean;
   /** Intervening "if": an opponent controls more lands than you (Sunstar Expansionist). */
@@ -1612,6 +1616,10 @@ export interface StaticSpec {
   basePowerToughness?: [number, number];
   /** Tapestry Warden: each affected creature with toughness greater than its power assigns combat damage, and stations, with its toughness. */
   toughnessForDamageAndStation?: boolean;
+  /** Weftwalking: the first spell each player casts during each of their turns may be cast without paying its mana cost. */
+  firstSpellEachTurnFree?: boolean;
+  /** Ragost: artifacts you control are Foods in addition to their other types and have "{2}, {T}, Sacrifice this artifact: You gain 3 life." */
+  artifactsAreFoods?: boolean;
   /** Tannuk, Steadfast Second: artifact cards and red creature cards in your hand have warp with this cost. */
   grantWarpInHand?: string;
   /** "Can't be blocked by more than one creature." */
@@ -1999,6 +2007,8 @@ export interface CardDefinition {
    * counters" (Sin): chosen as the spell resolves.
    */
   entersRemovingCounters?: boolean;
+  /** Devour land N (rule 702.82): as it enters from being cast, you may sacrifice any number of lands; it enters with N times that many +1/+1 counters (Famished Worldsire). */
+  devourLand?: number;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
   saga?: number;
   /** The kind of those counters (entersWithCounters or entersWithXCounters), if not +1/+1 ("enters with a page counter on it", "X charge counters"). */
@@ -2602,7 +2612,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

@@ -1108,7 +1108,10 @@ export function spellCost(
   // Bolas's Citadel: life instead of the mana cost (paid in castSpell).
   if (from === 'library' && payer && libraryTopCostsLife(s, payer)) return parseManaCost('');
   const way = from === 'graveyard' && card ? extra.castGroup ? 'group' : extra.graveyardSource ? 'static' : graveyardWay(s, payer!, card, extra.adventure) : null;
-  const base = permission?.free
+  // Weftwalking: the first spell a player casts during their own turn is free (X is 0; they can still pay an alternative cost or for X instead).
+  const weft = !permission && !alternative && x === 0 && way === null && from !== 'command' && !!payer && s.activePlayer === payer && (s.players[payer]!.spellsCastThisTurn ?? 0) === 0
+    && battlefield(s).some((p) => !p.phasedOut && (defOf(s, p).statics ?? []).some((st) => st.firstSpellEachTurnFree));
+  const base = permission?.free || weft
     ? undefined
     : permission?.manaCost
       ? permission.manaCost
@@ -3009,6 +3012,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ShuffleGraveyardIntoLibrary': {
       const p = player(s, item.controller);
       const moving = p.graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      if (effect.alsoHand) moving.push(...p.hand);
       for (const id of moving) moveCard(ctx, id, 'library');
       shuffleInPlace(s, p.library);
       ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
@@ -4003,6 +4007,14 @@ export function resolveTop(ctx: Ctx): void {
       }
       item.entryCopy = null;
     }
+    if (entering.devourLand && item.entryCounters === undefined) {
+      const lands = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && hasType(s, c, 'land')).map((c) => c.id);
+      if (lands.length) {
+        s.pending = { kind: 'chooseCards', purpose: 'devourOnEntry', player: item.controller, cards: lands, min: 0, max: lands.length, item: item.id };
+        return;
+      }
+      item.entryCounters = 0;
+    }
     if (entering.entersRemovingCounters && item.entryCounters === undefined) {
       const withCounters = battlefield(s).filter((c) => totalCounters(c) > 0 && (['artifact', 'creature', 'enchantment'] as const).some((t) => hasType(s, c, t))).map((c) => c.id);
       if (withCounters.length) {
@@ -4615,6 +4627,24 @@ export function chooseEntryCopy(ctx: Ctx, playerId: PlayerId, cards: InstanceId[
   const artifactOk = !!chosen && !!defOf(s, s.cards[item.card]!).entersAsCopyOfArtifact && chosen.zone === 'battlefield' && hasType(s, chosen, 'artifact');
   if (chosen && !artifactOk && !isCreatureOnBattlefield(s, chosen)) reject('Choose a creature (or, for this card, an artifact) still on the battlefield.');
   item.entryCopy = chosen ? { card: chosen.id, object: chosen.zoneChanges ?? 0 } : null;
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  resolveTop(ctx);
+}
+
+/** The ChooseCards answer for devour: sacrifice the chosen lands; it enters with N times that many +1/+1 counters. */
+export function chooseDevour(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s, p = s.pending, item = s.stack.at(-1);
+  if (p.kind !== 'chooseCards' || p.purpose !== 'devourOnEntry' || p.player !== playerId) reject('You are not choosing lands to devour.');
+  if (item?.kind !== 'spell' || item.id !== p.item) throw new Error('The entering spell is not on top of the stack.');
+  const problem = choiceProblem(s, p, cards);
+  if (problem) reject(problem);
+  let eaten = 0;
+  for (const id of cards) {
+    if (s.cards[id]!.zone !== 'battlefield') continue;
+    sacrifice(ctx, id);
+    eaten++;
+  }
+  item.entryCounters = eaten * (defOf(s, s.cards[item.card]!).devourLand ?? 0);
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   resolveTop(ctx);
 }

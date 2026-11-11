@@ -279,7 +279,7 @@ function repairPending(ctx: Ctx): void {
       // A player who left doesn't choose; the spell or ability carries on without them.
       if (pending.purpose === 'handSize') break;
       // The entering spell left the stack, or its controller left the game.
-      if (pending.purpose === 'copyOnEntry' || pending.purpose === 'removeCountersOnEntry') {
+      if (pending.purpose === 'copyOnEntry' || pending.purpose === 'removeCountersOnEntry' || pending.purpose === 'devourOnEntry') {
         if (s.stack.at(-1)?.id !== pending.item || s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
         break;
       }

@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M20
+
+Three more: 255 of 261 built. Devour land (a choice as the spell resolves,
+like Sin's counters; the bots eat about half their lands), Ragost's Foods
+(artifacts gain the subtype and the life ability in `currentDefinition`),
+and Weftwalking (in `spellCost`: a player's first spell on their own turn
+costs no mana unless they choose X or an alternative cost).
+
 ### Mana symbols under tapped lands
 
 The note under a card you're tapping for mana ("+{R}") now draws the mana

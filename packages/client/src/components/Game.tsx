@@ -1332,6 +1332,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'divideDamage' ? `to be dealt 1 damage (${c.counterCount} left to divide)${c.min === 0 ? '; choose none to deal no damage' : ''}`
                   : c.purpose === 'copyOnEntry' ? 'for your entering creature to copy; choose none to have it enter as itself'
                   : c.purpose === 'attachToSource' ? 'to attach to the creature (an Equipment you control); choose none to skip'
+                  : c.purpose === 'devourOnEntry' ? 'to sacrifice (devour); the entering creature gets three +1/+1 counters for each'
                   : c.purpose === 'removeCountersOnEntry' ? 'to remove all counters from; the entering creature gets twice that many +1/+1 counters'
                   : c.purpose === 'artifactCopy' ? 'to create an artifact token copy of; choose none for no token'
                   : c.purpose === 'hideaway' ? 'to exile face down (hideaway); the rest go on the bottom of your library in a random order'
