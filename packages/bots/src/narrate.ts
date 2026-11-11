@@ -168,6 +168,8 @@ function effectText(e: EffectSpec): string {
       return `the owner of ${who} shuffles it into their library, then reveals the top card; if it's a permanent card, they put it onto the battlefield`;
     case 'DrawCards':
       return `${you ? 'draw' : `${who} draws`} ${plural('card')}`;
+    case 'SetLifeHalfStarting':
+      return `${you ? 'your' : `${who}'s`} life total becomes half the starting life total, rounded up`;
     case 'GainLife':
       return `${you ? 'you gain' : `${who} gains`} ${n} life`;
     case 'LoseLife':

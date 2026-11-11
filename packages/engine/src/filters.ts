@@ -106,6 +106,7 @@ export function matchesObject(
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
   if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
+  if (f.manaValueAtMostSourceManaSpent && objectManaValue(s, obj) > ((from.source ? s.cards[from.source]?.manaSpentToCast : undefined) ?? 0)) return false;
   if (f.ofSourceChosenType) {
     const chosen = from.source ? s.cards[from.source]?.chosenCardType : undefined;
     if (!chosen || !def.types.includes(chosen)) return false;

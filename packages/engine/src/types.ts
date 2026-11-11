@@ -268,6 +268,8 @@ export const EFFECT_KINDS = [
   'DealDamage',
   'DrawCards',
   'GainLife',
+  /** Each target player's life total becomes half the starting life total, rounded up (The Endstone). */
+  'SetLifeHalfStarting',
   'LoseLife',
   'Destroy',
   'Exile',
@@ -999,6 +1001,10 @@ export interface EffectSpec {
   sacrificeAtEndStep?: boolean;
   /** CreateToken with `sacrificeAtEndStep` and `atYourEndStep`: at the end step of your next turn, not this one (Kav Landseeker). */
   onYourNextTurn?: boolean;
+  /** ExileUntilFound: the card is cast this turn by paying its costs, not free (Territorial Bruntar). */
+  payCost?: boolean;
+  /** ChoosePermanent: the previous target player chooses instead of you ("target opponent may have you ...": Terrapact Intimidator). */
+  chosenByPreviousTargetPlayer?: boolean;
   /** Counter: you draw a card if less mana was spent on the countered spell than its mana value (Unravel). */
   drawIfUnderpaid?: boolean;
   /** CreateToken: the tokens are sacrificed at end of combat (Kavaron Harrier). */
@@ -1224,6 +1230,8 @@ export interface ObjectFilter {
   manaValueAtLeast?: number;
   /** Mana value X or less, X being the spell's ("each nonland permanent with mana value X or less": Gaze of Granite). */
   manaValueAtMostX?: boolean;
+  /** Mana value X or less, X being the mana spent to cast the ability's source (Astelli Reclaimer). */
+  manaValueAtMostSourceManaSpent?: boolean;
   /** Has no counters on it ("creatures with no counters on them"). */
   noCounters?: boolean;
   /**
@@ -1329,6 +1337,8 @@ export interface TriggerSpec {
   ifPlayerDealtCombatDamageThisTurn?: number;
   /** Intervening "if": the player who controls the entering permanent controls more lands than you. */
   ifSubjectControllerHasMoreLands?: boolean;
+  /** Dies / LeavesBattlefield of the source: only if its power was at least this as it left (Syr Vondam). */
+  ifLastPowerAtLeast?: number;
   /** Intervening "if": an opponent controls more lands than you (Sunstar Expansionist). */
   ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
@@ -2124,6 +2134,8 @@ export interface CardInstance {
   linkedExile?: { source: InstanceId; sourceObject: number; lookers: PlayerId[] };
   /** The value of {X} it was cast with, while it's on the battlefield. */
   xPaid?: number;
+  /** The mana spent to cast it, while it's on the battlefield from that spell (Astelli Reclaimer). */
+  manaSpentToCast?: number;
   /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
   kicksPaid?: number;
   /** A card in a hand that was revealed ("reveal it and put it into your hand"): every player sees it until it leaves the hand. */

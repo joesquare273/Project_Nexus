@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M14
+
+Eight one-off designs: 227 of 261 built. Cards remember the mana spent to
+cast them (Astelli Reclaimer), triggers can check the source's power as it
+left (Syr Vondam), an opponent can make a choice for an ability (Terrapact
+Intimidator), and a new effect sets life to half the starting total (The
+Endstone).
+
 ### Edge of Eternities main set, group M13
 
 14 more cards: 219 of 261 built. Three Planets and The Eternity Elevator

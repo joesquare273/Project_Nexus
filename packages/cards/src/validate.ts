@@ -356,7 +356,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'Fight' && !inAbility && e.damageSource !== 'PreviousTarget') err('Fight in a spell needs damageSource PreviousTarget (a chosen creature fights).');
   if (e.attachToReturnedTarget !== undefined && (e.effect !== 'ReturnToBattlefield' || e.target !== 'TargetCardInGraveyard' || !isNonNegativeInt(e.attachToReturnedTarget))) err('attachToReturnedTarget needs ReturnToBattlefield targeting a graveyard card and a whole target index.');
   if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');
-  if (e.keep !== undefined && (e.effect !== 'LookAtTopPutInHand' || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
+  if (e.keep !== undefined && ((e.effect !== 'LookAtTopPutInHand' && e.effect !== 'ReturnFromGraveyardTotalManaValue') || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
   if (e.free && e.effect !== 'AllowCastFromGraveyard' && e.effect !== 'PlayLinkedExile' && e.effect !== 'ExileTopCardToPlay') err('free is only for AllowCastFromGraveyard, PlayLinkedExile and ExileTopCardToPlay.');
   if (e.effect === 'AllowCastFromGraveyard' && e.target !== 'TargetCardInGraveyard') err('AllowCastFromGraveyard needs a TargetCardInGraveyard target.');
   if (e.effect === 'ChooseAndDestroy' && !e.filter) err('ChooseAndDestroy needs a filter.');

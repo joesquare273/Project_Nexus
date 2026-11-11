@@ -1927,3 +1927,127 @@ describe('M13: Planets, new tokens and spells', () => {
     expect(v.players.P1!.battlefield.filter((id) => v.cards[id]!.isToken)).toHaveLength(0);
   });
 });
+
+// Group M14: one-off designs.
+describe('M14: one-off designs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const kill = (s: GameState, id: string, opts: never = {} as never) => {
+    s.cards[id]!.damage = 99;
+    return cast(s, { type: 'PassPriority', player: 'P1' }, opts).state;
+  };
+
+  it('Syr Vondam grows and gains life when another creature of yours dies; dying with power 4 or more, it destroys a nonland permanent', () => {
+    let s = newGame();
+    const syr = put(s, 'P1', 'syr-vondam-sunstar-exemplar');
+    const a = put(s, 'P1', 'meltstrider-eulogist');
+    const b = put(s, 'P1', 'meltstrider-eulogist');
+    const ring = put(s, 'P2', 'sol-ring');
+    s = goTo(s, 'main1');
+    const life = s.players.P1!.life;
+    s = kill(s, a);
+    expect([s.cards[syr]!.counters, s.players.P1!.life]).toEqual([1, life + 1]);
+    // Power 3: nothing happens when it dies.
+    let t = kill(structuredClone(s), syr, pick(ring));
+    t = settle(t, pick(ring)).state;
+    expect(zone(t, ring)).toBe('battlefield');
+    s = kill(s, b);
+    s = kill(s, syr, pick(ring));
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), pick(ring)).state;
+    expect(zone(s, ring)).toBe('graveyard');
+  });
+
+  it('The Endstone draws for lands and spells, and sets your life to half the starting total at your end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'the-endstone');
+    const land = put(s, 'P1', 'forest', 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }).state;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.players.P1!.hand.length).toBe(hand);
+    s.players.P1!.life = 3;
+    s = settle(goTo(s, 'end')).state;
+    for (let i = 0; i < 4 && s.stack.length > 0; i++) s = settle(act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player })).state;
+    expect(s.players.P1!.life).toBe(10);
+  });
+
+  it('Memorial Vault exiles one plus the sacrificed artifact’s mana value to play this turn; Territorial Bruntar’s landfall exiles to a nonland card you may cast', () => {
+    let s = newGame();
+    const vault = put(s, 'P1', 'memorial-vault');
+    const ring = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    const top = s.players.P1!.library.slice(0, 2);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: vault, ability: 0, costCards: [ring] }).state;
+    expect(top.map((id) => zone(s, id))).toEqual(['exile', 'exile']);
+    expect(top.every((id) => s.cards[id]!.playableFromExile?.untilTurn === s.turnNumber)).toBe(true);
+
+    let t = newGame();
+    put(t, 'P1', 'territorial-bruntar');
+    const land = put(t, 'P1', 'forest', 'hand');
+    t = goTo(t, 'main1');
+    const spell = put(t, 'P1', 'sol-ring', 'library');
+    const buried = put(t, 'P1', 'forest', 'library');
+    t.players.P1!.library = [buried, spell, ...t.players.P1!.library.filter((id) => id !== spell && id !== buried)];
+    t = cast(t, { type: 'PlayLand', player: 'P1', card: land }).state;
+    expect([zone(t, buried), zone(t, spell)]).toEqual(['exile', 'exile']);
+    expect(rejected(t, { type: 'CastSpell', player: 'P1', card: spell })).toBeTruthy();
+    mana(t, 'P1', { C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(zone(t, spell)).toBe('battlefield');
+  });
+
+  it('Hardlight Containment exiles an opponent’s creature while it’s on your artifact, which gets ward {1}', () => {
+    let s = newGame();
+    const aura = put(s, 'P1', 'hardlight-containment', 'hand');
+    const ring = put(s, 'P1', 'sol-ring');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(ring)] }, pick(foe)).state;
+    expect([s.cards[aura]!.attachedTo, zone(s, foe)]).toEqual([ring, 'exile']);
+    moveCard({ s, ev: [] }, aura, 'graveyard');
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(zone(s, foe)).toBe('battlefield');
+  });
+
+  it('Terrapact Intimidator: the opponent gives you two Landers, or it gets two +1/+1 counters', () => {
+    let s = newGame();
+    const kavu = put(s, 'P1', 'terrapact-intimidator', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kavu }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'mark' });
+    let t = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [kavu] })).state;
+    expect([t.players.P1!.battlefield.filter((id) => t.cards[id]!.defId === 'lander-token-eoe').length, t.cards[kavu]!.counters ?? 0]).toEqual([2, 0]);
+    t = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [] })).state;
+    expect([t.players.P1!.battlefield.filter((id) => t.cards[id]!.defId === 'lander-token-eoe').length, t.cards[kavu]!.counters]).toEqual([0, 2]);
+  });
+
+  it('Astelli Reclaimer returns a noncreature permanent card with mana value up to the mana spent; Scout for Survivors returns up to three small creatures with counters', () => {
+    let s = newGame();
+    const angel = put(s, 'P1', 'astelli-reclaimer', 'hand');
+    const cheap = put(s, 'P1', 'sol-ring', 'graveyard');
+    const pricey = put(s, 'P1', 'the-endstone', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: angel, alternative: true });
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length > 0; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect([zone(s, cheap), zone(s, pricey)]).toEqual(['battlefield', 'graveyard']);
+
+    let t = newGame();
+    const scout = put(t, 'P1', 'scout-for-survivors', 'hand');
+    const a = put(t, 'P1', 'starport-security', 'graveyard');
+    const b = put(t, 'P1', 'starport-security', 'graveyard');
+    const big = put(t, 'P1', 'quantum-riddler', 'graveyard');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, C: 2 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: scout }).state;
+    expect(rejected(t, { type: 'ChooseCards', player: 'P1', cards: [big] })).toBeTruthy();
+    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [a, b] })).state;
+    for (let i = 0; i < 4 && t.pending.kind === 'chooseCards'; i++) t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect([zone(t, a), zone(t, b), t.cards[a]!.counters, t.cards[b]!.counters]).toEqual(['battlefield', 'battlefield', 1, 1]);
+  });
+});

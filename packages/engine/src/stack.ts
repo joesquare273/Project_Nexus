@@ -2382,6 +2382,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DrawCards':
       for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
       return;
+    case 'SetLifeHalfStarting':
+      for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, Math.ceil(s.format.startingLife / 2) - s.players[t.player]!.life);
+      return;
     case 'GainLife':
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, amount);
       return;
@@ -2681,7 +2684,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'ReturnFromGraveyardTotalManaValue': {
       const cards = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
-      if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards, min: 0, max: cards.length, maxTotalManaValue: amount }];
+      if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards, min: 0, max: Math.min(cards.length, effect.keep ?? cards.length), maxTotalManaValue: amount }];
       return;
     }
     case 'ExileFromYourGraveyard': {
@@ -2883,7 +2886,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
         return;
       }
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional || effect.anyNumber ? 0 : 1, max: effect.anyNumber ? cards.length : 1 }];
+      const chooser = effect.chosenByPreviousTargetPlayer && r.previousTarget?.kind === 'player' ? r.previousTarget.player : item.controller;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional || effect.anyNumber ? 0 : 1, max: effect.anyNumber ? cards.length : 1 }];
       return;
     }
     case 'AddSubtypes':
@@ -3453,7 +3457,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           s.cards[top]!.castPermission = {
             player: item.controller,
             turn: s.turnNumber,
-            free: true,
+            ...(effect.payCost ? {} : { free: true }),
             ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
             // Jodah: cast as the trigger resolves, so timing doesn't apply, and only right away.
             ...(effect.lesserThanSubject || effect.discover ? { ignoreTiming: true, immediate: true } : {}),
@@ -3954,6 +3958,7 @@ export function resolveTop(ctx: Ctx): void {
       if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
       if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
+      c.manaSpentToCast = item.manaSpent;
       if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
       if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
