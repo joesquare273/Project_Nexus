@@ -18,6 +18,20 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Mana symbols under tapped lands
+
+The note under a card you're tapping for mana ("+{R}") now draws the mana
+symbols instead of the text in braces.
+
+### Edge of Eternities main set, group M19
+
+Three more: 252 of 261 built. Close Encounter's additional cost is a chosen
+creature or warped exiled creature card (`costCards`, offered through the
+legal actions); Terminal Velocity marks the permanent it puts onto the
+battlefield (haste, end-step sacrifice, and a leave-the-battlefield trigger
+queued by `moveCard`); Sothera exiles opponents' chosen creatures linked to
+it and returns one after sacrificing itself.
+
 ### Edge of Eternities main set, group M18
 
 Three more: 249 of 261 built. Tannuk, Steadfast Second grants warp to cards

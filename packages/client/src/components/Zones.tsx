@@ -5,7 +5,7 @@ import { defOf, isCreature } from '../game/cards.ts';
 import { YOU, type Placement } from '../game/session.ts';
 import { groupTokenCards } from '../game/tokenStacks.ts';
 import { FitBoard } from './FitBoard.tsx';
-import { CardBack, CardFace, ManaCost } from './Card.tsx';
+import { CardBack, CardFace, ManaCost, ManaText } from './Card.tsx';
 
 /** How a card or player should be highlighted right now. */
 export type Mark = 'effect-source' | 'effect-target'
@@ -98,7 +98,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
           </div>
         )}
       </div>
-      {note && <div className="card-note">{note}</div>}
+      {note && <div className="card-note"><ManaText text={note} size={14} /></div>}
     </div>
   );
 }
