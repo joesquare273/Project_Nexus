@@ -192,6 +192,7 @@ with their real images but can't be played. Tests:
 | M18 (2026-11-11) | 3 cards: Tannuk, Steadfast Second (`grantWarpInHand`); Tapestry Warden (`toughnessForDamageAndStation`); Requiem Monolith (flag `damageDrawsAndDrains`, no stack) | 249 of 261 |
 | M19 (2026-11-11) | 3 cards: Close Encounter (`additionalCost.chooseCreatureOrWarped`, amount `chosenCostPower`); Terminal Velocity (`terminalVelocity`, CardInstance `leavesDealsManaValueDamage`); Sothera, the Supervoid (`exileLinked`, `ifAPlayerControlsNoCreatures`, `PutExiledWithThisOntoBattlefield`) | 252 of 261 |
 | M20 (2026-11-11) | 3 cards: Famished Worldsire (`devourLand`, pending purpose `devourOnEntry`; only when cast); Ragost, Deft Gastronaut (`artifactsAreFoods`); Weftwalking (`firstSpellEachTurnFree`, trigger `ifCast`, `alsoHand`) | 255 of 261 |
+| M21 (2026-11-11) | 4 cards: Steelswarm Operator (`manaAbility.restricted`, `manaRestricted`; its second ability uses the stack); Mmmenon, the Right Hand (`grantsManaRestricted`); Moonlit Meditation (`firstTokensBecomeCopies`); Lightstall Inquisitor (`exileToPlayTaxed`). Left: Tezzeret, Cruel Captain and The Dominion Bracelet | 259 of 261 |
 
 Still to come: 4 warp cards (Anticausal Vestige, Astelli Reclaimer, Starfield
 Vocalist, Pinnacle Emissary), 3 void cards, 8 Lander cards, 4 Spacecraft and

@@ -1,3 +1,4 @@
+import type { ManaRestriction } from './types.ts';
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
@@ -602,6 +603,8 @@ export interface ManaUse {
   noncreatureSpell?: boolean;
   /** An artifact spell, or an ability of an artifact source. */
   artifact?: boolean;
+  /** The other restricted pools that can pay for this. */
+  restricted?: ManaRestriction[];
   /** Filled with the mana of each type that was spent (converge). */
   spentOut?: Partial<Record<ManaType, number>>;
   /** How many {B} to pay with 2 life each ({B/P}, K'rrik), as the player chose; unset: only what mana can't cover. */
@@ -614,6 +617,7 @@ function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
   if (use.equipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
   if (use.noncreatureSpell) for (const t of MANA_TYPES) pool[t] += p.noncreatureSpellMana[t];
   if (use.artifact && p.artifactMana) for (const t of MANA_TYPES) pool[t] += p.artifactMana[t];
+  for (const kind of use.restricted ?? []) if (p.restrictedMana?.[kind]) for (const t of MANA_TYPES) pool[t] += p.restrictedMana[kind]![t];
   return pool;
 }
 
@@ -689,7 +693,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
   if (!spent) reject('Not enough mana in your mana pool.');
   for (const t of MANA_TYPES) {
     let n = spent[t] ?? 0;
-    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana], [use.artifact, p.artifactMana ?? emptyManaPool()]] as const) {
+    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana], [use.artifact, p.artifactMana ?? emptyManaPool()], ...(use.restricted ?? []).map((kind) => [true, p.restrictedMana?.[kind] ?? emptyManaPool()] as const)] as const) {
       if (!allowed) continue;
       const restricted = Math.min(n, pool[t]);
       pool[t] -= restricted;
@@ -713,6 +717,11 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 }
 
 /** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
+/** The restricted mana that can pay for a spell: artifact-spell mana, and mana for spells cast from anywhere other than your hand. */
+export function spellManaRestrictions(def: CardDefinition, from: string): ManaRestriction[] {
+  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
+}
+
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
   return lifeForBlack(s, playerId, cost, use) !== null;
 }
@@ -756,9 +765,9 @@ export function activateManaAbility(
   if (staticRule(s, c, 'cantActivateAbilities')) reject("That permanent's activated abilities can't be activated.");
   if (grantedBy !== undefined) {
     if (tapCreature !== undefined || output !== undefined || !grantedManaAbilities(s, c).some((ability) => ability.source === grantedBy && ability.mana.includes(mana))) reject('That granted mana ability is not available.');
-    if (c.tapped || (c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That creature cannot tap for mana right now.');
+    if (c.tapped || (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That permanent cannot tap for mana right now.');
     tap(ctx, c);
-    addMana(ctx, playerId, mana, id);
+    addMana(ctx, playerId, mana, id, grantedManaAbilities(s, c).find((ability) => ability.source === grantedBy && ability.mana.includes(mana))?.restricted);
     kinnanBonus(ctx, playerId, c, mana);
     return;
   }
@@ -805,7 +814,7 @@ export function activateManaAbility(
   // Nyxbloom Ancient: three times as much (each one triples again).
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
-  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
+  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.restricted ?? (ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined));
   // With `addCounterFirst`, the amount above already counted this counter.
   if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
   // Ultima, Origin of Oblivion: "Whenever you tap a land for {C}, add an additional {C}" (a triggered mana ability).
@@ -1079,8 +1088,10 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
     const source = graveyardLandSource(s, playerId, c);
     if (source && (defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.perPermanentType)) markPermanentTypeUsed(s, source, { ...defOf(s, c), types: ['land'] });
   }
+  const exileTapped = from === 'exile' && !!c.playableFromExile?.landEntersTapped;
   ctx.ev.push({ type: 'LandPlayed', player: playerId, card: id, from });
   moveCard(ctx, id, 'battlefield');
+  if (exileTapped) c.tapped = true;
   c.controller = playerId;
   c.summoningSick = true;
   if (entersTapped(s, c, reveal)) c.tapped = true;
@@ -1123,6 +1134,8 @@ export function spellCost(
           ? def.foretell
           : def.manaCost;
   let cost = parseManaCost(base);
+  // Lightstall Inquisitor: "Each spell cast this way costs {1} more to cast."
+  if (from === 'exile' && card?.playableFromExile?.costMore && !permission) cost = { ...cost, generic: cost.generic + card.playableFromExile.costMore };
   // "Mana of any type can be spent to cast that spell."
   const anyType = (extra.castGroup && s.castGroups?.find((g) => g.id === extra.castGroup)?.anyManaType) || (from === 'exile' && card?.playableFromExile?.anyManaType && card.playableFromExile.player === payer);
   if (anyType) {
@@ -1302,7 +1315,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = { ...cost, generic: cost.generic - delved.length };
   }
   const spentScryMana: CreatureScryMana[] = [];
-  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
+  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), restricted: spellManaRestrictions(def, from), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
   // Sunburst granted to this spell: Lux Artillery (artifact creature spells), Solar Array (your next artifact spell this turn).
   const grantedSunburst = !def.sunburst && (
     battlefield(s).some((src) => src.controller === playerId && !src.phasedOut && (defOf(s, src).statics ?? []).some((st) => st.grantSunburst && matchesObject(s, st.grantSunburst, c, { controller: playerId, source: src.id }, playerId, def)))
@@ -1776,7 +1789,7 @@ export function activateAbility(
     checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id, spec.cost.discardFilter);
   }
   if (rc && !rc.from && (!counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) reject(`There ${rc.amount && rc.amount > 1 ? `aren't ${rc.amount} counters` : "is no counter"} to remove for that.`);
-  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact'), ...(hasType(s, c, 'artifact') ? { restricted: ['artifactAbility' as const] } : {}) });
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
@@ -2078,7 +2091,7 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       else {
         const max = effect.anyNumber ? hand.length : Math.min(amount, hand.length);
         const min = effect.anyNumber || effect.optional ? 0 : effect.orOneMatching ? Math.min(1, max) : max;
-        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max, ...(effect.orOneMatching ? { orOneMatching: effect.orOneMatching } : {}) }];
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max, ...(effect.orOneMatching ? { orOneMatching: effect.orOneMatching } : {}), ...(effect.exileToPlayTaxed ? { exileToPlayTaxed: true } : {}) }];
       }
       continue;
     }
@@ -3395,7 +3408,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const recipient = targets.find(t => t.kind === 'player');
       // "Add {R} for each lore counter": no color to choose.
       if (effect.manaType) {
-        if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source);
+        if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source, effect.manaRestricted);
         return;
       }
       if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(effect.manaTypes ? { options: [...effect.manaTypes] } : {}) };
@@ -4219,6 +4232,11 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const damage = milled.reduce((sum, id) => sum + manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost)), 0);
       for (const id of milled) moveCard(ctx, id, 'graveyard');
       dealDamage(ctx, sourceOf(r.item), { kind: 'player', player: pending.player }, damage, false);
+    }
+  } else if (pending.purpose === 'discard' && pending.exileToPlayTaxed) {
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile');
+      if (s.cards[id]?.zone === 'exile') s.cards[id]!.playableFromExile = { player: pending.player, source: sourceOf(r.item), whileExiled: true, costMore: 1, landEntersTapped: true };
     }
   } else if (pending.purpose === 'discard') {
     for (const id of cards) discard(ctx, id);

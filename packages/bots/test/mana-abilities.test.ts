@@ -33,7 +33,7 @@ describe('mana abilities', () => {
       // Restricted mana (only for Equipment, artifacts or noncreature spells) has its own pools.
       const pool = (st: typeof s) => {
         const p = st.players.P1!;
-        return [p.manaPool, p.equipmentMana, p.artifactMana ?? {}, p.noncreatureSpellMana].flatMap((m) => Object.values(m) as number[]).reduce((x, y) => x + y, 0);
+        return [p.manaPool, p.equipmentMana, p.artifactMana ?? {}, p.noncreatureSpellMana, ...Object.values(p.restrictedMana ?? {})].flatMap((m) => Object.values(m) as number[]).reduce((x, y) => x + y, 0);
       };
       for (const a of ways) {
         const r = applyAction(s, a);

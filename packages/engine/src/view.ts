@@ -1,3 +1,4 @@
+import type { ManaRestriction } from './types.ts';
 // Per-player filtered views and events (PRD 8). The server sends each
 // player only what they are allowed to know. Nothing here assumes a single
 // opponent: the filter takes a viewer and treats everyone else the same.
@@ -62,6 +63,7 @@ export interface PlayerView {
   noncreatureSpellMana: ManaPool;
   /** Mana only for artifact spells and abilities of artifacts. */
   artifactMana?: ManaPool;
+  restrictedMana?: Partial<Record<ManaRestriction, ManaPool>>;
   eliminated: boolean;
 }
 
@@ -131,6 +133,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       equipmentMana: { ...p.equipmentMana },
       noncreatureSpellMana: { ...p.noncreatureSpellMana },
       ...(p.artifactMana ? { artifactMana: { ...p.artifactMana } } : {}),
+      ...(p.restrictedMana ? { restrictedMana: structuredClone(p.restrictedMana) } : {}),
       eliminated: p.eliminated,
     };
   }

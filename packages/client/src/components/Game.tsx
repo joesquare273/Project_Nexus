@@ -1207,7 +1207,7 @@ function PromptBar(p: PromptProps) {
   } else if (p.paying) {
     // The mana you'd have once the marked sources are tapped (floating mana included).
     const pl = p.planState.players[YOU]!;
-    const ready = [pl.manaPool, pl.equipmentMana, pl.artifactMana ?? {}, pl.noncreatureSpellMana]
+    const ready = [pl.manaPool, pl.equipmentMana, pl.artifactMana ?? {}, pl.noncreatureSpellMana, ...Object.values(pl.restrictedMana ?? {})]
       .flatMap((pool) => Object.entries(pool).flatMap(([m, n]) => Array.from({ length: n as number }, () => `{${m}}`)))
       .join('');
     text =

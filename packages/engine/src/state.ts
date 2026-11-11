@@ -1,8 +1,9 @@
+import type { ManaRestriction } from './types.ts';
 // Low-level helpers shared by the rules modules. They mutate a working copy
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { backFaceDefinition, currentDefinition as defOf } from './cardface.ts';
+import { backFaceDefinition, copiableDefinition, currentDefinition as defOf } from './cardface.ts';
 import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped, objectManaValue } from './typerules.ts';
@@ -66,6 +67,7 @@ export function cloneState(s: GameState): GameState {
       equipmentMana: { ...p.equipmentMana },
       noncreatureSpellMana: { ...p.noncreatureSpellMana },
       ...(p.artifactMana ? { artifactMana: { ...p.artifactMana } } : {}),
+      ...(p.restrictedMana ? { restrictedMana: structuredClone(p.restrictedMana) } : {}),
     };
   }
   const copyItem = <T extends GameState['stack'][number]>(item: T): T => ({
@@ -700,6 +702,20 @@ export function untap(ctx: Ctx, c: CardInstance): boolean {
 export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, copy?: CardInstance['copy'], doubled = false): InstanceId {
   const s = ctx.s;
   if (!s.cardDefs[defId]) throw new Error(`Missing token definition "${defId}".`);
+  if (!doubled) {
+    // Moonlit Meditation: "The first time you would create one or more tokens each turn, you may instead create that many tokens that are copies of enchanted permanent."
+    const p = player(s, controller);
+    const key = `${s.resolving?.item.id ?? ''}:${s.resolving?.next ?? ''}:${s.stack.length}`;
+    const first = p.firstTokens?.turn !== s.turnNumber ? ((p.firstTokens = { turn: s.turnNumber, key }), true) : p.firstTokens.key === key;
+    const aura = first ? battlefield(s).find((x) => x.controller === controller && !x.phasedOut && !!x.attachedTo && s.cards[x.attachedTo]?.zone === 'battlefield' && (defOf(s, x).statics ?? []).some((st) => st.firstTokensBecomeCopies)) : undefined;
+    if (aura) {
+      const host = s.cards[aura.attachedTo!]!;
+      const definition = structuredClone(copiableDefinition(s, host));
+      const printing = host.copy?.printing ?? host.printing ?? definition.printing;
+      defId = host.defId;
+      copy = { definition, artDefId: host.copy?.artDefId ?? host.defId, copiedName: definition.name, ...(printing ? { printing } : {}) };
+    }
+  }
   // Exalted Sunborn: twice that many tokens (each such permanent doubles again). The extra tokens are
   // created alongside; effects that go on to act on "that token" act on the first one.
   if (!doubled) {
@@ -773,9 +789,10 @@ export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): v
 }
 
 /** Adds one mana; `restricted` mana goes to its own pool and can only pay for what it says. */
-export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact'): void {
+export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact' | ManaRestriction): void {
   const p = player(ctx.s, playerId);
-  if (restricted === 'equipment') p.equipmentMana[mana] += 1;
+  if (restricted === 'artifactSpell' || restricted === 'artifactAbility' || restricted === 'notFromHand') ((p.restrictedMana ??= {})[restricted] ??= emptyManaPool())[mana] += 1;
+  else if (restricted === 'equipment') p.equipmentMana[mana] += 1;
   else if (restricted === 'artifact') (p.artifactMana ??= emptyManaPool())[mana] += 1;
   else if (restricted === 'noncreatureSpell') p.noncreatureSpellMana[mana] += 1;
   else {
@@ -796,6 +813,7 @@ export function emptyAllManaPools(s: GameState): void {
     s.players[id]!.equipmentMana = emptyManaPool();
     s.players[id]!.noncreatureSpellMana = emptyManaPool();
     delete s.players[id]!.artifactMana;
+    delete s.players[id]!.restrictedMana;
   }
 }
 

@@ -18,6 +18,17 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M21
+
+Four more: 259 of 261 built; only Tezzeret, Cruel Captain (planeswalkers)
+and The Dominion Bracelet (controlling another player's turn) remain. New:
+general restricted mana (`ManaRestriction`, `PlayerState.restrictedMana`:
+artifact spells only, abilities of artifacts only, spells from outside your
+hand only) for Steelswarm Operator and Mmmenon; Moonlit Meditation replaces
+the first tokens a player creates each turn (in `createToken`); Lightstall
+Inquisitor's exiled cards are playable at a tax. The bots never tap the new
+restricted sources.
+
 ### Edge of Eternities main set, group M20
 
 Three more: 255 of 261 built. Devour land (a choice as the spell resolves,

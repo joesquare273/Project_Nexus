@@ -1,3 +1,4 @@
+import type { ManaRestriction } from './types.ts';
 // Enumerates legal actions for whoever the game is waiting on. Used by bots,
 // fuzz tests, and the client to highlight playable cards.
 //
@@ -18,6 +19,7 @@ import {
   activatedAbilities,
   activationProblem,
   alternativeCostProblem,
+  spellManaRestrictions,
   exileFromHandChoices,
   encounterChoices,
   canActAtSorcerySpeed,
@@ -104,6 +106,8 @@ export interface CostedOption {
   forNoncreatureSpell?: boolean;
   /** Mana that can only be spent on artifacts can pay for it. */
   forArtifact?: boolean;
+  /** Other restricted mana that can pay for it. */
+  restricted?: ManaRestriction[];
 }
 
 /**
@@ -220,6 +224,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
                 forEquipment: isEquipment(s, c),
                 forNoncreatureSpell: !def.types.includes('creature'),
                 forArtifact: def.types.includes('artifact'),
+                restricted: spellManaRestrictions(def, from),
               });
             }
           }
@@ -375,6 +380,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
             cost: abilityCost(s, spec, targets, c, x ?? 0),
             forEquipment: spec.equip ?? false,
             forArtifact: hasType(s, c, 'artifact'),
+            ...(hasType(s, c, 'artifact') ? { restricted: ['artifactAbility' as const] } : {}),
           });
          }
         }
@@ -622,7 +628,7 @@ export function getLegalActions(s: GameState): Action[] {
         }
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
-        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false, artifact: o.forArtifact ?? false })) actions.push(o.action);
+        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false, artifact: o.forArtifact ?? false, ...(o.restricted ? { restricted: o.restricted } : {}) })) actions.push(o.action);
       }
       for (const id of s.players[player]!.hand) {
         if (!foretellProblem(s, player, s.cards[id]!)) actions.push({ type: 'Foretell', player, card: id });

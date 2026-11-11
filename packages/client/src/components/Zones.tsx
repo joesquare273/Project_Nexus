@@ -310,16 +310,24 @@ function Battlefield({
   );
 }
 
-function ManaPool({ pool, equipment, noncreature, artifact }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool']; noncreature?: GameView['players'][string]['manaPool']; artifact?: GameView['players'][string]['manaPool'] }) {
+const RESTRICTED_TITLES: Record<string, string> = { artifactSpell: 'Only for artifact spells', artifactAbility: 'Only for abilities of artifacts', notFromHand: 'Only for spells cast from anywhere other than your hand' };
+
+function ManaPool({ pool, equipment, noncreature, artifact, others }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool']; noncreature?: GameView['players'][string]['manaPool']; artifact?: GameView['players'][string]['manaPool']; others?: NonNullable<GameView['players'][string]['restrictedMana']> }) {
   const symbols = (p: typeof pool) => Object.entries(p).flatMap(([t, n]) => Array.from({ length: n }, () => `{${t}}`));
   const normal = symbols(pool);
   const restricted = symbols(equipment);
   const forNoncreature = noncreature ? symbols(noncreature) : [];
   const forArtifact = artifact ? symbols(artifact) : [];
-  if (normal.length + restricted.length + forNoncreature.length + forArtifact.length === 0) return null;
+  const extra = Object.entries(others ?? {}).map(([kind, p]) => ({ kind, list: symbols(p as typeof pool) })).filter((e) => e.list.length > 0);
+  if (normal.length + restricted.length + forNoncreature.length + forArtifact.length + extra.length === 0) return null;
   return (
     <span className="pool" title="Mana pool">
       <ManaCost cost={normal.join('')} size={13} />
+      {extra.map((e) => (
+        <span key={e.kind} className="pool-restricted" title={RESTRICTED_TITLES[e.kind] ?? 'Restricted mana'}>
+          <ManaCost cost={e.list.join('')} size={13} />
+        </span>
+      ))}
       {restricted.length > 0 && (
         <span className="pool-restricted" title="Only for Equipment spells and equip abilities">
           <ManaCost cost={restricted.join('')} size={13} />
@@ -345,14 +353,14 @@ function ManaPool({ pool, equipment, noncreature, artifact }: { pool: GameView['
  * it fades), so everyone can see the mana going around.
  */
 function ManaLine({ p, note }: { p: GameView['players'][string]; note: { choosing?: string; tapped?: { key: number; mana: string } } | null }) {
-  const floating = [p.manaPool, p.equipmentMana, p.noncreatureSpellMana, p.artifactMana].some((pool) => pool && Object.values(pool).some((n) => n > 0));
+  const floating = [p.manaPool, p.equipmentMana, p.noncreatureSpellMana, p.artifactMana, ...Object.values(p.restrictedMana ?? {})].some((pool) => pool && Object.values(pool).some((n) => n > 0));
   if (!floating && !note?.choosing && !note?.tapped) return null;
   return (
     <div className="mana-line">
       {floating && (
         <span className="mana-line-item" title="Mana in their pool (it empties at the end of each step)">
           <span className="mana-line-label">Floating</span>
-          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} {...(p.artifactMana ? { artifact: p.artifactMana } : {})} />
+          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} {...(p.artifactMana ? { artifact: p.artifactMana } : {})} {...(p.restrictedMana ? { others: p.restrictedMana } : {})} />
         </span>
       )}
       {note?.choosing && (

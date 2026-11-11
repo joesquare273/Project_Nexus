@@ -2494,3 +2494,99 @@ describe('M20: devour, Foods and Weftwalking', () => {
     expect(rejected(s, { type: 'CastSpell', player: 'P2', card: second })).toBeTruthy();
   });
 });
+
+// Group M21: restricted mana, token replacement and exile-to-play.
+describe('M21: restricted mana, Moonlit Meditation and Lightstall Inquisitor', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('Steelswarm Operator: {U} only for artifact spells, or {U}{U} only for abilities of artifacts', () => {
+    let s = newGame();
+    const op = put(s, 'P1', 'steelswarm-operator');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const bear = put(s, 'P1', 'starport-security', 'hand');
+    s = goTo(s, 'main1');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: op, mana: 'U' });
+    expect([s.players.P1!.manaPool.U, s.players.P1!.restrictedMana?.artifactSpell?.U]).toEqual([0, 1]);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: bear })).toBeTruthy();
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state);
+    expect([zone(s, ring), s.players.P1!.restrictedMana?.artifactSpell?.U ?? 0]).toEqual(['battlefield', 0]);
+
+    let t = newGame();
+    const op2 = put(t, 'P1', 'steelswarm-operator');
+    const block = put(t, 'P1', 'nutrient-block');
+    const ring2 = put(t, 'P1', 'sol-ring', 'hand');
+    t = goTo(t, 'main1');
+    t = drain(cast(t, { type: 'ActivateAbility', player: 'P1', card: op2, ability: 0 }).state);
+    expect(t.players.P1!.restrictedMana?.artifactAbility?.U).toBe(2);
+    expect(rejected(t, { type: 'CastSpell', player: 'P1', card: ring2 })).toBeTruthy();
+    t = drain(cast(t, { type: 'ActivateAbility', player: 'P1', card: block, ability: 0 }).state);
+    expect(zone(t, block)).toBe('graveyard');
+  });
+
+  it('Mmmenon: your artifacts tap for {U} that only pays for spells from outside your hand, like an artifact off the top of your library', () => {
+    let s = newGame();
+    put(s, 'P1', 'mmmenon-the-right-hand');
+    const rock = put(s, 'P1', 'nutrient-block');
+    const inHand = put(s, 'P1', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    const top = put(s, 'P1', 'sol-ring', 'library');
+    s.players.P1!.library = [top, ...s.players.P1!.library.filter((id) => id !== top)];
+    const grant = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === rock && a.grantedBy)!;
+    expect(grant).toBeTruthy();
+    s = act(s, grant);
+    expect(s.players.P1!.restrictedMana?.notFromHand?.U).toBe(1);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: inHand })).toBeTruthy();
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: top }).state);
+    expect(zone(s, top)).toBe('battlefield');
+  });
+
+  it('Moonlit Meditation: the first tokens you create each turn are copies of the enchanted permanent instead', () => {
+    let s = newGame();
+    const aura = put(s, 'P1', 'moonlit-meditation', 'hand');
+    const host = put(s, 'P1', 'icecave-crasher');
+    const knight = put(s, 'P1', 'knight-luminary', 'hand');
+    const captain = put(s, 'P1', 'honored-knight-captain', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 1, W: 3, C: 6 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(host)] }).state);
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: knight }).state);
+    const tokens = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken).map((id) => currentDefinition(s, s.cards[id]!).name);
+    expect(tokens()).toEqual(['Icecave Crasher']);
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: captain }).state);
+    expect(tokens().sort()).toEqual(['Human Soldier', 'Icecave Crasher']);
+  });
+
+  it('Lightstall Inquisitor: each opponent exiles a card they may still play, a spell for {1} more and a land tapped', () => {
+    let s = newGame();
+    const inq = put(s, 'P1', 'lightstall-inquisitor', 'hand');
+    s.players.P2!.hand = [];
+    const ring = put(s, 'P2', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: inq }).state);
+    if (s.pending.kind === 'chooseCards') s = drain(settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [ring] })).state);
+    expect([zone(s, ring), s.cards[ring]!.playableFromExile?.costMore]).toEqual(['exile', 1]);
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.activePlayer).toBe('P2');
+    mana(s, 'P2', { C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: ring })).toBeTruthy();
+    mana(s, 'P2', { C: 1 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P2', card: ring }).state);
+    expect(zone(s, ring)).toBe('battlefield');
+
+    let t = newGame();
+    const inq2 = put(t, 'P1', 'lightstall-inquisitor', 'hand');
+    t.players.P2!.hand = [];
+    const land = put(t, 'P2', 'forest', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1 });
+    t = drain(cast(t, { type: 'CastSpell', player: 'P1', card: inq2 }).state);
+    if (t.pending.kind === 'chooseCards') t = drain(settle(act(t, { type: 'ChooseCards', player: 'P2', cards: [land] })).state);
+    t = goTo(goTo(t, 'end'), 'main1');
+    t = cast(t, { type: 'PlayLand', player: 'P2', card: land }).state;
+    expect([zone(t, land), t.cards[land]!.tapped]).toEqual(['battlefield', true]);
+  });
+});

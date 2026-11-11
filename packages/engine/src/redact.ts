@@ -253,6 +253,8 @@ const PLAYER_FIELDS = {
   equipmentMana: 'copy',
   noncreatureSpellMana: 'copy',
   artifactMana: 'copy',
+  restrictedMana: 'copy',
+  firstTokens: 'copy',
   landsPlayedThisTurn: 'copy',
   extraLandDrops: 'copy',
   eliminated: 'copy',

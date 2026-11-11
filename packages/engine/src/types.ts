@@ -22,6 +22,9 @@ export type ManaPool = Record<ManaType, number>;
 /** `x` counts {X} symbols. */
 export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][] } & Partial<Record<ManaType, number>>;
 
+/** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
+export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand';
+
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
@@ -791,6 +794,10 @@ export interface EffectSpec {
   tokenSizeFromCount?: CountKind;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
   spellOrPermanent?: boolean;
+  /** AddMana with `manaType`: the mana is restricted (Steelswarm Operator's second ability). */
+  manaRestricted?: ManaRestriction;
+  /** Discard: the card is exiled instead, and its owner may play it for as long as it stays exiled; spells cast this way cost {1} more and lands enter tapped (Lightstall Inquisitor). */
+  exileToPlayTaxed?: boolean;
   /** ShuffleGraveyardIntoLibrary: your hand too (Weftwalking). */
   alsoHand?: boolean;
   /** ShuffleGraveyardIntoLibrary: you gain 1 life for each card shuffled in (Elixir). */
@@ -1521,6 +1528,8 @@ export interface StaticSpec {
   goaded?: boolean;
   /** EquippedCreature has a separate tap ability adding one mana of one of these types. */
   grantsMana?: ManaType[];
+  /** With `grantsMana`: that mana is restricted (Mmmenon: only for spells cast from anywhere other than your hand). */
+  grantsManaRestricted?: ManaRestriction;
   /** "Prevent all combat damage that would be dealt to this creature" (Diamond Weapon). */
   preventCombatDamage?: boolean;
   /** "Twice that many +1/+1 counters are put on that creature instead" for each affected creature (The Earth Crystal). */
@@ -1616,6 +1625,8 @@ export interface StaticSpec {
   basePowerToughness?: [number, number];
   /** Tapestry Warden: each affected creature with toughness greater than its power assigns combat damage, and stations, with its toughness. */
   toughnessForDamageAndStation?: boolean;
+  /** Moonlit Meditation: the first time its controller would create tokens each turn, they create that many copies of the enchanted permanent instead. */
+  firstTokensBecomeCopies?: boolean;
   /** Weftwalking: the first spell each player casts during each of their turns may be cast without paying its mana cost. */
   firstSpellEachTurnFree?: boolean;
   /** Ragost: artifacts you control are Foods in addition to their other types and have "{2}, {T}, Sacrifice this artifact: You gain 3 life." */
@@ -1751,6 +1762,8 @@ export interface CardDefinition {
     addCounter?: AnyCounter;
     /** "Spend this mana only to cast an artifact spell or activate an ability of an artifact source" (Cargo Ship). */
     onlyForArtifacts?: boolean;
+    /** "Spend this mana only to ...": the mana goes to that restricted pool (Steelswarm Operator). */
+    restricted?: ManaRestriction;
     /** "Spend this mana only to cast a noncreature spell" (The Emperor of Palamecia). */
     onlyForNoncreatureSpells?: boolean;
     /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
@@ -2176,7 +2189,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean; /** Possibility Technician: for as long as it stays exiled, while you control a permanent with this subtype. */ whileYouControlSubtype?: string };
+  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean; /** Possibility Technician: for as long as it stays exiled, while you control a permanent with this subtype. */ whileYouControlSubtype?: string; /** Lightstall Inquisitor: a spell cast this way costs this much more. */ costMore?: number; /** ... and a land played this way enters tapped. */ landEntersTapped?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -2304,6 +2317,10 @@ export interface PlayerState {
   noncreatureSpellMana: ManaPool;
   /** "Spend this mana only to cast an artifact spell or activate an ability of an artifact source" (Cargo Ship). */
   artifactMana?: ManaPool;
+  /** The first time this player created tokens this turn: which spell or ability step did it (Moonlit Meditation). */
+  firstTokens?: { turn: number; key: string };
+  /** Other restricted mana, by what it can pay for. */
+  restrictedMana?: Partial<Record<ManaRestriction, ManaPool>>;
   landsPlayedThisTurn: number;
   /** "You may play an additional land this turn": how many more, and which turn. */
   extraLandDrops?: { turn: number; count: number };
@@ -2619,6 +2636,8 @@ export interface CardChoice {
   max: number;
   /** All of `cards` or none (discarding a whole hand). */
   allOrNothing?: boolean;
+  /** 'discard': exile the cards instead; their owner may play them at a tax (Lightstall Inquisitor). */
+  exileToPlayTaxed?: boolean;
   /** discard: `max` cards, or just one card matching this instead (Thirst for Knowledge). */
   orOneMatching?: ObjectFilter;
   /** lookTop: where chosen cards go; every card looked at, the rest going on the bottom in a random order; then attach one to the source. */
