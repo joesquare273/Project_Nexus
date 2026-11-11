@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M11
+
+12 more cards: 198 of 261 built. Activated abilities can now cost less
+conditionally (`costReduction` on an activated ability: per count, if you
+control a matching permanent, or after a Spacecraft attacked this turn);
+tokens can be sacrificed at end of combat (Kavaron Harrier); damage can be
+doubled by the previous target's traits (Cut Propulsion); and the
+`damagedThisTurn` filter also works as false (Faller's Faithful).
+
 ### Edge of Eternities main set, group M10
 
 22 more cards: 186 of 261 built. The engine now reads hybrid mana ({U/R}:

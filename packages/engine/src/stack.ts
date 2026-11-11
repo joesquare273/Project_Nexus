@@ -1453,6 +1453,14 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
     const f = spec.costReductionPerMatching;
     cost = reduceGeneric(cost, battlefield(s).filter((c) => c.controller === source.controller && !c.phasedOut && matchesObject(s, f, c, { controller: source.controller, source: source.id })).length);
   }
+  // "This ability costs {N} less to activate if ..." (Starport Security, Survey Mechan, Thaumaton Torpedo).
+  if (spec.costReduction && source) {
+    const cr = spec.costReduction;
+    const pid = source.controller;
+    const ok = (!cr.ifYouControl || battlefield(s).some((c) => c.controller === pid && !c.phasedOut && matchesObject(s, cr.ifYouControl, c, { controller: pid, source: source.id })))
+      && (!cr.ifAttackedWithSpacecraftThisTurn || s.players[pid]!.spacecraftAttackedTurn === s.turnNumber);
+    if (ok) cost = reduceGeneric(cost, cr.generic * (cr.perCount ? countOf(s, cr.perCount, pid, source.id) : 1));
+  }
   // Puresteel Paladin's metalcraft: "Equipment you control have equip {0}".
   if (spec.equip && source) {
     const yours = battlefield(s).filter((c) => c.controller === source.controller);
@@ -2345,6 +2353,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // "Deals damage equal to its power": its power now, if it's still on the battlefield (rule 608.2h).
       let damage = amount;
       if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetPower') damage = Math.max(0, powerOf(s, s.cards[chosen]!)) * (effect.doubleIfKicked && item.kind === 'spell' && (item.kicks ?? 0) > 0 ? 2 : 1);
+      // Cut Propulsion: "If that creature has flying, it deals twice that much damage to itself instead."
+      if (effect.doubleIfPreviousTargetIs && chosen && matchesObject(s, effect.doubleIfPreviousTargetIs, s.cards[chosen]!, { controller: item.controller, source })) damage *= 2;
       for (const t of targets) {
         if (t.kind === 'card' && t.card === chosen) continue;
         // "If excess damage was dealt this way" (rule 120.4a): more than lethal damage to a creature.
@@ -2984,6 +2994,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           const id = createToken(ctx, effect.token!, pid);
           if (size !== undefined) s.cards[id]!.tokenSize = size;
           if (effect.entersTapped) s.cards[id]!.tapped = true;
+          if (effect.sacrificeAtEndOfCombat) s.cards[id]!.sacrificeAtEndOfCombat = true;
           // Kav Landseeker: "At the beginning of the end step on your next turn, sacrifice that token."
           if (effect.sacrificeAtEndStep) {
             s.cards[id]!.sacrificeAtEndStep = true;

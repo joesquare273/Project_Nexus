@@ -992,6 +992,10 @@ export interface EffectSpec {
   sacrificeAtEndStep?: boolean;
   /** CreateToken with `sacrificeAtEndStep` and `atYourEndStep`: at the end step of your next turn, not this one (Kav Landseeker). */
   onYourNextTurn?: boolean;
+  /** CreateToken: the tokens are sacrificed at end of combat (Kavaron Harrier). */
+  sacrificeAtEndOfCombat?: boolean;
+  /** DealDamage: twice the damage if the previous target matches this (Cut Propulsion: a creature with flying). */
+  doubleIfPreviousTargetIs?: ObjectFilter;
   /** CounterUnlessPays: if the spell's controller pays, you create this token (Divert Disaster). */
   tokenIfPaid?: CardDefId;
   /** DealDamage: then create this token if excess damage was dealt (Orbital Plunge). */
@@ -1412,6 +1416,12 @@ export interface ActivatedSpec {
   equip?: boolean;
   /** "This ability costs {1} less to activate for each Town you control". */
   costReductionPerMatching?: ObjectFilter;
+  /**
+   * "This ability costs {N} less to activate if ...": `generic` less, times `perCount` if given
+   * (Survey Mechan: differently named lands), only if you control a permanent matching `ifYouControl`
+   * (Starport Security) or attacked with a Spacecraft this turn (Thaumaton Torpedo).
+   */
+  costReduction?: { generic: number; perCount?: CountKind; ifYouControl?: ObjectFilter; ifAttackedWithSpacecraftThisTurn?: true };
   /** "Activate only once each turn." */
   oncePerTurn?: boolean;
   /** Boast: "activate only if this creature attacked this turn" (with `oncePerTurn`). */
@@ -2149,6 +2159,8 @@ export interface CardInstance {
   unearthed?: boolean;
   /** A myriad token: exiled at end of combat. */
   exileAtEndOfCombat?: boolean;
+  /** Sacrificed at end of combat (Kavaron Harrier's Robot). */
+  sacrificeAtEndOfCombat?: boolean;
   /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */
   rebounding?: boolean;
   /** Only on the stack: use the Adventure's characteristics instead of the creature's. */
@@ -2225,6 +2237,8 @@ export interface PlayerState {
   turnsTaken?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
+  /** The last turn this player attacked with a Spacecraft (Thaumaton Torpedo). */
+  spacecraftAttackedTurn?: number;
   /** How many lands entered the battlefield under this player's control during turn `landsEnteredTurn`. */
   landsEntered?: number;
   landsEnteredTurn?: number;

@@ -89,6 +89,7 @@ export function enterStep(ctx: Ctx, step: Step): void {
     case 'endCombat':
       // Myriad: "exile the tokens at end of combat" (done as the step begins, without using the stack).
       for (const c of battlefield(s)) if (c.exileAtEndOfCombat) moveCard(ctx, c.id, 'exile');
+      for (const c of battlefield(s)) if (c.sacrificeAtEndOfCombat) sacrifice(ctx, c.id);
       givePriority(ctx, s.activePlayer);
       return;
     case 'main2':

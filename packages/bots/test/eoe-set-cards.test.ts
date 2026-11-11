@@ -1523,3 +1523,152 @@ describe('M10: hybrid mana, Equipment, creatures and spells', () => {
     expect([s.cards[bot]!.counters, s.cards[vanguard]!.counters ?? 0]).toEqual([1, 0]);
   });
 });
+
+// Group M11: activated cost reductions, end-of-combat Robots and more spells.
+describe('M11: cost reductions, combat Robots and spells', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const robots = (s: GameState) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe');
+  const passTo = (s: GameState, step: string) => {
+    for (let i = 0; i < 60 && s.step !== step; i++) {
+      const p = s.pending;
+      if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else s = settle(s).state;
+    }
+    return s;
+  };
+
+  it('Kavaron Harrier: pay {2} as it attacks for a tapped, attacking Robot that’s sacrificed at end of combat', () => {
+    let s = newGame();
+    const harrier = put(s, 'P1', 'kavaron-harrier');
+    s = goTo(s, 'declareAttackers');
+    mana(s, 'P1', { C: 2 });
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: harrier, defender: 'P2' }] }), { accept: true }).state;
+    const [robot] = robots(s);
+    expect(robot).toBeTruthy();
+    expect(s.combat?.attacks.some((a) => a.attacker === robot && a.defender === 'P2')).toBe(true);
+    const life = s.players.P2!.life;
+    s = passTo(s, 'endCombat');
+    expect([s.players.P2!.life, zone(s, robot!)]).toEqual([life - 4, 'void']);
+  });
+
+  it('Cut Propulsion: a creature deals damage to itself equal to its power, twice that with flying', () => {
+    let s = newGame();
+    const cut = put(s, 'P1', 'cut-propulsion', 'hand');
+    const flier = put(s, 'P2', 'quantum-riddler');
+    const ground = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 2 });
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: cut, targets: [card(flier)] }).state;
+    expect(zone(t, flier)).toBe('graveyard');
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: cut, targets: [card(ground)] }).state;
+    expect(zone(t, ground)).toBe('graveyard');
+    const tough = put(s, 'P2', 'meltstrider-eulogist');
+    s.cards[tough]!.counters = 0;
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: cut, targets: [card(tough)] }).state;
+    expect(zone(t, tough)).toBe('graveyard');
+  });
+
+  it('Faller’s Faithful: the destroyed creature’s controller draws two only if it wasn’t dealt damage this turn', () => {
+    let s = newGame();
+    const faithful = put(s, 'P1', 'fallers-faithful', 'hand');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 2 });
+    const hand = s.players.P2!.hand.length;
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: faithful }, pick(foe)).state;
+    expect([zone(t, foe), t.players.P2!.hand.length]).toEqual(['graveyard', hand + 2]);
+    s.cards[foe]!.damage = 1;
+    s.cards[foe]!.damagedTurn = s.turnNumber;
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: faithful }, pick(foe)).state;
+    expect([zone(t, foe), t.players.P2!.hand.length]).toEqual(['graveyard', hand]);
+  });
+
+  it('Desculpting Blast bounces, with a Drone if it was attacking; Singularity Rupture destroys creatures and mills half', () => {
+    let s = newGame();
+    const blast = put(s, 'P2', 'desculpting-blast', 'hand');
+    const attacker = put(s, 'P1', 'icecave-crasher');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker, defender: 'P2' }] });
+    s = settle(s).state;
+    mana(s, 'P2', { U: 1, C: 1 });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: blast, targets: [card(attacker)] }).state;
+    s = settle(passTo(s, 'declareBlockers')).state;
+    expect(zone(s, attacker)).toBe('hand');
+    expect(s.players.P2!.battlefield.filter((id) => s.cards[id]!.defId === 'drone-token-eoe')).toHaveLength(1);
+
+    let u = newGame();
+    const rupture = put(u, 'P1', 'singularity-rupture', 'hand');
+    const a = put(u, 'P1', 'meltstrider-eulogist');
+    const b = put(u, 'P2', 'icecave-crasher');
+    u = goTo(u, 'main1');
+    mana(u, 'P1', { U: 1, B: 2, C: 3 });
+    const lib = u.players.P2!.library.length;
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: rupture, targets: [{ kind: 'player', player: 'P2' }, { kind: 'none' }, { kind: 'none' }, { kind: 'none' }] }).state;
+    expect([zone(u, a), zone(u, b), u.players.P2!.library.length]).toEqual(['graveyard', 'graveyard', lib - Math.floor(lib / 2)]);
+  });
+
+  it('Starport Security costs {2} less with a countered creature; Thaumaton Torpedo {3} less after a Spacecraft attacks; Survey Mechan less per differently named land', () => {
+    let s = newGame();
+    const sec = put(s, 'P1', 'starport-security');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: sec, ability: 0, targets: [card(foe)] })).toBeTruthy();
+    put(s, 'P1', 'meltstrider-eulogist', 'battlefield', { counters: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: sec, ability: 0, targets: [card(foe)] }).state;
+    expect(s.cards[foe]!.tapped).toBe(true);
+
+    let t = newGame();
+    const torpedo = put(t, 'P1', 'thaumaton-torpedo');
+    const target = put(t, 'P2', 'sol-ring');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { C: 3 });
+    expect(rejected(t, { type: 'ActivateAbility', player: 'P1', card: torpedo, ability: 0, targets: [card(target)] })).toBeTruthy();
+    t.players.P1!.spacecraftAttackedTurn = t.turnNumber;
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: torpedo, ability: 0, targets: [card(target)] }).state;
+    expect(zone(t, target)).toBe('graveyard');
+
+    let u = newGame();
+    const mechan = put(u, 'P1', 'survey-mechan');
+    for (const land of ['plains', 'island', 'swamp', 'mountain']) put(u, 'P1', land);
+    u = goTo(u, 'main1');
+    mana(u, 'P1', { C: 6 });
+    const life = u.players.P2!.life;
+    const hand = u.players.P1!.hand.length;
+    u = cast(u, { type: 'ActivateAbility', player: 'P1', card: mechan, ability: 0, targets: [{ kind: 'player', player: 'P2' }, { kind: 'player', player: 'P1' }] }).state;
+    expect([u.players.P2!.life, u.players.P1!.hand.length, u.players.P1!.life, zone(u, mechan)]).toEqual([life - 3, hand + 3, 23, 'graveyard']);
+  });
+
+  it('Sunstar Chaplain: remove a counter to tap; Genemorph Imago’s landfall sets base 3/3; Monoist Circuit-Feeder trades power for toughness', () => {
+    let s = newGame();
+    const chaplain = put(s, 'P1', 'sunstar-chaplain');
+    const grown = put(s, 'P1', 'meltstrider-eulogist', 'battlefield', { counters: 1 });
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: chaplain, ability: 0, targets: [card(foe)], costCards: [grown] }).state;
+    expect([s.cards[foe]!.tapped, s.cards[grown]!.counters ?? 0]).toEqual([true, 0]);
+
+    let t = newGame();
+    put(t, 'P1', 'genemorph-imago');
+    const land = put(t, 'P1', 'forest', 'hand');
+    const big = put(t, 'P2', 'quantum-riddler');
+    t = goTo(t, 'main1');
+    t = cast(t, { type: 'PlayLand', player: 'P1', card: land }, pick(big)).state;
+    expect([powerOf(t, t.cards[big]!), toughnessOf(t, t.cards[big]!)]).toEqual([3, 3]);
+
+    let u = newGame();
+    const feeder = put(u, 'P1', 'monoist-circuit-feeder', 'hand');
+    put(u, 'P1', 'sol-ring');
+    put(u, 'P1', 'sol-ring');
+    const mine = put(u, 'P1', 'meltstrider-eulogist');
+    const theirs = put(u, 'P2', 'meltstrider-eulogist');
+    u = goTo(u, 'main1');
+    mana(u, 'P1', { B: 2, C: 4 });
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: feeder }, { targets: (o: { kind: string; card?: string }[][]) => o.find((x) => x[0]?.kind === 'card' && x[0].card === mine && x[1]?.kind === 'card' && x[1].card === theirs) ?? o[0]! } as never).state;
+    // Three artifacts, the Feeder included.
+    expect([powerOf(u, u.cards[mine]!), zone(u, theirs)]).toEqual([6, 'graveyard']);
+  });
+});

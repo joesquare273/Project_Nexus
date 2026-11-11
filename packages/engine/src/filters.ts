@@ -50,7 +50,7 @@ export function matchesObject(
   if (f.crewedBySource && !(obj.crewedByThisTurn?.turn === s.turnNumber && from.source !== undefined && obj.crewedByThisTurn.by.includes(from.source))) return false;
   if (f.self && obj.id !== from.source) return false;
   if (f.name !== undefined && def.name !== f.name) return false;
-  if (f.damagedThisTurn && obj.damagedTurn !== s.turnNumber) return false;
+  if (f.damagedThisTurn !== undefined && (obj.damagedTurn === s.turnNumber) !== f.damagedThisTurn) return false;
   if (f.warped !== undefined && !!obj.warped !== f.warped) return false;
   if (f.milledThisWay && !(obj.milledBy?.source === from.source && obj.milledBy?.turn === s.turnNumber)) return false;
   if (f.historic !== undefined) {

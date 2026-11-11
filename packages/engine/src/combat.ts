@@ -6,7 +6,7 @@ import { continuousSources, currentDefinition } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { hasFlag, powerOf, protectedFrom, staticAffects, toughnessOf, totalCounters } from './characteristics.ts';
+import { hasFlag, powerOf, protectedFrom, staticAffects, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
@@ -198,6 +198,7 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     const c = s.cards[a.attacker]!;
     if (!hasKeyword(s, c, 'Vigilance')) tap(ctx, c);
     c.attackedTurn = s.turnNumber;
+    if (subtypesOf(s, c).includes('Spacecraft')) s.players[playerId]!.spacecraftAttackedTurn = s.turnNumber;
     c.attacksThisTurn = { turn: s.turnNumber, n: (c.attacksThisTurn?.turn === s.turnNumber ? c.attacksThisTurn.n : 0) + 1 };
     ctx.ev.push({ type: 'AttackDeclared', attacker: a.attacker, defendingPlayer: a.defender });
   }
