@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M13
+
+14 more cards: 219 of 261 built. Three Planets and The Eternity Elevator
+(their station mana abilities are ordinary activated abilities that use the
+stack, see docs/decisions.md), the Munitions and Sliver tokens, amounts from
+the permanent sacrificed as a cost (`sacrificedPower`, `sacrificedManaValue`),
+`plus` on counted amounts, a `blocking` filter, and Unravel's
+`drawIfUnderpaid`. Run `npm run scryfall` to fetch the two new token images.
+
 ### Edge of Eternities main set, group M12
 
 Seven more cards: 205 of 261 built. New trigger event `Discards` (Entropic

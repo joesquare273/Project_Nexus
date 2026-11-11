@@ -1804,6 +1804,8 @@ export function activateAbility(
   else if (spec.cost.returnToHand) for (const k of costCards) moveCard(ctx, k, 'hand');
   else if (spec.cost.sacrifice) for (const k of costCards) sacrifice(ctx, k);
   else if (!rc?.from && !spec.cost.returnToHand && !spec.cost.exileGraveyard && spec.cost.crew === undefined && !spec.cost.tapUntapped && !spec.cost.station) for (const discarded of costCards) discard(ctx, discarded);
+  const sacrificedPower = spec.cost.sacrifice && costCards[0] ? Math.max(0, s.cards[costCards[0]]!.lastPower ?? 0) : undefined;
+  const sacrificedManaValue = spec.cost.sacrifice && costCards[0] ? objectManaValue(s, s.cards[costCards[0]]!) : undefined;
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
@@ -1823,6 +1825,7 @@ export function activateAbility(
     targets,
     ...(ninjutsuDefender ? { defender: ninjutsuDefender } : {}),
     ...(x !== undefined ? { x } : {}),
+    ...(sacrificedPower !== undefined ? { sacrificedPower, sacrificedManaValue } : {}),
   };
   s.stack.push(item);
   ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets });
@@ -1967,6 +1970,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
         ? (r.previousTarget?.kind === 'player' ? battlefield(s).filter((c) => c.controller === (r.previousTarget as { player: PlayerId }).player && !c.phasedOut && matchesObject(s, effect.filter, c, { controller: r.item.controller })).length : 0)
         : a.of === 'chosenCardTypes'
         ? new Set((r.chosen ?? []).flatMap((c) => c.cards).flatMap((id) => defOf(s, s.cards[id]!).types)).size
+        : a.of === 'sacrificedPower' || a.of === 'sacrificedManaValue'
+        ? (r.item.kind === 'ability' ? (r.item[a.of] ?? 0) : 0)
         : a.of === 'previousTargetPower'
         ? Math.max(0, r.previousTargetPower ?? 0)
         : a.of === 'destroyedThisWay'
@@ -3029,6 +3034,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const countered = s.stack[index] as SpellItem;
         s.stack.splice(index, 1);
         ctx.ev.push({ type: 'SpellCountered', card: id, defId: s.cards[id]!.defId, by: source });
+        // Unravel: "If the amount of mana spent to cast that spell was less than its mana value, you draw a card."
+        if (effect.drawIfUnderpaid && countered.manaSpent < objectManaValue(s, s.cards[id]!)) drawCards(ctx, item.controller, 1);
         // A flashback spell is exiled instead (rule 702.34a), and so is one cast with a permission that says so.
         const flashback = !!countered.flashback;
         moveCard(ctx, id, flashback || countered.exileAfter ? 'exile' : 'graveyard');

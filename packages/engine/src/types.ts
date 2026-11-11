@@ -657,6 +657,8 @@ export const COUNT_KINDS = [
   'DifferentlyNamedLandsYouControl',
   /** Other creatures and/or artifacts you control (Luxknight Breacher). */
   'OtherCreaturesAndArtifactsYouControl',
+  /** Creatures and/or Spacecraft you control (Focus Fire). */
+  'CreaturesAndSpacecraftYouControl',
   /** Permanents you control with two or more colors (Infinite Guideline Station). */
   'MulticoloredPermanentsYouControl',
   /** Lands that entered the battlefield under your control this turn (Bioengineered Future). */
@@ -673,7 +675,7 @@ export type CountKind = (typeof COUNT_KINDS)[number];
 export type Amount =
   | number
   /** `times` multiplies the total ("twice the number of creature cards in your graveyard"). */
-  | { count: CountKind[]; times?: number }
+  | { count: CountKind[]; times?: number; /** Added to the total ("2 plus the number of ...": Focus Fire). */ plus?: number }
   /** How many permanents match, from the controller's point of view ("look at that many cards", one per attacking Bird). */
   | { matching: ObjectFilter }
   /**
@@ -722,7 +724,10 @@ export type Amount =
         /** OpponentLosesLife triggers: how much life was lost ("you draw that many cards"). */
         | 'lifeLostInEvent'
         /** Land cards put into a graveyard by DiscardOrSacrifice earlier in the same ability. */
-        | 'landsToGraveyardThisWay';
+        | 'landsToGraveyardThisWay'
+        /** The power (or mana value) of the permanent sacrificed to pay this activated ability's cost, as it last was. */
+        | 'sacrificedPower'
+        | 'sacrificedManaValue';
       plus?: number;
       /** Multiplies the result ("twice X"). */
       times?: number;
@@ -994,6 +999,8 @@ export interface EffectSpec {
   sacrificeAtEndStep?: boolean;
   /** CreateToken with `sacrificeAtEndStep` and `atYourEndStep`: at the end step of your next turn, not this one (Kav Landseeker). */
   onYourNextTurn?: boolean;
+  /** Counter: you draw a card if less mana was spent on the countered spell than its mana value (Unravel). */
+  drawIfUnderpaid?: boolean;
   /** CreateToken: the tokens are sacrificed at end of combat (Kavaron Harrier). */
   sacrificeAtEndOfCombat?: boolean;
   /** DealDamage: twice the damage if the previous target matches this (Cut Propulsion: a creature with flying). */
@@ -1188,6 +1195,8 @@ export interface ObjectFilter {
   attackingYou?: boolean;
   /** Entered the battlefield this turn ("target commander that entered this turn"). */
   enteredThisTurn?: boolean;
+  /** Is (or isn't) blocking. */
+  blocking?: boolean;
   /** Was cast for its warp cost (and is still on the battlefield from that cast): Full Bore. */
   warped?: boolean;
   /** Has less power than the card with the ability ("with power less than Auron's power"). */
@@ -2359,6 +2368,9 @@ export interface SpellItem {
 
 /** A triggered or activated ability on the stack. The source card stays where it is. */
 export interface AbilityItem {
+  /** The power and mana value of the permanent sacrificed to pay the cost, as it last was (Susur Secundi). */
+  sacrificedPower?: number;
+  sacrificedManaValue?: number;
   /** The X paid for an activated ability ({X} in its cost, or the cards discarded for "discard X cards"). */
   x?: number;
   targetObjects?: (number | null)[];

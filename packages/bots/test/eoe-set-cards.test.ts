@@ -1772,3 +1772,158 @@ describe('M12: Spacecraft, Command Bridge and combat statics', () => {
   });
 });
 
+
+// Group M13: Planets, The Eternity Elevator, Munitions and Slivers, and more spells.
+describe('M13: Planets, new tokens and spells', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const charge = (n: number) => ({ namedCounters: { charge: n } }) as never;
+  const count = (s: GameState, defId: string) => s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === defId).length;
+
+  it('Uthros (12+) adds {U} for each artifact; Evendo adds {G} for each creature; neither works before 12', () => {
+    let s = newGame();
+    const uthros = put(s, 'P1', 'uthros-titanic-godcore', 'battlefield', charge(12));
+    const evendo = put(s, 'P1', 'evendo-waking-haven', 'battlefield', charge(11));
+    put(s, 'P1', 'sol-ring');
+    put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 1, G: 1 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: evendo, ability: 0 })).toBeTruthy();
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: uthros, ability: 0 }).state;
+    expect(s.players.P1!.manaPool.U).toBe(2);
+  });
+
+  it('Susur Secundi draws cards equal to the sacrificed creature’s power; The Eternity Elevator taps for {C}{C}{C}, and at 20+ for X of one color', () => {
+    let s = newGame();
+    const susur = put(s, 'P1', 'susur-secundi-void-altar', 'battlefield', charge(12));
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const hand = s.players.P1!.hand.length;
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: susur, ability: 0, costCards: [bear] }).state;
+    expect([zone(s, bear), s.players.P1!.hand.length, s.players.P1!.life]).toEqual(['graveyard', hand + 3, life - 2]);
+
+    let t = newGame();
+    const lift = put(t, 'P1', 'the-eternity-elevator', 'battlefield', charge(20));
+    t = goTo(t, 'main1');
+    let u = act(t, { type: 'ActivateManaAbility', player: 'P1', card: lift, mana: 'C' });
+    expect(u.players.P1!.manaPool.C).toBe(3);
+    u = cast(t, { type: 'ActivateAbility', player: 'P1', card: lift, ability: 0 }).state;
+    expect(u.pending).toMatchObject({ kind: 'chooseMana', amount: 20 });
+  });
+
+  it('Weapons Manufacturing makes Munitions that deal 2 damage when they leave; Thrumming Hivepool makes two Slivers with double strike and haste', () => {
+    let s = newGame();
+    put(s, 'P1', 'weapons-manufacturing');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const litho = put(s, 'P1', 'lithobraking', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(count(s, 'munitions-token-eoe')).toBe(1);
+    const token = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'munitions-token-eoe')!;
+    const life = s.players.P2!.life;
+    const atP2 = { targets: (o: { kind: string; player?: string }[][]) => o.find((x) => x[0]?.kind === 'player' && x[0].player === 'P2')! } as never;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: litho }, atP2).state;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [token] }), atP2).state;
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), atP2).state;
+    expect(s.players.P2!.life).toBe(life - 2);
+
+    let t = newGame();
+    put(t, 'P1', 'thrumming-hivepool');
+    t = goTo(t, 'main1');
+    t = goTo(goTo(goTo(t, 'end'), 'main1'), 'end');
+    t = goTo(t, 'main1');
+    const slivers = t.players.P1!.battlefield.filter((id) => t.cards[id]!.defId === 'sliver-token-eoe');
+    expect(slivers).toHaveLength(2);
+    expect([hasKeyword(t, t.cards[slivers[0]!]!, 'DoubleStrike'), hasKeyword(t, t.cards[slivers[0]!]!, 'Haste')]).toEqual([true, true]);
+  });
+
+  it('Unravel draws only when less mana was spent than the spell’s mana value; Focus Fire counts creatures and Spacecraft', () => {
+    let s = newGame();
+    const warper = put(s, 'P1', 'quantum-riddler', 'hand');
+    const unravel = put(s, 'P2', 'unravel', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 1, C: 1 });
+    mana(s, 'P2', { U: 2, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: warper, alternative: true });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    const hand = s.players.P2!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: unravel, targets: [card(warper)] }).state;
+    for (let i = 0; i < 6 && s.stack.length > 0; i++) s = settle(act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player })).state;
+    expect([zone(s, warper), s.players.P2!.hand.length]).toEqual(['graveyard', hand]);
+
+    let t = newGame();
+    const fire = put(t, 'P2', 'focus-fire', 'hand');
+    const attacker = put(t, 'P1', 'icecave-crasher');
+    put(t, 'P2', 'meltstrider-eulogist');
+    put(t, 'P2', 'lumen-class-frigate');
+    t = goTo(t, 'declareAttackers');
+    t = settle(act(t, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker, defender: 'P2' }] })).state;
+    mana(t, 'P2', { W: 1 });
+    t = act(t, { type: 'PassPriority', player: 'P1' });
+    t = cast(t, { type: 'CastSpell', player: 'P2', card: fire, targets: [card(attacker)] }).state;
+    for (let i = 0; i < 6 && t.stack.length > 0 && t.pending.kind === 'priority'; i++) t = settle(act(t, { type: 'PassPriority', player: t.pending.player })).state;
+    expect(zone(t, attacker)).toBe('graveyard');
+  });
+
+  it('Cryoshatter: -5/-0, and the creature is destroyed when it becomes tapped; Icetill Explorer plays lands from the graveyard and mills on landfall', () => {
+    let t = newGame();
+    const shatter = put(t, 'P1', 'cryoshatter', 'hand');
+    const foe = put(t, 'P2', 'quantum-riddler');
+    const tapper = put(t, 'P1', 'starport-security');
+    put(t, 'P1', 'meltstrider-eulogist', 'battlefield', { counters: 1 });
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { U: 1, W: 1, C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: shatter, targets: [card(foe)] }).state;
+    expect([powerOf(t, t.cards[foe]!), t.cards[shatter]!.attachedTo]).toEqual([-1, foe]);
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: tapper, ability: 0, targets: [card(foe)] }).state;
+    t = settle(t).state;
+    expect(zone(t, foe)).toBe('graveyard');
+
+    let u = newGame();
+    put(u, 'P1', 'icetill-explorer');
+    const land = put(u, 'P1', 'forest', 'graveyard');
+    u = goTo(u, 'main1');
+    const lib = u.players.P1!.library.length;
+    u = cast(u, { type: 'PlayLand', player: 'P1', card: land }).state;
+    expect([zone(u, land), u.players.P1!.library.length]).toEqual(['battlefield', lib - 1]);
+  });
+
+  it('Pulsar Squadron Ace finds a Spacecraft or gets a counter; Consult the Star Charts keeps two when kicked; Devastating Onslaught makes X hasty copies', () => {
+    let s = newGame();
+    const ace = put(s, 'P1', 'pulsar-squadron-ace', 'hand');
+    s = goTo(s, 'main1');
+    const ship = put(s, 'P1', 'lumen-class-frigate', 'library');
+    s.players.P1!.library = [ship, ...s.players.P1!.library.filter((id) => id !== ship)];
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ace }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop' });
+    let t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ship] })).state;
+    expect([zone(t, ship), t.cards[ace]!.counters ?? 0]).toEqual(['hand', 0]);
+    t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect([zone(t, ship), t.cards[ace]!.counters ?? 0]).toEqual(['library', 1]);
+
+    let u = newGame();
+    const charts = put(u, 'P1', 'consult-the-star-charts', 'hand');
+    for (let i = 0; i < 3; i++) put(u, 'P1', 'island');
+    u = goTo(u, 'main1');
+    mana(u, 'P1', { U: 2, C: 2 });
+    const hand = u.players.P1!.hand.length;
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: charts, kicks: 1 }).state;
+    expect(u.pending).toMatchObject({ kind: 'chooseCards', purpose: 'hand', min: 2, max: 2 });
+    u = settle(act(u, { type: 'ChooseCards', player: 'P1', cards: (u.pending as { cards: string[] }).cards.slice(0, 2) })).state;
+    expect(u.players.P1!.hand.length).toBe(hand - 1 + 2);
+
+    let v = newGame();
+    const onslaught = put(v, 'P1', 'devastating-onslaught', 'hand');
+    const bear = put(v, 'P1', 'meltstrider-eulogist');
+    v = goTo(v, 'main1');
+    mana(v, 'P1', { R: 1, C: 4 });
+    v = cast(v, { type: 'CastSpell', player: 'P1', card: onslaught, x: 2, targets: [card(bear)] }).state;
+    const copies = v.players.P1!.battlefield.filter((id) => v.cards[id]!.isToken);
+    expect([copies.length, hasKeyword(v, v.cards[copies[0]!]!, 'Haste')]).toEqual([2, true]);
+    v = goTo(v, 'end');
+    expect(v.players.P1!.battlefield.filter((id) => v.cards[id]!.isToken)).toHaveLength(0);
+  });
+});

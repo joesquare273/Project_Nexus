@@ -51,6 +51,7 @@ export function matchesObject(
   if (f.self && obj.id !== from.source) return false;
   if (f.name !== undefined && def.name !== f.name) return false;
   if (f.damagedThisTurn !== undefined && (obj.damagedTurn === s.turnNumber) !== f.damagedThisTurn) return false;
+  if (f.blocking !== undefined && !!s.combat?.blocks.some((b) => b.blocker === obj.id) !== f.blocking) return false;
   if (f.warped !== undefined && !!obj.warped !== f.warped) return false;
   if (f.milledThisWay && !(obj.milledBy?.source === from.source && obj.milledBy?.turn === s.turnNumber)) return false;
   if (f.historic !== undefined) {

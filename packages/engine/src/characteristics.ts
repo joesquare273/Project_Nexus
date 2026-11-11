@@ -204,6 +204,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return new Set(yours().filter((c) => def(s, c).types.includes('land')).map((c) => def(s, c).name)).size;
     case 'MulticoloredPermanentsYouControl':
       return yours().filter((c) => colorsOf(def(s, c)).length >= 2).length;
+    case 'CreaturesAndSpacecraftYouControl':
+      return yours().filter((c) => creature(c) || subtypesOf(s, c).includes('Spacecraft')).length;
     case 'OtherCreaturesAndArtifactsYouControl':
       return yours().filter((c) => c.id !== source && (creature(c) || def(s, c).types.includes('artifact'))).length;
     case 'GreatestManaValueAmongYourArtifacts':
@@ -219,7 +221,7 @@ export function amountOf(s: GameState, amount: Amount | undefined, player: Playe
   // Amounts that refer back to earlier in the same spell or ability are worked out while it resolves.
   if ('of' in amount) return 0;
   if ('matching' in amount) return battlefieldCards(s).filter((c) => !c.phasedOut && matchesObject(s, amount.matching, c, { controller: player, ...(source ? { source } : {}) })).length;
-  return amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0) * (amount.times ?? 1);
+  return amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0) * (amount.times ?? 1) + (amount.plus ?? 0);
 }
 
 /** Cards whose static abilities may apply: permanents, and graveyard cards with abilities that work from there (Anger). */

@@ -131,6 +131,8 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetPlayerMatching',
       'lifeLostInEvent',
       'landsToGraveyardThisWay',
+      'sacrificedPower',
+      'sacrificedManaValue',
     ];
     if (!kinds.includes(a.of)) err(`unknown amount "${String(a.of)}".`);
     return;
