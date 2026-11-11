@@ -23,7 +23,7 @@ describe('the Final Fantasy set for sealed', () => {
     expect(names.length).toBeGreaterThan(360);
   });
 
-  it('Phyrexian black ({B/P}) is payable now: K\'rrik can be cast; hybrid mana still isn\'t supported', () => {
+  it('Phyrexian black ({B/P}) is payable now: K\'rrik can be cast; hybrid mana parses too', () => {
     const krrik = CARD_DEFS[CARD_IDS_BY_NAME["K'rrik, Son of Yawgmoth"]!]!;
     expect(krrik.uncastable).toBeUndefined();
     expect(canEverCast(krrik)).toBe(true);
@@ -31,7 +31,7 @@ describe('the Final Fantasy set for sealed', () => {
     const id = put(s, 'P1', krrik.id, 'hand');
     mana(s, 'P1', { B: 3, C: 4 });
     expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === id)).toBe(true);
-    expect(() => parseManaCost('{W/U}')).toThrow(/Unsupported/);
+    expect(parseManaCost('{W/U}')).toEqual({ generic: 0, hybrid: [['W', 'U']] });
   });
 });
 

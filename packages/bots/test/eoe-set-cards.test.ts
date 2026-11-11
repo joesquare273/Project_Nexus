@@ -1332,3 +1332,194 @@ describe('M9: Landers, void and warp', () => {
     expect(zone(s, bolt)).toBe('exile');
   });
 });
+
+// Group M10: hybrid mana, Equipment and more creatures and spells.
+describe('M10: hybrid mana, Equipment, creatures and spells', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const tokens = (s: GameState, defId: string, pid = 'P1') => s.players[pid]!.battlefield.filter((id) => s.cards[id]!.defId === defId);
+
+  it('Pinnacle Emissary warps for {U/R} (blue or red) and makes a Drone for each artifact spell', () => {
+    let s = newGame();
+    const emissary = put(s, 'P1', 'pinnacle-emissary', 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: emissary, alternative: true })).toBeTruthy();
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: emissary, alternative: true }).state;
+    expect(zone(s, emissary)).toBe('battlefield');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(tokens(s, 'drone-token-eoe')).toHaveLength(1);
+    let t = newGame();
+    const other = put(t, 'P1', 'pinnacle-emissary', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { U: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: other, alternative: true }).state;
+    expect(zone(t, other)).toBe('battlefield');
+  });
+
+  it('Auxiliary Boosters makes a Robot wearing it (+1/+2, flying); Squire’s Lightblade attaches and grants first strike', () => {
+    let s = newGame();
+    const boosters = put(s, 'P1', 'auxiliary-boosters', 'hand');
+    const blade = put(s, 'P1', 'squires-lightblade', 'hand');
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: boosters }).state;
+    const robot = tokens(s, 'robot-token-eoe')[0]!;
+    expect([s.cards[boosters]!.attachedTo, powerOf(s, s.cards[robot]!), toughnessOf(s, s.cards[robot]!), hasKeyword(s, s.cards[robot]!, 'Flying')]).toEqual([robot, 3, 4, true]);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: blade }, pick(bear)).state;
+    expect([s.cards[blade]!.attachedTo, powerOf(s, s.cards[bear]!), hasKeyword(s, s.cards[bear]!, 'FirstStrike')]).toEqual([bear, 4, true]);
+  });
+
+  it('Seam Rip exiles a cheap opponent permanent until it leaves; Nutrient Block draws when it goes to the graveyard', () => {
+    let s = newGame();
+    const rip = put(s, 'P1', 'seam-rip', 'hand');
+    const ring = put(s, 'P2', 'sol-ring');
+    const block = put(s, 'P1', 'nutrient-block');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rip }, pick(ring)).state;
+    expect(zone(s, ring)).toBe('exile');
+    const hand = s.players.P1!.hand.length;
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: block, ability: 0 }).state;
+    expect([zone(s, block), s.players.P1!.life, s.players.P1!.hand.length]).toEqual(['graveyard', life + 3, hand + 1]);
+  });
+
+  it('Cryogen Relic draws on entering and leaving; Dubious Delicacy shrinks a creature on entering', () => {
+    let s = newGame();
+    const relic = put(s, 'P1', 'cryogen-relic', 'hand');
+    const delicacy = put(s, 'P1', 'dubious-delicacy', 'hand');
+    const foe = put(s, 'P2', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 2, B: 1, C: 4 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: relic }).state;
+    expect(s.players.P1!.hand.length).toBe(hand);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: delicacy }, pick(foe)).state;
+    expect(zone(s, foe)).toBe('graveyard');
+    const tapped = put(s, 'P2', 'meltstrider-eulogist', 'battlefield', { tapped: true });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: relic, ability: 0, targets: [card(tapped)] }).state;
+    expect([zone(s, relic), s.cards[tapped]!.namedCounters?.stun, s.players.P1!.hand.length]).toEqual(['graveyard', 1, hand]);
+  });
+
+  it('Diplomatic Relations: +1/+0 and vigilance, then it deals damage equal to its power; Full Bore adds trample and haste only to a warped creature', () => {
+    let s = newGame();
+    const relations = put(s, 'P1', 'diplomatic-relations', 'hand');
+    const mine = put(s, 'P1', 'meltstrider-eulogist');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: relations, targets: [card(mine), card(foe)] }).state;
+    expect([zone(s, foe), hasKeyword(s, s.cards[mine]!, 'Vigilance'), s.cards[mine]!.damage]).toEqual(['graveyard', true, 0]);
+
+    let t = newGame();
+    const bore = put(t, 'P1', 'full-bore', 'hand');
+    const bore2 = put(t, 'P1', 'full-bore', 'hand');
+    const warper = put(t, 'P1', 'rayblade-trooper', 'hand');
+    const plain = put(t, 'P1', 'meltstrider-eulogist');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { R: 2, W: 1, C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: warper, alternative: true }, pick(plain)).state;
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bore, targets: [card(warper)] }).state;
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bore2, targets: [card(plain)] }).state;
+    expect([hasKeyword(t, t.cards[warper]!, 'Haste'), hasKeyword(t, t.cards[warper]!, 'Trample'), hasKeyword(t, t.cards[plain]!, 'Trample'), powerOf(t, t.cards[plain]!)]).toEqual([true, true, false, 7]);
+  });
+
+  it('Ouroboroid puts X counters on each creature at combat; Tannuk, Memorial Ensign pings and draws on the second landfall', () => {
+    let s = newGame();
+    const ouro = put(s, 'P1', 'ouroboroid');
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    const tannuk = put(s, 'P1', 'tannuk-memorial-ensign');
+    const lands = [put(s, 'P1', 'forest', 'hand'), put(s, 'P1', 'mountain', 'hand')];
+    s = goTo(s, 'main1');
+    const life = s.players.P2!.life;
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: lands[0]! }).state;
+    expect([s.players.P2!.life, s.players.P1!.hand.length]).toEqual([life - 1, hand - 1]);
+    // A second land this turn: the ability's second resolution draws.
+    s.players.P1!.landsPlayedThisTurn = 0;
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: lands[1]! }).state;
+    expect([s.players.P2!.life, s.players.P1!.hand.length]).toEqual([life - 2, hand - 1]);
+    s = goTo(s, 'beginCombat');
+    s = settle(s).state;
+    expect([s.cards[ouro]!.counters, s.cards[bear]!.counters, s.cards[tannuk]!.counters]).toEqual([1, 1, 1]);
+  });
+
+  it('Mouth of the Storm: opponents’ creatures get -3/-0 until your next turn; Selfcraft Mechan sacrifices an artifact to grow and draw', () => {
+    let s = newGame();
+    const mouth = put(s, 'P1', 'mouth-of-the-storm', 'hand');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 1, C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mouth }).state;
+    expect(powerOf(s, s.cards[foe]!)).toBe(1);
+    s = goTo(goTo(goTo(s, 'end'), 'main1'), 'end');
+    expect([s.activePlayer, powerOf(s, s.cards[foe]!)]).toEqual(['P2', 1]);
+    s = goTo(s, 'upkeep');
+    expect(powerOf(s, s.cards[foe]!)).toBe(4);
+
+    let t = newGame();
+    const mechan = put(t, 'P1', 'selfcraft-mechan', 'hand');
+    const ring = put(t, 'P1', 'sol-ring');
+    const bear = put(t, 'P1', 'meltstrider-eulogist');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { U: 1, C: 3 });
+    const hand = t.players.P1!.hand.length;
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: mechan }, pick(bear)).state;
+    expect(t.pending).toMatchObject({ kind: 'chooseCards', purpose: 'sacrifice' });
+    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [ring] }), pick(bear)).state;
+    expect([zone(t, ring), t.cards[bear]!.counters, t.players.P1!.hand.length]).toEqual(['graveyard', 1, hand]);
+  });
+
+  it('Archenemy’s Charm returns two creature cards; Zealous Display untaps only on an opponent’s turn; Scour for Scrap can do both', () => {
+    let s = newGame();
+    const charm = put(s, 'P1', 'archenemys-charm', 'hand');
+    const a = put(s, 'P1', 'meltstrider-eulogist', 'graveyard');
+    const b = put(s, 'P1', 'thawbringer', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 1, targets: [card(a), card(b)] } as never).state;
+    expect([zone(s, a), zone(s, b)]).toEqual(['hand', 'hand']);
+
+    let t = newGame();
+    const display = put(t, 'P1', 'zealous-display', 'hand');
+    const bear = put(t, 'P1', 'meltstrider-eulogist', 'battlefield', { tapped: true });
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, C: 2 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: display }).state;
+    expect([powerOf(t, t.cards[bear]!), t.cards[bear]!.tapped]).toEqual([5, true]);
+
+    let u = newGame();
+    const scour = put(u, 'P1', 'scour-for-scrap', 'hand');
+    const yard = put(u, 'P1', 'sol-ring', 'graveyard');
+    put(u, 'P1', 'sol-ring', 'library');
+    u = goTo(u, 'main1');
+    mana(u, 'P1', { U: 1, C: 3 });
+    const hand = u.players.P1!.hand.length;
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: scour, modes: [0, 1], targets: [card(yard)] } as never).state;
+    expect([zone(u, yard), u.players.P1!.hand.length]).toEqual(['hand', hand + 1]);
+  });
+
+  it('Virulent Silencer: nontoken artifact creatures give two poison counters; Dawnstrike Vanguard grows the others with two tapped creatures', () => {
+    let s = newGame();
+    put(s, 'P1', 'virulent-silencer');
+    const bot = put(s, 'P1', 'roving-actuator');
+    const vanguard = put(s, 'P1', 'dawnstrike-vanguard');
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bot, defender: 'P2' }, { attacker: vanguard, defender: 'P2' }] });
+    for (let i = 0; i < 60 && s.step !== 'end'; i++) {
+      const p = s.pending;
+      if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else if (p.kind === 'declareAttackers') s = act(s, { type: 'DeclareAttackers', player: p.player, attacks: [] });
+      else {
+        s = settle(s).state;
+        if (s.pending.kind === 'priority') s = act(s, { type: 'PassPriority', player: s.pending.player });
+      }
+    }
+    s = settle(s).state;
+    expect(s.players.P2!.poison).toBe(2);
+    expect([s.cards[bot]!.counters, s.cards[vanguard]!.counters ?? 0]).toEqual([1, 0]);
+  });
+});

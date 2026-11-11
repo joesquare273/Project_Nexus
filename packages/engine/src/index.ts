@@ -42,7 +42,7 @@ export {
 } from './characteristics.ts';
 export { viewFor, filterEventsFor, type GameView, type PermanentStats, type PlayerView } from './view.ts';
 export { AliasBook, HIDDEN_CARD, HIDDEN_REF, materialize, playerUpdate, redactState, resolveAction, visibleCards, type PlayerUpdate, type RedactedState } from './redact.ts';
-export { canPay, formatManaCost, manaValue, parseManaCost, planPayment, reduceGeneric } from './cost.ts';
+export { canPay, formatManaCost, hybridResolutions, manaValue, parseManaCost, planPayment, reduceGeneric } from './cost.ts';
 export { nextRandom, seedFromBytes, seedToState, type RngState, type Seed } from './rng.ts';
 export {
   BASIC_LAND_TYPE_MANA,

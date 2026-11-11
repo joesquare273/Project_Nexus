@@ -6,8 +6,8 @@ const SYMBOL = /\{([^}]+)\}/g;
 
 /**
  * Parses standard notation. {X} is counted in `x` and paid as 0 until X
- * spells are built. Throws on symbols the engine doesn't support yet
- * (hybrid, Phyrexian).
+ * spells are built. Hybrid symbols ({U/R}) are kept in `hybrid`. Throws on
+ * symbols the engine doesn't support.
  */
 export function parseManaCost(text: string | undefined): ManaCost {
   const cost: ManaCost = { generic: 0 };
@@ -26,6 +26,8 @@ export function parseManaCost(text: string | undefined): ManaCost {
       cost[color] = (cost[color] ?? 0) + 1;
       cost.phyrexian = { ...cost.phyrexian, [color]: (cost.phyrexian?.[color] ?? 0) + 1 };
     }
+    // Hybrid mana: either color (rule 107.4e).
+    else if (/^[WUBRG]\/[WUBRG]$/.test(symbol!)) cost.hybrid = [...(cost.hybrid ?? []), [symbol![0] as ManaType, symbol![2] as ManaType]];
     else if ((MANA_TYPES as readonly string[]).includes(symbol!)) {
       const t = symbol as ManaType;
       cost[t] = (cost[t] ?? 0) + 1;
@@ -36,7 +38,21 @@ export function parseManaCost(text: string | undefined): ManaCost {
 
 /** Mana value (total mana in the cost). */
 export function manaValue(cost: ManaCost): number {
-  return MANA_TYPES.reduce((sum, t) => sum + (cost[t] ?? 0), cost.generic);
+  return MANA_TYPES.reduce((sum, t) => sum + (cost[t] ?? 0), cost.generic + (cost.hybrid?.length ?? 0));
+}
+
+/**
+ * The ways to pay a cost's hybrid symbols, each as a cost without hybrid
+ * symbols (one color picked for each). A cost without them is its only way.
+ */
+export function hybridResolutions(cost: ManaCost): ManaCost[] {
+  if (!cost.hybrid?.length) return [cost];
+  const { hybrid, ...base } = cost;
+  let out: ManaCost[] = [base];
+  for (const [a, b] of hybrid) {
+    out = out.flatMap((c) => (a === b ? [{ ...c, [a]: (c[a] ?? 0) + 1 }] : [{ ...c, [a]: (c[a] ?? 0) + 1 }, { ...c, [b]: (c[b] ?? 0) + 1 }]));
+  }
+  return out;
 }
 
 /**
@@ -45,6 +61,13 @@ export function manaValue(cost: ManaCost): number {
  * from colorless before colors, in fixed order, so the result is deterministic.
  */
 export function planPayment(pool: ManaPool, cost: ManaCost): Partial<ManaPool> | null {
+  if (cost.hybrid?.length) {
+    for (const option of hybridResolutions(cost)) {
+      const plan = planPayment(pool, option);
+      if (plan) return plan;
+    }
+    return null;
+  }
   const remaining = { ...pool };
   const spent: Partial<ManaPool> = {};
   const take = (t: ManaType, n: number) => {
@@ -79,6 +102,7 @@ export function formatManaCost(cost: ManaCost): string {
   for (const t of ['W', 'U', 'B', 'R', 'G', 'C'] as const) {
     for (let i = 0; i < (cost[t] ?? 0); i++) parts.push(`{${t}}`);
   }
+  for (const [a, b] of cost.hybrid ?? []) parts.push(`{${a}/${b}}`);
   return parts.join('') || '{0}';
 }
 

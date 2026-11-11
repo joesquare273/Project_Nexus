@@ -2342,6 +2342,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
       const from = effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source;
       let excess = false;
+      // "Deals damage equal to its power": its power now, if it's still on the battlefield (rule 608.2h).
+      let damage = amount;
+      if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetPower') damage = Math.max(0, powerOf(s, s.cards[chosen]!)) * (effect.doubleIfKicked && item.kind === 'spell' && (item.kicks ?? 0) > 0 ? 2 : 1);
       for (const t of targets) {
         if (t.kind === 'card' && t.card === chosen) continue;
         // "If excess damage was dealt this way" (rule 120.4a): more than lethal damage to a creature.
@@ -2349,16 +2352,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           const c = s.cards[t.card]!;
           const lethal = Math.max(0, toughnessOf(s, c) - c.damage);
           const damageBefore = c.damage;
-          dealDamage(ctx, from, t, amount, false);
-          const dealt = (s.cards[t.card]!.zone === 'battlefield' ? s.cards[t.card]!.damage : damageBefore + amount) - damageBefore;
+          dealDamage(ctx, from, t, damage, false);
+          const dealt = (s.cards[t.card]!.zone === 'battlefield' ? s.cards[t.card]!.damage : damageBefore + damage) - damageBefore;
           if (dealt > lethal) excess = true;
           continue;
         }
-        dealDamage(ctx, from, t, amount, false);
+        dealDamage(ctx, from, t, damage, false);
       }
       if (excess) r.createdTokens.push(createToken(ctx, effect.tokenIfExcess!, item.controller));
       // "... and X damage to itself" (Self-Destruct).
-      if (effect.damageItself && chosen && s.cards[chosen]!.zone === 'battlefield') dealDamage(ctx, from, { kind: 'card', card: chosen }, amount, false);
+      if (effect.damageItself && chosen && s.cards[chosen]!.zone === 'battlefield') dealDamage(ctx, from, { kind: 'card', card: chosen }, damage, false);
       return;
     }
     case 'DrawCards':
@@ -3808,6 +3811,7 @@ function continueResolving(ctx: Ctx): void {
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
     if (effect.ifVoid !== undefined && (s.voidTurn === s.turnNumber) !== effect.ifVoid) continue;
+    if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
     if (effect.ifNthResolutionThisTurn !== undefined) {

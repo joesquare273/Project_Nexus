@@ -20,7 +20,7 @@ export type ManaPool = Record<ManaType, number>;
 
 /** A parsed mana cost such as {2}{R}{W} -> { generic: 2, R: 1, W: 1 }. */
 /** `x` counts {X} symbols. */
-export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>> } & Partial<Record<ManaType, number>>;
+export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][] } & Partial<Record<ManaType, number>>;
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -894,6 +894,8 @@ export interface EffectSpec {
   ifRevolt?: boolean;
   /** Void: only if (true) or unless (false) a nonland permanent left the battlefield this turn or a spell was warped this turn. */
   ifVoid?: boolean;
+  /** Only during your turn (true) or only when it isn't your turn (false): Zealous Display. */
+  ifYourTurn?: boolean;
   /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number; not?: boolean };
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
@@ -1178,6 +1180,8 @@ export interface ObjectFilter {
   attackingYou?: boolean;
   /** Entered the battlefield this turn ("target commander that entered this turn"). */
   enteredThisTurn?: boolean;
+  /** Was cast for its warp cost (and is still on the battlefield from that cast): Full Bore. */
+  warped?: boolean;
   /** Has less power than the card with the ability ("with power less than Auron's power"). */
   powerLessThanSource?: boolean;
   /** Has exactly this name (partner with, "search for a card named ..."). */

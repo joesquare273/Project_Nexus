@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M10
+
+22 more cards: 186 of 261 built. The engine now reads hybrid mana ({U/R}:
+either color, mana value 1; payment and the bots' tap planning try each
+color), so Pinnacle Emissary is in. "Deals damage equal to its power" now
+uses the creature's power as the damage is dealt (rule 608.2h), so a pump
+earlier in the same spell counts (Diplomatic Relations). New effect condition
+`ifYourTurn` (Zealous Display) and filter `warped` (Full Bore).
+
 ### Edge of Eternities main set, group M9
 
 Nine more Lander, void and warp cards: Kav Landseeker's Lander is sacrificed

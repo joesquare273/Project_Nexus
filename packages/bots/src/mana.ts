@@ -12,6 +12,7 @@ import {
   manaChoices,
   parseManaCost,
   planPayment,
+  hybridResolutions,
   type CostedOption,
   type ManaPool,
   type Action,
@@ -146,7 +147,12 @@ export function planTaps(
   const sources: TapSource[] = [...manaSources(s, playerId, opts), ...legendarySources(s, playerId, opts), ...grantedSources(s, playerId, opts)].sort((a, b) => reluctance(s, a) - reluctance(s, b));
   // Paid abilities spend the normal pool, so they're left out when Equipment-only mana is in play.
   const paid = opts.forEquipment ? [] : paidManaSources(s, playerId).filter((c) => !opts.exclude?.includes(c.id));
-  return planWith(s, need, pool, sources, paid, 2);
+  // Hybrid symbols: try each way of paying them.
+  for (const option of hybridResolutions(need)) {
+    const plan = planWith(s, option, pool, sources, paid, 2);
+    if (plan) return plan;
+  }
+  return null;
 }
 
 function planWith(
