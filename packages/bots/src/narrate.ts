@@ -288,6 +288,8 @@ function effectText(e: EffectSpec): string {
       return 'you may attach an Equipment you control to it';
     case 'RemoveFromCombat':
       return `remove ${who} from combat`;
+    case 'PutExiledWithThisOntoBattlefield':
+      return 'put a card exiled with it onto the battlefield under your control';
     case 'ReturnDestroyedThisWay':
       return 'return a creature card destroyed this way to the battlefield under your control';
     case 'ExiledWithThisToGraveyard':

@@ -5,7 +5,7 @@
 import { backFaceDefinition, currentDefinition as defOf } from './cardface.ts';
 import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
-import { entersTapped } from './typerules.ts';
+import { entersTapped, objectManaValue } from './typerules.ts';
 import {
   MANA_TYPES,
   type AnyCounter,
@@ -334,6 +334,12 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     c.exiledWith = { source: darkness.id, sourceObject: darkness.zoneChanges ?? 0 };
     const gain = defOf(s, darkness).statics!.find((st) => st.exileOpponentCreaturesThatDie)!.exileOpponentCreaturesThatDie!.gainLife;
     changeLife(ctx, darkness.controller, gain);
+  }
+  if (from === 'battlefield' && c.leavesDealsManaValueDamage) {
+    // Terminal Velocity: "When this permanent leaves the battlefield, it deals damage equal to its mana value to each creature."
+    delete c.leavesDealsManaValueDamage;
+    const mv = objectManaValue(s, c);
+    s.triggerQueue.push({ source: id, ability: -1, controller, sourceZone: to, sourceObject: c.zoneChanges ?? 0, spec: { when: 'LeavesBattlefield', effects: [{ effect: 'DealDamage', amount: mv, target: 'AllPermanents', filter: { types: ['creature'] } }] } });
   }
   if (from === 'battlefield') {
     leftBattlefield(ctx, id);

@@ -132,6 +132,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'lifeLostInEvent',
       'landsToGraveyardThisWay',
       'countersAddedInEvent',
+      'chosenCostPower',
       'sacrificedPower',
       'sacrificedManaValue',
     ];

@@ -1237,6 +1237,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
   if (exileCost) {
     if (costCards.length !== 1 || !exileFromHandChoices(s, def, playerId, id).includes(costCards[0]!)) reject(`Choose a card in your hand to exile for ${def.name}.`);
+  } else if (def.additionalCost?.chooseCreatureOrWarped) {
+    if (costCards.length !== 1 || !encounterChoices(s, playerId).includes(costCards[0]!)) reject(`Choose a creature you control or a warped creature card you own in exile for ${def.name}.`);
   } else if (def.additionalCost?.sacrifice || (def.kickerSacrifice && (choice.kicks ?? 0) > 0)) {
     // A sacrifice cost (rule 601.2h): one matching permanent, or none when paying the mana instead.
     const ways = spellSacrificeChoices(s, playerId, def, id, choice.kicks ?? 0);
@@ -1317,6 +1319,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   // "As an additional cost, pay X life" (Toxic Deluge).
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const paid of costCards) {
+    if (def.additionalCost?.chooseCreatureOrWarped) continue;
     if (exileCost) moveCard(ctx, paid, 'exile');
     else if (sacrificing && def.kickerReturnsToHand && kicks > 0 && !def.additionalCost?.sacrifice) moveCard(ctx, paid, 'hand');
     else if (sacrificing) sacrifice(ctx, paid);
@@ -1397,6 +1400,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
     ...(edgar?.finality ? { finalityOnEnter: true as const } : {}),
     ...(sacrificeLater ? { sacrificeAtEndStep: true as const } : {}),
+    ...(def.additionalCost?.chooseCreatureOrWarped && costCards[0] ? { chosenForCost: { card: costCards[0], power: s.cards[costCards[0]]!.zone === 'battlefield' ? powerOf(s, s.cards[costCards[0]]!) : (defOf(s, s.cards[costCards[0]]!).power ?? 0) } } : {}),
   };
   s.stack.push(item);
   // Check after the spell is on the stack: a commander cast from a hidden
@@ -1587,6 +1591,13 @@ const BASIC_LAND_TYPES = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
 export const RETRACE_DISCARD: ObjectFilter = { types: ['land'] };
 
 /** Other cards in your hand that could pay a discard cost (matching `filter`, if any). */
+/** Close Encounter's additional cost: a creature you control, or a warped creature card you own in exile. */
+export function encounterChoices(s: GameState, playerId: PlayerId): InstanceId[] {
+  const mine = battlefield(s).filter((c) => c.controller === playerId && !c.phasedOut && isCreatureOnBattlefield(s, c)).map((c) => c.id);
+  const warped = s.players[playerId]!.exile.filter((id) => s.cards[id]!.owner === playerId && s.cards[id]!.warpExiledTurn !== undefined && defOf(s, s.cards[id]!).types.includes('creature'));
+  return [...mine, ...warped];
+}
+
 export function discardCandidates(s: GameState, playerId: PlayerId, source: InstanceId, filter?: ObjectFilter): InstanceId[] {
   return player(s, playerId).hand.filter((id) => id !== source && (!filter || matchesObject(s, filter, s.cards[id]!, { controller: playerId, source })));
 }
@@ -1976,6 +1987,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
         ? (r.previousTarget?.kind === 'player' ? battlefield(s).filter((c) => c.controller === (r.previousTarget as { player: PlayerId }).player && !c.phasedOut && matchesObject(s, effect.filter, c, { controller: r.item.controller })).length : 0)
         : a.of === 'chosenCardTypes'
         ? new Set((r.chosen ?? []).flatMap((c) => c.cards).flatMap((id) => defOf(s, s.cards[id]!).types)).size
+        : a.of === 'chosenCostPower'
+        ? (r.item.kind === 'spell' && r.item.chosenForCost ? Math.max(0, s.cards[r.item.chosenForCost.card]?.zone === 'battlefield' ? powerOf(s, s.cards[r.item.chosenForCost.card]!) : r.item.chosenForCost.power) : 0)
         : a.of === 'sacrificedPower' || a.of === 'sacrificedManaValue'
         ? (r.item.kind === 'ability' ? (r.item[a.of] ?? 0) : 0)
         : a.of === 'previousTargetPower'
@@ -2035,6 +2048,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       else delete r.putAttackingDefender;
       if (effect.alsoFromGraveyard || effect.entersTapped) r.putTapped = true;
       else delete r.putTapped;
+      if (effect.terminalVelocity) r.putTerminal = true;
+      else delete r.putTerminal;
       const from = effect.alsoFromGraveyard ? [...s.players[pid]!.hand, ...s.players[pid]!.graveyard] : s.players[pid]!.hand;
       // "With mana value less than or equal to the number of lands you control" (Anticausal Vestige).
       const mvLimit = effect.manaValueAtMostCount ? countOf(s, effect.manaValueAtMostCount, pid, source) : Infinity;
@@ -2077,7 +2092,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       const max = effect.halfOfMatching ? Math.floor(cards.length / 2) : effect.anyNumber ? cards.length : Math.min(Math.max(1, amount), cards.length);
       if (max === 0) continue;
       const purpose = effect.effect === 'Sacrifice' ? 'sacrifice' : 'destroy';
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional || effect.anyNumber ? 0 : max, max }];
+      const src = s.cards[source];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional || effect.anyNumber ? 0 : max, max, ...(effect.exileLinked && src ? { exileLinked: { source, sourceObject: src.zoneChanges ?? 0 } } : {}) }];
     } else {
       const max = effect.onePerType ? effect.onePerType.length : Math.min(amount, cards.length);
       r.choiceQueue = [
@@ -2390,6 +2406,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DrawCards':
       for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
       return;
+    case 'PutExiledWithThisOntoBattlefield': {
+      const object = item.kind === 'ability' ? item.sourceObject : undefined;
+      const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.exiledWith?.source === source && (object === undefined || c.exiledWith.sourceObject === object) && matchesObject(s, effect.filter, c, { controller: item.controller })).map((c) => c.id);
+      if (exiled.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards: exiled, min: 1, max: 1, ...(effect.counters ? { extraCounters: effect.counters } : {}) }];
+      return;
+    }
     case 'ReturnDestroyedThisWay': {
       const back = (r.destroyedCards ?? []).filter((id) => s.cards[id]?.zone === 'graveyard' && defOf(s, s.cards[id]!).types.includes('creature'));
       if (back.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards: back, min: 1, max: 1 }];
@@ -4439,6 +4461,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.controller = pending.player;
       c.summoningSick = true;
       if ((r.putTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
+      if (pending.extraCounters) addCounters(ctx, id, pending.extraCounters, pending.player);
+      if (r.putTerminal) {
+        c.leavesDealsManaValueDamage = true;
+        c.sacrificeAtEndStep = true;
+        c.sacrificeAtEndStepOf = pending.player;
+        s.temporaryEffects.push({ source: id, affected: id, keywords: ['Haste'], whileControlledBy: pending.player });
+      }
       const defender = r.putAttackingDefender;
       if (defender && s.combat && !s.players[defender]!.eliminated && defOf(s, c).types.includes('enchantment')) {
         c.tapped = true;
@@ -4455,6 +4484,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       else if (c.zone === 'battlefield') sacrifice(ctx, id);
       // "For each land card put into a graveyard this way" (a token isn't a card).
       if (c.zone === 'graveyard' && defOf(s, c).types.includes('land')) r.landsToGraveyard = (r.landsToGraveyard ?? 0) + 1;
+    }
+  }
+  else if (pending.purpose === 'sacrifice' && pending.exileLinked) {
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile');
+      if (s.cards[id]?.zone === 'exile') s.cards[id]!.exiledWith = { ...pending.exileLinked };
     }
   }
   else if (pending.purpose === 'sacrifice') {

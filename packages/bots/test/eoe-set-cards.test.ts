@@ -2366,3 +2366,62 @@ describe('M18: granted warp, toughness damage and Requiem Monolith', () => {
     expect([s.cards[bear]!.damage, s.players.P1!.hand.length, s.players.P1!.life]).toEqual([1, hand + 1, life - 1]);
   });
 });
+
+// Group M19: Close Encounter, Terminal Velocity and Sothera.
+describe('M19: Close Encounter, Terminal Velocity and Sothera', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('Close Encounter deals damage equal to the power of a creature you control or a warped creature card in exile', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'close-encounter', 'hand');
+    const mine = put(s, 'P1', 'icecave-crasher');
+    const warped = put(s, 'P1', 'quantum-riddler', 'exile', { warpExiledTurn: 1 });
+    const plain = put(s, 'P1', 'quantum-riddler', 'exile');
+    const foe = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)] })).toBeTruthy();
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)], costCards: [plain] })).toBeTruthy();
+    const options = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell).map((a) => (a as { costCards?: string[] }).costCards?.[0]);
+    expect(new Set(options)).toEqual(new Set([mine, warped]));
+    let t = drain(cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)], costCards: [mine] }).state);
+    expect([t.cards[foe]!.damage, zone(t, mine)]).toEqual([4, 'battlefield']);
+    t = drain(cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(mine)], costCards: [warped] }).state);
+    expect([zone(t, mine), zone(t, warped)]).toEqual(['graveyard', 'exile']);
+  });
+
+  it('Terminal Velocity: the permanent has haste, is sacrificed at your end step, and then deals damage equal to its mana value to each creature', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'terminal-velocity', 'hand');
+    const big = put(s, 'P1', 'mouth-of-the-storm', 'hand');
+    const foe = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'battlefield' });
+    s = drain(settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [big] })).state);
+    expect([zone(s, big), hasKeyword(s, s.cards[big]!, 'Haste')]).toEqual(['battlefield', true]);
+    s = drain(settle(goTo(s, 'end')).state);
+    expect([zone(s, big), zone(s, foe)]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Sothera: when your creature dies, each opponent exiles one of theirs; with a creatureless player at your end step, it trades itself for one of them with two counters', () => {
+    let s = newGame();
+    const sothera = put(s, 'P1', 'sothera-the-supervoid');
+    const mine = put(s, 'P1', 'meltstrider-eulogist');
+    const theirs = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    s.cards[mine]!.damage = 9;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    s = drain(s);
+    if (s.pending.kind === 'chooseCards') s = drain(settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [theirs] })).state);
+    expect([zone(s, theirs), s.cards[theirs]!.exiledWith?.source]).toEqual(['exile', sothera]);
+    s = settle(goTo(s, 'end')).state;
+    s = drain(s);
+    if (s.pending.kind === 'chooseCards') s = drain(settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [theirs] })).state);
+    expect([zone(s, sothera), zone(s, theirs), s.cards[theirs]!.controller, s.cards[theirs]!.counters]).toEqual(['graveyard', 'battlefield', 'P1', 2]);
+  });
+});

@@ -271,6 +271,8 @@ export const EFFECT_KINDS = [
   'DealDamage',
   'DrawCards',
   'GainLife',
+  /** Put a card matching `filter` that was exiled with this permanent onto the battlefield under your control, with `counters` additional +1/+1 counters (Sothera; works after the source has left). */
+  'PutExiledWithThisOntoBattlefield',
   /** Return a creature card destroyed earlier in this spell from a graveyard to the battlefield under your control, your choice (Zero Point Ballad). */
   'ReturnDestroyedThisWay',
   /** Put each card exiled with this permanent into its owner's graveyard, then create a `token` for each card put there (Pinnacle Starcage). */
@@ -737,6 +739,8 @@ export type Amount =
         /** The power (or mana value) of the permanent sacrificed to pay this activated ability's cost, as it last was. */
         /** CountersAdded triggers: how many counters were put on ("draw that many cards": Terrasymbiosis). */
         | 'countersAddedInEvent'
+        /** The power of the creature or card chosen as the spell's additional cost (Close Encounter). */
+        | 'chosenCostPower'
         | 'sacrificedPower'
         | 'sacrificedManaValue';
       plus?: number;
@@ -1023,6 +1027,10 @@ export interface EffectSpec {
   ifXAtLeast?: number;
   /** ChoosePermanent: exactly this many (none if there are fewer): "from each of two creatures you control" (Dyadrine). */
   exactly?: number;
+  /** PutFromHand: the permanent gains haste, "when this leaves the battlefield, it deals damage equal to its mana value to each creature" and "at the beginning of your end step, sacrifice this" (Terminal Velocity). */
+  terminalVelocity?: boolean;
+  /** Sacrifice: each chosen permanent is exiled instead, linked to the source (Sothera: "chooses a creature they control and exiles it"). */
+  exileLinked?: boolean;
   /** Sacrifice of the source itself (`filter.self`): done right away, with no card to pick (Command Bridge, Chorale of the Void). */
   noChoice?: boolean;
   /** AddCounters: the same number of those counters is removed at the beginning of the next end step (Systems Override). */
@@ -1367,6 +1375,8 @@ export interface TriggerSpec {
   ifSubjectControllerHasMoreLands?: boolean;
   /** Dies / LeavesBattlefield of the source: only if its power was at least this as it left (Syr Vondam). */
   ifLastPowerAtLeast?: number;
+  /** Intervening "if": some player controls no creatures (Sothera). */
+  ifAPlayerControlsNoCreatures?: boolean;
   /** Intervening "if": an opponent controls more lands than you (Sunstar Expansionist). */
   ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
@@ -1903,7 +1913,7 @@ export interface CardDefinition {
    * permanent matching `sacrifice` (chosen with `costCards`); with `orMana`,
    * paying that mana instead of sacrificing ("sacrifice a legendary creature or pay {2}").
    */
-  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string };
+  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string; /** "Choose a creature you control or a warped creature card you own in exile" (Close Encounter): chosen with `costCards`; nothing happens to it. */ chooseCreatureOrWarped?: boolean };
   /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
   kickerSacrifice?: ObjectFilter;
   /** "Protection from Humans" (rule 702.16): protection from sources with these subtypes. */
@@ -2231,6 +2241,8 @@ export interface CardInstance {
   unearthed?: boolean;
   /** A myriad token: exiled at end of combat. */
   exileAtEndOfCombat?: boolean;
+  /** Terminal Velocity: when it leaves the battlefield, it deals damage equal to its mana value to each creature. */
+  leavesDealsManaValueDamage?: boolean;
   /** It has no abilities for as long as it stays on the battlefield (Xu-Ifit's Skeletons). */
   lostAbilities?: boolean;
   /** Counters removed at the beginning of the next end step (Systems Override's charge counters). */
@@ -2399,6 +2411,8 @@ export interface SpellItem {
   castFrom: 'hand' | 'graveyard' | 'exile' | 'command' | 'library';
   /** Total mana spent to cast it. */
   manaSpent: number;
+  /** Close Encounter: the creature or exiled card chosen as its additional cost, and its power as the spell was cast. */
+  chosenForCost?: { card: InstanceId; power: number };
   /** Converge: how many colors of mana were spent to cast it. */
   colorsSpent?: number;
   /** Sunburst granted as it was cast (Lux Artillery, Solar Array). */
@@ -2527,6 +2541,8 @@ export interface Resolving {
   putAttackingDefender?: PlayerId;
   /** PutFromHand with alsoFromGraveyard: the chosen cards enter tapped. */
   putTapped?: boolean;
+  /** PutFromHand for Terminal Velocity. */
+  putTerminal?: boolean;
   /** DiscardOrSacrifice: land cards put into a graveyard so far. */
   landsToGraveyard?: number;
   /** Counter distribution is chosen one counter at a time, then applied in a batch per recipient. */
@@ -2618,6 +2634,10 @@ export interface CardChoice {
   unattachAtEndStep?: boolean;
   /** The chosen cards' total mana value can't be more than this (Phoenix, Warden of Fire). */
   maxTotalManaValue?: number;
+  /** 'battlefield': each card enters with this many additional +1/+1 counters (Sothera). */
+  extraCounters?: number;
+  /** 'sacrifice': exile the chosen permanents instead, linked to this source object (Sothera). */
+  exileLinked?: { source: InstanceId; sourceObject: number };
   /** payToAvoidCounter: nothing is countered; if they don't pay, this player draws `drawCount` cards instead (Rhystic Study). */
   drawFor?: PlayerId;
   drawCount?: number;
