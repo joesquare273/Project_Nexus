@@ -451,6 +451,7 @@ export function isLegalTarget(
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
     return !!spell && c.id !== source && matchesObject(s, effect.filter, c, viewpoint, spell.controller);
   }
+  if (kind === 'TargetExiledCardWithWarp') return c.zone === 'exile' && !!defOf(s, c).alternativeCost?.warp && c.foretoldTurn === undefined && !c.linkedExile;
   if (kind === 'TargetCardExiledWithSource') {
     const src = source ? s.cards[source] : undefined;
     return c.zone === 'exile' && !!src && c.exiledWith?.source === src.id && c.exiledWith.sourceObject === (src.zoneChanges ?? 0) && matchesObject(s, effect.filter, c, viewpoint);
@@ -490,7 +491,7 @@ export function targetOptions(
   if (effect.target === 'TargetCardInGraveyard' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
   }
-  if (effect.target === 'TargetCardExiledWithSource') {
+  if (effect.target === 'TargetCardExiledWithSource' || effect.target === 'TargetExiledCardWithWarp') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) all.push({ kind: 'card', card: id });
   }
   if (effect.target === 'TargetCardInGraveyard' && effect.alsoExiledFlashback) {
@@ -2342,7 +2343,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'PutOnLibraryBottom':
-      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') moveCard(ctx, id, 'library');
+      for (const id of cards) if (s.cards[id]!.zone === 'graveyard' || (effect.target === 'TargetExiledCardWithWarp' && s.cards[id]!.zone === 'exile')) moveCard(ctx, id, 'library');
       return;
     case 'AllowAdventureFromGraveyard':
       for (const id of cards) if (s.cards[id]!.zone === 'graveyard') s.cards[id]!.adventureGraveyard = { player: item.controller, grantedTurn: s.turnNumber };
@@ -2389,6 +2390,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DrawCards':
       for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
       return;
+    case 'ReturnDestroyedThisWay': {
+      const back = (r.destroyedCards ?? []).filter((id) => s.cards[id]?.zone === 'graveyard' && defOf(s, s.cards[id]!).types.includes('creature'));
+      if (back.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards: back, min: 1, max: 1 }];
+      return;
+    }
+    case 'ExiledWithThisToGraveyard': {
+      let put = 0;
+      for (const c of Object.values(s.cards)) {
+        if (c.zone !== 'exile' || c.exiledUntilLeaves !== source) continue;
+        delete c.exiledUntilLeaves;
+        moveCard(ctx, c.id, 'graveyard');
+        if (s.cards[c.id]?.zone === 'graveyard') put++;
+      }
+      for (let i = 0; i < put && effect.token; i++) r.createdTokens.push(createToken(ctx, effect.token, item.controller));
+      return;
+    }
     case 'SetLifeHalfStarting':
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, Math.ceil(s.format.startingLife / 2) - s.players[t.player]!.life);
       return;
@@ -2457,7 +2474,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'Destroy':
-      for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
+      for (const id of onBattlefield) if (destroy(ctx, id)) { r.destroyedCount = (r.destroyedCount ?? 0) + 1; r.destroyedCards = [...(r.destroyedCards ?? []), id]; }
       return;
     case 'Exile':
       // A card in a graveyard ("exile target creature card from a graveyard").
@@ -2901,12 +2918,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const cards = battlefield(s)
         .filter((c) => !c.phasedOut && matchesObject(s, effect.filter, c, { controller: item.controller, source }) && (!effect.fromProliferated || (r.proliferated ?? []).includes(c.id)))
         .map((c) => c.id);
-      if (cards.length === 0) {
+      if (cards.length === 0 || (effect.exactly !== undefined && cards.length < effect.exactly)) {
         if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
         return;
       }
       const chooser = effect.chosenByPreviousTargetPlayer && r.previousTarget?.kind === 'player' ? r.previousTarget.player : item.controller;
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional || effect.anyNumber ? 0 : 1, max: effect.anyNumber ? cards.length : 1 }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.exactly ? effect.exactly : effect.optional || effect.anyNumber ? 0 : 1, max: effect.exactly ?? (effect.anyNumber ? cards.length : 1) }];
       return;
     }
     case 'AddSubtypes':
@@ -3861,6 +3878,7 @@ function continueResolving(ctx: Ctx): void {
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
     if (effect.ifVoid !== undefined && (s.voidTurn === s.turnNumber) !== effect.ifVoid) continue;
+    if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x) ?? 0) < effect.ifXAtLeast) continue;
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
@@ -3989,6 +4007,7 @@ export function resolveTop(ctx: Ctx): void {
       c.manaSpentToCast = item.manaSpent;
       if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
+      if (def.entersWithCountersFromManaSpent) addCounters(ctx, c.id, item.manaSpent, item.controller);
       if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
       // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.
       if ((def.sunburst || item.sunburst) && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');

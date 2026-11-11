@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M17
+
+Six more: 246 of 261 built. Zero Point Ballad (toughness X or less, and a
+return of one creature destroyed this way), Mutinous Massacre (odd or even
+mana value), Dyadrine (counters equal to the mana spent), Blade of the
+Swarm (a new target: an exiled card with warp), Pinnacle Starcage and
+Sunset Saboteur (its ward discard is random, like Alpharael's: see
+docs/decisions.md).
+
 ### Edge of Eternities main set, group M16
 
 Three more one-offs: 240 of 261 built. A returned card can lose its

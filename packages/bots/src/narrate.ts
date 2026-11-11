@@ -45,6 +45,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   TargetAbility: 'target activated or triggered ability',
   TargetSpellOrAbility: 'target activated ability, triggered ability, or spell',
   TargetCardExiledWithSource: 'target card exiled with this',
+  TargetExiledCardWithWarp: 'target exiled card with warp',
   TargetSpell: 'target spell',
   EquippedCreature: 'equipped creature',
   SubjectController: 'that player',
@@ -287,6 +288,10 @@ function effectText(e: EffectSpec): string {
       return 'you may attach an Equipment you control to it';
     case 'RemoveFromCombat':
       return `remove ${who} from combat`;
+    case 'ReturnDestroyedThisWay':
+      return 'return a creature card destroyed this way to the battlefield under your control';
+    case 'ExiledWithThisToGraveyard':
+      return "put each card exiled with it into its owner's graveyard, and create a token for each";
     case 'ShuffleThisIntoLibrary':
       return "shuffle this card into its owner's library";
     case 'ExileGraveyardsCopyCreature':

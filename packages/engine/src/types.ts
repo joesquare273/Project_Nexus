@@ -163,6 +163,8 @@ export const TARGET_KINDS = [
   'ChosenCards',
   /** A card in exile linked to this permanent ("target creature card exiled with The Darkness Crystal"), matching `filter`. */
   'TargetCardExiledWithSource',
+  /** A face-up exiled card with warp (Blade of the Swarm). */
+  'TargetExiledCardWithWarp',
 ] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
@@ -180,6 +182,7 @@ export const CHOSEN_TARGET_KINDS: readonly TargetKind[] = [
   'TargetSpell',
   'TargetSpellPermanentOrGraveyardCard',
   'TargetCardExiledWithSource',
+  'TargetExiledCardWithWarp',
 ];
 
 export const EFFECT_KINDS = [
@@ -268,6 +271,10 @@ export const EFFECT_KINDS = [
   'DealDamage',
   'DrawCards',
   'GainLife',
+  /** Return a creature card destroyed earlier in this spell from a graveyard to the battlefield under your control, your choice (Zero Point Ballad). */
+  'ReturnDestroyedThisWay',
+  /** Put each card exiled with this permanent into its owner's graveyard, then create a `token` for each card put there (Pinnacle Starcage). */
+  'ExiledWithThisToGraveyard',
   /** Each target player's life total becomes half the starting life total, rounded up (The Endstone). */
   'SetLifeHalfStarting',
   'LoseLife',
@@ -1010,6 +1017,10 @@ export interface EffectSpec {
   chosenByPreviousTargetPlayer?: boolean;
   /** ReturnToBattlefield: the card has no abilities for as long as it stays on the battlefield; with `addSubtypes`, it gains those subtypes too (Xu-Ifit). */
   losesAbilities?: boolean;
+  /** Only if X is at least this ("if X is 6 or more"). */
+  ifXAtLeast?: number;
+  /** ChoosePermanent: exactly this many (none if there are fewer): "from each of two creatures you control" (Dyadrine). */
+  exactly?: number;
   /** Sacrifice of the source itself (`filter.self`): done right away, with no card to pick (Command Bridge, Chorale of the Void). */
   noChoice?: boolean;
   /** AddCounters: the same number of those counters is removed at the beginning of the next end step (Systems Override). */
@@ -1241,6 +1252,10 @@ export interface ObjectFilter {
   manaValueAtLeast?: number;
   /** Mana value X or less, X being the spell's ("each nonland permanent with mana value X or less": Gaze of Granite). */
   manaValueAtMostX?: boolean;
+  /** Toughness X or less, X being the spell's (Zero Point Ballad). */
+  toughnessAtMostX?: boolean;
+  /** Odd or even mana value (Mutinous Massacre; zero is even). */
+  manaValueParity?: 'odd' | 'even';
   /** Mana value X or less, X being the mana spent to cast the ability's source (Astelli Reclaimer). */
   manaValueAtMostSourceManaSpent?: boolean;
   /** Has no counters on it ("creatures with no counters on them"). */
@@ -1908,6 +1923,8 @@ export interface CardDefinition {
   ptPlusCounts?: CountKind[];
   /** "This creature enters with a +1/+1 counter for each ...": the count as it enters (Centaur Vinecrasher). */
   entersWithCountersFromCount?: CountKind;
+  /** "Enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it" (Dyadrine). */
+  entersWithCountersFromManaSpent?: boolean;
   /** Coven: as long as you control three or more creatures with different powers, you may also play cards matching this from the top of your library (Augur of Autumn: creature spells). */
   playFromLibraryTopWithCoven?: ObjectFilter;
   /** "Can't be blocked except by N or more creatures" (Relentless X-ATM092: 3). */
@@ -2518,6 +2535,8 @@ export interface Resolving {
   previousTargetPower?: number;
   /** Permanents destroyed so far by this spell or ability ("for each permanent destroyed this way"). */
   destroyedCount?: number;
+  /** The cards destroyed so far by this spell or ability. */
+  destroyedCards?: InstanceId[];
   createdTokens: InstanceId[];
   /** Cards still to look at for the current surveil or scry. */
   surveilQueue: InstanceId[];

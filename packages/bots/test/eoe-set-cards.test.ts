@@ -2218,3 +2218,103 @@ describe('M16: three more one-offs', () => {
     expect([powerOf(s, s.cards[bear]!), rings.every((id) => s.cards[id]!.tapped)]).toEqual([5, true]);
   });
 });
+
+// Group M17: sweepers and more one-offs.
+describe('M17: sweepers and more one-offs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const drain = (s: GameState, opts: never = {} as never) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), opts).state;
+    return s;
+  };
+
+  it('Zero Point Ballad destroys by toughness, costs X life, and at X of 6 or more returns one of the creatures under your control', () => {
+    let s = newGame();
+    const ballad = put(s, 'P1', 'zero-point-ballad', 'hand');
+    const small = put(s, 'P2', 'meltstrider-eulogist');
+    const big = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 6 });
+    const life = s.players.P1!.life;
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: ballad, x: 3 }).state;
+    expect([zone(t, small), zone(t, big), t.players.P1!.life]).toEqual(['graveyard', 'battlefield', life - 3]);
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: ballad, x: 6 }).state;
+    expect(t.pending).toMatchObject({ kind: 'chooseCards', purpose: 'battlefield', min: 1, max: 1 });
+    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [big] })).state;
+    expect([zone(t, small), zone(t, big), t.cards[big]!.controller, t.players.P1!.life]).toEqual(['graveyard', 'battlefield', 'P1', life - 6]);
+  });
+
+  it('Mutinous Massacre destroys the odd (or even) creatures, then takes the rest untapped with haste until end of turn', () => {
+    let s = newGame();
+    const massacre = put(s, 'P1', 'mutinous-massacre', 'hand');
+    const odd = put(s, 'P2', 'meltstrider-eulogist');
+    const even = put(s, 'P2', 'icecave-crasher', 'battlefield', { tapped: true });
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 2, R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: massacre, mode: 0 }).state;
+    expect([zone(s, odd), s.cards[even]!.controller, s.cards[even]!.tapped, hasKeyword(s, s.cards[even]!, 'Haste')]).toEqual(['graveyard', 'P1', false, true]);
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.cards[even]!.controller).toBe('P2');
+  });
+
+  it('Dyadrine enters with counters equal to the mana spent; attacking, two counters buy a card and a Robot', () => {
+    let s = newGame();
+    const dy = put(s, 'P1', 'dyadrine-synthesis-amalgam', 'hand');
+    const other = put(s, 'P1', 'meltstrider-eulogist', 'battlefield', { counters: 1 });
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dy, x: 2 }).state;
+    expect(s.cards[dy]!.counters).toBe(4);
+    s = goTo(s, 'declareAttackers');
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: other, defender: 'P2' }] }), { accept: true }).state;
+    s = drain(s, { accept: true } as never);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'mark', min: 2, max: 2 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [dy, other] })).state;
+    expect([s.cards[dy]!.counters, s.cards[other]!.counters ?? 0, s.players.P1!.hand.length, s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe').length]).toEqual([3, 0, hand + 1, 1]);
+  });
+
+  it('Blade of the Swarm: two counters, or an exiled warp card goes to the bottom of its owner’s library', () => {
+    let s = newGame();
+    const blade = put(s, 'P1', 'blade-of-the-swarm', 'hand');
+    const warped = put(s, 'P2', 'quantum-riddler', 'exile');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: blade });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseModes');
+    const options = getLegalActions(s);
+    let t = settle(act(s, options.find((a) => a.type === 'ChooseModes' && a.modes[0] === 0)!)).state;
+    t = drain(t);
+    expect(t.cards[blade]!.counters).toBe(2);
+    t = settle(act(s, options.find((a) => a.type === 'ChooseModes' && a.modes[0] === 1)!), pick(warped)).state;
+    t = drain(t, pick(warped));
+    expect([zone(t, warped), t.players.P2!.library.at(-1)]).toEqual(['library', warped]);
+  });
+
+  it('Pinnacle Starcage exiles cheap artifacts and creatures; its ability buries them and makes a Robot for each', () => {
+    let s = newGame();
+    const cage = put(s, 'P1', 'pinnacle-starcage', 'hand');
+    const ring = put(s, 'P2', 'sol-ring');
+    const cheap = put(s, 'P2', 'starport-security');
+    const big = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 4, C: 7 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cage }).state;
+    s = drain(s);
+    expect([zone(s, ring), zone(s, cheap), zone(s, big)]).toEqual(['exile', 'exile', 'battlefield']);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: cage, ability: 0 }).state;
+    s = drain(s);
+    expect([zone(s, ring), zone(s, cheap), zone(s, cage), s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe').length]).toEqual(['graveyard', 'graveyard', 'graveyard', 2]);
+  });
+
+  it('Sunset Saboteur: ward makes an opponent discard, and its attack puts a counter on an opponent’s creature', () => {
+    let s = newGame();
+    const sab = put(s, 'P1', 'sunset-saboteur');
+    const foe = put(s, 'P2', 'meltstrider-eulogist');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: sab, defender: 'P2' }] }), pick(foe)).state;
+    s = drain(s, pick(foe));
+    expect(s.cards[foe]!.counters).toBe(1);
+  });
+});
