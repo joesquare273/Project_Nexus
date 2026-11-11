@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { applyAction, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { canBlock } from '../../engine/src/combat.ts';
 import { CARD_DEFS } from '@nexus/cards';
-import { act, card, cast, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
+import { act, card, cast, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
 import { moveCard } from '../../engine/src/state.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
@@ -1155,5 +1155,180 @@ describe('M8: more warp cards', () => {
       else s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
     }
     expect(s.players.P1!.hand.length).toBe(hand + 3);
+  });
+});
+
+// Group M9: Lander cards, void and warp leftovers.
+describe('M9: Landers, void and warp', () => {
+  const landers = (s: GameState, pid = 'P1') => s.players[pid]!.battlefield.filter((id) => s.cards[id]!.defId === 'lander-token-eoe');
+  const passUntilChoice = (s: GameState) => {
+    for (let i = 0; i < 8 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    return s;
+  };
+
+  it('Kav Landseeker’s Lander is sacrificed at the end step of your next turn, not this one', () => {
+    let s = newGame();
+    const kav = put(s, 'P1', 'kav-landseeker', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kav }).state;
+    expect(landers(s)).toHaveLength(1);
+    s = goTo(s, 'end');
+    expect(landers(s)).toHaveLength(1);
+    s = goTo(goTo(s, 'main1'), 'end');
+    expect([s.activePlayer, landers(s).length]).toEqual(['P2', 1]);
+    s = goTo(goTo(s, 'main1'), 'end');
+    expect([s.activePlayer, landers(s).length]).toEqual(['P1', 0]);
+  });
+
+  it('Sunstar Expansionist makes a Lander only if an opponent has more lands, and gets +1/+0 on landfall', () => {
+    let s = newGame();
+    const sunstar = put(s, 'P1', 'sunstar-expansionist', 'hand');
+    const land = put(s, 'P1', 'plains', 'hand');
+    put(s, 'P2', 'forest');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: sunstar }).state;
+    expect(landers(s)).toHaveLength(1);
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }).state;
+    expect(powerOf(s, s.cards[sunstar]!)).toBe(3);
+
+    let t = newGame();
+    const other = put(t, 'P1', 'sunstar-expansionist', 'hand');
+    put(t, 'P1', 'plains');
+    put(t, 'P2', 'forest');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: other }).state;
+    expect(landers(t)).toHaveLength(0);
+  });
+
+  it('Bioengineered Future: a Lander, and creatures enter with a counter for each land that entered this turn', () => {
+    let s = newGame();
+    const future = put(s, 'P1', 'bioengineered-future', 'hand');
+    const land = put(s, 'P1', 'forest', 'hand');
+    const bear = put(s, 'P1', 'meltstrider-eulogist', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 3, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: future }).state;
+    expect(landers(s)).toHaveLength(1);
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }).state;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bear }).state;
+    expect(s.cards[bear]!.counters).toBe(1);
+  });
+
+  it('Lithobraking: a Lander, then sacrificing an artifact deals 2 damage to each creature', () => {
+    let s = newGame();
+    const litho = put(s, 'P1', 'lithobraking', 'hand');
+    const ring = put(s, 'P1', 'sol-ring');
+    const mine = put(s, 'P1', 'thawbringer');
+    const theirs = put(s, 'P2', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: litho }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'sacrifice' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect([zone(s, ring), zone(s, mine), s.cards[theirs]!.damage, landers(s).length]).toEqual(['graveyard', 'graveyard', 2, 1]);
+  });
+
+  it('Orbital Plunge makes a Lander only when the 6 damage is more than lethal', () => {
+    let s = newGame();
+    const plunge = put(s, 'P1', 'orbital-plunge', 'hand');
+    const small = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 3 });
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: plunge, targets: [card(small)] }).state;
+    expect([zone(t, small), landers(t).length]).toEqual(['graveyard', 1]);
+    const big = put(s, 'P2', 'quantum-riddler');
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: plunge, targets: [card(big)] }).state;
+    expect([zone(t, big), landers(t).length]).toEqual(['graveyard', 0]);
+  });
+
+  it('Divert Disaster: if the caster pays {2}, the spell resolves and you get a Lander; otherwise it’s countered', () => {
+    let s = newGame();
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const divert = put(s, 'P2', 'divert-disaster', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 3 });
+    mana(s, 'P2', { U: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: ring });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: divert, targets: [card(ring)] });
+    s = passUntilChoice(s);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'payToAvoidCounter', player: 'P1', payGeneric: 2 });
+    let t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    t = passUntilChoice(t);
+    t = settle(t).state;
+    expect([zone(t, ring), landers(t, 'P2').length]).toEqual(['battlefield', 1]);
+    t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect([zone(t, ring), landers(t, 'P2').length]).toEqual(['graveyard', 0]);
+  });
+
+  it('Anticausal Vestige: leaving draws, then puts a permanent card with mana value up to your lands onto the battlefield tapped', () => {
+    let s = newGame();
+    const vestige = put(s, 'P1', 'anticausal-vestige', 'hand');
+    put(s, 'P1', 'forest');
+    put(s, 'P1', 'forest');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const riddler = put(s, 'P1', 'quantum-riddler', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: vestige, alternative: true }).state;
+    expect(zone(s, vestige)).toBe('battlefield');
+    const hand = s.players.P1!.hand.length;
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'battlefield' });
+    const offered = (s.pending as { cards: string[] }).cards;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    expect(offered).toContain(ring);
+    expect(offered).not.toContain(riddler);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
+    expect([zone(s, vestige), zone(s, ring), s.cards[ring]!.tapped]).toEqual(['exile', 'battlefield', true]);
+  });
+
+  it('Alpharael: ward makes an opponent discard at random; with void, its attack halves the defender’s life, rounded up', () => {
+    let s = newGame();
+    const alpha = put(s, 'P1', 'alpharael-stonechosen');
+    const bolt = put(s, 'P2', 'invasive-maneuvers', 'hand');
+    s = goTo(s, 'main1');
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    mana(s, 'P2', { R: 1, C: 1 });
+    s.players.P2!.hand = [bolt];
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [card(alpha)] })).toMatch(/discard/);
+    const spare = put(s, 'P2', 'plasma-bolt', 'hand');
+    const t = act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [card(alpha)] });
+    expect([zone(t, spare), t.players.P2!.hand.length]).toEqual(['graveyard', 0]);
+
+    // No void yet: the attack does nothing; then void, and 15 life loses 8.
+    let u = newGame();
+    const alpha2 = put(u, 'P1', 'alpharael-stonechosen');
+    u = goTo(u, 'declareAttackers');
+    u.players.P2!.life = 15;
+    let a = settle(act(u, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: alpha2, defender: 'P2' }] })).state;
+    expect(a.players.P2!.life).toBe(15);
+    const gone = put(u, 'P2', 'meltstrider-eulogist');
+    moveCard({ s: u, ev: [] }, gone, 'graveyard');
+    a = settle(act(u, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: alpha2, defender: 'P2' }] })).state;
+    expect(a.players.P2!.life).toBe(7);
+  });
+
+  it('Roving Actuator: with void, exiles a cheap instant or sorcery from your graveyard to cast free right away', () => {
+    let s = newGame();
+    const actuator = put(s, 'P1', 'roving-actuator', 'hand');
+    const bolt = put(s, 'P1', 'plasma-bolt', 'graveyard');
+    const gone = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    moveCard({ s, ev: [] }, gone, 'graveyard');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: actuator }).state;
+    expect(zone(s, bolt)).toBe('exile');
+    const castBolt = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === bolt);
+    expect(castBolt).toBeTruthy();
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    s = settle(passUntilChoice(s)).state;
+    expect(s.players.P2!.life).toBe(life - 3);
+    expect(zone(s, bolt)).toBe('exile');
   });
 });

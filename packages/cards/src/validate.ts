@@ -474,6 +474,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
   if (st.castFromGraveyard) validateFilter(st.castFromGraveyard.filter, e);
   if (st.ward !== undefined && (!isNonNegativeInt(st.ward) || st.ward === 0)) e('ward must be a positive whole number.');
   if (st.entersWithExtraCounters !== undefined && st.affects !== 'EachMatching') e('entersWithExtraCounters needs an EachMatching static ability.');
+  if (st.entersWithExtraCountersFromCount !== undefined && st.affects !== 'EachMatching') e('entersWithExtraCountersFromCount needs an EachMatching static ability.');
   if (st.extraCounters !== undefined && (!isNonNegativeInt(st.extraCounters) || st.affects !== 'EachMatching')) {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }

@@ -992,6 +992,29 @@ export function wardLife(s: GameState, targets: readonly Target[], playerId: Pla
   return total;
 }
 
+/** "Ward—Discard a card at random" (Alpharael): how many cards an opponent targeting these discards. */
+export function wardDiscards(s: GameState, targets: readonly Target[], playerId: PlayerId): number {
+  const seen = new Set<InstanceId>();
+  let total = 0;
+  for (const t of targets) {
+    if (t.kind !== 'card' || seen.has(t.card)) continue;
+    seen.add(t.card);
+    const c = s.cards[t.card];
+    if (c?.zone === 'battlefield' && c.controller !== playerId && defOf(s, c).wardDiscardRandom) total += 1;
+  }
+  return total;
+}
+
+/** Pays "Ward—Discard a card at random": with too few cards in hand the ward can't be paid, so the targeting is refused (a simplification of rule 702.21a). */
+function payWardDiscards(ctx: Ctx, targets: readonly Target[], playerId: PlayerId, casting?: InstanceId): void {
+  const s = ctx.s;
+  const n = wardDiscards(s, targets, playerId);
+  if (n === 0) return;
+  const hand = player(s, playerId).hand.filter((id) => id !== casting);
+  if (hand.length < n) reject(`You need ${n === 1 ? 'a card' : `${n} cards`} in hand to discard at random for that ward.`);
+  for (let i = 0; i < n; i++) discard(ctx, hand.splice(randomInt(s, hand.length), 1)[0]!);
+}
+
 export function wardCost(s: GameState, targets: readonly Target[], playerId: PlayerId): number {
   const seen = new Set<InstanceId>();
   let total = 0;
@@ -1319,6 +1342,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (player(s, playerId).life < lifeToPay) reject(`You need ${lifeToPay} life to pay for that.`);
     changeLife(ctx, playerId, -lifeToPay);
   }
+  payWardDiscards(ctx, targets, playerId, id);
   if (from === 'command') {
     const casts = player(s, c.owner).commanderCasts;
     casts[id] = (casts[id] ?? 0) + 1;
@@ -1734,6 +1758,7 @@ export function activateAbility(
     if (player(s, playerId).life < wardLifeCost) reject(`You need ${wardLifeCost} life to pay for Raubahn's ward.`);
     changeLife(ctx, playerId, -wardLifeCost);
   }
+  payWardDiscards(ctx, targets, playerId);
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
@@ -1989,10 +2014,12 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       const defender = effect.enchantmentsEnterAttacking && r.item.kind === 'ability' ? r.item.defender : undefined;
       if (defender) r.putAttackingDefender = defender;
       else delete r.putAttackingDefender;
-      if (effect.alsoFromGraveyard) r.putTapped = true;
+      if (effect.alsoFromGraveyard || effect.entersTapped) r.putTapped = true;
       else delete r.putTapped;
       const from = effect.alsoFromGraveyard ? [...s.players[pid]!.hand, ...s.players[pid]!.graveyard] : s.players[pid]!.hand;
-      const cards = from.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
+      // "With mana value less than or equal to the number of lands you control" (Anticausal Vestige).
+      const mvLimit = effect.manaValueAtMostCount ? countOf(s, effect.manaValueAtMostCount, pid, source) : Infinity;
+      const cards = from.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }) && objectManaValue(s, s.cards[id]!) <= mvLimit);
       // "Up to X": none when X is 0.
       if (cards.length === 0 || (effect.alsoFromGraveyard && amount <= 0)) continue;
       const max = Math.min(Math.max(1, amount), cards.length);
@@ -2314,7 +2341,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined;
       if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
       const from = effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source;
-      for (const t of targets) if (!(t.kind === 'card' && t.card === chosen)) dealDamage(ctx, from, t, amount, false);
+      let excess = false;
+      for (const t of targets) {
+        if (t.kind === 'card' && t.card === chosen) continue;
+        // "If excess damage was dealt this way" (rule 120.4a): more than lethal damage to a creature.
+        if (effect.tokenIfExcess && t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card])) {
+          const c = s.cards[t.card]!;
+          const lethal = Math.max(0, toughnessOf(s, c) - c.damage);
+          const damageBefore = c.damage;
+          dealDamage(ctx, from, t, amount, false);
+          const dealt = (s.cards[t.card]!.zone === 'battlefield' ? s.cards[t.card]!.damage : damageBefore + amount) - damageBefore;
+          if (dealt > lethal) excess = true;
+          continue;
+        }
+        dealDamage(ctx, from, t, amount, false);
+      }
+      if (excess) r.createdTokens.push(createToken(ctx, effect.tokenIfExcess!, item.controller));
       // "... and X damage to itself" (Self-Destruct).
       if (effect.damageItself && chosen && s.cards[chosen]!.zone === 'battlefield') dealDamage(ctx, from, { kind: 'card', card: chosen }, amount, false);
       return;
@@ -2330,7 +2372,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (t.kind !== 'player') continue;
         if (effect.perOpponentWhoChoseNone && !opponentsWhoChoseNone(s, r).includes(t.player)) continue;
         const before = s.players[t.player]!.life;
-        changeLife(ctx, t.player, -amount);
+        // "Loses half their life, rounded up" (Alpharael).
+        changeLife(ctx, t.player, -(effect.halfLifeRoundedUp ? Math.ceil(Math.max(0, before) / 2) : amount));
         r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
       }
       return;
@@ -2342,7 +2385,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) {
         if (!s.stack.some((i) => i.kind === 'spell' && i.card === id) || defOf(s, s.cards[id]!).cantBeCountered) continue;
         const owner = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem).controller;
-        r.choiceQueue = [...(r.choiceQueue ?? []), { player: owner, purpose: 'payToAvoidCounter', cards: [id], min: 0, max: 1, payGeneric: amount, ...(effect.exileCountered ? { exileIfCountered: true } : {}) }];
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: owner, purpose: 'payToAvoidCounter', cards: [id], min: 0, max: 1, payGeneric: amount, ...(effect.exileCountered ? { exileIfCountered: true } : {}), ...(effect.tokenIfPaid ? { tokenIfPaid: effect.tokenIfPaid, tokenFor: item.controller } : {}) }];
       }
       return;
     case 'DrawUnlessPays': {
@@ -2938,6 +2981,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           const id = createToken(ctx, effect.token!, pid);
           if (size !== undefined) s.cards[id]!.tokenSize = size;
           if (effect.entersTapped) s.cards[id]!.tapped = true;
+          // Kav Landseeker: "At the beginning of the end step on your next turn, sacrifice that token."
+          if (effect.sacrificeAtEndStep) {
+            s.cards[id]!.sacrificeAtEndStep = true;
+            if (effect.atYourEndStep) s.cards[id]!.sacrificeAtEndStepOf = item.controller;
+            if (effect.onYourNextTurn) s.cards[id]!.sacrificeAfterTurn = s.turnNumber;
+          }
           const defender = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
           if (defender && s.combat && !s.players[defender]!.eliminated) {
             s.cards[id]!.tapped = true;
@@ -3367,7 +3416,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (!isSpellCard(defOf(s, c))) continue;
         // The copy is cast from exile and then ceases to exist; casting the
         // exiled card and returning it to exile stands in for that.
-        c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ignoreTiming: true, ...(effect.castCost ? { manaCost: effect.castCost } : {}) };
+        c.castPermission = { player: item.controller, turn: s.turnNumber, exileAfter: true, ignoreTiming: true, ...(effect.castCost ? { manaCost: effect.castCost } : {}), ...(effect.castFreeNow ? { free: true, immediate: true } : {}) };
       }
       return;
     case 'ExileUntilFound':
@@ -4158,6 +4207,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       if (cards.length > 0) {
         if (!canPayFromPool(s, pending.player, cost)) reject(`Tap mana for {${pending.payGeneric}} first, or don't pay.`);
         payMana(ctx, pending.player, cost);
+        // Divert Disaster: "If they do, you create a Lander token."
+        if (pending.tokenIfPaid && pending.tokenFor && !s.players[pending.tokenFor]!.eliminated) createToken(ctx, pending.tokenIfPaid, pending.tokenFor);
       } else {
         const countered = s.stack[index] as SpellItem;
         s.stack.splice(index, 1);

@@ -3,7 +3,7 @@
 // clones the input first, so callers never see partial mutations.
 
 import { backFaceDefinition, currentDefinition as defOf } from './cardface.ts';
-import { allCounters, characteristics, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
+import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped } from './typerules.ts';
 import {
@@ -298,7 +298,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.blitzed;
     delete c.evoked;
   }
-  if (from === 'battlefield') { delete c.sacrificeAtEndStep; delete c.sacrificeAtEndStepOf; }
+  if (from === 'battlefield') { delete c.sacrificeAtEndStep; delete c.sacrificeAtEndStepOf; delete c.sacrificeAfterTurn; }
   if (from === 'battlefield') delete c.exileAtEndOfCombat;
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;
@@ -355,8 +355,10 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
       if (source.id === id) continue;
       for (const spec of defOf(s, source).statics ?? []) {
         if (spec.entersWithExtraCounters && staticAffects(s, source, spec, c)) addCounters(ctx, id, spec.entersWithExtraCounters);
+        if (spec.entersWithExtraCountersFromCount && staticAffects(s, source, spec, c)) addCounters(ctx, id, countOf(s, spec.entersWithExtraCountersFromCount, source.controller, source.id));
       }
     }
+    if (d.types.includes('land')) landEntered(s, c.controller);
   }
 }
 
@@ -710,7 +712,9 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
   if(d.entersWithCounters) addCounters(ctx,id,d.entersWithCounters,undefined,d.entersWithCounterKind);
   for(const source of battlefield(s)) for(const spec of defOf(s,source).statics??[]) {
     if(source.id!==id && spec.entersWithExtraCounters && staticAffects(s,source,spec,c)) addCounters(ctx,id,spec.entersWithExtraCounters);
+    if(source.id!==id && spec.entersWithExtraCountersFromCount && staticAffects(s,source,spec,c)) addCounters(ctx,id,countOf(s,spec.entersWithExtraCountersFromCount,source.controller,source.id));
   }
+  if(d.types.includes('land')) landEntered(s,controller);
   ctx.ev.push({ type: 'TokenCreated', card: id, defId, controller });
   // A Saga token's first lore counter comes after it exists, so its own chapter I sees it (rule 714.3a; Esper Terra's copies).
   if(d.saga) addCounters(ctx,id,1,controller,'lore');
@@ -792,4 +796,12 @@ export function removeFromCombat(s: GameState, id: InstanceId): void {
   combat.blockedAttackers = [...new Set([...(combat.blockedAttackers ?? []), ...combat.blocks.map(b=>b.attacker)])];
   combat.attacks = combat.attacks.filter(a=>a.attacker!==id);
   combat.blocks = combat.blocks.filter(b=>b.attacker!==id && b.blocker!==id);
+}
+
+/** Counts a land entering under a player's control this turn (Bioengineered Future). */
+function landEntered(s: GameState, pid: PlayerId): void {
+  const p = s.players[pid];
+  if (!p) return;
+  if (p.landsEnteredTurn !== s.turnNumber) { p.landsEnteredTurn = s.turnNumber; p.landsEntered = 0; }
+  p.landsEntered = (p.landsEntered ?? 0) + 1;
 }

@@ -348,6 +348,11 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && defOf(s,c).types.includes('land')).length;
     if (lands(o.subjectController) <= lands(controller)) return false;
   }
+  if (spec.ifOpponentHasMoreLands) {
+    const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && defOf(s,c).types.includes('land')).length;
+    const mine = lands(controller);
+    if (!Object.keys(s.players).some((pid) => pid !== controller && !s.players[pid]!.eliminated && lands(pid) > mine)) return false;
+  }
   if (spec.duringYourTurn && s.activePlayer !== controller) return false;
   if (spec.nthSpellThisTurn !== undefined && o.spellNumber !== spec.nthSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).

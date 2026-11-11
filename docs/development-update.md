@@ -18,6 +18,16 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M9
+
+Nine more Lander, void and warp cards: Kav Landseeker's Lander is sacrificed
+at the end step of its controller's next turn; Bioengineered Future counts
+the lands that entered under your control this turn; Orbital Plunge checks
+for excess damage; Divert Disaster gives a Lander when the tax is paid; and
+Alpharael's ward makes opponents discard a card at random. 164 of 261 built.
+Pinnacle Emissary waits for hybrid mana ({U/R} warp), which the engine
+doesn't parse yet.
+
 ### Edge of Eternities main set, group M8
 
 11 more warp cards, with token doubling (Exalted Sunborn), counter doubling

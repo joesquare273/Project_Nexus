@@ -657,6 +657,8 @@ export const COUNT_KINDS = [
   'DifferentlyNamedLandsYouControl',
   /** Other creatures and/or artifacts you control (Luxknight Breacher). */
   'OtherCreaturesAndArtifactsYouControl',
+  /** Lands that entered the battlefield under your control this turn (Bioengineered Future). */
+  'LandsEnteredUnderYourControlThisTurn',
 ] as const;
 export type CountKind = (typeof COUNT_KINDS)[number];
 
@@ -986,6 +988,18 @@ export interface EffectSpec {
   elseFirstTarget?: boolean;
   /** CreateTokenCopy: sacrifice the copies at the beginning of the next end step. */
   sacrificeAtEndStep?: boolean;
+  /** CreateToken with `sacrificeAtEndStep` and `atYourEndStep`: at the end step of your next turn, not this one (Kav Landseeker). */
+  onYourNextTurn?: boolean;
+  /** CounterUnlessPays: if the spell's controller pays, you create this token (Divert Disaster). */
+  tokenIfPaid?: CardDefId;
+  /** DealDamage: then create this token if excess damage was dealt (Orbital Plunge). */
+  tokenIfExcess?: CardDefId;
+  /** LoseLife: half the target player's life, rounded up (Alpharael). */
+  halfLifeRoundedUp?: boolean;
+  /** ExileAndCopyToCast: you may cast the copy right away without paying its mana cost (Roving Actuator). */
+  castFreeNow?: boolean;
+  /** ObjectFilter-like limit for PutFromHand: mana value at most this count (Anticausal Vestige). */
+  manaValueAtMostCount?: CountKind;
   /** ExileTopCardToPlay: playable until your next end step, or until the end of your next turn. */
   playUntil?: 'yourNextEndStep' | 'endOfYourNextTurn';
   /** ExileTopCardToPlay: playable until another card is exiled with the same source (Furious Rise). */
@@ -1290,6 +1304,8 @@ export interface TriggerSpec {
   ifPlayerDealtCombatDamageThisTurn?: number;
   /** Intervening "if": the player who controls the entering permanent controls more lands than you. */
   ifSubjectControllerHasMoreLands?: boolean;
+  /** Intervening "if": an opponent controls more lands than you (Sunstar Expansionist). */
+  ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
   /** `stack`: "When you cast this spell" (SpellCast only), from the spell itself. */
   zone?: 'battlefield' | 'graveyard' | 'stack';
@@ -1487,6 +1503,8 @@ export interface StaticSpec {
   extraCounters?: number;
   /** Tromell: each affected permanent enters with this many additional +1/+1 counters. */
   entersWithExtraCounters?: number;
+  /** Bioengineered Future: each affected permanent enters with an additional +1/+1 counter for each of this count. */
+  entersWithExtraCountersFromCount?: CountKind;
   /**
    * "Noncreature spells you cast cost {1} less": spells you cast matching
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
@@ -1819,6 +1837,8 @@ export interface CardDefinition {
   winsWhenRivalLoses?: boolean;
   /** "Ward—Pay life equal to this creature's power" (Raubahn): opponents targeting it pay that life. */
   wardLifeEqualsPower?: boolean;
+  /** "Ward—Discard a card at random" (Alpharael): opponents targeting it discard a card at random. */
+  wardDiscardRandom?: boolean;
   /** "As long as your devotion to [color] is less than N, this isn't a creature" (Purphoros). */
   creatureOnlyWithDevotion?: { color: 'W' | 'U' | 'B' | 'R' | 'G'; atLeast: number };
   /** Its power is equal to this count, everywhere (a characteristic-defining ability, rule 604.3: Adeline). */
@@ -2017,6 +2037,8 @@ export interface CardInstance {
   addedSubtypes?: string[];
   /** With `sacrificeAtEndStep`: only at this player's end step ("your next end step"). */
   sacrificeAtEndStepOf?: PlayerId;
+  /** With `sacrificeAtEndStep`: not before a turn after this one ("the end step on your next turn": Kav Landseeker). */
+  sacrificeAfterTurn?: number;
   /** Exiled at the beginning of the next end step (Inalla's token copies). */
   exileAtEndStep?: boolean;
   /** Sacrificed at the beginning of the next upkeep (Firion's token copies). */
@@ -2199,6 +2221,9 @@ export interface PlayerState {
   turnsTaken?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
+  /** How many lands entered the battlefield under this player's control during turn `landsEnteredTurn`. */
+  landsEntered?: number;
+  landsEnteredTurn?: number;
   /** The turn this player's first coin flip came up heads by Edgar's Two-Headed Coin. */
   coinHeadsTurn?: number;
   /** Noncreature spells this player cast this turn. Reset as each turn begins. */
@@ -2484,6 +2509,9 @@ export interface CardChoice {
   /** payToAvoidCounter: how much generic mana to pay, and whether the spell is exiled if not paid. */
   payGeneric?: number;
   exileIfCountered?: boolean;
+  /** payToAvoidCounter: if they pay, `tokenFor` creates this token (Divert Disaster). */
+  tokenIfPaid?: CardDefId;
+  tokenFor?: PlayerId;
   /** attachToTarget: the creature the chosen Equipment is attached to, and whether it comes off at the next end step. */
   attachHost?: InstanceId;
   unattachAtEndStep?: boolean;

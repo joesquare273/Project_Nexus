@@ -114,6 +114,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.players[player]!.graveyard.length;
     case 'LandCardsInAllGraveyards':
       return Object.values(s.players).reduce((n, p) => n + p.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('land')).length, 0);
+    case 'LandsEnteredUnderYourControlThisTurn': {
+      const p = s.players[player]!;
+      return p.landsEnteredTurn === s.turnNumber ? (p.landsEntered ?? 0) : 0;
+    }
     case 'LandsYouControl':
       return battlefieldCards(s).filter((c) => c.controller === player && def(s, c).types.includes('land')).length;
     case 'LandCardsInYourGraveyard':
