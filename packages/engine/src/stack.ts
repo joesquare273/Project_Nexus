@@ -1123,6 +1123,7 @@ export function spellCost(
     const opponents = s.turnOrder.filter((pid) => pid !== payer! && !s.players[pid]!.eliminated);
     if (opponents.some((pid) => s.players[pid]!.graveyard.length >= opponentGraveyard)) cost = reduceGeneric(cost, def.costReduction!.generic);
   }
+  if (def.costReduction?.ifVoid && card && s.voidTurn === s.turnNumber) cost = reduceGeneric(cost, def.costReduction.generic);
   // "Costs {3} less to cast if you've cast another spell this turn" (Gigastorm Titan).
   if (def.costReduction?.ifCastAnotherSpell && card && (s.players[payer!]!.spellsCastThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.perMatching && card) {
@@ -1326,7 +1327,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (from === 'graveyard') c.castFromGraveyard = true;
   const caster = player(s, playerId);
   caster.spellsCastThisTurn = (caster.spellsCastThisTurn ?? 0) + 1;
-  if (alternative && def.alternativeCost?.warp) caster.warpedSpellTurn = s.turnNumber;
+  if (alternative && def.alternativeCost?.warp) {
+    caster.warpedSpellTurn = s.turnNumber;
+    s.voidTurn = s.turnNumber;
+  }
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
@@ -3747,6 +3751,7 @@ function continueResolving(ctx: Ctx): void {
       if ((atLeast !== undefined && gained < atLeast) || (below !== undefined && gained >= below)) continue;
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
+    if (effect.ifVoid !== undefined && (s.voidTurn === s.turnNumber) !== effect.ifVoid) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
     if (effect.ifNthResolutionThisTurn !== undefined) {

@@ -880,6 +880,8 @@ export interface EffectSpec {
   ifPreviousTargetManaValueAtMost?: number;
   /** Revolt: only if (true) or unless (false) a permanent left the battlefield under your control this turn. */
   ifRevolt?: boolean;
+  /** Void: only if (true) or unless (false) a nonland permanent left the battlefield this turn or a spell was warped this turn. */
+  ifVoid?: boolean;
   /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number; not?: boolean };
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
@@ -1264,6 +1266,8 @@ export interface TriggerSpec {
   ifNotEnteredThisTurn?: boolean;
   /** Intervening "if": "if you gained life this turn". */
   ifYouGainedLifeThisTurn?: boolean;
+  /** Void: intervening "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */
+  ifVoid?: boolean;
   /** "When this creature enters, if it was kicked" (an intervening if on the source). */
   ifKicked?: boolean;
   /** Intervening "if": "if a card left your graveyard this turn". */
@@ -1730,7 +1734,7 @@ export interface CardDefinition {
    */
   /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
   /** `ifCastAnotherSpell`: "if you've cast another spell this turn" (Gigastorm Titan). */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true };
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };
@@ -2633,6 +2637,8 @@ export interface GameState {
   creatureDeathsByController?: Record<PlayerId, number>;
   /** Combat phases begun this turn. */
   combatsThisTurn?: number;
+  /** Void: the last turn a nonland permanent left the battlefield or a spell was warped (any player's). */
+  voidTurn?: number;
   /** Additional combat phases still to come this turn (each after the current one). */
   extraCombats?: number;
   /** Extra turns still to come, taken from the end of the list first (rule 500.7). */

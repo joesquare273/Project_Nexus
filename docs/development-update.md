@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M4: void and Landers
+
+Void is built (a bonus if a nonland permanent left the battlefield this turn
+or a spell was warped this turn), with 11 void cards and 12 Lander cards:
+87 of 261 built.
+
 ### Edge of Eternities main set, group M3: warp
 
 Warp is built: cast a card from your hand for its cheaper warp cost, it's

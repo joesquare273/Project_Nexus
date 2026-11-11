@@ -336,6 +336,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (from === 'battlefield') {
     leftBattlefield(ctx, id);
     if (s.players[controller]) s.players[controller]!.permanentLeftTurn = s.turnNumber;
+    // Void: "a nonland permanent left the battlefield this turn".
+    if (!lastTypes?.includes('land')) s.voidTurn = s.turnNumber;
   }
   if (meldedWith && s.cards[meldedWith]?.zone === 'void') moveCard(ctx, meldedWith, to === 'battlefield' || to === 'void' ? 'exile' : to, { silent: !!opts.silent });
   // A double-faced card put onto the battlefield transformed enters back face up (rule 712.14a),

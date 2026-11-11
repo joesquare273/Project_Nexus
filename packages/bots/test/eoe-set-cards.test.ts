@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
 import { CARD_DEFS } from '@nexus/cards';
 import { act, card, cast, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
+import { moveCard } from '../../engine/src/state.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const ANY = { W: 3, U: 3, B: 3, R: 3, G: 3, C: 6 };
@@ -441,5 +442,152 @@ describe('M3: warp', () => {
     mana(s, 'P1', { C: 3 });
     const ways = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === colossus);
     expect(ways.map((a) => a.type === 'CastSpell' && !!a.alternative)).toContain(true);
+  });
+});
+
+describe('M4: void and Landers', () => {
+  const landers = (s: GameState, pid = 'P1') => s.players[pid]!.battlefield.filter((id) => s.cards[id]!.defId === 'lander-token-eoe');
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  /** Makes void true this turn: a nonland permanent leaves the battlefield. */
+  const voided = (s: GameState): GameState => {
+    const fodder = put(s, 'P2', 'virus-beetle');
+    moveCard({ s, ev: [] }, fodder, 'graveyard');
+    return s;
+  };
+
+  it('void turns on when a nonland permanent leaves the battlefield or a spell is warped, not when a land leaves', () => {
+    let s = newGame();
+    s = goTo(s, 'main1');
+    expect(s.voidTurn).not.toBe(s.turnNumber);
+    const land = put(s, 'P1', 'forest');
+    const scrapper = put(s, 'P1', 'slagdrill-scrapper');
+    mana(s, 'P1', { C: 2 });
+    let t = cast(s, { type: 'ActivateAbility', player: 'P1', card: scrapper, ability: 0, costCards: [land] }).state;
+    expect(t.voidTurn).not.toBe(t.turnNumber);
+    t = voided(s);
+    expect(t.voidTurn).toBe(t.turnNumber);
+    const tiger = put(s, 'P1', 'red-tiger-mechan', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    t = act(s, { type: 'CastSpell', player: 'P1', card: tiger, alternative: true });
+    expect(t.voidTurn).toBe(t.turnNumber);
+  });
+
+  it('void spells: Plasma Bolt 2 or 3, Tragic Trajectory -2/-2 or -10/-10, Decode Transmissions, Hymn of the Faller, Temporal Intervention costs {2} less', () => {
+    for (const on of [false, true]) {
+      let s = newGame();
+      const bolt = put(s, 'P1', 'plasma-bolt', 'hand');
+      const traj = put(s, 'P1', 'tragic-trajectory', 'hand');
+      const decode = put(s, 'P1', 'decode-transmissions', 'hand');
+      const hymn = put(s, 'P1', 'hymn-of-the-faller', 'hand');
+      const temporal = put(s, 'P1', 'temporal-intervention', 'hand');
+      const big = put(s, 'P2', 'bygone-colossus');
+      put(s, 'P2', 'honor', 'hand');
+      s = goTo(s, 'main1');
+      if (on) s = voided(s);
+      mana(s, 'P1', { B: 4, R: 1, C: 5 });
+      const [me, them] = [s.players.P1!.life, s.players.P2!.life];
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+      expect(them - s.players.P2!.life).toBe(on ? 3 : 2);
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: traj, targets: [card(big)] }).state;
+      expect(zone(s, big)).toBe(on ? 'graveyard' : 'battlefield');
+      const hand = s.players.P1!.hand.length;
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: decode }).state;
+      expect(s.players.P1!.hand.length).toBe(hand + 1);
+      expect([me - s.players.P1!.life, them - s.players.P2!.life]).toEqual(on ? [0, 5] : [2, 2]);
+      const before = s.players.P1!.hand.length;
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: hymn }, { surveilToGraveyard: false }).state;
+      expect(s.players.P1!.hand.length - before).toBe(on ? 1 : 0);
+      // Temporal Intervention: {2}{B}, or {B} with void.
+      s.players.P1!.manaPool = { W: 0, U: 0, B: 1, R: 0, G: 0, C: 0 };
+      if (on) {
+        s = act(s, { type: 'CastSpell', player: 'P1', card: temporal, targets: [{ kind: 'player', player: 'P2' }] });
+        for (let i = 0; i < 10 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+        expect(s.pending.kind === 'chooseCards' && s.pending.player).toBe('P1');
+      } else expect(rejected(s, { type: 'CastSpell', player: 'P1', card: temporal, targets: [{ kind: 'player', player: 'P2' }] })).toBeTruthy();
+    }
+  });
+
+  it('void at your end step: counters (Skittermaw, Skywarden, Interceptor), a card (Voidforged Titan), a Robot (Elegy Acolyte), Hylderblade attaches', () => {
+    for (const on of [false, true]) {
+      let s = newGame();
+      const maw = put(s, 'P1', 'insatiable-skittermaw');
+      const warden = put(s, 'P1', 'kavaron-skywarden');
+      const mechan = put(s, 'P1', 'interceptor-mechan');
+      put(s, 'P1', 'voidforged-titan');
+      put(s, 'P1', 'elegy-acolyte');
+      const blade = put(s, 'P1', 'hylderblade');
+      s = goTo(s, 'main2');
+      if (on) s = voided(s);
+      const hand = s.players.P1!.hand.length;
+      s = goTo(s, 'end', pick(maw));
+      s = cast(s, { type: 'PassPriority', player: 'P1' }, pick(maw)).state;
+      expect([s.cards[maw]!.counters ?? 0, s.cards[warden]!.counters ?? 0, s.cards[mechan]!.counters ?? 0]).toEqual(on ? [1, 1, 1] : [0, 0, 0]);
+      expect(s.players.P1!.hand.length - hand).toBe(on ? 1 : 0);
+      expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'robot-token-eoe')).toBe(on);
+      expect(s.cards[blade]!.attachedTo).toBe(on ? maw : undefined);
+      if (on) expect(powerOf(s, s.cards[maw]!)).toBe((CARD_DEFS['insatiable-skittermaw']!.power ?? 0) + 1 + 3);
+    }
+  });
+
+  it('Landers: made by Galactic Wayfarer, Sami’s Curiosity, Beamsaw Prospector, Edge Rover (each player), Emergency Eject (its controller), Seedship Impact (mana value 2 or less)', () => {
+    let s = newGame();
+    const way = put(s, 'P1', 'galactic-wayfarer', 'hand');
+    const cur = put(s, 'P1', 'samis-curiosity', 'hand');
+    const eject = put(s, 'P1', 'emergency-eject', 'hand');
+    const impact = put(s, 'P1', 'seedship-impact', 'hand');
+    const impact2 = put(s, 'P1', 'seedship-impact', 'hand');
+    const prospector = put(s, 'P1', 'beamsaw-prospector');
+    const rover = put(s, 'P1', 'edge-rover');
+    const theirs = put(s, 'P2', 'thawbringer');
+    const ring = put(s, 'P2', 'sol-ring');
+    const pricey = put(s, 'P2', 'bygone-colossus');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, G: 5, C: 8 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: way }).state;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cur }).state;
+    expect(landers(s)).toHaveLength(2);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: eject, targets: [card(theirs)] }).state;
+    expect([zone(s, theirs), landers(s, 'P2').length]).toEqual(['graveyard', 1]);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: impact, targets: [card(ring)] }).state;
+    expect(landers(s)).toHaveLength(3);
+    // Bygone Colossus costs 9: destroyed, but no Lander.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: impact2, targets: [card(pricey)] }).state;
+    expect([zone(s, pricey), landers(s).length]).toEqual(['graveyard', 3]);
+    s.cards[prospector]!.damage = 9;
+    s.cards[rover]!.damage = 9;
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect([landers(s).length, landers(s, 'P2').length]).toEqual([5, 2]);
+  });
+
+  it('more Landers: Seedship Agrarian, Glacier Godmaw’s landfall, Biotech Specialist pings when a Lander is sacrificed, Dauntless Scrapbot, Scrounge for Eternity', () => {
+    let s = newGame();
+    const agr = put(s, 'P1', 'seedship-agrarian');
+    put(s, 'P1', 'glacier-godmaw');
+    put(s, 'P1', 'biotech-specialist');
+    const bot = put(s, 'P1', 'dauntless-scrapbot', 'hand');
+    const scrounge = put(s, 'P1', 'scrounge-for-eternity', 'hand');
+    const dead = put(s, 'P1', 'thawbringer', 'graveyard');
+    const fodder = put(s, 'P1', 'virus-beetle');
+    put(s, 'P2', 'honor', 'graveyard');
+    s = goTo(s, 'declareAttackers');
+    s = cast(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: agr, defender: 'P2' }] }).state;
+    expect(landers(s)).toHaveLength(1);
+    s = goTo(s, 'main2');
+    mana(s, 'P1', { B: 1, C: 7 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bot }).state;
+    expect(s.players.P2!.graveyard).toHaveLength(0);
+    expect(landers(s)).toHaveLength(2);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: scrounge, costCards: [fodder], targets: [card(dead)] }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2') ?? o[0]! }).state;
+    expect(zone(s, dead)).toBe('battlefield');
+    expect(landers(s)).toHaveLength(3);
+    // Crack a Lander: Biotech deals 2, the land enters, Godmaw pumps the team and Agrarian gets a counter.
+    const life = s.players.P2!.life;
+    put(s, 'P1', 'forest', 'library');
+    const base = powerOf(s, s.cards[agr]!);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: landers(s)[0]!, ability: 0 }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2') ?? o[0]! }).state;
+    expect(s.players.P2!.life).toBeLessThanOrEqual(life - 2);
+    expect(s.cards[agr]!.counters).toBe(1);
+    expect(powerOf(s, s.cards[agr]!)).toBe(base + 2);
+    expect(hasKeyword(s, s.cards[agr]!, 'Haste')).toBe(true);
   });
 });

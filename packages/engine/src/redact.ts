@@ -317,6 +317,7 @@ const GAME_FIELDS = {
   creatureDeathsByController: 'copy',
   combatsThisTurn: 'copy',
   extraCombats: 'copy',
+  voidTurn: 'copy',
   combatsAfterMain2: 'copy',
   endAfterCombat: 'copy',
   extraCombatUntaps: 'copy',
