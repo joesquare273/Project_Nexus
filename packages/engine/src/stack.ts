@@ -2,7 +2,7 @@
 // stack (PRD 7.2).
 
 import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { randomInt, shuffleInPlace } from './rng.ts';
@@ -1727,7 +1727,7 @@ export function activateAbility(
   // Station: X is the power of the creature tapped for it (as the cost is paid).
   const stationCreature = spec.cost.station ? costCards[0] : undefined;
   if (spec.cost.station && (costCards.length !== 1 || !crewCandidates(s, playerId, id).some((k) => k.id === stationCreature))) reject('Choose another untapped creature you control to tap for station.');
-  const x = spec.cost.discardX || spec.cost.tapUntapped?.countX ? costCards.length : spec.cost.station ? Math.max(0, powerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
+  const x = spec.cost.discardX || spec.cost.tapUntapped?.countX ? costCards.length : spec.cost.station ? Math.max(0, combatPowerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
@@ -2922,7 +2922,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
         return;
       }
-      const chooser = effect.chosenByPreviousTargetPlayer && r.previousTarget?.kind === 'player' ? r.previousTarget.player : item.controller;
+      const chooser = effect.chosenByPreviousTargetPlayer ? (controllerOfTarget(s, r.previousTarget) ?? item.controller) : item.controller;
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.exactly ? effect.exactly : effect.optional || effect.anyNumber ? 0 : 1, max: effect.exactly ?? (effect.anyNumber ? cards.length : 1) }];
       return;
     }

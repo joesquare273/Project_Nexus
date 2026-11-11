@@ -6,7 +6,7 @@ import { continuousSources, currentDefinition } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { hasFlag, powerOf, protectedFrom, staticAffects, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
+import { combatPowerOf, hasFlag, powerOf, protectedFrom, staticAffects, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
@@ -333,7 +333,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
   const s = ctx.s;
   const combat = s.combat!;
   const participates = (c: CardInstance | undefined): c is CardInstance =>
-    isCreatureOnBattlefield(s, c) && dealsDamageIn(s, c, pass) && powerOf(s, c) > 0;
+    isCreatureOnBattlefield(s, c) && dealsDamageIn(s, c, pass) && combatPowerOf(s, c) > 0;
 
   const assignments: Assignment[] = [];
   for (const attack of combat.attacks) {
@@ -345,7 +345,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
     const toDefender: Target = { kind: 'player', player: attack.defender };
 
     if (participates(attacker)) {
-      let remaining = powerOf(s, attacker);
+      let remaining = combatPowerOf(s, attacker);
       if (declared.length === 0 && !combat.blockedAttackers?.includes(attacker.id)) {
         if (defenderAlive) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
       } else {
@@ -367,7 +367,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
         assignments.push({
           source: blocker.id,
           target: { kind: 'card', card: attacker.id },
-          amount: powerOf(s, blocker),
+          amount: combatPowerOf(s, blocker),
         });
       }
     }

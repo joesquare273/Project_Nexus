@@ -166,6 +166,7 @@ choices keep opponents' hand identities hidden.
 | Espers to Magicite's "choose up to one target creature card exiled this way" | Chosen as the spell resolves, not by a reflexive trigger | A reflexive triggered ability with a target (rule 603.12) |
 | Good King Mog XII's "a copy of a non-Saga token you control" | The token is targeted | Chosen as the ability resolves, without targeting |
 | Station mana abilities (Uthros, Evendo, The Eternity Elevator's 20+) and Gene Pollinator | Ordinary activated abilities: they use the stack and can be responded to, and the mana arrives when they resolve | Mana abilities: no stack, usable while paying a cost (rule 605) |
+| Requiem Monolith's granted ability | The creature's controller draws and loses life as the damage is dealt | A triggered ability that uses the stack |
 | Blue Mage's Cane's copy | The exiled card itself is cast for {3}, at any time that turn, and returns to exile afterwards (as if the copy ceased to exist) | A copy is cast while the ability resolves (rules 707.12, 608.2g) |
 | Sin's "as it enters, remove all counters" | Only when Sin is cast (as the spell resolves); put onto the battlefield another way, it enters with no counters | Also when it enters another way (rule 614.1c) |
 | "Loses all abilities" (Observed Stasis) | Removes the abilities in its own definition; abilities granted by other permanents or effects still apply | Also removes abilities granted earlier by timestamp (rule 613.1f) |

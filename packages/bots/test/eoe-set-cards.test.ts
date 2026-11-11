@@ -2318,3 +2318,51 @@ describe('M17: sweepers and more one-offs', () => {
     expect(s.cards[foe]!.counters).toBe(1);
   });
 });
+
+// Group M18: Tannuk, Tapestry Warden and Requiem Monolith.
+describe('M18: granted warp, toughness damage and Requiem Monolith', () => {
+  it('Tannuk, Steadfast Second: other creatures have haste; artifact and red creature cards in hand have warp {2}{R}', () => {
+    let s = newGame();
+    put(s, 'P1', 'tannuk-steadfast-second');
+    const ring = put(s, 'P1', 'the-endstone', 'hand');
+    const green = put(s, 'P1', 'meltstrider-eulogist', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 2 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: green, alternative: true })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring, alternative: true }).state;
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect([zone(s, ring), s.cards[ring]!.warped]).toEqual(['battlefield', true]);
+    const bear = put(s, 'P1', 'icecave-crasher');
+    expect(hasKeyword(s, s.cards[bear]!, 'Haste')).toBe(true);
+    s = goTo(s, 'end');
+    expect(zone(s, ring)).toBe('exile');
+  });
+
+  it('Tapestry Warden: a creature with more toughness than power deals combat damage equal to its toughness', () => {
+    let s = newGame();
+    const warden = put(s, 'P1', 'tapestry-warden');
+    s = goTo(s, 'declareAttackers');
+    const life = s.players.P2!.life;
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: warden, defender: 'P2' }] });
+    for (let i = 0; i < 40 && s.step !== 'main2'; i++) {
+      const p = s.pending;
+      if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else s = settle(s).state;
+    }
+    expect(s.players.P2!.life).toBe(life - 4);
+  });
+
+  it('Requiem Monolith: the creature’s controller draws and loses life for damage it’s dealt, and may take 1 from the Monolith', () => {
+    let s = newGame();
+    const monolith = put(s, 'P1', 'requiem-monolith');
+    const bear = put(s, 'P1', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    const hand = s.players.P1!.hand.length;
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: monolith, ability: 0, targets: [card(bear)] }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'mark' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [monolith] })).state;
+    expect([s.cards[bear]!.damage, s.players.P1!.hand.length, s.players.P1!.life]).toEqual([1, hand + 1, life - 1]);
+  });
+});

@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M18
+
+Three more: 249 of 261 built. Tannuk, Steadfast Second grants warp to cards
+in hand (`grantWarpInHand`, applied in `currentDefinition` for cards in hand
+and on the stack; a card that already has an alternative cost keeps only
+its own). Tapestry Warden's creatures deal combat damage and station with
+toughness (`combatPowerOf`). Requiem Monolith's granted ability is applied
+as the damage is dealt, without the stack.
+
 ### Edge of Eternities main set, group M17
 
 Six more: 246 of 261 built. Zero Point Ballad (toughness X or less, and a

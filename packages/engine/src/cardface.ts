@@ -48,7 +48,7 @@ export function continuousSources(s: GameState): CardInstance[] {
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
   const def = copiableDefinition(s,c);
   if (!def) throw new Error(`Missing card definition "${c.defId}".`);
-  if (c.zone !== 'battlefield') return spellDefinition(def, c.zone === 'stack' && !!c.adventureSpell);
+  if (c.zone !== 'battlefield') return withGrantedWarp(s, c, spellDefinition(def, c.zone === 'stack' && !!c.adventureSpell));
   let out = def;
   const change = () => { if (out === def) out = { ...def }; };
   if (c.crewed) { change(); out.types = [...new Set([...out.types, 'artifact' as const, 'creature' as const])]; }
@@ -133,4 +133,20 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     }
   }
   return out;
+}
+
+/** Tannuk, Steadfast Second: "Artifact cards and red creature cards in your hand have warp {2}{R}" (kept while the spell is on the stack). */
+function withGrantedWarp(s: GameState, c: CardInstance, def: CardDefinition): CardDefinition {
+  if ((c.zone !== 'hand' && c.zone !== 'stack') || def.alternativeCost || def.types.includes('land')) return def;
+  const red = def.colors ? def.colors.includes('R') : /\{[^}]*R[^}]*\}/.test(def.manaCost ?? '');
+  if (!def.types.includes('artifact') && !(def.types.includes('creature') && red)) return def;
+  for (const pid of s.turnOrder) {
+    for (const id of s.players[pid]!.battlefield) {
+      const p = s.cards[id]!;
+      if (p.controller !== c.owner || p.phasedOut) continue;
+      const mana = s.cardDefs[p.defId]?.statics?.find((st) => st.grantWarpInHand)?.grantWarpInHand;
+      if (mana) return { ...def, alternativeCost: { label: 'Warp', mana, warp: true } };
+    }
+  }
+  return def;
 }

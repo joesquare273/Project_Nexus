@@ -555,6 +555,11 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     const victim = s.cards[target.card]!;
     victim.damage += amount;
     if (amount > 0) victim.damagedTurn = s.turnNumber;
+    // Requiem Monolith: "Whenever this creature is dealt damage, you draw that many cards and lose that much life."
+    if (amount > 0 && hasFlag(s, victim, 'damageDrawsAndDrains')) {
+      drawCards(ctx, victim.controller, amount);
+      changeLife(ctx, victim.controller, -amount);
+    }
     if (hasKeyword(s, source, 'Deathtouch')) victim.deathtouched = true;
   }
   if (hasKeyword(s, source, 'Lifelink')) changeLife(ctx, source.controller, amount);

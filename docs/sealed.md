@@ -189,6 +189,7 @@ with their real images but can't be played. Tests:
 | M15 (2026-11-11) | 10 cards: Starfield Vocalist; Rust Harvester; Gene Pollinator (its mana ability uses the stack); Sami, Wildcat Captain (`spellCostReduction.perCount`); Systems Override (`removeAtEndStep`); Terrasymbiosis (`countersAddedInEvent`); Tractor Beam (control gained as it enters, kept while you control the Aura); Meltstrider's Resolve (`cantBeBlockedByMoreThanOne`, `damageSource: 'EquippedCreature'`); Pain for All; Adagia, Windswept Bastion (`copyLegendary`) | 237 of 261 |
 | M16 (2026-11-11) | 3 cards: Xu-Ifit, Osteoharmonist (`losesAbilities`, CardInstance `lostAbilities`); Chorale of the Void (ReturnToBattlefield `attackingLikeSubject`); Secluded Starforge (`tapUntapped.countX`) | 240 of 261 |
 | M17 (2026-11-11) | 6 cards: Zero Point Ballad (`toughnessAtMostX`, `ReturnDestroyedThisWay`, `ifXAtLeast`); Mutinous Massacre (`manaValueParity`); Dyadrine, Synthesis Amalgam (`entersWithCountersFromManaSpent`, ChoosePermanent `exactly`); Blade of the Swarm (target `TargetExiledCardWithWarp`); Pinnacle Starcage (`ExiledWithThisToGraveyard`); Sunset Saboteur (ward discard at random) | 246 of 261 |
+| M18 (2026-11-11) | 3 cards: Tannuk, Steadfast Second (`grantWarpInHand`); Tapestry Warden (`toughnessForDamageAndStation`); Requiem Monolith (flag `damageDrawsAndDrains`, no stack) | 249 of 261 |
 
 Still to come: 4 warp cards (Anticausal Vestige, Astelli Reclaimer, Starfield
 Vocalist, Pinnacle Emissary), 3 void cards, 8 Lander cards, 4 Spacecraft and

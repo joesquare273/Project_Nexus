@@ -349,6 +349,13 @@ export function powerOf(s: GameState, c: CardInstance): number {
   return characteristics(s, c).power;
 }
 
+/** The amount a creature assigns as combat damage, or stations with: its power, or its toughness under Tapestry Warden. */
+export function combatPowerOf(s: GameState, c: CardInstance): number {
+  const ch = characteristics(s, c);
+  if (ch.toughness > ch.power && battlefieldCards(s).some((src) => !src.phasedOut && (def(s, src).statics ?? []).some((st) => st.toughnessForDamageAndStation && staticAffects(s, src, st, c)))) return ch.toughness;
+  return ch.power;
+}
+
 export function toughnessOf(s: GameState, c: CardInstance): number {
   return characteristics(s, c).toughness;
 }

@@ -760,6 +760,8 @@ export const TEMPORARY_FLAGS = [
   'damageBecomesCounters',
   /** "Can't block this turn." */
   'cantBlock',
+  /** Requiem Monolith: whenever it's dealt damage, its controller draws that many cards and loses that much life (applied as the damage is dealt). */
+  'damageDrawsAndDrains',
 ] as const;
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
@@ -1598,6 +1600,10 @@ export interface StaticSpec {
   ward?: number;
   /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
   basePowerToughness?: [number, number];
+  /** Tapestry Warden: each affected creature with toughness greater than its power assigns combat damage, and stations, with its toughness. */
+  toughnessForDamageAndStation?: boolean;
+  /** Tannuk, Steadfast Second: artifact cards and red creature cards in your hand have warp with this cost. */
+  grantWarpInHand?: string;
   /** "Can't be blocked by more than one creature." */
   cantBeBlockedByMoreThanOne?: boolean;
   /** "Can't be blocked by creatures with power 2 or less." */
