@@ -1742,7 +1742,6 @@ describe('M12: Spacecraft, Command Bridge and combat statics', () => {
     let t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
     expect([zone(t, bridge), t.cards[ring]!.tapped]).toEqual(['battlefield', true]);
     t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
-    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [bridge] })).state;
     expect(zone(t, bridge)).toBe('graveyard');
   });
 
@@ -2173,5 +2172,49 @@ describe('M15: Auras, affinity and more one-offs', () => {
     t = cast(t, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(host)] }).state;
     for (let i = 0; i < 4 && t.stack.length > 0 && t.pending.kind === 'priority'; i++) t = settle(act(t, { type: 'PassPriority', player: t.pending.player })).state;
     expect(t.players.P2!.life).toBe(life - 4 - 2);
+  });
+});
+
+// Group M16: Xu-Ifit, Chorale of the Void and Secluded Starforge.
+describe('M16: three more one-offs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+
+  it('Xu-Ifit returns a creature card as a Skeleton with no abilities', () => {
+    let s = newGame();
+    const xu = put(s, 'P1', 'xu-ifit-osteoharmonist');
+    const dead = put(s, 'P1', 'quantum-riddler', 'graveyard');
+    s = goTo(s, 'main1');
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: xu, ability: 0, targets: [card(dead)] }).state;
+    const def = currentDefinition(s, s.cards[dead]!);
+    expect([zone(s, dead), def.subtypes?.includes('Skeleton'), def.subtypes?.includes('Sphinx'), hasKeyword(s, s.cards[dead]!, 'Flying'), s.players.P1!.hand.length, powerOf(s, s.cards[dead]!)]).toEqual(['battlefield', true, true, false, hand, 4]);
+  });
+
+  it('Chorale of the Void: the enchanted creature’s attack brings a creature from the defender’s graveyard in attacking; without void the Aura is sacrificed', () => {
+    let s = newGame();
+    const chorale = put(s, 'P1', 'chorale-of-the-void', 'hand');
+    const mine = put(s, 'P1', 'icecave-crasher');
+    const theirs = put(s, 'P2', 'meltstrider-eulogist', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: chorale, targets: [card(mine)] }).state;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: mine, defender: 'P2' }] }), pick(theirs)).state;
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), pick(theirs)).state;
+    expect([zone(s, theirs), s.cards[theirs]!.controller, s.cards[theirs]!.tapped, s.combat?.attacks.some((a) => a.attacker === theirs && a.defender === 'P2')]).toEqual(['battlefield', 'P1', true, true]);
+    s = goTo(s, 'end');
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect(zone(s, chorale)).toBe('graveyard');
+  });
+
+  it('Secluded Starforge: tap X artifacts for +X/+0, or pay {5} for a Robot', () => {
+    let s = newGame();
+    const forge = put(s, 'P1', 'secluded-starforge');
+    const rings = [put(s, 'P1', 'sol-ring'), put(s, 'P1', 'sol-ring')];
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: forge, ability: 0, costCards: rings, targets: [card(bear)] }).state;
+    expect([powerOf(s, s.cards[bear]!), rings.every((id) => s.cards[id]!.tapped)]).toEqual([5, true]);
   });
 });

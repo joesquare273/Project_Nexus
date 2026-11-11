@@ -1571,7 +1571,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length < (spec.cost.sacrificeCount ?? 1)) return 'You have nothing to sacrifice for that.';
   if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
   if (spec.cost.returnToHand && sacrificeCandidates(s, playerId, spec.cost.returnToHand.filter, c.id).length < spec.cost.returnToHand.count) return `You don't control ${spec.cost.returnToHand.count} of them to return.`;
-  if (spec.cost.tapUntapped && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
+  if (spec.cost.tapUntapped && !spec.cost.tapUntapped.countX && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   if (spec.cost.station && crewCandidates(s, playerId, c.id).length === 0) return 'You have no other untapped creature to tap for station.';
   const n = spec.cost.discard ?? 0;
@@ -1668,6 +1668,11 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
     };
     walk(0,[],0);return out;
   }
+  if (spec.cost.tapUntapped?.countX) {
+    // Every untapped match, or none: the usual choices (any subset is accepted).
+    const all = tapCostCandidates(s, playerId, spec, source);
+    return all.length ? [all, []] : [[]];
+  }
   if (spec.cost.tapUntapped) return subsets(tapCostCandidates(s, playerId, spec, source), spec.cost.tapUntapped.count, spec.cost.tapUntapped.count).slice(0, 50);
   if (spec.cost.station) return crewCandidates(s, playerId, source).map((k) => [k.id]);
   if (spec.cost.exileGraveyard) return subsets(graveyardCostCandidates(s, playerId, spec, source), spec.cost.exileGraveyard.amount, spec.cost.exileGraveyard.amount);
@@ -1716,12 +1721,12 @@ export function activateAbility(
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
   const hasX = !!parseManaCost(spec.cost.mana).x || !!spec.cost.removeCounter?.amountX;
-  if (!hasX && !spec.cost.discardX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
+  if (!hasX && !spec.cost.discardX && !spec.cost.tapUntapped?.countX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
   if (hasX && (xChosen === undefined || !Number.isInteger(xChosen) || xChosen < (spec.xMin ?? 0))) reject(`Choose a value for X${spec.xMin ? ` of at least ${spec.xMin}` : ''}.`);
   // Station: X is the power of the creature tapped for it (as the cost is paid).
   const stationCreature = spec.cost.station ? costCards[0] : undefined;
   if (spec.cost.station && (costCards.length !== 1 || !crewCandidates(s, playerId, id).some((k) => k.id === stationCreature))) reject('Choose another untapped creature you control to tap for station.');
-  const x = spec.cost.discardX ? costCards.length : spec.cost.station ? Math.max(0, powerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
+  const x = spec.cost.discardX || spec.cost.tapUntapped?.countX ? costCards.length : spec.cost.station ? Math.max(0, powerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
@@ -1732,7 +1737,7 @@ export function activateAbility(
     // Checked above with X.
   } else if (spec.cost.tapUntapped) {
     const able = tapCostCandidates(s, playerId, spec, id);
-    if (costCards.length !== spec.cost.tapUntapped.count || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${spec.cost.tapUntapped.count} untapped matching permanents you control to tap.`);
+    if ((!spec.cost.tapUntapped.countX && costCards.length !== spec.cost.tapUntapped.count) || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${spec.cost.tapUntapped.count} untapped matching permanents you control to tap.`);
   } else if (spec.cost.exileGraveyard) {
     const available = graveyardCostCandidates(s, playerId, spec, id);
     if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
@@ -2480,6 +2485,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Sacrifice':
+      // "Sacrifice this": nothing to choose.
+      if (effect.noChoice && effect.filter?.self && effect.target === 'You') {
+        const self = s.cards[source];
+        if (self?.zone === 'battlefield' && self.controller === item.controller) {
+          sacrifice(ctx, source);
+          r.sacrificedAny = true;
+        }
+        return;
+      }
+      queueChoices(s, effect, r, targetPlayers(targets), amount);
+      return;
     case 'KeepAndSacrificeRest':
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
@@ -3578,6 +3594,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (attaching && host && canAttach(s, c, host)) attach(ctx, id, host.id);
         c.summoningSick = true;
         if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
+        if (effect.losesAbilities) c.lostAbilities = true;
+        if (effect.addSubtypes && effect.effect === 'ReturnToBattlefield') c.addedSubtypes = [...new Set([...(c.addedSubtypes ?? []), ...effect.addSubtypes])];
+        // Chorale of the Void: tapped and attacking the player the triggering creature attacked.
+        const like = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
+        if (like && s.combat && !s.players[like]!.eliminated && isCreatureOnBattlefield(s, c)) {
+          c.tapped = true;
+          s.combat.attacks.push({ attacker: id, defender: like });
+          ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender: like });
+        }
         if (effect.attacking && s.combat && defender && defenders.includes(defender)) {
           s.combat.attacks.push({ attacker: id, defender });
           ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });

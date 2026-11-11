@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M16
+
+Three more one-offs: 240 of 261 built. A returned card can lose its
+abilities for as long as it stays (Xu-Ifit), a returned creature can enter
+attacking the player the triggering creature attacked (Chorale of the
+Void), and "tap X untapped artifacts" is a cost (Secluded Starforge).
+"Sacrifice this" no longer asks you to pick the only option (Command Bridge).
+
 ### Edge of Eternities main set, group M15
 
 Ten more cards: 237 of 261 built. An Aura's enchanted creature can deal

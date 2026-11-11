@@ -80,6 +80,15 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     change();
     out.statics = out.statics!.filter((st) => st.ifSourceCountersAtLeast === undefined || n >= st.ifSourceCountersAtLeast);
   }
+  // Xu-Ifit: "It ... has no abilities."
+  if (c.lostAbilities) {
+    change();
+    const kept: CardDefinition = { id: out.id, name: out.name, types: out.types };
+    for (const key of ['supertypes', 'subtypes', 'manaCost', 'colors', 'colorIdentity', 'power', 'toughness', 'printing', 'token'] as const) {
+      if (out[key] !== undefined) (kept as unknown as Record<string, unknown>)[key] = out[key];
+    }
+    out = kept;
+  }
   if (c.addedSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.addedSubtypes])]; }
   if (c.turnSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...c.turnSubtypes])]; }
   // Ultima, Origin of Oblivion: "For as long as that land has a blight counter on it, it loses all land types and abilities and has '{T}: Add {C}.'"

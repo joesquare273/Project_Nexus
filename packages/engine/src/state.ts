@@ -264,6 +264,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.extraCountersOnEnter;
   delete c.hasteOnEnter;
   delete c.xPaid;
+  delete c.lostAbilities;
   delete c.manaSpentToCast;
   delete c.kicksPaid;
   delete c.revealedInHand;

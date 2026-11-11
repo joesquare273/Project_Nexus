@@ -1008,6 +1008,10 @@ export interface EffectSpec {
   payCost?: boolean;
   /** ChoosePermanent: the previous target player chooses instead of you ("target opponent may have you ...": Terrapact Intimidator). */
   chosenByPreviousTargetPlayer?: boolean;
+  /** ReturnToBattlefield: the card has no abilities for as long as it stays on the battlefield; with `addSubtypes`, it gains those subtypes too (Xu-Ifit). */
+  losesAbilities?: boolean;
+  /** Sacrifice of the source itself (`filter.self`): done right away, with no card to pick (Command Bridge, Chorale of the Void). */
+  noChoice?: boolean;
   /** AddCounters: the same number of those counters is removed at the beginning of the next end step (Systems Override). */
   removeAtEndStep?: boolean;
   /** CreateTokenCopy: "except it's legendary" (Adagia). */
@@ -1434,7 +1438,8 @@ export interface ActivatedSpec {
     /** "Pay 3 life". */
     life?: number;
     /** "Tap five untapped Wizards you control" (chosen with `costCards`; summoning sickness doesn't matter). */
-    tapUntapped?: { filter: ObjectFilter; count: number };
+    /** `countX`: "Tap X untapped artifacts you control": any number, and X is how many (Secluded Starforge). */
+    tapUntapped?: { filter: ObjectFilter; count: number; countX?: boolean };
     /** Ninjutsu: return an unblocked attacker you control to its owner's hand (chosen with the action, `costCards`). */
     returnUnblockedAttacker?: boolean;
   };
@@ -2203,6 +2208,8 @@ export interface CardInstance {
   unearthed?: boolean;
   /** A myriad token: exiled at end of combat. */
   exileAtEndOfCombat?: boolean;
+  /** It has no abilities for as long as it stays on the battlefield (Xu-Ifit's Skeletons). */
+  lostAbilities?: boolean;
   /** Counters removed at the beginning of the next end step (Systems Override's charge counters). */
   removeCountersAtEndStep?: { counter: AnyCounter; amount: number };
   /** Sacrificed at end of combat (Kavaron Harrier's Robot). */
