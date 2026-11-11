@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M6
+
+25 more spells and creatures: 131 of 261 built (half the set).
+
 ### Edge of Eternities main set, group M5: Spacecraft
 
 18 Spacecraft with station and the first Planet: 106 of 261 built.

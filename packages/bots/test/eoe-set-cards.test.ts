@@ -734,3 +734,169 @@ describe('M5: station, Spacecraft and a Planet', () => {
     expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'robot-token-eoe')).toBe(true);
   });
 });
+
+describe('M6: more spells and creatures', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const base = (id: string) => CARD_DEFS[id]!.power ?? 0;
+
+  it('removal: Vote Out (convoke), Shattered Wings, Embrace Oblivion, Lost in Space, Invasive Maneuvers 3 or 5, Ruinous Rampage, Reroute Systems, Drill Too Deep', () => {
+    let s = newGame();
+    const vote = put(s, 'P1', 'vote-out', 'hand');
+    const wings = put(s, 'P1', 'shattered-wings', 'hand');
+    const embrace = put(s, 'P1', 'embrace-oblivion', 'hand');
+    const lost = put(s, 'P1', 'lost-in-space', 'hand');
+    const inv = put(s, 'P1', 'invasive-maneuvers', 'hand');
+    const inv2 = put(s, 'P1', 'invasive-maneuvers', 'hand');
+    const helpers = [put(s, 'P1', 'virus-beetle'), put(s, 'P1', 'virus-beetle')];
+    const fodder = put(s, 'P1', 'virus-beetle');
+    const flyer = put(s, 'P2', 'nebula-dragon');
+    const ground = put(s, 'P2', 'thawbringer');
+    const five = put(s, 'P2', 'atmospheric-greenhouse', 'battlefield', { namedCounters: { charge: 8 } });
+    const four = put(s, 'P2', 'icecave-crasher');
+    const tucked = put(s, 'P2', 'sol-ring');
+    s = goTo(s, 'main1');
+    // Vote Out costs {3}{B}: two creatures convoke two of it.
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: vote, targets: [card(ground)], convoke: helpers }).state;
+    expect(zone(s, ground)).toBe('graveyard');
+    mana(s, 'P1', { U: 1, B: 1, R: 2, G: 1, C: 9 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: wings, targets: [card(four)] })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: wings, targets: [card(flyer)] }).state;
+    expect(zone(s, flyer)).toBe('graveyard');
+    // 3 damage doesn't kill a 4-toughness creature; with a Spacecraft it's 5.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: inv, targets: [card(four)] }).state;
+    expect(zone(s, four)).toBe('battlefield');
+    s.cards[four]!.damage = 0;
+    put(s, 'P1', 'wurmwall-sweeper');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: inv2, targets: [card(four)] }).state;
+    expect(zone(s, four)).toBe('graveyard');
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: embrace, costCards: [fodder], targets: [card(five)] }).state;
+    expect([zone(s, fodder), zone(s, five)]).toEqual(['graveyard', 'graveyard']);
+    s = act(s, { type: 'CastSpell', player: 'P1', card: lost, targets: [card(tucked)] });
+    for (let i = 0; i < 12 && zone(s, tucked) === 'battlefield'; i++) {
+      const p = s.pending;
+      if (p.kind === 'chooseCards') s = act(s, { type: 'ChooseCards', player: p.player, cards: [] });
+      else s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    }
+    expect(zone(s, tucked)).toBe('library');
+
+    let t = newGame();
+    const rampage = put(t, 'P1', 'ruinous-rampage', 'hand');
+    const reroute = put(t, 'P1', 'reroute-systems', 'hand');
+    const drill = put(t, 'P1', 'drill-too-deep', 'hand');
+    const cheap = put(t, 'P2', 'sol-ring');
+    const dear = put(t, 'P2', 'bygone-colossus');
+    const tapped = put(t, 'P2', 'intrepid-tenderfoot', 'battlefield', { tapped: true });
+    const ship = put(t, 'P1', 'wurmwall-sweeper');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, R: 3, C: 4 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: rampage, mode: 1 }).state;
+    expect([zone(t, cheap), zone(t, dear), zone(t, ship)]).toEqual(['exile', 'battlefield', 'exile']);
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: reroute, mode: 1, targets: [card(tapped)] }).state;
+    expect(zone(t, tapped)).toBe('graveyard');
+    const ship2 = put(t, 'P1', 'wurmwall-sweeper');
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: drill, mode: 0, targets: [card(ship2)] }).state;
+    expect(t.cards[ship2]!.namedCounters?.charge).toBe(5);
+  });
+
+  it('tricks and card flow: Biosynthic Burst, Dual-Sun Technique, Cerebral Download, Alpharael, Vaultguard Trooper', () => {
+    let s = newGame();
+    const burst = put(s, 'P1', 'biosynthic-burst', 'hand');
+    const tech = put(s, 'P1', 'dual-sun-technique', 'hand');
+    const dl = put(s, 'P1', 'cerebral-download', 'hand');
+    const bear = put(s, 'P1', 'thawbringer', 'battlefield', { tapped: true });
+    put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, U: 1, G: 1, C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: burst, targets: [card(bear)] }).state;
+    expect([s.cards[bear]!.counters, s.cards[bear]!.tapped, hasKeyword(s, s.cards[bear]!, 'Indestructible')]).toEqual([1, false, true]);
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tech, targets: [card(bear)] }).state;
+    expect(hasKeyword(s, s.cards[bear]!, 'DoubleStrike')).toBe(true);
+    // It has a +1/+1 counter: the Technique left the hand and drew one.
+    expect(s.players.P1!.hand.length).toBe(hand);
+    const before = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dl }, { surveilToGraveyard: false }).state;
+    expect(s.players.P1!.hand.length).toBe(before - 1 + 3);
+
+    let t = newGame();
+    const alph = put(t, 'P1', 'alpharael-dreaming-acolyte', 'hand');
+    const art = put(t, 'P1', 'sol-ring', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { U: 1, B: 1, C: 1 });
+    const h = t.players.P1!.hand.length;
+    t = act(t, { type: 'CastSpell', player: 'P1', card: alph });
+    for (let i = 0; i < 10 && t.pending.kind !== 'chooseCards'; i++) t = act(t, getLegalActions(t).find((a) => a.type === 'PassPriority') ?? getLegalActions(t)[0]!);
+    // Discarding the one artifact card is enough.
+    t = cast(t, { type: 'ChooseCards', player: 'P1', cards: [art] }).state;
+    expect(t.players.P1!.hand.length).toBe(h - 1 + 2 - 1);
+    expect(hasKeyword(t, t.cards[alph]!, 'Deathtouch')).toBe(true);
+  });
+
+  it('creatures: Cloudsculpt Technician and Gravblade Heavy with an artifact, Harmonious Grovestrider, Exosuit Savior, Syr Vondam, Meltstrider’s Gear, Banishing Light', () => {
+    let s = newGame();
+    const tech = put(s, 'P1', 'cloudsculpt-technician');
+    const heavy = put(s, 'P1', 'gravblade-heavy');
+    const strider = put(s, 'P1', 'harmonious-grovestrider');
+    const savior = put(s, 'P1', 'exosuit-savior', 'hand');
+    const vondam = put(s, 'P1', 'syr-vondam-the-lucent', 'hand');
+    const gear = put(s, 'P1', 'meltstriders-gear', 'hand');
+    const light = put(s, 'P1', 'banishing-light', 'hand');
+    const theirs = put(s, 'P2', 'thawbringer');
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'forest');
+    expect([powerOf(s, s.cards[tech]!), powerOf(s, s.cards[heavy]!), hasKeyword(s, s.cards[heavy]!, 'Deathtouch')]).toEqual([base('cloudsculpt-technician'), base('gravblade-heavy'), false]);
+    expect(powerOf(s, s.cards[strider]!)).toBe(3);
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 4, B: 2, G: 1, C: 8 });
+    // Meltstrider's Gear (an artifact) enters and attaches itself.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gear }, pick(tech)).state;
+    expect(s.cards[gear]!.attachedTo).toBe(tech);
+    expect(powerOf(s, s.cards[tech]!)).toBe(base('cloudsculpt-technician') + 1 + 2);
+    expect([powerOf(s, s.cards[heavy]!), hasKeyword(s, s.cards[heavy]!, 'Deathtouch')]).toEqual([base('gravblade-heavy') + 1, true]);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: vondam }).state;
+    expect([powerOf(s, s.cards[heavy]!), powerOf(s, s.cards[vondam]!)]).toEqual([base('gravblade-heavy') + 2, base('syr-vondam-the-lucent')]);
+    expect(hasKeyword(s, s.cards[strider]!, 'Deathtouch')).toBe(true);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: light }, pick(theirs)).state;
+    expect(zone(s, theirs)).toBe('exile');
+    // Exosuit Savior returns Banishing Light: the exiled creature comes back.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: savior }, pick(light)).state;
+    expect([zone(s, light), zone(s, theirs)]).toEqual(['hand', 'battlefield']);
+  });
+
+  it('triggers: Nanoform Sentinel, Swarm Culler, Comet Crawler, Hemosymbic Mite, Oreplate Pangolin', () => {
+    let s = newGame();
+    const sentinel = put(s, 'P1', 'nanoform-sentinel');
+    const culler = put(s, 'P1', 'swarm-culler');
+    const crawler = put(s, 'P1', 'comet-crawler');
+    const mite = put(s, 'P1', 'hemosymbic-mite', 'battlefield', { counters: 2 });
+    const pangolin = put(s, 'P1', 'oreplate-pangolin');
+    const land = put(s, 'P1', 'forest', 'battlefield', { tapped: true });
+    const f1 = put(s, 'P1', 'virus-beetle');
+    const f2 = put(s, 'P1', 'virus-beetle');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 2 });
+    // An artifact enters: pay {1} for a counter on the Pangolin.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }, { accept: true }).state;
+    expect(s.cards[pangolin]!.counters).toBe(1);
+    s = goTo(s, 'declareAttackers');
+    const hand = s.players.P1!.hand.length;
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [sentinel, culler, crawler, mite].map((attacker) => ({ attacker, defender: 'P2' })) });
+    for (let i = 0; i < 60 && (s.stack.length > 0 || s.triggerQueue.length > 0 || s.pending.kind !== 'priority'); i++) {
+      const p = s.pending;
+      if (p.kind === 'chooseTargets') {
+        const legal = getLegalActions(s).filter((x) => x.type === 'ChooseTargets');
+        const want = s.triggerQueue[0]?.source === sentinel ? land : crawler;
+        s = act(s, legal.find((x) => x.type === 'ChooseTargets' && x.targets[0]?.kind === 'card' && x.targets[0].card === want) ?? legal[0]!);
+      } else if (p.kind === 'chooseCards') s = act(s, { type: 'ChooseCards', player: p.player, cards: [p.cards.includes(f1) ? f1 : f2] });
+      else if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else s = act(s, getLegalActions(s)[0]!);
+      if (s.step !== 'declareAttackers') break;
+    }
+    expect(s.cards[land]!.tapped).toBe(false);
+    expect([zone(s, f1), zone(s, f2)]).toEqual(['graveyard', 'graveyard']);
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    // Comet Crawler: +2 for its sacrifice, +3 from the Mite (1 and two counters).
+    expect(powerOf(s, s.cards[crawler]!)).toBe(base('comet-crawler') + 2 + base('hemosymbic-mite') + 2);
+  });
+});
