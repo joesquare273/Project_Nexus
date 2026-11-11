@@ -376,7 +376,7 @@ export function alternativeCostProblem(s: GameState, def: CardDefinition, player
   if (alt.ifOpponentLostLife && !s.turnOrder.some((pid) => pid !== playerId && (s.players[pid]!.lifeLostThisTurn ?? 0) > 0)) return 'No opponent has lost life this turn (spectacle).';
   if (alt.exileFromHand && exileFromHandChoices(s, def, playerId, cardId).length === 0) return `You have no card in hand to exile for ${def.name}.`;
   // Warp works only from your hand (from exile, the card is cast for its mana cost).
-  if (alt.warp && cardId && s.cards[cardId]?.zone !== 'hand') return `${def.name} can be cast for its warp cost only from your hand.`;
+  if (alt.warp && cardId && s.cards[cardId]?.zone !== 'hand' && !(alt.fromGraveyard && s.cards[cardId]?.zone === 'graveyard')) return `${def.name} can be cast for its warp cost only from your hand.`;
   return null;
 }
 
@@ -884,6 +884,8 @@ export function playableZone(
     if (p.whileExiled) return 'exile';
     // Evendo Brushrazer: "During your turn, as long as you've sacrificed a nontoken permanent this turn".
     if (p.whileSacrificedNontoken && (s.activePlayer !== playerId || s.players[playerId]!.sacrificedNontokenTurn !== s.turnNumber)) return null;
+    // Possibility Technician: "for as long as that card remains exiled, you may play it if you control a Kavu".
+    if (p.whileYouControlSubtype) return battlefield(s).some((x) => x.controller === playerId && !x.phasedOut && subtypesOf(s, x).includes(p.whileYouControlSubtype!)) ? 'exile' : null;
     const source = s.cards[p.source];
     if (source?.zone === 'battlefield' && source.controller === playerId) return 'exile';
   }
@@ -3246,6 +3248,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           ...(effect.untilNextFromSource ? { untilReplaced: true } : {}),
           ...(effect.whileSourceGetsLore ? { loreTurn: s.turnNumber } : {}),
           ...(effect.whileSacrificedNontoken ? { whileSacrificedNontoken: true } : {}),
+          ...(effect.whileYouControlSubtype ? { whileYouControlSubtype: effect.whileYouControlSubtype } : {}),
         };
         // Urza: "you may play that card without paying its mana cost".
         if (effect.free) s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true };

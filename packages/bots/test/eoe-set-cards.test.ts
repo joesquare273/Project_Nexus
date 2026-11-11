@@ -1020,3 +1020,140 @@ describe('M7: conditions and counts', () => {
     expect(zone(s, small)).toBe('graveyard');
   });
 });
+
+describe('M8: more warp cards', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+
+  it('Haliya gains life as creatures and artifacts enter, and draws at end step after 3 or more life gained', () => {
+    let s = newGame();
+    put(s, 'P1', 'haliya-guided-by-light');
+    const rings = [0, 1, 2].map(() => put(s, 'P1', 'sol-ring', 'hand'));
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 3 });
+    const life = s.players.P1!.life;
+    for (const r of rings.slice(0, 2)) s = cast(s, { type: 'CastSpell', player: 'P1', card: r }).state;
+    expect(s.players.P1!.life).toBe(life + 2);
+    // Two life gained: no card at the end step. With a third, one.
+    const before = s.players.P1!.hand.length;
+    let t = goTo(s, 'end');
+    t = cast(t, { type: 'PassPriority', player: 'P1' }).state;
+    expect(t.players.P1!.hand.length).toBe(before);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rings[2]! }).state;
+    const hand = s.players.P1!.hand.length;
+    s = goTo(s, 'end');
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Starfield Shepherd finds a basic Plains or a cheap creature; Quantum Riddler draws one more with an empty hand', () => {
+    let s = newGame();
+    const shepherd = put(s, 'P1', 'starfield-shepherd', 'hand');
+    const plains = put(s, 'P1', 'plains', 'library');
+    const cheap = put(s, 'P1', 'edge-rover', 'library');
+    const dear = put(s, 'P1', 'nebula-dragon', 'library');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: shepherd, alternative: true });
+    for (let i = 0; i < 10 && s.pending.kind !== 'chooseCards'; i++) s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    const offered = s.pending.kind === 'chooseCards' ? s.pending.cards : [];
+    expect([offered.includes(plains), offered.includes(cheap), offered.includes(dear)]).toEqual([true, true, false]);
+
+    let t = newGame();
+    const riddler = put(t, 'P1', 'quantum-riddler', 'hand');
+    t = goTo(t, 'main1');
+    for (const id of t.players.P1!.hand.filter((x) => x !== riddler)) moveCard({ s: t, ev: [] }, id, 'exile');
+    mana(t, 'P1', { U: 2, C: 3 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: riddler }).state;
+    // Its own enter trigger draws with an empty hand: two cards.
+    expect(t.players.P1!.hand.length).toBe(2);
+  });
+
+  it('Exalted Sunborn doubles tokens; Loading Zone doubles counters; Mightform Harmonizer doubles power', () => {
+    let s = newGame();
+    put(s, 'P1', 'exalted-sunborn');
+    put(s, 'P1', 'loading-zone');
+    put(s, 'P1', 'mightform-harmonizer');
+    const knight = put(s, 'P1', 'knight-luminary', 'hand');
+    const honor = put(s, 'P1', 'honor', 'hand');
+    const land = put(s, 'P1', 'forest', 'hand');
+    const ship = put(s, 'P1', 'wurmwall-sweeper');
+    const crew = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 3, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: knight }).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'human-soldier-token-eoe')).toHaveLength(2);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: honor, targets: [card(knight)] }).state;
+    expect(s.cards[knight]!.counters).toBe(2);
+    // Station with a 3-power creature: six charge counters.
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: ship, ability: 0, costCards: [crew] }).state;
+    expect(s.cards[ship]!.namedCounters?.charge).toBe(6);
+    const p = powerOf(s, s.cards[knight]!);
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }, pick(knight)).state;
+    expect(powerOf(s, s.cards[knight]!)).toBe(p * 2);
+  });
+
+  it('Broodguard Elite: X counters (warp for {X}{G} too), passed on when it leaves; Perigee Beckoner’s gift returns a creature that dies', () => {
+    let s = newGame();
+    const elite = put(s, 'P1', 'broodguard-elite', 'hand');
+    const heir = put(s, 'P1', 'virus-beetle');
+    const beckoner = put(s, 'P1', 'perigee-beckoner', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, B: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: elite, alternative: true, x: 3 }).state;
+    expect(s.cards[elite]!.counters).toBe(3);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: beckoner, alternative: true }, pick(heir)).state;
+    s.cards[heir]!.damage = 9;
+    s = cast(s, { type: 'PassPriority', player: 'P1' }).state;
+    expect([zone(s, heir), s.cards[heir]!.tapped]).toEqual(['battlefield', true]);
+    // End step: the warped Elite is exiled and its counters go to a creature you control.
+    s = goTo(s, 'end', pick(heir));
+    s = cast(s, { type: 'PassPriority', player: 'P1' }, pick(heir)).state;
+    expect(zone(s, elite)).toBe('exile');
+    expect(s.cards[heir]!.counters).toBe(3);
+  });
+
+  it('Possibility Technician’s exiled card stays playable while you control a Kavu; Timeline Culler warps from the graveyard for {B} and 2 life', () => {
+    let s = newGame();
+    const tech = put(s, 'P1', 'possibility-technician', 'hand');
+    const other = put(s, 'P1', 'molecular-modifier');
+    s = goTo(s, 'main1');
+    const top = s.players.P1!.library[0]!;
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tech, alternative: true }).state;
+    expect(zone(s, top)).toBe('exile');
+    const playable = (st: GameState) => getLegalActions(st).some((a) => (a.type === 'PlayLand' || a.type === 'CastSpell') && a.card === top);
+    expect(playable(s)).toBe(true);
+    // The Technician is warped away, but another Kavu (Molecular Modifier) keeps the card playable; with none, it isn't.
+    moveCard({ s, ev: [] }, tech, 'exile');
+    expect(playable(s)).toBe(true);
+    moveCard({ s, ev: [] }, other, 'graveyard');
+    expect(playable(s)).toBe(false);
+
+    let t = newGame();
+    const culler = put(t, 'P1', 'timeline-culler', 'graveyard');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { B: 1 });
+    const life = t.players.P1!.life;
+    expect(rejected(t, { type: 'CastSpell', player: 'P1', card: culler })).toBeTruthy();
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: culler, alternative: true }).state;
+    expect([zone(t, culler), t.players.P1!.life]).toEqual(['battlefield', life - 2]);
+    t = goTo(t, 'end');
+    expect(zone(t, culler)).toBe('exile');
+  });
+
+  it('Starwinder: draw cards equal to the combat damage a creature of yours deals to a player', () => {
+    let s = newGame();
+    put(s, 'P1', 'starwinder');
+    const hitter = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'declareAttackers');
+    const hand = s.players.P1!.hand.length;
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: hitter, defender: 'P2' }] });
+    for (let i = 0; i < 40 && s.step !== 'main2'; i++) {
+      const p = s.pending;
+      if (p.kind === 'decide') s = act(s, { type: 'Decide', player: p.player, accept: true });
+      else if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else s = act(s, getLegalActions(s).find((a) => a.type === 'PassPriority') ?? getLegalActions(s)[0]!);
+    }
+    expect(s.players.P1!.hand.length).toBe(hand + 3);
+  });
+});

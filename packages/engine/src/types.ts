@@ -872,6 +872,8 @@ export interface EffectSpec {
   afterThisMain?: boolean;
   /** AdditionalCombat: "At the beginning of that combat, untap all creatures you control." */
   untapCreatures?: boolean;
+  /** ExileTopCardToPlay: "for as long as that card remains exiled, you may play it if you control a [Kavu]" (Possibility Technician). */
+  whileYouControlSubtype?: string;
   /** ExileTopCardToPlay: playable only during your turn while you've sacrificed a nontoken permanent this turn, and while you control the source (Evendo Brushrazer). */
   whileSacrificedNontoken?: boolean;
   /** Only if the triggering creature's power is less than (or, 'notLess', at least) the source's (Shelinda). */
@@ -1423,6 +1425,12 @@ export interface StaticSpec {
   preventCombatDamage?: boolean;
   /** "Twice that many +1/+1 counters are put on that creature instead" for each affected creature (The Earth Crystal). */
   doubleCounters?: boolean;
+  /** "Twice that many of each of those kinds of counters" on each affected permanent (Loading Zone). */
+  doubleAnyCounters?: boolean;
+  /** "If one or more tokens would be created under your control, twice that many are created instead" (Exalted Sunborn). */
+  doubleTokens?: boolean;
+  /** "As long as you have N or fewer cards in hand, if you would draw one or more cards, you draw that many plus one instead" (Quantum Riddler). */
+  drawExtraIfHandAtMost?: number;
   /** "If you would proliferate, proliferate twice instead" (Tekuthal, Inquiry Dominus). */
   proliferateTwice?: boolean;
   /** Only while its source has at least this many counters of any kind ("as long as this Equipment has four or more counters on it": Gavel of the Righteous). */
@@ -2042,7 +2050,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean };
+  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean; /** Possibility Technician: for as long as it stays exiled, while you control a permanent with this subtype. */ whileYouControlSubtype?: string };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */

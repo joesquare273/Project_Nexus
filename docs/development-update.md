@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Edge of Eternities main set, group M8
+
+11 more warp cards, with token doubling (Exalted Sunborn), counter doubling
+(Loading Zone) and an extra card on draws (Quantum Riddler): 155 of 261.
+
 ### Edge of Eternities main set, group M7
 
 13 cards with conditional cost reductions, new counts, a conditional "can't

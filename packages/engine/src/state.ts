@@ -430,6 +430,13 @@ export function tap(ctx: Ctx, c: CardInstance): void {
 
 export function drawCards(ctx: Ctx, playerId: PlayerId, count: number): void {
   const p = player(ctx.s, playerId);
+  // Quantum Riddler: "you draw that many cards plus one instead" (each one adds a card).
+  if (count > 0) {
+    for (const c of battlefield(ctx.s)) {
+      if (c.controller !== playerId || c.phasedOut) continue;
+      for (const st of defOf(ctx.s, c).statics ?? []) if (st.drawExtraIfHandAtMost !== undefined && p.hand.length <= st.drawExtraIfHandAtMost) count += 1;
+    }
+  }
   for (let i = 0; i < count; i++) {
     const top = p.library[0];
     if (top === undefined) {
@@ -602,6 +609,12 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   const s = ctx.s;
   const c = s.cards[id]!;
   if (c.zone !== 'battlefield' || amount <= 0) return;
+  // Loading Zone: twice that many of each kind.
+  for (const source of battlefield(s)) {
+    for (const spec of defOf(s, source).statics ?? []) {
+      if (spec.doubleAnyCounters && staticAffects(s, source, spec, c)) amount *= 2;
+    }
+  }
   if (kind !== '+1/+1') {
     setCounters(c, kind, countersOf(c, kind) + amount);
     // Summon: Brynhildr: cards it exiled are playable during turns it gets a lore counter.
@@ -666,9 +679,15 @@ export function untap(ctx: Ctx, c: CardInstance): boolean {
 }
 
 /** Creates a token on the battlefield under `controller`'s control (rule 111). */
-export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, copy?: CardInstance['copy']): InstanceId {
+export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, copy?: CardInstance['copy'], doubled = false): InstanceId {
   const s = ctx.s;
   if (!s.cardDefs[defId]) throw new Error(`Missing token definition "${defId}".`);
+  // Exalted Sunborn: twice that many tokens (each such permanent doubles again). The extra tokens are
+  // created alongside; effects that go on to act on "that token" act on the first one.
+  if (!doubled) {
+    const doublers = battlefield(s).filter((x) => x.controller === controller && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.doubleTokens)).length;
+    for (let i = 1; i < 2 ** doublers; i++) createToken(ctx, defId, controller, copy, true);
+  }
   const id = newId(s, 'k');
   s.cards[id] = {
     id,
