@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import type { GameView, InstanceId } from '@nexus/engine';
 import { defOf, isCreature, rulesText, scryfallOf, typeLine } from '../game/cards.ts';
 import type { LogEntry } from '../game/session.ts';
-import { CardFace, ManaCost } from './Card.tsx';
+import { CardFace, ManaCost, ManaText } from './Card.tsx';
 
 /** A large view of the hovered card, with its rules text. */
 /** The last place the pointer was, so the viewer can open beside the card under it. */
@@ -63,7 +63,7 @@ export function Inspector({ view, id, hovering = false }: { view: GameView; id: 
           <strong>{def.name}</strong> <ManaCost cost={def.manaCost} />
         </div>
         <div className="inspector-type">{stats?.types ? typeLine({ ...def, types: stats.types, subtypes: stats.subtypes }) : info?.typeLine ?? typeLine(def)}</div>
-        <p className="inspector-rules">{c.copy ? rulesSummary(def).replace(/^\d+\/\d+\s*/, '') : rulesText(def)}</p>
+        <p className="inspector-rules"><ManaText text={c.copy ? rulesSummary(def).replace(/^\d+\/\d+\s*/, '') : rulesText(def)} size={15} /></p>
         {def.notBuilt && (
           <p className="inspector-not-built">
             {def.types.includes('land') ? "Not built yet: this land can't be played until its abilities are built." : "Not built yet: this card can't be cast until its abilities are built."}
@@ -95,7 +95,7 @@ export function GameLog({ entries }: { entries: readonly LogEntry[] }) {
     <div className="log">
       {entries.slice(-150).map((e) => (
         <div key={e.id} className={e.heading ? 'log-heading' : 'log-line'}>
-          {e.text}
+          <ManaText text={e.text} size={14} />
         </div>
       ))}
       <div ref={end} />

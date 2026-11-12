@@ -3878,3 +3878,27 @@ button.link {
 .game .phases { font-size: 13.5px; }
 .game .phase { padding: 4px 10px; }
 .game .card-note { font-size: 12px; padding: 2px 5px; }
+
+/* Mana symbols drawn here: generic mana is a gray circle with its number (or X). */
+.mana-sym {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: -1px 1px 0 rgba(0, 0, 0, 0.6);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  line-height: 1;
+  color: #16130f;
+  background: #cbc6c1;
+  user-select: none;
+}
+.mana-sym.letter.m-W { background: #f8f3d6; }
+.mana-sym.letter.m-U { background: #aadcf5; }
+.mana-sym.letter.m-B { background: #b9aea8; }
+.mana-sym.letter.m-R { background: #f6a98c; }
+.mana-sym.letter.m-G { background: #9fd2ab; }
+.mana-text .mana-cost { margin: 0 1px; }
+.mana-text .mana-cost img,
+.mana-text .mana-sym { vertical-align: -0.15em; }

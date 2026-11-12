@@ -880,7 +880,7 @@ export function Game({
         <div className={`you-bar ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
           <Hand view={view} h={h} elsewhere={elsewhere} />
         </div>
-        {error && <div className="toast">{error}</div>}
+        {error && <div className="toast"><ManaText text={error} size={15} /></div>}
         {castShown && (
           <div key={castShown.key} className="cast-show" aria-live="polite">
             <div className="cast-show-label">{castShown.player === YOU ? 'You cast' : `${castShown.player} casts`}</div>
@@ -1183,9 +1183,9 @@ function StackView({ view, onHover, h, abilityTargets, onAbility, describe }: { 
                 <span className={item.controller === YOU ? 'stack-who yours' : 'stack-who'}>{item.controller === YOU ? 'Yours' : item.controller}</span>
                 {item.targets.some((t) => t.kind !== 'none') && <span className="stack-targets"> → {item.targets.filter((t) => t.kind !== 'none').map((t) => targetLabel(view, t)).join(', ')}</span>}
               </div>
-              {item.kind === 'ability' && describe(item) && <div className="stack-text">{describe(item)}</div>}
+              {item.kind === 'ability' && describe(item) && <div className="stack-text"><ManaText text={describe(item)} size={13} /></div>}
               {item.kind === 'spell' && c && (item.modes || item.mode !== undefined) && <div className="stack-modes">
-                {(item.modes ?? [item.mode!]).map(mode => <div key={mode}>• {modeLabels(c.defId, defOf(c.defId).modes)[mode]}</div>)}
+                {(item.modes ?? [item.mode!]).map(mode => <div key={mode}>• <ManaText text={modeLabels(c.defId, defOf(c.defId).modes)[mode] ?? ''} size={12} /></div>)}
               </div>}
             </div>
           </div>
@@ -1600,7 +1600,7 @@ function PromptBar(p: PromptProps) {
 
   return (
     <div className={`prompt ${p.yourMove ? 'yours' : ''} ${p.busy ? 'busy' : ''} ${p.menu ? 'modal-choice ability-menu' : pending.kind === 'chooseModes' ? 'modal-choice' : ''}`}>
-      <div className="prompt-text">{text}</div>
+      <div className="prompt-text"><ManaText text={text} size={17} /></div>
       {p.yourMove && p.menu?.modes && <fieldset className="mode-options">
         <legend>Choose modes</legend>
         {p.menu.modes.labels.map((label, index) => <label key={index}>

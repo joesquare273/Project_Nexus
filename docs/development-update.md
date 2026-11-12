@@ -18,6 +18,21 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Satyr Wayfinder showed nothing to pick (2026-11-12)
+
+"Look at the top N cards; you may put a matching one into your hand"
+(Satyr Wayfinder, Pulsar Squadron Ace, Famished Worldsire and the like)
+opened an empty list: the board's view (`view.ts`) only revealed looked-at
+library cards for some kinds of choice. It now shows the chooser the same
+cards `redact.ts` does: the ones on offer and the others looked at with them.
+
+### Mana symbols everywhere (2026-11-12)
+
+Text that mentions mana ("pay {2}{R}", rules text, the log, the stack,
+menus, error messages, the lesson) draws the symbols instead of the braces.
+Generic mana and X are a gray circle with the number or letter; the rest
+use Scryfall's symbols, with a colored letter if one can't load.
+
 ### Easier to follow: a friend's first impressions (2026-11-12)
 
 - **Targets are confirmed.** Picking the last target no longer goes

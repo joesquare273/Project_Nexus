@@ -2,11 +2,20 @@ import { useState } from 'react';
 import type { CardDefinition, CardFinish } from '@nexus/engine';
 import { costSymbols, defOf, frameClass, isCreature, meldedPrinting, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
 
+/** One mana symbol: a gray circle with the number (or X) for generic mana, Scryfall's symbol for the rest (a colored letter if it can't load). */
+function ManaSymbol({ sym, size }: { sym: string; size: number }) {
+  const [failed, setFailed] = useState(false);
+  const circle = { width: size, height: size, fontSize: Math.round(size * (sym.length > 1 ? 0.56 : 0.72)) };
+  if (/^(\d+|X|Y|Z)$/.test(sym)) return <span className="mana-sym generic" style={circle} role="img" aria-label={`{${sym}}`}>{sym}</span>;
+  if (failed) return <span className={`mana-sym letter m-${sym.replace(/[^A-Z]/g, '')}`} style={circle} role="img" aria-label={`{${sym}}`}>{sym.replace('/', '')}</span>;
+  return <img src={symbolUrl(sym)} alt={`{${sym}}`} width={size} height={size} onError={() => setFailed(true)} />;
+}
+
 export function ManaCost({ cost, size = 14 }: { cost: string | undefined; size?: number }) {
   return (
     <span className="mana-cost">
       {costSymbols(cost).map((sym, i) => (
-        <img key={i} src={symbolUrl(sym)} alt={`{${sym}}`} width={size} height={size} />
+        <ManaSymbol key={i} sym={sym} size={size} />
       ))}
     </span>
   );
@@ -35,7 +44,7 @@ function DrawnCard({ def }: { def: CardDefinition }) {
         <span>{def.types.includes('land') ? '⛰' : isCreature(def) ? '⚔' : '✦'}</span>
       </div>
       <div className="drawn-type">{typeLine(def)}</div>
-      <div className="drawn-text">{text}</div>
+      <div className="drawn-text"><ManaText text={text} size={11} /></div>
       {isCreature(def) && (
         <div className="drawn-pt">
           {def.power}/{def.toughness}

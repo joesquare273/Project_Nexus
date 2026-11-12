@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { FIN_PRECONS, SCRYFALL, UI_ART, type UiArtKey } from '@nexus/cards';
 import type { GameDeck } from '@nexus/cards/decks';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
-import { ManaCost } from './components/Card.tsx';
+import { ManaCost, ManaText } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
@@ -314,7 +314,7 @@ function MainApp() {
                 <OwnCommanderDecks key={format} format={format} onChoose={(d, saved) => (setOwnDeck(d), setSavedDeck(saved))} onBuild={() => go({ page: 'decks' })} />
                 {format === 'commander' && (
                   <p className="fineprint">
-                    Commander rules: 40 life, your commander starts in the command zone (it costs {'{2}'} more each time you cast it from there), and 21 combat
+                    Commander rules: 40 life, your commander starts in the command zone (it costs <ManaText text="{2}" size={14} /> more each time you cast it from there), and 21 combat
                     damage from one commander knocks a player out.
                   </p>
                 )}

@@ -794,7 +794,7 @@ export function ExileList({
                   >
                     <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" />
                   </div>
-                  {note && <div className="list-note">{note}</div>}
+                  {note && <div className="list-note"><ManaText text={note} size={13} /></div>}
                 </div>
               ))}
               {Array.from({ length: sec.faceDown ?? 0 }, (_, i) => (
