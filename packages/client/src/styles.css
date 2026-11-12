@@ -3913,3 +3913,31 @@ button.link {
 }
 .bf-card.effect-trigger .card-note { background: #b3261e; color: #fff; font-weight: 700; letter-spacing: 1px; }
 .target-notice .source-label.trigger { color: #ff8a80; }
+
+/* Stack numbers, one colour each: red = triggered ability, blue = activated ability, gold = spell.
+   The card an ability came from shows its number underneath, in the same colour. */
+.stack-order.trigger,
+.stack-item.top .stack-order.trigger { background: #d9352b; color: #fff; }
+.stack-order.ability,
+.stack-item.top .stack-order.ability { background: #2f86c9; color: #fff; }
+.stack-order.spell,
+.stack-item.top .stack-order.spell { background: var(--gold); color: #1b1405; }
+.stack-order { font-size: 13px; padding: 4px 0; }
+.bf-card.stack-trigger,
+.game .bf-card.stack-trigger { outline: 3px solid #ff4d4d; outline-offset: 2px; border-radius: 8px; }
+.bf-card.stack-ability,
+.game .bf-card.stack-ability { outline: 3px solid #4aa8f0; outline-offset: 2px; border-radius: 8px; }
+.bf-card.stack-trigger .card-note,
+.bf-card.stack-ability .card-note {
+  justify-self: center;
+  margin: 4px auto 0;
+  width: fit-content;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+.bf-card.stack-trigger .card-note { background: #d9352b; }
+.bf-card.stack-ability .card-note { background: #2f86c9; }

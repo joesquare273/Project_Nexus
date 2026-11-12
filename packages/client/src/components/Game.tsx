@@ -589,6 +589,16 @@ export function Game({
   const bottoming = yourMove && pending.kind === 'bottomCards' ? pending.count : 0;
   // Choosing cards to discard, sacrifice or keep: the cards on offer glow and toggle when clicked.
   const choosing = yourMove && pending.kind === 'chooseCards' ? pending : null;
+  // Each stack item's number (1 resolves first), so the card an ability comes from can show it.
+  const stackItems = [...(view.resolving ? [view.resolving] : []), ...[...view.stack].reverse()];
+  const stackNumbers = new Map<InstanceId, { n: number[]; trigger: boolean }>();
+  stackItems.forEach((item, i) => {
+    if (item.kind !== 'ability' || item.rule) return;
+    const e = stackNumbers.get(item.source) ?? { n: [], trigger: false };
+    e.n.push(i + 1);
+    if (item.from === 'trigger') e.trigger = true;
+    stackNumbers.set(item.source, e);
+  });
   const h: ZoneHandlers = {
     tokenStackKey: (id) => notice?.sourceCard === id || notice?.targets.some(t => t.kind === 'card' && t.card === id) ? id : tokenStackKey(s, id),
     markCard: (id) => {
@@ -611,7 +621,9 @@ export function Game({
       if (view.combat?.blocks.some((b) => b.blocker === id)) marks.push('blocking');
       if (pickedAttacker === id) marks.push('selected');
       if (step?.focus(s).includes(id)) marks.push('focus');
-      if (notice?.sourceCard === id) marks.push(notice.trigger ? 'effect-trigger' : 'effect-source');
+      const onStack = stackNumbers.get(id);
+      if (onStack) marks.push(onStack.trigger ? 'stack-trigger' : 'stack-ability');
+      else if (notice?.sourceCard === id) marks.push(notice.trigger ? 'effect-trigger' : 'effect-source');
       if (notice?.targets.some(t => t.kind === 'card' && t.card === id)) marks.push('effect-target');
       if (session.recent.has(id)) marks.push('recent');
       return marks;
@@ -647,7 +659,8 @@ export function Game({
       const blocking = blocks.get(id) ?? view.combat?.blocks.find((b) => b.blocker === id)?.attacker;
       if (blocking) return `Blocks ${cardName(s, blocking)}`;
       if (notice?.targets.some(t => t.kind === 'card' && t.card === id)) return 'TARGET';
-      if (notice?.sourceCard === id) return notice.trigger ? 'TRIGGER' : 'SOURCE';
+      const onStack = stackNumbers.get(id);
+      if (onStack) return onStack.n.join(' · ');
       const attachedTo = view.cards[id]?.attachedTo;
       if (attachedTo) return `⚔ ${cardName(s, attachedTo)}`;
       if (defOf(view.cards[id]!.defId).crew !== undefined) return view.cards[id]!.crewed ? 'Crewed until end of turn' : `Crew ${defOf(view.cards[id]!.defId).crew}`;
@@ -1149,7 +1162,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility, describe }: { 
   if (items.length === 0) return null;
   return (
     <div className="stack">
-      <div className="stack-title">Stack <span className="stack-count">{items.length}</span><small>top resolves first</small></div>
+      <div className="stack-title">Stack <span className="stack-count">{items.length}</span><small>1 resolves first</small></div>
       {items.map((item, i) => {
         const cardId = item.kind === 'spell' ? item.card : item.source;
         const c = view.cards[cardId];
@@ -1166,7 +1179,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility, describe }: { 
             tabIndex={item.kind === 'ability' && abilityTargets.includes(item.id) ? 0 : undefined}
             onKeyDown={e => { if (item.kind === 'ability' && abilityTargets.includes(item.id) && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAbility(item.id); } }}
           >
-            <div className="stack-order">{i === 0 ? (item === view.resolving ? 'Now' : 'Next') : i + 1}</div>
+            <div className={`stack-order ${item.kind === 'spell' ? 'spell' : item.from === 'trigger' ? 'trigger' : 'ability'}`} title={i === 0 ? (item === view.resolving ? 'Resolving now' : 'Resolves next') : undefined}>{i + 1}</div>
             {c && (
               <div className="stack-thumb">
                 <CardFace printing={c.printing} defId={c.defId} size="small" />

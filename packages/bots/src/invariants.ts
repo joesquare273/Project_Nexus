@@ -1,7 +1,8 @@
 // Invariants that must hold after every action in any game. Used by the
 // fuzz tests and the long fuzz script (PRD 16).
 
-import { MANA_TYPES, type GameState } from '@nexus/engine';
+import { MANA_TYPES, type GameState, type InstanceId } from '@nexus/engine';
+import { visibleCards } from '../../engine/src/redact.ts';
 
 /** Returns a list of broken invariants. Empty means the state is consistent. */
 export function checkInvariants(s: GameState): string[] {
@@ -31,6 +32,20 @@ export function checkInvariants(s: GameState): string[] {
     }
     if (!Number.isInteger(p.life)) problems.push(`${pid} life is ${p.life}`);
     if (p.eliminated && (p.battlefield.length > 0 || (p.phasedOut?.length ?? 0) > 0)) problems.push(`eliminated ${pid} still has permanents`);
+  }
+  // A player asked to choose among cards must be able to see them, on the local board and online (Satyr Wayfinder once showed an empty list).
+  const p = s.pending;
+  const shown: InstanceId[] =
+    p.kind === 'chooseCards' ? [...p.cards, ...(p.looked ?? [])]
+    : p.kind === 'surveil' || p.kind === 'exileTop' || p.kind === 'commanderZone' ? [p.card]
+    : p.kind === 'chooseLegend' ? p.cards
+    : [];
+  // (The local board's view.ts uses the same rule as redact.ts; eoc-cards.test.ts checks both for Satyr Wayfinder.)
+  if (shown.length && 'player' in p && s.players[p.player]) {
+    const visible = visibleCards(s, p.player);
+    for (const id of shown) {
+      if (s.cards[id] && !visible.has(id)) problems.push(`${p.player} must choose among ${id} (${s.cards[id]!.defId}, ${s.cards[id]!.zone}) but can't see it (${p.kind}${p.kind === 'chooseCards' ? ' ' + p.purpose : ''})`);
+    }
   }
   for (const item of s.stack) {
     if (item.kind === 'ability') {

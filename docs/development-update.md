@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Stack numbers on the board (2026-11-12)
+
+A card whose ability is on the stack shows that ability's number
+underneath (1 resolves first, as in the stack panel), with a matching
+outline: red for a triggered ability, blue for an activated one. The stack
+panel numbers its items the same way, gold for spells. Orange still marks
+targets. This replaces the SOURCE / TRIGGER labels.
+
 ### Satyr Wayfinder showed nothing to pick (2026-11-12)
 
 "Look at the top N cards; you may put a matching one into your hand"
@@ -25,6 +33,9 @@ says.
 opened an empty list: the board's view (`view.ts`) only revealed looked-at
 library cards for some kinds of choice. It now shows the chooser the same
 cards `redact.ts` does: the ones on offer and the others looked at with them.
+The fuzz invariants now fail any game where a player must choose among
+cards they can't see (`bots/src/invariants.ts`); a run over random decks of
+every built card found no other case.
 
 ### Mana symbols everywhere (2026-11-12)
 
