@@ -170,6 +170,7 @@ choices keep opponents' hand identities hidden.
 | Weftwalking | A player's first spell on their own turn is free automatically (unless X is above 0 or an alternative cost is used) | The player may choose to pay instead (rule 118.9) |
 | Moonlit Meditation | The first tokens you create each turn always become copies of the enchanted permanent | "You may": the player chooses |
 | Steelswarm Operator's {U}{U} | An ordinary activated ability that uses the stack | A mana ability (rule 605) |
+| The Dominion Bracelet | The "{15}, Exile The Dominion Bracelet" ability is on the Bracelet itself, usable while it's attached; a computer player that controls you plays your turn as if it were you | The equipped creature has the ability; the controller makes decisions in their own interest (rule 722) |
 | Blue Mage's Cane's copy | The exiled card itself is cast for {3}, at any time that turn, and returns to exile afterwards (as if the copy ceased to exist) | A copy is cast while the ability resolves (rules 707.12, 608.2g) |
 | Sin's "as it enters, remove all counters" | Only when Sin is cast (as the spell resolves); put onto the battlefield another way, it enters with no counters | Also when it enters another way (rule 614.1c) |
 | "Loses all abilities" (Observed Stasis) | Removes the abilities in its own definition; abilities granted by other permanents or effects still apply | Also removes abilities granted earlier by timestamp (rule 613.1f) |

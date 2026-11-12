@@ -202,6 +202,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return Object.values(s.cards).filter((c) => c.zone === 'exile' && c.owner === player && !c.isToken).length;
     case 'DifferentlyNamedLandsYouControl':
       return new Set(yours().filter((c) => def(s, c).types.includes('land')).map((c) => def(s, c).name)).size;
+    case 'EquippedCreaturePower': {
+      const host = source ? s.cards[source]?.attachedTo : undefined;
+      return host && s.cards[host]?.zone === 'battlefield' ? Math.max(0, characteristics(s, s.cards[host]!).power) : 0;
+    }
     case 'MulticoloredPermanentsYouControl':
       return yours().filter((c) => colorsOf(def(s, c)).length >= 2).length;
     case 'CreaturesAndSpacecraftYouControl':

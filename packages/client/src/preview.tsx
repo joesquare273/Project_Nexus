@@ -25,6 +25,17 @@ for (let guard = 0; guard < 4000 && session.state.turnNumber <= turns && session
   } else session.advance();
 }
 
+// ?control=1: you control the next opponent's turn (The Dominion Bracelet), to see that board.
+if (params.get('control')) {
+  for (let guard = 0; guard < 400 && session.state.activePlayer === YOU; guard++) {
+    const s = session.state;
+    if ('player' in s.pending && s.pending.player === YOU) session.submit([me(s, session.legal())]);
+    else session.advance();
+  }
+  const s = session.state;
+  s.turnControl = [{ player: s.activePlayer, by: YOU, turn: s.turnNumber }];
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Game session={session} onQuit={() => location.reload()} />

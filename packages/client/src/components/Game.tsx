@@ -103,7 +103,7 @@ interface Paying {
 /** What an action costs right now, e.g. "{3}{R}" (commander tax and discounts included), as the engine lists it. */
 function costText(s: GameState, action: Extract<Action, { type: 'CastSpell' | 'ActivateAbility' }>): string {
   const key = JSON.stringify(action);
-  const options = action.type === 'CastSpell' ? spellOptions(s, YOU) : abilityOptions(s, YOU);
+  const options = action.type === 'CastSpell' ? spellOptions(s, action.player) : abilityOptions(s, action.player);
   const option = options.find((o) => JSON.stringify(o.action) === key);
   return option ? formatManaCost(option.cost) : (defOf(s.cards[action.card]!.defId).manaCost ?? '');
 }
@@ -166,7 +166,9 @@ export function Game({
   const s = session.state;
   const view: GameView = session.view();
   const pending = s.pending;
-  const yourMove = pending.kind !== 'gameOver' && pending.player === YOU && !busy;
+  // The player whose decisions you make now: you, or the player you control this turn (rule 722).
+  const ME = session.actor();
+  const yourMove = pending.kind !== 'gameOver' && session.decidesNow() && !busy;
 
   const showError = (message: string) => {
     setError(message);
@@ -427,7 +429,7 @@ export function Game({
 
   /** Offer each legal mana ability, including a Relic's choice of creature to tap. While paying, choosing one marks it. */
   const useManaSource = (id: InstanceId) => {
-    const actions = (paying ? manaAbilityActions(planState, YOU) : getLegalActions(s)).filter((a): a is ManaTap => a.type === 'ActivateManaAbility' && a.card === id);
+    const actions = (paying ? manaAbilityActions(planState, ME) : getLegalActions(s)).filter((a): a is ManaTap => a.type === 'ActivateManaAbility' && a.card === id);
     if (actions.length === 0) return showError(paying ? 'That source has no mana left to give for this.' : 'That source can’t make mana right now.');
     const choose = (a: ManaTap) => {
       setMenu(null);
@@ -557,7 +559,7 @@ export function Game({
   // From the engine's rules rather than the legal list, which leaves out attacks you haven't added the mana for yet (Propaganda).
   const canAttackIds = new Set(
     pending.kind === 'declareAttackers' && yourMove
-      ? s.players[YOU]!.battlefield.filter((id) => canAttack(s, s.cards[id]!, YOU))
+      ? s.players[ME]!.battlefield.filter((id) => canAttack(s, s.cards[id]!, ME))
       : [],
   );
   const canBlockIds = new Set(
@@ -565,8 +567,9 @@ export function Game({
       ? legal.flatMap((a) => (a.type === 'DeclareBlockers' ? a.blocks.map((x) => x.blocker) : []))
       : [],
   );
-  const attacksOnYou = (view.combat?.attacks ?? []).filter((a) => a.defender === YOU).map((a) => a.attacker);
-  const livingOpponents = session.opponents.filter((p) => !view.players[p]!.eliminated);
+  const attacksOnYou = (view.combat?.attacks ?? []).filter((a) => a.defender === ME).map((a) => a.attacker);
+  // The players the one you're deciding for can attack: everyone else still in (you too, while you control someone).
+  const livingOpponents = s.turnOrder.filter((p) => p !== ME && !view.players[p]!.eliminated);
   const currentDefender = livingOpponents.includes(defender) ? defender : livingOpponents[0]!;
   const playable = new Set(plays.map((p) => p.card));
   // Your untapped mana sources, while you could tap them.
@@ -574,13 +577,13 @@ export function Game({
   const markedIds = new Set(paying ? paying.taps.map((t) => t.card) : []);
   const manaIds = new Set(
     paying
-      ? manaAbilityActions(planState, YOU).map((a) => (a as ManaTap).card)
+      ? manaAbilityActions(planState, ME).map((a) => (a as ManaTap).card)
       : yourMove && pending.kind === 'priority'
         ? getLegalActions(s).filter((a) => a.type === 'ActivateManaAbility').map((a) => a.card)
         : [],
   );
   // Cards castable from outside your hand appear next to it; commanders stay in the command zone by your name.
-  const libraryTop = view.players[YOU]!.libraryTop;
+  const libraryTop = view.players[ME]!.libraryTop;
   const elsewhere = [...new Set([...playable, ...(libraryTop ? [libraryTop] : [])])].filter((id) => {
     const z = s.cards[id]!.zone;
     return z !== 'hand' && z !== 'battlefield' && z !== 'command';
@@ -639,7 +642,7 @@ export function Game({
       return marks;
     },
     manaNote: (pid) => {
-      const choosing = pid === YOU && paying ? paying.taps.map((t) => `{${t.mana}}`.repeat(t.output === undefined && !t.grantedBy ? manaAbilityAmount(s.cards[t.card]!, defOf(s.cards[t.card]!.defId)) : 1)).join('') : '';
+      const choosing = pid === ME && paying ? paying.taps.map((t) => `{${t.mana}}`.repeat(t.output === undefined && !t.grantedBy ? manaAbilityAmount(s.cards[t.card]!, defOf(s.cards[t.card]!.defId)) : 1)).join('') : '';
       const tapped = session.manaTapped[pid];
       return { ...(choosing ? { choosing } : {}), ...(tapped ? { tapped } : {}) };
     },
@@ -686,7 +689,7 @@ export function Game({
         }
         return manaIds.has(id) ? useManaSource(id) : undefined;
       }
-      if (legendChoices.includes(id)) return submit([{ type: 'ChooseLegend', player: YOU, keep: id }]);
+      if (legendChoices.includes(id)) return submit([{ type: 'ChooseLegend', player: ME, keep: id }]);
       if (choosing?.cards.includes(id)) {
         setBottomPicks(bottomPicks.includes(id) ? bottomPicks.filter((x) => x !== id) : [...bottomPicks, id]);
         return;
@@ -743,7 +746,7 @@ export function Game({
       if (!yourMove) return;
       const option = nextOptions.find((t) => t.kind === 'player' && t.player === pid);
       if (option) return pickTarget(option);
-      if (pending.kind === 'declareAttackers' && pid !== YOU && livingOpponents.includes(pid)) {
+      if (pending.kind === 'declareAttackers' && pid !== ME && livingOpponents.includes(pid)) {
         setDefender(pid);
         setTargetPw(null);
       }
@@ -752,7 +755,7 @@ export function Game({
     onZone: (player, zone) => setZoneView({ player, zone }),
   };
 
-  const surveilCard = (pending.kind === 'surveil' || pending.kind === 'exileTop') && pending.player === YOU ? pending.card : null;
+  const surveilCard = (pending.kind === 'surveil' || pending.kind === 'exileTop') && pending.player === ME ? pending.card : null;
 
   // The coach panel: the lesson step, the end of the lesson, or a practice-game tip.
   let coach: ReactNode = null;
@@ -891,7 +894,7 @@ export function Game({
           setBottomPicks={setBottomPicks}
         />
         <div className={`you-bar ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
-          <Hand view={view} h={h} elsewhere={elsewhere} />
+          <Hand view={view} h={h} elsewhere={elsewhere} pid={ME} />
         </div>
         {error && <div className="toast"><ManaText text={error} size={15} /></div>}
         {castShown && (
@@ -926,7 +929,7 @@ export function Game({
       {/* "Look at the top seven cards of your library": the cards on offer. */}
       {choosing?.purpose === 'fateBottom' && (
         <CardList view={view} title="Coin of Fate: choose the card for the bottom of its owner's library" ids={choosing.cards} h={h}
-          actions={<button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}>Put on bottom</button>}
+          actions={<button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: ME, cards: bottomPicks }])}>Put on bottom</button>}
         />
       )}
       {(choosing?.purpose === 'search' || choosing?.purpose === 'digLands') && (
@@ -942,21 +945,21 @@ export function Game({
           ids={choosing.cards}
           h={h}
           actions={
-            <button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}>
+            <button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: ME, cards: bottomPicks }])}>
               {choosing.purpose === 'search' ? (bottomPicks.length ? 'Take these' : 'Find nothing') : 'Done'}
             </button>
           }
         />
       )}
       {/* Grief: the opponent's revealed hand, to choose the card they discard. */}
-      {choosing?.purpose === 'discard' && choosing.cards.some((id) => view.cards[id]?.owner !== YOU) && (
+      {choosing?.purpose === 'discard' && choosing.cards.some((id) => view.cards[id]?.owner !== ME) && (
         <CardList
           view={view}
           title={`Their revealed hand: choose ${choosing.min} for them to discard (${bottomPicks.length} chosen)`}
           ids={choosing.cards}
           h={h}
           actions={
-            <button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}>
+            <button className="primary" disabled={!!choiceProblem(s, choosing, bottomPicks)} onClick={() => submit([{ type: 'ChooseCards', player: ME, cards: bottomPicks }])}>
               Discard
             </button>
           }
@@ -972,7 +975,7 @@ export function Game({
             <button
               className="primary"
               disabled={!!choiceProblem(s, choosing, bottomPicks)}
-              onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}
+              onClick={() => submit([{ type: 'ChooseCards', player: ME, cards: bottomPicks }])}
             >
               Put into your hand
             </button>
@@ -989,7 +992,7 @@ export function Game({
             <button
               className="primary"
               disabled={!!choiceProblem(s, choosing, bottomPicks)}
-              onClick={() => submit([{ type: 'ChooseCards', player: YOU, cards: bottomPicks }])}
+              onClick={() => submit([{ type: 'ChooseCards', player: ME, cards: bottomPicks }])}
             >
               {bottomPicks.length ? (choosing.lookTo === 'battlefield' ? 'Put onto the battlefield' : 'Put into your hand') : 'Take nothing'}
             </button>
@@ -1010,7 +1013,7 @@ export function Game({
           view={view}
           pid={zoneView.player}
           h={h}
-          castable={new Set(view.players[zoneView.player]!.exile.filter((id) => s.cards[id] && playableZone(s, YOU, s.cards[id]!) === 'exile'))}
+          castable={new Set(view.players[zoneView.player]!.exile.filter((id) => s.cards[id] && playableZone(s, ME, s.cards[id]!) === 'exile'))}
           onClose={() => setZoneView(null)}
         />
       )}
@@ -1129,6 +1132,11 @@ function PhaseTrack({ view, session, onChange }: { view: GameView; session: Game
   return (
     <div className="phases" role="group" aria-label="Turn steps and priority stops">
       <span className="phase-owner">{view.activePlayer === YOU ? 'Your turn' : `${view.activePlayer}'s turn`}</span>
+      {(session.state.turnControl ?? []).filter((t) => t.turn === session.state.turnNumber).map((t) => (
+        <span key={t.player} className="turn-control" title="The Dominion Bracelet: this player makes every decision for the other this turn">
+          {t.by === YOU ? 'You' : t.by} {t.by === YOU ? 'control' : 'controls'} {t.player === YOU ? 'you' : t.player} this turn
+        </span>
+      ))}
       {STEP_SHORT.map(([step, label]) => (
         <button
           key={step}
@@ -1258,6 +1266,7 @@ function PromptBar(p: PromptProps) {
   useEffect(() => setModePicks([]), [p.menu]);
   const s = p.session.state;
   const pending = s.pending;
+  const ME = p.session.actor();
   /** Ordering your simultaneous triggers: the ones clicked so far, in resolve order. */
   const [orderPicks, setOrderPicks] = useState<number[]>([]);
   const orderKey = pending.kind === 'orderTriggers' ? `${s.turnNumber}:${s.triggerQueue.map((t) => t.source).join()}` : '';
@@ -1268,7 +1277,7 @@ function PromptBar(p: PromptProps) {
   if (pending.kind === 'gameOver') {
     text = 'Game over.';
   } else if (!p.yourMove) {
-    text = pending.player === YOU ? 'Preparing your next decision…' : `${pending.player} is thinking…`;
+    text = pending.player === ME ? 'Preparing your next decision…' : `${pending.player} is thinking…`;
   } else if (p.menu) {
     text = `${p.menu.title}:`;
     const modeMenu = p.menu.modes;
@@ -1282,7 +1291,7 @@ function PromptBar(p: PromptProps) {
     } else buttons = [...p.menu.options.map((o) => ({ label: o.label, onClick: o.pick })), { label: 'Cancel', onClick: p.onCancel }];
   } else if (p.paying) {
     // The mana you'd have once the marked sources are tapped (floating mana included).
-    const pl = p.planState.players[YOU]!;
+    const pl = p.planState.players[ME]!;
     const ready = [pl.manaPool, pl.equipmentMana, pl.artifactMana ?? {}, pl.noncreatureSpellMana, ...Object.values(pl.restrictedMana ?? {})]
       .flatMap((pool) => Object.entries(pool).flatMap(([m, n]) => Array.from({ length: n as number }, () => `{${m}}`)))
       .join('');
@@ -1314,7 +1323,7 @@ function PromptBar(p: PromptProps) {
     // An "up to one" target can be left out.
     if (p.canSkipTarget) buttons = [...buttons, { label: 'No target', onClick: p.onSkipTarget }];
   } else if (pending.kind === 'mulligan') {
-    const hand = s.players[YOU]!.hand;
+    const hand = s.players[ME]!.hand;
     const lands = hand.filter((id) => defOf(s.cards[id]!.defId).types.includes('land')).length;
     const bottom = cardsToBottom(s, pending.taken + 1);
     const canMulligan = bottom <= s.format.startingHandSize;
@@ -1323,42 +1332,42 @@ function PromptBar(p: PromptProps) {
       canMulligan ? (bottom === 0 ? ' (your first mulligan is free)' : ` (then put ${bottom} on the bottom)`) : ''
     }?`;
     buttons = [
-      ...(canMulligan ? [{ label: 'Mulligan', onClick: () => p.submit([{ type: 'Mulligan', player: YOU, keep: false }]) }] : []),
-      { label: 'Keep', onClick: () => p.submit([{ type: 'Mulligan', player: YOU, keep: true }]), primary: true },
+      ...(canMulligan ? [{ label: 'Mulligan', onClick: () => p.submit([{ type: 'Mulligan', player: ME, keep: false }]) }] : []),
+      { label: 'Keep', onClick: () => p.submit([{ type: 'Mulligan', player: ME, keep: true }]), primary: true },
     ];
   } else if (pending.kind === 'chooseCards') {
     const c = pending;
     const picks = p.bottomPicks;
     if (c.purpose === 'payToAvoidCounter') {
       const x = c.payGeneric ?? 0;
-      const can = !!planTaps(s, YOU, { generic: x });
+      const can = !!planTaps(s, ME, { generic: x });
       text = c.drawFor
         ? `Its controller draws a card from ${cardName(s, c.cards[0]!)} unless you pay {${x}}.`
         : `${cardName(s, c.cards[0]!)} will be countered unless you pay {${x}}.`;
-      const payIt: Action = { type: 'ChooseCards', player: YOU, cards: [...c.cards] };
+      const payIt: Action = { type: 'ChooseCards', player: ME, cards: [...c.cards] };
       buttons = [
         ...(can ? [{ label: `Pay {${x}}`, onClick: () => (x > 0 ? p.onPay(`Pay {${x}}`, payIt, `{${x}}`) : p.submit([payIt])), primary: true }] : []),
-        { label: can ? 'Don’t pay' : `Can’t pay {${x}}`, onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
+        { label: can ? 'Don’t pay' : `Can’t pay {${x}}`, onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [] }]) },
       ];
     } else if (c.purpose === 'payHalfLife') {
-      const half = Math.ceil((s.players[YOU]?.life ?? 0) / 2);
+      const half = Math.ceil((s.players[ME]?.life ?? 0) / 2);
       text = `Pay half your life (${half}) to counter ${cardName(s, c.cards[0]!)}?`;
       buttons = [
-        { label: `Pay ${half} life`, onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]) },
-        { label: 'Don’t pay', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]), primary: true },
+        { label: `Pay ${half} life`, onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [...c.cards] }]) },
+        { label: 'Don’t pay', onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [] }]), primary: true },
       ];
     } else if (c.purpose === 'offerDraw' || c.purpose === 'library') {
       text = c.purpose === 'offerDraw' ? 'Let your opponent draw three cards, or have them mill three and deal their total mana value in damage to you?'
         : 'Put the targeted card on the top or bottom of your library?';
       buttons = [
-        { label: c.purpose === 'offerDraw' ? 'Draw three' : 'Bottom', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]) },
-        { label: c.purpose === 'offerDraw' ? 'Mill and take damage' : 'Top', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
+        { label: c.purpose === 'offerDraw' ? 'Draw three' : 'Bottom', onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [...c.cards] }]) },
+        { label: c.purpose === 'offerDraw' ? 'Mill and take damage' : 'Top', onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [] }]) },
       ];
     } else if (c.allOrNothing) {
       text = `Discard your whole hand (${c.cards.length} card${c.cards.length === 1 ? '' : 's'})?`;
       buttons = [
-        { label: 'Keep my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [] }]) },
-        { label: 'Discard my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: [...c.cards] }]), primary: true },
+        { label: 'Keep my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [] }]) },
+        { label: 'Discard my hand', onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [...c.cards] }]), primary: true },
       ];
     } else {
       const how = c.orOneMatching ? `${c.max} cards, or one ${(c.orOneMatching.types ?? []).join(' or ')} card instead,` : c.min === c.max ? `${c.min}` : c.min === 0 ? `up to ${c.max}` : `${c.min} to ${c.max}`;
@@ -1427,7 +1436,7 @@ function PromptBar(p: PromptProps) {
       buttons = [
         ...(picks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
         ...(!problem
-          ? [{ label: c.purpose === 'distributeCounter' ? (picks.length ? 'Assign counter' : 'Finish distributing') : c.purpose === 'divideDamage' ? (picks.length ? 'Assign 1 damage' : 'Deal no damage') : (picks.length ? 'Confirm' : 'Choose none'), onClick: () => p.submit([{ type: 'ChooseCards', player: YOU, cards: picks }]), primary: true }]
+          ? [{ label: c.purpose === 'distributeCounter' ? (picks.length ? 'Assign counter' : 'Finish distributing') : c.purpose === 'divideDamage' ? (picks.length ? 'Assign 1 damage' : 'Deal no damage') : (picks.length ? 'Confirm' : 'Choose none'), onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: picks }]), primary: true }]
           : []),
       ];
     }
@@ -1439,22 +1448,22 @@ function PromptBar(p: PromptProps) {
       : pending.purpose === 'rival' ? 'Shinryu: choose an opponent. When they lose the game, you win.'
       : 'Choose the opponent who will decide which exiled card goes on the bottom of your library.';
     buttons = pending.opponents.filter(id => !s.players[id]!.eliminated).map(opponent => ({
-      label: opponent, onClick: () => p.submit([{ type: 'ChooseOpponent', player: YOU, opponent }]),
+      label: opponent, onClick: () => p.submit([{ type: 'ChooseOpponent', player: ME, opponent }]),
     }));
   } else if (pending.kind === 'chooseDefender') {
     text = cardName(s, pending.card) + ': choose which opponent it enters attacking.';
     buttons = pending.defenders.filter((id) => !s.players[id]!.eliminated).map((defender) => ({
       label: 'Attack ' + defender,
-      onClick: () => p.submit([{ type: 'ChooseDefender', player: YOU, defender }]),
+      onClick: () => p.submit([{ type: 'ChooseDefender', player: ME, defender }]),
       primary: true,
     }));
   } else if (pending.kind === 'chooseColor') {
     text = `${cardName(s, pending.card)}: choose a color as it enters. It adds one mana of that color.`;
     const names = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' } as const;
-    buttons = (['W', 'U', 'B', 'R', 'G'] as const).map((color) => ({ label: names[color], onClick: () => p.submit([{ type: 'ChooseColor', player: YOU, color }]) }));
+    buttons = (['W', 'U', 'B', 'R', 'G'] as const).map((color) => ({ label: names[color], onClick: () => p.submit([{ type: 'ChooseColor', player: ME, color }]) }));
   } else if (pending.kind === 'chooseCardType') {
     text = `${cardName(s, pending.card)}: choose a card type as it enters.`;
-    buttons = pending.options.map((cardType) => ({ label: cardType[0]!.toUpperCase() + cardType.slice(1), onClick: () => p.submit([{ type: 'ChooseCardType', player: YOU, cardType }]) }));
+    buttons = pending.options.map((cardType) => ({ label: cardType[0]!.toUpperCase() + cardType.slice(1), onClick: () => p.submit([{ type: 'ChooseCardType', player: ME, cardType }]) }));
   } else if (pending.kind === 'orderTriggers') {
     // Rule 603.3b: click your triggers in the order they should resolve.
     const n = pending.count;
@@ -1466,7 +1475,7 @@ function PromptBar(p: PromptProps) {
       ? `Resolve order so far: ${orderPicks.map((i, k) => `${k + 1}. ${cardName(s, s.triggerQueue[i]!.source)}`).join(' · ')}. Click the next one.`
       : `${n} of your abilities trigger at once. Click them in the order they should resolve, first to last (the last one goes on the stack first).`;
     const remaining = Array.from({ length: n }, (_, i) => i).filter((i) => !orderPicks.includes(i));
-    const finish = (picks: number[]) => p.submit([{ type: 'OrderTriggers', player: YOU, order: picks }]);
+    const finish = (picks: number[]) => p.submit([{ type: 'OrderTriggers', player: ME, order: picks }]);
     buttons = [
       ...remaining.map((i) => ({
         label: `${orderPicks.length + 1}. ${label(i).slice(0, 90)}`,
@@ -1501,7 +1510,7 @@ function PromptBar(p: PromptProps) {
     buttons = [
       ...(p.bottomPicks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
       ...(p.bottomPicks.length === n
-        ? [{ label: 'Put on bottom', onClick: () => p.submit([{ type: 'BottomCards', player: YOU, cards: p.bottomPicks }]), primary: true }]
+        ? [{ label: 'Put on bottom', onClick: () => p.submit([{ type: 'BottomCards', player: ME, cards: p.bottomPicks }]), primary: true }]
         : []),
     ];
   } else if (pending.kind === 'chooseLegend') {
@@ -1509,8 +1518,8 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'commanderZone') {
     text = `Your commander ${cardName(s, pending.card)} went to your ${pending.zone}. Move it to the command zone?`;
     buttons = [
-      { label: `Leave it in your ${pending.zone}`, onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: false }]) },
-      { label: 'Command zone', onClick: () => p.submit([{ type: 'CommanderZone', player: YOU, toCommand: true }]), primary: true },
+      { label: `Leave it in your ${pending.zone}`, onClick: () => p.submit([{ type: 'CommanderZone', player: ME, toCommand: false }]) },
+      { label: 'Command zone', onClick: () => p.submit([{ type: 'CommanderZone', player: ME, toCommand: true }]), primary: true },
     ];
   } else if (pending.kind === 'chooseMana') {
     text = 'Choose a color of mana to add.';
@@ -1518,29 +1527,29 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'exileTop') {
     text = 'Draw Arcanum: exile ' + cardName(s, pending.card) + ' face down, or leave it on top?';
     buttons = [
-      { label: 'Exile face down', onClick: () => p.submit([{ type: 'ExileTop', player: YOU, exile: true }]), primary: true },
-      { label: 'Keep on top', onClick: () => p.submit([{ type: 'ExileTop', player: YOU, exile: false }]) },
+      { label: 'Exile face down', onClick: () => p.submit([{ type: 'ExileTop', player: ME, exile: true }]), primary: true },
+      { label: 'Keep on top', onClick: () => p.submit([{ type: 'ExileTop', player: ME, exile: false }]) },
     ];
   } else if (pending.kind === 'surveil') {
     const scrying = !!pending.scry;
     text = `${scrying ? 'Scry' : 'Surveil'}: keep ${cardName(s, pending.card)} on top of your library, or put it ${scrying ? 'on the bottom of your library' : 'into your graveyard'}?`;
     buttons = [
-      { label: scrying ? 'Bottom of library' : 'Graveyard', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: true }]) },
-      { label: 'Keep on top', onClick: () => p.submit([{ type: 'Surveil', player: YOU, toGraveyard: false }]), primary: true },
+      { label: scrying ? 'Bottom of library' : 'Graveyard', onClick: () => p.submit([{ type: 'Surveil', player: ME, toGraveyard: true }]) },
+      { label: 'Keep on top', onClick: () => p.submit([{ type: 'Surveil', player: ME, toGraveyard: false }]), primary: true },
     ];
   } else if (pending.kind === 'declareAttackers') {
     const goaded = Object.values(p.view.stats).some(st=>st.goadedBy?.length);
-    const many = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated).length > 1;
+    const many = s.turnOrder.filter((o) => o !== ME && !p.view.players[o]!.eliminated).length > 1;
     text = `Declare attackers: click your creatures to attack${many ? ` ${p.currentDefender} (click an opponent to switch)` : ''}.`;
     if (p.targetPw && s.cards[p.targetPw]) text += ` The next attackers you choose go for ${cardName(s, p.targetPw)} (click it again to attack the player).`;
-    else if (Object.values(s.cards).some((c) => c.zone === 'battlefield' && c.controller !== YOU && defOf(c.defId).types.includes('planeswalker'))) text += ' Click an opponent’s planeswalker to attack it instead of the player.';
+    else if (Object.values(s.cards).some((c) => c.zone === 'battlefield' && c.controller !== ME && defOf(c.defId).types.includes('planeswalker'))) text += ' Click an opponent’s planeswalker to attack it instead of the player.';
     if (goaded) text += ' Goaded creatures must attack and avoid their goader when able.';
     const all = new Map([...p.canAttackIds].filter((id) => canAttackPlayer(s, s.cards[id]!, p.attackers.get(id) ?? p.currentDefender)).map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
     const declare = (m: Map<InstanceId, PlayerId>) => {
       const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender, ...(p.attackPw.has(attacker) ? { planeswalker: p.attackPw.get(attacker)! } : {}) }));
       // Propaganda and friends: choose the mana for the tax, then the declaration goes with the taps.
       const tax = attackTax(s, attacks);
-      const declaration: Action = { type: 'DeclareAttackers', player: YOU, attacks };
+      const declaration: Action = { type: 'DeclareAttackers', player: ME, attacks };
       if (tax > 0) p.onPay('Attack', declaration, `{${tax}}`);
       else p.submit([declaration]);
     };
@@ -1558,7 +1567,7 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'declareBlockers') {
     text = 'Declare blockers: click an attacker, then the creature that blocks it. Click a blocker again to undo.';
     const declare = (m: Map<InstanceId, InstanceId>) =>
-      p.submit([{ type: 'DeclareBlockers', player: YOU, blocks: [...m].map(([blocker, attacker]) => ({ blocker, attacker })) }]);
+      p.submit([{ type: 'DeclareBlockers', player: ME, blocks: [...m].map(([blocker, attacker]) => ({ blocker, attacker })) }]);
     buttons = [
       { label: 'No blocks', onClick: () => declare(new Map()) },
       { label: p.blocks.size > 0 ? `Block with ${p.blocks.size}` : 'Confirm blocks', onClick: () => declare(p.blocks), primary: true },
@@ -1568,10 +1577,10 @@ function PromptBar(p: PromptProps) {
     const spec = item.kind === 'ability' ? triggerSpec(s, item) : undefined;
     const source = item.kind === 'ability' ? item.source : item.card;
     text = `${cardName(s, source)}: ${spec ? triggerText(spec) : ''}`;
-    const yes: Action = { type: 'Decide', player: YOU, accept: true };
+    const yes: Action = { type: 'Decide', player: ME, accept: true };
     const mana = spec?.cost?.mana;
     buttons = [
-      { label: 'No', onClick: () => p.submit([{ type: 'Decide', player: YOU, accept: false }]) },
+      { label: 'No', onClick: () => p.submit([{ type: 'Decide', player: ME, accept: false }]) },
       {
         label: spec?.cost ? 'Yes, pay' : 'Yes',
         // A mana cost: choose the mana to pay it with, then confirm.
@@ -1599,15 +1608,17 @@ function PromptBar(p: PromptProps) {
       const src = top.kind === 'spell' ? top.card : top.source;
       const whose = top.controller === YOU ? 'Your' : `${top.controller}'s`;
       text = `${whose} ${cardName(s, src)}${top.kind === 'ability' ? ' ability' : ''} is on the stack. Respond with a legal spell or ability. It resolves after everyone passes in succession.`;
-      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
+      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
     } else {
       const yours = s.activePlayer === YOU;
       const main = s.step === 'main1' || s.step === 'main2';
-      text = yours && main
+      text = s.activePlayer === ME && ME !== YOU && main
+        ? `Playing ${ME}'s turn — ${stepName(s.step).toLowerCase()}: play a land, cast a spell, or use an ability from their hand and board. Glowing cards are playable.`
+        : yours && main
         ? `${stepName(s.step)}: play a land, cast a spell, or use an ability. Glowing cards are playable.`
         : `${yours ? 'Your' : `${s.activePlayer}'s`} ${stepName(s.step).toLowerCase()}: cast a legal instant or use an ability.`;
       text += ' Everyone must pass in succession to advance.';
-      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: YOU }]), primary: true }];
+      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
     }
   }
 

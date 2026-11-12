@@ -69,4 +69,4 @@ export {
   colorsOf,
 } from './typerules.ts';
 
-export { maximumHandSize } from './turn.ts';
+export { controlledBy, decisionMaker, maximumHandSize } from './turn.ts';

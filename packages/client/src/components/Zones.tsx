@@ -474,7 +474,8 @@ export function CommandZone({view,pid,h}:{view:GameView;pid:PlayerId;h:ZoneHandl
  */
 export function OpponentHand({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
   const p = view.players[pid]!;
-  const revealed = (p.revealedHand ?? []).filter((id) => view.cards[id]);
+  // A player you control this turn: you see their whole hand (rule 722.2).
+  const revealed = (p.hand ?? p.revealedHand ?? []).filter((id) => view.cards[id]);
   const hidden = Math.max(0, p.handCount - revealed.length);
   const shown = Math.min(p.handCount, 12);
   const backs = Math.max(0, Math.min(hidden, shown - revealed.length));
@@ -491,7 +492,8 @@ export function OpponentHand({ view, pid, h }: { view: GameView; pid: PlayerId; 
             key={id}
             data-card={id}
             className={`opp-hand-card revealed ${h.markCard(id).join(' ')}`}
-            title={`${defOf(view.cards[id]!.defId).name} (revealed)`}
+            title={`${defOf(view.cards[id]!.defId).name}${p.hand ? '' : ' (revealed)'}`}
+            onClick={() => h.onCard(id)}
             onMouseEnter={() => h.onHover(id)}
             onMouseLeave={() => h.onHover(null)}
           >
@@ -668,17 +670,18 @@ function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHan
 }
 
 /** Your hand, plus cards you can cast from elsewhere right now (flashback, cards exiled to play). */
-export function Hand({ view, h, elsewhere }: { view: GameView; h: ZoneHandlers; elsewhere: InstanceId[] }) {
-  const hand = view.players[YOU]!.hand ?? [];
+export function Hand({ view, h, elsewhere, pid = YOU }: { view: GameView; h: ZoneHandlers; elsewhere: InstanceId[]; pid?: PlayerId }) {
+  const hand = view.players[pid]!.hand ?? [];
   const all = [...hand, ...elsewhere];
   return (
-    <div className="hand" style={{ '--hand-count': all.length } as CSSProperties} data-pile={`${YOU}:hand`}>
+    <div className={`hand ${pid !== YOU ? 'controlled' : ''}`} style={{ '--hand-count': all.length } as CSSProperties} data-pile={`${pid}:hand`}>
+      {pid !== YOU && <div className="controlled-hand-label">{pid}'s hand: you're playing their turn</div>}
       {all.map((id, i) => {
         const tilt = (i - (all.length - 1) / 2) * 2;
         const zone = view.cards[id]!.zone;
         return <HandCard key={id} view={view} id={id} h={h} tilt={tilt} tag={zone === 'hand' ? undefined : zone === 'library' ? 'Top of library' : `from ${zone}`} />;
       })}
-      {all.length === 0 && <div className="empty-row">Your hand is empty</div>}
+      {all.length === 0 && <div className="empty-row">{pid === YOU ? 'Your hand is empty' : `${pid}'s hand is empty`}</div>}
     </div>
   );
 }

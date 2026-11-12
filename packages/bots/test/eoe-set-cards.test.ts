@@ -2,7 +2,7 @@
 // Group M1: cards the engine already had the pieces for.
 
 import { describe, expect, it } from 'vitest';
-import { applyAction, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { applyAction, currentDefinition, decisionMaker, getLegalActions, hasKeyword, powerOf, toughnessOf, viewFor, visibleCards, type GameState } from '@nexus/engine';
 import { canBlock } from '../../engine/src/combat.ts';
 import { CARD_DEFS } from '@nexus/cards';
 import { act, card, cast, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
@@ -2655,5 +2655,45 @@ describe('Planeswalkers: Tezzeret, Cruel Captain', () => {
       else s = settle(s).state;
     }
     expect([zone(s, tez), s.players.P2!.life]).toEqual(['graveyard', life]);
+  });
+});
+
+// The Dominion Bracelet: controlling another player's turn (rule 722).
+describe('The Dominion Bracelet', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('costs {15} minus the equipped creature’s power, exiles itself, and gives you their next turn', () => {
+    let s = newGame();
+    const bracelet = put(s, 'P1', 'the-dominion-bracelet');
+    const big = put(s, 'P1', 'icecave-crasher');
+    s.cards[bracelet]!.attachedTo = big;
+    s = goTo(s, 'main1');
+    expect(powerOf(s, s.cards[big]!)).toBe(5);
+    mana(s, 'P1', { C: 9 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: bracelet, ability: 0, targets: [{ kind: 'player', player: 'P2' }] })).toBeTruthy();
+    mana(s, 'P1', { C: 1 });
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: bracelet, ability: 0, targets: [{ kind: 'player', player: 'P2' }] }).state);
+    expect([zone(s, bracelet), decisionMaker(s, 'P2')]).toEqual(['exile', 'P2']);
+    // P2's turn: P1 makes every decision for P2, and sees P2's hand.
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect([s.activePlayer, decisionMaker(s, 'P2'), decisionMaker(s, 'P1')]).toEqual(['P2', 'P1', 'P1']);
+    const secret = s.players.P2!.hand[0]!;
+    expect(viewFor(s, 'P1').cards[secret]).toBeTruthy();
+    expect(viewFor(s, 'P1').players.P2!.hand).toEqual(s.players.P2!.hand);
+    expect(visibleCards(s, 'P1').has(secret)).toBe(true);
+    // The next turn it's over.
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect([s.activePlayer, decisionMaker(s, 'P2'), viewFor(s, 'P1').cards[secret] !== undefined && zone(s, secret) === 'hand']).toEqual(['P1', 'P2', false]);
+  });
+
+  it('only works while attached', () => {
+    let s = newGame();
+    const bracelet = put(s, 'P1', 'the-dominion-bracelet');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 15 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: bracelet, ability: 0, targets: [{ kind: 'player', player: 'P2' }] })).toMatch(/attached/);
   });
 });

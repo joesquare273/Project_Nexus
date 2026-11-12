@@ -338,7 +338,7 @@ export class OnlineSession extends GameSession {
   override advance(): Advance {
     const s = this.state;
     if (s.pending.kind === 'gameOver') return 'over';
-    if (this.waiting || this.offline || s.pending.player !== YOU) return 'you';
+    if (this.waiting || this.offline || !this.decidesNow()) return 'you';
     if (this.holdPriority && s.pending.kind === 'priority') return 'you';
     if (this.heldTaps.length) {
       this.flushTaps();

@@ -194,6 +194,7 @@ with their real images but can't be played. Tests:
 | M20 (2026-11-11) | 3 cards: Famished Worldsire (`devourLand`, pending purpose `devourOnEntry`; only when cast); Ragost, Deft Gastronaut (`artifactsAreFoods`); Weftwalking (`firstSpellEachTurnFree`, trigger `ifCast`, `alsoHand`) | 255 of 261 |
 | M21 (2026-11-11) | 4 cards: Steelswarm Operator (`manaAbility.restricted`, `manaRestricted`; its second ability uses the stack); Mmmenon, the Right Hand (`grantsManaRestricted`); Moonlit Meditation (`firstTokensBecomeCopies`); Lightstall Inquisitor (`exileToPlayTaxed`). Left: Tezzeret, Cruel Captain and The Dominion Bracelet | 259 of 261 |
 | M22 (2026-11-12) | Planeswalkers (see docs/card-types.md) and Tezzeret, Cruel Captain (loyalty 4; his emblem is a permanent delayed trigger) | 260 of 261 |
+| M23 (2026-11-12) | The Dominion Bracelet: controlling another player's turn (rule 722; `turnControl`, `decisionMaker`, `ControlPlayerNextTurn`, count `EquippedCreaturePower`, `ifAttached`). The main set is complete | 261 of 261 |
 
 Still to come: 4 warp cards (Anticausal Vestige, Astelli Reclaimer, Starfield
 Vocalist, Pinnacle Emissary), 3 void cards, 8 Lander cards, 4 Spacecraft and

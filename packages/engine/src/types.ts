@@ -274,6 +274,8 @@ export const EFFECT_KINDS = [
   'DealDamage',
   'DrawCards',
   'GainLife',
+  /** You control each target player during their next turn (rule 722). */
+  'ControlPlayerNextTurn',
   /** Put a card matching `filter` that was exiled with this permanent onto the battlefield under your control, with `counters` additional +1/+1 counters (Sothera; works after the source has left). */
   'PutExiledWithThisOntoBattlefield',
   /** Return a creature card destroyed earlier in this spell from a graveyard to the battlefield under your control, your choice (Zero Point Ballad). */
@@ -636,6 +638,8 @@ export const COUNT_KINDS = [
   'ArtifactsOpponentsControl',
   /** The greatest power among creatures you control. */
   'GreatestPowerAmongYourCreatures',
+  /** The power of the creature this Equipment is attached to (The Dominion Bracelet). */
+  'EquippedCreaturePower',
   /** The total mana value of the other permanents you control (Summon: Bahamut's Mega Flare). */
   'TotalManaValueOfYourOtherPermanents',
   /** Opponents dealt combat damage this turn (Tymna the Weaver). */
@@ -1494,6 +1498,8 @@ export interface ActivatedSpec {
   sorcerySpeed?: boolean;
   /** "Activate only if you control a creature with power 4 or greater." */
   ifYouControl?: ObjectFilter;
+  /** Only while this Equipment is attached to a creature (The Dominion Bracelet). */
+  ifAttached?: boolean;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
   equip?: boolean;
   /** "This ability costs {1} less to activate for each Town you control". */
@@ -2793,6 +2799,11 @@ export interface GameState {
   castGroups?: CastGroup[];
   /** The monarch designation persists independently of the cards that created it. */
   monarch?: PlayerId;
+  /**
+   * "You control target opponent during their next turn" (rule 722, The Dominion Bracelet): `by` makes
+   * every decision for `player` during the turn numbered `turn` (set as that turn begins).
+   */
+  turnControl?: { player: PlayerId; by: PlayerId; turn?: number }[];
   /** Shared ordering for continuous effects that set base power/toughness. */
   effectTimestamp?: number;
   /** Cleanup actions have finished; state-based actions/triggers must be checked before ending the turn. */

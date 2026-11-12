@@ -308,6 +308,11 @@ export function startNextTurn(ctx: Ctx): void {
   }
   s.activePlayer = extra ?? nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
+  // Rule 722: control of a player lasts their next turn, then ends.
+  if (s.turnControl?.length) {
+    s.turnControl = s.turnControl.filter((t) => t.turn === undefined).map((t) => (t.player === s.activePlayer && !s.turnControl!.some((o) => o !== t && o.player === t.player && o.turn === s.turnNumber) ? { ...t, turn: s.turnNumber } : t));
+    if (s.turnControl.length === 0) delete s.turnControl;
+  }
   s.players[s.activePlayer]!.turnsTaken = (s.players[s.activePlayer]!.turnsTaken ?? 0) + 1;
   // "Until your next turn" effects end as that player's turn begins.
   s.temporaryEffects = s.temporaryEffects.filter((e) => e.untilNextTurnOf !== s.activePlayer);
@@ -362,4 +367,18 @@ export function passPriority(ctx: Ctx, playerId: PlayerId): void {
   } else {
     advanceStep(ctx);
   }
+}
+
+/**
+ * Who makes `player`'s decisions right now: `player`, or whoever controls them this turn (rule 722).
+ * An eliminated controller loses that control (rule 800.4a).
+ */
+export function decisionMaker(s: GameState, player: PlayerId): PlayerId {
+  const t = s.turnControl?.find((x) => x.player === player && x.turn === s.turnNumber);
+  return t && s.players[t.by] && !s.players[t.by]!.eliminated ? t.by : player;
+}
+
+/** The players `viewer` makes decisions for this turn (besides themselves). */
+export function controlledBy(s: GameState, viewer: PlayerId): PlayerId[] {
+  return (s.turnControl ?? []).filter((t) => t.by === viewer && t.turn === s.turnNumber && s.players[t.player] && !s.players[t.player]!.eliminated).map((t) => t.player);
 }

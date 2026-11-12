@@ -1,3 +1,5 @@
+import { controlledBy } from './turn.ts';
+import { visibleCards } from './redact.ts';
 import type { ManaRestriction } from './types.ts';
 // Per-player filtered views and events (PRD 8). The server sends each
 // player only what they are allowed to know. Nothing here assumes a single
@@ -105,6 +107,9 @@ export interface GameView {
 
 /** The game as `viewer` may see it. A viewer who isn't a player sees public information only. */
 export function viewFor(s: GameState, viewer: PlayerId): GameView {
+  // Rule 722.2: while you control another player, you see what they see.
+  const controlled = controlledBy(s, viewer);
+  const theirs = new Set(controlled.flatMap((pid) => [...visibleCards(s, pid, false)]));
   const players: Record<PlayerId, PlayerView> = {};
   const cards: Record<InstanceId, CardInstance> = {};
   for (const pid of s.turnOrder) {
@@ -117,7 +122,8 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
       maximumHandSize: maximumHandSize(s, pid),
       libraryCount: p.library.length,
       ...(pid === viewer && visibleLibraryTop(s, viewer) ? { libraryTop: visibleLibraryTop(s, viewer) } : {}),
-      ...(pid === viewer ? { hand: [...p.hand] } : {}),
+      ...(controlled.includes(pid) && visibleLibraryTop(s, pid) ? { libraryTop: visibleLibraryTop(s, pid) } : {}),
+      ...(pid === viewer || controlled.includes(pid) ? { hand: [...p.hand] } : {}),
       // Cards in another player's hand that were revealed (shown face up on their hand).
       ...(pid !== viewer && p.hand.some((id) => s.cards[id]!.revealedInHand) ? { revealedHand: p.hand.filter((id) => s.cards[id]!.revealedInHand) } : {}),
       // What they control, including permanents they took from someone else.
@@ -144,7 +150,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   const lookingAt = s.pending.kind === 'chooseCards' && s.pending.player === viewer ? [...s.pending.cards, ...(s.pending.looked ?? [])] : [];
   for (const c of Object.values(s.cards)) {
     const faceDown = c.zone === 'exile' && ((c.foretoldTurn !== undefined && c.owner !== viewer) || (c.linkedExile !== undefined && !c.linkedExile.lookers.includes(viewer)));
-    const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && (c.owner === viewer || c.revealedInHand)) || c.id === surveilled || lookingAt.includes(c.id));
+    const visible = !faceDown && (c.id === players[viewer]?.libraryTop || PUBLIC_ZONES.includes(c.zone) || (c.zone === 'hand' && (c.owner === viewer || c.revealedInHand)) || c.id === surveilled || lookingAt.includes(c.id) || theirs.has(c.id));
     if (visible) cards[c.id] = { ...c };
     if (c.zone === 'battlefield') {
       const ch = characteristics(s, c);

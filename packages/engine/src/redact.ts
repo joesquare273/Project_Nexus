@@ -1,3 +1,4 @@
+import { controlledBy } from './turn.ts';
 // What one player may see, for sending over the network. The server holds
 // the real GameState; each player gets a redacted copy built from an
 // allowlist: every field of the game, its players and its cards is
@@ -107,8 +108,10 @@ export class AliasBook {
 }
 
 /** Every card `viewer` may see right now, with the rules that make it visible. */
-export function visibleCards(s: GameState, viewer: PlayerId): Set<InstanceId> {
+export function visibleCards(s: GameState, viewer: PlayerId, asController = true): Set<InstanceId> {
   const visible = new Set<InstanceId>();
+  // Rule 722.2: a player who controls another sees everything that player could see.
+  if (asController) for (const other of controlledBy(s, viewer)) for (const id of visibleCards(s, other, false)) visible.add(id);
   const top = s.players[viewer] ? visibleLibraryTop(s, viewer) : undefined;
   const p = s.pending;
   // Cards a player is looking at to decide: a surveil or scry, Urianger's look, a choice among cards.
@@ -307,6 +310,7 @@ const GAME_FIELDS = {
   triggeredThisTurn: 'empty',
   castGroups: 'refs',
   monarch: 'copy',
+  turnControl: 'copy',
   effectTimestamp: 'copy',
   cleanupCheck: 'copy',
   cleanupNeedsPriority: 'copy',

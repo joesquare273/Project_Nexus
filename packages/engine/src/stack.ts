@@ -1545,6 +1545,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId) && !(spec.equip && equipAnyTime(s, playerId))) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
+  if (spec.ifAttached && !c.attachedTo) return 'That only works while it’s attached to a creature.';
   if (spec.ifYouControl) {
     const meets = (x: CardInstance) => x.controller === playerId && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
     if (!battlefield(s).some(meets)) return "You don't meet the condition to activate that.";
@@ -2456,6 +2457,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (let i = 0; i < put && effect.token; i++) r.createdTokens.push(createToken(ctx, effect.token, item.controller));
       return;
     }
+    case 'ControlPlayerNextTurn':
+      for (const pid of targetPlayers(targets)) if (pid !== item.controller) s.turnControl = [...(s.turnControl ?? []), { player: pid, by: item.controller }];
+      return;
     case 'SetLifeHalfStarting':
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, Math.ceil(s.format.startingLife / 2) - s.players[t.player]!.life);
       return;

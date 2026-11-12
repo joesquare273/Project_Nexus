@@ -13,6 +13,7 @@ import {
   applyAction,
   castsAtInstantSpeed,
   createGame,
+  decisionMaker,
   currentDefinition,
   spellDefinition,
   filterEventsFor,
@@ -188,6 +189,22 @@ export class GameSession {
     return viewFor(this.state, YOU);
   }
 
+  /**
+   * The player whose decision you're making right now: you, or the player you control this turn
+   * (The Dominion Bracelet, rule 722). The board offers and submits actions for this player.
+   */
+  actor(): PlayerId {
+    const s = this.state;
+    if (s.pending.kind === 'gameOver') return YOU;
+    return decisionMaker(s, s.pending.player) === YOU ? s.pending.player : YOU;
+  }
+
+  /** Whether the game is waiting on a decision you make (yours, or one for the player you control). */
+  decidesNow(): boolean {
+    const s = this.state;
+    return s.pending.kind !== 'gameOver' && decisionMaker(s, s.pending.player) === YOU;
+  }
+
   legal(): Action[] {
     return getLegalActions(this.state);
   }
@@ -198,7 +215,7 @@ export class GameSession {
    * comes with a suggested set of mana taps that pays for it.
    */
   plays(): CardPlay[] {
-    return playableCards(this.state, YOU);
+    return playableCards(this.state, this.actor());
   }
 
   /**
@@ -220,8 +237,9 @@ export class GameSession {
       }
       const first = p.choices[0]?.action;
       const spell = spellDefinition(def, first?.type === 'CastSpell' && !!first.adventure);
-      const anyTime = c.castPermission?.player === YOU && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
-      return anyTime || castsAtInstantSpeed(s, YOU, c, spell);
+      const me = this.actor();
+      const anyTime = c.castPermission?.player === me && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+      return anyTime || castsAtInstantSpeed(s, me, c, spell);
     });
   }
 
@@ -256,10 +274,13 @@ export class GameSession {
   advance(): Advance {
     const s = this.state;
     if (s.pending.kind === 'gameOver') return 'over';
-    const bot = s.pending.player !== YOU;
+    // Whoever decides for the waiting player: you (for yourself or a player you control), or a bot.
+    const decider = decisionMaker(s, s.pending.player);
+    const bot = decider !== YOU;
     // You're tapping mana to pay for something: don't pass priority under you.
     if (!bot && this.holdPriority && s.pending.kind === 'priority') return 'you';
-    const action = bot ? this.bots[s.pending.player]!(s, this.legal()) : this.automaticAction();
+    // A bot that controls another player plays that player's turn with its own judgement (it decides as them).
+    const action = bot ? (this.bots[decider] ?? this.bots[s.pending.player])!(s, this.legal()) : this.automaticAction();
     if (!action) return 'you';
     const result = applyAll(s, [action]);
     if ('error' in result) throw new Error(`Automatic action was illegal: ${result.error}`);
@@ -291,6 +312,7 @@ export class GameSession {
   protected automaticAction(): Action | null {
     const s = this.state;
     const pending = s.pending;
+    const YOU = this.actor();
     switch (pending.kind) {
       case 'priority':
         if (this.stopEverywhere || this.phaseStops.has(s.step)) return null;
@@ -316,6 +338,7 @@ export class GameSession {
   /** Stop for your main phases, for spells you might answer, and for steps where instants matter. */
   private worthStopping(): boolean {
     const s = this.state;
+    const YOU = this.actor();
     const top = s.stack.at(-1);
     // Your own spell or ability on top: pass for you, unless you're holding priority
     // and could still add something at instant speed (otherwise there's nothing to hold it for).

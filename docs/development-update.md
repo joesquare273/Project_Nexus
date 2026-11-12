@@ -18,6 +18,20 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### The Dominion Bracelet: controlling another player's turn (2026-11-12)
+
+The last Edge of Eternities main set card: 261 of 261 built. The engine
+has rule 722: `GameState.turnControl` and `decisionMaker(s, player)` say who
+makes a player's decisions (their controller during the controlled turn),
+and `controlledBy` the players someone controls. The controller sees what
+the controlled player sees (`viewFor`, `visibleCards`). The local session
+(`actor()`, `decidesNow()`), the online server (`hostedGame.ts` accepts the
+controller's actions for that player and runs a bot that controls someone)
+and the board follow it: while you control a player, their hand is where
+yours usually is, a purple "You control Bot1 this turn" badge is in the
+phase bar, and you can attack anyone else, yourself included. See
+docs/decisions.md for the simplifications.
+
 ### Stack numbers on the board (2026-11-12)
 
 A card whose ability is on the stack shows that ability's number
