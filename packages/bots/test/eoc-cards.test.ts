@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { activatedAbilities, applyAction, currentDefinition, getLegalActions, hasFlag, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
+import { viewFor } from '../../engine/src/view.ts';
 
 const hasType = (s: GameState, c: CardInstance, t: string) => (currentDefinition(s, c).types as string[]).includes(t);
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
@@ -746,6 +747,9 @@ describe('E5: sacrifice payoffs and lands from the graveyard', () => {
     expect(s.pending.kind).toBe('chooseCards');
     if (s.pending.kind !== 'chooseCards') return;
     expect([...s.pending.cards].sort()).toEqual([top[1]!, top[3]!].sort());
+    // The board shows you all four cards (it once hid them, so there was nothing to pick); your opponent sees none.
+    expect(top.every((id) => viewFor(s, 'P1').cards[id])).toBe(true);
+    expect(top.some((id) => viewFor(s, 'P2').cards[id])).toBe(false);
     s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top[3]!] })).state;
     expect(s.cards[top[3]!]!.zone).toBe('hand');
     for (const id of [top[0]!, top[1]!, top[2]!]) expect(s.cards[id]!.zone).toBe('graveyard');
