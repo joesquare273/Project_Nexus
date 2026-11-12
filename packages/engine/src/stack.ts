@@ -284,8 +284,8 @@ function spellEffectsBase(def: CardDefinition, choice: SpellChoice): EffectSpec[
 /** The effects a stack item applies when it resolves. */
 /** How a stack item's targets are judged: a trigger's defending player and subject. */
 function itemTargetContext(item: StackItem): TargetContext {
-  if (item.kind !== 'ability') return {};
-  return { ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
+  if (item.kind !== 'ability') return item.x !== undefined ? { x: item.x } : {};
+  return { ...(item.x !== undefined ? { x: item.x } : {}), ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
 }
 
 /** Each target slot's legal choices for a copy on the stack ("you may choose new targets for the copy"). */
@@ -403,6 +403,8 @@ export interface TargetContext {
   triggered?: boolean;
   /** For a triggered ability: the object the event happened to (the spell that was cast). */
   subject?: InstanceId;
+  /** The X chosen for the spell or ability ("each with mana value X or less": Dance of the Manse). */
+  x?: number;
 }
 
 export function isLegalTarget(
@@ -440,6 +442,7 @@ export function isLegalTarget(
     ...(source ? { source } : {}),
     ...(context.defender ? { defender: context.defender } : {}),
     ...(context.subject ? { subject: context.subject } : {}),
+    ...(context.x !== undefined ? { x: context.x } : {}),
   };
   if (kind === 'TargetSpellPermanentOrGraveyardCard') {
     if (c.zone === 'graveyard') return !effect.spellOrPermanent && !s.players[c.owner]!.eliminated;
@@ -555,8 +558,9 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
 
 /** A stack item's trigger context. */
 function contextOf(item: StackItem): TargetContext {
-  if (item.kind !== 'ability') return {};
+  if (item.kind !== 'ability') return item.x !== undefined ? { x: item.x } : {};
   return {
+    ...(item.x !== undefined ? { x: item.x } : {}),
     ...(item.defender ? { defender: item.defender } : {}),
     ...(item.from === 'trigger' ? { triggered: true } : {}),
     ...(item.subject ? { subject: item.subject } : {}),
@@ -1222,6 +1226,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const def = spellDefinition(printed, choice.adventure);
   if (castingForbidden(s, playerId)) reject("You can't cast spells right now (Silence, Conqueror's Flail).");
   if (s.players[playerId]!.cantCastNoncreatureTurn === s.turnNumber && !def.types.includes('creature')) reject("You can't cast noncreature spells this turn.");
+  if (!def.types.includes('artifact') && nonartifactSpellLimited(s, playerId)) reject("You've already cast a nonartifact spell this turn (Ethersworn Canonist).");
   const naturalFrom = playableZone(s, playerId, c, choice.adventure, false);
   const group = choice.castGroup !== undefined
     ? castGroupsFor(s,playerId,c).find(g=>g.id===choice.castGroup) ?? reject('That shared casting permission is no longer available.')
@@ -1250,7 +1255,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
-  checkTargets(s, spellEffects(def, choice), targets, playerId, id);
+  checkTargets(s, spellEffects(def, choice), targets, playerId, id, choice.x !== undefined ? { x: choice.x } : {});
   const costCards = choice.costCards ?? [];
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
   if (exileCost) {
@@ -1383,6 +1388,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     caster.warpedSpellTurn = s.turnNumber;
     s.voidTurn = s.turnNumber;
   }
+  if (!def.types.includes('artifact')) caster.nonartifactSpellsThisTurn = (caster.nonartifactSpellsThisTurn ?? 0) + 1;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
@@ -1663,8 +1669,14 @@ export function additionalManaFor(def: CardDefinition, costCards: readonly Insta
   return def.additionalCost?.sacrifice && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
 }
 
-/** Lands a player may play this turn: one, plus Azusa's two more on their own turn (rule 305.2). */
+/** Ethersworn Canonist: whether this player may cast no more nonartifact spells this turn. */
+export function nonartifactSpellLimited(s: GameState, playerId: PlayerId): boolean {
+  return (s.players[playerId]!.nonartifactSpellsThisTurn ?? 0) > 0 && battlefield(s).some((c) => !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.oneNonartifactSpellEachTurn));
+}
+
+/** Lands a player may play this turn: one, plus Azusa's two more on their own turn (rule 305.2); none under Aggressive Mining. */
 export function landDrops(s: GameState, playerId: PlayerId): number {
+  if (battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.cantPlayLands))) return 0;
   if (s.activePlayer !== playerId) return 1;
   const extra = s.players[playerId]!.extraLandDrops;
   let n = 1 + (extra?.turn === s.turnNumber ? extra.count : 0);
@@ -3667,6 +3679,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         c.summoningSick = true;
         if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
         if (effect.losesAbilities) c.lostAbilities = true;
+        // Dance of the Manse: "if X is 6 or more, those permanents are 4/4 creatures in addition to their other types".
+        if (effect.becomes && effect.becomesIfXAtLeast !== undefined && (item.x ?? 0) >= effect.becomesIfXAtLeast) c.animated = structuredClone(effect.becomes);
         if (effect.addSubtypes && effect.effect === 'ReturnToBattlefield') c.addedSubtypes = [...new Set([...(c.addedSubtypes ?? []), ...effect.addSubtypes])];
         // Chorale of the Void: tapped and attacking the player the triggering creature attacked.
         const like = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
@@ -3811,6 +3825,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       queueSearch(s, r, item.controller, effect, amount, behind ? 'battlefieldTapped' : 'hand');
       return;
     }
+    case 'SearchLibraryToGraveyard':
+      queueSearch(s, r, item.controller, effect, amount, 'graveyard');
+      return;
   }
 }
 
@@ -4452,8 +4469,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     ctx.ev.push({ type: 'LibraryShuffled', player: pending.player });
   } else if (pending.purpose === 'search') {
     for (const id of cards) {
-      if (pending.searchTo === 'hand') {
-        moveCard(ctx, id, 'hand');
+      if (pending.searchTo === 'hand' || pending.searchTo === 'graveyard') {
+        moveCard(ctx, id, pending.searchTo);
         continue;
       }
       moveCard(ctx, id, 'battlefield');
@@ -4641,7 +4658,7 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
  * cards (one, or up to `amount`), and may find none (rule 701.19b); the
  * library is shuffled after the choice.
  */
-function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped' | 'top'): void {
+function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped' | 'top' | 'graveyard'): void {
   const p = s.players[searcher]!;
   // "Search your library and/or graveyard": cards from both are offered.
   const where = effect.alsoGraveyard ? [...p.library, ...p.graveyard] : p.library;

@@ -285,6 +285,7 @@ const PLAYER_FIELDS = {
   coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',
   legendaryCreatureSpellsThisTurn: 'copy',
+  nonartifactSpellsThisTurn: 'copy',
   nextCreatureHasteTurn: 'copy',
   spellsCastThisTurn: 'copy',
   lostToEffect: 'copy',

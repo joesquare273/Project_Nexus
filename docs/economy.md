@@ -122,8 +122,8 @@ Manse, Arcbound Ravager, Foundry Inspector; Alien Auroras for World Shaper:
 Reprocess, Aggressive Mining, Sylvan Safekeeper, Crucible of Worlds, Zuran
 Orb; SLD 2102-2111), each drop and each card in galaxy foil (7,000 / 2,000
 Aether Shards), and the two Edge of Eternities Commander precons (2,000
-each, saved as a deck when bought, like the Final Fantasy ones; their cards
-that aren't built yet show as "Not built").
+each, saved as a deck when bought, like the Final Fantasy ones). Every card
+in these drops is built (2026-11-12).
 
 All Secret Lair cards are sold foil (user, 2026-11-05): the Final Fantasy
 drops (5 cards and the bonus card) and singles too, at the same prices.

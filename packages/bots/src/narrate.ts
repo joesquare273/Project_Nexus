@@ -418,6 +418,8 @@ function effectText(e: EffectSpec): string {
       return `${who} becomes ${(e.addSubtypes ?? []).join(' ')} in addition to its other types`;
     case 'SearchLibraryToTop':
       return `${who} searches their library for a card, then shuffles and puts that card on top`;
+    case 'SearchLibraryToGraveyard':
+      return `search your library for an ${e.filter?.types?.join(' or ') ?? ''} card and put it into your graveyard`;
     case 'SearchLibraryToHand':
       return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand${e.toBattlefieldIfBehindOnLands ? ' (onto the battlefield tapped if an opponent controls more lands)' : ''}`;
     case 'PhaseOut':

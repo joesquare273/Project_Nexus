@@ -399,6 +399,8 @@ export const EFFECT_KINDS = [
   'Proliferate',
   /** Search your library for a card matching `filter`, put it into your hand, then shuffle. */
   'SearchLibraryToHand',
+  /** Search your library for a card matching `filter`, put it into your graveyard, then shuffle (Goblin Engineer). */
+  'SearchLibraryToGraveyard',
   /** Each target player searches their library for a card matching `filter`, then shuffles and puts that card on top (Varragoth). */
   'SearchLibraryToTop',
   /** The targets gain `addSubtypes` in addition to their other types, for as long as they stay on the battlefield (Jenova). */
@@ -1038,6 +1040,8 @@ export interface EffectSpec {
   losesAbilities?: boolean;
   /** Only if X is at least this ("if X is 6 or more"). */
   ifXAtLeast?: number;
+  /** ReturnToBattlefield: only if X is at least this, the permanent becomes a creature with `becomes` too, in addition to its other types (Dance of the Manse). */
+  becomesIfXAtLeast?: number;
   /** ChoosePermanent: exactly this many (none if there are fewer): "from each of two creatures you control" (Dyadrine). */
   exactly?: number;
   /** PutFromHand: the permanent gains haste, "when this leaves the battlefield, it deals damage equal to its mana value to each creature" and "at the beginning of your end step, sacrifice this" (Terminal Velocity). */
@@ -1571,6 +1575,10 @@ export interface StaticSpec {
   combatDamageCantBePrevented?: boolean;
   /** You may play this many additional lands on each of your turns (Azusa). */
   additionalLands?: number;
+  /** "You can't play lands" (Aggressive Mining): its controller has no land drops. */
+  cantPlayLands?: boolean;
+  /** Ethersworn Canonist: each player who has cast a nonartifact spell this turn can't cast additional nonartifact spells. */
+  oneNonartifactSpellEachTurn?: boolean;
   /** Hades: during your turn, you may play lands from your graveyard (spells come from `castFromGraveyard`). */
   playLandsFromGraveyard?: boolean;
   /** Hades: "If a card or token would be put into your graveyard from anywhere, exile it instead." */
@@ -2382,6 +2390,8 @@ export interface PlayerState {
   nextCreatureHasteTurn?: number;
   /** Legendary creature spells cast this turn (Serah Farron's discount). */
   legendaryCreatureSpellsThisTurn?: number;
+  /** Nonartifact spells this player has cast this turn (Ethersworn Canonist). */
+  nonartifactSpellsThisTurn?: number;
   /** Spells this player cast this turn. Reset as each turn begins. */
   spellsCastThisTurn?: number;
   /** An effect said this player loses the game (someone else's "you win the game"). */
@@ -2695,7 +2705,7 @@ export interface CardChoice {
   /** digLands: every card looked at; those still in the library afterwards go to the graveyard. */
   looked?: InstanceId[];
   /** search: where the found cards go (hand, or the battlefield, tapped or not); the library is shuffled afterwards. */
-  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped' | 'exileFaceDown' | 'top';
+  searchTo?: 'hand' | 'battlefield' | 'battlefieldTapped' | 'exileFaceDown' | 'top' | 'graveyard';
   /** search: whose library is searched, when it isn't the searcher's (Praetor's Grasp). */
   libraryOf?: PlayerId;
 }

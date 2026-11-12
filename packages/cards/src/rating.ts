@@ -63,6 +63,8 @@ function effectValue(e: EffectSpec): number {
     case 'SearchLibraryToHand':
     case 'SearchLibraryToBattlefield':
       return 0.9;
+    case 'SearchLibraryToGraveyard':
+      return 0.4;
     case 'Surveil':
     case 'Scry':
     case 'LookAtTopPutInHand':

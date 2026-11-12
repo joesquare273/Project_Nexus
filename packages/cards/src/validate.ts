@@ -318,7 +318,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'KeepAndSacrificeRest' && e.amount === undefined && !e.onePerType) err('KeepAndSacrificeRest needs an amount (or onePerType).');
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
   if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');
-  if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
+  if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield' || e.effect === 'SearchLibraryToGraveyard') && !e.filter) err(`${e.effect} needs a filter.`);
   validateFilter(e.filter, err);
   if (e.effect === 'ChooseCounterRecipients' && (e.target !== 'You' || !e.filter || typeof e.amount !== 'number' || !isNonNegativeInt(e.amount))) err('ChooseCounterRecipients needs You, a filter, and a nonnegative whole-number amount.');
   if (e.effect === 'MillAndGrantOneCast' && e.token !== undefined && typeof e.token !== 'string') err('MillAndGrantOneCast token must be a token id.');

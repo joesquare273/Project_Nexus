@@ -18,6 +18,26 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Commander Reinforcements Secret Lair: the last 10 cards (2026-11-12)
+
+Every card in the game is now built (no `notBuilt` cards left in any set).
+The Edge of Eternities Secret Lair drops sold in the Store:
+- Featuring Deathburger: Ethersworn Canonist (static
+  `oneNonartifactSpellEachTurn`, counted by the new player field
+  `nonartifactSpellsThisTurn`, redacted as a copy), Goblin Engineer (new
+  effect `SearchLibraryToGraveyard`), Dance of the Manse (`repeatX` targets
+  with `manaValueAtMostX`, plus `becomesIfXAtLeast`, which makes the returned
+  permanents 4/4 creatures when X is 6 or more), Arcbound Ravager (modular 1
+  as an entry counter and a dies trigger that moves its +1/+1 counters), and
+  Foundry Inspector.
+- Alien Auroras: Reprocess, Aggressive Mining (static `cantPlayLands`),
+  Sylvan Safekeeper, Crucible of Worlds and Zuran Orb.
+- Engine fix: the X chosen for a spell now reaches its target checks, both
+  when it's cast and as it resolves (`TargetContext.x`), so "each with mana
+  value X or less" targets work for spells.
+- Tests: `packages/bots/test/sld-reinforcements.test.ts`. The card audit flags
+  Arcbound Ravager because its target appears only in modular's reminder text.
+
 ### Color key and one meaning per color (2026-11-12)
 
 A readability pass after the friend's feedback and Hodent's "The Gamer's Brain":

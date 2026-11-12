@@ -41,6 +41,7 @@ import {
   manaSacrificeLands,
   RETRACE_DISCARD,
   castingForbidden,
+  nonartifactSpellLimited,
   convokeCandidates,
   convokeCost,
   hasImprovise,
@@ -88,10 +89,10 @@ function combine(options: Target[][], valid: (partial: Target[]) => boolean = ()
   return combos;
 }
 
-function targetCombos(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string): Target[][] {
+function targetCombos(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string, x?: number): Target[][] {
   const needs = choosingEffects(effects);
   return combine(
-    needs.map((e) => targetOptions(s, e, playerId, source)),
+    needs.map((e) => targetOptions(s, e, playerId, source, x !== undefined ? { x } : {})),
     (ts) => !groupProblem(s, needs, ts),
   );
 }
@@ -209,7 +210,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
           : def.additionalCost?.sacrifice || def.kickerSacrifice
             ? spellSacrificeChoices(s, playerId, def, c.id, kicks)
             : discard > 0 ? subsets(discardCandidates(s, playerId, c.id, retrace ? RETRACE_DISCARD : undefined), discard, discard) : [[]];
-        for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
+        for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id, x)) {
           const baseCost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
             // "Or pay {2}": the extra mana when nothing is sacrificed.
@@ -237,8 +238,11 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   }
   }
   // "Your opponents can't cast noncreature spells this turn" (Ranger-Captain of Eos).
-  if (p.cantCastNoncreatureTurn === s.turnNumber) return out.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('creature')));
-  return out;
+  // Ethersworn Canonist: after a nonartifact spell, only artifact spells.
+  const artifactOnly = nonartifactSpellLimited(s, playerId);
+  const allowed = artifactOnly ? out.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('artifact'))) : out;
+  if (p.cantCastNoncreatureTurn === s.turnNumber) return allowed.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('creature')));
+  return allowed;
 }
 
 /** Most times multikicker is ever offered. */
