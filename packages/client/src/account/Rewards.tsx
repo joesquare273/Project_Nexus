@@ -3,7 +3,7 @@
 // The server decides and pays every reward; this only shows what it says.
 
 import { useEffect, useState } from 'react';
-import { accessToken, ShardIcon } from './AccountBar.tsx';
+import { accessToken, ShardIcon, useSession } from './AccountBar.tsx';
 
 interface QuestView {
   id: string;
@@ -28,8 +28,12 @@ export function announceReward(label: string, amount: number): void {
 
 export function Quests() {
   const [view, setView] = useState<RewardsView | null>(null);
+  // Quests are per account: load them again if the signed-in account changes.
+  const userId = useSession().session?.user.id;
   useEffect(() => {
     let live = true;
+    setView(null);
+    if (!userId) return;
     void accessToken()
       .then(async (token) => {
         if (!token) return;
@@ -40,7 +44,7 @@ export function Quests() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [userId]);
   if (!view) return null;
   const m = view.matches;
   return (

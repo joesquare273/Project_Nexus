@@ -23,6 +23,7 @@ says.
 - Checked the live database with read-only queries. No negative balances. Every account's balance equals its ledger, except the owner's test account (set by hand). Fragment balances equal the fragment ledger, per account.
 - Found: draft entries whose event was lost to a server restart (events live in memory; every deploy restarts) kept the entry, with no prize and no refund. The server now refunds them at startup (`EventHub.refundLostEntries`, `AccountService.unsettledEntries`), once each. Test in `events.test.ts`.
 - The Craft tab reloads fragments, cards and decks when the signed-in account changes. A test in `crafting.test.ts` checks that two accounts' fragments stay separate, even with the same request id.
+- Quests per account: a test has two players share three games. Each counts only their own games and is paid their own quest once. The Home page's quest panel reloads when the signed-in account changes.
 - No game had been recorded for rewards yet. The reward path has tests (`rewards.test.ts`); only server-run games pay (signed in, a saved deck, the AI opponent, no seed; or online tables and draft games).
 
 ### Sideboarding between draft games (2026-11-12)
