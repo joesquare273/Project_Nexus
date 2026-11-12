@@ -9,6 +9,7 @@ import { FIN_PRECONS } from '@nexus/cards';
 import { basicAi } from '@nexus/bots';
 import { GameSession, YOU } from './game/session.ts';
 import { Game } from './components/Game.tsx';
+import './fonts.ts';
 import './styles.css';
 
 const params = new URLSearchParams(location.search);

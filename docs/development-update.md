@@ -18,6 +18,16 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Typefaces: Cinzel, Lora and Oswald (2026-11-12)
+
+- Two fonts with a third for numbers, as the user asked. All three are under the SIL Open Font License and bundled with the app from npm (`@fontsource/*`, imported in `client/src/fonts.ts`), so nothing loads from another site.
+  - **Cinzel** for titles and headers: page titles, the brand, section headers, card names.
+  - **Lora** for rules and body text, buttons and prompts. Flavor text uses its italic.
+  - **Oswald** for numbers: mana symbol digits, power and toughness, counters and badges, life totals, stack numbers, pile counts, reward amounts and the deckbuilder's counts.
+- The three roles are CSS variables (`--font-display`, `--font-body`, `--font-numbers` in styles.css); the old Georgia headers use `--font-display`.
+- Player names use bold Lora, because Cinzel's "1" reads as an "I" ("Bot1" looked like "BOTI"). Card names have no extra letter spacing, so more of each name fits.
+- Checked at 1280x720 to 1920x1080 and on a phone: nothing on the board is covered.
+
 ### The reward screen after a game (2026-11-12)
 
 - At the end of a game, a full reward screen replaces the small game-over box. It shows the result (Victory, Defeat or Draw, and the turn) and each reward line in turn, with the shard icon, the total counting up and your new balance. Quest progress is fetched fresh from the server.

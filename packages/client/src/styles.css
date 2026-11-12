@@ -17,7 +17,7 @@
   --hand-w: 116px;
   --radius: 5px;
   color-scheme: dark;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   color: var(--text);
 }
 
@@ -1773,7 +1773,7 @@ body {
   text-shadow: 0 0 24px rgba(108, 203, 235, 0.7);
 }
 .menu h1 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-weight: 500;
   letter-spacing: 3px;
   background-image: linear-gradient(#fff4ce, #cfaa59);
@@ -1781,7 +1781,7 @@ body {
 .menu h2,
 .commander-picker-title {
   color: #d6c49b;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   letter-spacing: 2.5px;
 }
 .menu h2::after {
@@ -2285,7 +2285,7 @@ button.phase.current {
 .brand {
   border: 0;
   padding: 6px 4px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-size: 18px;
   letter-spacing: 1.5px;
   color: #f1dfae;
@@ -2361,7 +2361,7 @@ button.phase.current {
 }
 .page-title h1 {
   margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-weight: 500;
   font-size: 32px;
   letter-spacing: 2px;
@@ -2374,7 +2374,7 @@ button.phase.current {
 }
 .page h2 {
   margin: 26px 0 12px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-weight: 500;
   font-size: 15px;
   letter-spacing: 2px;
@@ -2535,7 +2535,7 @@ button.link {
 }
 .landing h1 {
   margin: 8px 0;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-weight: 500;
   font-size: 54px;
   letter-spacing: 3px;
@@ -3887,7 +3887,7 @@ button.link {
   flex: none;
   border-radius: 50%;
   box-shadow: -1px 1px 0 rgba(0, 0, 0, 0.6);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-weight: 700;
   line-height: 1;
   color: #16130f;
@@ -4264,3 +4264,31 @@ button.link {
 .reward-card.win:has(.reward-banner) { box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 60px rgba(231, 201, 109, 0.3); }
 .reward-card.loss:has(.reward-banner) { border-color: rgba(220, 60, 60, 0.4); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 50px rgba(200, 40, 40, 0.25); }
 .reward-card:has(.reward-banner) .reward-sub { margin-top: -6px; }
+
+/* ---------- Typefaces by role (fonts.ts) ---------- */
+:root {
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-body: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-numbers: 'Oswald', 'Segoe UI', system-ui, sans-serif;
+}
+/* Buttons and fields use the body face too (browsers don't inherit fonts there). */
+button, input, select, textarea { font-family: inherit; }
+/* Titles and headers. */
+h1, h2, h3, .brand, .page-title h1, .stack-title, .reward-card h3, .home-quests h2, .color-key h2, .name, .hub-name, .spotlight-label, .drawn-name, .drawn-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+/* Numbers, stats, counters and badges. */
+.mana-sym, .drawn-pt, .badge, .life, .life-delta, .hub-tile .life, .hub-dmg, .stack-order, .stack-count, .counts, .pile-card, .impact-float,
+.reward-total strong, .reward-lines strong, .builder-count strong, .builder-timer, .quest-reward, .shard-balance, .turn-number, .curve-bar span {
+  font-family: var(--font-numbers);
+  letter-spacing: 0.01em;
+}
+/* Rules text: Lora, a touch looser so small text stays readable; flavor text in its italic. */
+.drawn-text, .card-note, .inspector, .prompt { font-family: var(--font-body); }
+.drawn-text { line-height: 1.25; }
+.flavor, .drawn-text i, .drawn-text em { font-style: italic; }
+/* Player names hold digits ("Bot1"): Cinzel's 1 reads as an I, so names use bold Lora. */
+.name, .hub-name { font-family: var(--font-body); font-weight: 700; letter-spacing: 0; }
+/* Card names are small: no extra letter spacing, so more of the name fits. */
+.drawn-name, .drawn-title { letter-spacing: 0; }
