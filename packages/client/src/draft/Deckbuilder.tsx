@@ -34,9 +34,11 @@ interface Props {
   endsAt: number;
   onChange: (deck: LimitedDeck) => void;
   onReady: () => void;
+  /** Sideboarding between games: the Ready button's label, and no filling or trimming when the clock runs out (the server keeps your last legal deck). */
+  sideboard?: { readyLabel: string };
 }
 
-export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onReady }: Props) {
+export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onReady, sideboard }: Props) {
   const [colorFilter, setColorFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]>('All');
   const [preview, setPreview] = useState<DraftCard | null>(null);
@@ -53,7 +55,7 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
   // Time's up: fill the deck to 40 with basic lands, or trim it to 60 (basic
   // lands first, then the last cards added); the deck is then locked.
   useEffect(() => {
-    if (!timeUp) return;
+    if (!timeUp || sideboard) return;
     let over = limited.deckSize(deck) - limited.MAX_DECK_SIZE;
     if (over > 0) {
       const basics = { ...deck.basics };
@@ -76,7 +78,7 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
     }
     basics.W += missing;
     onChange({ cards: deck.cards, basics });
-  }, [timeUp, deck, pool, limited, onChange]);
+  }, [timeUp, deck, pool, limited, onChange, sideboard]);
 
   const defOf = (c: DraftCard) => CARD_DEFS[draft.defIdOf(c.card) ?? ''];
   const mv = (c: DraftCard) => manaValue(parseManaCost(defOf(c)?.manaCost));
@@ -124,8 +126,8 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
     <div className="builder">
       <div className="builder-head">
         <div className={`builder-timer ${warning ? 'warning' : ''}`} role="timer" aria-live="polite">
-          {timeUp ? "Time's up: your deck is locked in" : `${minutes}:${String(seconds).padStart(2, '0')} left`}
-          {warning && !timeUp && <span> · 5-minute warning</span>}
+          {timeUp ? "Time's up: your deck is locked in" : `${minutes}:${String(seconds).padStart(2, '0')} left${sideboard ? ' to sideboard' : ''}`}
+          {warning && !timeUp && !sideboard && <span> · 5-minute warning</span>}
         </div>
         <div className="builder-count">
           <strong>
@@ -143,8 +145,8 @@ export function Deckbuilder({ limited, draft, pool, deck, endsAt, onChange, onRe
           <button disabled={timeUp} onClick={() => onChange({ cards: [], basics: limited.noBasics() })}>
             Clear
           </button>
-          <button className="primary" disabled={!!problem} title={problem ?? ''} onClick={onReady}>
-            Ready
+          <button className="primary" disabled={!!problem || timeUp} title={problem ?? ''} onClick={onReady}>
+            {sideboard?.readyLabel ?? 'Ready'}
           </button>
         </div>
       </div>

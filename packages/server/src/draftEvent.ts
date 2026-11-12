@@ -51,6 +51,13 @@ export interface EventMatch {
   chooser: string | null;
   /** The next game's first player, once known. */
   nextFirst: string | null;
+  /**
+   * Sideboarding between games: until this time (ms since the epoch), or
+   * until both players are ready, the next game waits (null: no wait).
+   */
+  sideboardEndsAt?: number | null;
+  /** The players ready for the next game (bots always are). */
+  readyNext?: string[];
   done: boolean;
   /** Round 1: the semifinals; round 2: the final (winners) and the match for third place (losers). */
   stage: 'semifinal' | 'final' | 'third';
@@ -395,17 +402,55 @@ export function currentMatch(ev: DraftEvent, seat: string): EventMatch | undefin
   return ev.matches.find((m) => m.round === ev.round && (m.a === seat || m.b === seat));
 }
 
-/** Whether a seat may change its deck now: between games of an unfinished match (rule: sideboarding). */
+/** How long players may sideboard between games before the next one starts anyway. */
+export const SIDEBOARD_MS = 3 * 60_000;
+
+/** Whether a seat may change its deck now: between games of an unfinished match, until it says it's ready (rule: sideboarding). Games in progress are refused by the server (events.ts). */
 export function canSideboard(ev: DraftEvent, seat: string): boolean {
   const m = currentMatch(ev, seat);
-  return !!m && !m.done && m.b !== null;
+  return !!m && !m.done && m.b !== null && !(m.sideboardEndsAt && m.readyNext?.includes(seat));
 }
 
-/** The match's next game, ready to start: who plays first; null while waiting for a play/draw choice, or when it's over. */
+/** Whether this player is done sideboarding for the next game. */
+function sideboardReady(m: EventMatch, seat: string): boolean {
+  return !m.sideboardEndsAt || !!m.readyNext?.includes(seat);
+}
+
+/** Still sideboarding: the next game waits for both players (or the clock). */
+export function sideboarding(m: EventMatch): boolean {
+  return !!m.sideboardEndsAt && !(sideboardReady(m, m.a) && (m.b === null || sideboardReady(m, m.b)));
+}
+
+/** The match's next game, ready to start: who plays first; null while waiting for a play/draw choice or for sideboarding, or when it's over. */
 export function nextGame(ev: DraftEvent, matchId: string): { first: string } | null {
   const m = ev.matches.find((x) => x.id === matchId);
-  if (!m || m.done || !m.nextFirst) return null;
+  if (!m || m.done || !m.nextFirst || sideboarding(m)) return null;
   return { first: m.nextFirst };
+}
+
+/** A player is done sideboarding; once both are, the sideboarding window closes. */
+export function readyForNextGame(prev: DraftEvent, seat: string): DraftEvent {
+  const m = currentMatch(prev, seat);
+  if (!m || m.done || !m.sideboardEndsAt) throw new Error('There is no game to get ready for.');
+  if (m.readyNext?.includes(seat)) return prev;
+  const ev = structuredClone(prev);
+  const n = ev.matches.find((x) => x.id === m.id)!;
+  n.readyNext = [...(n.readyNext ?? []), seat];
+  if (!sideboarding(n)) closeSideboarding(n);
+  return ev;
+}
+
+/** The sideboarding clock ran out: the next games start with the decks as they are. */
+export function expireSideboarding(prev: DraftEvent, now: number): DraftEvent {
+  if (!prev.matches.some((m) => m.sideboardEndsAt && m.sideboardEndsAt <= now)) return prev;
+  const ev = structuredClone(prev);
+  for (const m of ev.matches) if (m.sideboardEndsAt && m.sideboardEndsAt <= now) closeSideboarding(m);
+  return ev;
+}
+
+function closeSideboarding(m: EventMatch): void {
+  m.sideboardEndsAt = null;
+  delete m.readyNext;
 }
 
 /** The loser of the last game chooses to play (go first) or draw. */
@@ -428,7 +473,8 @@ export function choosePlayDraw(prev: DraftEvent, matchId: string, seat: string, 
  * game's loser chooses play or draw (a bot plays). When both matches of the
  * round are over, the next round is paired, or the event ends.
  */
-export function recordGame(prev: DraftEvent, matchId: string, winner: string | null, rng: () => number): DraftEvent {
+/** `now`: with it, the players get SIDEBOARD_MS to sideboard before the next game (bots are ready at once). */
+export function recordGame(prev: DraftEvent, matchId: string, winner: string | null, rng: () => number, now?: number): DraftEvent {
   const ev = structuredClone(prev);
   const m = ev.matches.find((x) => x.id === matchId);
   if (!m || m.done || !m.b || !m.nextFirst) throw new Error('That game is not being played.');
@@ -445,6 +491,11 @@ export function recordGame(prev: DraftEvent, matchId: string, winner: string | n
     const last = m.games[m.games.length - 1]!;
     m.chooser = winner === null ? (m.chooser ?? (last.first === m.a ? m.b : m.a)) : winner === m.a ? m.b : m.a;
     if (isBot(ev, m.chooser)) m.nextFirst = m.chooser;
+    const bots = [m.a, m.b].filter((x): x is string => x !== null && isBot(ev, x));
+    if (now !== undefined && bots.length < 2) {
+      m.sideboardEndsAt = now + SIDEBOARD_MS;
+      m.readyNext = bots;
+    }
   }
   if (ev.matches.filter((x) => x.round === ev.round).every((x) => x.done)) {
     if (ev.round < ev.rounds) startRound(ev, rng);

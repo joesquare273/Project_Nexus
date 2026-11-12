@@ -18,6 +18,13 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Sideboarding between draft games (2026-11-12)
+
+- Before, the next game began as soon as the loser chose play or draw, so the winner had no time to sideboard. Now each game of an unfinished match is followed by a sideboarding window of up to three minutes. The match keeps `sideboardEndsAt` and `readyNext`; `readyForNextGame` and `expireSideboarding` are in `draftEvent.ts`; the server runs one timer per event. A timer that fires counts as its deadline, so a lagging clock can't make it reschedule forever.
+- New message `eventReadyNext`. The match view shows `sideboardEndsAt` and `readyNext`.
+- Draft page: the match panel offers *Sideboard* (the deckbuilder with a sideboard clock and a *Ready for game N* button) and *Ready for game N*, and shows when the opponent is ready. Every legal deck is saved as you go.
+- Tests: `draftEvent.test.ts` (the window, readiness, the clock, a ready player's deck locked while the other sideboards) and `events.test.ts` (the message during a full event).
+
 ### Effects shown where they happen (2026-11-12)
 
 From the friend's playtest notes (effects should be more apparent, and it shouldn't feel like guessing where they come from):

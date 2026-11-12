@@ -32,6 +32,9 @@ import {
   eventDraftView,
   eventStandings,
   expirePicks,
+  expireSideboarding,
+  nextGame,
+  readyForNextGame,
   selectCard,
   gameSetup,
   gameWinner,
@@ -105,6 +108,9 @@ interface Hosted {
   pickTimer?: () => void;
   /** The pick the pick timer is running for. */
   pickTimerFor?: number;
+  sideboardTimer?: () => void;
+  /** When the sideboarding timer fires (the earliest open window). */
+  sideboardTimerFor?: number | null;
 }
 
 const SEATS: Seat[] = ['P1', 'P2'];
@@ -227,6 +233,7 @@ export class EventHub {
     h.endTimer?.();
     h.buildTimer?.();
     h.pickTimer?.();
+    h.sideboardTimer?.();
     for (const g of h.games.values()) g.cancel?.();
     this.events.delete(h.ev.code);
   }
@@ -347,6 +354,11 @@ export class EventHub {
     return this.change(code, (h) => setReady(h.ev, seat, ready, this.opts.now(), this.random));
   }
 
+  /** Done sideboarding: the next game starts once both players are (or the clock runs out). */
+  readyNext(code: string, seat: string): string | null {
+    return this.change(code, (h) => readyForNextGame(h.ev, seat));
+  }
+
   playDraw(code: string, seat: string, play: boolean): string | null {
     return this.change(code, (h) => {
       const m = currentMatch(h.ev, seat);
@@ -383,7 +395,23 @@ export class EventHub {
       h.buildTimer();
       h.buildTimer = undefined;
     }
-    if (ev.phase === 'playing') for (const m of ev.matches) if (m.round === ev.round && !m.done && m.nextFirst && !h.games.has(m.id)) this.startGame(h, m);
+    // The sideboarding clock: one timer for the earliest window still open.
+    const ends = ev.matches.map((m) => m.sideboardEndsAt ?? 0).filter((t) => t > 0);
+    const next = ends.length ? Math.min(...ends) : null;
+    if (next !== h.sideboardTimerFor) {
+      h.sideboardTimer?.();
+      h.sideboardTimer = undefined;
+      h.sideboardTimerFor = next;
+      if (next !== null) {
+        h.sideboardTimer = this.opts.schedule(() => {
+          h.sideboardTimer = undefined;
+          h.sideboardTimerFor = null;
+          // The timer firing means its deadline has come (a clock that lags must not reschedule it forever).
+          this.change(ev.code, (x) => expireSideboarding(x.ev, Math.max(this.opts.now(), next)));
+        }, Math.max(0, next - this.opts.now()));
+      }
+    }
+    if (ev.phase === 'playing') for (const m of ev.matches) if (m.round === ev.round && nextGame(ev, m.id) && !h.games.has(m.id)) this.startGame(h, m);
     if (ev.phase === 'finished') {
       void this.payPrizes(h);
       h.endTimer ??= this.opts.schedule(() => this.events.get(ev.code) === h && this.end(h), 60 * 60_000);
@@ -516,7 +544,7 @@ export class EventHub {
     h.games.delete(g.match);
     const winner = gameWinner(g.state);
     void this.payGameRewards(h, g, winner as Seat | null);
-    this.change(h.ev.code, (x) => recordGame(x.ev, g.match, winner ? g.seats[winner as Seat] : null, this.random));
+    this.change(h.ev.code, (x) => recordGame(x.ev, g.match, winner ? g.seats[winner as Seat] : null, this.random, this.opts.now()));
   }
 
   /** Draft games pay prizes, not match rewards, but count for quests and the first win (rewards.ts). */
@@ -579,7 +607,7 @@ export class EventHub {
       serverNow: this.opts.now(),
       rounds: ev.rounds,
       round: ev.round,
-      matches: ev.matches.map((m) => ({ id: m.id, round: m.round, stage: m.stage, winner: m.winner, a: m.a, b: m.b, games: m.games, chooser: m.done ? null : m.nextFirst ? null : m.chooser, nextFirst: m.nextFirst, done: m.done, live: h.games.has(m.id) })),
+      matches: ev.matches.map((m) => ({ id: m.id, round: m.round, stage: m.stage, winner: m.winner, a: m.a, b: m.b, games: m.games, chooser: m.done ? null : m.nextFirst ? null : m.chooser, nextFirst: m.nextFirst, done: m.done, live: h.games.has(m.id), sideboardEndsAt: m.sideboardEndsAt ?? null, readyNext: m.readyNext ?? [] })),
       standings: eventStandings(ev).map((s) => ({ player: s.player, points: s.points, wins: s.wins, losses: s.losses, draws: s.draws })),
       poolSaved: h.poolSaved.has(seat),
       entry: ECONOMY.eventEntry,

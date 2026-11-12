@@ -103,6 +103,13 @@ describe('draft events on the server', () => {
       const v = joe.event()!;
       const mine = v.matches.find((m) => m.round === v.round && (m.a === 'S1' || m.b === 'S1'))!;
       if (!mine.done && mine.chooser === 'S1' && !mine.nextFirst) await joe.send({ type: 'eventPlayDraw', play: false });
+      else if (!mine.done && mine.sideboardEndsAt && !mine.readyNext.includes('S1')) {
+        // Between games: the bot is ready at once; Joe says he's done sideboarding.
+        expect(mine.readyNext).toEqual([mine.a === 'S1' ? mine.b : mine.a]);
+        const errs = joe.errors().length;
+        await joe.send({ type: 'eventReadyNext' });
+        expect(joe.errors().length).toBe(errs);
+      }
       else if (!mine.done && mine.live && joe.game()?.match === mine.id && joe.game()!.update.state.pending.kind !== 'gameOver') await concede(joe);
       await settle();
     }

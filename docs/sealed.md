@@ -110,8 +110,15 @@ first called it "sealed"; the format they described is a booster draft.)
   change saved on the server); then your match (play/draw choice when you
   lose a game), all matches and the standings. Your games open on the board
   automatically (`draft/eventLink.ts` keeps the event's connection while
-  you play). *Practice draft* is the old offline draft. Not yet:
-  sideboarding between games in the browser (the server allows it).
+  you play). *Practice draft* is the old offline draft.
+- **Sideboarding (2026-11-12):** after each game of an unfinished match,
+  both players get up to three minutes (`SIDEBOARD_MS`) to swap cards
+  between their deck and the rest of their pool. The next game starts when
+  both are ready (`eventReadyNext`; bots always are) or the clock runs out.
+  The match panel offers *Sideboard* (the deckbuilder in sideboard mode,
+  where every legal version is saved as you go) and *Ready for game N*. The
+  loser of the last game also chooses play or draw there. A player who is
+  ready can't change their deck while the other is still sideboarding.
 
 - **The tournament (user, 2026-11-03):** always four seats (players, bots
   or a mix). Round 1: two random semifinals, best of 3. Round 2: the

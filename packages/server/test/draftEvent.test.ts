@@ -28,6 +28,10 @@ import {
   placements,
   MAX_GAMES,
   PICK_SECONDS,
+  SIDEBOARD_MS,
+  canSideboard,
+  expireSideboarding,
+  readyForNextGame,
   type DraftEvent,
 } from '../src/draftEvent.ts';
 
@@ -155,6 +159,38 @@ describe('a draft event with bots', () => {
     expect(ev.round).toBe(1);
   });
 
+  it('sideboarding between games: the next game waits until the player is ready or three minutes pass', () => {
+    const rng = makeRng(1);
+    let ev = draftAll(startDraft(createEvent('D5', { players: 1, bots: 3 }, host), 11));
+    ev = setReady(submitDeck(ev, 'S1', aiDeck(pool(ev, 'S1'))), 'S1', true, NOW, rng);
+    const m = currentMatch(ev, 'S1')!;
+    const bot = m.a === 'S1' ? m.b! : m.a;
+    // No sideboarding before game 1, and nothing to get ready for.
+    expect(() => readyForNextGame(ev, 'S1')).toThrow(/no game/);
+    // The player wins game 1: the bot plays first in game 2, but only once the player is done sideboarding.
+    ev = recordGame(ev, m.id, 'S1', rng, NOW);
+    expect(currentMatch(ev, 'S1')).toMatchObject({ sideboardEndsAt: NOW + SIDEBOARD_MS, readyNext: [bot], nextFirst: bot });
+    expect(nextGame(ev, m.id)).toBeNull();
+    expect(canSideboard(ev, 'S1')).toBe(true);
+    // Swap a card for another from the pool (the sideboard).
+    const deck = structuredClone(ev.decks.S1!);
+    const spare = pool(ev, 'S1').find((c) => !deck.cards.includes(c.uid))!;
+    deck.cards[0] = spare.uid;
+    ev = submitDeck(ev, 'S1', deck);
+    expect(ev.decks.S1!.cards).toContain(spare.uid);
+    // Ready (the bot always is): the window closes and the game can start (the server starts it at once).
+    ev = readyForNextGame(ev, 'S1');
+    expect(currentMatch(ev, 'S1')!.sideboardEndsAt).toBeNull();
+    expect(nextGame(ev, m.id)).toEqual({ first: bot });
+    // Game 2 to the bot; the player chooses play or draw, and the clock runs out without them pressing Ready.
+    ev = recordGame(ev, m.id, bot, rng, NOW);
+    ev = choosePlayDraw(ev, m.id, 'S1', true);
+    expect(nextGame(ev, m.id)).toBeNull();
+    expect(expireSideboarding(ev, NOW + SIDEBOARD_MS - 1)).toBe(ev);
+    ev = expireSideboarding(ev, NOW + SIDEBOARD_MS);
+    expect(nextGame(ev, m.id)).toEqual({ first: 'S1' });
+  });
+
   it('every match has a winner: drawn games mean more games, then a coin flip after five', () => {
     const rng = makeRng(8);
     let ev = draftAll(startDraft(createEvent('W1', { players: 1, bots: 3 }, host), 4));
@@ -259,3 +295,24 @@ describe('a draft event with bots', () => {
   });
 });
 
+
+describe('sideboarding with two players', () => {
+  it('a player who is ready keeps their deck locked while the other is still sideboarding', () => {
+    const rng = makeRng(2);
+    let ev = createEvent('D6', { players: 4, bots: 0 }, host);
+    for (const name of ['Ann', 'Bo', 'Cy']) joinEvent(ev, { name, userId: `u-${name}` });
+    ev = draftAll(startDraft(ev, 3));
+    for (const s of ev.seats) ev = setReady(submitDeck(ev, s.id, aiDeck(pool(ev, s.id))), s.id, true, NOW, rng);
+    const m = currentMatch(ev, 'S1')!;
+    const other = m.a === 'S1' ? m.b! : m.a;
+    ev = recordGame(ev, m.id, 'S1', rng, NOW);
+    ev = choosePlayDraw(ev, m.id, other, true);
+    ev = readyForNextGame(ev, 'S1');
+    expect(canSideboard(ev, 'S1')).toBe(false);
+    expect(() => submitDeck(ev, 'S1', ev.decks.S1!)).toThrow(/between games/);
+    expect(canSideboard(ev, other)).toBe(true);
+    expect(nextGame(ev, m.id)).toBeNull();
+    ev = readyForNextGame(ev, other);
+    expect(nextGame(ev, m.id)).toEqual({ first: other });
+  });
+});
