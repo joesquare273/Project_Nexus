@@ -153,6 +153,12 @@ function MainApp() {
         key={gameNumber}
         session={session}
         onQuit={quit}
+        onContinue={() => {
+          // After a draft game, back to the event (the page you were on); otherwise Home.
+          const draft = session.draftGame;
+          quit();
+          if (!draft) go({ page: 'home' });
+        }}
         {...(lesson
           ? {
               lesson,

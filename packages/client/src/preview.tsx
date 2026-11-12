@@ -36,6 +36,19 @@ if (params.get('control')) {
   s.turnControl = [{ player: s.activePlayer, by: YOU, turn: s.turnNumber }];
 }
 
+// ?over=win|loss|none: the game ends there, to see the reward screen (with sample rewards, or none).
+const over = params.get('over');
+if (over) {
+  const s = session.state;
+  s.winner = over === 'loss' ? s.turnOrder.find((p) => p !== YOU)! : YOU;
+  s.pending = { kind: 'gameOver' } as typeof s.pending;
+  if (over !== 'none') {
+    session.rewards = over === 'win'
+      ? { lines: [{ label: 'Game against the computer', amount: 75 }, { label: 'Win bonus', amount: 50 }, { label: 'Your first win', amount: 500 }, { label: 'Daily quest: Win a game', amount: 300 }], balance: 6025 }
+      : { lines: [{ label: 'Game against the computer', amount: 75 }], balance: 5175 };
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Game session={session} onQuit={() => location.reload()} />

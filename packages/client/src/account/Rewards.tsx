@@ -26,7 +26,8 @@ export function announceReward(label: string, amount: number): void {
   window.dispatchEvent(new CustomEvent(REWARD_EVENT, { detail: { label, amount } }));
 }
 
-export function Quests() {
+/** `compact`: just the quests (the reward screen after a game). */
+export function Quests({ compact = false }: { compact?: boolean } = {}) {
   const [view, setView] = useState<RewardsView | null>(null);
   // Quests are per account: load them again if the signed-in account changes.
   const userId = useSession().session?.user.id;
@@ -48,13 +49,13 @@ export function Quests() {
   if (!view) return null;
   const m = view.matches;
   return (
-    <section className="home-quests" aria-label="Quests">
+    <section className={`home-quests ${compact ? 'compact' : ''}`} aria-label="Quests">
       <div className="home-quests-head">
         <h2>Quests</h2>
-        <p className="fineprint">
+        {!compact && <p className="fineprint">
           Every game on the game server pays: <ShardIcon size={14} /> {m.botMatch.completion} against the computer (+{m.botMatch.winBonus} for a win), {m.friendMatch.completion} with friends (+
           {m.friendMatch.winBonus}).
-        </p>
+        </p>}
       </div>
       <div className="quest-list">
         {view.quests.map((q) => (

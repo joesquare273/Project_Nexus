@@ -113,6 +113,14 @@ export class GameSession {
   keepPriority = false;
   /** What you earned for this game (games the server ran), once the server says. */
   rewards: { lines: { label: string; amount: number }[]; balance: number | null } | null = null;
+  /** Whether this game can earn rewards (it runs on the game server); local practice games can't. */
+  get earnsRewards(): boolean {
+    return false;
+  }
+  /** A draft event's game: after it, Continue goes back to the event, not Home. */
+  get draftGame(): boolean {
+    return this.options.format === 'limited';
+  }
   /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
   readonly triggered: { key: number; card: InstanceId }[] = [];
   /** The mana each player tapped for most recently (one batch of moves), shown under their hand size for a few seconds. */

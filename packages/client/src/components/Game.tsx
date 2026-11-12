@@ -42,6 +42,7 @@ import { ColorKey, useColorKey } from './ColorKey.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
 import { Impacts } from './Impacts.tsx';
+import { RewardScreen } from './RewardScreen.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
 import { currentTip } from '../tutorial/tips.ts';
 import { GameLog, Inspector } from './Sidebar.tsx';
@@ -123,17 +124,22 @@ function modeLabels(defId: string, modes: readonly (readonly EffectSpec[])[] | u
 export function Game({
   session,
   onQuit,
+  onContinue,
   lesson,
   onLessonDone,
 }: {
   session: GameSession;
   onQuit: () => void;
+  /** After the game: Continue on the reward screen (Home, or back to the draft); onQuit otherwise. */
+  onContinue?: () => void;
   /** Play this guided lesson on the board. */
   lesson?: Lesson;
   /** After the lesson: start the practice game. */
   onLessonDone?: () => void;
 }) {
   const [lessonStep, setLessonStep] = useState(0);
+  /** After the game: the reward screen is hidden to look at the final board. */
+  const [boardOnly, setBoardOnly] = useState(false);
   const [dismissedTips, setDismissedTips] = useState<Set<string>>(new Set());
   const [tipsOn, setTipsOn] = useState(true);
   const [, setVersion] = useState(0);
@@ -1040,32 +1046,22 @@ export function Game({
           onClose={() => setZoneView(null)}
         />
       )}
-      {pending.kind === 'gameOver' && !lesson && (
-        <div className="overlay">
-          <div className="overlay-box">
-            <h2>{s.winner === YOU ? 'You win!' : s.winner ? `${s.winner} wins` : 'Draw'}</h2>
-            <p>
-              Turn {s.turnNumber} · seed {session.options.seed}
-            </p>
-            {session.rewards && session.rewards.lines.length > 0 && (
-              <div className="game-rewards">
-                <h3>You earned</h3>
-                <ul>
-                  {session.rewards.lines.map((l) => (
-                    <li key={l.label}>
-                      <span>{l.label}</span> <strong>+{l.amount.toLocaleString()}</strong>
-                    </li>
-                  ))}
-                </ul>
-                <p className="fineprint">
-                  {session.rewards.lines.reduce((n, l) => n + l.amount, 0).toLocaleString()} Aether Shards
-                  {session.rewards.balance !== null ? ` · balance ${session.rewards.balance.toLocaleString()}` : ''}
-                </p>
-              </div>
-            )}
-            <button onClick={onQuit}>Back to menu</button>
-          </div>
-        </div>
+      {pending.kind === 'gameOver' && !lesson && !boardOnly && (
+        <RewardScreen
+          result={s.winner === YOU ? 'win' : s.winner ? 'loss' : 'draw'}
+          winner={s.winner ?? null}
+          turn={s.turnNumber}
+          rewards={session.rewards}
+          earnsRewards={session.earnsRewards}
+          continueLabel={session.draftGame ? 'Back to the draft' : 'Continue'}
+          onContinue={onContinue ?? onQuit}
+          onViewBoard={() => setBoardOnly(true)}
+        />
+      )}
+      {pending.kind === 'gameOver' && !lesson && boardOnly && (
+        <button className="primary show-results" onClick={() => setBoardOnly(false)}>
+          Show the results
+        </button>
       )}
     </div>
   );

@@ -242,6 +242,11 @@ export class OnlineSession extends GameSession {
   private readonly listeners = new Set<(error?: string) => void>();
   private readonly connection: GameLink;
 
+  /** Tables and draft games pay on the server; a Starter Kit duel doesn't. */
+  override get earnsRewards(): boolean {
+    return this.options.format !== 'starter';
+  }
+
   constructor(connection: GameLink, first: Update, deck: Deck = 'RW', format: 'starter' | 'constructed' | 'commander' | 'limited' = 'starter', coaching = false) {
     const seat = first.seat;
     // The other seats in turn order after yours, as the board lists opponents.

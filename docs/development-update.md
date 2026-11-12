@@ -18,6 +18,13 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### The reward screen after a game (2026-11-12)
+
+- At the end of a game, a full reward screen replaces the small game-over box. It shows the result (Victory, Defeat or Draw, and the turn) and each reward line in turn, with the shard icon, the total counting up and your new balance. Quest progress is fetched fresh from the server.
+- The server sends the rewards just after the game ends; the screen waits up to 6 seconds for them ("Adding up your rewards…"). A game that earns nothing says why: a practice game, or a game that ended before every player's second turn, or one you conceded.
+- **Continue** goes to Home. After a draft game it's **Back to the draft**. **View the board** hides the screen to look at the final board, and *Show the results* brings it back. The lesson keeps its own ending.
+- `components/RewardScreen.tsx`; `GameSession.earnsRewards` (true for server-run tables and draft games, false for local practice and Starter Kit duels) and `draftGame`; `Quests compact`. The board preview has `?over=win|loss|none` to see the screen.
+
 ### Rewards and crafting audit (2026-11-12)
 
 - Checked the live database with read-only queries. No negative balances. Every account's balance equals its ledger, except the owner's test account (set by hand). Fragment balances equal the fragment ledger, per account.
