@@ -243,7 +243,7 @@ export class GameSession {
     this.recent.clear();
     const notices = eventTargetNotices(this.state, result.events);
     this.targetHistory.unshift(...notices.reverse()); this.targetHistory.splice(8);
-    this.presentationDelayMs = notices.length ? actionDelay(result.events, actions.at(-1)!, false, this.aiPace, true) : 0;
+    this.presentationDelayMs = notices.some((n) => n.targets.length > 0) ? actionDelay(result.events, actions.at(-1)!, false, this.aiPace, true) : 0;
     this.narrate(result.events);
     return null;
   }
@@ -265,13 +265,13 @@ export class GameSession {
     if ('error' in result) throw new Error(`Automatic action was illegal: ${result.error}`);
     const resolved = result.events.find(e => e.type === 'StackItemResolved');
     const top = resolved?.type === 'StackItemResolved' ? [s.resolving?.item, ...s.stack].find(item => item?.id === resolved.item) : undefined;
-    const resolution = top ? targetNotice(s, top.kind === 'spell' ? top.card : top.source, top.controller, top.targets) : null;
+    const resolution = top ? targetNotice(s, top.kind === 'spell' ? top.card : top.source, top.controller, top.targets, top.kind === 'ability' && top.from === 'trigger' && !top.rule) : null;
     this.state = result.state;
     const notices = eventTargetNotices(this.state, result.events);
     if (resolution) notices.unshift(resolution);
     this.targetHistory.unshift(...notices.reverse()); this.targetHistory.splice(8);
     this.narrate(result.events);
-    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace, notices.length > 0);
+    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace, notices.some((n) => n.targets.length > 0));
     if (this.presentationDelayMs > 0) {
       this.recent = touchedCards(result.events);
       return 'bot';

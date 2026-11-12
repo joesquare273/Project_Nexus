@@ -611,7 +611,7 @@ export function Game({
       if (view.combat?.blocks.some((b) => b.blocker === id)) marks.push('blocking');
       if (pickedAttacker === id) marks.push('selected');
       if (step?.focus(s).includes(id)) marks.push('focus');
-      if (notice?.sourceCard === id) marks.push('effect-source');
+      if (notice?.sourceCard === id) marks.push(notice.trigger ? 'effect-trigger' : 'effect-source');
       if (notice?.targets.some(t => t.kind === 'card' && t.card === id)) marks.push('effect-target');
       if (session.recent.has(id)) marks.push('recent');
       return marks;
@@ -647,7 +647,7 @@ export function Game({
       const blocking = blocks.get(id) ?? view.combat?.blocks.find((b) => b.blocker === id)?.attacker;
       if (blocking) return `Blocks ${cardName(s, blocking)}`;
       if (notice?.targets.some(t => t.kind === 'card' && t.card === id)) return 'TARGET';
-      if (notice?.sourceCard === id) return 'SOURCE';
+      if (notice?.sourceCard === id) return notice.trigger ? 'TRIGGER' : 'SOURCE';
       const attachedTo = view.cards[id]?.attachedTo;
       if (attachedTo) return `⚔ ${cardName(s, attachedTo)}`;
       if (defOf(view.cards[id]!.defId).crew !== undefined) return view.cards[id]!.crewed ? 'Crewed until end of turn' : `Crew ${defOf(view.cards[id]!.defId).crew}`;
@@ -834,9 +834,9 @@ export function Game({
         {notice && (
           <section className="target-notice" aria-label="Targeting activity">
             <details>
-              <summary><span className="source-label">{notice.controller} · {notice.source}</span> → <strong>{notice.labels.join(' + ')}</strong></summary>
-              <small>Most recent targeted action · blue = source · orange = target</small>
-              {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source} → {n.labels.join(' + ')}</div>)}
+              <summary><span className={notice.trigger ? 'source-label trigger' : 'source-label'}>{notice.controller} · {notice.source}</span>{notice.labels.length > 0 && <> → <strong>{notice.labels.join(' + ')}</strong></>}</summary>
+              <small>Most recent action · blue = source · red = trigger · orange = target</small>
+              {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source}{n.labels.length ? ` → ${n.labels.join(' + ')}` : ''}</div>)}
             </details>
           </section>
         )}

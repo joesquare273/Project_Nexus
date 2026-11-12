@@ -8,7 +8,7 @@ import { FitBoard } from './FitBoard.tsx';
 import { CardBack, CardFace, ManaCost, ManaText } from './Card.tsx';
 
 /** How a card or player should be highlighted right now. */
-export type Mark = 'effect-source' | 'effect-target'
+export type Mark = 'effect-source' | 'effect-trigger' | 'effect-target'
   | 'playable'
   | 'target'
   | 'can-attack'
