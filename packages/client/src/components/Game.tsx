@@ -148,6 +148,9 @@ export function Game({
   const spotlighted = useRef(0);
   const [zoneView, setZoneView] = useState<{ player: PlayerId; zone: 'graveyard' | 'exile' } | null>(null);
   const [attackers, setAttackers] = useState<Map<InstanceId, PlayerId>>(new Map());
+  // Attacking a planeswalker: the one chosen as the target for the next attackers, and which attackers go for which.
+  const [targetPw, setTargetPw] = useState<InstanceId | null>(null);
+  const [attackPw, setAttackPw] = useState<Map<InstanceId, InstanceId>>(new Map());
   const [defender, setDefender] = useState<PlayerId>(session.opponents[0]!);
   const [blocks, setBlocks] = useState<Map<InstanceId, InstanceId>>(new Map());
   const [pickedAttacker, setPickedAttacker] = useState<InstanceId | null>(null);
@@ -244,6 +247,8 @@ export function Game({
     setPaying(null);
     session.holdPriority = false;
     setAttackers(new Map());
+    setTargetPw(null);
+    setAttackPw(new Map());
     setBlocks(new Map());
     setPickedAttacker(null);
   }, [decisionKey]);
@@ -583,6 +588,7 @@ export function Game({
       else if (paying && !menu && manaIds.has(id)) marks.push('mana');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
       if (canAttackIds.has(id)) marks.push(attackers.has(id) ? 'attacking' : 'can-attack');
+      if (pending.kind === 'declareAttackers' && yourMove && id === targetPw) marks.push('defender');
       if (view.combat?.attacks.some((a) => a.attacker === id)) marks.push('attacking');
       if (canBlockIds.has(id)) marks.push(blocks.has(id) ? 'blocking' : 'can-block');
       if (view.combat?.blocks.some((b) => b.blocker === id)) marks.push('blocking');
@@ -615,8 +621,10 @@ export function Game({
       }
       if (bottomPicks.includes(id)) return choosing ? 'Chosen' : `Bottom ${bottomPicks.indexOf(id) + 1}`;
       const planned = attackers.get(id);
+      if (planned && attackPw.has(id)) return `→ ${cardName(s, attackPw.get(id)!)}`;
       if (planned) return livingOpponents.length > 1 ? `→ ${planned}` : 'Attacking';
       const attack = view.combat?.attacks.find((a) => a.attacker === id);
+      if (attack?.planeswalker && s.cards[attack.planeswalker]) return `→ ${cardName(s, attack.planeswalker)}`;
       if (attack) return `→ ${attack.defender === YOU ? 'You' : attack.defender}`;
       const blocking = blocks.get(id) ?? view.combat?.blocks.find((b) => b.blocker === id)?.attacker;
       if (blocking) return `Blocks ${cardName(s, blocking)}`;
@@ -664,12 +672,28 @@ export function Game({
       if (cardPlays.length > 0) return usePlays(id, cardPlays);
       // Tapping a land (or other mana source) on its own floats the mana until the step ends.
       if (manaIds.has(id)) return useManaSource(id);
+      // Declaring attackers: click an opponent's planeswalker to send the next attackers at it (again to go back to the player).
+      if (pending.kind === 'declareAttackers' && yourMove && s.cards[id] && livingOpponents.includes(s.cards[id]!.controller) && s.cards[id]!.zone === 'battlefield' && defOf(s.cards[id]!.defId).types.includes('planeswalker')) {
+        if (targetPw === id) setTargetPw(null);
+        else {
+          setTargetPw(id);
+          setDefender(s.cards[id]!.controller);
+        }
+        return;
+      }
       if (pending.kind === 'declareAttackers' && canAttackIds.has(id)) {
         const next = new Map(attackers);
-        if (next.has(id)) next.delete(id);
-        else if (canAttackPlayer(s, s.cards[id]!, currentDefender)) next.set(id, currentDefender);
-        else return showError('A vow prevents this creature from attacking that opponent.');
+        const nextPw = new Map(attackPw);
+        const pw = targetPw && s.cards[targetPw]?.zone === 'battlefield' && s.cards[targetPw]!.controller === currentDefender ? targetPw : null;
+        if (next.has(id)) {
+          next.delete(id);
+          nextPw.delete(id);
+        } else if (canAttackPlayer(s, s.cards[id]!, currentDefender)) {
+          next.set(id, currentDefender);
+          if (pw) nextPw.set(id, pw);
+        } else return showError('A vow prevents this creature from attacking that opponent.');
         setAttackers(next);
+        setAttackPw(nextPw);
         return;
       }
       if (pending.kind === 'declareBlockers') {
@@ -688,7 +712,10 @@ export function Game({
       if (!yourMove) return;
       const option = nextOptions.find((t) => t.kind === 'player' && t.player === pid);
       if (option) return pickTarget(option);
-      if (pending.kind === 'declareAttackers' && pid !== YOU && livingOpponents.includes(pid)) setDefender(pid);
+      if (pending.kind === 'declareAttackers' && pid !== YOU && livingOpponents.includes(pid)) {
+        setDefender(pid);
+        setTargetPw(null);
+      }
     },
     onHover: setHovered,
     onZone: (player, zone) => setZoneView({ player, zone }),
@@ -819,6 +846,8 @@ export function Game({
             setTriggerChosen([]);
           }}
           attackers={attackers}
+          attackPw={attackPw}
+          targetPw={targetPw}
           canAttackIds={canAttackIds}
           currentDefender={currentDefender}
           blocks={blocks}
@@ -1168,6 +1197,8 @@ interface PromptProps {
   chosen: Target[];
   onCancel: () => void;
   attackers: Map<InstanceId, PlayerId>;
+  attackPw: Map<InstanceId, InstanceId>;
+  targetPw: InstanceId | null;
   canAttackIds: Set<InstanceId>;
   currentDefender: PlayerId;
   blocks: Map<InstanceId, InstanceId>;
@@ -1448,10 +1479,12 @@ function PromptBar(p: PromptProps) {
     const goaded = Object.values(p.view.stats).some(st=>st.goadedBy?.length);
     const many = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated).length > 1;
     text = `Declare attackers: click your creatures to attack${many ? ` ${p.currentDefender} (click an opponent to switch)` : ''}.`;
+    if (p.targetPw && s.cards[p.targetPw]) text += ` The next attackers you choose go for ${cardName(s, p.targetPw)} (click it again to attack the player).`;
+    else if (Object.values(s.cards).some((c) => c.zone === 'battlefield' && c.controller !== YOU && defOf(c.defId).types.includes('planeswalker'))) text += ' Click an opponent’s planeswalker to attack it instead of the player.';
     if (goaded) text += ' Goaded creatures must attack and avoid their goader when able.';
     const all = new Map([...p.canAttackIds].filter((id) => canAttackPlayer(s, s.cards[id]!, p.attackers.get(id) ?? p.currentDefender)).map((id) => [id, p.attackers.get(id) ?? p.currentDefender]));
     const declare = (m: Map<InstanceId, PlayerId>) => {
-      const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender }));
+      const attacks = [...m].map(([attacker, defender]) => ({ attacker, defender, ...(p.attackPw.has(attacker) ? { planeswalker: p.attackPw.get(attacker)! } : {}) }));
       // Propaganda and friends: choose the mana for the tax, then the declaration goes with the taps.
       const tax = attackTax(s, attacks);
       const declaration: Action = { type: 'DeclareAttackers', player: YOU, attacks };

@@ -185,6 +185,10 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     const d = s.players[a.defender];
     if (!d || d.eliminated || a.defender === playerId) reject(`"${a.defender}" is not a valid defending player.`);
     if (!canAttackPlayer(s, c, a.defender)) reject('A vow prevents that creature from attacking this player.');
+    if (a.planeswalker !== undefined) {
+      const pw = s.cards[a.planeswalker];
+      if (!pw || pw.zone !== 'battlefield' || pw.phasedOut || pw.controller !== a.defender || !currentDefinition(s, pw).types.includes('planeswalker')) reject('That is not a planeswalker that player controls.');
+    }
   }
   const required = attackRequirementProblem(s, playerId, attacks);
   if (required) reject(required);
@@ -342,12 +346,15 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
     const declared = combat.blocks.filter((b) => b.attacker === attack.attacker).map((b) => b.blocker);
     const liveBlockers = declared.map((id) => s.cards[id]).filter((c) => isCreatureOnBattlefield(s, c));
     const defenderAlive = !s.players[attack.defender]!.eliminated;
-    const toDefender: Target = { kind: 'player', player: attack.defender };
+    // A creature attacking a planeswalker deals its unblocked damage to it; if it's gone, to nothing (rule 506.4c).
+    const pw = attack.planeswalker ? s.cards[attack.planeswalker] : undefined;
+    const pwThere = !!pw && pw.zone === 'battlefield' && !pw.phasedOut && pw.controller === attack.defender && currentDefinition(s, pw).types.includes('planeswalker');
+    const toDefender: Target = attack.planeswalker ? { kind: 'card', card: attack.planeswalker } : { kind: 'player', player: attack.defender };
 
     if (participates(attacker)) {
       let remaining = combatPowerOf(s, attacker);
       if (declared.length === 0 && !combat.blockedAttackers?.includes(attacker.id)) {
-        if (defenderAlive) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
+        if (defenderAlive && (!attack.planeswalker || pwThere)) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
       } else {
         const trample = hasKeyword(s, attacker, 'Trample');
         liveBlockers.forEach((blocker, i) => {
@@ -357,7 +364,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
           remaining -= amount;
           if (amount > 0) assignments.push({ source: attacker.id, target: { kind: 'card', card: blocker.id }, amount });
         });
-        if (trample && remaining > 0 && defenderAlive) {
+        if (trample && remaining > 0 && defenderAlive && (!attack.planeswalker || pwThere)) {
           assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
         }
       }

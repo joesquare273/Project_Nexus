@@ -450,6 +450,8 @@ export function activatedText(a: ActivatedSpec): string {
   if (a.cost.station) return 'Station — tap another creature you control: put charge counters equal to its power on this (as a sorcery)';
   if (a.effects[0]?.unearth) return `Unearth ${a.cost.mana}`;
   const cost = [
+    // A loyalty ability: "+1", "0", "−3".
+    a.loyalty !== undefined && (a.loyalty > 0 ? `+${a.loyalty}` : a.loyalty < 0 ? `−${-a.loyalty}` : '0'),
     a.cost.mana,
     a.cost.tap && '{T}',
     a.cost.mill && 'mill ' + a.cost.mill + ' card(s)',

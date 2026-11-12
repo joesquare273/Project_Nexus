@@ -229,6 +229,7 @@ const CARD_FIELDS = {
   sacrificeAtEndOfCombat: 'copy',
   removeCountersAtEndStep: 'copy',
   lostAbilities: 'copy',
+  loyaltyActivatedTurn: 'copy',
   leavesDealsManaValueDamage: 'copy',
   rebounding: 'copy',
   adventureSpell: 'copy',

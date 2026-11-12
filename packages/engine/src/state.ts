@@ -357,6 +357,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const d = c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
   if (to === 'battlefield') { c.enteredTurn = s.turnNumber; c.enteredTimestamp = newTimestamp(s); }
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
+  // A planeswalker enters with its loyalty (rule 306.5b).
+  if (to === 'battlefield' && d.loyalty) addCounters(ctx, id, d.loyalty, undefined, 'loyalty');
+  if (from === 'battlefield') delete c.loyaltyActivatedTurn;
   // "As this Saga enters, add a lore counter" (rule 714.3a).
   if (to === 'battlefield' && d.saga) addCounters(ctx, id, 1, c.controller, 'lore');
   // Tromell: "each other nontoken creature you control enters with an additional +1/+1 counter".
@@ -561,6 +564,12 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     }
   } else {
     const victim = s.cards[target.card]!;
+    // Damage dealt to a planeswalker removes that many loyalty counters (rule 120.3c).
+    if (hasType(s, victim, 'planeswalker') && !hasType(s, victim, 'creature')) {
+      removeCounters(ctx, victim.id, 'loyalty', amount);
+      if (hasKeyword(s, source, 'Lifelink')) changeLife(ctx, source.controller, amount);
+      return;
+    }
     victim.damage += amount;
     if (amount > 0) victim.damagedTurn = s.turnNumber;
     // Requiem Monolith: "Whenever this creature is dealt damage, you draw that many cards and lose that much life."
@@ -742,6 +751,7 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
   const c=s.cards[id]!, d=defOf(s,c);
   c.tapped=entersTapped(s,c);
   if(d.entersWithCounters) addCounters(ctx,id,d.entersWithCounters,undefined,d.entersWithCounterKind);
+  if(d.loyalty) addCounters(ctx,id,d.loyalty,undefined,'loyalty');
   for(const source of battlefield(s)) for(const spec of defOf(s,source).statics??[]) {
     if(source.id!==id && spec.entersWithExtraCounters && staticAffects(s,source,spec,c)) addCounters(ctx,id,spec.entersWithExtraCounters);
     if(source.id!==id && spec.entersWithExtraCountersFromCount && staticAffects(s,source,spec,c)) addCounters(ctx,id,countOf(s,spec.entersWithExtraCountersFromCount,source.controller,source.id));

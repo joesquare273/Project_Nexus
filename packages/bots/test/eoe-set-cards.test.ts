@@ -2590,3 +2590,70 @@ describe('M21: restricted mana, Moonlit Meditation and Lightstall Inquisitor', (
     expect([zone(t, land), t.cards[land]!.tapped]).toEqual(['battlefield', true]);
   });
 });
+
+// Planeswalkers: Tezzeret, Cruel Captain.
+describe('Planeswalkers: Tezzeret, Cruel Captain', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const drain = (s: GameState, opts: never = {} as never) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), opts).state;
+    return s;
+  };
+  const loyalty = (s: GameState, id: string) => s.cards[id]!.namedCounters?.loyalty ?? 0;
+
+  it('enters with 4 loyalty, gains one for each artifact, and uses one loyalty ability a turn at sorcery speed', () => {
+    let s = newGame();
+    const tez = put(s, 'P1', 'tezzeret-cruel-captain', 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const robot = put(s, 'P1', 'roving-actuator', 'battlefield', { tapped: true });
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 4 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: tez }).state);
+    expect([zone(s, tez), loyalty(s, tez)]).toEqual(['battlefield', 4]);
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state);
+    expect(loyalty(s, tez)).toBe(5);
+    // 0: untap an artifact creature and give it a counter.
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 0, targets: [card(robot)] }).state);
+    expect([s.cards[robot]!.tapped, s.cards[robot]!.counters, loyalty(s, tez)]).toEqual([false, 1, 5]);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 1 })).toMatch(/one loyalty ability/i);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 2 })).toBeTruthy();
+  });
+
+  it('−3 searches for a cheap artifact; −7 gives an emblem that grows an artifact each combat and animates it', () => {
+    let s = newGame();
+    const tez = put(s, 'P1', 'tezzeret-cruel-captain', 'battlefield', { namedCounters: { loyalty: 7 } } as never);
+    const ring = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    put(s, 'P1', 'sol-ring', 'library');
+    const hand = s.players.P1!.hand.length;
+    let t = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 1 }).state);
+    expect([loyalty(t, tez), t.players.P1!.hand.length]).toEqual([4, hand + 1]);
+    t = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 2 }).state);
+    // At 0 loyalty he's put into the graveyard; the emblem stays.
+    expect(zone(t, tez)).toBe('graveyard');
+    t = goTo(t, 'beginCombat', pick(ring));
+    t = drain(settle(t, pick(ring)).state, pick(ring));
+    expect([t.cards[ring]!.counters, powerOf(t, t.cards[ring]!), currentDefinition(t, t.cards[ring]!).types.includes('creature')]).toEqual([3, 3, true]);
+  });
+
+  it('damage removes loyalty: from a spell with any target, and from a creature that attacks him instead of the player', () => {
+    let s = newGame();
+    const tez = put(s, 'P2', 'tezzeret-cruel-captain', 'battlefield', { namedCounters: { loyalty: 4 } } as never);
+    const bolt = put(s, 'P1', 'plasma-bolt', 'hand');
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(tez)] }).state);
+    expect(loyalty(s, tez)).toBe(2);
+    s = goTo(s, 'declareAttackers');
+    const life = s.players.P2!.life;
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2', planeswalker: bear }] })).toBeTruthy();
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2', planeswalker: tez }] });
+    for (let i = 0; i < 40 && s.step !== 'main2'; i++) {
+      const p = s.pending;
+      if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else s = settle(s).state;
+    }
+    expect([zone(s, tez), s.players.P2!.life]).toEqual(['graveyard', life]);
+  });
+});

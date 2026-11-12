@@ -32,13 +32,14 @@ const SUBTYPES_BY_TYPE: Partial<Record<CardType, readonly string[]>> = {
   creature: typeLists.creature,
   artifact: typeLists.artifact,
   enchantment: typeLists.enchantment,
+  planeswalker: typeLists.planeswalker,
   land: typeLists.land,
   instant: typeLists.spell,
   sorcery: typeLists.spell,
 };
 const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 /** Subtypes of the card types only unbuilt cards may have (a planeswalker's "Tezzeret"). */
-const UNBUILT_SUBTYPES: Record<string, readonly string[]> = { planeswalker: typeLists.planeswalker, battle: typeLists.battle };
+const UNBUILT_SUBTYPES: Record<string, readonly string[]> = { battle: typeLists.battle };
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
@@ -170,7 +171,7 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
 
 /** Returns a list of problems with one card. Empty means valid. */
 /** Card types the engine doesn't play yet. */
-const UNBUILT_TYPES = ['planeswalker', 'battle'] as const;
+const UNBUILT_TYPES = ['battle'] as const;
 
 export function validateCardDefinition(raw: unknown): string[] {
   const errors: string[] = [];

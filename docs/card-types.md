@@ -38,7 +38,7 @@ Card abilities name these groupings directly. In a trigger's `what` filter,
 | **Enchantment** | Permanent spell | A permanent with no extra rules of its own; cast at sorcery speed. Aura spells target a legal enchanted object and enter attached; illegal targets prevent entry. | Built |
 | **Instant** | Nonpermanent spell | Cast any time you have priority, even on other players' turns and in response to other spells (304). | Built |
 | **Sorcery** | Nonpermanent spell | Cast only in your own main phase with an empty stack (307.1). | Built |
-| **Planeswalker** | Permanent spell | Loyalty abilities; damage removes loyalty (306). | Later |
+| **Planeswalker** | Permanent spell | Enters with its loyalty (`loyalty`); loyalty abilities (`ActivatedSpec.loyalty`: one per planeswalker each turn, at sorcery speed); damage removes loyalty; put into the graveyard at 0 (306, 606, 704.5i). Creatures can attack it (`Attack.planeswalker`) and "any target" can hit it. The computer opponents don't attack planeswalkers yet. | Built (2026-11-12) |
 | **Battle** | Permanent spell | Protectors and defense counters (310). | Later |
 | **Kindred** | With another type | Has creature types without being a creature (308). | Later |
 

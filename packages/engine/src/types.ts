@@ -25,7 +25,7 @@ export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
 export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand';
 
-export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'instant', 'sorcery'] as const;
+export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
 /**
@@ -91,7 +91,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling', 'loyalty'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -1427,6 +1427,11 @@ export interface TriggerSpec {
 export interface ActivatedSpec {
   /** Station: can only be activated while the source has at least this many charge counters. */
   stationLevel?: number;
+  /**
+   * A loyalty ability (rule 606): the cost is adding (+N) or removing (-N) that many loyalty counters, 0 for none.
+   * Only at sorcery speed, and only one loyalty ability of a planeswalker each turn.
+   */
+  loyalty?: number;
   /** The least X this ability allows ("X can't be 0"). */
   xMin?: number;
   /** "This ability can't be copied" (Gogo). */
@@ -2020,6 +2025,8 @@ export interface CardDefinition {
    * counters" (Sin): chosen as the spell resolves.
    */
   entersRemovingCounters?: boolean;
+  /** A planeswalker's starting loyalty (rule 306.5b): it enters with that many loyalty counters. */
+  loyalty?: number;
   /** Devour land N (rule 702.82): as it enters from being cast, you may sacrifice any number of lands; it enters with N times that many +1/+1 counters (Famished Worldsire). */
   devourLand?: number;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
@@ -2266,6 +2273,8 @@ export interface CardInstance {
   exileAtEndOfCombat?: boolean;
   /** Terminal Velocity: when it leaves the battlefield, it deals damage equal to its mana value to each creature. */
   leavesDealsManaValueDamage?: boolean;
+  /** The last turn one of this planeswalker's loyalty abilities was activated. */
+  loyaltyActivatedTurn?: number;
   /** It has no abilities for as long as it stays on the battlefield (Xu-Ifit's Skeletons). */
   lostAbilities?: boolean;
   /** Counters removed at the beginning of the next end step (Systems Override's charge counters). */
@@ -2688,6 +2697,8 @@ export interface CardChoice {
 export interface Attack {
   attacker: InstanceId;
   defender: PlayerId;
+  /** The creature attacks this planeswalker (controlled by `defender`) rather than the player (rule 506.2). */
+  planeswalker?: InstanceId;
 }
 
 export interface Block {

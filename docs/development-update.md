@@ -18,6 +18,17 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Planeswalkers, and Tezzeret, Cruel Captain
+
+The engine has planeswalkers: the card type, starting loyalty, loyalty
+abilities (+N, 0, -N: one per planeswalker each turn, at sorcery speed),
+damage that removes loyalty, the graveyard at 0 loyalty, "any target"
+reaching them, and creatures attacking them instead of the player
+(`Attack.planeswalker`; on the board, click an opponent's planeswalker
+while declaring attackers). Tezzeret, Cruel Captain is built: 260 of 261.
+The computer opponents use loyalty abilities like any other ability but
+never attack a planeswalker yet.
+
 ### Edge of Eternities main set, group M21
 
 Four more: 259 of 261 built; only Tezzeret, Cruel Captain (planeswalkers)

@@ -473,6 +473,8 @@ export function isLegalTarget(
   // Protection: not the target of anything of that color (rule 702.16b).
   if (source && protectedFrom(s, c, s.cards[source])) return false;
   if (kind === 'TargetPermanent') return matchesObject(s, effect.filter, c, viewpoint);
+  // "Any target": a creature, player or planeswalker (rule 115.4).
+  if (kind === 'AnyTarget' && !isCreatureOnBattlefield(s, c) && hasType(s, c, 'planeswalker')) return matchesObject(s, effect.filter, c, viewpoint);
   if (!isCreatureOnBattlefield(s, c)) return false;
   if (kind === 'AnyTarget' || kind === 'TargetCreature') return matchesObject(s, effect.filter, c, viewpoint);
   if (kind === 'OpponentCreature') return c.controller !== controller;
@@ -1522,6 +1524,11 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   }
   if (zone === 'battlefield' && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
   if (spec.stationLevel !== undefined && (c.namedCounters?.charge ?? 0) < spec.stationLevel) return `That needs ${spec.stationLevel} or more charge counters.`;
+  if (spec.loyalty !== undefined) {
+    if (!canActAtSorcerySpeed(s, playerId)) return 'Loyalty abilities can only be activated in your main phase with an empty stack.';
+    if (c.loyaltyActivatedTurn === s.turnNumber) return 'Only one loyalty ability of a planeswalker can be activated each turn.';
+    if (spec.loyalty < 0 && (c.namedCounters?.loyalty ?? 0) < -spec.loyalty) return `That needs ${-spec.loyalty} loyalty.`;
+  }
   if (spec.ifOpponentHitByLegendary && !(s.combatDamageHistory ?? []).some((h) => h.legendary && h.player !== playerId && h.sourceController === playerId)) {
     return 'Only after an opponent was dealt combat damage by a legendary creature this turn.';
   }
@@ -1801,6 +1808,11 @@ export function activateAbility(
   }
   payWardDiscards(ctx, targets, playerId);
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
+  if (spec.loyalty !== undefined) {
+    c.loyaltyActivatedTurn = s.turnNumber;
+    if (spec.loyalty > 0) addCounters(ctx, id, spec.loyalty, playerId, 'loyalty');
+    else if (spec.loyalty < 0) removeCounters(ctx, id, 'loyalty', -spec.loyalty);
+  }
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
   if (spec.cost.tapUntapped || spec.cost.station) for (const k of costCards) tap(ctx, s.cards[k]!);

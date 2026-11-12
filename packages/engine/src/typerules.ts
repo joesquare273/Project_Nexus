@@ -46,7 +46,7 @@ export function objectManaValue(s: GameState, c: CardInstance): number {
 }
 
 /** Card types whose cards are permanents: they resolve onto the battlefield and stay (rule 110.4). */
-export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment'];
+export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker'];
 
 /** Permanents: lands, creatures, artifacts, enchantments. They stay on the battlefield. */
 export function isPermanentCard(def: CardDefinition): boolean {

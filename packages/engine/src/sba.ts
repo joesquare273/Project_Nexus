@@ -127,6 +127,13 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
         lethal.push(c.id);
       }
     }
+    // A planeswalker with no loyalty is put into its owner's graveyard (rule 704.5i).
+    for (const c of battlefield(s)) {
+      if (defOf(s, c).types.includes('planeswalker') && (c.namedCounters?.loyalty ?? 0) <= 0) {
+        putIntoGraveyard(ctx, c.id);
+        changed = true;
+      }
+    }
     // Zero toughness isn't destruction, so indestructible doesn't help (rule 704.5f).
     for (const id of zeroToughness) putIntoGraveyard(ctx, id);
     for (const id of lethal) destroy(ctx, id);
