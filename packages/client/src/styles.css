@@ -3746,3 +3746,135 @@ button.link {
 
 /* A button that can't be pressed yet (Confirm before enough mana is chosen). */
 .prompt button:disabled { opacity:.45; cursor:not-allowed; filter:grayscale(.6); box-shadow:none; }
+
+/* ---------- Easier to follow (2026-11-12): a friend's first impressions ---------- */
+
+/* The game log is a drawer you open, not a column that's always there. */
+.game,
+.game.four-players { grid-template-columns: minmax(0, 1fr); }
+.game .sidebar,
+.four-players.log-open .sidebar {
+  display: flex;
+  position: fixed;
+  right: 10px;
+  top: 58px;
+  /* Stops above the prompt bar, so its buttons stay in reach. */
+  bottom: auto;
+  height: min(56vh, 540px);
+  width: 320px;
+  z-index: 70;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+  animation: inspector-in 0.14s ease-out;
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--gold);
+}
+.sidebar-head button { padding: 2px 9px; font-size: 13px; }
+.game .sidebar .log { font-size: 14px; line-height: 1.5; }
+.log-toggle { font-size: 13px; }
+
+/* The card viewer opens beside the card you're pointing at. */
+.inspector.beside { animation: viewer-in 0.1s ease-out; }
+@keyframes viewer-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.inspector-rules { font-size: 15px; line-height: 1.45; }
+
+/* The stack: a clear panel, numbered from the top, saying what each ability does. */
+.stack {
+  min-width: 300px;
+  max-width: 360px;
+  padding: 10px 12px;
+  border: 2px solid rgba(242, 201, 76, 0.75);
+  border-radius: 12px;
+  background: rgba(14, 22, 34, 0.97);
+  box-shadow: 0 0 0 4px rgba(242, 201, 76, 0.12), 0 12px 36px rgba(0, 0, 0, 0.65);
+  max-height: min(52vh, 480px);
+}
+.stack-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  margin-bottom: 8px;
+}
+.stack-title small { margin-left: auto; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.stack-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--gold);
+  color: #1b1405;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-align: center;
+}
+.stack-item {
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px;
+  border-radius: 8px;
+  opacity: 0.8;
+  border: 1px solid transparent;
+}
+.stack-item + .stack-item { margin-top: 4px; }
+.stack-item.top {
+  opacity: 1;
+  background: rgba(242, 201, 76, 0.14);
+  border-color: rgba(242, 201, 76, 0.55);
+  animation: stack-arrive 0.5s ease-out;
+}
+@keyframes stack-arrive {
+  from { transform: translateX(26px); opacity: 0; box-shadow: 0 0 0 0 rgba(242, 201, 76, 0.9); }
+  60% { box-shadow: 0 0 0 8px rgba(242, 201, 76, 0); }
+  to { transform: none; opacity: 1; }
+}
+.stack-order {
+  flex: none;
+  width: 34px;
+  padding: 3px 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.stack-item.top .stack-order { background: var(--gold); color: #1b1405; }
+.stack-thumb { width: 52px; }
+.stack-name { font-size: 15px; }
+.stack-meta { font-size: 13px; margin-top: 1px; }
+.stack-who { color: #ffb4a8; font-weight: 600; }
+.stack-who.yours { color: #9fe0b0; }
+.stack-targets { color: #ffbc75; }
+.stack-text { margin-top: 4px; font-size: 12.5px; line-height: 1.4; color: #d7dde8; }
+
+/* What just happened and to whom: larger and brighter. */
+.game .target-notice {
+  margin: 2px 12px;
+  padding: 7px 14px;
+  font-size: 15px;
+  background: rgba(22, 37, 46, 0.92);
+  border: 1px solid rgba(136, 213, 255, 0.45);
+  border-radius: 10px;
+}
+
+/* Larger type where you read the most. */
+.game .prompt { min-height: 58px; padding: 10px 14px; }
+.game .prompt-text { font-size: 16px; line-height: 1.4; }
+.game .prompt-buttons button { font-size: 15px; padding: 8px 14px; }
+.game .phases { font-size: 13.5px; }
+.game .phase { padding: 4px 10px; }
+.game .card-note { font-size: 12px; padding: 2px 5px; }

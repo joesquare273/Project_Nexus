@@ -1,13 +1,43 @@
 import { rulesSummary } from '@nexus/bots/narrate';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { GameView, InstanceId } from '@nexus/engine';
 import { defOf, isCreature, rulesText, scryfallOf, typeLine } from '../game/cards.ts';
 import type { LogEntry } from '../game/session.ts';
 import { CardFace, ManaCost } from './Card.tsx';
 
 /** A large view of the hovered card, with its rules text. */
-export function Inspector({ view, id }: { view: GameView; id: InstanceId | null }) {
+/** The last place the pointer was, so the viewer can open beside the card under it. */
+const pointer = { x: -1, y: -1 };
+if (typeof window !== 'undefined') window.addEventListener('pointermove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; }, { passive: true });
+
+/**
+ * Where the viewer goes: beside the hovered card (above a card in your hand), kept on screen.
+ * With no card under the pointer (a card shown by the game, not by hovering), the right edge.
+ */
+function viewerPlace(id: InstanceId, box: { width: number; height: number }): CSSProperties | null {
+  if (typeof document === 'undefined' || pointer.x < 0) return null;
+  const under = document.elementFromPoint(pointer.x, pointer.y)?.closest(`[data-card="${CSS.escape(id)}"]`);
+  if (!under) return null;
+  const r = under.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight, gap = 12;
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  // Low on the screen (your hand): straight above the card.
+  if (r.top > vh * 0.62) {
+    return { left: clamp(r.left + r.width / 2 - box.width / 2, 8, vw - box.width - 8), top: clamp(r.top - gap - box.height, 8, vh - box.height - 8), right: 'auto' };
+  }
+  const right = r.right + gap + box.width <= vw - 8;
+  const left = right ? r.right + gap : Math.max(8, r.left - gap - box.width);
+  return { left, top: clamp(r.top + r.height / 2 - box.height / 2, 8, vh - box.height - 8), right: 'auto' };
+}
+
+export function Inspector({ view, id, hovering = false }: { view: GameView; id: InstanceId | null; hovering?: boolean }) {
   const c = id ? view.cards[id] : undefined;
+  const ref = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<CSSProperties | null>(null);
+  useLayoutEffect(() => {
+    if (!id || !hovering || !ref.current) return setPlace(null);
+    setPlace(viewerPlace(id, { width: ref.current.offsetWidth, height: ref.current.offsetHeight }));
+  }, [id, hovering]);
   // A pop-out on the right edge, only while a card is hovered (or triggering).
   if (!c) return null;
   const def = view.stats[c.id]?.definition ?? defOf(c.defId);
@@ -24,7 +54,7 @@ export function Inspector({ view, id }: { view: GameView; id: InstanceId | null 
     stats?.goadedBy?.length && 'Goaded by ' + stats.goadedBy.join(', '),
   ].filter(Boolean);
   return (
-    <div key={id} className="inspector" aria-live="polite">
+    <div key={id} ref={ref} className={`inspector ${place ? 'beside' : ''}`} style={place ?? undefined} aria-live="polite">
       <div className="inspector-card">
         <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="large" backFace={!!c.transformed && !c.copy} {...(c.finish && !c.copy ? { finish: c.finish } : {})} />
       </div>

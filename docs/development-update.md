@@ -18,6 +18,27 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Easier to follow: a friend's first impressions (2026-11-12)
+
+- **Targets are confirmed.** Picking the last target no longer goes
+  through at once: the picks are outlined and the prompt offers Confirm,
+  Change target and Cancel. A spell that costs mana then goes on to the
+  mana step, whose title names the target ("Chaos Warp → Terra").
+- **The card viewer opens beside the card you point at** (above a card in
+  your hand), not at the right edge. A card the game shows on its own (a
+  trigger) still uses the right edge.
+- **The stack is a clear panel**: gold-bordered, numbered from the top
+  ("Next", 2, 3), with a count, who controls each item, its targets, and
+  for abilities what they do.
+- **The game log is a drawer** opened with the "Game log" button in the
+  phase bar, in every layout; it isn't a permanent column any more.
+- **The computer plays slower** at the normal pace (about 40% longer
+  pauses after spells, abilities, combat and new permanents); Settings
+  still has slow and fast.
+- **Larger type** in the prompt bar and its buttons, the phase bar, the
+  log, the card viewer's rules text and the notes under cards; the
+  "who targeted what" line is larger and brighter.
+
 ### Planeswalkers, and Tezzeret, Cruel Captain
 
 The engine has planeswalkers: the card type, starting loyalty, loyalty

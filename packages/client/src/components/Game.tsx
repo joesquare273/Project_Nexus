@@ -25,13 +25,14 @@ import {
   type GameState,
   type GameView,
   type InstanceId,
+  abilitySpec,
   type ManaType,
   type PlayerId,
   type Step,
   type Target,
 } from '@nexus/engine';
 import { planTaps, tapActions } from '@nexus/bots';
-import { cardName, modeText, stepName, targetDescription, triggerText } from '@nexus/bots/narrate';
+import { activatedText, cardName, modeText, stepName, targetDescription, triggerText } from '@nexus/bots/narrate';
 import { defOf, scryfallOf } from '../game/cards.ts';
 import { YOU, applyAll, type CardPlay, type GameSession, type PlayChoice } from '../game/session.ts';
 import { tokenStackKey } from '../game/tokenStacks.ts';
@@ -312,9 +313,15 @@ export function Game({
   }, [yourMove, pending, legal, s]);
   const activeTargeting = targeting ?? triggerTargeting;
   const [triggerChosen, setTriggerChosen] = useState<Target[]>([]);
+  // Targets are picked, then confirmed: a misclick doesn't go through (which of `choices` the picks make up).
+  const [confirmingTargets, setConfirmingTargets] = useState<number | null>(null);
   useEffect(() => {
     setTriggerChosen([]);
+    setConfirmingTargets(null);
   }, [decisionKey]);
+  useEffect(() => {
+    if (!targeting) setConfirmingTargets(null);
+  }, [targeting]);
   const chosen = targeting ? targeting.chosen : triggerChosen;
 
   const remaining = activeTargeting
@@ -331,20 +338,29 @@ export function Game({
     .map((t) => t.card);
 
   const pickTarget = (t: Target) => {
-    if (!activeTargeting) return;
+    if (!activeTargeting || confirmingTargets !== null) return;
     const next = [...chosen, t];
     const done = remaining.find(({ ts }) => ts.length === next.length && ts.every((x, j) => sameTarget(x, next[j]!)));
-    if (done) {
-      setTargeting(null);
-      const actions = activeTargeting.choices[done.i]!;
-      const action = actions.at(-1)!;
-      // A spell or ability you're playing still needs paying for; a trigger's targets are just submitted.
-      if (targeting && 'card' in action) pay({ taps: actions.slice(0, -1), action, targets: next }, cardName(s, action.card));
-      else submit(actions);
-      return;
-    }
     if (targeting) setTargeting({ ...targeting, chosen: next });
     else setTriggerChosen(next);
+    // Every target is picked: show them and wait for Confirm.
+    if (done) setConfirmingTargets(done.i);
+  };
+  const confirmTargets = () => {
+    if (!activeTargeting || confirmingTargets === null) return;
+    const actions = activeTargeting.choices[confirmingTargets]!;
+    const action = actions.at(-1)!;
+    const picked = chosen;
+    setConfirmingTargets(null);
+    setTargeting(null);
+    // A spell or ability you're playing still needs paying for; a trigger's targets are just submitted.
+    if (targeting && 'card' in action) pay({ taps: actions.slice(0, -1), action, targets: picked }, `${cardName(s, action.card)}${picked.some((x) => x.kind !== 'none') ? ` → ${picked.filter((x) => x.kind !== 'none').map((x) => targetLabel(view, x)).join(', ')}` : ''}`);
+    else submit(actions);
+  };
+  const changeTargets = () => {
+    setConfirmingTargets(null);
+    if (targeting) setTargeting({ ...targeting, chosen: [] });
+    else setTriggerChosen([]);
   };
 
   /**
@@ -587,6 +603,7 @@ export function Game({
       if (paying && markedIds.has(id)) marks.push('selected');
       else if (paying && !menu && manaIds.has(id)) marks.push('mana');
       if (nextOptions.some((t) => t.kind === 'card' && t.card === id) || legendChoices.includes(id)) marks.push('target');
+      if (activeTargeting && chosen.some((t) => t.kind === 'card' && t.card === id)) marks.push('selected');
       if (canAttackIds.has(id)) marks.push(attackers.has(id) ? 'attacking' : 'can-attack');
       if (pending.kind === 'declareAttackers' && yourMove && id === targetPw) marks.push('defender');
       if (view.combat?.attacks.some((a) => a.attacker === id)) marks.push('attacking');
@@ -603,6 +620,7 @@ export function Game({
       const marks: Mark[] = [];
       if (notice?.targets.some(t => t.kind === 'player' && t.player === pid)) marks.push('effect-target');
       if (nextOptions.some((t) => t.kind === 'player' && t.player === pid)) marks.push('target');
+      if (activeTargeting && chosen.some((t) => t.kind === 'player' && t.player === pid)) marks.push('effect-target');
       if (pending.kind === 'declareAttackers' && yourMove && pid === currentDefender && livingOpponents.length > 1) {
         marks.push('defender');
       }
@@ -772,7 +790,7 @@ export function Game({
       view={view}
       top={session.opponents.slice(0, 2)}
       bottom={[YOU, ...session.opponents.slice(2)]}
-      stack={<StackView view={view} onHover={setHovered} h={h} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />}
+      stack={<StackView view={view} onHover={setHovered} h={h} describe={(item) => { try { const spec = abilitySpec(s, item as never); return 'when' in spec ? triggerText(spec) : activatedText(spec); } catch { return ''; } }} abilityTargets={nextOptions.flatMap(t => t.kind === 'ability' ? [t.ability] : [])} onAbility={ability => { const t = nextOptions.find(t => t.kind === 'ability' && t.ability === ability); if (t) pickTarget(t); }} />}
     />
   );
 
@@ -808,7 +826,7 @@ export function Game({
           >
             {paused ? '▶ Resume' : '❚❚ Pause'}
           </button>
-          {fourPlayers && <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide game log' : 'Show game log'}</button>}
+          <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide log' : 'Game log'}</button>
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
           {!fourPlayers && hub}
         </div>
@@ -837,6 +855,9 @@ export function Game({
           onConfirmPayment={confirmPayment}
           onClearPayment={() => paying && setPaying({ ...paying, taps: [] })}
           onPay={(title, action, cost) => startPaying({ title, action, cost, taps: [] })}
+          confirmingTargets={confirmingTargets !== null}
+          onConfirmTargets={confirmTargets}
+          onChangeTargets={changeTargets}
           canSkipTarget={nextOptions.some((t) => t.kind === 'none')}
           onSkipTarget={() => pickTarget({ kind: 'none' })}
           onCancel={() => {
@@ -879,10 +900,16 @@ export function Game({
         {coach}
       </main>
       <CardFlights moves={session.moves} />
-      <Inspector view={view} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
-      <aside className="sidebar">
-        <GameLog entries={session.log} />
-      </aside>
+      <Inspector view={view} hovering={!!hovered} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
+      {logOpen && (
+        <aside className="sidebar" aria-label="Game log">
+          <div className="sidebar-head">
+            <strong>Game log</strong>
+            <button onClick={() => setLogOpen(false)} aria-label="Close the game log">✕</button>
+          </div>
+          <GameLog entries={session.log} />
+        </aside>
+      )}
       {/* "Look at the top seven cards of your library": the cards on offer. */}
       {choosing?.purpose === 'fateBottom' && (
         <CardList view={view} title="Coin of Fate: choose the card for the bottom of its owner's library" ids={choosing.cards} h={h}
@@ -1117,12 +1144,12 @@ function PhaseTrack({ view, session, onChange }: { view: GameView; session: Game
   );
 }
 
-function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: GameView; onHover: (id: InstanceId | null) => void; h: ZoneHandlers; abilityTargets: string[]; onAbility: (id: string) => void }) {
+function StackView({ view, onHover, h, abilityTargets, onAbility, describe }: { view: GameView; onHover: (id: InstanceId | null) => void; h: ZoneHandlers; abilityTargets: string[]; onAbility: (id: string) => void; describe: (item: GameView['stack'][number]) => string }) {
   const items = [...(view.resolving ? [view.resolving] : []), ...[...view.stack].reverse()];
   if (items.length === 0) return null;
   return (
     <div className="stack">
-      <div className="stack-title">Stack</div>
+      <div className="stack-title">Stack <span className="stack-count">{items.length}</span><small>top resolves first</small></div>
       {items.map((item, i) => {
         const cardId = item.kind === 'spell' ? item.card : item.source;
         const c = view.cards[cardId];
@@ -1139,6 +1166,7 @@ function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: Game
             tabIndex={item.kind === 'ability' && abilityTargets.includes(item.id) ? 0 : undefined}
             onKeyDown={e => { if (item.kind === 'ability' && abilityTargets.includes(item.id) && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAbility(item.id); } }}
           >
+            <div className="stack-order">{i === 0 ? (item === view.resolving ? 'Now' : 'Next') : i + 1}</div>
             {c && (
               <div className="stack-thumb">
                 <CardFace printing={c.printing} defId={c.defId} size="small" />
@@ -1152,9 +1180,10 @@ function StackView({ view, onHover, h, abilityTargets, onAbility }: { view: Game
                 {item === view.resolving && <em> (resolving)</em>}
               </div>
               <div className="stack-meta">
-                {item.controller === YOU ? 'Yours' : item.controller}
-                {item.targets.length > 0 && ` → ${item.targets.map((t) => targetLabel(view, t)).join(', ')}`}
+                <span className={item.controller === YOU ? 'stack-who yours' : 'stack-who'}>{item.controller === YOU ? 'Yours' : item.controller}</span>
+                {item.targets.some((t) => t.kind !== 'none') && <span className="stack-targets"> → {item.targets.filter((t) => t.kind !== 'none').map((t) => targetLabel(view, t)).join(', ')}</span>}
               </div>
+              {item.kind === 'ability' && describe(item) && <div className="stack-text">{describe(item)}</div>}
               {item.kind === 'spell' && c && (item.modes || item.mode !== undefined) && <div className="stack-modes">
                 {(item.modes ?? [item.mode!]).map(mode => <div key={mode}>• {modeLabels(c.defId, defOf(c.defId).modes)[mode]}</div>)}
               </div>}
@@ -1193,6 +1222,9 @@ interface PromptProps {
   /** Start paying for something that costs mana outside casting (a "pay {1}" choice, an attack tax). */
   onPay: (title: string, action: Action, cost: string) => void;
   canSkipTarget: boolean;
+  confirmingTargets: boolean;
+  onConfirmTargets: () => void;
+  onChangeTargets: () => void;
   onSkipTarget: () => void;
   chosen: Target[];
   onCancel: () => void;
@@ -1249,6 +1281,14 @@ function PromptBar(p: PromptProps) {
       { label: 'Cancel', onClick: p.onCancel },
       ...(p.paying.taps.length ? [{ label: 'Clear', onClick: p.onClearPayment }] : []),
       { label: 'Confirm', onClick: p.onConfirmPayment, primary: true, disabled: !p.canConfirm },
+    ];
+  } else if (p.targeting && p.confirmingTargets) {
+    const names = p.chosen.map((t) => targetLabel(p.view, t));
+    text = `${p.targeting.title.replace(/: choose a target$/, '').replace(/\.$/, '')} → ${names.join(', ')}. Confirm, or change your target${names.length > 1 ? 's' : ''}.`;
+    buttons = [
+      ...(pending.kind === 'priority' ? [{ label: 'Cancel', onClick: p.onCancel }] : []),
+      { label: names.length > 1 ? 'Change targets' : 'Change target', onClick: p.onChangeTargets },
+      { label: 'Confirm', onClick: p.onConfirmTargets, primary: true },
     ];
   } else if (p.targeting) {
     const slots = p.targeting.slots ?? [];
