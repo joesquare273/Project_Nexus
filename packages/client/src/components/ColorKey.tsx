@@ -8,11 +8,11 @@ const SEEN = 'nexus.colorKeySeen';
 export const COLOR_KEY: { swatch: string; kind: 'ring' | 'badge' | 'fill'; label: string; detail: string }[] = [
   { swatch: 'var(--playable)', kind: 'ring', label: 'Green', detail: 'You can play or use it now: cards in hand, abilities, lands to tap for mana.' },
   { swatch: 'var(--target)', kind: 'ring', label: 'Gold', detail: 'Choose it: a legal target or choice. Picked ones get a white outline, then Confirm.' },
-  { swatch: '#ffab52', kind: 'ring', label: 'Orange', detail: 'The target of what just happened (also in the line beside the phase bar).' },
+  { swatch: '#ffab52', kind: 'ring', label: 'Orange', detail: 'The target of what just happened. An orange arrow runs from the spell, ability or attacker to it (violet for a trigger).' },
   { swatch: '#4aa8f0', kind: 'badge', label: 'Blue number', detail: 'An activated ability on the stack, under the card it came from. 1 resolves first.' },
   { swatch: '#a774ff', kind: 'badge', label: 'Violet number', detail: 'A triggered ability on the stack, under the card that triggered.' },
   { swatch: 'var(--gold)', kind: 'badge', label: 'Gold number', detail: 'A spell on the stack (in the stack panel).' },
-  { swatch: 'var(--attack)', kind: 'ring', label: 'Red', detail: 'Attacking (or able to attack while you declare attackers). Red numbers on creatures are damage.' },
+  { swatch: 'var(--attack)', kind: 'ring', label: 'Red', detail: 'Attacking (or able to attack while you declare attackers). Red numbers are damage: they pop up where it lands, and stay on creatures until cleanup.' },
   { swatch: 'var(--block)', kind: 'ring', label: 'Teal', detail: 'Blocking (or able to block while you declare blockers).' },
   { swatch: '#2e8f7e', kind: 'fill', label: 'Dark teal badge', detail: 'One player controls another player\'s turn (The Dominion Bracelet).' },
 ];

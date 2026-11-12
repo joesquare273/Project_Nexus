@@ -18,6 +18,13 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Effects shown where they happen (2026-11-12)
+
+From the friend's playtest notes (effects should be more apparent, and it shouldn't feel like guessing where they come from):
+- A line with an arrow runs from each new spell, ability, attacker or blocker to its targets for about 2.5 seconds. It is orange, or violet for a trigger. Spells start from their card in the stack panel.
+- Damage, life gained or lost, and counters pop up as large numbers on the card or player they hit. Damage to the same target in one batch shows as one total (two attackers for 2 and 4 show -6). The card or player that took damage shakes and glows red.
+- The session collects `impacts` from DamageDealt, LifeChanged and CountersAdded events. These are public events, so online games show them too. `components/Impacts.tsx` draws the effects. Player headers carry `data-player`. Reduced-motion settings turn the arrows off.
+
 ### Commander Reinforcements Secret Lair: the last 10 cards (2026-11-12)
 
 Every card in the game is now built (no `notBuilt` cards left in any set).

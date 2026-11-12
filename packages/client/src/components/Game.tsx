@@ -41,6 +41,7 @@ import { CardFace, ManaText } from './Card.tsx';
 import { ColorKey, useColorKey } from './ColorKey.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
+import { Impacts } from './Impacts.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
 import { currentTip } from '../tutorial/tips.ts';
 import { GameLog, Inspector } from './Sidebar.tsx';
@@ -927,6 +928,7 @@ export function Game({
         {coach}
       </main>
       <CardFlights moves={session.moves} />
+      <Impacts impacts={session.impacts} notices={session.targetHistory} />
       <Inspector view={view} hovering={!!hovered} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
       {keyOpen && <ColorKey onClose={() => setKeyOpen(false)} />}
       {logOpen && (

@@ -121,6 +121,8 @@ export class GameSession {
   readonly casts: { key: number; card: InstanceId; defId: string; printing?: CardDefinition['printing']; player: PlayerId }[] = [];
   /** Cards that changed zones, in order, for the board to animate (only what you may see). */
   readonly moves: CardMove[] = [];
+  /** Damage, life changes and counters, in order, for the board to show where they land (`key` is unique). */
+  readonly impacts: Impact[] = [];
   private nextMoveKey = 1;
   private nextTriggerKey = 1;
   /** Cards the last bot action touched, for highlighting. */
@@ -351,6 +353,7 @@ export class GameSession {
     const tapped: Record<PlayerId, string> = {};
     for (const e of events) if (e.type === 'ManaAdded') tapped[e.player] = (tapped[e.player] ?? '') + `{${e.mana}}`;
     for (const [pid, mana] of Object.entries(tapped)) this.manaTapped[pid] = { key: this.nextTriggerKey++, mana };
+    this.recordImpacts(events);
     for (const e of events) {
       if (e.type === 'AbilityTriggered') this.triggered.push({ key: this.nextTriggerKey++, card: e.card });
       if (e.type === 'SpellCast') {
@@ -382,6 +385,26 @@ export class GameSession {
     }
     flush();
     if (this.log.length > 400) this.log.splice(0, this.log.length - 400);
+  }
+
+  /** Damage, life gained or lost, and counters put on, for the board to show at the card or player. */
+  private recordImpacts(events: GameEvent[]): void {
+    const add = (i: Omit<Impact, 'key'>) => this.impacts.push({ key: this.nextTriggerKey++, ...i });
+    // Damage to a player already shows as damage, so its life loss isn't shown twice.
+    const damaged = new Set<PlayerId>();
+    for (const e of events) {
+      if (e.type === 'DamageDealt' && e.amount > 0 && e.target.kind !== 'none' && e.target.kind !== 'ability') {
+        if (e.target.kind === 'player') damaged.add(e.target.player);
+        add({ kind: 'damage', ...(e.target.kind === 'card' ? { card: e.target.card } : { player: e.target.player }), text: `-${e.amount}` });
+      } else if (e.type === 'LifeChanged' && e.to !== e.from) {
+        if (e.to > e.from) add({ kind: 'gain', player: e.player, text: `+${e.to - e.from}` });
+        else if (!damaged.has(e.player)) add({ kind: 'loss', player: e.player, text: `-${e.from - e.to}` });
+      } else if (e.type === 'CountersAdded' && e.amount > 0) {
+        const kind = e.counter ?? '+1/+1';
+        add({ kind: 'counter', card: e.card, text: kind === '+1/+1' ? `+${e.amount}/+${e.amount}` : kind === '-1/-1' ? `-${e.amount}/-${e.amount}` : `+${e.amount} ${kind}` });
+      }
+    }
+    if (this.impacts.length > 200) this.impacts.splice(0, this.impacts.length - 200);
   }
 
   /** A zone change for the board to animate. Tokens appearing and leaving the game aren't flights. */
@@ -421,6 +444,15 @@ export class GameSession {
     const clean = text.replace(/^\n/, '').replace(/=====/g, '').trim();
     this.log.push({ id: this.nextLogId++, text: clean, heading });
   }
+}
+
+/** Something that happened to a card or a player, shown where it landed: damage, life gained or lost, counters. */
+export interface Impact {
+  key: number;
+  kind: 'damage' | 'gain' | 'loss' | 'counter';
+  card?: InstanceId;
+  player?: PlayerId;
+  text: string;
 }
 
 export function applyAll(s: GameState, actions: Action[]): { state: GameState; events: GameEvent[] } | { error: string } {

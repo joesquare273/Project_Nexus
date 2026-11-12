@@ -412,7 +412,7 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   const marks = h.markPlayer(pid);
   const active = view.activePlayer === pid;
   return (
-    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
+    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} data-player={pid} onClick={() => h.onPlayer(pid)}>
       <PlayerAvatar pid={pid} />
       <div className="who">
         <div className="name">
