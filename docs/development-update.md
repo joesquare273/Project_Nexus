@@ -25,6 +25,7 @@ says.
   - **Lora** for rules and body text, buttons and prompts. Flavor text uses its italic.
   - **Oswald** for numbers: mana symbol digits, power and toughness, counters and badges, life totals, stack numbers, pile counts, reward amounts and the deckbuilder's counts.
 - The three roles are CSS variables (`--font-display`, `--font-body`, `--font-numbers` in styles.css); the old Georgia headers use `--font-display`.
+- Card names use **Grenze** (600), a condensed medieval serif. Measured on the game's 1,155 card names at the same size, 63% fit a small card's name bar against 17% for Cinzel (Marcellus 37%, Cormorant Garamond 53%, EB Garamond 50%). A long name also shrinks to fit its bar, down to 62% of the size (`FittedName` in Card.tsx), and is cut off with an ellipsis only below that. On a two-player board at 1440x900, 4 of 23 names are cut off, against 7 with Cinzel. This applies to the drawn card frames, which show when Scryfall's images can't load; the real card images carry their own printed names.
 - Player names use bold Lora, because Cinzel's "1" reads as an "I" ("Bot1" looked like "BOTI"). Card names have no extra letter spacing, so more of each name fits.
 - Checked at 1280x720 to 1920x1080 and on a phone: nothing on the board is covered.
 

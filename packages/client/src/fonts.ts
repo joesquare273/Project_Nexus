@@ -1,9 +1,10 @@
 // The game's three typefaces (all SIL Open Font License, bundled with the app
 // so nothing loads from another site; docs/frontend-roadmap.md):
-// Cinzel for titles and headers, Lora for rules and body text (its italic for
+// Cinzel for titles and headers, Grenze (condensed) for card names so they fit, Lora for rules and body text (its italic for
 // flavor text), Oswald for numbers, stats and badges.
 import '@fontsource/cinzel/600.css';
 import '@fontsource/cinzel/700.css';
+import '@fontsource/grenze/600.css';
 import '@fontsource/lora/400.css';
 import '@fontsource/lora/400-italic.css';
 import '@fontsource/lora/500.css';

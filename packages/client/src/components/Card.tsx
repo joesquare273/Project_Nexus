@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CardDefinition, CardFinish } from '@nexus/engine';
 import { costSymbols, defOf, frameClass, isCreature, meldedPrinting, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
 
@@ -31,13 +31,46 @@ export function ManaText({ text, size = 15 }: { text: string; size?: number }) {
   );
 }
 
+/** Smallest share of the title size a long name may shrink to, to stay readable. */
+const MIN_NAME_SCALE = 0.62;
+
+/**
+ * A card name that shrinks just enough to fit its bar (long names on small
+ * cards), refitting when the card changes size; below the minimum it's cut
+ * off with an ellipsis as before.
+ */
+function FittedName({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [scale, setScale] = useState(1);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.fontSize = '';
+      const room = el.clientWidth, need = el.scrollWidth;
+      const next = need > room + 1 && room > 0 ? Math.max(MIN_NAME_SCALE, Math.floor((room / need) * 100) / 100) : 1;
+      el.style.fontSize = next < 1 ? `${next}em` : '';
+      setScale(next);
+    };
+    fit();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
+    observer?.observe(el.parentElement ?? el);
+    return () => observer?.disconnect();
+  }, [name]);
+  return (
+    <span ref={ref} className="drawn-name" style={scale < 1 ? { fontSize: `${scale}em` } : undefined}>
+      {name}
+    </span>
+  );
+}
+
 /** A drawn card frame, for when Scryfall's image can't load (offline, or a card not fetched yet). */
 function DrawnCard({ def }: { def: CardDefinition }) {
   const text = rulesText(def);
   return (
     <div className={`drawn ${frameClass(def)}`}>
       <div className="drawn-title">
-        <span className="drawn-name">{def.name}</span>
+        <FittedName name={def.name} />
         <ManaCost cost={def.manaCost} size={11} />
       </div>
       <div className="drawn-art">

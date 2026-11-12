@@ -4292,3 +4292,8 @@ h1, h2, h3, .brand, .page-title h1, .stack-title, .reward-card h3, .home-quests 
 .name, .hub-name { font-family: var(--font-body); font-weight: 700; letter-spacing: 0; }
 /* Card names are small: no extra letter spacing, so more of the name fits. */
 .drawn-name, .drawn-title { letter-spacing: 0; }
+/* Card names: Grenze, a condensed medieval serif. Most names fit their bar (Cinzel cut off most of them). */
+:root { --font-card-name: 'Grenze', 'Cinzel', Georgia, serif; }
+.drawn-name, .drawn-title, .stack-name, .cast-show-name { font-family: var(--font-card-name); font-weight: 600; letter-spacing: 0.005em; }
+/* Grenze is a little smaller for its size: a touch larger, still narrower than before. */
+.drawn-title { font-size: 9.3cqw; }
