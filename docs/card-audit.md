@@ -1,4 +1,33 @@
-# Card audit (2026-11-04)
+# Card audit (2026-11-04; rerun 2026-11-12)
+
+## 2026-11-12: every set, statically and by playing each card
+
+All 1,108 built cards (the Final Fantasy set and precons, the Starter Kits,
+Secret Lair and Store cards, both Edge of Eternities precons and the Edge of
+Eternities main set) were checked two ways:
+
+- **Against Oracle text** (this script; the flags below). The flags new since
+  the first audit were read by hand. One real problem: **Tear Asunder had no
+  kicker**, so it could never exile a nonland permanent; fixed. The rest are
+  false positives of the kinds listed further down (targets chosen as an
+  ability resolves, targets inside modes or granted abilities, several
+  abilities on one card).
+- **By playing them** (`packages/bots/test/card-sweep.test.ts`, part of
+  `npm run check`): each card is cast from hand, and each activated ability
+  used from the zone it works in, on a crowded board (creatures, artifacts,
+  Equipment, Spacecraft, Treasures, varied libraries, graveyards and hands),
+  answering every target and choice. It fails on engine errors, stalls,
+  rejected legal actions, choices that can't be answered, and broken
+  invariants (a player must see the cards they choose among, the Satyr
+  Wayfinder bug). Nothing failed. What it notes but allows: abilities that
+  need a situation the board doesn't set up (ninjutsu, combat, boast, an
+  ability on the stack to copy, a Skeleton to exile), "up to" targets with
+  nothing to pick, and looking at cards none of which match.
+
+The sweep plays one path per card (the first legal way to cast it, choosing
+as much as allowed), so it finds what breaks, not every rules detail; the
+per-card tests cover those.
+
 
 Every built card (704 of them: the Final Fantasy set, Starter Kits, Commander
 precons, Secret Lair and Store cards) was checked against its Oracle text by

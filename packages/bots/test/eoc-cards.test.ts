@@ -1978,3 +1978,18 @@ describe('E17: extra combats, dredge, encore and sacrifice-fuelled exile', () =>
     expect(applyAction(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: p2copy, defender: 'P2' }, { attacker: p3copy, defender: 'P3' }] }).ok).toBe(true);
   });
 });
+
+describe('Tear Asunder', () => {
+  it('exiles an artifact or enchantment; kicked, any nonland permanent', () => {
+    let s = newGame();
+    const tear = put(s, 'P1', 'tear-asunder', 'hand');
+    const bear = put(s, 'P2', 'meltstrider-eulogist');
+    const ring = put(s, 'P2', 'sol-ring');
+    mana(s, 'P1', { G: 2, B: 2, C: 4 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tear, targets: [{ kind: 'card', card: bear }] })).toBeTruthy();
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: tear, targets: [{ kind: 'card', card: ring }] }).state;
+    expect(t.cards[ring]!.zone).toBe('exile');
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: tear, kicks: 1, targets: [{ kind: 'card', card: bear }] }).state;
+    expect(t.cards[bear]!.zone).toBe('exile');
+  });
+});
