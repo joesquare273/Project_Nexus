@@ -97,7 +97,7 @@ describe('dismantling', () => {
     expect((await call('/api/dismantle', 'POST', { requestId, card: card.id, finish: 'nonfoil' })).status).toBe(200);
     const base = `http://127.0.0.1:${server!.port}`;
     const asBob = (path: string, method = 'GET', body?: unknown) => fetch(base + path, { method, headers: { Authorization: 'Bearer token-bob' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-    expect((await (await asBob('/api/fragments')).json()).fragments.rare).toBe(0);
+    expect(((await (await asBob('/api/fragments')).json()) as { fragments: { rare: number } }).fragments.rare).toBe(0);
     expect((await asBob('/api/dismantle', 'POST', { requestId, card: card.id, finish: 'nonfoil' })).status).toBe(200);
     expect((await accounts.fragments('alice')).rare).toBe(ECONOMY.crafting.dismantle.rare);
     expect((await accounts.fragments('bob')).rare).toBe(ECONOMY.crafting.dismantle.rare);
