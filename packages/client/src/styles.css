@@ -4247,3 +4247,20 @@ button.link {
 .reward-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
 .reward-buttons .primary.big { min-width: 180px; }
 .show-results { position: fixed; right: 20px; bottom: 20px; z-index: 150; }
+/* The Victory / Defeat banner art (public/results), across the top of the card. */
+.reward-card:has(.reward-banner) { padding-top: 0; overflow-x: hidden; }
+.reward-banner {
+  display: block;
+  width: calc(100% + 56px);
+  margin: 0 -28px 4px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 18px 18px 0 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  animation: reward-banner 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes reward-banner { from { opacity: 0; scale: 1.12; filter: brightness(1.8); } }
+.reward-card.win:has(.reward-banner) { box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 60px rgba(231, 201, 109, 0.3); }
+.reward-card.loss:has(.reward-banner) { border-color: rgba(220, 60, 60, 0.4); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 50px rgba(200, 40, 40, 0.25); }
+.reward-card:has(.reward-banner) .reward-sub { margin-top: -6px; }

@@ -27,6 +27,8 @@ const LINE_MS = 450;
 
 export function RewardScreen({ result, winner, turn, rewards, earnsRewards, continueLabel, onContinue, onViewBoard }: RewardScreenProps) {
   const [waited, setWaited] = useState(false);
+  /** The banner art didn't load: the word instead. */
+  const [bannerFailed, setBannerFailed] = useState(false);
   useEffect(() => {
     const t = window.setTimeout(() => setWaited(true), WAIT_MS);
     return () => window.clearTimeout(t);
@@ -39,7 +41,16 @@ export function RewardScreen({ result, winner, turn, rewards, earnsRewards, cont
   return (
     <div className="reward-screen" role="dialog" aria-modal="true" aria-label="Game results">
       <div className={`reward-card ${result}`}>
-        <div className="reward-result">{result === 'win' ? 'Victory' : result === 'draw' ? 'Draw' : 'Defeat'}</div>
+        {result === 'draw' || bannerFailed ? (
+          <div className="reward-result">{result === 'win' ? 'Victory' : result === 'draw' ? 'Draw' : 'Defeat'}</div>
+        ) : (
+          <img
+            className="reward-banner"
+            src={result === 'win' ? '/results/victory.webp' : '/results/defeat.webp'}
+            alt={result === 'win' ? 'Victory' : 'Defeat'}
+            onError={() => setBannerFailed(true)}
+          />
+        )}
         <p className="reward-sub">
           {result === 'loss' && winner ? `${winner} won` : result === 'win' ? 'You won' : 'Nobody won'} · turn {turn}
         </p>

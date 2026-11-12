@@ -23,6 +23,7 @@ says.
 - At the end of a game, a full reward screen replaces the small game-over box. It shows the result (Victory, Defeat or Draw, and the turn) and each reward line in turn, with the shard icon, the total counting up and your new balance. Quest progress is fetched fresh from the server.
 - The server sends the rewards just after the game ends; the screen waits up to 6 seconds for them ("Adding up your rewards…"). A game that earns nothing says why: a practice game, or a game that ended before every player's second turn, or one you conceded.
 - **Continue** goes to Home. After a draft game it's **Back to the draft**. **View the board** hides the screen to look at the final board, and *Show the results* brings it back. The lesson keeps its own ending.
+- The user's Victory and Defeat art (`client/public/results/victory.webp`, `defeat.webp`) is the banner across the top of the screen, with a short zoom-in. A draw, or art that fails to load, shows the word instead.
 - `components/RewardScreen.tsx`; `GameSession.earnsRewards` (true for server-run tables and draft games, false for local practice and Starter Kit duels) and `draftGame`; `Quests compact`. The board preview has `?over=win|loss|none` to see the screen.
 
 ### Rewards and crafting audit (2026-11-12)
