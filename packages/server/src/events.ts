@@ -304,6 +304,27 @@ export class EventHub {
     return this.change(code, (x) => startDraft(x.ev, seedFromBytes(this.opts.randomBytes(16)), this.opts.now()));
   }
 
+  /**
+   * At startup: give back every draft entry whose event never finished. Events
+   * live in memory, so a restart (a deploy) loses any that were running; the
+   * refund's ref ("draft-<event>-refund") makes it happen once.
+   */
+  async refundLostEntries(): Promise<number> {
+    const accounts = this.opts.accounts;
+    if (!accounts) return 0;
+    let n = 0;
+    for (const { userId, ref } of await accounts.unsettledEntries()) {
+      try {
+        const r = await accounts.applyShards(userId, ECONOMY.eventEntry, 'event_entry', `${ref}-refund`);
+        if (r.applied) n++;
+      } catch (e) {
+        log('draft-entry-refund-failed', { ref, ...errorDetails(e) });
+      }
+    }
+    if (n) log('draft-entries-refunded', { count: n });
+    return n;
+  }
+
   private async refund(h: Hosted, seat: string, userId: string): Promise<void> {
     if (!h.entryPaid.has(seat) || !this.opts.accounts) return;
     try {

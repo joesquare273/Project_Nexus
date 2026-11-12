@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { finishLook, type BoosterCard } from '@nexus/cards/boosters';
 import type { FragmentRarity, Fragments } from '@nexus/cards/crafting';
-import { accessToken } from '../account/AccountBar.tsx';
+import { accessToken, useSession } from '../account/AccountBar.tsx';
 import { CardShine } from '../components/Card.tsx';
 import { fetchCollection, fetchDecks, type Collection, type SavedDeck } from '../packs/collection.ts';
 import { RARITY_NAMES, ownershipMatches, type Ownership, copiesOfCard, craftCard, craftStatus, deckWarnings, dismantleList, fetchFragments, listReward, listRoom, rewardFor, type CraftingRules, type ListEntry } from './craft.ts';
@@ -67,8 +67,15 @@ export function CraftTab() {
   /** Narrow screens: whether the list drawer is open. */
   const [listOpen, setListOpen] = useState(false);
 
+  // Fragments, cards and decks belong to the signed-in account: load them again if it changes.
+  const userId = useSession().session?.user.id;
   useEffect(() => {
     import('@nexus/cards/crafting').then(setMod, () => setProblem("The card data couldn't be loaded."));
+    setState(null);
+    setCollection(null);
+    setList([]);
+    setListRequest(null);
+    if (!userId) return;
     accessToken()
       .then(async (token) => {
         if (!token) throw new Error('Sign in first.');
@@ -78,7 +85,7 @@ export function CraftTab() {
         setState(frag);
       })
       .catch((e: Error) => setProblem(e.message === 'Failed to fetch' ? 'Could not reach the game server.' : e.message));
-  }, []);
+  }, [userId]);
 
   /** Owned copies you could dismantle: one entry per printing and finish. */
   const owned = useMemo(() => {

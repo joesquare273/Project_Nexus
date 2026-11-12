@@ -239,6 +239,8 @@ async function openPackRoute(res: ServerResponse, user: AccountUser, accounts: A
 
 export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
   const lobby = new Lobby({ ...opts, accounts: opts.accounts ?? null });
+  // Draft events a restart lost (they live in memory): their entries go back to the players.
+  void lobby.events.refundLostEntries().catch((e) => log('draft-entry-refund-failed', errorDetails(e)));
   // Only a real build (with index.html) is served.
   const root = opts.staticDir && existsSync(join(opts.staticDir, 'index.html')) ? resolve(opts.staticDir) : null;
   const http: Server = createServer((req, res) => {

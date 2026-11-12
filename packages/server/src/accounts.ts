@@ -70,6 +70,20 @@ export interface AccountService {
   recordMatch(userId: string, match: MatchResult): Promise<boolean>;
   /** The player's recorded games since a time (only wins with `won`). */
   matchCount(userId: string, since: Date, won?: boolean): Promise<number>;
+  /**
+   * Draft entries never settled: an entry (ref "draft-<event>") with neither a
+   * prize nor a refund for that event. Events live in the server's memory, so
+   * at startup these are events a restart lost.
+   */
+  unsettledEntries(): Promise<{ userId: string; ref: string }[]>;
+}
+
+/** The entries in a list of ledger rows that have no prize or refund for their event. */
+export function unsettled(rows: readonly { userId: string; kind: string; ref: string }[]): { userId: string; ref: string }[] {
+  const has = new Set(rows.map((r) => `${r.userId}|${r.kind}|${r.ref}`));
+  return rows.filter((r) => r.kind === 'event_entry' && r.ref.startsWith('draft-') && !r.ref.endsWith('-refund')
+    && !has.has(`${r.userId}|event_prize|${r.ref}`) && !has.has(`${r.userId}|event_entry|${r.ref}-refund`))
+    .map((r) => ({ userId: r.userId, ref: r.ref }));
 }
 
 /** What the server has already checked and worked out for a dismantle (from the card data and the economy settings). */
@@ -311,6 +325,12 @@ export class SupabaseAccounts implements AccountService {
     return (data ?? []).length > 0;
   }
 
+  async unsettledEntries(): Promise<{ userId: string; ref: string }[]> {
+    const { data, error } = await this.db.from('shard_ledger').select('user_id, kind, ref').in('kind', ['event_entry', 'event_prize']).like('ref', 'draft-%');
+    if (error) throw new Error(`Could not read the draft entries: ${error.message}`);
+    return unsettled((data ?? []).map((r: { user_id: string; kind: string; ref: string }) => ({ userId: r.user_id, kind: r.kind, ref: r.ref })));
+  }
+
   async matchCount(userId: string, since: Date, won?: boolean): Promise<number> {
     let q = this.db.from('match_results').select('ref', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
     if (won) q = q.eq('won', true);
@@ -452,6 +472,13 @@ export class MemoryAccounts implements AccountService {
 
   async fragments(userId: string): Promise<Fragments> {
     return { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+  }
+
+  async unsettledEntries(): Promise<{ userId: string; ref: string }[]> {
+    return unsettled([...this.ledger.keys()].map((k) => {
+      const [userId, kind, ...ref] = k.split('|');
+      return { userId: userId!, kind: kind!, ref: ref.join('|') };
+    }));
   }
 
   async recordMatch(userId: string, match: MatchResult): Promise<boolean> {

@@ -85,6 +85,26 @@ describe('dismantling', () => {
     expect(await accounts.fragments('alice')).toEqual({ common: 0, uncommon: 0, rare: 0, mythic: 0 });
   });
 
+  it("each account has its own fragments: one player's dismantling never touches another's", async () => {
+    const { accounts, call } = await withAccounts();
+    accounts.tokens.set('token-bob', { id: 'bob', name: 'Bob' });
+    await accounts.ensure({ id: 'bob', name: 'Bob' });
+    const card = sample('rare');
+    await give(accounts, card.id, 3);
+    await accounts.grantCards('bob', { kind: 'admin_adjustment', ref: randomUUID(), cost: 0, cards: [{ id: card.id, finish: 'nonfoil', count: 2 }] });
+    // The same request id from two players is two different requests.
+    const requestId = randomUUID();
+    expect((await call('/api/dismantle', 'POST', { requestId, card: card.id, finish: 'nonfoil' })).status).toBe(200);
+    const base = `http://127.0.0.1:${server!.port}`;
+    const asBob = (path: string, method = 'GET', body?: unknown) => fetch(base + path, { method, headers: { Authorization: 'Bearer token-bob' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    expect((await (await asBob('/api/fragments')).json()).fragments.rare).toBe(0);
+    expect((await asBob('/api/dismantle', 'POST', { requestId, card: card.id, finish: 'nonfoil' })).status).toBe(200);
+    expect((await accounts.fragments('alice')).rare).toBe(ECONOMY.crafting.dismantle.rare);
+    expect((await accounts.fragments('bob')).rare).toBe(ECONOMY.crafting.dismantle.rare);
+    expect(await copies(accounts, card.id)).toBe(2);
+    expect((await accounts.collection('bob')).filter((c) => c.id === card.id).reduce((n, c) => n + c.count, 0)).toBe(1);
+  });
+
   it('a repeated request pays once', async () => {
     const { accounts, call } = await withAccounts();
     const card = sample('uncommon');

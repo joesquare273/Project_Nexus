@@ -18,6 +18,13 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Rewards and crafting audit (2026-11-12)
+
+- Checked the live database with read-only queries. No negative balances. Every account's balance equals its ledger, except the owner's test account (set by hand). Fragment balances equal the fragment ledger, per account.
+- Found: draft entries whose event was lost to a server restart (events live in memory; every deploy restarts) kept the entry, with no prize and no refund. The server now refunds them at startup (`EventHub.refundLostEntries`, `AccountService.unsettledEntries`), once each. Test in `events.test.ts`.
+- The Craft tab reloads fragments, cards and decks when the signed-in account changes. A test in `crafting.test.ts` checks that two accounts' fragments stay separate, even with the same request id.
+- No game had been recorded for rewards yet. The reward path has tests (`rewards.test.ts`); only server-run games pay (signed in, a saved deck, the AI opponent, no seed; or online tables and draft games).
+
 ### Sideboarding between draft games (2026-11-12)
 
 - Before, the next game began as soon as the loser chose play or draw, so the winner had no time to sideboard. Now each game of an unfinished match is followed by a sideboarding window of up to three minutes. The match keeps `sideboardEndsAt` and `readyNext`; `readyForNextGame` and `expireSideboarding` are in `draftEvent.ts`; the server runs one timer per event. A timer that fires counts as its deadline, so a lagging clock can't make it reschedule forever.
