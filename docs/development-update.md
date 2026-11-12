@@ -18,6 +18,15 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Credits and legal notice (2026-11-12)
+
+- Every page ends with the notice that Wizards of the Coast's Fan Content Policy suggests ("Project Nexus is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. ..."), plus a line that nothing is sold for real money. The signed-out pages show it too.
+- The footer's *Credits and legal* link opens a credits page (`#/credits`, `components/Credits.tsx`; inline on the signed-out pages). It covers:
+  - Magic: The Gathering (Wizards of the Coast and Hasbro), FINAL FANTASY (Square Enix) and the card artists, with each menu-art crop listed by card and artist (from `ui-art.json`).
+  - Scryfall (not endorsed by it), the fonts (SIL Open Font License) and the Victory and Defeat art.
+  - That Aether Shards can't be bought and have no cash value, and a takedown line for rights holders.
+- The policy page couldn't be opened from the development session (its host is blocked there), so its wording came from search results. The owner should read the current policy at company.wizards.com/en/legal/fancontentpolicy, including whether fan-made games are covered.
+
 ### Typefaces: Cinzel, Lora and Oswald (2026-11-12)
 
 - Two fonts with a third for numbers, as the user asked. All three are under the SIL Open Font License and bundled with the app from npm (`@fontsource/*`, imported in `client/src/fonts.ts`), so nothing loads from another site.

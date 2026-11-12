@@ -5,6 +5,7 @@ import type { GameDeck } from '@nexus/cards/decks';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
 import { ManaCost, ManaText } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
+import { CreditsPage, LegalFooter } from './components/Credits.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { CraftTab } from './craft/CraftTab.tsx';
@@ -48,7 +49,7 @@ export function App() {
   return <MainApp />;
 }
 
-type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop';
+type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop' | 'credits';
 type PlayMode = 'ai' | 'online' | 'draft';
 type ShopMode = 'packs' | 'store';
 interface Route {
@@ -70,7 +71,8 @@ const PAGES: { id: Page; label: string }[] = [
 function routeFromHash(hash: string): Route {
   const [page, sub] = hash.replace(/^#\/?/, '').split('/');
   const route: Route = { page: 'home', play: 'ai', shop: 'packs' };
-  if (PAGES.some((p) => p.id === page)) route.page = page as Page;
+  // The credits page isn't in the top menu; the link at the foot of every page opens it.
+  if (PAGES.some((p) => p.id === page) || page === 'credits') route.page = page as Page;
   if (route.page === 'play' && (sub === 'online' || sub === 'draft' || sub === 'ai')) route.play = sub;
   if (route.page === 'shop' && (sub === 'store' || sub === 'packs')) route.shop = sub;
   return route;
@@ -412,7 +414,10 @@ function MainApp() {
             {route.shop === 'packs' ? <PacksTab section="packs" onSection={(s) => go({ page: s === 'packs' ? 'shop' : s })} /> : <StoreTab />}
           </>
         )}
+
+        {route.page === 'credits' && <CreditsPage />}
       </main>
+      <LegalFooter onCredits={() => go({ page: 'credits' })} />
     </div>
   );
 }

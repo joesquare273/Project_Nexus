@@ -651,3 +651,7 @@ abilities.
   pass it for you whenever your own spell was on top; with "Hold priority"
   (a button next to Pass, and a setting) it waits, so you can add more to
   the stack before anyone can respond, then pass yourself.
+
+## 2026-11-12: Credits and the fan content notice
+
+Project Nexus stays free and non-commercial, with no real-money purchases; Aether Shards can't be bought. Every page carries the notice suggested by Wizards of the Coast's Fan Content Policy and links a credits page naming Wizards of the Coast, Square Enix, the card artists (with the menu-art crops by name), Scryfall and the font licenses. Music stays out until there are tracks with clear licenses (see docs/audio.md). This lowers the risk; it isn't a license.

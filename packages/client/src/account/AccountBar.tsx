@@ -3,6 +3,7 @@
 // balance always comes from the game server (/api/account), which checks the
 // sign-in with Supabase; the browser only displays it.
 
+import { LandingLegal } from '../components/Credits.tsx';
 import { useEffect, useState } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { UI_ART, type UiArtKey } from '@nexus/cards';
@@ -89,7 +90,7 @@ export function SignInPage() {
           </article>
         ))}
       </section>
-      <p className="fineprint landing-foot">A personal, non-commercial project. Card images courtesy of Scryfall.</p>
+      <LandingLegal />
     </div>
   );
 }
@@ -106,6 +107,7 @@ export function AccountsSetupPage() {
           <code>npm run server</code>. See HOW-TO-RUN.txt, section 1.
         </p>
       </div>
+      <LandingLegal />
     </div>
   );
 }
