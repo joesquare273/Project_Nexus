@@ -801,6 +801,16 @@ export function Game({
     }
   }
   const legendChoices = yourMove && pending.kind === 'chooseLegend' ? pending.cards : [];
+  // What just happened and to whom: in the phase bar (a row of its own only in the four-player layout).
+  const noticeBar = notice ? (
+          <section className="target-notice" aria-label="Targeting activity">
+            <details>
+              <summary><span className={notice.trigger ? 'source-label trigger' : 'source-label'}>{notice.controller} · {notice.source}</span>{notice.labels.length > 0 && <> → <strong>{notice.labels.join(' + ')}</strong></>}</summary>
+              <small>Most recent action · blue = source · red = trigger · orange = target</small>
+              {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source}{n.labels.length ? ` → ${n.labels.join(' + ')}` : ''}</div>)}
+            </details>
+          </section>
+  ) : null;
   const hub = (
     <CenterHub
       view={view}
@@ -840,24 +850,19 @@ export function Game({
               if (!pausedRef.current) run();
             }}
           >
-            {paused ? '▶ Resume' : '❚❚ Pause'}
+            <span aria-hidden="true">{paused ? '▶' : '❚❚'}</span><span className="wide-only">{paused ? ' Resume' : ' Pause'}</span>
           </button>
-          <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide log' : 'Game log'}</button>
+          <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide log' : 'Log'}</button>
+          {!fourPlayers && noticeBar}
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
           {!fourPlayers && hub}
         </div>
         {fourPlayers && hub}
-        {notice && (
-          <section className="target-notice" aria-label="Targeting activity">
-            <details>
-              <summary><span className={notice.trigger ? 'source-label trigger' : 'source-label'}>{notice.controller} · {notice.source}</span>{notice.labels.length > 0 && <> → <strong>{notice.labels.join(' + ')}</strong></>}</summary>
-              <small>Most recent action · blue = source · red = trigger · orange = target</small>
-              {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source}{n.labels.length ? ` → ${n.labels.join(' + ')}` : ''}</div>)}
-            </details>
-          </section>
-        )}
+        {fourPlayers && noticeBar}
         <YourZone fit={fourPlayers} view={view} h={h} placement={session.placement} onPlaced={refresh} />
         <PromptBar
+          // A fresh prompt for each new decision of yours, so it can draw the eye (see .prompt.yours).
+          key={yourMove ? decisionKey : 'waiting'}
           session={session}
           view={view}
           yourMove={yourMove}
@@ -1608,7 +1613,7 @@ function PromptBar(p: PromptProps) {
       const src = top.kind === 'spell' ? top.card : top.source;
       const whose = top.controller === YOU ? 'Your' : `${top.controller}'s`;
       text = `${whose} ${cardName(s, src)}${top.kind === 'ability' ? ' ability' : ''} is on the stack. Respond with a legal spell or ability. It resolves after everyone passes in succession.`;
-      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
+      buttons = [...(canHold ? [holdButton] : []), { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
     } else {
       const yours = s.activePlayer === YOU;
       const main = s.step === 'main1' || s.step === 'main2';
@@ -1617,8 +1622,7 @@ function PromptBar(p: PromptProps) {
         : yours && main
         ? `${stepName(s.step)}: play a land, cast a spell, or use an ability. Glowing cards are playable.`
         : `${yours ? 'Your' : `${s.activePlayer}'s`} ${stepName(s.step).toLowerCase()}: cast a legal instant or use an ability.`;
-      text += ' Everyone must pass in succession to advance.';
-      buttons = [holdButton, { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
+      buttons = [...(canHold ? [holdButton] : []), { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
     }
   }
 

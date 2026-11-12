@@ -18,6 +18,21 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Nothing covered on the board (2026-11-12)
+
+Applying Celia Hodent's "The Gamer's Brain" (GDC 2015) usability checklist:
+- Card sizes follow the window height, so both battlefields (creatures and
+  lands) fit between the phase bar and the prompt at 720-1080px; checked at
+  1280x720, 1366x768, 1440x900 and 1920x1080 (2-4 players).
+- The "who targeted what" line is in the phase bar instead of its own row;
+  Pause is the ❚❚ icon on narrower screens and the log button says "Log".
+- What was just cast or triggered shows on the right of your battlefield,
+  sized to it, not over your seat, the phase bar or the prompt.
+- The prompt glows once when a decision becomes yours; prompt text is
+  shorter; "Hold priority" appears only when it can be used.
+- Four players: cards grow to fill each seat (up to 1.6x; the hand keeps its
+  size), and the lower-right seat's name is clear of the life totals.
+
 ### The Dominion Bracelet: controlling another player's turn (2026-11-12)
 
 The last Edge of Eternities main set card: 261 of 261 built. The engine

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-/** Reflow across the full seat width before reducing card scale to fit its height. */
+/** Reflow across the full seat width before reducing card scale to fit its height; with room to spare, cards grow (up to MAX_SCALE). */
+const MAX_SCALE = 1.6;
 export function FitBoard({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -14,9 +15,9 @@ export function FitBoard({ enabled, children }: { enabled: boolean; children: Re
         inner.style.width = width / scale + 'px';
         return inner.scrollHeight * scale <= height && inner.scrollWidth * scale <= width + 1;
       };
-      let low = 0.01, high = 1;
-      if (fits(1)) low = 1;
-      else for (let i = 0; i < 12; i++) {
+      let low = 0.01, high = MAX_SCALE;
+      if (fits(MAX_SCALE)) low = MAX_SCALE;
+      else for (let i = 0; i < 14; i++) {
         const mid = (low + high) / 2;
         if (fits(mid)) low = mid; else high = mid;
       }
