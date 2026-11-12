@@ -38,6 +38,7 @@ import { YOU, applyAll, type CardPlay, type GameSession, type PlayChoice } from 
 import { tokenStackKey } from '../game/tokenStacks.ts';
 import { CenterHub } from './LifeTotals.tsx';
 import { CardFace, ManaText } from './Card.tsx';
+import { ColorKey, useColorKey } from './ColorKey.tsx';
 import { Coach } from './Coach.tsx';
 import { CardFlights } from './Flights.tsx';
 import type { Lesson } from '../tutorial/lesson.ts';
@@ -158,6 +159,7 @@ export function Game({
   const [busy, setBusy] = useState(false);
   const fourPlayers = session.opponents.length === 3;
   const [logOpen, setLogOpen] = useState(false);
+  const [keyOpen, setKeyOpen] = useColorKey();
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   const notice = session.targetHistory[0];
@@ -806,7 +808,7 @@ export function Game({
           <section className="target-notice" aria-label="Targeting activity">
             <details>
               <summary><span className={notice.trigger ? 'source-label trigger' : 'source-label'}>{notice.controller} · {notice.source}</span>{notice.labels.length > 0 && <> → <strong>{notice.labels.join(' + ')}</strong></>}</summary>
-              <small>Most recent action · blue = source · red = trigger · orange = target</small>
+              <small>Most recent action · blue = where it came from · violet = trigger · orange = target (Key: all colors)</small>
               {session.targetHistory.slice(1).map((n, i) => <div key={i}>{n.controller} · {n.source}{n.labels.length ? ` → ${n.labels.join(' + ')}` : ''}</div>)}
             </details>
           </section>
@@ -837,7 +839,10 @@ export function Game({
           ))}
         </div>
         <div className="midline">
-          <PhaseTrack view={view} session={session} onChange={refresh} />
+          <div className="mid-side left"><PhaseTrack view={view} session={session} onChange={refresh} /></div>
+          {/* Two and three players: the life totals sit in the middle of the table, on the phase bar. */}
+          {!fourPlayers && <div className="hub-slot">{hub}</div>}
+          <div className="mid-side right">
           <button
             className="pause-button ghost"
             aria-pressed={paused}
@@ -852,10 +857,11 @@ export function Game({
           >
             <span aria-hidden="true">{paused ? '▶' : '❚❚'}</span><span className="wide-only">{paused ? ' Resume' : ' Pause'}</span>
           </button>
+          <button className="key-toggle" aria-expanded={keyOpen} title="What the colors mean" onClick={() => setKeyOpen(!keyOpen)}>Key</button>
           <button className="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>{logOpen ? 'Hide log' : 'Log'}</button>
           {!fourPlayers && noticeBar}
           <Settings session={session} onChange={refresh} onQuit={onQuit} />
-          {!fourPlayers && hub}
+          </div>
         </div>
         {fourPlayers && hub}
         {fourPlayers && noticeBar}
@@ -922,6 +928,7 @@ export function Game({
       </main>
       <CardFlights moves={session.moves} />
       <Inspector view={view} hovering={!!hovered} id={hovered ?? (spotlight && view.cards[spotlight.card] ? spotlight.card : null) ?? surveilCard} />
+      {keyOpen && <ColorKey onClose={() => setKeyOpen(false)} />}
       {logOpen && (
         <aside className="sidebar" aria-label="Game log">
           <div className="sidebar-head">

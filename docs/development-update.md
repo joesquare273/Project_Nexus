@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Color key and one meaning per color (2026-11-12)
+
+A readability pass after the friend's feedback and Hodent's "The Gamer's Brain":
+- Each signal color now means one thing: green is playable or usable, gold is choose, orange is the target of what just happened, red is attacking or damage, and teal is blocking. On the stack, the number under a card is gold for a spell, violet for a triggered ability and blue for an activated ability. A dark teal badge marks turn control.
+- Small text on the board (names, counts, piles, notes, phases) is larger.
+- A color key (`components/ColorKey.tsx`) opens on a player's first game and from the Key button in the phase bar.
+- Two- and three-player games keep the life-counter hub (seat-colored tiles; click one for its commander damage) and now show it in the middle of the table, on the phase bar, as four-player games already did. The phase bar splits around it.
+
 ### Nothing covered on the board (2026-11-12)
 
 Applying Celia Hodent's "The Gamer's Brain" (GDC 2015) usability checklist:
