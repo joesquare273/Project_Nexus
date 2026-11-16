@@ -3624,8 +3624,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const t = targets.find(t=>t.kind==='card');
       const src=s.cards[source];
       const target=t?.kind==='card' ? s.cards[t.card] : undefined;
+      // Hall of Echoes: "The 'legend rule' doesn't apply to permanents you control this turn."
+      if(effect.legendRuleOffThisTurn) player(s,item.controller).legendRuleOffTurn=s.turnNumber;
       if(src?.zone==='battlefield' && !src.phasedOut && target && isCreatureOnBattlefield(s,target)) {
-        s.pending={kind:'copyCreature',player:item.controller,source,target:target.id,sourceObject:src.zoneChanges??0,targetObject:target.zoneChanges??0,effect:structuredClone(effect)};
+        const pending={kind:'copyCreature' as const,player:item.controller,source,target:target.id,sourceObject:src.zoneChanges??0,targetObject:target.zoneChanges??0,effect:structuredClone(effect)};
+        // "This land becomes a copy" (no "may"): done right away.
+        if(effect.legendRuleOffThisTurn) { becomeCopy(ctx,pending,r); break; }
+        s.pending=pending;
       }
       break;
     }
@@ -5013,6 +5018,16 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
   if(p.kind!=='copyCreature' || p.player!==playerId || !r) reject('No copy choice is waiting for you.');
   if(accept) {
     if(!canChooseCopy(s,p)) reject('The creatures are no longer available to copy.');
+    becomeCopy(ctx, p, r);
+  }
+  s.pending={kind:'priority',player:playerId,passes:0};
+  continueResolving(ctx);
+}
+
+/** The source becomes a copy of the target (CopyCreature), with the effect's exceptions. */
+function becomeCopy(ctx: Ctx, p: Extract<GameState['pending'],{kind:'copyCreature'}>, r: Resolving): void {
+  const s=ctx.s;
+  {
     const source=s.cards[p.source]!, target=s.cards[p.target]!, effect=p.effect;
     const original=copiableDefinition(s,target), definition=structuredClone(original);
     definition.id=source.defId;
@@ -5028,8 +5043,6 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
       s.temporaryEffects.push({source:source.id,affected:id,power:effect.power??0,toughness:effect.toughness??0,keywords:effect.keywords??[],flags:effect.flags??[]});
     }
   }
-  s.pending={kind:'priority',player:playerId,passes:0};
-  continueResolving(ctx);
 }
 
 /** A token that's a copy of `original`; copy effects and their exceptions are themselves copiable (rule 707.2). */

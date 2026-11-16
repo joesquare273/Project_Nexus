@@ -287,6 +287,7 @@ const PLAYER_FIELDS = {
   landsEntered: 'copy',
   landsEnteredTurn: 'copy',
   turnsTaken: 'copy',
+  legendRuleOffTurn: 'copy',
   endStepsBegun: 'copy',
   coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',

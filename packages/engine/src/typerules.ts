@@ -178,7 +178,8 @@ export function canReveal(s: GameState, c: CardInstance, controller: string = c.
   // Shock lands: the choice is paying life (only with that much life).
   const payLife = currentDefinition(s, c).entersTappedUnless?.payLife;
   if (payLife) return s.players[controller]!.life >= payLife;
-  const subtypes = currentDefinition(s, c).entersTappedUnless?.revealSubtypes;
+  const behold = currentDefinition(s, c).entersTappedUnless?.beholdSubtype;
+  const subtypes = currentDefinition(s, c).entersTappedUnless?.revealSubtypes ?? (behold ? [behold] : undefined);
   if (!subtypes) return false;
   const hand = s.players[controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
   return subtypes.some((t) => hand.some((x) => currentDefinition(s, x).subtypes?.includes(t)));
@@ -224,6 +225,13 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
     return false;
   }
   if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
+  if (unless.otherLands !== undefined && mine.filter((x) => !x.phasedOut && defOf(x).types.includes('land')).length >= unless.otherLands) return false;
+  if (unless.planeswalker && mine.some((x) => !x.phasedOut && defOf(x).types.includes('planeswalker'))) return false;
+  // Behold: a permanent of that subtype you control counts by itself; otherwise reveal one from your hand.
+  if (unless.beholdSubtype) {
+    if (mine.some((x) => !x.phasedOut && (defOf(x).subtypes ?? []).includes(unless.beholdSubtype!))) return false;
+    if (reveal !== false && canReveal(s, c)) return false;
+  }
   // Shock lands: untapped only when the player chose to pay the life (playLand pays it).
   if (unless.payLife && reveal === true) return false;
   if (unless.opponentsLands !== undefined) {

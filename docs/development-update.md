@@ -24,6 +24,10 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture F1: lands (2026-11-16)
+
+- The main set's card roadmap is in docs/reality-fracture.md (groups F1-F13). F1 builds 19 lands: the Commons and Annexes ("unless you control a planeswalker"), the portal view lands ("unless you control two or more other lands"), Theorist's Sanctum (behold a Jace), Hall of Echoes (becomes a copy; the legend rule is off for you that turn), Roiling Canopy and Room of Refuge.
+
 ### Reality Fracture packs (2026-11-16)
 
 - Play and Collector Boosters for Reality Fracture on the Packs tab (`set: 'fra'`), with Wizards' published odds slot by slot and the echoed pairs arriving as pairs; the Collection binder's Reality Fracture tab now holds the whole set (main set, Booster Fun, Commander Booster Fun, the precon, Special Guests, tokens and art cards). Details in docs/packs.md.

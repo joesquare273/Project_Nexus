@@ -374,6 +374,7 @@ function checkLegendRule(ctx: Ctx): boolean {
   const s = ctx.s;
   if (s.pending.kind === 'chooseLegend' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseLegend';
   for (const pid of aliveFromActive(s)) {
+    if (s.players[pid]!.legendRuleOffTurn === s.turnNumber) continue;
     const byName = new Map<string, string[]>();
     for (const id of s.players[pid]!.battlefield) {
       const c = s.cards[id]!;

@@ -709,6 +709,8 @@ export const COUNT_KINDS = [
   'LandCardsInYourGraveyard',
   /** Lands you control (Fabled Passage: "if you control four or more lands"). */
   'LandsYouControl',
+  /** Forests you control (Roiling Canopy). */
+  'ForestsYouControl',
   /** Land cards in all graveyards (Centaur Vinecrasher). */
   'LandCardsInAllGraveyards',
   /** Your devotion to red: {R} symbols in the mana costs of permanents you control (rule 700.5). */
@@ -980,6 +982,8 @@ export interface EffectSpec {
   /** CopyCreature: name exception, duration, retained resolving trigger, and optional buffs to both objects. */
   copyName?: string;
   copyUntilEndOfTurn?: boolean;
+  /** "The 'legend rule' doesn't apply to permanents you control this turn" (Hall of Echoes). */
+  legendRuleOffThisTurn?: boolean;
   copyKeepTrigger?: boolean;
   copyKeywords?: Keyword[];
   copyBuffBoth?: boolean;
@@ -1975,6 +1979,12 @@ export interface CardDefinition {
     controlsSubtypes?: string[];
     /** "unless you control two or more basic lands". */
     basicLands?: number;
+    /** "unless you control two or more other lands" (the portal view lands). */
+    otherLands?: number;
+    /** "unless you control a planeswalker" (Reality Fracture's Commons and Annexes). */
+    planeswalker?: boolean;
+    /** "As this land enters, you may behold a [subtype]. If you don't, it enters tapped": choose one you control, or reveal one from your hand (chosen with PlayLand's `reveal`). */
+    beholdSubtype?: string;
     /** "unless it's your first, second, or third turn of the game". */
     yourTurnAtMost?: number;
     /** "unless your opponents control eight or more lands" (the Turbulent lands): lands all opponents control, together. */
@@ -2541,6 +2551,8 @@ export interface PlayerState {
   endStepsBegun?: number;
   /** How many turns this player has begun (Starting Town: "your first, second, or third turn of the game"). */
   turnsTaken?: number;
+  /** "The 'legend rule' doesn't apply to permanents you control this turn": the turn it's off (Hall of Echoes). */
+  legendRuleOffTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
   /** The last turn an artifact entered the battlefield under this player's control (Mechan Shieldmate). */

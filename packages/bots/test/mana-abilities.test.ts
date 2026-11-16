@@ -10,7 +10,7 @@ import { CARD_DEFS } from '@nexus/cards';
 import { goTo, newGame, put } from './kit-helpers.ts';
 
 /** Cards whose mana ability needs something this setup doesn't have (a commander, five lands, a chosen color, an untapped artifact, an opponent's lands). */
-const NEEDS_MORE = new Set(['arcane-signet', 'commanders-sphere', 'temple-of-the-false-god', 'crossroads-village', 'urza-lord-high-artificer', 'fellwar-stone']);
+const NEEDS_MORE = new Set(['arcane-signet', 'commanders-sphere', 'temple-of-the-false-god', 'crossroads-village', 'room-of-refuge', 'urza-lord-high-artificer', 'fellwar-stone']);
 /** Mana abilities that move a hidden card. */
 const MOVES_HIDDEN = new Set(['millikin']);
 
