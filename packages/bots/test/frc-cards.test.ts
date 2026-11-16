@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
-import { canBlock } from '../../engine/src/combat.ts';
+import { canBlock, goadedBy } from '../../engine/src/combat.ts';
 
 const canBlockCheck = (s: GameState, blocker: string, attacker: string) => canBlock(s, s.cards[blocker]!, s.cards[attacker]!);
 
@@ -806,5 +806,82 @@ describe('R4: artifacts and enchantments', () => {
     expect(zone(s, theirs)).toBe('library');
     expect(s.players.P2!.library.at(-1) === theirs || s.players.P2!.library.includes(theirs)).toBe(true);
     expect([zone(s, next), s.cards[next]!.controller]).toEqual(['battlefield', 'P2']);
+  });
+});
+
+describe('R5a: creatures', () => {
+  it('Nissa, Leyline Tamer: landfall draws a card, and the first time each turn also reveals until a creature and puts it onto the battlefield', () => {
+    let s = newGame();
+    put(s, 'P1', 'nissa-leyline-tamer');
+    const bear = put(s, 'P1', 'thawbringer', 'library');
+    put(s, 'P1', 'island', 'library'); // drawn first
+    const land1 = put(s, 'P1', 'plains', 'hand');
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land1 }).state;
+    expect(zone(s, bear)).toBe('battlefield');
+    expect(s.players.P1!.hand.length).toBe(hand); // played a land, drew a card
+    // A second landfall the same turn: only a card.
+    const bear2 = put(s, 'P1', 'thawbringer', 'library');
+    put(s, 'P1', 'island', 'library');
+    s.players.P1!.landsPlayedThisTurn = 0;
+    const land2 = put(s, 'P1', 'plains', 'hand');
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land2 }).state;
+    expect(zone(s, bear2)).not.toBe('battlefield');
+  });
+
+  it("Dack Fayden: reveals one creature per opponent; each is goaded for the rest of the game and goes to a different opponent", () => {
+    let s = newGame(3);
+    const dack = put(s, 'P1', 'dack-fayden-helping-hand', 'hand');
+    const a = put(s, 'P1', 'thawbringer', 'library');
+    const b = put(s, 'P1', 'archon-of-cruelty', 'library');
+    mana(s, 'P1', { W: 2, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: dack });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    // Choose which creature P2 gets; P3 gets the other.
+    expect(s.pending.kind).toBe('chooseCards');
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [b] });
+    expect([s.cards[b]!.controller, s.cards[a]!.controller]).toEqual(['P2', 'P3']);
+    expect([s.cards[a]!.goadedForever, s.cards[b]!.goadedForever]).toEqual([['P1'], ['P1']]);
+    // Still goaded turns later.
+    s.turnNumber += 5;
+    expect(goadedBy(s, s.cards[a]!)).toEqual(['P1']);
+  });
+
+  it('Ob Nixilis, the Ascended destroys tapped opposing creatures, gains life for each, and makes an Angel at each end step after you gained life', () => {
+    let s = newGame();
+    const tapped = put(s, 'P2', 'thawbringer', 'battlefield', { tapped: true });
+    const untapped = put(s, 'P2', 'thawbringer');
+    const mine = put(s, 'P1', 'thawbringer', 'battlefield', { tapped: true });
+    const ob = put(s, 'P1', 'ob-nixilis-the-ascended', 'hand');
+    mana(s, 'P1', { W: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ob }).state;
+    expect([zone(s, tapped), zone(s, untapped), zone(s, mine)]).toEqual(['graveyard', 'battlefield', 'battlefield']);
+    expect(s.players.P1!.life).toBe(21);
+    s = goTo(s, 'end');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'angel-token-frc')).toBe(true);
+  });
+
+  it('Tamiyo, Upriser Crowned makes you the monarch; creatures that deal combat damage to you then are tapped and stunned', () => {
+    let s = newGame();
+    const tamiyo = put(s, 'P1', 'tamiyo-upriser-crowned', 'hand');
+    mana(s, 'P1', { R: 1, W: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tamiyo }).state;
+    expect(s.monarch).toBe('P1');
+    // P2 attacks P1 with two creatures, both unblocked.
+    const x = put(s, 'P2', 'thawbringer');
+    const y = put(s, 'P2', 'thawbringer');
+    s.activePlayer = 'P2';
+    s.step = 'main1';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker: x, defender: 'P1' }, { attacker: y, defender: 'P1' }] });
+    for (let i = 0; i < 20 && s.step !== 'endCombat' && s.step !== 'main2'; i++) {
+      if (s.pending.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: s.pending.player, blocks: [] });
+      else if (s.pending.kind === 'priority') s = act(s, { type: 'PassPriority', player: s.pending.player });
+      else break;
+    }
+    expect([s.cards[x]!.tapped, s.cards[y]!.tapped]).toEqual([true, true]);
+    expect([s.cards[x]!.namedCounters?.stun, s.cards[y]!.namedCounters?.stun]).toEqual([1, 1]);
+    expect(s.monarch).toBe('P2');
   });
 });

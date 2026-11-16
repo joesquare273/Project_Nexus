@@ -199,6 +199,7 @@ const CARD_FIELDS = {
   chosenColor: 'copy',
   chosenCardType: 'copy',
   chosenOption: 'copy',
+  goadedForever: 'copy',
   faceDown: 'copy',
   manifested: 'copy',
   faceDownWard: 'copy',

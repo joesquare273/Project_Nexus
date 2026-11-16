@@ -1987,6 +1987,10 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'battlefield' ? [{ kind: 'card', card: subject }] : [];
     }
+    case 'TriggeringObjects':
+      return (item.kind === 'ability' ? (item.subjects ?? (item.subject ? [item.subject] : [])) : [])
+        .filter((id) => s.cards[id]?.zone === 'battlefield')
+        .map((id) => ({ kind: 'card' as const, card: id }));
     case 'TriggeringCard': {
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'graveyard' ? [{ kind: 'card', card: subject }] : [];
@@ -2668,7 +2672,6 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const library = s.players[owner]!.library;
         moveCard(ctx, id, 'library');
         shuffleInPlace(s, library);
-        ctx.ev.push({ type: 'LibraryShuffled', player: owner });
         if (effect.effect === 'ShuffleIntoLibrary') continue;
         const top = library[0];
         if (top === undefined) continue;
@@ -2730,29 +2733,34 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (effect.fromMovedPermanentController && !r.movedPermanentController) return;
       const owner = effect.fromMovedPermanentController ? r.movedPermanentController! : effect.fromTargetPlayer ? (targetPlayers(targets)[0] ?? item.controller) : item.controller;
       const library = s.players[owner]!.library;
+      // "Until you reveal X creature cards" (Dack Fayden: X is the number of opponents).
+      const wanted = effect.untilCount !== undefined ? amountOf(s, effect.untilCount, item.controller, source) : 1;
+      if (wanted <= 0) return;
       const revealed: InstanceId[] = [];
-      let found: InstanceId | undefined;
+      const found: InstanceId[] = [];
       for (const id of library) {
         revealed.push(id);
         ctx.ev.push({ type: 'CardRevealed', player: owner, card: id, defId: s.cards[id]!.defId });
         if (matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })) {
-          found = id;
-          break;
+          found.push(id);
+          if (found.length >= wanted) break;
         }
       }
-      const rest = revealed.filter((id) => id !== found);
-      if (found) {
-        r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[found]!).manaCost));
-        if (effect.fromMovedPermanentController) {
-          moveCard(ctx, found, 'battlefield', { controller: owner });
-          const c = s.cards[found]!;
+      const rest = revealed.filter((id) => !found.includes(id));
+      for (const id of found) {
+        r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost));
+        if (effect.fromMovedPermanentController || effect.toBattlefield) {
+          // Onto the battlefield under that player's (or your) control.
+          moveCard(ctx, id, 'battlefield', { controller: owner });
+          const c = s.cards[id]!;
           c.summoningSick = true;
           if (entersTapped(s, c)) c.tapped = true;
+          if (effect.goadForever) c.goadedForever = [...new Set([...(c.goadedForever ?? []), item.controller])];
         } else
         // Jhoira: onto the battlefield under your control; you lose life equal to its mana value.
         if (effect.fromTargetPlayer) {
-          moveCard(ctx, found, 'battlefield');
-          const c = s.cards[found]!;
+          moveCard(ctx, id, 'battlefield');
+          const c = s.cards[id]!;
           c.controller = item.controller;
           c.summoningSick = true;
           if (entersTapped(s, c)) c.tapped = true;
@@ -2760,15 +2768,28 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         } else
         // The Regalia: "put that card onto the battlefield tapped".
         if (effect.entersTapped) {
-          moveCard(ctx, found, 'battlefield');
-          s.cards[found]!.controller = item.controller;
-          s.cards[found]!.tapped = true;
-        } else moveCard(ctx, found, 'hand');
+          moveCard(ctx, id, 'battlefield');
+          s.cards[id]!.controller = item.controller;
+          s.cards[id]!.tapped = true;
+        } else moveCard(ctx, id, 'hand');
       }
-      // The rest go on the bottom in a random order.
-      for (const id of rest) library.splice(library.indexOf(id), 1);
-      shuffleInPlace(s, rest);
-      library.push(...rest);
+      if (effect.shuffleAfter) {
+        // "Then shuffle": the revealed cards that weren't found stay in the library, which is shuffled.
+        shuffleInPlace(s, library);
+      } else {
+        // The rest go on the bottom in a random order.
+        for (const id of rest) library.splice(library.indexOf(id), 1);
+        shuffleInPlace(s, rest);
+        library.push(...rest);
+      }
+      // "For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+      if (effect.giveToDifferentOpponents) {
+        const onField = found.filter((id) => s.cards[id]?.zone === 'battlefield');
+        const opponents = aliveFromActive(s).filter((pid) => pid !== item.controller);
+        if (onField.length > 0 && opponents.length > 0) {
+          r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'giveToOpponent', cards: onField, min: 1, max: 1, recipient: opponents[0]!, laterRecipients: opponents.slice(1) }];
+        }
+      }
       return;
     }
     case 'Explore':
@@ -4513,7 +4534,6 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
     const owner = pending.libraryOf ?? pending.player;
     shuffleInPlace(s, player(s, owner).library);
-    ctx.ev.push({ type: 'LibraryShuffled', player: owner });
   } else if (pending.purpose === 'separatePiles') {
     // The chosen cards are one pile, the rest the other; the caster takes one.
     const other = pending.cards.filter((id) => !cards.includes(id));
@@ -4675,6 +4695,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.tapped = true;
     }
     for (const id of pending.looked ?? []) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+  } else if (pending.purpose === 'giveToOpponent') {
+    // Dack Fayden: the chosen permanent goes to this opponent; then the next opponent's, from the rest.
+    const receiver = pending.recipient!;
+    for (const id of cards) giveControl(ctx, id, receiver);
+    const left = pending.cards.filter((id) => !cards.includes(id) && s.cards[id]?.zone === 'battlefield');
+    const [next, ...later] = (pending.laterRecipients ?? []).filter((pid) => !s.players[pid]!.eliminated);
+    if (next && left.length === 1) giveControl(ctx, left[0]!, next);
+    else if (next && left.length > 1) r.choiceQueue = [{ ...pending, cards: left, recipient: next, laterRecipients: later }, ...(r.choiceQueue ?? [])];
   } else if (pending.purpose === 'amass') {
     for (const id of cards) amassOnto(ctx, id, pending.player, pending.amassCounters ?? 0, pending.amassType);
   } else if (pending.purpose === 'exiledToGraveyard') {
@@ -5004,4 +5032,14 @@ function amassOnto(ctx: Ctx, army: InstanceId, controller: PlayerId, n: number, 
   if (!c || c.zone !== 'battlefield') return;
   if (n > 0) addCounters(ctx, army, n, controller);
   if (type && !(c.addedSubtypes ?? []).includes(type)) c.addedSubtypes = [...(c.addedSubtypes ?? []), type];
+}
+
+/** A player gains control of a permanent (for good). */
+function giveControl(ctx: Ctx, id: InstanceId, receiver: PlayerId): void {
+  const c = ctx.s.cards[id];
+  if (!c || c.zone !== 'battlefield' || c.controller === receiver) return;
+  const previous = c.controller;
+  c.controller = receiver;
+  c.summoningSick = true;
+  ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver, from: previous });
 }

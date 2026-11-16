@@ -1442,6 +1442,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'devourOnEntry' ? 'to sacrifice (devour); the entering creature gets three +1/+1 counters for each'
                   : c.purpose === 'removeCountersOnEntry' ? 'to remove all counters from; the entering creature gets twice that many +1/+1 counters'
                   : c.purpose === 'artifactCopy' ? 'to create an artifact token copy of; choose none for no token'
+                  : c.purpose === 'giveToOpponent' ? `for ${c.recipient} to gain control of`
                   : c.purpose === 'amass' ? 'to amass onto (it gets the +1/+1 counters)'
                   : c.purpose === 'exiledToGraveyard' ? "to put into its owner's graveyard"
                   : c.purpose === 'manifestDread' ? 'to manifest (put onto the battlefield face down as a 2/2); the other goes into your graveyard'

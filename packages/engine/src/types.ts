@@ -152,6 +152,8 @@ export const TARGET_KINDS = [
   'TriggeringObject',
   /** The card the trigger event happened to, in the graveyard it went to ("return it to the battlefield"). */
   'TriggeringCard',
+  /** Every object a "one or more" trigger event happened to that's still on the battlefield ("tap those creatures": Tamiyo). */
+  'TriggeringObjects',
   /** Every permanent matching the effect's `filter` ("destroy all artifacts", "exile all creatures"). */
   'AllPermanents',
   'You',
@@ -834,6 +836,16 @@ export interface EffectSpec {
   amassType?: string;
   /** PutExiledWithThisIntoGraveyard: the token made for a land card. */
   landToken?: CardDefId;
+  /** RevealUntil: until this many matching cards are revealed (Dack Fayden: one per opponent). */
+  untilCount?: Amount;
+  /** RevealUntil: the cards found go onto the battlefield under your control. */
+  toBattlefield?: boolean;
+  /** RevealUntil: shuffle the library afterwards instead of putting the rest on the bottom. */
+  shuffleAfter?: boolean;
+  /** RevealUntil onto the battlefield: they're goaded (by you) for the rest of the game. */
+  goadForever?: boolean;
+  /** RevealUntil onto the battlefield: choose a different opponent for each; each gains control of the one chosen for them. */
+  giveToDifferentOpponents?: boolean;
   /** RevealUntil: the controller of the permanent an earlier effect of this ability put into a library reveals, and puts the card found onto the battlefield (Proteus Staff). */
   fromMovedPermanentController?: boolean;
   /** Manifest: cloak instead (face down with ward {2}, rule 701.58). */
@@ -1463,6 +1475,10 @@ export interface TriggerSpec {
   ifSourceGotCountersThisTurn?: boolean;
   /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
   ifYouAreMonarch?: boolean;
+  /** "While you're the monarch": a trigger condition only, checked as the event happens (Tamiyo). */
+  whileYouAreMonarch?: boolean;
+  /** CombatDamageToPlayer: only combat damage dealt to you ("whenever one or more creatures deal combat damage to you"). */
+  toYou?: boolean;
   /** Intervening "if": "if a player lost N or more life this turn". */
   ifPlayerLostLifeThisTurn?: number;
   /** Intervening "if": "if a player was dealt N or more combat damage this turn" (Sidequest: Play Blitzball). */
@@ -2278,6 +2294,8 @@ export interface CardInstance {
   chosenOption?: string;
   /** Face down (morph, rule 708): a 2/2 creature with no name, abilities or mana cost; its identity is hidden from the other players. */
   faceDown?: boolean;
+  /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
+  goadedForever?: PlayerId[];
   /** Face down by manifest or cloak (rule 701.34): a creature card can be turned face up for its mana cost. */
   manifested?: boolean;
   /** Face down with ward {2}: cast using disguise, or cloaked (rules 702.168, 701.58). */
@@ -2652,6 +2670,8 @@ export interface AbilityItem {
   /** Attack triggers: the player being attacked. */
   defender?: PlayerId;
   /** Triggered abilities: the object the trigger event happened to. */
+  /** A "one or more" trigger: every object the batched events happened to. */
+  subjects?: InstanceId[];
   subject?: InstanceId;
   /** Damage triggers: how much damage was dealt; SpellCast triggers: the mana spent on the spell. */
   amount?: number;
@@ -2683,6 +2703,8 @@ export interface QueuedTrigger {
   sourceZone: ZoneName;
   defender?: PlayerId;
   /** The object the trigger event happened to (the creature that entered, attacked, died...). */
+  /** A "one or more" trigger: every object the batched events happened to. */
+  subjects?: InstanceId[];
   subject?: InstanceId;
   /** Damage triggers: how much damage was dealt. */
   amount?: number;
@@ -2790,7 +2812,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -2801,6 +2823,9 @@ export interface CardChoice {
   piles?: [InstanceId[], InstanceId[]];
   /** separatePiles / choosePile: who cast the spell (they take a pile). */
   pileOwner?: PlayerId;
+  /** giveToOpponent: the opponent who gains control of the chosen permanent, then the opponents still to get one. */
+  recipient?: PlayerId;
+  laterRecipients?: PlayerId[];
   /** amass: how many +1/+1 counters the chosen Army gets, and the creature type it also becomes. */
   amassCounters?: number;
   amassType?: string;

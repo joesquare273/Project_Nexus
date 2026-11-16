@@ -26,11 +26,8 @@
           "count": 1,
           "set": "frc",
           "number": "2",
-          "implemented": false,
-          "needs": [
-            "landfall",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Omnath, Locus of the Void",
@@ -45,20 +42,16 @@
           "count": 1,
           "set": "frc",
           "number": "4",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ob Nixilis, the Ascended",
           "count": 1,
           "set": "frc",
           "number": "5",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Teferi's Reproach",
@@ -105,10 +98,8 @@
           "count": 1,
           "set": "frc",
           "number": "11",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "The Ur-Sphinx",

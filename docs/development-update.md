@@ -24,6 +24,12 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture R5a: four creatures (2026-11-16)
+
+- Nissa, Leyline Tamer (landfall: draw, then the first time each turn reveal until a creature onto the battlefield), Dack Fayden, Helping Hand (reveal until one creature card per opponent, shuffle; goaded by you for the rest of the game, `goadedForever`; you choose which opponent gains control of each, a `giveToOpponent` card choice per opponent), Ob Nixilis, the Ascended (destroys tapped creatures your opponents control, life for each; an Angel at each end step after you gained life), Tamiyo, Upriser Crowned (you become the monarch; creatures that deal combat damage to you while you're the monarch are tapped and stunned).
+- Engine: `RevealUntil` can find several cards (`untilCount`), put them onto the battlefield (`toBattlefield`) and shuffle afterwards; "one or more" triggers keep every object of the batch (`subjects`, target `TriggeringObjects`); `toYou` and `whileYouAreMonarch` trigger conditions. Angel token (tfrc 1).
+- Dack Fayden: if fewer creature cards are revealed than you have opponents, the opponents earliest in turn order get them. Multiverse Reforged now has 89 of its 93 distinct cards built.
+
 ### Reality Fracture R4: artifacts and enchantments (2026-11-16)
 
 - Skrelv's Hive (upkeep Mite; corrupted: your creatures with toxic have lifelink: a `corrupted` static condition and a `hasToxic` filter), Dreadhorde Invasion (the `Amass` effect: a 0/0 Zombie Army token if you have no Army, your choice of Army if you have several, and it becomes a Zombie too), Cursed Mirror (may enter as a copy of a creature until end of turn, with haste), Windcrag Siege ("as this enters, choose Mardu or Jeskai": a general `chooseOptionAsEnters` choice, a `ChooseOption` action and `ifChosenOption` on statics and triggers; Mardu doubles attack triggers like Isshin), Currency Converter (discarded cards exiled with it; {T} puts one into its owner's graveyard for a Treasure or a 2/2 Rogue), Proteus Staff (the creature's controller reveals until a creature card and puts it onto the battlefield).

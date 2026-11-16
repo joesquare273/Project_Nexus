@@ -590,6 +590,28 @@
     "scryfallId": "fd9c99f0-390d-4ab1-ac0a-b18f1b0af12c",
     "relatedTokens": []
   },
+  "angel-token-frc": {
+    "name": "Angel",
+    "typeLine": "Token Creature — Angel",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "1",
+    "artist": "Harkalé Linaï",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317",
+      "normal": "https://cards.scryfall.io/normal/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317",
+      "large": "https://cards.scryfall.io/large/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/1/angel?utm_source=api",
+    "scryfallId": "1159d02c-0291-42de-91e6-e9a49d5ed968",
+    "relatedTokens": [
+      {
+        "name": "Angel",
+        "scryfallId": "1159d02c-0291-42de-91e6-e9a49d5ed968"
+      }
+    ]
+  },
   "angelo-token": {
     "name": "Angelo",
     "typeLine": "Token Legendary Creature — Dog",

@@ -34,6 +34,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   This: 'this card',
   AllPermanents: 'all permanents',
   TriggeringObject: 'that creature',
+  TriggeringObjects: 'those creatures',
   TriggeringCard: 'that card',
   ActivePlayer: 'that player',
   EachPlayerWhoChose: 'each player who did',
@@ -188,8 +189,12 @@ function effectText(e: EffectSpec): string {
       return `${e.optional ? 'you may ' : ''}put ${countersText(n, e.counter)} on ${who}${e.thenDouble ? ', then double the +1/+1 counters on it' : ''}`;
     case 'PutLastCounters':
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
-    case 'RevealUntil':
-      return `reveal cards from the top of your library until you reveal a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; put it into your hand and the rest on the bottom`;
+    case 'RevealUntil': {
+      const what = subjectText({ ...e.filter, controller: undefined }, 'card');
+      if (e.untilCount !== undefined) return `reveal cards from the top of your library until you reveal ${amountText(e.untilCount)} ${what}s; put them onto the battlefield, then shuffle${e.goadForever ? '; they\'re goaded for the rest of the game' : ''}${e.giveToDifferentOpponents ? '; choose a different opponent for each, who gains control of it' : ''}`;
+      const where = e.toBattlefield || e.fromMovedPermanentController || e.entersTapped || e.fromTargetPlayer ? 'onto the battlefield' : 'into your hand';
+      return `reveal cards from the top of ${e.fromMovedPermanentController ? "that creature's controller's" : 'your'} library until you reveal a ${what}; put it ${where} and the rest on the bottom`;
+    }
     case 'Explore':
       return `${who} explores`;
     case 'ReturnGreatestManaValue':

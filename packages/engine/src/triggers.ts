@@ -292,6 +292,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.fromZone && spec.fromZone !== o.from) return false;
   if (spec.leavesTo && spec.leavesTo !== o.to) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  if (spec.toYou && o.defender !== controller) return false;
+  if (spec.whileYouAreMonarch && s.monarch !== controller) return false;
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
@@ -467,6 +469,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     }
   }
   const batched = new Set<string>();
+  const batchFirst = new Map<string, QueuedTrigger>();
   const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard' | 'command', o: Occurrence) => {
     if (s.players[controller]!.eliminated) return;
     const definition = zone === 'battlefield' && c.zone !== 'battlefield' ? c.lastDefinition ?? defOf(s,c) : defOf(s,c);
@@ -477,7 +480,12 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       const key = `${c.id}#${spec.onceKey ?? ability}`;
       if (spec.oneOrMore) {
         const batchKey=o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key;
-        if (batched.has(batchKey)) return;
+        if (batched.has(batchKey)) {
+          // Collect every object of the batch ("tap those creatures").
+          const first = batchFirst.get(batchKey);
+          if (first && o.subject && !first.subjects!.includes(o.subject)) first.subjects!.push(o.subject);
+          return;
+        }
         batched.add(batchKey);
       }
       if (spec.oncePerTurn) {
@@ -490,7 +498,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         const slots = Math.min(c.xPaid ?? 0, battlefield(s).filter(x => x.id !== c.id && defOf(s,x).types.includes('creature')).length);
         spec = { ...spec, supportX: false, effects: Array.from({ length: slots }, () => ({ effect: 'AddCounters', amount: 1, target: 'TargetCreature', filter: { other: true }, upTo: true, group: 'support' })) };
       }
-      found.push({
+      const queued: QueuedTrigger = {
         spec: structuredClone(spec),
         source: c.id,
         sourceObject: c.zoneChanges ?? 0,
@@ -503,7 +511,12 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
         // "Choose one at random" is decided as it triggers.
         ...(spec.randomModes ? { mode: randomInt(s, spec.randomModes.length) } : {}),
-      });
+      };
+      found.push(queued);
+      if (spec.oneOrMore) {
+        queued.subjects = o.subject ? [o.subject] : [];
+        batchFirst.set(o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key, queued);
+      }
       // "II, III —" is two chapter abilities: lore counters added at once trigger each chapter they pass (rule 714.2b).
       if (o.when === 'Chapter') {
         const crossed = (spec.chapters ?? []).filter((n) => n > (o.loreFrom ?? 0) && n <= (o.loreTo ?? 0)).length;
@@ -612,6 +625,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     ...(t.modes ? { modes: [...t.modes] } : {}),
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
+    ...(t.subjects ? { subjects: [...t.subjects] } : {}),
     ...(t.amount !== undefined ? { amount: t.amount } : {}),
     ...(t.mode !== undefined ? { mode: t.mode } : {}),
   };

@@ -33,7 +33,7 @@ Reality Fracture has one Commander deck. It was imported with the same script
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 89/97 entries (85 of 93 distinct cards) |
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 93/97 entries (89 of 93 distinct cards) |
 
 - **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
 - **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
@@ -73,7 +73,8 @@ The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
   - TypeScript: the card files are combined as plain data in cards/src/index.ts, because their combined JSON types grew too complex.
 - **R3c: Akroma, Angel of Fury.** (done) Morph: cast face down as a 2/2 for {3}, turned face up for its morph cost; face-down cards stay hidden from opponents online.
 - **R4: artifacts and enchantments.** (done) Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.
-- **R5: the planeswalkers and the commanders.** Jace, Multiverse Architect (with empower), Nissa, Leyline Tamer, Dack Fayden, Ob Nixilis, the Ascended, Tamiyo, Upriser Crowned and Elspeth, Sun's Champion.
+- **R5a: four creatures.** (done) Nissa, Leyline Tamer, Dack Fayden, Helping Hand, Ob Nixilis, the Ascended and Tamiyo, Upriser Crowned.
+- **R5b: Jace and empower.** Jace, Multiverse Architect, Elspeth, Sun's Champion, Fatehold Charm and Plan for All Outcomes.
 
 ## Edge of Eternities Commander precons (complete 2026-11-06)
 
