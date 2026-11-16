@@ -111,6 +111,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     const kinds = [
       'previousTargetPower',
       'destroyedThisWay',
+      'exiledThisWay',
       'chosenCount',
       'chosenManaValue',
       'sourceCounterKinds',

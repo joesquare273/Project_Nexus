@@ -724,6 +724,8 @@ export type Amount =
       of:
         | 'previousTargetPower'
         | 'destroyedThisWay'
+        /** Permanents exiled from the battlefield earlier in this resolution ("the number of creatures exiled this way"). */
+        | 'exiledThisWay'
         | 'chosenCount'
         | 'chosenManaValue'
         /** Number of distinct counter kinds on the ability's source. */
@@ -1225,6 +1227,8 @@ export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 export interface ObjectFilter {
   /** Was milled by this spell or ability ("each creature card milled this way"). */
   milledThisWay?: boolean;
+  /** Not a token this spell or ability created ("destroy all other creatures": Martial Coup). */
+  notCreatedThisWay?: boolean;
   /** Was dealt damage this turn (Qutrub Forayer). */
   damagedThisTurn?: boolean;
   /** A graveyard card that arrived this turn from somewhere other than the battlefield. */
@@ -2007,6 +2011,10 @@ export interface CardDefinition {
   minBlockers?: number;
   /** "This token can block only creatures with flying" (Drone). */
   canBlockOnlyFlying?: boolean;
+  /** Toxic N (rule 702.164): a player this creature deals combat damage to also gets N poison counters. */
+  toxic?: number;
+  /** "This creature can't block" (the Phyrexian Mite token). */
+  cantBlock?: boolean;
   /** "If you would draw a card while your library has no cards in it, you win the game instead" (Laboratory Maniac). */
   winOnEmptyDraw?: boolean;
   /** "As this enters, choose a color"; its mana ability makes only that color (Crossroads Village). */
@@ -2629,6 +2637,8 @@ export interface Resolving {
   previousTargetPower?: number;
   /** Permanents destroyed so far by this spell or ability ("for each permanent destroyed this way"). */
   destroyedCount?: number;
+  /** Permanents exiled from the battlefield by this resolution's Exile effects (Sunfall). */
+  exiledCount?: number;
   /** The cards destroyed so far by this spell or ability. */
   destroyedCards?: InstanceId[];
   createdTokens: InstanceId[];

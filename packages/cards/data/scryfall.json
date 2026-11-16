@@ -3022,6 +3022,28 @@
       }
     ]
   },
+  "citizen-token-frc": {
+    "name": "Citizen",
+    "typeLine": "Token Creature — Citizen",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "11",
+    "artist": "Maria Poliakova",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561",
+      "normal": "https://cards.scryfall.io/normal/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561",
+      "large": "https://cards.scryfall.io/large/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/11/citizen?utm_source=api",
+    "scryfallId": "b7171de9-476d-4bfa-8cc0-b4fbc168cf4d",
+    "relatedTokens": [
+      {
+        "name": "Citizen",
+        "scryfallId": "b7171de9-476d-4bfa-8cc0-b4fbc168cf4d"
+      }
+    ]
+  },
   "clash-of-the-eikons": {
     "name": "Clash of the Eikons",
     "typeLine": "Sorcery",
@@ -9176,6 +9198,44 @@
       }
     ]
   },
+  "incubator-token-frc": {
+    "name": "Incubator // Phyrexian",
+    "typeLine": "Token Artifact — Incubator // Token Artifact Creature — Phyrexian",
+    "oracleText": "Incubator\n{2}: Transform this artifact.\n\n//\n\nPhyrexian\n",
+    "set": "tfrc",
+    "number": "13",
+    "artist": "Johann Bodin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993",
+      "normal": "https://cards.scryfall.io/normal/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993",
+      "large": "https://cards.scryfall.io/large/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/13/incubator-phyrexian?utm_source=api",
+    "scryfallId": "7b7f2e3a-ec43-4408-affd-a09338566ce3",
+    "relatedTokens": [
+      {
+        "name": "Incubator // Phyrexian",
+        "scryfallId": "7b7f2e3a-ec43-4408-affd-a09338566ce3"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Incubator",
+        "typeLine": "Token Artifact — Incubator",
+        "oracleText": "{2}: Transform this artifact.",
+        "colors": []
+      },
+      {
+        "name": "Phyrexian",
+        "typeLine": "Token Artifact Creature — Phyrexian",
+        "oracleText": "",
+        "power": "0",
+        "toughness": "0",
+        "colors": []
+      }
+    ]
+  },
   "inexorable-tide": {
     "name": "Inexorable Tide",
     "typeLine": "Enchantment",
@@ -13272,6 +13332,28 @@
     "scryfallId": "a564c2e8-f49f-4ed7-850f-7c8bc92e4926",
     "relatedTokens": []
   },
+  "phyrexian-mite-token-frc": {
+    "name": "Phyrexian Mite",
+    "typeLine": "Token Artifact Creature — Phyrexian Mite",
+    "oracleText": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+    "set": "tfrc",
+    "number": "16",
+    "artist": "Oriana Menendez",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661",
+      "normal": "https://cards.scryfall.io/normal/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661",
+      "large": "https://cards.scryfall.io/large/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/16/phyrexian-mite?utm_source=api",
+    "scryfallId": "e9c68c64-f3b9-45b7-83d1-bd1439a49942",
+    "relatedTokens": [
+      {
+        "name": "Phyrexian Mite",
+        "scryfallId": "e9c68c64-f3b9-45b7-83d1-bd1439a49942"
+      }
+    ]
+  },
   "pinnacle-emissary": {
     "name": "Pinnacle Emissary",
     "typeLine": "Artifact Creature — Robot",
@@ -16955,6 +17037,28 @@
       }
     ]
   },
+  "soldier-token-frc": {
+    "name": "Soldier",
+    "typeLine": "Token Creature — Soldier",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "3",
+    "artist": "Magali Villeneuve",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284",
+      "normal": "https://cards.scryfall.io/normal/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284",
+      "large": "https://cards.scryfall.io/large/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/3/soldier?utm_source=api",
+    "scryfallId": "a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f",
+    "relatedTokens": [
+      {
+        "name": "Soldier",
+        "scryfallId": "a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f"
+      }
+    ]
+  },
   "solemn-simulacrum": {
     "name": "Solemn Simulacrum",
     "typeLine": "Artifact Creature — Golem",
@@ -17144,6 +17248,28 @@
       {
         "name": "Spirit",
         "scryfallId": "004f2ea4-0477-49b2-ad06-5aac7991103d"
+      }
+    ]
+  },
+  "spirit-token-frc": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "4",
+    "artist": "Kim Sokol",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345",
+      "normal": "https://cards.scryfall.io/normal/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345",
+      "large": "https://cards.scryfall.io/large/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/4/spirit?utm_source=api",
+    "scryfallId": "06a96ac2-94a4-4b1c-a3c5-add1a3112cb2",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "06a96ac2-94a4-4b1c-a3c5-add1a3112cb2"
       }
     ]
   },

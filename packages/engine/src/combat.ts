@@ -51,6 +51,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   }
   // Drone tokens: "can block only creatures with flying".
   if (currentDefinition(s, blocker).canBlockOnlyFlying && !hasKeyword(s, attacker, 'Flying')) return false;
+  if (currentDefinition(s, blocker).cantBlock) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
   }

@@ -557,6 +557,13 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
       legendary: !!defOf(s, source).supertypes?.includes('Legendary'), sourceController: source.controller,
     }];
     changeLife(ctx, target.player, -amount);
+    // Toxic (rule 702.164c): combat damage to a player also gives poison counters.
+    const toxic = combat && amount > 0 ? (defOf(s, source).toxic ?? 0) : 0;
+    if (toxic > 0) {
+      const p = player(s, target.player);
+      p.poison = (p.poison ?? 0) + toxic;
+      ctx.ev.push({ type: 'PoisonChanged', player: target.player, total: p.poison });
+    }
     // Commander damage (rule 903.10a): combat damage from a commander is tracked per commander.
     if (combat && source.isCommander) {
       const taken = player(s, target.player).commanderDamage;

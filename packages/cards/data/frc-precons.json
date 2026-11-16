@@ -229,32 +229,24 @@
           "count": 1,
           "set": "frc",
           "number": "25",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Grand Crescendo",
           "count": 1,
           "set": "frc",
           "number": "26",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Martial Coup",
           "count": 1,
           "set": "frc",
           "number": "28",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Overlord of the Mistmoors",
@@ -273,11 +265,8 @@
           "count": 1,
           "set": "frc",
           "number": "31",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Serra's Emissary",
@@ -314,23 +303,16 @@
           "count": 1,
           "set": "frc",
           "number": "36",
-          "implemented": false,
-          "needs": [
-            "incubate",
-            "transform",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "White Sun's Twilight",
           "count": 1,
           "set": "frc",
           "number": "38",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mass Polymorph",
@@ -347,11 +329,8 @@
           "count": 1,
           "set": "frc",
           "number": "43",
-          "implemented": false,
-          "needs": [
-            "spell-effects",
-            "x-costs"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shark Typhoon",
@@ -421,10 +400,8 @@
           "count": 1,
           "set": "frc",
           "number": "51",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Windcrag Siege",
@@ -718,10 +695,8 @@
           "count": 1,
           "set": "frc",
           "number": "40",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fact or Fiction",
@@ -738,10 +713,8 @@
           "count": 1,
           "set": "frc",
           "number": "50",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Azorius Signet",

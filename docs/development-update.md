@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture R2a: spells (2026-11-16)
+
+- 10 cards: Despark, Brainsurge, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Occult Epiphany, Grand Crescendo and White Sun's Twilight, with five tokens (Soldier, Citizen, Spirit, Phyrexian Mite, Incubator). Multiverse Reforged now has 60 of its 93 distinct cards built.
+- Engine: toxic and "can't block" on a definition, the `exiledThisWay` amount and the `notCreatedThisWay` filter. R2 is split: R2b has the five spells that need new choices; the two empower cards move to R5 with Jace.
+
 ### Reality Fracture R1: lands and mana (2026-11-16)
 
 - 14 cards: the Azorius, Dimir, Izzet and Rakdos Signets, Reflecting Pool, Mystic Gate, the three Turbulent lands, Contaminated and Perilous Landscape, Kher Keep, Restless Anchorage and Restless Spire, plus the Kobolds of Kher Keep and Map tokens. Multiverse Reforged now has 50 of its 93 distinct cards built.

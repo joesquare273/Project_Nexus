@@ -54,6 +54,7 @@ export function matchesObject(
   if (f.blocking !== undefined && !!s.combat?.blocks.some((b) => b.blocker === obj.id) !== f.blocking) return false;
   if (f.warped !== undefined && !!obj.warped !== f.warped) return false;
   if (f.milledThisWay && !(obj.milledBy?.source === from.source && obj.milledBy?.turn === s.turnNumber)) return false;
+  if (f.notCreatedThisWay && s.resolving?.createdTokens.includes(obj.id)) return false;
   if (f.historic !== undefined) {
     const historic = def.types.includes('artifact') || !!def.supertypes?.includes('Legendary') || !!def.subtypes?.includes('Saga');
     if (historic !== f.historic) return false;

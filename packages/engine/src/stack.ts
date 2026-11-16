@@ -2036,6 +2036,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
         ? Math.max(0, r.previousTargetPower ?? 0)
         : a.of === 'destroyedThisWay'
           ? (r.destroyedCount ?? 0)
+          : a.of === 'exiledThisWay'
+          ? (r.exiledCount ?? 0)
           : a.of === 'chosenCount'
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
             : a.of === 'sourceCounterKinds'
@@ -2550,6 +2552,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const { name } = defOf(s, c);
         const controller = c.controller;
         moveCard(ctx, id, 'exile');
+        // "Incubate X, where X is the number of creatures exiled this way" (Sunfall).
+        r.exiledCount = (r.exiledCount ?? 0) + 1;
         if (!effect.sameNameTokens) continue;
         for (const other of battlefield(s)) {
           if (other.isToken && other.controller === controller && defOf(s, other).name === name) moveCard(ctx, other.id, 'exile');

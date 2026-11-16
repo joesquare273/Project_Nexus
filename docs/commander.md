@@ -33,7 +33,7 @@ Reality Fracture has one Commander deck. It was imported with the same script
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 54/97 entries (50 of 93 distinct cards) |
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 64/97 entries (60 of 93 distinct cards) |
 
 - **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
 - **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
@@ -49,7 +49,12 @@ The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
   - Engine: `BecomeCreature` animations (`Animation`) can set colors and add keywords and abilities while they last. Restless Spire's "during your turn, this creature has first strike" is only on the animated land.
   - The Signets and Mystic Gate use the paid mana abilities (`manaAbility.paid`) and Reflecting Pool `yourLandColors`.
   - Simplification: as elsewhere, explore keeps a nonland card on top (the "put it into your graveyard" choice isn't offered).
-- **R2: spells.** Fact or Fiction, Despark, Brainsurge, Teferi's Reproach, Fatehold Charm, Plan for All Outcomes, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Mass Polymorph, Occult Epiphany, Synthetic Destiny, Grand Crescendo, White Sun's Twilight, Shark Typhoon.
+- **R2a (done 2026-11-16): spells.** Despark, Brainsurge, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Occult Epiphany, Grand Crescendo and White Sun's Twilight, with the Soldier, Citizen, Spirit, Phyrexian Mite and Incubator tokens (tfrc 3, 11, 4, 16 and 13).
+  - Engine: toxic (`toxic` on a definition: combat damage to a player also gives that many poison counters, rule 702.164) and `cantBlock` on a definition.
+  - Engine: the `exiledThisWay` amount (permanents exiled earlier in the resolution) and the `notCreatedThisWay` filter ("destroy all other creatures" spares the tokens the spell just made).
+  - Flawless Maneuver's free cast is an alternative cost with `ifControls: {commander: true}`.
+- **R2b: the harder spells.** Fact or Fiction (an opponent splits the cards into two piles), Teferi's Reproach (a player with protection from everything whose life can't change), Mass Polymorph and Synthetic Destiny (reveal until that many creature cards), and Shark Typhoon (cycling with X, and a trigger when you cycle it).
+- Fatehold Charm and Plan for All Outcomes use Jace's empower, so they move to R5.
 - **R3: creatures.** Akroma, Avacyn, Darksteel Angel, Serra's Emissary, Archfiend of Despair, Archon of Cruelty, Overlord of the Mistmoors, The Ur-Sphinx, Memnarch, Ginger, Jhoira, Niv-Mizzet, Omnath and Venser.
 - **R4: artifacts and enchantments.** Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.
 - **R5: the planeswalkers and the commanders.** Jace, Multiverse Architect (with empower), Nissa, Leyline Tamer, Dack Fayden, Ob Nixilis, the Ascended, Tamiyo, Upriser Crowned and Elspeth, Sun's Champion.
