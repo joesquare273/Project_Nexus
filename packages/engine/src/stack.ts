@@ -1863,6 +1863,7 @@ export function activateAbility(
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
   if (spec.loyalty !== undefined) {
     c.loyaltyActivatedTurn = s.turnNumber;
+    player(s, playerId).loyaltyActivatedTurn = s.turnNumber;
     if (spec.loyalty > 0) addCounters(ctx, id, spec.loyalty, playerId, 'loyalty');
     else if (spec.loyalty < 0) removeCounters(ctx, id, 'loyalty', -spec.loyalty);
   }
@@ -1931,7 +1932,7 @@ export function activateAbility(
     ...(sacrificedPower !== undefined ? { sacrificedPower, sacrificedManaValue } : {}),
   };
   s.stack.push(item);
-  ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets });
+  ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets, ...(spec.loyalty !== undefined ? { loyalty: spec.loyalty } : {}) });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
 }
 

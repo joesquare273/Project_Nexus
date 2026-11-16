@@ -1869,6 +1869,28 @@
       }
     ]
   },
+  "beast-token-fra": {
+    "name": "Beast",
+    "typeLine": "Token Creature — Beast",
+    "oracleText": "Trample",
+    "set": "tfra",
+    "number": "8",
+    "artist": "Simon Dominic",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256",
+      "normal": "https://cards.scryfall.io/normal/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256",
+      "large": "https://cards.scryfall.io/large/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/8/beast?utm_source=api",
+    "scryfallId": "859bda9a-fa90-4ad3-b0c1-6fc62e27c12f",
+    "relatedTokens": [
+      {
+        "name": "Beast",
+        "scryfallId": "859bda9a-fa90-4ad3-b0c1-6fc62e27c12f"
+      }
+    ]
+  },
   "beast-within": {
     "name": "Beast Within",
     "typeLine": "Instant",
@@ -13194,6 +13216,28 @@
     "scryfallUri": "https://scryfall.com/card/fic/277/lethal-scheme?utm_source=api",
     "scryfallId": "0802be9f-686f-4321-afa4-d472241de653",
     "relatedTokens": []
+  },
+  "leviathan-token-fra": {
+    "name": "Leviathan",
+    "typeLine": "Token Creature — Leviathan",
+    "oracleText": "Hexproof",
+    "set": "tfra",
+    "number": "6",
+    "artist": "Maxime Minard",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757",
+      "normal": "https://cards.scryfall.io/normal/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757",
+      "large": "https://cards.scryfall.io/large/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/6/leviathan?utm_source=api",
+    "scryfallId": "a4339d5a-7c07-4326-b0e6-d2519332803d",
+    "relatedTokens": [
+      {
+        "name": "Leviathan",
+        "scryfallId": "a4339d5a-7c07-4326-b0e6-d2519332803d"
+      }
+    ]
   },
   "lichs-relic": {
     "name": "Lich's Relic",

@@ -1507,6 +1507,11 @@ export interface TriggerSpec {
   ifSourceGotCountersThisTurn?: boolean;
   /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
   ifYouAreMonarch?: boolean;
+  /** AbilityActivated: only loyalty abilities ("whenever you activate a loyalty ability"), and with `loyaltyRemovedAtLeast`, only those that removed that many loyalty counters. */
+  loyaltyAbility?: boolean;
+  loyaltyRemovedAtLeast?: number;
+  /** Intervening "if you've activated a loyalty ability this turn" (Kiora of Salt and Sand). */
+  ifActivatedLoyaltyThisTurn?: boolean;
   /** "While you're the monarch": a trigger condition only, checked as the event happens (Tamiyo). */
   whileYouAreMonarch?: boolean;
   /** CombatDamageToPlayer: only combat damage dealt to you ("whenever one or more creatures deal combat damage to you"). */
@@ -1851,6 +1856,10 @@ export interface StaticSpec {
   conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted')[];
   /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Mardu"). */
   ifChosenOption?: string;
+  /** "Planeswalkers you control have '[−2]: ...'": loyalty abilities this gives each planeswalker its controller controls (the "Way of the ..." enchantments). */
+  planeswalkersHave?: ActivatedSpec[];
+  /** "Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty" (Sanctum Lurker). */
+  planeswalkersSurviveZeroLoyalty?: boolean;
   /** "Must be blocked if able" while this applies (The Masamune). */
   mustBeBlocked?: boolean;
   power?: Amount;
@@ -2563,6 +2572,8 @@ export interface PlayerState {
   legendRuleOffTurn?: number;
   /** "The next spell you cast this turn can't be countered": the turn (Theorist's Proxy). */
   nextSpellUncounterableTurn?: number;
+  /** The last turn this player activated a loyalty ability. */
+  loyaltyActivatedTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
   /** The last turn an artifact entered the battlefield under this player's control (Mechan Shieldmate). */
@@ -3268,7 +3279,7 @@ export type GameEvent =
       controller: PlayerId;
       targets: Target[];
     }
-  | { type: 'AbilityActivated'; item: string; card: InstanceId; ability: number; controller: PlayerId; targets: Target[] }
+  | { type: 'AbilityActivated'; item: string; card: InstanceId; ability: number; controller: PlayerId; targets: Target[]; /** A loyalty ability: its loyalty cost (+N, 0 or -N). */ loyalty?: number }
   /** `card` is the spell, or the source of an ability. */
   | { type: 'StackItemAdded'; item: string; card: InstanceId }
   | { type: 'StackItemResolved'; item: string; card: InstanceId; fizzled: boolean }

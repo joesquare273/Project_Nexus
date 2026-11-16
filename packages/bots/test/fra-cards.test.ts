@@ -179,3 +179,79 @@ describe('F2: empower Jace', () => {
     expect([zone(s, creature), zone(s, land), loyalty(s)]).toEqual(['graveyard', 'hand', 1]);
   });
 });
+
+describe('F3: planeswalkers you control have ...', () => {
+  const jace = (s: GameState) => s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'jace-token-fra')!;
+  const loyaltyOf = (s: GameState, id: string) => s.cards[id]!.namedCounters?.loyalty ?? 0;
+  const abilities = (s: GameState, id: string) => currentDefinition(s, s.cards[id]!).activated ?? [];
+
+  it('Way of the Wildspeaker empowers Jace 7, and every planeswalker you control gains "[−4]: Create a 4/4 Beast"', () => {
+    let s = newGame();
+    const way = put(s, 'P1', 'way-of-the-wildspeaker', 'hand');
+    mana(s, 'P1', { G: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: way }).state;
+    const token = jace(s).id;
+    expect(loyaltyOf(s, token)).toBe(7);
+    // The Jace token's own two abilities, then the granted one.
+    expect(abilities(s, token).map((a) => a.loyalty)).toEqual([-1, -3, -4]);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: token, ability: 2, targets: [] }).state;
+    expect([loyaltyOf(s, token), s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'beast-token-fra')]).toEqual([3, true]);
+    // An opponent's planeswalker doesn't get it.
+    const theirs = put(s, 'P2', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    expect(abilities(s, theirs).map((a) => a.loyalty)).toEqual([1, -3, -7]);
+  });
+
+  it('Way of the Mind Sculptor draws when a loyalty ability removes two or more counters; Way of the Paradox gains life and an extra land', () => {
+    let s = newGame();
+    put(s, 'P1', 'way-of-the-mind-sculptor');
+    put(s, 'P1', 'way-of-the-paradox');
+    const elspeth = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 7 } });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 1, targets: [] }).state; // −3
+    expect([s.players.P1!.hand.length, s.players.P1!.life]).toEqual([hand + 1, 21]);
+    expect(s.players.P1!.extraLandDrops).toEqual({ turn: s.turnNumber, count: 1 });
+  });
+
+  it('Way of the Necromancer: whenever a creature you control dies, each planeswalker you control gets a loyalty counter', () => {
+    let s = newGame();
+    put(s, 'P1', 'way-of-the-necromancer');
+    put(s, 'P1', 'way-of-the-mentor');
+    const elspeth = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const bear = put(s, 'P1', 'thawbringer');
+    const bolt = put(s, 'P1', 'no-admittance', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(bear)] }).state;
+    expect(zone(s, bear)).toBe('graveyard');
+    expect(loyaltyOf(s, elspeth)).toBe(5);
+  });
+
+  it('Way of the Mentor: whenever you gain life, each planeswalker you control gets a loyalty counter', () => {
+    let s = newGame();
+    put(s, 'P1', 'way-of-the-mentor');
+    const elspeth = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    put(s, 'P1', 'sanctum-lurker');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 3, targets: [] }).state; // the Lurker's +2: you gain 1 life
+    expect(loyaltyOf(s, elspeth)).toBe(4 + 2 + 1);
+  });
+
+  it('Sanctum Lurker: your planeswalkers survive at 0 loyalty and gain "[+2]: 1 damage to each opponent, gain 1 life"', () => {
+    let s = newGame();
+    put(s, 'P1', 'sanctum-lurker');
+    const elspeth = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 3 } });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 1, targets: [] }).state; // −3: to 0
+    expect([zone(s, elspeth), loyaltyOf(s, elspeth)]).toEqual(['battlefield', 0]);
+    s.turnNumber++;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 3, targets: [] }).state; // the granted +2
+    expect([loyaltyOf(s, elspeth), s.players.P2!.life, s.players.P1!.life]).toEqual([2, 19, 21]);
+  });
+
+  it('Kiora of Salt and Sand: after a loyalty ability this turn, attacking untaps one attacker and makes it unblockable', () => {
+    let s = newGame();
+    put(s, 'P1', 'kiora-of-salt-and-sand');
+    const elspeth = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const bear = put(s, 'P1', 'thawbringer');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 0, targets: [] }).state; // +1
+    const r = fight(s, [{ attacker: bear, defender: 'P2' }]);
+    expect(r.events.some((e) => e.type === 'CardsUntapped' && e.cards.includes(bear))).toBe(true);
+  });
+});

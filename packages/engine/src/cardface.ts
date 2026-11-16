@@ -42,7 +42,7 @@ export function continuousSources(s: GameState): CardInstance[] {
   const cached = sourceCache.get(s);
   if (cached?.version === version && cached.count === count && cached.defs === s.cardDefs) return cached.sources;
   const sources = s.turnOrder.flatMap(p=>s.players[p]!.battlefield.map(id=>s.cards[id]!)).filter(c=>
-    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.noncreatureIfGraveyardBelow !== undefined));
+    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.planeswalkersHave || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.noncreatureIfGraveyardBelow !== undefined));
   sourceCache.set(s,{version,count,defs:s.cardDefs,sources});
   return sources;
 }
@@ -86,7 +86,12 @@ export function copyLook(s: GameState, c: CardInstance): { defId: CardDefId; art
 }
 
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
-  const out = definitionWithEffects(s, c);
+  let out = definitionWithEffects(s, c);
+  // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.
+  if (c.zone === 'battlefield' && out.types.includes('planeswalker')) {
+    const granted = continuousSources(s).flatMap((src) => (src.controller === c.controller && !src.phasedOut ? (copiableDefinition(s, src).statics ?? []).flatMap((st) => st.planeswalkersHave ?? []) : []));
+    if (granted.length) out = { ...out, activated: [...(out.activated ?? []), ...granted] };
+  }
   // Turning a face-down permanent face up is a special action (rule 116.2b), not an ability, so nothing removes it.
   if (!c.faceDown || c.zone !== 'battlefield') return out;
   const cost = turnFaceUpCost(s, c);

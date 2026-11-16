@@ -129,7 +129,9 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
     }
     // A planeswalker with no loyalty is put into its owner's graveyard (rule 704.5i).
     for (const c of battlefield(s)) {
-      if (defOf(s, c).types.includes('planeswalker') && (c.namedCounters?.loyalty ?? 0) <= 0) {
+      // Sanctum Lurker: "Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty."
+      const survives = battlefield(s).some((x) => x.controller === c.controller && !x.phasedOut && !!defOf(s, x).statics?.some((st) => st.planeswalkersSurviveZeroLoyalty));
+      if (defOf(s, c).types.includes('planeswalker') && (c.namedCounters?.loyalty ?? 0) <= 0 && !survives) {
         putIntoGraveyard(ctx, c.id);
         changed = true;
       }

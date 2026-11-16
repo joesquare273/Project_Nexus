@@ -56,6 +56,8 @@ interface Occurrence {
   drawNumber?: number;
   /** SpellCast: how many spells its caster had cast this turn, counting it. */
   spellNumber?: number;
+  /** AbilityActivated: the loyalty ability's cost, when it is one. */
+  loyalty?: number;
   /** A noncreature spell: its caster's noncreature spells this turn, this one included. */
   noncreatureSpellNumber?: number;
   /** Attacks: the attacker was the only creature declared as an attacker. */
@@ -131,7 +133,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         out.push({ when: 'Draws', at, drawer: e.player, ...(e.n !== undefined ? { drawNumber: e.n } : {}) });
         break;
       case 'AbilityActivated':
-        out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller });
+        out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller, ...(e.loyalty !== undefined ? { loyalty: e.loyalty } : {}) });
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
         break;
       case 'AbilityTriggered':
@@ -296,6 +298,9 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.leavesTo && spec.leavesTo !== o.to) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
   if (spec.toYou && o.defender !== controller) return false;
+  if (spec.loyaltyAbility && o.loyalty === undefined) return false;
+  if (spec.loyaltyRemovedAtLeast !== undefined && -(o.loyalty ?? 0) < spec.loyaltyRemovedAtLeast) return false;
+  if (spec.ifActivatedLoyaltyThisTurn && s.players[controller]!.loyaltyActivatedTurn !== s.turnNumber) return false;
   if (spec.whileYouAreMonarch && s.monarch !== controller) return false;
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;

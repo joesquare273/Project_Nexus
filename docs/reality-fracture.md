@@ -29,7 +29,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 |---|---|---|
 | F1 | Lands (19): the Commons and Annexes, portal view lands, Hall of Echoes, Roiling Canopy, Room of Refuge, Theorist's Sanctum | Done |
 | F2 | Empower Jace spells and creatures (17) | Done |
-| F3 | The ten "Way of the ..." enchantments and other cards that give planeswalkers abilities (Sanctum Lurker, Avatar of Burgeoning Echoes, Kiora of Salt and Sand) | |
+| F3 | The ten "Way of the ..." enchantments and other cards that give planeswalkers abilities (Sanctum Lurker, Avatar of Burgeoning Echoes, Kiora of Salt and Sand) | Done |
 | F4 | Prepared: the 24 prepare creatures, Codie, Hexhaven Dueling Arena, Infinite Coursework | |
 | F5 | White commons, uncommons and rares | |
 | F6 | Blue | |
@@ -55,3 +55,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Academic Ascent, Campus Crier (from the graveyard), Hexhaven Battalion (three Cadets, basic landcycling), Repurposed Enforcer (empower X, X creatures you control), Mindseeker Oculus, Protégé's Awakening, Theorist's Proxy, Overwrite the Multiverse, Rewrite Regrets, Solve for Disappointment, Vraska's Final Mercy, No Admittance, Violent Echoes, Arcane Amphisbaena, Inspired Tethermage, Tam's Resistance, Keeper of the Quiet Hour.
 - Engine: the `excessDamage` amount (DealDamage `recordExcess`, for creatures and planeswalkers; empowering 0 does nothing), "the next spell you cast this turn can't be countered" (`NextSpellCantBeCountered`), and `counterKind` on CountersAdded triggers. The Cadet token (tfra 1).
 - Countersculpt (behold a Jace or pay {1}) and Jace's Machinations (loyalty abilities at instant speed) come with F13.
+
+### F3 (2026-11-16)
+
+- The ten "Way of the ..." enchantments, Sanctum Lurker, Avatar of Burgeoning Echoes and Kiora of Salt and Sand.
+- Engine: `planeswalkersHave` statics give each planeswalker you control loyalty abilities after its own (`currentDefinition`); "whenever you activate a loyalty ability" triggers (`loyaltyAbility`, `loyaltyRemovedAtLeast` for Way of the Mind Sculptor); "if you've activated a loyalty ability this turn" (`ifActivatedLoyaltyThisTurn`, `PlayerState.loyaltyActivatedTurn`); planeswalkers that survive at 0 loyalty (`planeswalkersSurviveZeroLoyalty`). Beast (tfra 8) and Leviathan (tfra 6) tokens.
