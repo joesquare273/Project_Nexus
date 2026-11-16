@@ -42,7 +42,10 @@ this repo, not only in local memory.
   Next set (user, 2026-11-16): **Reality Fracture**. Its one Commander precon,
   Multiverse Reforged (Jace, Multiverse Architect), is imported
   (`import-precons.ts frc`, `frc.json`, `frc-precons.json`); build its cards
-  in groups R1-R5 (docs/commander.md).
+  in groups R1-R5 (docs/commander.md; all built 2026-11-16).
+  Reality Fracture is also its own main set (FRA, separate from the precon):
+  imported 2026-11-16 (`import-sets.ts fra`, `fra-set.json`, cards 1-290);
+  its packs, Collection tab and card building come next.
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).
 - **Tokens come from Scryfall too**, matched by the exact token printing each

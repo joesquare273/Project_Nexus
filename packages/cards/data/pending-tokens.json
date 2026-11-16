@@ -1243,5 +1243,345 @@
     "colors": [
       "U"
     ]
+  },
+  "8f4534d8-2783-484f-8ebf-a47b1cc4c6df": {
+    "name": "Cadet",
+    "typeLine": "Token Creature — Wizard Soldier",
+    "oracleText": "",
+    "set": "tfra",
+    "number": "1",
+    "artist": "Elizabeth Peiró",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318",
+      "normal": "https://cards.scryfall.io/normal/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318",
+      "large": "https://cards.scryfall.io/large/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/1/cadet?utm_source=api",
+    "scryfallId": "8f4534d8-2783-484f-8ebf-a47b1cc4c6df",
+    "relatedTokens": [
+      {
+        "name": "Cadet",
+        "scryfallId": "8f4534d8-2783-484f-8ebf-a47b1cc4c6df"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": []
+  },
+  "7bda0b63-fd0f-495d-9eb0-20057571c0ee": {
+    "name": "Illusion",
+    "typeLine": "Token Creature — Illusion",
+    "oracleText": "",
+    "set": "tfra",
+    "number": "4",
+    "artist": "Daniel Cotter",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525",
+      "normal": "https://cards.scryfall.io/normal/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525",
+      "large": "https://cards.scryfall.io/large/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/4/illusion?utm_source=api",
+    "scryfallId": "7bda0b63-fd0f-495d-9eb0-20057571c0ee",
+    "relatedTokens": [
+      {
+        "name": "Illusion",
+        "scryfallId": "7bda0b63-fd0f-495d-9eb0-20057571c0ee"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "U"
+    ]
+  },
+  "991a5840-adc7-45b5-8d5f-b24dae384bab": {
+    "name": "Dragon",
+    "typeLine": "Token Creature — Dragon",
+    "oracleText": "Flying",
+    "set": "tfra",
+    "number": "7",
+    "artist": "Loïc Canavaggia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473",
+      "normal": "https://cards.scryfall.io/normal/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473",
+      "large": "https://cards.scryfall.io/large/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/7/dragon?utm_source=api",
+    "scryfallId": "991a5840-adc7-45b5-8d5f-b24dae384bab",
+    "relatedTokens": [
+      {
+        "name": "Dragon",
+        "scryfallId": "991a5840-adc7-45b5-8d5f-b24dae384bab"
+      }
+    ],
+    "power": "5",
+    "toughness": "5",
+    "colors": [
+      "R"
+    ]
+  },
+  "859bda9a-fa90-4ad3-b0c1-6fc62e27c12f": {
+    "name": "Beast",
+    "typeLine": "Token Creature — Beast",
+    "oracleText": "Trample",
+    "set": "tfra",
+    "number": "8",
+    "artist": "Simon Dominic",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256",
+      "normal": "https://cards.scryfall.io/normal/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256",
+      "large": "https://cards.scryfall.io/large/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/5/859bda9a-fa90-4ad3-b0c1-6fc62e27c12f.jpg?1789736256"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/8/beast?utm_source=api",
+    "scryfallId": "859bda9a-fa90-4ad3-b0c1-6fc62e27c12f",
+    "relatedTokens": [
+      {
+        "name": "Beast",
+        "scryfallId": "859bda9a-fa90-4ad3-b0c1-6fc62e27c12f"
+      }
+    ],
+    "power": "4",
+    "toughness": "4",
+    "colors": [
+      "G"
+    ]
+  },
+  "eb4bf635-04d7-4994-9f70-4ff573a767e7": {
+    "name": "Heartwood",
+    "typeLine": "Token Artifact — Heartwood",
+    "oracleText": "{T}: Add {R} or {G}.",
+    "set": "tfra",
+    "number": "11",
+    "artist": "Tianxing Xu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278",
+      "normal": "https://cards.scryfall.io/normal/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278",
+      "large": "https://cards.scryfall.io/large/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/11/heartwood?utm_source=api",
+    "scryfallId": "eb4bf635-04d7-4994-9f70-4ff573a767e7",
+    "relatedTokens": [
+      {
+        "name": "Heartwood",
+        "scryfallId": "eb4bf635-04d7-4994-9f70-4ff573a767e7"
+      }
+    ],
+    "colors": [
+      "G",
+      "R"
+    ]
+  },
+  "fc924972-5014-45d1-9676-6a76d862b205": {
+    "name": "Forest Tentacle",
+    "typeLine": "Token Land Creature — Forest Tentacle",
+    "oracleText": "(This token has \"{T}: Add {G}.\" It's affected by summoning sickness until your next turn.)",
+    "set": "tfra",
+    "number": "9",
+    "artist": "Deruchenko Alexander",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762",
+      "normal": "https://cards.scryfall.io/normal/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762",
+      "large": "https://cards.scryfall.io/large/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/9/forest-tentacle?utm_source=api",
+    "scryfallId": "fc924972-5014-45d1-9676-6a76d862b205",
+    "relatedTokens": [
+      {
+        "name": "Forest Tentacle",
+        "scryfallId": "fc924972-5014-45d1-9676-6a76d862b205"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ]
+  },
+  "c59b7223-00a9-4c0d-896d-1cd463860c40": {
+    "name": "Lotus",
+    "typeLine": "Token Artifact",
+    "oracleText": "{T}, Sacrifice this token: Add three mana of any one color.",
+    "set": "tfra",
+    "number": "12",
+    "artist": "Alex V. Ngo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772",
+      "normal": "https://cards.scryfall.io/normal/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772",
+      "large": "https://cards.scryfall.io/large/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/12/lotus?utm_source=api",
+    "scryfallId": "c59b7223-00a9-4c0d-896d-1cd463860c40",
+    "relatedTokens": [
+      {
+        "name": "Lotus",
+        "scryfallId": "c59b7223-00a9-4c0d-896d-1cd463860c40"
+      }
+    ],
+    "colors": []
+  },
+  "7801c326-d740-4cec-9268-05348ace8302": {
+    "name": "Ajani's Pridemate",
+    "typeLine": "Token Creature — Cat Soldier",
+    "oracleText": "Whenever you gain life, put a +1/+1 counter on Ajani's Pridemate.",
+    "set": "tfra",
+    "number": "2",
+    "artist": "Diego Gisbert",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461",
+      "normal": "https://cards.scryfall.io/normal/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461",
+      "large": "https://cards.scryfall.io/large/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/2/ajanis-pridemate?utm_source=api",
+    "scryfallId": "7801c326-d740-4cec-9268-05348ace8302",
+    "relatedTokens": [
+      {
+        "name": "Ajani's Pridemate",
+        "scryfallId": "7801c326-d740-4cec-9268-05348ace8302"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "W"
+    ]
+  },
+  "bfd6132f-c96b-4ce0-ac4d-c46356afc767": {
+    "name": "Thopter",
+    "typeLine": "Token Artifact Creature — Thopter",
+    "oracleText": "Flying",
+    "set": "tfra",
+    "number": "14",
+    "artist": "Diego Gisbert",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223",
+      "normal": "https://cards.scryfall.io/normal/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223",
+      "large": "https://cards.scryfall.io/large/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/14/thopter?utm_source=api",
+    "scryfallId": "bfd6132f-c96b-4ce0-ac4d-c46356afc767",
+    "relatedTokens": [
+      {
+        "name": "Thopter",
+        "scryfallId": "bfd6132f-c96b-4ce0-ac4d-c46356afc767"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "5165055a-89e1-471b-ac96-732e593c910b": {
+    "name": "Angel",
+    "typeLine": "Token Creature — Angel",
+    "oracleText": "Flying",
+    "set": "tfra",
+    "number": "3",
+    "artist": "Raluca Marinescu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744",
+      "normal": "https://cards.scryfall.io/normal/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744",
+      "large": "https://cards.scryfall.io/large/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/3/angel?utm_source=api",
+    "scryfallId": "5165055a-89e1-471b-ac96-732e593c910b",
+    "relatedTokens": [
+      {
+        "name": "Angel",
+        "scryfallId": "5165055a-89e1-471b-ac96-732e593c910b"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "U"
+    ]
+  },
+  "5868190d-18f6-43b6-af83-9e0ef585687d": {
+    "name": "Mowu",
+    "typeLine": "Token Legendary Creature — Dog",
+    "oracleText": "",
+    "set": "tfra",
+    "number": "10",
+    "artist": "Leonardo Santanna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768",
+      "normal": "https://cards.scryfall.io/normal/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768",
+      "large": "https://cards.scryfall.io/large/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/10/mowu?utm_source=api",
+    "scryfallId": "5868190d-18f6-43b6-af83-9e0ef585687d",
+    "relatedTokens": [
+      {
+        "name": "Mowu",
+        "scryfallId": "5868190d-18f6-43b6-af83-9e0ef585687d"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ]
+  },
+  "a4339d5a-7c07-4326-b0e6-d2519332803d": {
+    "name": "Leviathan",
+    "typeLine": "Token Creature — Leviathan",
+    "oracleText": "Hexproof",
+    "set": "tfra",
+    "number": "6",
+    "artist": "Maxime Minard",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757",
+      "normal": "https://cards.scryfall.io/normal/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757",
+      "large": "https://cards.scryfall.io/large/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/4/a4339d5a-7c07-4326-b0e6-d2519332803d.jpg?1789735757"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/6/leviathan?utm_source=api",
+    "scryfallId": "a4339d5a-7c07-4326-b0e6-d2519332803d",
+    "relatedTokens": [
+      {
+        "name": "Leviathan",
+        "scryfallId": "a4339d5a-7c07-4326-b0e6-d2519332803d"
+      }
+    ],
+    "power": "8",
+    "toughness": "8",
+    "colors": [
+      "U"
+    ]
+  },
+  "a0fec445-c6fb-4ca2-b63f-1d608c418a22": {
+    "name": "Sculpture Treasure",
+    "typeLine": "Token Artifact Creature — Sculpture Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tfra",
+    "number": "13",
+    "artist": "Raluca Marinescu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148",
+      "normal": "https://cards.scryfall.io/normal/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148",
+      "large": "https://cards.scryfall.io/large/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/13/sculpture-treasure?utm_source=api",
+    "scryfallId": "a0fec445-c6fb-4ca2-b63f-1d608c418a22",
+    "relatedTokens": [
+      {
+        "name": "Sculpture Treasure",
+        "scryfallId": "a0fec445-c6fb-4ca2-b63f-1d608c418a22"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
   }
 }

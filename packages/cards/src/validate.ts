@@ -239,8 +239,9 @@ export function validateCardDefinition(raw: unknown): string[] {
   const perCounter = c.manaAbility?.amountPerCounter;
   if (perCounter !== undefined && perCounter !== true) validateCounterKind(perCounter, err);
   for (const color of c.colorIdentity ?? []) if (!['W', 'U', 'B', 'R', 'G'].includes(color)) err(`unknown color "${color}" in colorIdentity.`);
-  if (c.types.includes('creature') && (!isNonNegativeInt(c.power) || !isNonNegativeInt(c.toughness))) {
-    err('creatures need non-negative integer power and toughness.');
+  // A printed power can be negative (Loot, the Anomaly: -2/4); toughness can't.
+  if (c.types.includes('creature') && (!Number.isInteger(c.power) || !isNonNegativeInt(c.toughness))) {
+    err('creatures need integer power and toughness (toughness at least 0; power may be negative).');
   }
   if (c.notBuilt !== undefined && typeof c.notBuilt !== 'boolean') err('notBuilt must be true or false.');
   if (c.uncastable && (!c.notBuilt || c.manaCost !== undefined)) err('an uncastable card is notBuilt and has no manaCost.');

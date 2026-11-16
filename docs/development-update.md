@@ -24,6 +24,12 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture main set imported (2026-11-16)
+
+- Reality Fracture (FRA, released 2026-10-02) is its own set, separate from the Multiverse Reforged precon. Its main set, collector numbers 1-290 with the basics (281-290; 291+ are borderless and other variants), is imported from MTGJSON: `node packages/cards/scripts/import-sets.ts fra` writes the 278 cards no other file defines to `data/fra-set.json` (2 built automatically, the vanilla Yargles; 276 `notBuilt`). Card data and images are cached (`npm run scryfall`), and the tokens its cards make are waiting in `pending-tokens.json`.
+- A printed power can now be negative (Loot, the Anomaly is -2/4); toughness still can't.
+- Next: its packs (Play and Collector Booster odds, print sheets, the server's `set`), its Collection tab, then building its cards in groups.
+
 ### Reality Fracture R5b: Jace and empower; Multiverse Reforged complete (2026-11-16)
 
 - Jace, Multiverse Architect (loyalty 4; on each opponent's turn they may pay {2} or their creatures can't attack your Jaces that turn, `ProtectSubtypeUnlessPays` and `attackBans`; +1 draws two and puts a card from your hand on the bottom; −3 exiles your creature or planeswalker and reveals until a creature or planeswalker card onto the battlefield), Elspeth, Sun's Champion (static emblems: `CreateEmblem`, `emblemStatics`, shown as an "Emblem" marker by the player), Fatehold Charm and Plan for All Outcomes.
