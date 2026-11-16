@@ -2445,6 +2445,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'PutOnLibraryBottom':
       for (const id of cards) if (s.cards[id]!.zone === 'graveyard' || (effect.target === 'TargetExiledCardWithWarp' && s.cards[id]!.zone === 'exile')) moveCard(ctx, id, 'library');
+      // "Put target creature on the bottom of its owner's library" (Proteus Staff).
+      for (const id of onBattlefield) {
+        r.movedPermanentController = s.cards[id]!.controller;
+        moveCard(ctx, id, 'library');
+      }
       return;
     case 'AllowAdventureFromGraveyard':
       for (const id of cards) if (s.cards[id]!.zone === 'graveyard') s.cards[id]!.adventureGraveyard = { player: item.controller, grantedTurn: s.turnNumber };
@@ -2588,7 +2593,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'Exile':
       // A card in a graveyard ("exile target creature card from a graveyard").
-      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') moveCard(ctx, id, 'exile');
+      for (const id of cards) {
+        if (s.cards[id]!.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'exile');
+        // "You may exile that card from your graveyard" (Currency Converter): exiled with this permanent.
+        if (effect.exileLinked && (s.cards[id]!.zone as string) === 'exile') s.cards[id]!.exiledWith = { source, sourceObject: item.kind === 'ability' ? (item.sourceObject ?? 0) : (s.cards[source]?.zoneChanges ?? 0) };
+      }
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
         const { name } = defOf(s, c);
@@ -2716,7 +2726,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'RevealUntil': {
-      const owner = effect.fromTargetPlayer ? (targetPlayers(targets)[0] ?? item.controller) : item.controller;
+      // Proteus Staff: "that creature's controller reveals cards ... The player puts that card onto the battlefield".
+      if (effect.fromMovedPermanentController && !r.movedPermanentController) return;
+      const owner = effect.fromMovedPermanentController ? r.movedPermanentController! : effect.fromTargetPlayer ? (targetPlayers(targets)[0] ?? item.controller) : item.controller;
       const library = s.players[owner]!.library;
       const revealed: InstanceId[] = [];
       let found: InstanceId | undefined;
@@ -2731,6 +2743,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const rest = revealed.filter((id) => id !== found);
       if (found) {
         r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[found]!).manaCost));
+        if (effect.fromMovedPermanentController) {
+          moveCard(ctx, found, 'battlefield', { controller: owner });
+          const c = s.cards[found]!;
+          c.summoningSick = true;
+          if (entersTapped(s, c)) c.tapped = true;
+        } else
         // Jhoira: onto the battlefield under your control; you lose life equal to its mana value.
         if (effect.fromTargetPlayer) {
           moveCard(ctx, found, 'battlefield');
@@ -3722,6 +3740,23 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       ];
       return;
     }
+    case 'Amass': {
+      // Amass (rule 701.47): with no Army, create a 0/0 Zombie Army token first; with several, choose one.
+      let armies = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && subtypesOf(s, c).includes('Army'));
+      if (armies.length === 0 && effect.token) {
+        createToken(ctx, effect.token, item.controller);
+        armies = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && subtypesOf(s, c).includes('Army'));
+      }
+      if (armies.length === 1) amassOnto(ctx, armies[0]!.id, item.controller, amount, effect.amassType);
+      else if (armies.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'amass', cards: armies.map((c) => c.id), min: 1, max: 1, amassCounters: amount, ...(effect.amassType ? { amassType: effect.amassType } : {}) }];
+      return;
+    }
+    case 'PutExiledWithThisIntoGraveyard': {
+      const object = item.kind === 'ability' ? item.sourceObject : undefined;
+      const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.exiledWith?.source === source && (object === undefined || c.exiledWith.sourceObject === object)).map((c) => c.id);
+      if (exiled.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'exiledToGraveyard', cards: exiled, min: 1, max: 1, ...(effect.landToken ? { landToken: effect.landToken } : {}), ...(effect.token ? { nonlandToken: effect.token } : {}) }];
+      return;
+    }
     case 'TurnFaceUp':
       for (const id of onBattlefield) turnFaceUp(ctx, id, item.controller);
       return;
@@ -4640,6 +4675,16 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.tapped = true;
     }
     for (const id of pending.looked ?? []) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+  } else if (pending.purpose === 'amass') {
+    for (const id of cards) amassOnto(ctx, id, pending.player, pending.amassCounters ?? 0, pending.amassType);
+  } else if (pending.purpose === 'exiledToGraveyard') {
+    // Currency Converter: into its owner's graveyard; a Treasure for a land card, a 2/2 Rogue for any other.
+    for (const id of cards) {
+      const land = defOf(s, s.cards[id]!).types.includes('land');
+      moveCard(ctx, id, 'graveyard');
+      const token = land ? pending.landToken : pending.nonlandToken;
+      if (token) r.createdTokens.push(createToken(ctx, token, pending.player));
+    }
   } else if (pending.purpose === 'manifestDread') {
     // Manifest the chosen card; the other goes into the graveyard (rule 701.62a).
     for (const id of cards) manifest(ctx, id, pending.player);
@@ -4884,8 +4929,11 @@ function enterAsCopy(ctx: Ctx, c: CardInstance, chosen: { card: InstanceId; obje
   if (artifactsToo && !definition.types.includes('artifact')) definition.types = ['artifact', ...definition.types];
   if (artifactsToo) definition.entersAsCopyOfArtifact = true;
   delete definition.token;
+  // Cursed Mirror: "until end of turn, except it has haste".
+  const untilEndOfTurn = !!s.cardDefs[c.defId]?.entersAsCopyUntilEndOfTurn;
+  if (untilEndOfTurn) definition.keywords = [...new Set([...(definition.keywords ?? []), 'Haste' as const])];
   const look = copyLook(s, target);
-  c.copy = { definition, artDefId: look.artDefId, copiedName: original.name, ...(look.printing ? { printing: structuredClone(look.printing) } : {}) };
+  c.copy = { definition, artDefId: look.artDefId, copiedName: original.name, ...(look.printing ? { printing: structuredClone(look.printing) } : {}), ...(untilEndOfTurn ? { untilTurn: s.turnNumber } : {}) };
   newTimestamp(s);
   ctx.ev.push({ type: 'BecameCopy', card: c.id, copied: target.id, name: original.name });
 }
@@ -4948,4 +4996,12 @@ function cantBeCountered(s: GameState, id: InstanceId): boolean {
   if (!defOf(s, c).types.includes('creature')) return false;
   const controller = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem | undefined)?.controller ?? c.owner;
   return battlefield(s).some((p) => p.controller === controller && !p.phasedOut && !!defOf(s, p).statics?.some((st) => st.creatureSpellsCantBeCountered));
+}
+
+/** Amass: N +1/+1 counters on this Army, which also becomes `type` (rule 701.47a). */
+function amassOnto(ctx: Ctx, army: InstanceId, controller: PlayerId, n: number, type?: string): void {
+  const c = ctx.s.cards[army];
+  if (!c || c.zone !== 'battlefield') return;
+  if (n > 0) addCounters(ctx, army, n, controller);
+  if (type && !(c.addedSubtypes ?? []).includes(type)) c.addedSubtypes = [...(c.addedSubtypes ?? []), type];
 }

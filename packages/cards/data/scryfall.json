@@ -7731,6 +7731,28 @@
     "scryfallId": "43531409-e086-481a-b718-a01a45b13d10",
     "relatedTokens": []
   },
+  "goblin-token-frc": {
+    "name": "Goblin",
+    "typeLine": "Token Creature — Goblin",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "9",
+    "artist": "Paolo Parente",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534",
+      "normal": "https://cards.scryfall.io/normal/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534",
+      "large": "https://cards.scryfall.io/large/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/9/goblin?utm_source=api",
+    "scryfallId": "0c7f299e-4774-4e8b-bb0e-db27d57d2621",
+    "relatedTokens": [
+      {
+        "name": "Goblin",
+        "scryfallId": "0c7f299e-4774-4e8b-bb0e-db27d57d2621"
+      }
+    ]
+  },
   "god-eternal-bontu": {
     "name": "God-Eternal Bontu",
     "typeLine": "Legendary Creature — Zombie God",
@@ -15072,6 +15094,28 @@
     "scryfallId": "2aa1f7c6-f888-4384-9626-f106571e164c",
     "relatedTokens": []
   },
+  "rogue-token-frc": {
+    "name": "Rogue",
+    "typeLine": "Token Creature — Rogue",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "7",
+    "artist": "Maria Poliakova",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431",
+      "normal": "https://cards.scryfall.io/normal/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431",
+      "large": "https://cards.scryfall.io/large/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/7/rogue?utm_source=api",
+    "scryfallId": "0526330e-40eb-4c5f-b0f5-5489839e5f44",
+    "relatedTokens": [
+      {
+        "name": "Rogue",
+        "scryfallId": "0526330e-40eb-4c5f-b0f5-5489839e5f44"
+      }
+    ]
+  },
   "rogues-passage": {
     "name": "Rogue's Passage",
     "typeLine": "Land",
@@ -20856,6 +20900,40 @@
       }
     ]
   },
+  "treasure-token-fra": {
+    "name": "Treasure",
+    "typeLine": "Token Artifact — Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tfra",
+    "number": "15",
+    "artist": "Alayna Danner",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245",
+      "normal": "https://cards.scryfall.io/normal/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245",
+      "large": "https://cards.scryfall.io/large/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/15/treasure?utm_source=api",
+    "scryfallId": "03992f88-7a15-4234-9bed-b7617d7ff09c",
+    "relatedTokens": [
+      {
+        "name": "Smaug",
+        "scryfallId": "bb4ac08f-f6a5-49d6-91e9-38c4f217932b"
+      },
+      {
+        "name": "Treasure",
+        "scryfallId": "03992f88-7a15-4234-9bed-b7617d7ff09c"
+      },
+      {
+        "name": "Goblin Shaman",
+        "scryfallId": "0d9461c3-f545-4efb-926e-759961db0495"
+      },
+      {
+        "name": "Smoke Blessing",
+        "scryfallId": "5eb01bef-8989-4b38-a303-0aafab1b33e5"
+      }
+    ]
+  },
   "treno-dark-city": {
     "name": "Treno, Dark City",
     "typeLine": "Land — Town",
@@ -22880,6 +22958,28 @@
     "scryfallUri": "https://scryfall.com/card/fin/128/zodiark-umbral-god?utm_source=api",
     "scryfallId": "9ba292d5-5139-42ea-950d-0a638445277f",
     "relatedTokens": []
+  },
+  "zombie-army-token-frc": {
+    "name": "Zombie Army",
+    "typeLine": "Token Creature — Zombie Army",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "8",
+    "artist": "David Astruga",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477",
+      "normal": "https://cards.scryfall.io/normal/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477",
+      "large": "https://cards.scryfall.io/large/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/8/zombie-army?utm_source=api",
+    "scryfallId": "14474e29-27a4-475a-9d2c-eb1d6c146421",
+    "relatedTokens": [
+      {
+        "name": "Zombie Army",
+        "scryfallId": "14474e29-27a4-475a-9d2c-eb1d6c146421"
+      }
+    ]
   },
   "zombie-token": {
     "name": "Zombie",

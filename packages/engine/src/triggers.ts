@@ -272,6 +272,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
   const p = s.players[controller]!;
   if (spec.ifYouGainedLifeThisTurn && !((p.lifeGainedThisTurn ?? 0) > 0)) return false;
   if (spec.ifVoid && s.voidTurn !== s.turnNumber) return false;
+  if (spec.ifChosenOption !== undefined && s.cards[source]?.chosenOption !== spec.ifChosenOption) return false;
   if (spec.ifYourGraveyardAtLeast !== undefined && p.graveyard.length < spec.ifYourGraveyardAtLeast) return false;
   if (spec.ifKicked && !(s.cards[source]?.kicksPaid ?? 0)) return false;
   if (spec.ifNotEnteredThisTurn && s.cards[source]?.enteredTurn === s.turnNumber) return false;
@@ -568,11 +569,12 @@ function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
     for (const st of defOf(s, p).statics ?? []) {
       const more = st.extraTriggers;
       if (!more) continue;
+      if (st.ifChosenOption !== undefined && p.chosenOption !== st.ifChosenOption) continue;
       if (more.selfAndEquipment) {
         const equipped = battlefield(s).some((e) => e.attachedTo === p.id && defOf(s, e).subtypes?.includes('Equipment'));
         if (equipped && (t.source === p.id || source?.attachedTo === p.id)) extra++;
       }
-      if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack')) extra++;
+      if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack' || spec?.when === 'YouAttackPlayer')) extra++;
       if (more.dying && spec?.when === 'Dies') {
         const holder = st.affects === 'EquippedCreature' ? p.attachedTo : p.id;
         if (holder && (t.source === holder || t.emblem)) extra++;

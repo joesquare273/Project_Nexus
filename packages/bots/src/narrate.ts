@@ -313,6 +313,10 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'Amass':
+      return `amass ${e.amassType ? `${e.amassType}s ` : ''}${n}`;
+    case 'PutExiledWithThisIntoGraveyard':
+      return "put a card exiled with this into its owner's graveyard; if it's a land card, create a Treasure token, otherwise create a 2/2 black Rogue creature token";
     case 'TurnFaceUp':
       return `turn ${who} face up`;
     case 'TurnFaceDown':
@@ -797,6 +801,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       if (e.from === 'library' && e.to === 'exile') return `  ${cardName(s, e.card)} is exiled from the top of the library.`;
       if (e.from === 'library' && e.to === 'graveyard') return `  ${cardName(s, e.card)} is milled.`;
       return null;
+    case 'OptionChosen':
+      return `  ${who(e.player)} chose ${e.option} for ${cardName(s, e.card)}.`;
     case 'TurnedFaceDown':
       return `${cardName(s, e.card)} was turned face down.`;
     case 'TurnedFaceUp':

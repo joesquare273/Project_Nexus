@@ -198,6 +198,7 @@ const CARD_FIELDS = {
   animated: 'copy',
   chosenColor: 'copy',
   chosenCardType: 'copy',
+  chosenOption: 'copy',
   faceDown: 'copy',
   manifested: 'copy',
   faceDownWard: 'copy',

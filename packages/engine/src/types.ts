@@ -526,6 +526,13 @@ export const EFFECT_KINDS = [
   'TurnFaceDown',
   /** Manifest the top `amount` cards of your library (rule 701.34); with `cloak`, cloak them: face down with ward {2} (701.58). */
   'Manifest',
+  /**
+   * Amass [subtype] N (rule 701.47): put N +1/+1 counters on an Army you control (creating a 0/0
+   * black Zombie Army token first if you control none); it's also an `amassType` (Zombie).
+   */
+  'Amass',
+  /** Put a card exiled with this permanent (your choice) into its owner's graveyard; then create `landToken` if it's a land card, else `token` (Currency Converter). */
+  'PutExiledWithThisIntoGraveyard',
   /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
   'ManifestDread',
   /** The target players win the game: every other player loses. */
@@ -823,6 +830,12 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** Amass: the creature type the Army also becomes ("amass Zombies": Zombie). */
+  amassType?: string;
+  /** PutExiledWithThisIntoGraveyard: the token made for a land card. */
+  landToken?: CardDefId;
+  /** RevealUntil: the controller of the permanent an earlier effect of this ability put into a library reveals, and puts the card found onto the battlefield (Proteus Staff). */
+  fromMovedPermanentController?: boolean;
   /** Manifest: cloak instead (face down with ward {2}, rule 701.58). */
   cloak?: boolean;
   /** Mill: each target player mills half their library, rounded down (Jidoor's Overture). */
@@ -1364,6 +1377,8 @@ export interface ObjectFilter {
   manaValueEqualsSubject?: boolean;
   /** Is (or, with false, isn't) a token ("nontoken creature"). */
   token?: boolean;
+  /** Has toxic ("creatures you control with toxic"). */
+  hasToxic?: boolean;
 }
 
 export interface TriggerSpec {
@@ -1436,6 +1451,8 @@ export interface TriggerSpec {
   ifNotEnteredThisTurn?: boolean;
   /** Intervening "if": "if you gained life this turn". */
   ifYouGainedLifeThisTurn?: boolean;
+  /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Jeskai"). */
+  ifChosenOption?: string;
   /** Void: intervening "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */
   ifVoid?: boolean;
   /** "When this creature enters, if it was kicked" (an intervening if on the source). */
@@ -1782,7 +1799,10 @@ export interface StaticSpec {
    */
   /** `attached`: only while this Equipment is attached to a creature (for EachMatching abilities it grants). */
   /** `twoSpellsThisTurn`: "as long as you've cast two or more spells this turn". */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking')[];
+  /** `corrupted`: as long as an opponent has three or more poison counters. */
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted')[];
+  /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Mardu"). */
+  ifChosenOption?: string;
   /** "Must be blocked if able" while this applies (The Masamune). */
   mustBeBlocked?: boolean;
   power?: Amount;
@@ -2091,6 +2111,10 @@ export interface CardDefinition {
   chooseColorAsEnters?: boolean;
   /** "As this artifact enters, choose artifact, creature, enchantment, instant, or sorcery" (Cloud Key): the types to choose from. */
   chooseCardTypeAsEnters?: CardType[];
+  /** "As this enters, choose Mardu or Jeskai" (a Siege): the options, by name. */
+  chooseOptionAsEnters?: string[];
+  /** entersAsCopy: the copy lasts until end of turn, and it has haste (Cursed Mirror). */
+  entersAsCopyUntilEndOfTurn?: boolean;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
   kicker?: string;
   /** Multikicker cost: may be paid any number of times. */
@@ -2250,6 +2274,8 @@ export interface CardInstance {
   chosenColor?: Color;
   /** The card type chosen as it entered (Cloud Key). */
   chosenCardType?: CardType;
+  /** The option chosen as it entered (Windcrag Siege). */
+  chosenOption?: string;
   /** Face down (morph, rule 708): a 2/2 creature with no name, abilities or mana cost; its identity is hidden from the other players. */
   faceDown?: boolean;
   /** Face down by manifest or cloak (rule 701.34): a creature card can be turned face up for its mana cost. */
@@ -2736,6 +2762,8 @@ export interface Resolving {
   lifeLostThisWay?: number;
   /** The mana value of the card RevealUntil found. */
   revealedManaValue?: number;
+  /** Who controlled the permanent this ability last put into a library ("that creature's controller": Proteus Staff). */
+  movedPermanentController?: PlayerId;
   /** Whether the triggering creature had less power than the source, checked once as it starts resolving (Shelinda). */
   subjectWasWeaker?: boolean;
   /** What each player chose in the last choosing effect. */
@@ -2762,7 +2790,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -2773,6 +2801,12 @@ export interface CardChoice {
   piles?: [InstanceId[], InstanceId[]];
   /** separatePiles / choosePile: who cast the spell (they take a pile). */
   pileOwner?: PlayerId;
+  /** amass: how many +1/+1 counters the chosen Army gets, and the creature type it also becomes. */
+  amassCounters?: number;
+  amassType?: string;
+  /** exiledToGraveyard: the tokens to create for a land card and for any other card. */
+  landToken?: CardDefId;
+  nonlandToken?: CardDefId;
   /** 'discard': exile the cards instead; their owner may play them at a tax (Lightstall Inquisitor). */
   exileToPlayTaxed?: boolean;
   /** discard: `max` cards, or just one card matching this instead (Thirst for Knowledge). */
@@ -2886,6 +2920,8 @@ export type Pending =
   | { kind: 'chooseColor'; player: PlayerId; card: InstanceId; resume: Pending }
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
+  /** "As this enters, choose Mardu or Jeskai". */
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
@@ -3059,6 +3095,7 @@ export type Action =
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'ChooseColor'; player: PlayerId; color: Color }
   | { type: 'ChooseCardType'; player: PlayerId; cardType: CardType }
+  | { type: 'ChooseOption'; player: PlayerId; option: string }
   /**
    * Order your simultaneous triggers: `order` lists them (by index among the
    * first `count` queued) in the order they should resolve, first to last.
@@ -3140,6 +3177,8 @@ export type GameEvent =
   | { type: 'TurnedFaceUp'; player: PlayerId; card: InstanceId; defId: CardDefId }
   /** A permanent was turned face down (it is now a 2/2 creature with no name). */
   | { type: 'TurnedFaceDown'; player: PlayerId; card: InstanceId }
+  /** "As this enters, choose Mardu or Jeskai": the option chosen. */
+  | { type: 'OptionChosen'; player: PlayerId; card: InstanceId; option: string }
   | {
       type: 'AbilityTriggered';
       item: string;

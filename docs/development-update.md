@@ -24,6 +24,12 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture R4: artifacts and enchantments (2026-11-16)
+
+- Skrelv's Hive (upkeep Mite; corrupted: your creatures with toxic have lifelink: a `corrupted` static condition and a `hasToxic` filter), Dreadhorde Invasion (the `Amass` effect: a 0/0 Zombie Army token if you have no Army, your choice of Army if you have several, and it becomes a Zombie too), Cursed Mirror (may enter as a copy of a creature until end of turn, with haste), Windcrag Siege ("as this enters, choose Mardu or Jeskai": a general `chooseOptionAsEnters` choice, a `ChooseOption` action and `ifChosenOption` on statics and triggers; Mardu doubles attack triggers like Isshin), Currency Converter (discarded cards exiled with it; {T} puts one into its owner's graveyard for a Treasure or a 2/2 Rogue), Proteus Staff (the creature's controller reveals until a creature card and puts it onto the battlefield).
+- New tokens from Scryfall: Zombie Army, Goblin and Rogue (tfrc), Treasure (tfra).
+- Proteus Staff: the revealed cards go on the bottom in a random order (the player chooses the order in paper), as for other "reveal until" cards. Multiverse Reforged now has 85 of its 93 distinct cards built.
+
 ### Face-down permanents, complete (2026-11-16)
 
 - Morph and disguise (cast face down for {3}; disguise's face-down 2/2 also has ward {2}), manifest, cloak (manifest with ward {2}) and manifest dread (look at two, manifest one, the other to the graveyard; a `manifestDread` card choice).

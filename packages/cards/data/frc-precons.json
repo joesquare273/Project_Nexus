@@ -245,12 +245,8 @@
           "count": 1,
           "set": "frc",
           "number": "33",
-          "implemented": false,
-          "needs": [
-            "corrupted",
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Staff of the Storyteller",
@@ -329,21 +325,16 @@
           "count": 1,
           "set": "frc",
           "number": "48",
-          "implemented": false,
-          "needs": [
-            "amass",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Cursed Mirror",
           "count": 1,
           "set": "frc",
           "number": "49",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Whirlwind of Thought",
@@ -358,10 +349,8 @@
           "count": 1,
           "set": "frc",
           "number": "52",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Chromatic Lantern",
@@ -376,22 +365,16 @@
           "count": 1,
           "set": "frc",
           "number": "55",
-          "implemented": false,
-          "needs": [
-            "treasure",
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Proteus Staff",
           "count": 1,
           "set": "frc",
           "number": "59",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Battlefield Forge",

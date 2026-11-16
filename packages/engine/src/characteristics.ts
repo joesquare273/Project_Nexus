@@ -252,6 +252,9 @@ export function subtypesOf(s: GameState, c: CardInstance): string[] {
 
 /** Whether a static ability of `source` applies to `c`. */
 export function staticAffects(s: GameState, source: CardInstance, spec: StaticSpec, c: CardInstance): boolean {
+  if (spec.ifChosenOption !== undefined && source.chosenOption !== spec.ifChosenOption) return false;
+  // Corrupted: "as long as an opponent has three or more poison counters".
+  if (spec.conditions?.includes('corrupted') && !corrupted(s, source.controller)) return false;
   // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
   if (spec.ifYouControlSubtype) {
     const yours = battlefieldCards(s).filter((x) => x.controller === source.controller);
@@ -407,4 +410,9 @@ export function effectLasts(s: GameState, e: TemporaryEffect): boolean {
   if (!e.whileControlledBy) return true;
   const source = s.cards[e.source];
   return source?.zone === 'battlefield' && !source.phasedOut && source.controller === e.whileControlledBy;
+}
+
+/** Corrupted: an opponent of `player` has three or more poison counters. */
+export function corrupted(s: GameState, player: PlayerId): boolean {
+  return s.turnOrder.some((pid) => pid !== player && !s.players[pid]!.eliminated && (s.players[pid]!.poison ?? 0) >= 3);
 }

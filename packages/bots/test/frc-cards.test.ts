@@ -682,3 +682,129 @@ describe('R3c: morph', () => {
     expect(s.cards[akroma]!.faceDown).toBeUndefined();
   });
 });
+
+describe('R4: artifacts and enchantments', () => {
+  const upkeep = (s: GameState) => {
+    // From P2's end of turn into P1's upkeep, with the upkeep triggers resolved.
+    s.activePlayer = 'P1';
+    s.step = 'untap';
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    return goTo(s, 'draw');
+  };
+
+  it("Skrelv's Hive: lose 1 life and make a Mite each upkeep; corrupted gives your toxic creatures lifelink", () => {
+    let s = newGame();
+    const hive = put(s, 'P1', 'skrelvs-hive');
+    s = upkeep(s);
+    expect(s.players.P1!.life).toBe(19);
+    const mite = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'phyrexian-mite-token-frc')!;
+    expect(mite).toBeDefined();
+    expect(hasKeyword(s, mite, 'Lifelink')).toBe(false);
+    s.players.P2!.poison = 3;
+    expect(hasKeyword(s, mite, 'Lifelink')).toBe(true);
+    void hive;
+  });
+
+  it('Dreadhorde Invasion: amass Zombies 1 each upkeep (one Army grows); a Zombie token with power 6+ gains lifelink when it attacks', () => {
+    let s = newGame();
+    put(s, 'P1', 'dreadhorde-invasion');
+    s = upkeep(s);
+    const armies = () => s.players.P1!.battlefield.map((id) => s.cards[id]!).filter((c) => c.defId === 'zombie-army-token-frc');
+    expect(armies()).toHaveLength(1);
+    expect([s.players.P1!.life, s.cards[armies()[0]!.id]!.counters]).toEqual([19, 1]);
+    s.turnNumber++;
+    s = upkeep(s);
+    expect(armies()).toHaveLength(1);
+    expect(s.cards[armies()[0]!.id]!.counters).toBe(2);
+    // Power 6 or more: lifelink as it attacks.
+    const army = armies()[0]!.id;
+    s.cards[army]!.counters = 6;
+    s.cards[army]!.summoningSick = false;
+    s = fight(s, [{ attacker: army, defender: 'P2' }]).state;
+    expect(s.players.P1!.life).toBe(18 + 6);
+  });
+
+  it('Cursed Mirror taps for {R}, or enters as a copy of a creature with haste until end of turn', () => {
+    let s = newGame();
+    const archon = put(s, 'P2', 'thawbringer');
+    const mirror = put(s, 'P1', 'cursed-mirror', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: mirror });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseCards');
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [archon] });
+    const c = s.cards[mirror]!;
+    expect(currentDefinition(s, c).name).toBe(currentDefinition(s, s.cards[archon]!).name);
+    expect(hasKeyword(s, c, 'Haste')).toBe(true);
+    // Next turn it's Cursed Mirror again.
+    s.turnNumber++;
+    expect(currentDefinition(s, s.cards[mirror]!).name).toBe('Cursed Mirror');
+    expect(manaFrom(s, mirror)).toEqual(['R']);
+  });
+
+  it('Windcrag Siege: Jeskai makes a hasty lifelink Goblin each upkeep; Mardu makes attack triggers trigger twice', () => {
+    let s = newGame();
+    const siege = put(s, 'P1', 'windcrag-siege', 'hand');
+    mana(s, 'P1', { R: 1, W: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: siege });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseOption');
+    s = act(s, { type: 'ChooseOption', player: 'P1', option: 'Jeskai' });
+    expect(s.cards[siege]!.chosenOption).toBe('Jeskai');
+    s.turnNumber++;
+    s = upkeep(s);
+    const goblin = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'goblin-token-frc')!;
+    expect([hasKeyword(s, goblin, 'Haste'), hasKeyword(s, goblin, 'Lifelink')]).toEqual([true, true]);
+
+    // Mardu: Dreadhorde's attack trigger triggers twice.
+    let u = newGame();
+    put(u, 'P1', 'windcrag-siege', 'battlefield', { chosenOption: 'Mardu' });
+    const dread = put(u, 'P1', 'dreadhorde-invasion');
+    const army = put(u, 'P1', 'zombie-army-token-frc', 'battlefield', { counters: 6, isToken: true });
+    u = goTo(u, 'declareAttackers');
+    const declared = actWithEvents(u, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: army, defender: 'P2' }] });
+    expect(declared.state.stack.filter((i) => i.kind === 'ability' && i.source === dread).length).toBe(2);
+  });
+
+  it('Currency Converter exiles discarded cards with itself, loots, and turns an exiled card into a Rogue (nonland) or a Treasure (land)', () => {
+    let s = newGame();
+    const converter = put(s, 'P1', 'currency-converter');
+    const land = put(s, 'P1', 'plains', 'hand');
+    mana(s, 'P1', { C: 2 });
+    // Loot: draw, then discard the Plains; the trigger exiles it with the Converter.
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: converter, ability: 0, targets: [] });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseCards');
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [land] });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    if (s.pending.kind === 'decide') s = act(s, { type: 'Decide', player: 'P1', accept: true });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(zone(s, land)).toBe('exile');
+    expect(s.cards[land]!.exiledWith?.source).toBe(converter);
+    // Next turn: {T}: put it into the graveyard and make a Treasure.
+    s.cards[converter]!.tapped = false;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: converter, ability: 1, targets: [] }).state;
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [land] });
+    expect(zone(s, land)).toBe('graveyard');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token-fra')).toBe(true);
+    // A nonland card: a 2/2 Rogue.
+    const spell = put(s, 'P1', 'despark', 'exile', { exiledWith: { source: converter, sourceObject: s.cards[converter]!.zoneChanges ?? 0 } });
+    s.cards[converter]!.tapped = false;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: converter, ability: 1, targets: [] }).state;
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [spell] });
+    expect(zone(s, spell)).toBe('graveyard');
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'rogue-token-frc')).toBe(true);
+  });
+
+  it("Proteus Staff puts a creature on the bottom of its owner's library; its controller reveals until a creature and puts it onto the battlefield", () => {
+    let s = newGame();
+    const staff = put(s, 'P1', 'proteus-staff');
+    const theirs = put(s, 'P2', 'thawbringer');
+    const next = put(s, 'P2', 'archon-of-cruelty', 'library');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: staff, ability: 0, targets: [card(theirs)] }).state;
+    expect(zone(s, theirs)).toBe('library');
+    expect(s.players.P2!.library.at(-1) === theirs || s.players.P2!.library.includes(theirs)).toBe(true);
+    expect([zone(s, next), s.cards[next]!.controller]).toEqual(['battlefield', 'P2']);
+  });
+});

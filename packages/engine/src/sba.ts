@@ -332,6 +332,26 @@ function checkCardTypeChoice(ctx: Ctx): boolean {
   return true;
 }
 
+/** "As this enters, choose Mardu or Jeskai" (a Siege): asks the controller of the first permanent waiting on that choice. */
+function checkOptionChoice(ctx: Ctx): boolean {
+  const s = ctx.s;
+  if (s.pending.kind === 'chooseOption' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseOption';
+  const c = battlefield(s).find((x) => !x.chosenOption && !x.phasedOut && defOf(s, x).chooseOptionAsEnters?.length);
+  if (!c) return false;
+  s.pending = { kind: 'chooseOption', player: c.controller, card: c.id, options: [...defOf(s, c).chooseOptionAsEnters!], resume: s.pending };
+  return true;
+}
+
+export function chooseOption(ctx: Ctx, playerId: PlayerId, option: string): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseOption' || pending.player !== playerId) reject('You are not choosing an option right now.');
+  if (!pending.options.includes(option)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  s.cards[pending.card]!.chosenOption = option;
+  ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+  s.pending = pending.resume;
+}
+
 export function chooseCardType(ctx: Ctx, playerId: PlayerId, cardType: CardType): void {
   const s = ctx.s;
   const pending = s.pending;
@@ -453,7 +473,7 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
     // These need a choice; triggers go on the stack after it's made.
-    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx) || checkCardTypeChoice(ctx)) {
+    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx) || checkCardTypeChoice(ctx) || checkOptionChoice(ctx)) {
       if (s.cleanupCheck) s.cleanupNeedsPriority = true;
       return;
     }

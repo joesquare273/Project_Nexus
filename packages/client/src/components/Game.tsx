@@ -1442,6 +1442,8 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'devourOnEntry' ? 'to sacrifice (devour); the entering creature gets three +1/+1 counters for each'
                   : c.purpose === 'removeCountersOnEntry' ? 'to remove all counters from; the entering creature gets twice that many +1/+1 counters'
                   : c.purpose === 'artifactCopy' ? 'to create an artifact token copy of; choose none for no token'
+                  : c.purpose === 'amass' ? 'to amass onto (it gets the +1/+1 counters)'
+                  : c.purpose === 'exiledToGraveyard' ? "to put into its owner's graveyard"
                   : c.purpose === 'manifestDread' ? 'to manifest (put onto the battlefield face down as a 2/2); the other goes into your graveyard'
                   : c.purpose === 'hideaway' ? 'to exile face down (hideaway); the rest go on the bottom of your library in a random order'
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
@@ -1479,6 +1481,9 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseCardType') {
     text = `${cardName(s, pending.card)}: choose a card type as it enters.`;
     buttons = pending.options.map((cardType) => ({ label: cardType[0]!.toUpperCase() + cardType.slice(1), onClick: () => p.submit([{ type: 'ChooseCardType', player: ME, cardType }]) }));
+  } else if (pending.kind === 'chooseOption') {
+    text = `${cardName(s, pending.card)}: choose ${pending.options.join(' or ')} as it enters.`;
+    buttons = pending.options.map((option) => ({ label: option, onClick: () => p.submit([{ type: 'ChooseOption', player: ME, option }]) }));
   } else if (pending.kind === 'orderTriggers') {
     // Rule 603.3b: click your triggers in the order they should resolve.
     const n = pending.count;

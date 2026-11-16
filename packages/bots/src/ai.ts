@@ -752,6 +752,11 @@ export function basicAi(_seed = 0): Bot {
       return legal.find((a) => a.type === 'ChooseColor' && a.color === best?.[0]) ?? legal[0]!;
     }
     // "Choose a card type" (Cloud Key): the type most of its cards in hand and library are.
+    // A Siege's mode: Jeskai (a hasty lifelink Goblin each upkeep) unless you have several attack triggers to double.
+    if (pending.kind === 'chooseOption') {
+      const options = legal.filter((a): a is Extract<Action, { type: 'ChooseOption' }> => a.type === 'ChooseOption');
+      return options.find((a) => a.option === 'Jeskai') ?? options[0] ?? legal[0]!;
+    }
     if (pending.kind === 'chooseCardType') {
       const p = s.players[pending.player]!;
       const count = (t: string) => [...p.hand, ...p.library].filter((id) => (def(s, s.cards[id]!).types as string[]).includes(t)).length;

@@ -78,6 +78,7 @@ export function matchesObject(
   if (f.nonSupertypes?.some((t) => def.supertypes?.includes(t))) return false;
   if (f.tapped !== undefined && obj.tapped !== f.tapped) return false;
   if (f.faceDown !== undefined && !!obj.faceDown !== f.faceDown) return false;
+  if (f.hasToxic && !(currentDefinition(s, obj).toxic ?? 0)) return false;
   if (f.attacking !== undefined) {
     const attacking = s.combat?.attacks.some((a) => a.attacker === obj.id) ?? false;
     if (attacking !== f.attacking) return false;
