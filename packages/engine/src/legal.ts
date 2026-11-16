@@ -136,6 +136,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const p = s.players[playerId]!;
   if (castingForbidden(s, playerId)) return out;
   for (const id of [...p.hand, ...p.graveyard, ...p.command]) candidates.push(s.cards[id]!);
+  // Another player's graveyard: a card this player was given permission to cast (The Ur-Sphinx).
+  for (const pid of s.turnOrder) if (pid !== playerId) for (const id of s.players[pid]!.graveyard) if (s.cards[id]!.castPermission?.player === playerId) candidates.push(s.cards[id]!);
   for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) candidates.push(s.cards[id]!);
   // Group permissions may include cards in another player's graveyard.
   for (const group of s.castGroups ?? []) if (group.player===playerId && group.turn===s.turnNumber) {

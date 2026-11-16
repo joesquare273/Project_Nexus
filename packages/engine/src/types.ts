@@ -455,6 +455,8 @@ export const EFFECT_KINDS = [
   'CreateDemonCopy',
   /** Choose a spell card in your hand with mana value `amount` or less; you may cast it this turn without paying its mana cost (Buster Sword). */
   'CastFreeFromHand',
+  /** "For each player, you may cast a card that player milled this way without paying its mana cost" (The Ur-Sphinx). */
+  'CastMilledFree',
   /** Remove a lore counter from each of any number of Sagas you control; this gets a +1/+1 counter for each removed (Garnet). */
   'RemoveLoreFromSagas',
   /** Exile `amount` cards of your choice from your graveyard (a trigger's exile cost). */
@@ -693,6 +695,8 @@ export const COUNT_KINDS = [
   /** Opponents who control more creatures than you. */
   'OpponentsWithMoreCreatures',
   'ArtifactsYouControl',
+  /** The unspent mana in your mana pool (Omnath, Locus of the Void). */
+  'UnspentManaYouHave',
   /** The greatest mana value among artifacts you control (Edgar). */
   'GreatestManaValueAmongYourArtifacts',
   /** The same, not counting the source (Emissary Escort). */
@@ -1740,6 +1744,12 @@ export interface StaticSpec {
   controllerProtectedFromOpponents?: boolean;
   /** Archfiend of Despair: "Your opponents can't gain life." */
   opponentsCantGainLife?: boolean;
+  /** Serra's Emissary: you and creatures you control have protection from the card type chosen as it entered. */
+  protectionFromChosenType?: boolean;
+  /** Omnath, Locus of the Void: "If you would lose unspent mana, that mana becomes colorless instead." */
+  unspentManaBecomesColorless?: boolean;
+  /** Eminence: this static also works while the card is in its owner's command zone (The Ur-Sphinx's cost reduction). */
+  eminence?: boolean;
   /** Darksteel Angel: "You can't lose the game and your opponents can't win the game." */
   controllerCantLose?: boolean;
   /** Darksteel Angel: "Creatures you control can't have -1/-1 counters put on them." */

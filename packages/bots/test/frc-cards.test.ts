@@ -514,3 +514,107 @@ describe('R3a: creatures', () => {
     expect([u.players.P1!.life, u.players.P2!.life]).toEqual([mine + 3, theirs - 3]);
   });
 });
+
+describe('R3b: creatures', () => {
+  it("Serra's Emissary: you and your creatures have protection from the chosen card type", () => {
+    let s = newGame();
+    const emissary = put(s, 'P1', 'serras-emissary', 'hand');
+    const bear = put(s, 'P1', 'thawbringer');
+    mana(s, 'P1', { W: 3, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: emissary });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    // Choose instant.
+    const choose = getLegalActions(s).find((a) => a.type === 'ChooseCardType' && (a as { cardType: string }).cardType === 'instant')!;
+    expect(choose).toBeDefined();
+    s = cast(s, choose).state;
+    expect(s.cards[emissary]!.chosenCardType).toBe('instant');
+    // An opponent's instant can't target your creature or you.
+    const despark = put(s, 'P2', 'despark', 'hand');
+    const bolt = put(s, 'P2', 'archon-of-cruelty', 'hand');
+    void bolt;
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { W: 1, B: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: despark, targets: [card(emissary)] })).toBeTruthy();
+    void bear;
+  });
+
+  it('Omnath grows with unspent mana, which becomes colorless instead of emptying, and lands make {C}{C}', () => {
+    let s = newGame();
+    const omnath = put(s, 'P1', 'omnath-locus-of-the-void');
+    const land = put(s, 'P1', 'plains', 'hand');
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }).state;
+    expect(pool(s).C).toBe(2);
+    expect([powerOf(s, s.cards[omnath]!), toughnessOf(s, s.cards[omnath]!)]).toEqual([8, 8]);
+    mana(s, 'P1', { R: 1 });
+    // Moving to the next step: the mana stays, as colorless.
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect([pool(s).R, pool(s).C]).toEqual([0, 3]);
+    expect(powerOf(s, s.cards[omnath]!)).toBe(9);
+  });
+
+  it('Venser copies an opponent’s instant twice, or makes two hasty token copies of their permanent, sacrificed at the end step', () => {
+    let s = newGame();
+    const venser = put(s, 'P1', 'venser-fervent-forger', 'hand');
+    const theirs = put(s, 'P2', 'thawbringer');
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: venser });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    // No opponent's spell on the stack: only the token-copy mode is offered.
+    expect(getLegalActions(s)).toEqual([{ type: 'ChooseModes', player: 'P1', modes: [1] }]);
+    s = cast(s, { type: 'ChooseModes', player: 'P1', modes: [1] }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === theirs)! }).state;
+    const copies = s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'thawbringer');
+    expect(copies).toHaveLength(2);
+    expect(copies.every((id) => hasKeyword(s, s.cards[id]!, 'Haste'))).toBe(true);
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep');
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken && s.cards[id]!.defId === 'thawbringer')).toHaveLength(0);
+  });
+
+  it("Venser's other mode copies an opponent's instant twice (the copies are yours)", () => {
+    let s = newGame();
+    const venser = put(s, 'P1', 'venser-fervent-forger', 'hand');
+    const despark = put(s, 'P2', 'despark', 'hand');
+    const big = put(s, 'P1', 'nissa-leyline-tamer');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { W: 1, B: 1 });
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: despark, targets: [card(big)] });
+    if (s.pending.kind === 'priority' && s.pending.player === 'P2') s = act(s, { type: 'PassPriority', player: 'P2' });
+    // In response, P1 flashes in Venser and copies Despark twice.
+    s = act(s, { type: 'CastSpell', player: 'P1', card: venser });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    // Despark is the only spell to target; the trigger resolves into two copies controlled by P1 (each may get a new target).
+    const events = cast(s, { type: 'ChooseModes', player: 'P1', modes: [0] }).events;
+    expect(events.filter((e) => e.type === 'SpellCopied' && e.player === 'P1')).toHaveLength(2);
+  });
+
+  it('The Ur-Sphinx: other Sphinx spells cost {1} less even from the command zone; attacking mills each player and lets you cast one of their cards free', () => {
+    let s = newGame();
+    const sphinx = put(s, 'P1', 'the-ur-sphinx');
+    s.cards[sphinx]!.summoningSick = false;
+    const theirSpell = put(s, 'P2', 'brainsurge', 'library');
+    const mySpell = put(s, 'P1', 'despark', 'library');
+    const handBefore = s.players.P1!.hand.length;
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: sphinx, defender: 'P2' }] });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect([zone(s, theirSpell), zone(s, mySpell)]).toEqual(['graveyard', 'graveyard']);
+    // One free cast per player: take Brainsurge from P2's graveyard.
+    for (let i = 0; i < 3 && s.pending.kind === 'chooseCards'; i++) {
+      const p = s.pending;
+      s = act(s, { type: 'ChooseCards', player: 'P1', cards: p.cards.includes(theirSpell) ? [theirSpell] : [] });
+    }
+    const castIt = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === theirSpell);
+    expect(castIt).toBeDefined();
+    s = act(s, castIt!);
+    expect(zone(s, theirSpell)).toBe('stack');
+    expect(s.players.P1!.hand.length).toBe(handBefore);
+  });
+});

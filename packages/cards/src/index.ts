@@ -34,7 +34,8 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
 // eoc.json: the Edge of Eternities Commander precons' cards no other file defines (import-precons.ts eoc).
 // eoe-set.json: the rest of the Edge of Eternities main set, for its packs (import-sets.ts eoe).
 // frc.json: the Reality Fracture Commander precon's cards no other file defines (import-precons.ts frc).
-const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...frc, ...tokens];
+// Each file is read as plain data (their JSON types together are too complex for TypeScript to combine); validateCardList checks them.
+const all = ([lands, fin, fic, finSet, storeCards, eoc, eoeSet, frc, tokens] as unknown as CardDefinition[][]).flat();
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 

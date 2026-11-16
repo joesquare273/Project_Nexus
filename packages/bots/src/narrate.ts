@@ -427,6 +427,8 @@ function effectText(e: EffectSpec): string {
       return `${who} phase out`;
     case 'ShieldPlayerUntilNextTurn':
       return `until ${who}'s next turn, they have protection from everything, their life total can't change, and their nonland permanents phase out`;
+    case 'CastMilledFree':
+      return 'for each player, you may cast a spell they milled this way without paying its mana cost';
     case 'RevealCreaturesToBattlefield':
       return 'reveal cards from the top of your library until you reveal that many creature cards, put them onto the battlefield, and shuffle the rest in';
     case 'RevealSeparatePiles':

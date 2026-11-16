@@ -3,7 +3,7 @@ import type { ManaRestriction } from './types.ts';
 // stack (PRD 7.2).
 
 import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, powerOf, protectedFrom, protectedFromType, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { randomInt, shuffleInPlace } from './rng.ts';
@@ -425,6 +425,8 @@ export function isLegalTarget(
     if (t.player !== controller && playerProtectedFromOpponents(s, t.player)) return false;
     // Teferi's Reproach: protection from everything; nothing can target them.
     if (p.shielded) return false;
+    // Serra's Emissary: protection from the chosen card type.
+    if (source && s.cards[source] && protectedFromType(s, t.player, s.cards[source]!)) return false;
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
@@ -1194,6 +1196,7 @@ export function spellCost(
     for (const source of battlefield(s)) {
       if (source.controller !== payer!) continue;
       for (const spec of defOf(s, source).statics ?? []) {
+        if (spec.eminence) continue; // counted below, wherever the card is
         const r = spec.spellCostReduction;
         if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id }, payer!, def)) continue;
         // "Spells you cast from your graveyard cost {2} less" (Emet-Selch).
@@ -1202,6 +1205,20 @@ export function spellCost(
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
         cost = reduceGeneric(cost, r.generic * (r.perCount ? countOf(s, r.perCount, source.controller, source.id) : 1));
+      }
+    }
+  }
+  // Eminence (The Ur-Sphinx): from the command zone or the battlefield, "other Sphinx spells you cast cost {1} less".
+  if (card) {
+    const p = s.players[payer!]!;
+    for (const id of [...p.command, ...p.battlefield]) {
+      const source = s.cards[id]!;
+      if (source.id === card.id || (source.zone === 'battlefield' && (source.controller !== payer || source.phasedOut))) continue;
+      if (source.zone === 'command' && source.owner !== payer) continue;
+      for (const spec of defOf(s, source).statics ?? []) {
+        const r = spec.spellCostReduction;
+        if (!spec.eminence || !r || !matchesObject(s, r.filter, card, { controller: payer!, source: source.id }, payer!, def)) continue;
+        cost = reduceGeneric(cost, r.generic);
       }
     }
   }
@@ -2777,8 +2794,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const pid of targetPlayers(targets)) s.players[pid]!.lostToEffect = true;
       return;
     case 'CopySpell': {
-      // The triggering spell, while it's still on the stack.
-      const subject = item.kind === 'ability' ? item.subject : undefined;
+      // The targeted spell (Venser), or the triggering spell, while it's still on the stack.
+      const subject = effect.target === 'TargetSpell' ? cards[0] : item.kind === 'ability' ? item.subject : undefined;
       const original = subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === subject) : undefined;
       if (!original) return;
       const from = s.cards[original.card]!;
@@ -2816,6 +2833,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PreventDamageToYourCreatures':
       player(s, item.controller).preventCreatureDamageTurn = s.turnNumber;
       return;
+    case 'CastMilledFree': {
+      // One choice per player, among the spells this ability milled from their library.
+      for (const pid of alivePlayers(s)) {
+        const cards = player(s, pid).graveyard.filter((id) => {
+          const c = s.cards[id]!;
+          const d = defOf(s, c);
+          return c.milledBy?.source === source && c.milledBy.turn === s.turnNumber && canEverCast(d) && !d.types.includes('land');
+        });
+        if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castFree', cards, min: 0, max: 1 }];
+      }
+      return;
+    }
     case 'CastFreeFromHand': {
       const cards = player(s, item.controller).hand.filter((id) => {
         const d = defOf(s, s.cards[id]!);
@@ -4519,7 +4548,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       quinaFrogs(ctx, pending.player, r);
     }
   } else if (pending.purpose === 'castFree') {
-    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true, immediate: true };
+    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, ...(s.cards[id]!.zone === 'hand' ? { fromHand: true } : {}), immediate: true };
   } else if (pending.purpose === 'removeLore') {
     let removed = 0;
     for (const id of cards) {

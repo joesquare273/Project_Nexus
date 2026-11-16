@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture R3b: four creatures (2026-11-16)
+
+- Serra's Emissary (protection from a chosen card type), The Ur-Sphinx (eminence cost reduction; mills each player and casts one of their spells free), Omnath, Locus of the Void (grows with unspent mana, which turns colorless instead of emptying) and Venser, Fervent Forger (copies an opponent's spell twice, or makes two hasty copies of their permanent). Multiverse Reforged now has 78 of its 93 distinct cards built. Akroma (morph) is R3c.
+
 ### Player requests (2026-11-16)
 
 - A Requests page where players send the admin a subject, the cards involved and a description, and follow the status of their own requests. The Admin page has an Accounts tab and a Requests tab, where each request shows the account that sent it, can be set to not started, incomplete or complete, and can be deleted. Details in docs/economy.md, "Administration". Tests in `server/test/admin.test.ts`.

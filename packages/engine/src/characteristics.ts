@@ -190,6 +190,11 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.players[player]!.lifeGainedThisTurn ?? 0;
     case 'SoulCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
+    case 'UnspentManaYouHave': {
+      const p = s.players[player]!;
+      const sum = (pool?: Partial<Record<string, number>>) => Object.values(pool ?? {}).reduce((n: number, k) => n + (k ?? 0), 0);
+      return sum(p.manaPool) + sum(p.equipmentMana) + sum(p.noncreatureSpellMana) + sum(p.artifactMana) + Object.values(p.restrictedMana ?? {}).reduce((n, pool) => n + sum(pool), 0);
+    }
     case 'ArtifactsYouControl':
       return yours().filter((c) => def(s, c).types.includes('artifact')).length;
     case 'TotalManaValueOfYourOtherPermanents':
@@ -374,11 +379,22 @@ const PROTECTION = { W: 'ProtectionFromWhite', U: 'ProtectionFromBlue', B: 'Prot
 /** Protection (rule 702.16): `c` has protection from one of `source`'s colors. */
 export function protectedFrom(s: GameState, c: CardInstance, source: CardInstance | undefined): boolean {
   if (!source) return false;
+  // Serra's Emissary: "You and creatures you control have protection from the chosen card type."
+  if (c.zone === 'battlefield' && currentDefinition(s, c).types.includes('creature') && protectedFromType(s, c.controller, source)) return true;
   // Yawgmoth: "Protection from Humans".
   const fromTypes = currentDefinition(s, c).protectionFromSubtypes;
   if (fromTypes && source.zone === 'battlefield' && fromTypes.some((t) => subtypesOf(s, source).includes(t))) return true;
   if (fromTypes && source.zone !== 'battlefield' && fromTypes.some((t) => currentDefinition(s, source).subtypes?.includes(t))) return true;
   return colorsOf(currentDefinition(s, source)).some((color) => hasKeyword(s, c, PROTECTION[color]));
+}
+
+/** Serra's Emissary: whether a player (and their creatures) has protection from this source's card type. */
+export function protectedFromType(s: GameState, player: string, source: CardInstance): boolean {
+  const types = currentDefinition(s, source).types;
+  return s.players[player]!.battlefield.some((id) => {
+    const e = s.cards[id]!;
+    return e.controller === player && !e.phasedOut && !!e.chosenCardType && types.includes(e.chosenCardType) && !!currentDefinition(s, e).statics?.some((st) => st.protectionFromChosenType);
+  });
 }
 
 /** Whether an "until end of turn" flag such as "can't be blocked" applies to this object. */

@@ -4,7 +4,7 @@ import type { ManaRestriction } from './types.ts';
 // clones the input first, so callers never see partial mutations.
 
 import { backFaceDefinition, copiableDefinition, currentDefinition as defOf } from './cardface.ts';
-import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
+import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, protectedFromType, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped, objectManaValue } from './typerules.ts';
 import {
@@ -524,6 +524,8 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;
   // Teferi's Reproach: protection from everything prevents all damage to that player.
   if (!unpreventable && target.kind === 'player' && s.players[target.player]!.shielded) return;
+  // Serra's Emissary: protection from the chosen card type prevents that damage to its controller.
+  if (!unpreventable && target.kind === 'player' && protectedFromType(s, target.player, source)) return;
   // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
   if (!unpreventable && target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
@@ -832,12 +834,18 @@ export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: In
 /** Mana empties from every pool at the end of each step and phase. */
 export function emptyAllManaPools(s: GameState): void {
   for (const id of s.turnOrder) {
+    // Omnath, Locus of the Void: unspent mana becomes colorless instead of emptying.
+    const keeps = battlefield(s).some((c) => c.controller === id && !c.phasedOut && defOf(s, c).statics?.some((st) => st.unspentManaBecomesColorless));
+    const p = s.players[id]!;
+    const sum = (pool?: Partial<Record<string, number>>) => Object.values(pool ?? {}).reduce((n: number, k) => n + (k ?? 0), 0);
+    const kept = keeps ? sum(p.manaPool) + sum(p.equipmentMana) + sum(p.noncreatureSpellMana) + sum(p.artifactMana) + Object.values(p.restrictedMana ?? {}).reduce((n, pool) => n + sum(pool), 0) : 0;
     s.players[id]!.manaPool = emptyManaPool();
     delete s.players[id]!.creatureScryMana;
     s.players[id]!.equipmentMana = emptyManaPool();
     s.players[id]!.noncreatureSpellMana = emptyManaPool();
     delete s.players[id]!.artifactMana;
     delete s.players[id]!.restrictedMana;
+    if (kept > 0) s.players[id]!.manaPool.C = kept;
   }
 }
 

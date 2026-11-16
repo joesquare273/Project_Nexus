@@ -37,11 +37,8 @@
           "count": 1,
           "set": "frc",
           "number": "3",
-          "implemented": false,
-          "needs": [
-            "landfall",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dack Fayden, Helping Hand",
@@ -92,11 +89,8 @@
           "count": 1,
           "set": "frc",
           "number": "9",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Niv-Mizzet, Ghost Counsel",
@@ -121,13 +115,8 @@
           "count": 1,
           "set": "frc",
           "number": "12",
-          "implemented": false,
-          "needs": [
-            "eminence",
-            "mill",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Darksteel Angel",
@@ -253,10 +242,8 @@
           "count": 1,
           "set": "frc",
           "number": "32",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Skrelv's Hive",

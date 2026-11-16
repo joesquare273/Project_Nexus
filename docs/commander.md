@@ -33,7 +33,7 @@ Reality Fracture has one Commander deck. It was imported with the same script
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 78/97 entries (74 of 93 distinct cards) |
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 82/97 entries (78 of 93 distinct cards) |
 
 - **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
 - **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
@@ -66,7 +66,12 @@ The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
   - Engine: LoseLife `lifeLostThisTurn`, RevealUntil `fromTargetPlayer` (Jhoira), and the trigger condition `ifYouAreMonarch`.
   - Engine: LifeGained triggers carry the amount (`lifeGainedInEvent`, and the trigger cost `lifeOf: 'lifeGainedInEvent'`), and the temporary flag `onlyBlockedByHaste`.
   - Simplification: the Gingerbrute token has no mana cost here (its {1} only gives it a mana value of 1).
-- **R3b: creatures with bigger rules.** Akroma, Angel of Fury (morph), Serra's Emissary (protection from a card type for you and your creatures), The Ur-Sphinx (eminence; cast milled cards free), Omnath, Locus of the Void (unspent mana) and Venser, Fervent Forger (copies of spells and permanents).
+- **R3b (done 2026-11-16): Serra's Emissary, The Ur-Sphinx, Omnath, Locus of the Void and Venser, Fervent Forger.**
+  - Engine: protection from a chosen card type for a player and their creatures (`protectionFromChosenType`, `protectedFromType`: damage, targeting and blocking).
+  - Engine: static abilities with eminence that work from the command zone (`StaticSpec.eminence`, for cost reductions), `CastMilledFree` (one free spell per player among the cards this ability milled), and casting a permitted card from another player's graveyard.
+  - Engine: the count `UnspentManaYouHave`, mana that becomes colorless instead of emptying (`unspentManaBecomesColorless`), and CopySpell on a target spell.
+  - TypeScript: the card files are combined as plain data in cards/src/index.ts, because their combined JSON types grew too complex.
+- **R3c: Akroma, Angel of Fury.** Morph: cast face down as a 2/2 for {3}, turned face up for its morph cost; face-down cards stay hidden from opponents online.
 - **R4: artifacts and enchantments.** Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.
 - **R5: the planeswalkers and the commanders.** Jace, Multiverse Architect (with empower), Nissa, Leyline Tamer, Dack Fayden, Ob Nixilis, the Ascended, Tamiyo, Upriser Crowned and Elspeth, Sun's Champion.
 
