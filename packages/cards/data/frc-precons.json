@@ -68,10 +68,8 @@
           "count": 1,
           "set": "frc",
           "number": "6",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Avacyn, Angel of Horror",
@@ -319,10 +317,8 @@
           "count": 1,
           "set": "frc",
           "number": "42",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Occult Epiphany",
@@ -337,21 +333,16 @@
           "count": 1,
           "set": "frc",
           "number": "44",
-          "implemented": false,
-          "needs": [
-            "cycling",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Synthetic Destiny",
           "count": 1,
           "set": "frc",
           "number": "45",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Archfiend of Despair",
@@ -703,10 +694,8 @@
           "count": 1,
           "set": "frc",
           "number": "41",
-          "implemented": false,
-          "needs": [
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Despark",

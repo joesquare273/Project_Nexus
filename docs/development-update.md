@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture R2b: the harder spells (2026-11-16)
+
+- Fact or Fiction (piles), Teferi's Reproach (a shielded player), Mass Polymorph and Synthetic Destiny (reveal until that many creatures), and Shark Typhoon (cycling with X), plus the Shark token. Multiverse Reforged now has 65 of its 93 distinct cards built.
+- New choices `separatePiles` and `choosePile`, with prompts on the board and choices for the computer players (the best card alone; take the pile worth more). `PlayerState.shielded` is classified in redact.ts.
+
 ### Reality Fracture R2a: spells (2026-11-16)
 
 - 10 cards: Despark, Brainsurge, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Occult Epiphany, Grand Crescendo and White Sun's Twilight, with five tokens (Soldier, Citizen, Spirit, Phyrexian Mite, Incubator). Multiverse Reforged now has 60 of its 93 distinct cards built.

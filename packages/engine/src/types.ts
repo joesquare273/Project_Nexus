@@ -587,6 +587,16 @@ export const EFFECT_KINDS = [
    */
   'PhaseOut',
   /**
+   * Teferi's Reproach: until the target player's next turn, they have
+   * protection from everything and their life total can't change; their
+   * nonland permanents phase out.
+   */
+  'ShieldPlayerUntilNextTurn',
+  /** Reveal cards from the top of your library until `amount` creature cards are revealed; those enter the battlefield and the rest are shuffled in (Mass Polymorph). */
+  'RevealCreaturesToBattlefield',
+  /** Reveal the top `amount` cards; an opponent separates them into two piles; you put one into your hand and the other into your graveyard (Fact or Fiction). */
+  'RevealSeparatePiles',
+  /**
    * Each target creature connives (rule 701.50): its controller draws a card,
    * then discards a card; a discarded nonland card puts a +1/+1 counter on it.
    */
@@ -816,6 +826,8 @@ export interface EffectSpec {
   alsoFromGraveyard?: boolean;
   /** CreateToken: an X/X token, X being this count as it's created (Formless Genesis: land cards in your graveyard). */
   tokenSizeFromCount?: CountKind;
+  /** CreateToken: an X/X token, X being this amount ("an X/X Shark, where X is that spell's mana value"). */
+  tokenSizeFromAmount?: Amount;
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
   spellOrPermanent?: boolean;
   /** AddMana with `manaType`: the mana is restricted (Steelswarm Operator's second ability). */
@@ -1898,6 +1910,10 @@ export interface CardDefinition {
   landcycling?: { subtype?: string; basic?: boolean; cost: string };
   /** "Cycling [cost]": discard from hand to draw a card. */
   cycling?: string;
+  /** "When you cycle this card, ...": extra effects of the cycling ability, after the draw ({X} is the X paid: Shark Typhoon). */
+  cyclingEffects?: EffectSpec[];
+  /** "Exile [this spell]" as the last part of its effect (Teferi's Reproach): it goes to exile, not the graveyard. */
+  exileOnResolve?: boolean;
   /** "A deck can have any number of cards named ..." (Cid, Timeless Artificer; rule 100.2a). */
   anyNumberInDeck?: boolean;
   /** Flashback cost: cast from the graveyard, then exile it. */
@@ -2434,6 +2450,8 @@ export interface PlayerState {
   preventDamageTurn?: number;
   /** Can't cast spells during this turn (Silence). */
   cantCastTurn?: number;
+  /** Teferi's Reproach: protection from everything and a life total that can't change, until this player's next turn. */
+  shielded?: boolean;
   /** Stagger: until `by`'s next turn, damage to this player and their permanents is doubled. */
   staggeredBy?: PlayerId[];
   /** "Can't cast noncreature spells this turn" (Ranger-Captain of Eos). */
@@ -2684,13 +2702,17 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
   max: number;
   /** All of `cards` or none (discarding a whole hand). */
   allOrNothing?: boolean;
+  /** choosePile: the two piles (chosen with any card of the pile you take; nothing takes an empty pile). */
+  piles?: [InstanceId[], InstanceId[]];
+  /** separatePiles / choosePile: who cast the spell (they take a pile). */
+  pileOwner?: PlayerId;
   /** 'discard': exile the cards instead; their owner may play them at a tax (Lightstall Inquisitor). */
   exileToPlayTaxed?: boolean;
   /** discard: `max` cards, or just one card matching this instead (Thirst for Knowledge). */

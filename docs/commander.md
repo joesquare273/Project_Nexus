@@ -33,7 +33,7 @@ Reality Fracture has one Commander deck. It was imported with the same script
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 64/97 entries (60 of 93 distinct cards) |
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 69/97 entries (65 of 93 distinct cards) |
 
 - **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
 - **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
@@ -53,7 +53,12 @@ The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
   - Engine: toxic (`toxic` on a definition: combat damage to a player also gives that many poison counters, rule 702.164) and `cantBlock` on a definition.
   - Engine: the `exiledThisWay` amount (permanents exiled earlier in the resolution) and the `notCreatedThisWay` filter ("destroy all other creatures" spares the tokens the spell just made).
   - Flawless Maneuver's free cast is an alternative cost with `ifControls: {commander: true}`.
-- **R2b: the harder spells.** Fact or Fiction (an opponent splits the cards into two piles), Teferi's Reproach (a player with protection from everything whose life can't change), Mass Polymorph and Synthetic Destiny (reveal until that many creature cards), and Shark Typhoon (cycling with X, and a trigger when you cycle it).
+- **R2b (done 2026-11-16): the harder spells.** Fact or Fiction, Teferi's Reproach, Mass Polymorph, Synthetic Destiny and Shark Typhoon, with the Shark token (tfrc 6).
+  - Engine: `RevealSeparatePiles`. The opponent separates the revealed cards (choice `separatePiles`); the caster takes a pile by choosing any card in it, or nothing for an empty pile (`choosePile`).
+  - Engine: `ShieldPlayerUntilNextTurn`. `PlayerState.shielded` means nothing can target or damage that player and their life can't change. Their nonland permanents phase out, and it ends as their next turn begins.
+  - Engine: `exileOnResolve` on a spell, `RevealCreaturesToBattlefield`, and delayed triggers that fix "that many" when they're created.
+  - Engine: `cyclingEffects` (Shark Typhoon's X/X Shark when cycled, with X paid as part of cycling) and `tokenSizeFromAmount`.
+  - Simplifications: Fact or Fiction's opponent is the next one in turn order (the caster doesn't choose). Shark Typhoon's "when you cycle this card" resolves with the cycling draw instead of as its own trigger.
 - Fatehold Charm and Plan for All Outcomes use Jace's empower, so they move to R5.
 - **R3: creatures.** Akroma, Avacyn, Darksteel Angel, Serra's Emissary, Archfiend of Despair, Archon of Cruelty, Overlord of the Mistmoors, The Ur-Sphinx, Memnarch, Ginger, Jhoira, Niv-Mizzet, Omnath and Venser.
 - **R4: artifacts and enchantments.** Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.

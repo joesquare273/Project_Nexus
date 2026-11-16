@@ -338,6 +338,8 @@ export function startNextTurn(ctx: Ctx): void {
   delete s.endAfterCombat;
   delete s.extraCombatUntaps;
   delete s.players[s.activePlayer]!.attackTaxes;
+  // Teferi's Reproach lasts until that player's next turn.
+  delete s.players[s.activePlayer]!.shielded;
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     p.lifeLostThisTurn = 0;

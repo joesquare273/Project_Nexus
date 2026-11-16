@@ -16196,6 +16196,28 @@
       }
     ]
   },
+  "shark-token-frc": {
+    "name": "Shark",
+    "typeLine": "Token Creature — Shark",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "6",
+    "artist": "Caio Monteiro",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376",
+      "normal": "https://cards.scryfall.io/normal/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376",
+      "large": "https://cards.scryfall.io/large/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/6/shark?utm_source=api",
+    "scryfallId": "21a614b0-2e65-4ea0-94c3-9c9afa0bc03c",
+    "relatedTokens": [
+      {
+        "name": "Shark",
+        "scryfallId": "21a614b0-2e65-4ea0-94c3-9c9afa0bc03c"
+      }
+    ]
+  },
   "shark-typhoon": {
     "name": "Shark Typhoon",
     "typeLine": "Enchantment",

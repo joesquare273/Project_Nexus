@@ -294,6 +294,7 @@ const PLAYER_FIELDS = {
   preventCreatureDamageTurn: 'copy',
   poison: 'copy',
   cantCastTurn: 'copy',
+  shielded: 'copy',
   cantCastNoncreatureTurn: 'copy',
   staggeredBy: 'copy',
   cardsDrawnThisTurn: 'copy',

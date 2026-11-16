@@ -259,3 +259,102 @@ describe('R2a: spells', () => {
     expect(hasKeyword(u, u.cards[spirits[0]!]!, 'Flying')).toBe(true);
   });
 });
+
+describe('R2b: spells with new choices', () => {
+  it('Fact or Fiction: the opponent splits the top five into two piles; you take one, the other goes to your graveyard', () => {
+    let s = newGame();
+    const fof = put(s, 'P1', 'fact-or-fiction', 'hand');
+    const top = ['despark', 'plains', 'island', 'brainsurge', 'sunfall'].reverse().map((id) => put(s, 'P1', id, 'library'));
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: fof });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    // The opponent separates: Despark alone, the other four in the second pile.
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'separatePiles' });
+    const despark = top[4]!;
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [despark] });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'choosePile' });
+    // P1 takes the four-card pile by choosing any card in it.
+    const four = top.filter((id) => id !== despark);
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [four[0]!] });
+    for (const id of four) expect(zone(s, id)).toBe('hand');
+    expect(zone(s, despark)).toBe('graveyard');
+    expect(zone(s, fof)).toBe('graveyard');
+  });
+
+  it("Teferi's Reproach: until their next turn the opponent can't be targeted or damaged, their life can't change, their nonland permanents phase out; the spell is exiled", () => {
+    let s = newGame();
+    const reproach = put(s, 'P1', 'teferis-reproach', 'hand');
+    const creature = put(s, 'P2', 'thawbringer');
+    const land = put(s, 'P2', 'island');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: reproach, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(zone(s, reproach)).toBe('exile');
+    expect([s.cards[creature]!.phasedOut, !!s.cards[land]!.phasedOut]).toEqual([true, false]);
+    expect(s.players.P2!.shielded).toBe(true);
+    // An attacker can't hurt them.
+    const attacker = put(s, 'P1', 'thawbringer');
+    const life = s.players.P2!.life;
+    const hit = fight(s, [{ attacker, defender: 'P2' }]).state;
+    expect(hit.players.P2!.life).toBe(life);
+    // At the start of their turn it ends, and their permanents phase back in.
+    const next = goTo(hit, 'upkeep');
+    expect(next.activePlayer).toBe('P2');
+    expect(next.players.P2!.shielded).toBeUndefined();
+    expect(next.cards[creature]!.phasedOut).toBeFalsy();
+  });
+
+  it('Mass Polymorph exiles your creatures and reveals that many creature cards onto the battlefield', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'mass-polymorph', 'hand');
+    const a = put(s, 'P1', 'thawbringer');
+    const b = put(s, 'P1', 'thawbringer');
+    const theirs = put(s, 'P2', 'thawbringer');
+    const angel = put(s, 'P1', 'akroma-angel-of-fury', 'library');
+    put(s, 'P1', 'plains', 'library');
+    const nissa = put(s, 'P1', 'nissa-leyline-tamer', 'library');
+    mana(s, 'P1', { U: 1, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect([zone(s, a), zone(s, b), zone(s, theirs)]).toEqual(['exile', 'exile', 'battlefield']);
+    expect([zone(s, angel), zone(s, nissa)]).toEqual(['battlefield', 'battlefield']);
+    expect(s.cards[angel]!.controller).toBe('P1');
+  });
+
+  it('Synthetic Destiny brings back that many creatures at the beginning of the next end step', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'synthetic-destiny', 'hand');
+    const a = put(s, 'P1', 'thawbringer');
+    const nissa = put(s, 'P1', 'nissa-leyline-tamer', 'library');
+    put(s, 'P1', 'plains', 'library');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(zone(s, a)).toBe('exile');
+    expect(zone(s, nissa)).toBe('library');
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep');
+    expect(zone(s, nissa)).toBe('battlefield');
+    expect(s.cards[nissa]!.controller).toBe('P1');
+  });
+
+  it('Shark Typhoon makes an X/X flying Shark for each noncreature spell (X = its mana value), and when cycled for X', () => {
+    let s = newGame();
+    put(s, 'P1', 'shark-typhoon');
+    const fof = put(s, 'P1', 'despark', 'hand');
+    const target = put(s, 'P2', 'nissa-leyline-tamer');
+    mana(s, 'P1', { W: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fof, targets: [card(target)] }).state;
+    const shark = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'shark-token-frc')!;
+    expect([powerOf(s, shark), toughnessOf(s, shark), hasKeyword(s, shark, 'Flying')]).toEqual([2, 2, true]);
+    // Cycling for X = 3: draw a card and make a 3/3 Shark.
+    let u = newGame();
+    const typhoon = put(u, 'P1', 'shark-typhoon', 'hand');
+    mana(u, 'P1', { U: 1, C: 4 });
+    const cycle = getLegalActions(u).find((a) => a.type === 'ActivateAbility' && a.card === typhoon && (a as { x?: number }).x === 3)!;
+    expect(cycle).toBeDefined();
+    u = cast(u, cycle).state;
+    expect(zone(u, typhoon)).toBe('graveyard');
+    expect(u.players.P1!.hand).toHaveLength(1);
+    const cycled = u.players.P1!.battlefield.map((id) => u.cards[id]!).find((c) => c.defId === 'shark-token-frc')!;
+    expect([powerOf(u, cycled), toughnessOf(u, cycled)]).toEqual([3, 3]);
+  });
+});

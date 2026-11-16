@@ -474,6 +474,8 @@ export function drawCards(ctx: Ctx, playerId: PlayerId, count: number): void {
 export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   const p = player(ctx.s, playerId);
   if (delta === 0 || p.eliminated) return;
+  // Teferi's Reproach: "their life total can't change".
+  if (p.shielded) return;
   // The Wind Crystal: each one its controller controls doubles life they'd gain (rule 614.1a).
   if (delta > 0) {
     for (const c of battlefield(ctx.s)) {
@@ -518,6 +520,8 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   // Stagger (Lightning, Army of One): damage to that player or their permanents is doubled.
   const hurt = target.kind === 'player' ? target.player : target.kind === 'card' ? s.cards[target.card]?.controller : undefined;
   if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;
+  // Teferi's Reproach: protection from everything prevents all damage to that player.
+  if (!unpreventable && target.kind === 'player' && s.players[target.player]!.shielded) return;
   // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
   if (!unpreventable && target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {

@@ -547,6 +547,15 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.kind !== 'chooseCards') return legal[0]!;
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
+  // Fact or Fiction, splitting for an opponent: the best card alone against the rest.
+  if (p.purpose === 'separatePiles') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
+  // Taking a pile: the one worth more (each card counts, and so does how good it is).
+  if (p.purpose === 'choosePile') {
+    const [a, b] = p.piles ?? [p.cards, []];
+    const worth = (pile: InstanceId[]) => pile.reduce((n, id) => n + 1 + Math.max(0, value(s, s.cards[id]!)) / 10, 0);
+    const take = worth(a) >= worth(b) ? a : b;
+    return pick(take.length ? [take[0]!] : []);
+  }
   // Temporal Extortion: pay half our life to stop an extra turn only while plenty of life remains.
   if (p.purpose === 'payHalfLife') return pick(s.players[me]!.life >= 16 ? [...p.cards] : []);
   // Syncopate: pay to keep our spell if we can (tapping mana first), else let it go.

@@ -424,6 +424,12 @@ function effectText(e: EffectSpec): string {
       return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand${e.toBattlefieldIfBehindOnLands ? ' (onto the battlefield tapped if an opponent controls more lands)' : ''}`;
     case 'PhaseOut':
       return `${who} phase out`;
+    case 'ShieldPlayerUntilNextTurn':
+      return `until ${who}'s next turn, they have protection from everything, their life total can't change, and their nonland permanents phase out`;
+    case 'RevealCreaturesToBattlefield':
+      return 'reveal cards from the top of your library until you reveal that many creature cards, put them onto the battlefield, and shuffle the rest in';
+    case 'RevealSeparatePiles':
+      return `reveal the top ${typeof e.amount === 'number' ? e.amount : ''} cards; an opponent separates them into two piles; put one into your hand and the other into your graveyard`;
     case 'Connive':
       return `${who} connives`;
     case 'LookAtTopPutInHand':

@@ -1386,6 +1386,10 @@ function PromptBar(p: PromptProps) {
           ? (c.purpose === 'handSize' ? 'to discard down to your maximum hand size' : 'to discard (in your hand)')
           : c.purpose === 'handToTop'
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
+          : c.purpose === 'separatePiles'
+            ? 'for the first pile (the rest form the second pile); the other player puts one pile into their hand and the other into their graveyard'
+          : c.purpose === 'choosePile'
+            ? `from the pile you want in your hand (pile 1: ${(c.piles?.[0] ?? []).map((id) => cardName(s, id)).join(', ') || 'empty'}; pile 2: ${(c.piles?.[1] ?? []).map((id) => cardName(s, id)).join(', ') || 'empty'}); choose nothing to take the empty pile`
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
             : c.purpose === 'mayDraw'

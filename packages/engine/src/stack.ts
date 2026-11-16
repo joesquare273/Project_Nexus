@@ -192,7 +192,8 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
     out.push({
       cost: { mana: def.cycling, discardThis: true },
       zone: 'hand',
-      effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }],
+      // "When you cycle this card, ..." (Shark Typhoon) resolves with the draw (simplified: not a separate trigger).
+      effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }, ...(def.cyclingEffects ?? [])],
     });
   }
   if (def.unearth) {
@@ -422,6 +423,8 @@ export function isLegalTarget(
     if (!p || p.eliminated) return false;
     // Protection from each of their opponents: those opponents can't target them.
     if (t.player !== controller && playerProtectedFromOpponents(s, t.player)) return false;
+    // Teferi's Reproach: protection from everything; nothing can target them.
+    if (p.shielded) return false;
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
@@ -3104,7 +3107,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (amount > 0) quinaFrogs(ctx, item.controller, r);
         return;
       }
-      const size = effect.tokenSizeFromCount ? countOf(s, effect.tokenSizeFromCount, item.controller, source) : undefined;
+      const size = effect.tokenSizeFromCount ? countOf(s, effect.tokenSizeFromCount, item.controller, source) : effect.tokenSizeFromAmount !== undefined ? resolvedAmount(s, { ...effect, amount: effect.tokenSizeFromAmount }, r) : undefined;
       for (const pid of players.length > 0 ? players : [item.controller]) {
         for (let i = 0; i < amount; i++) {
           const id = createToken(ctx, effect.token!, pid);
@@ -3155,6 +3158,54 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PhaseOut':
       for (const id of onBattlefield) phaseOut(ctx, id);
       return;
+    case 'ShieldPlayerUntilNextTurn':
+      for (const pid of targetPlayers(targets)) {
+        const p = player(s, pid);
+        if (p.eliminated) continue;
+        p.shielded = true;
+        for (const id of [...p.battlefield]) {
+          const c = s.cards[id]!;
+          if (c.controller === pid && !c.phasedOut && !hasType(s, c, 'land')) phaseOut(ctx, id);
+        }
+      }
+      return;
+    case 'RevealCreaturesToBattlefield': {
+      // "Reveal cards from the top of your library until you reveal that many creature cards. Put all creature
+      // cards revealed this way onto the battlefield, then shuffle the rest of the revealed cards into your library."
+      if (amount <= 0) return;
+      const library = player(s, item.controller).library;
+      const found: InstanceId[] = [];
+      for (const id of [...library]) {
+        if (found.length >= amount) break;
+        ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+        if (defOf(s, s.cards[id]!).types.includes('creature')) found.push(id);
+      }
+      for (const id of found) {
+        moveCard(ctx, id, 'battlefield');
+        const c = s.cards[id]!;
+        c.controller = item.controller;
+        c.summoningSick = true;
+        if (entersTapped(s, c)) c.tapped = true;
+      }
+      shuffleInPlace(s, library);
+      ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
+      return;
+    }
+    case 'RevealSeparatePiles': {
+      // Fact or Fiction: the top cards are revealed; an opponent separates them into two piles (the next opponent in turn order).
+      const library = player(s, item.controller).library;
+      const top = library.slice(0, amount);
+      if (top.length === 0) return;
+      for (const id of top) ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+      const living = alivePlayers(s);
+      const at = living.indexOf(item.controller);
+      const opponent = [...living.slice(at + 1), ...living.slice(0, at)].find((p) => p !== item.controller);
+      const pile = { cards: [...top], min: 0, max: top.length, pileOwner: item.controller };
+      r.choiceQueue = [...(r.choiceQueue ?? []), opponent
+        ? { player: opponent, purpose: 'separatePiles' as const, ...pile }
+        : { player: item.controller, purpose: 'choosePile' as const, ...pile, min: 0, max: 1, piles: [[...top], []] as [InstanceId[], InstanceId[]] }];
+      return;
+    }
     case 'Connive': {
       // Simplified: the creatures connive together: draw one card each, discard as many, then each
       // nonland card discarded puts a +1/+1 counter on the next of them.
@@ -3537,7 +3588,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateDelayedTrigger': {
       const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
+      // Amounts counted in this resolution ("that many": Synthetic Destiny) are fixed now.
+      const spec = structuredClone(effect.trigger!);
+      for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'exiledThisWay') e.amount = r.exiledCount ?? 0;
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':
@@ -3854,7 +3908,7 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
     if (item.adventure && resolved) {
       moveCard(ctx, item.card, 'exile');
       c.adventurer = item.controller;
-    } else if (item.flashback || item.exileAfter) moveCard(ctx, item.card, 'exile');
+    } else if (item.flashback || item.exileAfter || defOf(s, c).exileOnResolve) moveCard(ctx, item.card, 'exile');
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.
       moveCard(ctx, item.card, 'exile');
@@ -4345,6 +4399,17 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const owner = pending.libraryOf ?? pending.player;
     shuffleInPlace(s, player(s, owner).library);
     ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+  } else if (pending.purpose === 'separatePiles') {
+    // The chosen cards are one pile, the rest the other; the caster takes one.
+    const other = pending.cards.filter((id) => !cards.includes(id));
+    r.choiceQueue = [{ player: pending.pileOwner ?? r.item.controller, purpose: 'choosePile', cards: [...pending.cards], min: 0, max: 1, piles: [[...cards], other], pileOwner: pending.pileOwner ?? r.item.controller }, ...(r.choiceQueue ?? [])];
+  } else if (pending.purpose === 'choosePile') {
+    // A card from the pile you take, or nothing to take the empty pile; that pile goes to your hand, the other to your graveyard.
+    const [a, b] = pending.piles ?? [pending.cards, []];
+    const take = cards.length ? (a.includes(cards[0]!) ? a : b) : a.length === 0 ? a : b;
+    const leave = take === a ? b : a;
+    for (const id of take) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'hand');
+    for (const id of leave) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
   } else if (pending.purpose === 'handToTop') {
     // The first card chosen ends up on top.
     const library = player(s, pending.player).library;
