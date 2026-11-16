@@ -339,6 +339,13 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       removed.push(...(spec.removeKeywords ?? []));
     }
   }
+  // Emblems (rule 114): "creatures you control get +2/+2 and have flying".
+  for (const emblem of s.emblemStatics ?? []) {
+    if (s.players[emblem.controller]?.eliminated || !matchesObject(s, emblem.spec.filter, c, { controller: emblem.controller })) continue;
+    out.power += amountOf(s, emblem.spec.power, emblem.controller);
+    out.toughness += amountOf(s, emblem.spec.toughness, emblem.controller);
+    for (const k of emblem.spec.keywords ?? []) out.keywords.add(k);
+  }
   for (const e of s.temporaryEffects) {
     if (e.affected !== c.id || !effectLasts(s, e)) continue;
     out.power += e.power ?? 0;

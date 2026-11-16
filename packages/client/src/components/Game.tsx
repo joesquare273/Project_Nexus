@@ -1351,7 +1351,9 @@ function PromptBar(p: PromptProps) {
     if (c.purpose === 'payToAvoidCounter') {
       const x = c.payGeneric ?? 0;
       const can = !!planTaps(s, ME, { generic: x });
-      text = c.drawFor
+      text = c.protectSubtype
+        ? `${cardName(s, c.cards[0]!)}: pay {${x}}, or your creatures can't attack ${c.protectSubtype} planeswalkers ${c.protectFor} controls this turn.`
+        : c.drawFor
         ? `Its controller draws a card from ${cardName(s, c.cards[0]!)} unless you pay {${x}}.`
         : `${cardName(s, c.cards[0]!)} will be countered unless you pay {${x}}.`;
       const payIt: Action = { type: 'ChooseCards', player: ME, cards: [...c.cards] };

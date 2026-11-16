@@ -9789,6 +9789,28 @@
     "scryfallId": "55cd03d9-2535-4cf3-a8b2-1418e1190f4a",
     "relatedTokens": []
   },
+  "jace-token-fra": {
+    "name": "Jace",
+    "typeLine": "Token Planeswalker — Jace",
+    "oracleText": "−1: Surveil 1. (Look at the top card of your library. You may put that card into your graveyard.)\n−3: Draw a card.",
+    "set": "tfra",
+    "number": "5",
+    "artist": "Manuel Castañón",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324",
+      "normal": "https://cards.scryfall.io/normal/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324",
+      "large": "https://cards.scryfall.io/large/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/5/jace?utm_source=api",
+    "scryfallId": "8d1e424f-6407-4f8c-bed2-eaf148237c81",
+    "relatedTokens": [
+      {
+        "name": "Jace",
+        "scryfallId": "8d1e424f-6407-4f8c-bed2-eaf148237c81"
+      }
+    ]
+  },
   "jecht-reluctant-guardian-braskas-final-aeon": {
     "name": "Jecht, Reluctant Guardian // Braska's Final Aeon",
     "typeLine": "Legendary Creature — Human Warrior // Legendary Enchantment Creature — Saga Nightmare",

@@ -56,6 +56,8 @@ interface Occurrence {
   drawNumber?: number;
   /** SpellCast: how many spells its caster had cast this turn, counting it. */
   spellNumber?: number;
+  /** A noncreature spell: its caster's noncreature spells this turn, this one included. */
+  noncreatureSpellNumber?: number;
   /** Attacks: the attacker was the only creature declared as an attacker. */
   alone?: boolean;
   /** YouAttack: how many of the creatures attacked each player. */
@@ -193,6 +195,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           manaSpent: e.manaSpent,
           amount: e.manaSpent,
           spellNumber: s.players[e.player]!.spellsCastThisTurn ?? 0,
+          ...(!defOf(s, s.cards[e.card]!).types.includes('creature') ? { noncreatureSpellNumber: s.players[e.player]!.noncreatureSpellsThisTurn ?? 0 } : {}),
         });
         break;
       case 'DamageDealt':
@@ -377,6 +380,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   if (spec.duringYourTurn && s.activePlayer !== controller) return false;
   if (spec.nthSpellThisTurn !== undefined && o.spellNumber !== spec.nthSpellThisTurn) return false;
+  if (spec.nthNoncreatureSpellThisTurn !== undefined && o.noncreatureSpellNumber !== spec.nthNoncreatureSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   return matchesFilter(s, spec.what, source, controller, o);

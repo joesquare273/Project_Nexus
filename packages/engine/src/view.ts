@@ -86,6 +86,8 @@ export interface PermanentStats {
 
 export interface GameView {
   monarch?: PlayerId;
+  /** Emblems with static abilities, by owner (Elspeth's "creatures you control get +2/+2 and have flying"). */
+  emblems?: { controller: PlayerId; name: string }[];
   viewer: PlayerId;
   formatName: string;
   turnOrder: PlayerId[];
@@ -172,6 +174,7 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
   return {
     viewer,
     ...(s.monarch ? { monarch: s.monarch } : {}),
+    ...(s.emblemStatics?.length ? { emblems: s.emblemStatics.map((e) => ({ controller: e.controller, name: e.name })) } : {}),
     formatName: s.format.name,
     turnOrder: [...s.turnOrder],
     activePlayer: s.activePlayer,

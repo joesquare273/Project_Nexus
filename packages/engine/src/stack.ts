@@ -3154,7 +3154,29 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PutFromHandOnTop': {
       const hand = player(s, item.controller).hand;
       const n = Math.min(effect.amount === undefined ? 1 : amount, hand.length);
-      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n }];
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n, ...(effect.toBottom ? { toBottom: true } : {}) }];
+      return;
+    }
+    case 'Empower': {
+      // Empower Jace N: a Jace token you control gets N loyalty counters; create one first if you have none.
+      const jaces = () => battlefield(s).filter((c) => c.controller === item.controller && c.isToken && !c.phasedOut && subtypesOf(s, c).includes('Jace') && hasType(s, c, 'planeswalker'));
+      let tokens = jaces();
+      if (tokens.length === 0 && effect.token) {
+        createToken(ctx, effect.token, item.controller);
+        tokens = jaces();
+      }
+      if (tokens.length === 1) addCounters(ctx, tokens[0]!.id, amount, item.controller, 'loyalty');
+      else if (tokens.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'amass', cards: tokens.map((c) => c.id), min: 1, max: 1, amassCounters: amount, amassCounter: 'loyalty' }];
+      return;
+    }
+    case 'CreateEmblem':
+      if (effect.emblemStatic) s.emblemStatics = [...(s.emblemStatics ?? []), { controller: item.controller, name: defOf(s, s.cards[source]!).name, spec: structuredClone(effect.emblemStatic) }];
+      return;
+    case 'ProtectSubtypeUnlessPays': {
+      // The player whose turn it is may pay; if they don't, their creatures can't attack your [subtype]s this turn.
+      const payer = s.activePlayer;
+      if (payer === item.controller || s.players[payer]!.eliminated || !effect.protectSubtype) return;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: payer, purpose: 'payToAvoidCounter', cards: [source], min: 0, max: 1, payGeneric: effect.payGeneric ?? 0, protectSubtype: effect.protectSubtype, protectFor: item.controller }];
       return;
     }
     case 'ShuffleGraveyardIntoLibrary': {
@@ -4545,6 +4567,9 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     const leave = take === a ? b : a;
     for (const id of take) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'hand');
     for (const id of leave) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+  } else if (pending.purpose === 'handToTop' && pending.toBottom) {
+    // "Put a card from your hand on the bottom of your library".
+    for (const id of cards) moveCard(ctx, id, 'library');
   } else if (pending.purpose === 'handToTop') {
     // The first card chosen ends up on top.
     const library = player(s, pending.player).library;
@@ -4552,6 +4577,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       moveCard(ctx, id, 'library');
       library.splice(library.indexOf(id), 1);
       library.unshift(id);
+    }
+  } else if (pending.purpose === 'payToAvoidCounter' && pending.protectSubtype) {
+    const cost = { generic: pending.payGeneric ?? 0 } as ManaCost;
+    if (cards.length > 0) {
+      if (!canPayFromPool(s, pending.player, cost)) reject(`Tap mana for {${pending.payGeneric}} first, or don't pay.`);
+      payMana(ctx, pending.player, cost);
+    } else {
+      s.attackBans = [...(s.attackBans ?? []).filter((b) => b.turn === s.turnNumber), { attacker: pending.player, controller: pending.protectFor!, subtype: pending.protectSubtype, turn: s.turnNumber }];
     }
   } else if (pending.purpose === 'payToAvoidCounter' && pending.drawFor) {
     const cost = { generic: pending.payGeneric ?? 0 } as ManaCost;
@@ -4704,7 +4737,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     if (next && left.length === 1) giveControl(ctx, left[0]!, next);
     else if (next && left.length > 1) r.choiceQueue = [{ ...pending, cards: left, recipient: next, laterRecipients: later }, ...(r.choiceQueue ?? [])];
   } else if (pending.purpose === 'amass') {
-    for (const id of cards) amassOnto(ctx, id, pending.player, pending.amassCounters ?? 0, pending.amassType);
+    for (const id of cards) {
+      if (pending.amassCounter) addCounters(ctx, id, pending.amassCounters ?? 0, pending.player, pending.amassCounter);
+      else amassOnto(ctx, id, pending.player, pending.amassCounters ?? 0, pending.amassType);
+    }
   } else if (pending.purpose === 'exiledToGraveyard') {
     // Currency Converter: into its owner's graveyard; a Treasure for a land card, a 2/2 Rogue for any other.
     for (const id of cards) {

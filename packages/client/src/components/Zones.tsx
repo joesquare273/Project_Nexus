@@ -420,6 +420,9 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
           {pid === YOU ? 'You' : pid}
           {active && <span className="turn-pill">Turn</span>}
           {view.monarch === pid && <span className="turn-pill" title="The monarch draws at their end step; creature combat damage can transfer the crown">Monarch</span>}
+          {(view.emblems ?? []).filter((e) => e.controller === pid).map((e, i) => (
+            <span key={i} className="turn-pill" title={`Emblem from ${e.name} (for the rest of the game)`}>Emblem</span>
+          ))}
         </div>
         <div className="counts">
           <span title={p.maximumHandSize === null ? "Cards in hand: no maximum hand size" : `Cards in hand: discard down to ${p.maximumHandSize} during your cleanup step`}>✋ {p.handCount}/{p.maximumHandSize ?? "∞"}</span>

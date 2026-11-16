@@ -8,11 +8,8 @@
         "count": 1,
         "set": "frc",
         "number": "1",
-        "implemented": false,
-        "needs": [
-          "triggers",
-          "static-abilities"
-        ]
+        "implemented": true,
+        "needs": []
       },
       "colorIdentity": [
         "B",
@@ -178,10 +175,8 @@
           "count": 1,
           "set": "frc",
           "number": "24",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Flawless Maneuver",
@@ -532,23 +527,16 @@
           "count": 1,
           "set": "fra",
           "number": "35",
-          "implemented": false,
-          "needs": [
-            "empower-jace",
-            "surveil",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fatehold Charm",
           "count": 1,
           "set": "fra",
           "number": "132",
-          "implemented": false,
-          "needs": [
-            "empower-jace",
-            "spell-effects"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Arcane Signet",

@@ -193,6 +193,9 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     if (a.planeswalker !== undefined) {
       const pw = s.cards[a.planeswalker];
       if (!pw || pw.zone !== 'battlefield' || pw.phasedOut || pw.controller !== a.defender || !currentDefinition(s, pw).types.includes('planeswalker')) reject('That is not a planeswalker that player controls.');
+      // Jace, Multiverse Architect: "creatures they control can't attack Jaces you control this turn".
+      const ban = (s.attackBans ?? []).find((b) => b.turn === s.turnNumber && b.attacker === playerId && b.controller === pw.controller && subtypesOf(s, pw).includes(b.subtype));
+      if (ban) reject(`Your creatures can't attack ${ban.subtype} planeswalkers that player controls this turn.`);
     }
   }
   const required = attackRequirementProblem(s, playerId, attacks);

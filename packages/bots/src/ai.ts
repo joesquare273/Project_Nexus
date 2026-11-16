@@ -559,6 +559,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Temporal Extortion: pay half our life to stop an extra turn only while plenty of life remains.
   if (p.purpose === 'payHalfLife') return pick(s.players[me]!.life >= 16 ? [...p.cards] : []);
   // Syncopate: pay to keep our spell if we can (tapping mana first), else let it go.
+  // The computer attacks players, not planeswalkers: no need to pay Jace's tax.
+  if (p.purpose === 'payToAvoidCounter' && p.protectSubtype) return pick([]);
   if (p.purpose === 'payToAvoidCounter') {
     const cost = { generic: p.payGeneric ?? 0 };
     const pool = s.players[me]!.manaPool;

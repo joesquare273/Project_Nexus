@@ -24,6 +24,12 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture R5b: Jace and empower; Multiverse Reforged complete (2026-11-16)
+
+- Jace, Multiverse Architect (loyalty 4; on each opponent's turn they may pay {2} or their creatures can't attack your Jaces that turn, `ProtectSubtypeUnlessPays` and `attackBans`; +1 draws two and puts a card from your hand on the bottom; −3 exiles your creature or planeswalker and reveals until a creature or planeswalker card onto the battlefield), Elspeth, Sun's Champion (static emblems: `CreateEmblem`, `emblemStatics`, shown as an "Emblem" marker by the player), Fatehold Charm and Plan for All Outcomes.
+- Empower Jace N (`Empower`): loyalty counters on a Jace token you control, creating the blue Jace planeswalker token (tfra 5: −1 surveil 1, −3 draw a card) first if you have none. The `nthNoncreatureSpellThisTurn` trigger condition.
+- The computer never pays Jace's {2}, since it attacks players rather than planeswalkers. Every card of Multiverse Reforged is now built.
+
 ### Reality Fracture R5a: four creatures (2026-11-16)
 
 - Nissa, Leyline Tamer (landfall: draw, then the first time each turn reveal until a creature onto the battlefield), Dack Fayden, Helping Hand (reveal until one creature card per opponent, shuffle; goaded by you for the rest of the game, `goadedForever`; you choose which opponent gains control of each, a `giveToOpponent` card choice per opponent), Ob Nixilis, the Ascended (destroys tapped creatures your opponents control, life for each; an Angel at each end step after you gained life), Tamiyo, Upriser Crowned (you become the monarch; creatures that deal combat damage to you while you're the monarch are tapped and stunned).

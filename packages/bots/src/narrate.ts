@@ -218,7 +218,7 @@ function effectText(e: EffectSpec): string {
     case 'AllowPlayExiledThisWay':
       return 'you may play the exiled card this turn';
     case 'PutFromHandOnTop':
-      return `put ${plural('card')} from your hand on top of your library`;
+      return `put ${plural('card')} from your hand on ${e.toBottom ? 'the bottom' : 'top'} of your library`;
     case 'ShuffleGraveyardIntoLibrary':
       return 'shuffle cards from your graveyard into your library';
     case 'SubjectEntersWithCounters':
@@ -318,6 +318,12 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'Empower':
+      return `empower Jace ${n} (put ${n} loyalty counter${n === '1' ? '' : 's'} on a Jace token you control; if you don't control one, first create a blue Jace planeswalker token with "−1: Surveil 1" and "−3: Draw a card")`;
+    case 'CreateEmblem':
+      return `you get an emblem with "${emblemText(e.emblemStatic)}"`;
+    case 'ProtectSubtypeUnlessPays':
+      return `they may pay {${e.payGeneric ?? 0}}. If they don't, creatures they control can't attack ${e.protectSubtype}s you control this turn`;
     case 'Amass':
       return `amass ${e.amassType ? `${e.amassType}s ` : ''}${n}`;
     case 'PutExiledWithThisIntoGraveyard':
@@ -846,4 +852,13 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
     default:
       return null;
   }
+}
+
+/** An emblem's static ability, in words ("Creatures you control get +2/+2 and have flying."). */
+function emblemText(st: EffectSpec['emblemStatic']): string {
+  if (!st) return '';
+  const p = typeof st.power === 'number' ? st.power : 0, t = typeof st.toughness === 'number' ? st.toughness : 0;
+  const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const parts = [p || t ? `get ${sign(p)}/${sign(t)}` : '', st.keywords?.length ? `have ${st.keywords.map((k) => k.toLowerCase()).join(' and ')}` : ''].filter(Boolean);
+  return `${st.filter ? subjectText(st.filter, 'permanent', true) : 'Permanents'} ${parts.join(' and ')}.`.replace(/^./, (c) => c.toUpperCase());
 }

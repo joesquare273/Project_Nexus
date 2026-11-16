@@ -337,6 +337,8 @@ const GAME_FIELDS = {
   extraEndSteps: 'copy',
   delayedTriggers: 'refs',
   temporaryEffects: 'refs',
+  emblemStatics: 'copy',
+  attackBans: 'copy',
   creaturesDiedThisTurn: 'copy',
   nextCopyId: 'copy',
   creatureDeathsByController: 'copy',

@@ -885,3 +885,118 @@ describe('R5a: creatures', () => {
     expect(s.monarch).toBe('P2');
   });
 });
+
+describe('R5b: Jace and empower', () => {
+  const jaceTokens = (s: GameState, who = 'P1') => s.players[who]!.battlefield.map((id) => s.cards[id]!).filter((c) => c.defId === 'jace-token-fra');
+
+  it('Jace, Multiverse Architect: +1 draws two and puts a card on the bottom; −3 exiles your creature and reveals until a creature or planeswalker onto the battlefield', () => {
+    let s = newGame();
+    const jace = put(s, 'P1', 'jace-multiverse-architect', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const hand = s.players.P1!.hand.length;
+    s = act(s, { type: 'ActivateAbility', player: 'P1', card: jace, ability: 0, targets: [] });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseCards');
+    const bottom = s.players.P1!.hand[0]!;
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [bottom] });
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    expect(s.players.P1!.library.at(-1)).toBe(bottom);
+    expect(s.cards[jace]!.namedCounters?.loyalty).toBe(5);
+    // −3 next turn.
+    s.turnNumber++;
+    const mine = put(s, 'P1', 'thawbringer');
+    const found = put(s, 'P1', 'archon-of-cruelty', 'library');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: jace, ability: 1, targets: [card(mine)] }).state;
+    expect([zone(s, mine), zone(s, found), s.cards[jace]!.namedCounters?.loyalty]).toEqual(['exile', 'battlefield', 2]);
+  });
+
+  it("Jace: on an opponent's turn, unless they pay {2}, their creatures can't attack your Jaces", () => {
+    let s = newGame();
+    const jace = put(s, 'P1', 'jace-multiverse-architect', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const attacker = put(s, 'P2', 'thawbringer');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    s = act(act(s, { type: 'PassPriority', player: 'P2' }), { type: 'PassPriority', player: 'P1' });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending.kind).toBe('chooseCards');
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [] }); // don't pay
+    s = goTo(s, 'declareAttackers');
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker, defender: 'P1', planeswalker: jace }] })).toMatch(/can't attack Jace/);
+    s = act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker, defender: 'P1' }] });
+    expect(s.combat?.attacks).toHaveLength(1);
+  });
+
+  it("Elspeth: +1 makes three Soldiers, −3 destroys creatures with power 4 or more, −7's emblem gives your creatures +2/+2 and flying", () => {
+    let s = newGame();
+    const elspeth = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 7 } });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 0, targets: [] }).state;
+    const soldiers = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'soldier-token-frc');
+    expect(soldiers).toHaveLength(3);
+    s.turnNumber++;
+    const big = put(s, 'P2', 'archon-of-cruelty');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 1, targets: [] }).state;
+    expect(zone(s, big)).toBe('graveyard');
+    expect(zone(s, soldiers[0]!)).toBe('battlefield');
+    s.turnNumber++;
+    s.cards[elspeth]!.namedCounters = { loyalty: 7 };
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 2, targets: [] }).state;
+    const soldier = s.cards[soldiers[0]!]!;
+    expect([powerOf(s, soldier), toughnessOf(s, soldier), hasKeyword(s, soldier, 'Flying')]).toEqual([3, 3, true]);
+    // Only your creatures; and new ones too.
+    const theirs = put(s, 'P2', 'thawbringer');
+    expect(hasKeyword(s, s.cards[theirs]!, 'Flying')).toBe(false);
+  });
+
+  it('Fatehold Charm: draw and empower Jace 2 (creating the Jace token), or bounce a spell or creature, or +1/+2 to your creatures', () => {
+    let s = newGame();
+    const charm = put(s, 'P1', 'fatehold-charm', 'hand');
+    mana(s, 'P1', { W: 1, U: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, targets: [], mode: 0 }).state;
+    expect(s.players.P1!.hand.length).toBe(hand); // cast one, drew one
+    expect(jaceTokens(s)).toHaveLength(1);
+    expect(jaceTokens(s)[0]!.namedCounters?.loyalty).toBe(2);
+    // A second empower adds to the same token.
+    const charm2 = put(s, 'P1', 'fatehold-charm', 'hand');
+    mana(s, 'P1', { W: 1, U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm2, targets: [], mode: 0 }).state;
+    expect(jaceTokens(s)).toHaveLength(1);
+    expect(jaceTokens(s)[0]!.namedCounters?.loyalty).toBe(4);
+    // The Jace token's −3 draws a card.
+    const token = jaceTokens(s)[0]!.id;
+    const before = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: token, ability: 1, targets: [] }).state;
+    expect(s.players.P1!.hand.length).toBe(before + 1);
+    // Mode 2: bounce a creature.
+    const bear = put(s, 'P2', 'thawbringer');
+    const charm3 = put(s, 'P1', 'fatehold-charm', 'hand');
+    mana(s, 'P1', { W: 1, U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm3, targets: [card(bear)], mode: 1 }).state;
+    expect(zone(s, bear)).toBe('hand');
+  });
+
+  it('Plan for All Outcomes puts a nonland permanent on top or bottom of its library, and the first noncreature spell each turn empowers Jace 1', () => {
+    let s = newGame();
+    const bear = put(s, 'P2', 'thawbringer');
+    const plan = put(s, 'P1', 'plan-for-all-outcomes', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    // Its enter trigger targets the only other nonland permanent; its owner chooses top (nothing) or bottom.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: plan, targets: [] }).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [] });
+    expect([zone(s, bear), s.players.P2!.library[0]]).toEqual(['library', bear]);
+    // Plan itself was this turn's first noncreature spell, cast before it was on the battlefield: no Jace yet.
+    expect(jaceTokens(s)).toHaveLength(0);
+    s.turnNumber++;
+    s.players.P1!.spellsCastThisTurn = 0;
+    s.players.P1!.noncreatureSpellsThisTurn = 0;
+    const charm = put(s, 'P1', 'fatehold-charm', 'hand');
+    const charm2 = put(s, 'P1', 'fatehold-charm', 'hand');
+    mana(s, 'P1', { W: 2, U: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, targets: [], mode: 2 }).state;
+    expect(jaceTokens(s)).toHaveLength(1);
+    expect(jaceTokens(s)[0]!.namedCounters?.loyalty).toBe(1);
+    // A second noncreature spell this turn: no more.
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm2, targets: [], mode: 2 }).state;
+    expect(jaceTokens(s)[0]!.namedCounters?.loyalty).toBe(1);
+  });
+});

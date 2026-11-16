@@ -543,8 +543,20 @@ export const EFFECT_KINDS = [
   'Stagger',
   /** The triggering creature spell enters with `amount` additional +1/+1 counters (Torgal, A Fine Hound). */
   'SubjectEntersWithCounters',
-  /** You put `amount` cards from your hand on top of your library, the first chosen on top (Brainstorm). */
+  /** You put `amount` cards from your hand on top of your library, the first chosen on top (Brainstorm); with `toBottom`, on the bottom. */
   'PutFromHandOnTop',
+  /**
+   * Empower Jace N: put N loyalty counters on a Jace token you control; if you control none, first
+   * create the `token` (a Jace planeswalker token). With several, choose one.
+   */
+  'Empower',
+  /** You get an emblem with `emblemStatic` (rule 114): it lasts the rest of the game. */
+  'CreateEmblem',
+  /**
+   * "At the beginning of combat on each opponent's turn, they may pay {N}. If they don't, creatures
+   * they control can't attack [subtype] you control this turn" (Jace, Multiverse Architect).
+   */
+  'ProtectSubtypeUnlessPays',
   /** Shuffle the cards matching `filter` from your graveyard into your library (Elixir). */
   'ShuffleGraveyardIntoLibrary',
   /** "You may play the exiled card this turn" for the cards ExileTopCardToPlay exiled earlier in this ability (`anyManaType`: any type of mana can be spent). */
@@ -832,6 +844,12 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** PutFromHandOnTop: on the bottom of your library instead. */
+  toBottom?: boolean;
+  /** CreateEmblem: the emblem's static ability (its `filter` is relative to the emblem's owner). */
+  emblemStatic?: StaticSpec;
+  /** ProtectSubtypeUnlessPays: the planeswalker subtype protected ("Jace"). */
+  protectSubtype?: string;
   /** Amass: the creature type the Army also becomes ("amass Zombies": Zombie). */
   amassType?: string;
   /** PutExiledWithThisIntoGraveyard: the token made for a land card. */
@@ -1434,6 +1452,8 @@ export interface TriggerSpec {
   blockingMatching?: ObjectFilter;
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
+  /** SpellCast: only your Nth noncreature spell this turn ("whenever you cast your first noncreature spell each turn"). */
+  nthNoncreatureSpellThisTurn?: number;
   /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you. */
   byOpponent?: boolean;
   attackingYouAtLeast?: number;
@@ -2826,8 +2846,14 @@ export interface CardChoice {
   /** giveToOpponent: the opponent who gains control of the chosen permanent, then the opponents still to get one. */
   recipient?: PlayerId;
   laterRecipients?: PlayerId[];
-  /** amass: how many +1/+1 counters the chosen Army gets, and the creature type it also becomes. */
+  /** amass: how many +1/+1 counters the chosen Army gets (or `amassCounter` counters: empower's loyalty), and the creature type it also becomes. */
   amassCounters?: number;
+  amassCounter?: CounterKind;
+  /** payToAvoidCounter: if they don't pay, their creatures can't attack this subtype of planeswalkers `protectFor` controls this turn. */
+  protectSubtype?: string;
+  protectFor?: PlayerId;
+  /** handToTop: on the bottom instead. */
+  toBottom?: boolean;
   amassType?: string;
   /** exiledToGraveyard: the tokens to create for a land card and for any other card. */
   landToken?: CardDefId;
@@ -3033,6 +3059,10 @@ export interface GameState {
   triggeredThisTurn: string[];
   /** "Until end of turn" effects. */
   temporaryEffects: TemporaryEffect[];
+  /** Emblems with static abilities (rule 114), for the rest of the game: Elspeth, Sun's Champion. */
+  emblemStatics?: { controller: PlayerId; name: string; spec: StaticSpec }[];
+  /** "Creatures they control can't attack Jaces you control this turn". */
+  attackBans?: { attacker: PlayerId; controller: PlayerId; subtype: string; turn: number }[];
   /** Creatures put into a graveyard from the battlefield this turn. */
   creaturesDiedThisTurn: number;
   /** Numbers the copies of spells (their ids). */
