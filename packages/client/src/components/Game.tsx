@@ -1394,6 +1394,8 @@ function PromptBar(p: PromptProps) {
             ? `from the pile you want in your hand (pile 1: ${(c.piles?.[0] ?? []).map((id) => cardName(s, id)).join(', ') || 'empty'}; pile 2: ${(c.piles?.[1] ?? []).map((id) => cardName(s, id)).join(', ') || 'empty'}); choose nothing to take the empty pile`
           : c.purpose === 'sacrifice'
             ? 'to sacrifice'
+            : c.purpose === 'wheel'
+              ? `to discard your hand and draw ${c.drawCount ?? 7} cards (or none to keep your hand)`
             : c.purpose === 'mayDraw'
               ? 'to draw a card from (or none)'
             : c.purpose === 'mark'

@@ -318,6 +318,14 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'BecomePrepared':
+      return `${who} become${you ? '' : 's'} prepared`;
+    case 'Unprepare':
+      return `${who} become${you ? '' : 's'} unprepared`;
+    case 'EachPlayerMayWheel':
+      return `each player may discard their hand and draw ${n} cards`;
+    case 'ExtraManaFromSubtype':
+      return `until end of turn, whenever you tap a ${e.landSubtype} for mana, add an additional {${e.manaType}}`;
     case 'NextSpellCantBeCountered':
       return "the next spell you cast this turn can't be countered";
     case 'Empower':
@@ -816,6 +824,10 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return null;
     case 'OptionChosen':
       return `  ${who(e.player)} chose ${e.option} for ${cardName(s, e.card)}.`;
+    case 'Prepared':
+      return `  ${cardName(s, e.card)} is prepared.`;
+    case 'Unprepared':
+      return null;
     case 'TurnedFaceDown':
       return `${cardName(s, e.card)} was turned face down.`;
     case 'TurnedFaceUp':

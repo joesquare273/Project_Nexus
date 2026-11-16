@@ -1,7 +1,7 @@
 // Reality Fracture main set (FRA), built group by group (docs/reality-fracture.md).
 
 import { describe, expect, it } from 'vitest';
-import { currentDefinition, getLegalActions, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, mana, newGame, put } from './kit-helpers.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
@@ -253,5 +253,144 @@ describe('F3: planeswalkers you control have ...', () => {
     s = cast(s, { type: 'ActivateAbility', player: 'P1', card: elspeth, ability: 0, targets: [] }).state; // +1
     const r = fight(s, [{ attacker: bear, defender: 'P2' }]);
     expect(r.events.some((e) => e.type === 'CardsUntapped' && e.cards.includes(bear))).toBe(true);
+  });
+});
+
+describe('F4: prepared', () => {
+  const copyOf = (s: GameState, creature: string) => Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === creature);
+  const castPrepared = (s: GameState, creature: string) => getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === copyOf(s, creature)?.id);
+
+  it('a creature enters prepared; casting the copy of its spell unprepares it, and the creature stays', () => {
+    let s = newGame();
+    const angel = put(s, 'P1', 'blossom-blessed-angel-seed-suture', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: angel }).state;
+    expect(s.cards[angel]!.prepared).toBe(true);
+    const copy = copyOf(s, angel)!;
+    expect(currentDefinition(s, copy)).toMatchObject({ name: 'Seed Suture', types: ['sorcery'], manaCost: '{G/W}' });
+    // Cast Seed Suture on the Angel itself.
+    mana(s, 'P1', { G: 1 });
+    const option = castPrepared(s, angel).find((a) => a.type === 'CastSpell' && a.targets?.[0]?.kind === 'card' && a.targets[0].card === angel)!;
+    expect(option).toBeDefined();
+    s = cast(s, option).state;
+    expect([s.cards[angel]!.prepared, s.cards[angel]!.counters, s.players.P1!.life, zone(s, angel)]).toEqual([undefined, 1, 21, 'battlefield']);
+    // The copy is gone and can't be cast again.
+    expect(copyOf(s, angel)).toBeUndefined();
+    expect(s.players.P1!.graveyard.some((id) => s.cards[id]!.prepareSpellOf)).toBe(false);
+  });
+
+  it("only the creature's controller can cast it, at sorcery speed for a sorcery; leaving the battlefield removes the copy", () => {
+    let s = newGame();
+    const medic = put(s, 'P1', 'emergency-phytomedic-seed-suture', 'hand');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: medic }).state;
+    const copy = copyOf(s, medic)!.id;
+    // P2 can't cast it, and P1 can't on P2's turn (a sorcery).
+    s.players.P2!.manaPool.G = 1;
+    s.players.P1!.manaPool.G = 1;
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === copy)).toBe(false);
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === copy)).toBe(false);
+    // The creature dies: the copy ceases to exist.
+    s.activePlayer = 'P1';
+    const bolt = put(s, 'P1', 'no-admittance', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(medic)] }).state;
+    expect([zone(s, medic), s.cards[medic]!.prepared, zone(s, copy)]).toEqual(['graveyard', undefined, 'void']);
+  });
+
+  it('creatures that become prepared at your upkeep, and Hexhaven Dueling Arena', () => {
+    let s = newGame();
+    const voxmancer = put(s, 'P1', 'stingerquill-voxmancer-vicious-verse');
+    expect(s.cards[voxmancer]!.prepared).toBeUndefined();
+    const arena = put(s, 'P1', 'hexhaven-dueling-arena');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: arena, ability: 1, targets: [card(voxmancer)] }).state;
+    expect(s.cards[voxmancer]!.prepared).toBe(true);
+    // Vicious Verse: 1 damage to the opponent.
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, castPrepared(s, voxmancer)[0]!).state;
+    expect([s.players.P2!.life, s.cards[voxmancer]!.prepared]).toEqual([19, undefined]);
+    // A creature without a prepare spell can't become prepared.
+    const bear = put(s, 'P1', 'thawbringer');
+    s.cards[arena]!.tapped = false;
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: arena, ability: 1, targets: [card(bear)] }).state;
+    expect(s.cards[bear]!.prepared).toBeUndefined();
+  });
+
+  it('Codie copies a prepared spell you cast, and makes each creature you control prepared', () => {
+    let s = newGame();
+    const codie = put(s, 'P1', 'codie-ravenous-codex');
+    const voxmancer = put(s, 'P1', 'stingerquill-voxmancer-vicious-verse');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, R: 1, G: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: codie, ability: 0, targets: [] }).state;
+    expect(s.cards[voxmancer]!.prepared).toBe(true);
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, castPrepared(s, voxmancer)[0]!).state;
+    expect(s.players.P2!.life).toBe(18); // the spell and its copy
+  });
+
+  it('Infinite Coursework taps the creature, unprepares it and removes its abilities', () => {
+    let s = newGame();
+    const angel = put(s, 'P2', 'blossom-blessed-angel-seed-suture', 'hand');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { W: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: angel });
+    s = act(act(s, { type: 'PassPriority', player: 'P2' }), { type: 'PassPriority', player: 'P1' });
+    expect(s.cards[angel]!.prepared).toBe(true);
+    s.activePlayer = 'P1';
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    const aura = put(s, 'P1', 'infinite-coursework', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(angel)] }).state;
+    expect([s.cards[angel]!.tapped, s.cards[angel]!.prepared]).toEqual([true, undefined]);
+    expect(currentDefinition(s, s.cards[angel]!).keywords ?? []).toEqual([]);
+  });
+
+  it('threshold creatures, Whiplash Wordsmith after noncombat damage, and Molten Tide', () => {
+    let s = newGame();
+    const metamage = put(s, 'P1', 'theorix-metamage-omit-variables');
+    expect(powerOf(s, s.cards[metamage]!)).toBe(2);
+    for (let i = 0; i < 7; i++) put(s, 'P1', 'island', 'graveyard');
+    expect(powerOf(s, s.cards[metamage]!)).toBe(3);
+    const wordsmith = put(s, 'P1', 'whiplash-wordsmith-vicious-verse');
+    expect(hasKeyword(s, s.cards[wordsmith]!, 'Flying')).toBe(false);
+    const bolt = put(s, 'P1', 'no-admittance', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.noncombatDamageTurn).toBe(s.turnNumber);
+    expect([hasKeyword(s, s.cards[wordsmith]!, 'Flying'), hasKeyword(s, s.cards[wordsmith]!, 'Haste')]).toEqual([true, true]);
+    // Molten Tide: a Mountain makes an extra {R} this turn.
+    const rhymer = put(s, 'P1', 'pyre-rhymer-molten-tide', 'hand');
+    const mountain = put(s, 'P1', 'mountain');
+    mana(s, 'P1', { R: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rhymer }).state;
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, castPrepared(s, rhymer)[0]!).state;
+    const before = s.players.P1!.manaPool.R;
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === mountain)!);
+    expect(s.players.P1!.manaPool.R).toBe(before + 2);
+  });
+
+  it('Arc of Fortune: each player may discard their hand and draw seven', () => {
+    let s = newGame();
+    const chaser = put(s, 'P1', 'variable-chaser-arc-of-fortune');
+    put(s, 'P1', 'island', 'hand');
+    const kept = put(s, 'P2', 'island', 'hand');
+    const arena = put(s, 'P1', 'hexhaven-dueling-arena');
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: arena, ability: 1, targets: [card(chaser)] }).state;
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = act(s, castPrepared(s, chaser)[0]!);
+    // The Chaser's prowess trigger resolves first, then Arc of Fortune.
+    for (let i = 0; i < 6 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'wheel' });
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [...(s.pending as { cards: string[] }).cards] });
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [] });
+    expect([s.players.P1!.hand.length, s.players.P2!.hand, zone(s, kept)]).toEqual([7, [kept], 'hand']);
   });
 });

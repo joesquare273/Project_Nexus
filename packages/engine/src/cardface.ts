@@ -9,7 +9,20 @@ export function spellDefinition(def: CardDefinition, adventure = false): CardDef
 }
 
 /** Copy effects operate on these values, before type/color changes, buffs, counters or crew. */
+const prepareFaces = new WeakMap<CardDefinition, CardDefinition>();
+/** A prepare spell's characteristics (the creature card's alternative characteristics). */
+export function prepareDefinition(def: CardDefinition): CardDefinition {
+  let face = prepareFaces.get(def);
+  if (!face) {
+    face = { id: def.id, ...def.prepare!, ...(def.printing ? { printing: def.printing } : {}) };
+    prepareFaces.set(def, face);
+  }
+  return face;
+}
+
 export function copiableDefinition(s: GameState, c: CardInstance): CardDefinition {
+  // The copy of a prepare spell, in exile or on the stack.
+  if (c.prepareSpellOf && s.cardDefs[c.defId]?.prepare) return prepareDefinition(s.cardDefs[c.defId]!);
   // A face-down permanent or spell's copiable values are its face-down characteristics (rule 707.2, 708.2).
   if (c.faceDown) return faceDownCharacteristics(c);
   let copy = c.zone === 'battlefield' ? c.copy : undefined;

@@ -65,6 +65,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
       <div className="bf-inner">
         <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="small" backFace={!!c.transformed && !c.copy} {...(c.finish && !c.copy ? { finish: c.finish } : {})} />
         {c.copy && <div className="badge" title={"Copying " + c.copy.copiedName}>Copy</div>}
+        {c.prepared && <div className="badge face-down" title="Prepared: you may cast a copy of its spell. Doing so unprepares it.">Prepared</div>}
         {c.faceDown && <div className="badge face-down" title={`Face down${c.manifested ? ' (manifested)' : ''}: a 2/2 creature with no name or abilities${c.faceDownWard ? ', with ward {2}' : ''}. Only its controller knows which card it is.`}>Face down</div>}
         {c.isToken && <div className="badge token">token</div>}
         {(c.counters ?? 0) > 0 && (
@@ -664,7 +665,7 @@ function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHan
         onOpen={() => h.onZone(pid, 'graveyard')}
         h={h}
       />
-      <Pile view={view} pile={`${pid}:exile`} label="Exile" count={p.exile.length} top={p.exile.at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
+      <Pile view={view} pile={`${pid}:exile`} label="Exile" count={p.exile.filter((id) => !view.cards[id]?.prepareSpellOf).length} top={p.exile.filter((id) => !view.cards[id]?.prepareSpellOf).at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
       {/* Phased out until their controller's next turn (Clever Concealment). */}
       {p.phasedOut.length > 0 && (
         <Pile view={view} pile={`${pid}:phasedOut`} label="Phased out" count={p.phasedOut.length} top={p.phasedOut.at(-1)} h={h} />
@@ -720,7 +721,8 @@ export function ExileList({
   castable: ReadonlySet<InstanceId>;
   onClose: () => void;
 }) {
-  const ids = [...view.players[pid]!.exile].reverse();
+  // Copies of prepare spells wait in exile; they're cast from their prepared creature, so they aren't listed here.
+  const ids = [...view.players[pid]!.exile].filter((id) => !view.cards[id]?.prepareSpellOf).reverse();
   const nameOf = (id: InstanceId) => (view.cards[id] ? defOf(view.cards[id]!.defId).name : 'a card');
   const now: ExileSection['cards'] = [];
   const foretold: ExileSection['cards'] = [];

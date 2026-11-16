@@ -24,6 +24,10 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture F4: prepared (2026-11-16)
+
+- The prepared mechanic and its 24 cards (docs/reality-fracture.md): a prepared creature's controller may cast a copy of its prepare spell, which unprepares it.
+
 ### Reality Fracture F3: planeswalkers you control have ... (2026-11-16)
 
 - The ten "Way of the ..." enchantments, Sanctum Lurker, Avatar of Burgeoning Echoes and Kiora of Salt and Sand: loyalty abilities given to your planeswalkers, loyalty-activation triggers, and planeswalkers that survive at 0 loyalty.

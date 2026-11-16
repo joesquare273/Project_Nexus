@@ -257,6 +257,9 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
   if (spec.ifChosenOption !== undefined && source.chosenOption !== spec.ifChosenOption) return false;
   // Corrupted: "as long as an opponent has three or more poison counters".
   if (spec.conditions?.includes('corrupted') && !corrupted(s, source.controller)) return false;
+  // Threshold: seven or more cards in your graveyard.
+  if (spec.conditions?.includes('threshold') && s.players[source.controller]!.graveyard.length < 7) return false;
+  if (spec.conditions?.includes('opponentDealtNoncombatDamage') && !s.turnOrder.some((pid) => pid !== source.controller && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return false;
   // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
   if (spec.ifYouControlSubtype) {
     const yours = battlefieldCards(s).filter((x) => x.controller === source.controller);

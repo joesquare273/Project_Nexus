@@ -10387,6 +10387,28 @@
       }
     ]
   },
+  "heartwood-token-fra": {
+    "name": "Heartwood",
+    "typeLine": "Token Artifact — Heartwood",
+    "oracleText": "{T}: Add {R} or {G}.",
+    "set": "tfra",
+    "number": "11",
+    "artist": "Tianxing Xu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278",
+      "normal": "https://cards.scryfall.io/normal/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278",
+      "large": "https://cards.scryfall.io/large/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/b/eb4bf635-04d7-4994-9f70-4ff573a767e7.jpg?1789966278"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/11/heartwood?utm_source=api",
+    "scryfallId": "eb4bf635-04d7-4994-9f70-4ff573a767e7",
+    "relatedTokens": [
+      {
+        "name": "Heartwood",
+        "scryfallId": "eb4bf635-04d7-4994-9f70-4ff573a767e7"
+      }
+    ]
+  },
   "hecteyes": {
     "name": "Hecteyes",
     "typeLine": "Creature — Ooze Horror",

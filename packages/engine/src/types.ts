@@ -524,6 +524,14 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** "The next spell you cast this turn can't be countered" (Theorist's Proxy). */
   'NextSpellCantBeCountered',
+  /** The target creatures become prepared (only creatures with a prepare spell can). */
+  'BecomePrepared',
+  /** The target creatures become unprepared (Infinite Coursework). */
+  'Unprepare',
+  /** "Each player may discard their hand and draw `amount` cards" (Arc of Fortune). */
+  'EachPlayerMayWheel',
+  /** "Until end of turn, whenever you tap a [landSubtype] for mana, add an additional [manaType]" (Molten Tide). */
+  'ExtraManaFromSubtype',
   /** Turn the target face-down permanents face up (rule 702.37e; a manifested instant or sorcery stays face down and is revealed, 701.34c). */
   'TurnFaceUp',
   /** Turn the target permanents face down: each becomes a 2/2 creature with no name, abilities or mana cost (rule 708.2). */
@@ -850,6 +858,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** ExtraManaFromSubtype: the land subtype ("Mountain"). */
+  landSubtype?: string;
   /** PutFromHandOnTop: on the bottom of your library instead. */
   toBottom?: boolean;
   /** CreateEmblem: the emblem's static ability (its `filter` is relative to the emblem's owner). */
@@ -1419,6 +1429,10 @@ export interface ObjectFilter {
   token?: boolean;
   /** Has toxic ("creatures you control with toxic"). */
   hasToxic?: boolean;
+  /** A prepare spell ("whenever you cast a prepared spell": Codie). */
+  prepareSpell?: boolean;
+  /** Attacked this turn (Hexhaven Dueling Arena). */
+  attackedThisTurn?: boolean;
 }
 
 export interface TriggerSpec {
@@ -1462,6 +1476,8 @@ export interface TriggerSpec {
   blockingMatching?: ObjectFilter;
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
+  /** Intervening "if this creature isn't prepared". */
+  ifNotPrepared?: boolean;
   /** CountersAdded: only counters of this kind ("whenever you put one or more loyalty counters on a planeswalker"). */
   counterKind?: CounterKind;
   /** SpellCast: only your Nth noncreature spell this turn ("whenever you cast your first noncreature spell each turn"). */
@@ -1853,7 +1869,8 @@ export interface StaticSpec {
   /** `attached`: only while this Equipment is attached to a creature (for EachMatching abilities it grants). */
   /** `twoSpellsThisTurn`: "as long as you've cast two or more spells this turn". */
   /** `corrupted`: as long as an opponent has three or more poison counters. */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted')[];
+  /** `threshold`: seven or more cards in your graveyard. `opponentDealtNoncombatDamage`: an opponent was dealt noncombat damage this turn. */
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage')[];
   /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Mardu"). */
   ifChosenOption?: string;
   /** "Planeswalkers you control have '[−2]: ...'": loyalty abilities this gives each planeswalker its controller controls (the "Way of the ..." enchantments). */
@@ -1881,6 +1898,13 @@ export interface CardDefinition {
    */
   /** Partner (rule 702.124): two commanders with Partner can lead one deck together. */
   partner?: boolean;
+  /**
+   * A prepare spell (Reality Fracture): while this creature is prepared, its controller may cast a
+   * copy of this spell; doing so unprepares it. The copy waits in exile while the creature is prepared.
+   */
+  prepare?: { name: string; manaCost: string; types: CardType[]; colors?: Color[]; effects?: EffectSpec[] };
+  /** "This creature enters prepared." */
+  entersPrepared?: boolean;
   /** Morph (rule 702.37): cast face down as a 2/2 creature for {3}; turned face up any time for this cost. */
   morph?: string;
   /** Disguise (rule 702.168): like morph, but face down it also has ward {2}; turned face up for this cost. */
@@ -2341,6 +2365,10 @@ export interface CardInstance {
   chosenOption?: string;
   /** Face down (morph, rule 708): a 2/2 creature with no name, abilities or mana cost; its identity is hidden from the other players. */
   faceDown?: boolean;
+  /** Prepared: its controller may cast the copy of its prepare spell. */
+  prepared?: boolean;
+  /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
+  prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
   goadedForever?: PlayerId[];
   /** Face down by manifest or cloak (rule 701.34): a creature card can be turned face up for its mana cost. */
@@ -2572,6 +2600,10 @@ export interface PlayerState {
   legendRuleOffTurn?: number;
   /** "The next spell you cast this turn can't be countered": the turn (Theorist's Proxy). */
   nextSpellUncounterableTurn?: number;
+  /** The last turn this player was dealt noncombat damage. */
+  noncombatDamageTurn?: number;
+  /** "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}" (Molten Tide). */
+  extraMana?: { turn: number; subtype: string; mana: ManaType }[];
   /** The last turn this player activated a loyalty ability. */
   loyaltyActivatedTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
@@ -2869,7 +2901,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3269,6 +3301,9 @@ export type GameEvent =
   | { type: 'TurnedFaceUp'; player: PlayerId; card: InstanceId; defId: CardDefId }
   /** A permanent was turned face down (it is now a 2/2 creature with no name). */
   | { type: 'TurnedFaceDown'; player: PlayerId; card: InstanceId }
+  /** A creature became prepared (`spell`: the copy of its prepare spell, in exile) or unprepared. */
+  | { type: 'Prepared'; card: InstanceId; controller: PlayerId; spell: InstanceId }
+  | { type: 'Unprepared'; card: InstanceId; controller: PlayerId }
   /** "As this enters, choose Mardu or Jeskai": the option chosen. */
   | { type: 'OptionChosen'; player: PlayerId; card: InstanceId; option: string }
   | {

@@ -285,6 +285,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.animated;
   delete c.addedSubtypes;
   delete c.goadedForever;
+  if (from === 'battlefield' && c.prepared) unprepare(ctx, id);
   delete c.turnSubtypes;
   delete c.linkedCreature;
   delete c.rival;
@@ -365,6 +366,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
   const d = c.faceDown && to === 'battlefield' ? faceDownCharacteristics(c) : c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
   if (to === 'battlefield') { c.enteredTurn = s.turnNumber; c.enteredTimestamp = newTimestamp(s); }
+  // "This creature enters prepared."
+  if (to === 'battlefield' && !c.faceDown && d.entersPrepared) becomePrepared(ctx, id);
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
   // A planeswalker enters with its loyalty (rule 306.5b).
   if (to === 'battlefield' && d.loyalty) addCounters(ctx, id, d.loyalty, undefined, 'loyalty');
@@ -568,6 +571,7 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
     if (combat) player(s, target.player).combatDamageThisTurn = (player(s, target.player).combatDamageThisTurn ?? 0) + amount;
+    else player(s, target.player).noncombatDamageTurn = s.turnNumber;
     if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {
       source: sourceId, sourceObject: source.zoneChanges ?? 0, player: target.player,
       dragon: characteristics(s, source).subtypes.includes('Dragon'),
@@ -777,6 +781,7 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
   c.tapped=entersTapped(s,c);
   if(d.entersWithCounters) addCounters(ctx,id,d.entersWithCounters,undefined,d.entersWithCounterKind);
   if(d.loyalty) addCounters(ctx,id,d.loyalty,undefined,'loyalty');
+  if(d.entersPrepared) becomePrepared(ctx,id);
   for(const source of battlefield(s)) for(const spec of defOf(s,source).statics??[]) {
     if(source.id!==id && spec.entersWithExtraCounters && staticAffects(s,source,spec,c)) addCounters(ctx,id,spec.entersWithExtraCounters);
     if(source.id!==id && spec.entersWithExtraCountersFromCount && staticAffects(s,source,spec,c)) addCounters(ctx,id,countOf(s,spec.entersWithExtraCountersFromCount,source.controller,source.id));
@@ -923,4 +928,32 @@ export function manifest(ctx: Ctx, id: InstanceId, controller: PlayerId, cloak =
   if (cloak) c.faceDownWard = true;
   moveCard(ctx, id, 'battlefield', { controller });
   c.summoningSick = true;
+}
+
+/**
+ * A creature with a prepare spell becomes prepared: its controller gets a copy of that spell in
+ * exile, which they may cast for as long as the creature stays prepared. False if it can't
+ * (no prepare spell, or already prepared).
+ */
+export function becomePrepared(ctx: Ctx, id: InstanceId): boolean {
+  const s = ctx.s, c = s.cards[id];
+  if (!c || c.zone !== 'battlefield' || c.prepared || c.faceDown || !s.cardDefs[c.defId]?.prepare) return false;
+  c.prepared = true;
+  const spell = newId(s, 'k');
+  s.cards[spell] = {
+    id: spell, defId: c.defId, owner: c.controller, controller: c.controller, zone: 'exile', tapped: false, summoningSick: false, damage: 0, deathtouched: false,
+    spellCopy: true, prepareSpellOf: { card: id, object: c.zoneChanges ?? 0 }, ...(c.printing ? { printing: structuredClone(c.printing) } : {}),
+  };
+  player(s, c.controller).exile.push(spell);
+  ctx.ev.push({ type: 'Prepared', card: id, controller: c.controller, spell });
+  return true;
+}
+
+/** A prepared creature stops being prepared; the copy of its prepare spell in exile ceases to exist. */
+export function unprepare(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s, c = s.cards[id];
+  if (!c?.prepared) return;
+  delete c.prepared;
+  for (const x of Object.values(s.cards)) if (x.zone === 'exile' && x.prepareSpellOf?.card === id) moveCard(ctx, x.id, 'void', { silent: true });
+  ctx.ev.push({ type: 'Unprepared', card: id, controller: c.controller });
 }

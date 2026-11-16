@@ -579,6 +579,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'castOrTreasure') return pick([]);
   // Rhystic Study: always draw.
   if (p.purpose === 'mayDraw') return pick([...p.cards]);
+  // Arc of Fortune: a new hand of seven when holding three or fewer cards.
+  if (p.purpose === 'wheel') return pick(s.players[me]!.hand.length <= 3 ? [...p.cards] : []);
   // Zell: return our least valuable land. Ambrosia: nothing (bouncing is only worth it with an enters ability). Zenos: their weakest creature, the likeliest to leave and flip him.
   if (p.purpose === 'bounce') return p.min === 0 ? pick([]) : pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   if (p.purpose === 'counter' || p.purpose === 'attachSource') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));

@@ -30,7 +30,8 @@ import typeLists from '../data/types.json' with { type: 'json' };
 /** Official subtype lists for each card type (data/types.json, from Scryfall). */
 const SUBTYPES_BY_TYPE: Partial<Record<CardType, readonly string[]>> = {
   creature: typeLists.creature,
-  artifact: typeLists.artifact,
+  // Heartwood (Reality Fracture's token) isn't in Scryfall's catalog yet.
+  artifact: [...typeLists.artifact, 'Heartwood'],
   enchantment: typeLists.enchantment,
   planeswalker: typeLists.planeswalker,
   land: typeLists.land,
@@ -210,6 +211,11 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (!isLand && !c.token && !c.uncastable && c.manaCost === undefined && !c.id?.endsWith('-back')) err('nonland cards need a manaCost (use "{0}" for free).');
   if (c.token && c.manaCost !== undefined) err('tokens have no mana cost.');
   validateCost(c.manaCost, err);
+  if (c.prepare) {
+    if (!c.types.includes('creature')) err('only creatures have prepare spells.');
+    if (!Array.isArray(c.prepare.types) || c.prepare.types.length !== 1 || !['instant', 'sorcery'].includes(c.prepare.types[0]!)) err('A prepare spell must be an instant or sorcery.');
+    for (const error of validateCardDefinition({ id: c.id, ...c.prepare })) err(`prepare: ${error}`);
+  }
   if (c.adventure) {
     // Adventurer creatures, and the Final Fantasy Town lands (play the land later from exile).
     if (!c.types.includes('creature') && !c.types.includes('land')) err('Adventure needs a creature or land card.');
@@ -490,7 +496,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking', 'corrupted'].includes(cond)) e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking', 'corrupted', 'threshold', 'opponentDealtNoncombatDamage'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   if (st.grantsMana && (st.affects === 'Self' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types, on EquippedCreature or EachMatching.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
@@ -522,6 +528,7 @@ export function validateCardList(cards: readonly unknown[]): string[] {
     const effects = [
       ...(c.effects ?? []),
       ...(c.adventure?.effects ?? []),
+      ...(c.prepare?.effects ?? []),
       ...(c.modes ?? []).flat(),
       ...(c.alternativeCost?.effects ?? []),
       ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat(), ...(t.modes ?? []).flat()]),

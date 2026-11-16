@@ -115,11 +115,14 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             choices: [],
           }
         : {
-            card: a.card,
+            // A prepare spell is cast from its prepared creature.
+            card: s.cards[a.card]!.prepareSpellOf?.card ?? a.card,
             kind: 'spell',
             // Alternative costs get their own entry: "Pay 4 life for", "Overload".
             label: `${
-              faceDown
+              s.cards[a.card]!.prepareSpellOf
+                ? `Cast ${def.name} (${def.manaCost}, prepared)`
+                : faceDown
                 ? s.cardDefs[card.defId]!.morph
                   ? 'Cast face down as a 2/2 ({3}, morph)'
                   : 'Cast face down as a 2/2 with ward {2} ({3}, disguise)'

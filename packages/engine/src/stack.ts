@@ -43,6 +43,8 @@ import {
   staticRule,
   playerProtectedFromOpponents,
   manifest,
+  becomePrepared,
+  unprepare,
   turnFaceDown,
   turnFaceUp,
 } from './state.ts';
@@ -831,6 +833,8 @@ export function activateManaAbility(
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.restricted ?? (ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined));
+  // Molten Tide: "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}."
+  for (const e of player(s, playerId).extraMana ?? []) if (e.turn === s.turnNumber && subtypesOf(s, c).includes(e.subtype)) addMana(ctx, playerId, e.mana, id);
   // With `addCounterFirst`, the amount above already counted this counter.
   if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
   // Ultima, Origin of Oblivion: "Whenever you tap a land for {C}, add an additional {C}" (a triggered mana ability).
@@ -877,6 +881,11 @@ export function playableZone(
   includeGroups = true,
 ): 'hand' | 'graveyard' | 'exile' | 'command' | 'library' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
+  // The copy of a prepare spell: only the prepared creature's current controller may cast it.
+  if (c.prepareSpellOf) {
+    const perm = s.cards[c.prepareSpellOf.card];
+    return c.zone === 'exile' && perm?.zone === 'battlefield' && !!perm.prepared && !perm.phasedOut && perm.controller === playerId && (perm.zoneChanges ?? 0) === c.prepareSpellOf.object ? 'exile' : null;
+  }
   // Hades, Sorcerer of Eld: "During your turn, you may play cards from your graveyard" (lands too).
   if (c.owner === playerId && c.zone === 'graveyard' && s.activePlayer === playerId && defOf(s, c).types.includes('land')
     && graveyardLandSource(s, playerId, c)) return 'graveyard';
@@ -1473,6 +1482,14 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     commander.isCommander && commander.owner === playerId && !commander.phasedOut &&
     !['hand', 'library'].includes(commander.zone) &&
     subtypesOf(s, commander).some(type => def.subtypes?.includes(type)));
+  // Casting the copy of a prepare spell unprepares its creature.
+  if (c.prepareSpellOf) {
+    const perm = s.cards[c.prepareSpellOf.card];
+    if (perm?.prepared) {
+      delete perm.prepared;
+      ctx.ev.push({ type: 'Unprepared', card: perm.id, controller: perm.controller });
+    }
+  }
   ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
     ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
   });
@@ -3173,6 +3190,20 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n, ...(effect.toBottom ? { toBottom: true } : {}) }];
       return;
     }
+    case 'BecomePrepared':
+      for (const id of onBattlefield) becomePrepared(ctx, id);
+      return;
+    case 'Unprepare':
+      for (const id of onBattlefield) unprepare(ctx, id);
+      return;
+    case 'EachPlayerMayWheel':
+      r.choiceQueue = [...(r.choiceQueue ?? []), ...aliveFromActive(s).map((pid) => ({ player: pid, purpose: 'wheel' as const, cards: [source], min: 0, max: 1, drawCount: amount }))];
+      return;
+    case 'ExtraManaFromSubtype': {
+      const p = player(s, item.controller);
+      if (effect.landSubtype && effect.manaType) p.extraMana = [...(p.extraMana ?? []).filter((e) => e.turn === s.turnNumber), { turn: s.turnNumber, subtype: effect.landSubtype, mana: effect.manaType }];
+      return;
+    }
     case 'NextSpellCantBeCountered':
       player(s, item.controller).nextSpellUncounterableTurn = s.turnNumber;
       return;
@@ -4663,6 +4694,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const left = (pending.counterCount ?? 1) - 1;
       const { kind: _kind, ...choice } = pending;
       if (left > 0) r.choiceQueue = [{ ...choice, counterCount: left }, ...(r.choiceQueue ?? [])];
+    }
+  } else if (pending.purpose === 'wheel') {
+    // Arc of Fortune: this player discards their hand and draws.
+    if (cards.length > 0) {
+      for (const id of [...player(s, pending.player).hand]) discard(ctx, id);
+      drawCards(ctx, pending.player, pending.drawCount ?? 7);
     }
   } else if (pending.purpose === 'mayDraw') {
     if (cards.length) drawCards(ctx, pending.player, pending.drawCount ?? 1);
