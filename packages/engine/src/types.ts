@@ -1483,6 +1483,8 @@ export interface TriggerSpec {
 export interface ActivatedSpec {
   /** Station: can only be activated while the source has at least this many charge counters. */
   stationLevel?: number;
+  /** Morph: turning this face-down permanent face up, a special action that doesn't use the stack (rule 702.37e). */
+  turnFaceUp?: boolean;
   /**
    * A loyalty ability (rule 606): the cost is adding (+N) or removing (-N) that many loyalty counters, 0 for none.
    * Only at sorcery speed, and only one loyalty ability of a planeswalker each turn.
@@ -1788,6 +1790,8 @@ export interface CardDefinition {
    */
   /** Partner (rule 702.124): two commanders with Partner can lead one deck together. */
   partner?: boolean;
+  /** Morph (rule 702.37): cast face down as a 2/2 creature for {3}; turned face up any time for this cost. */
+  morph?: string;
   /** "Partner with [name]": this card and that one can be commanders together. */
   partnerWith?: string;
   /** "[This card] can be your commander" (rule 903.3d): a commander though it isn't a creature (Jace, Multiverse Architect). */
@@ -2230,6 +2234,8 @@ export interface CardInstance {
   chosenColor?: Color;
   /** The card type chosen as it entered (Cloud Key). */
   chosenCardType?: CardType;
+  /** Face down (morph, rule 708): a 2/2 creature with no name, abilities or mana cost; its identity is hidden from the other players. */
+  faceDown?: boolean;
   /** "Create an X/X token": the X it was created with (its base power and toughness). */
   tokenSize?: number;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
@@ -2986,6 +2992,8 @@ export type Action =
       type: 'CastSpell';
       /** Cast the Adventure rather than the creature. */
       adventure?: boolean;
+      /** Morph: cast face down as a 2/2 creature for {3}. */
+      faceDown?: boolean;
       player: PlayerId;
       card: InstanceId;
       /** Which permanent's graveyard-casting permission is being used. */
@@ -3083,6 +3091,8 @@ export type GameEvent =
       type: 'CardMoved';
       /** Private identity when a face-down card moves to another hidden zone. */
       visibleTo?: PlayerId[];
+      /** Morph: a face-down card moving to the stack or battlefield; only its controller learns which card it is. */
+      faceDown?: boolean;
       card?: InstanceId;
       defId?: CardDefId;
       owner: PlayerId;
@@ -3105,7 +3115,9 @@ export type GameEvent =
   | { type: 'ManaSpent'; player: PlayerId; amounts: Partial<ManaPool> }
   | { type: 'FaceDownExiled'; player: PlayerId; card?: InstanceId }
   | { type: 'LandPlayed'; player: PlayerId; card: InstanceId; from: ZoneName }
-  | { type: 'SpellCast'; castFrom?: ZoneName; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[] }
+  | { type: 'SpellCast'; castFrom?: ZoneName; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[]; /** Cast face down (morph): its identity is hidden from the other players. */ faceDown?: boolean }
+  /** A face-down permanent was turned face up (morph). */
+  | { type: 'TurnedFaceUp'; player: PlayerId; card: InstanceId; defId: CardDefId }
   | {
       type: 'AbilityTriggered';
       item: string;

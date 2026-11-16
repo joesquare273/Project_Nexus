@@ -81,6 +81,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const a = o.action;
     const isAbility = a.type === 'ActivateAbility';
     const adventure = a.type === 'CastSpell' && !!a.adventure;
+    const faceDown = a.type === 'CastSpell' && !!a.faceDown;
     const alternative = a.type === 'CastSpell' && a.alternative;
     const x = a.x;
     const lifeForB = a.type === 'CastSpell' ? a.lifeForB : undefined;
@@ -100,7 +101,7 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     const detail = `${x !== undefined ? ` with X = ${x}` : ''}${lifeForB ? `, paying ${2 * lifeForB} life for {B}` : ''}${kicked}${helped}${castGroup ? ' (Mug: one spell from this mill)' : ''}${permissionSource ? ` (using ${s.cardDefs[s.cards[permissionSource]!.defId]!.name}${permanentType ? `, as its ${permanentType}` : ''}${sacrificeLand ? `, sacrificing ${s.cardDefs[s.cards[sacrificeLand]!.defId]!.name}` : ''})` : ''}`;
     const key = isAbility
       ? `${a.card}#${a.ability}${x !== undefined ? `#x${x}` : ''}`
-      : `${a.card}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${permanentType ? `#t${permanentType}` : ''}${sacrificeLand ? `#s${sacrificeLand}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}${lifeForB ? `#l${lifeForB}` : ''}`;
+      : `${a.card}${faceDown ? '#fd' : ''}${adventure ? '#adventure' : ''}${alternative ? '#alt' : ''}${x !== undefined ? `#x${x}` : ''}${convoked ? `#c${convoked}` : ''}${delved ? `#d${delved}` : ''}${improvised ? `#i${improvised}` : ''}${permissionSource ? `#g${permissionSource}` : ''}${permanentType ? `#t${permanentType}` : ''}${sacrificeLand ? `#s${sacrificeLand}` : ''}${castGroup ? `#m${castGroup}` : ''}${kicks ? `#k${kicks}` : ''}${lifeForB ? `#l${lifeForB}` : ''}`;
     let play = grouped.get(key);
     if (!play) {
       const def = currentDefinition(s,s.cards[a.card]!);
@@ -118,7 +119,9 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             kind: 'spell',
             // Alternative costs get their own entry: "Pay 4 life for", "Overload".
             label: `${
-              adventure
+              faceDown
+                ? 'Cast face down as a 2/2 ({3}, morph)'
+                : adventure
                 ? `Cast Adventure: ${def.adventure!.name} (${def.adventure!.manaCost})`
                 : alternative
                 ? def.alternativeCost!.label

@@ -225,6 +225,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   }
   const toList = zoneList(s, c.owner, to);
   if (toList) toList.push(id);
+  // A face-down card moving to the stack or battlefield stays secret; anywhere else it's turned face up (rule 708.9).
+  const stillFaceDown = !!c.faceDown && (to === 'stack' || to === 'battlefield');
+  if (c.faceDown && !stillFaceDown) delete c.faceDown;
   const visibleTo = c.linkedExile && (to === 'hand' || to === 'library') ? [...new Set([...c.linkedExile.lookers, c.owner])] : undefined;
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
@@ -322,6 +325,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     ctx.ev.push({
       type: 'CardMoved',
       ...(visibleTo ? { visibleTo } : {}),
+      ...(stillFaceDown ? { faceDown: true } : {}),
       card: id,
       defId: c.defId,
       owner: c.owner,

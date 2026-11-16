@@ -239,6 +239,13 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   }
   }
   }
+  // Morph: a card with morph can also be cast face down from your hand, as a creature spell, for {3}.
+  if (sorcerySpeed) {
+    for (const id of p.hand) {
+      if (!s.cardDefs[s.cards[id]!.defId]?.morph) continue;
+      out.push({ action: { type: 'CastSpell', player: playerId, card: id, targets: [], faceDown: true }, cost: parseManaCost('{3}'), forEquipment: false });
+    }
+  }
   // "Your opponents can't cast noncreature spells this turn" (Ranger-Captain of Eos).
   // Ethersworn Canonist: after a nonartifact spell, only artifact spells.
   const artifactOnly = nonartifactSpellLimited(s, playerId);

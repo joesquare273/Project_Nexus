@@ -1,5 +1,5 @@
 export * from './types.ts';
-export { copiableDefinition, spellDefinition, currentDefinition } from './cardface.ts';
+export { copiableDefinition, spellDefinition, currentDefinition, FACE_DOWN_CARD } from './cardface.ts';
 export * from './format.ts';
 export { applyAction } from './engine.ts';
 export { createGame, type GameSetup, type PlayerSetup } from './setup.ts';

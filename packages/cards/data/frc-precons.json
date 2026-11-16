@@ -171,13 +171,8 @@
           "count": 1,
           "set": "frc",
           "number": "19",
-          "implemented": false,
-          "needs": [
-            "morph",
-            "protection",
-            "static-abilities",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Reflecting Pool",

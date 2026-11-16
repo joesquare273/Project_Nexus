@@ -6,7 +6,7 @@ import type { ManaRestriction } from './types.ts';
 // opponent: the filter takes a viewer and treats everyone else the same.
 
 import { goadedBy } from './combat.ts';
-import { currentDefinition } from './cardface.ts';
+import { currentDefinition, FACE_DOWN_CARD } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { visibleLibraryTop } from './typerules.ts';
 import { maximumHandSize } from './turn.ts';
@@ -197,6 +197,9 @@ export function viewFor(s: GameState, viewer: PlayerId): GameView {
 export function filterEventsFor(events: readonly GameEvent[], viewer: PlayerId): GameEvent[] {
   return events.map((e) => {
     if (e.type === 'FaceDownExiled' && e.player !== viewer) return { type: 'FaceDownExiled', player: e.player };
+    // Morph: a spell cast face down is a 2/2 with no name to everyone else.
+    if (e.type === 'SpellCast' && e.faceDown && e.player !== viewer) return { ...e, defId: FACE_DOWN_CARD.id };
+    if (e.type === 'CardMoved' && e.faceDown && e.owner !== viewer) return { ...e, defId: FACE_DOWN_CARD.id };
     if (e.type === 'CardMoved' && e.visibleTo && !e.visibleTo.includes(viewer)) return { type: 'CardMoved', owner: e.owner, from: e.from, to: e.to };
     if (e.type === 'CardDrawn' && e.player !== viewer) {
       return { type: 'CardDrawn', player: e.player };

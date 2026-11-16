@@ -45,7 +45,17 @@ export function continuousSources(s: GameState): CardInstance[] {
   return sources;
 }
 
+/** A face-down permanent or spell's characteristics (rule 708.2): online, other players see only this id. */
+export const FACE_DOWN_CARD: CardDefinition = { id: '?facedown', name: 'Face-down creature', types: ['creature'], power: 2, toughness: 2, colors: [] };
+
+/** A face-down card: a 2/2 with no name or abilities, plus (for whoever knows the card) the special action that turns it face up. */
+function faceDownDefinition(s: GameState, c: CardInstance): CardDefinition {
+  const morph = s.cardDefs[c.defId]?.morph;
+  return morph ? { ...FACE_DOWN_CARD, activated: [{ cost: { mana: morph }, turnFaceUp: true, effects: [] }] } : FACE_DOWN_CARD;
+}
+
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
+  if (c.faceDown) return faceDownDefinition(s, c);
   const def = copiableDefinition(s,c);
   if (!def) throw new Error(`Missing card definition "${c.defId}".`);
   if (c.zone !== 'battlefield') return withGrantedWarp(s, c, spellDefinition(def, c.zone === 'stack' && !!c.adventureSpell));

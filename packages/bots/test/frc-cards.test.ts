@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, card, cast, fight, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
+import { act, actWithEvents, card, cast, fight, goTo, mana, newGame, put, rejected } from './kit-helpers.ts';
 import { canBlock } from '../../engine/src/combat.ts';
 
 const canBlockCheck = (s: GameState, blocker: string, attacker: string) => canBlock(s, s.cards[blocker]!, s.cards[attacker]!);
@@ -139,7 +139,7 @@ describe('R2a: spells', () => {
     const despark = put(s, 'P1', 'despark', 'hand');
     const small = put(s, 'P2', 'thawbringer');
     const big = put(s, 'P2', 'sunfall');
-    put(s, 'P2', 'akroma-angel-of-fury');
+    put(s, 'P2', 'archon-of-cruelty');
     const angel = s.players.P2!.battlefield.at(-1)!;
     mana(s, 'P1', { W: 1, B: 1 });
     expect(rejected(s, { type: 'CastSpell', player: 'P1', card: despark, targets: [card(small)] })).toBeTruthy();
@@ -616,5 +616,69 @@ describe('R3b: creatures', () => {
     s = act(s, castIt!);
     expect(zone(s, theirSpell)).toBe('stack');
     expect(s.players.P1!.hand.length).toBe(handBefore);
+  });
+});
+
+describe('R3c: morph', () => {
+  it('Akroma is cast face down for {3} as a 2/2 with no name, hidden from the opponent, and turned face up for its morph cost', async () => {
+    const { AliasBook, playerUpdate } = await import('@nexus/engine');
+    let s = newGame();
+    const akroma = put(s, 'P1', 'akroma-angel-of-fury', 'hand');
+    mana(s, 'P1', { C: 3 });
+    const faceDown = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === akroma && a.faceDown);
+    expect(faceDown).toBeDefined();
+    const cast1 = actWithEvents(s, faceDown!);
+    s = cast1.state;
+    expect(s.cards[akroma]!.faceDown).toBe(true);
+    // The opponent sees a face-down spell, not Akroma.
+    let n = 0;
+    const theirs = playerUpdate(s, 'P2', new AliasBook(() => `a${n++}`), cast1.events);
+    const onStack = Object.values(theirs.state.cards).find((c) => c.zone === 'stack')!;
+    expect(onStack.defId).toBe('?facedown');
+    expect(JSON.stringify(theirs.state)).not.toContain('akroma');
+    expect(JSON.stringify(theirs.events)).not.toContain('akroma');
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    const c = s.cards[akroma]!;
+    expect(c.zone).toBe('battlefield');
+    const def = currentDefinition(s, c);
+    expect([def.name, powerOf(s, c), toughnessOf(s, c), hasKeyword(s, c, 'Flying')]).toEqual(['Face-down creature', 2, 2, false]);
+    const theirsNow = playerUpdate(s, 'P2', new AliasBook(() => `b${n++}`));
+    expect(JSON.stringify(theirsNow.state)).not.toContain('akroma');
+    // Its controller still sees what it is.
+    expect(Object.values(playerUpdate(s, 'P1', new AliasBook(() => `c${n++}`)).state.cards).some((x) => x.defId === 'akroma-angel-of-fury')).toBe(true);
+    // Turn it face up for {3}{R}{R}{R}: a special action, no stack.
+    mana(s, 'P1', { R: 3, C: 3 });
+    const up = getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === akroma)!;
+    expect(up).toBeDefined();
+    const turned = cast(s, up);
+    s = turned.state;
+    expect(s.cards[akroma]!.faceDown).toBeUndefined();
+    expect(s.stack).toHaveLength(0);
+    expect(turned.events.some((e) => e.type === 'TurnedFaceUp')).toBe(true);
+    const a2 = s.cards[akroma]!;
+    expect([powerOf(s, a2), toughnessOf(s, a2), hasKeyword(s, a2, 'Flying'), hasKeyword(s, a2, 'Trample')]).toEqual([6, 6, true, true]);
+    // Firebreathing.
+    mana(s, 'P1', { R: 1 });
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === akroma)!);
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect(powerOf(s, s.cards[akroma]!)).toBe(7);
+  });
+
+  it('Akroma cast face up costs its mana cost and can’t be countered; a face-down card leaving the battlefield is revealed', () => {
+    let s = newGame();
+    const akroma = put(s, 'P1', 'akroma-angel-of-fury', 'hand');
+    expect(currentDefinition(s, s.cards[akroma]!).cantBeCountered).toBe(true);
+    mana(s, 'P1', { C: 3 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === akroma && !a.faceDown)).toBe(false);
+    s = act(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === akroma && a.faceDown)!);
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect(s.cards[akroma]!.faceDown).toBe(true);
+    s.cards[akroma]!.damage = 2;
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(zone(s, akroma)).toBe('graveyard');
+    expect(s.cards[akroma]!.faceDown).toBeUndefined();
   });
 });

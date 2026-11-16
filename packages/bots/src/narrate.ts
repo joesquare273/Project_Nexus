@@ -721,6 +721,7 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return e.card ? `${who(e.player)} drew ${cardName(s, e.card)}.` : `${who(e.player)} drew a card.`;
     case 'SpellCast': {
       const targets = e.targets.length ? ` targeting ${e.targets.map((t) => targetName(s, t, viewer)).join(', ')}` : '';
+      if (e.faceDown) return `${who(e.player)} cast a face-down creature spell.`;
       return `${who(e.player)} cast ${cardName(s, e.card)}${targets}.`;
     }
     case 'AbilityTriggered': {
@@ -786,6 +787,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       if (e.from === 'library' && e.to === 'exile') return `  ${cardName(s, e.card)} is exiled from the top of the library.`;
       if (e.from === 'library' && e.to === 'graveyard') return `  ${cardName(s, e.card)} is milled.`;
       return null;
+    case 'TurnedFaceUp':
+      return `${who(e.player)} turned ${s.cardDefs[e.defId]?.name ?? 'a creature'} face up.`;
     case 'Transformed':
       return `  ${cardName(s, e.card)} transforms.`;
     case 'SpellCopied':

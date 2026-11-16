@@ -1,3 +1,4 @@
+import { FACE_DOWN_CARD } from './cardface.ts';
 import { controlledBy } from './turn.ts';
 // What one player may see, for sending over the network. The server holds
 // the real GameState; each player gets a redacted copy built from an
@@ -197,6 +198,7 @@ const CARD_FIELDS = {
   animated: 'copy',
   chosenColor: 'copy',
   chosenCardType: 'copy',
+  faceDown: 'copy',
   tokenSize: 'copy',
   returnToHandAtEndStep: 'copy',
   warped: 'copy',
@@ -402,6 +404,11 @@ export function redactState(s: GameState, viewer: PlayerId, book: AliasBook, vis
       if (rule === 'drop' || v === undefined) continue;
       out[key] = rule === 'copy' ? structuredClone(v) : refs(v);
     }
+    // Morph: only its controller knows what a face-down card is (rule 708.5).
+    if (c.faceDown && c.controller !== viewer) {
+      out.defId = FACE_DOWN_CARD.id;
+      for (const k of ['printing', 'finish', 'lastDefinition', 'copy', 'isCommander']) delete out[k];
+    }
     out.id = book.alias(id);
     cards[out.id as string] = out as unknown as CardInstance;
   }
@@ -441,7 +448,7 @@ export function redactState(s: GameState, viewer: PlayerId, book: AliasBook, vis
 
 /** A redacted state as a GameState the engine's read-only helpers (and viewFor) can use. Never has real hidden cards. */
 export function materialize(r: RedactedState, cardDefs: GameState['cardDefs']): GameState {
-  return { ...structuredClone(r), cardDefs: { ...cardDefs, [HIDDEN_CARD.id]: HIDDEN_CARD }, rngState: [0, 0, 0, 0] };
+  return { ...structuredClone(r), cardDefs: { ...cardDefs, [HIDDEN_CARD.id]: HIDDEN_CARD, [FACE_DOWN_CARD.id]: FACE_DOWN_CARD }, rngState: [0, 0, 0, 0] };
 }
 
 /**

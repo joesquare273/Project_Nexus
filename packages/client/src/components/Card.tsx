@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { CardDefinition, CardFinish } from '@nexus/engine';
+import { FACE_DOWN_CARD, type CardDefinition, type CardFinish } from '@nexus/engine';
 import { costSymbols, defOf, frameClass, isCreature, meldedPrinting, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
 
 /** One mana symbol: a gray circle with the number (or X) for generic mana, Scryfall's symbol for the rest (a colored letter if it can't load). */
@@ -114,6 +114,8 @@ export function CardFace({
   const info = melded ?? scryfallOf(defId,printing);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const src = info && (backFace && !melded ? info.image[size].replace('/front/', '/back/') : info.image[size]);
+  // An opponent's face-down card (morph) shows its back.
+  if (defId === FACE_DOWN_CARD.id) return <CardBack />;
   const shine = finish && <CardShine finish={finish} />;
   if (!info || !src || failedSrc === src)
     return (

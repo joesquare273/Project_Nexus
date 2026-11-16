@@ -233,6 +233,8 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
 
 /** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
 export interface SpellChoice {
+  /** Morph: cast face down as a 2/2 creature for {3}. */
+  faceDown?: boolean;
   /** Select a shared one-spell permission explicitly. Omit to prefer another available permission. */
   castGroup?: string;
   adventure?: boolean;
@@ -1133,7 +1135,9 @@ export function spellCost(
   // Weftwalking: the first spell a player casts during their own turn is free (X is 0; they can still pay an alternative cost or for X instead).
   const weft = !permission && !alternative && x === 0 && way === null && from !== 'command' && !!payer && s.activePlayer === payer && (s.players[payer]!.spellsCastThisTurn ?? 0) === 0
     && battlefield(s).some((p) => !p.phasedOut && (defOf(s, p).statics ?? []).some((st) => st.firstSpellEachTurnFree));
-  const base = permission?.free || weft
+  const base = card?.faceDown && from === 'hand'
+    ? '{3}'
+    : permission?.free || weft
     ? undefined
     : permission?.manaCost
       ? permission.manaCost
@@ -1241,6 +1245,13 @@ export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
 export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], choice: SpellChoice = {}): void {
   const s = ctx.s;
   const c = card(s, id);
+  // Morph (rule 702.37c): cast face down from your hand as a 2/2 creature spell for {3}.
+  if (choice.faceDown) {
+    if (!s.cardDefs[c.defId]?.morph) reject("That card can't be cast face down.");
+    if (c.zone !== 'hand' || c.owner !== playerId) reject('Cast it face down from your hand.');
+    if (choice.adventure || choice.alternative || choice.x) reject('A face-down spell is cast for {3} only.');
+    c.faceDown = true;
+  }
   const printed = defOf(s, c);
   if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
   const def = spellDefinition(printed, choice.adventure);
@@ -1453,7 +1464,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     commander.isCommander && commander.owner === playerId && !commander.phasedOut &&
     !['hand', 'library'].includes(commander.zone) &&
     subtypesOf(s, commander).some(type => def.subtypes?.includes(type)));
-  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent,
+  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: true } : {}),
     ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
   });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
@@ -1887,6 +1898,12 @@ export function activateAbility(
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
+  // Morph: turning it face up is a special action; it doesn't use the stack (rule 702.37e).
+  if (spec.turnFaceUp) {
+    delete c.faceDown;
+    ctx.ev.push({ type: 'TurnedFaceUp', player: playerId, card: id, defId: c.defId });
+    return;
+  }
 
   const item: AbilityItem = {
     id: newId(s, 's'),

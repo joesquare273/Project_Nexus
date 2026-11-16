@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture R3c: Akroma and morph (2026-11-16)
+
+- Morph in the engine: a card with `morph` can be cast face down from hand for {3} at sorcery speed (its own play option, "Cast face down as a 2/2"), and becomes a nameless, colorless 2/2 creature with no abilities (`cardface.ts`, `FACE_DOWN_CARD`). Its controller turns it face up any time they could pay the morph cost, as a special action that doesn't use the stack (`TurnedFaceUp` event). It is turned face up wherever it goes other than the stack or battlefield.
+- Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
+- Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
+
 ### Reality Fracture R3b: four creatures (2026-11-16)
 
 - Serra's Emissary (protection from a chosen card type), The Ur-Sphinx (eminence cost reduction; mills each player and casts one of their spells free), Omnath, Locus of the Void (grows with unspent mana, which turns colorless instead of emptying) and Venser, Fervent Forger (copies an opponent's spell twice, or makes two hasty copies of their permanent). Multiverse Reforged now has 78 of its 93 distinct cards built. Akroma (morph) is R3c.

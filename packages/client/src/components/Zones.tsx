@@ -65,6 +65,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
       <div className="bf-inner">
         <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="small" backFace={!!c.transformed && !c.copy} {...(c.finish && !c.copy ? { finish: c.finish } : {})} />
         {c.copy && <div className="badge" title={"Copying " + c.copy.copiedName}>Copy</div>}
+        {c.faceDown && <div className="badge face-down" title="Face down (morph): a 2/2 creature with no name or abilities to the other players. Turn it face up by paying its morph cost.">Face down</div>}
         {c.isToken && <div className="badge token">token</div>}
         {(c.counters ?? 0) > 0 && (
           <div key={c.counters} className="badge counters pop">
