@@ -109,6 +109,12 @@ the cards they want (user spec, 2026-11-04), in the **Craft** tab.
 - **The Admin page** (`#/admin`, in the menu only for admins; `client/src/account/AdminPage.tsx`) lists every account with its Aether Shards and fragments (common, uncommon, rare and mythic) and the latest admin changes.
 - **Changing shards:** set a balance, or add or take away an amount, with an optional note. The page shows old → new and asks to confirm. `POST /api/admin/shards` calls `admin_adjust_shards`, which writes an ordinary ledger row (`admin_adjustment`, ref `admin-<request>`), so balances still equal their ledger. It also writes a row in `admin_actions` (who, whom, change, balance after, note). Each request id applies once, a balance can't go below zero, and one change is at most 10,000,000.
 - Fragments are shown, not edited.
+- **Requests (2026-11-16):** players send the admin a request from the Requests page (`#/requests`, `client/src/account/RequestsPage.tsx`).
+  - Each request has a subject (up to 120 characters), up to 30 cards (suggested from every card name), and a description (up to 4,000 characters). The sending account is recorded.
+  - Players see their own requests and their status.
+  - The Admin page's Requests tab lists every request with the account that sent it, filtered by status (open, not started, incomplete, complete, all). The admin sets each one's status or deletes it after asking to confirm.
+  - Table `support_requests` (migration `20261116180000_requests.sql`): only the server reads and writes it.
+  - Endpoints: `GET`/`POST /api/requests` (10 per player per day), `GET /api/admin/requests`, `POST /api/admin/requests/status`, `DELETE /api/admin/requests/<id>`.
 
 ## Hosting (free tiers, checked 2026-10-29)
 

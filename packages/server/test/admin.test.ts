@@ -70,4 +70,44 @@ describe('administration', () => {
     expect(actions.map((a: { amount: number }) => a.amount)).toEqual([-3000, 655, 12345 - start]);
     expect(actions.at(-1)).toMatchObject({ admin: 'solis', user: 'ann', kind: 'set_shards', balanceAfter: 12345, note: 'tournament prize' });
   });
+
+  it('players send requests and see their own; the admin sees them all with the account, sets their status and deletes them', async () => {
+    const { solis, ann } = await setup();
+    // Checks on what a player sends.
+    expect((await ann('/api/requests', { subject: '', cards: [], description: 'x' })).status).toBe(400);
+    expect((await ann('/api/requests', { subject: 'Hi', cards: [], description: '' })).status).toBe(400);
+    expect((await ann('/api/requests', { subject: 'x'.repeat(121), cards: [], description: 'y' })).status).toBe(400);
+    expect((await ann('/api/requests', { subject: 'Hi', cards: 'Sol Ring', description: 'y' })).status).toBe(400);
+    const sent = await ann('/api/requests', { subject: '  Sunfall does nothing  ', cards: ['Sunfall', 'Sunfall', ' Despark '], description: 'I cast it and nothing was exiled.' });
+    expect(sent.status).toBe(200);
+    expect(sent.body.request).toMatchObject({ subject: 'Sunfall does nothing', cards: ['Sunfall', 'Despark'], status: 'not_started', userId: 'ann' });
+    // Their own list; another player's list doesn't show it.
+    expect((await ann('/api/requests')).body.requests.map((r: { subject: string }) => r.subject)).toEqual(['Sunfall does nothing']);
+    expect((await solis('/api/requests')).body.requests).toEqual([]);
+    // Only the admin sees every request, with the account that sent it.
+    expect((await ann('/api/admin/requests')).status).toBe(403);
+    const all = (await solis('/api/admin/requests')).body.requests;
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ from: 'Ann', subject: 'Sunfall does nothing' });
+    const id = all[0].id as number;
+    // Status: not started, incomplete, complete.
+    expect((await ann('/api/admin/requests/status', { id, status: 'complete' })).status).toBe(403);
+    expect((await solis('/api/admin/requests/status', { id, status: 'done' })).status).toBe(400);
+    expect((await solis('/api/admin/requests/status', { id, status: 'incomplete' })).body).toEqual({ id, status: 'incomplete' });
+    expect((await ann('/api/requests')).body.requests[0].status).toBe('incomplete');
+    // Delete it once fixed.
+    const base = `http://127.0.0.1:${server!.port}`;
+    const del = (token: string, rid: number) => fetch(`${base}/api/admin/requests/${rid}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    expect((await del('token-ann', id)).status).toBe(403);
+    expect((await del('token-solis', id)).status).toBe(200);
+    expect((await del('token-solis', id)).status).toBe(404);
+    expect((await solis('/api/admin/requests')).body.requests).toEqual([]);
+  });
+
+  it('a player can send 10 requests a day', async () => {
+    const { ann } = await setup();
+    for (let i = 0; i < 10; i++) expect((await ann('/api/requests', { subject: `Request ${i}`, cards: [], description: 'Something is wrong.' })).status).toBe(200);
+    expect((await ann('/api/requests', { subject: 'One more', cards: [], description: 'Something else.' })).status).toBe(429);
+  });
 });
+

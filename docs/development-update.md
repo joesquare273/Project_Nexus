@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Player requests (2026-11-16)
+
+- A Requests page where players send the admin a subject, the cards involved and a description, and follow the status of their own requests. The Admin page has an Accounts tab and a Requests tab, where each request shows the account that sent it, can be set to not started, incomplete or complete, and can be deleted. Details in docs/economy.md, "Administration". Tests in `server/test/admin.test.ts`.
+
 ### Reality Fracture R3a: creatures (2026-11-16)
 
 - Nine creatures: Avacyn, Angel of Horror, Archfiend of Despair, Darksteel Angel, Overlord of the Mistmoors (impending), Jhoira, Weatherlight Corsair, Niv-Mizzet, Ghost Counsel, Ginger, Queen of Sweets, Memnarch, the Warden and Archon of Cruelty, plus the Insect, Myr and Gingerbrute tokens. Multiverse Reforged now has 74 of its 93 distinct cards built.

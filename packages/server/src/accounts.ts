@@ -88,7 +88,53 @@ export interface AccountService {
    * the balance would go below zero.
    */
   adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }>;
+  /** A player's request to the admin (subject, cards, description). */
+  createRequest(userId: string, request: RequestInput): Promise<SupportRequest>;
+  /** A player's own requests, newest first. */
+  myRequests(userId: string): Promise<SupportRequest[]>;
+  /** Requests a player sent since a time (a guard against floods). */
+  requestCountSince(userId: string, since: Date): Promise<number>;
+  /** Every request, newest first, with the account that sent it (admin page). */
+  allRequests(): Promise<SupportRequest[]>;
+  /** Changes a request's status; false if there's no such request. */
+  setRequestStatus(id: number, status: RequestStatus): Promise<boolean>;
+  /** Deletes a request; false if there's no such request. */
+  deleteRequest(id: number): Promise<boolean>;
 }
+
+export const REQUEST_STATUSES = ['not_started', 'incomplete', 'complete'] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+/** What a player sends. */
+export interface RequestInput {
+  subject: string;
+  cards: string[];
+  description: string;
+}
+
+/** A request as the server returns it. */
+export interface SupportRequest extends RequestInput {
+  id: number;
+  userId: string;
+  /** The sending account's display name (admin page). */
+  from?: string;
+  status: RequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type RequestRow = { id: number; user_id: string; subject: string; cards: string[]; description: string; status: RequestStatus; created_at: string; updated_at: string; profiles?: { display_name: string } | null };
+const requestFromRow = (r: RequestRow): SupportRequest => ({
+  id: r.id,
+  userId: r.user_id,
+  subject: r.subject,
+  cards: r.cards ?? [],
+  description: r.description,
+  status: r.status,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+  ...(r.profiles?.display_name ? { from: r.profiles.display_name } : {}),
+});
 
 /** One account on the admin page. */
 export interface AdminAccount {
@@ -411,6 +457,46 @@ export class SupabaseAccounts implements AccountService {
     return data;
   }
 
+  async createRequest(userId: string, request: RequestInput): Promise<SupportRequest> {
+    const { data, error } = await this.db
+      .from('support_requests')
+      .insert({ user_id: userId, subject: request.subject, cards: request.cards, description: request.description })
+      .select('*')
+      .single<RequestRow>();
+    if (error || !data) throw new Error(`Could not save the request: ${error?.message ?? 'no data'}`);
+    return requestFromRow(data);
+  }
+
+  async myRequests(userId: string): Promise<SupportRequest[]> {
+    const { data, error } = await this.db.from('support_requests').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(100);
+    if (error) throw new Error(`Could not load the requests: ${error.message}`);
+    return (data as RequestRow[]).map(requestFromRow);
+  }
+
+  async requestCountSince(userId: string, since: Date): Promise<number> {
+    const { count, error } = await this.db.from('support_requests').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
+    if (error) throw new Error(`Could not count the requests: ${error.message}`);
+    return count ?? 0;
+  }
+
+  async allRequests(): Promise<SupportRequest[]> {
+    const { data, error } = await this.db.from('support_requests').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(500);
+    if (error) throw new Error(`Could not load the requests: ${error.message}`);
+    return (data as RequestRow[]).map(requestFromRow);
+  }
+
+  async setRequestStatus(id: number, status: RequestStatus): Promise<boolean> {
+    const { data, error } = await this.db.from('support_requests').update({ status, updated_at: new Date().toISOString() }).eq('id', id).select('id');
+    if (error) throw new Error(`Could not update the request: ${error.message}`);
+    return (data ?? []).length > 0;
+  }
+
+  async deleteRequest(id: number): Promise<boolean> {
+    const { data, error } = await this.db.from('support_requests').delete().eq('id', id).select('id');
+    if (error) throw new Error(`Could not delete the request: ${error.message}`);
+    return (data ?? []).length > 0;
+  }
+
   async matchCount(userId: string, since: Date, won?: boolean): Promise<number> {
     let q = this.db.from('match_results').select('ref', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
     if (won) q = q.eq('won', true);
@@ -579,6 +665,44 @@ export class MemoryAccounts implements AccountService {
     const r = this.apply(userId, delta, 'admin_adjustment', `admin-${ref}`);
     this.adminLog.push({ admin: adminId, user: userId, kind: mode === 'set' ? 'set_shards' : 'add_shards', amount: delta, balanceAfter: r.balance, note, at: new Date().toISOString() });
     return r;
+  }
+
+  readonly requests: SupportRequest[] = [];
+  private nextRequestId = 1;
+
+  async createRequest(userId: string, request: RequestInput): Promise<SupportRequest> {
+    if (!this.accounts.has(userId)) throw new Error(`no profile for ${userId}`);
+    const at = this.now().toISOString();
+    const r: SupportRequest = { id: this.nextRequestId++, userId, ...structuredClone(request), status: 'not_started', createdAt: at, updatedAt: at };
+    this.requests.push(r);
+    return structuredClone(r);
+  }
+
+  async myRequests(userId: string): Promise<SupportRequest[]> {
+    return this.requests.filter((r) => r.userId === userId).reverse().map((r) => structuredClone(r));
+  }
+
+  async requestCountSince(userId: string, since: Date): Promise<number> {
+    return this.requests.filter((r) => r.userId === userId && new Date(r.createdAt) >= since).length;
+  }
+
+  async allRequests(): Promise<SupportRequest[]> {
+    return [...this.requests].reverse().map((r) => ({ ...structuredClone(r), from: this.accounts.get(r.userId)?.name ?? r.userId }));
+  }
+
+  async setRequestStatus(id: number, status: RequestStatus): Promise<boolean> {
+    const r = this.requests.find((x) => x.id === id);
+    if (!r) return false;
+    r.status = status;
+    r.updatedAt = this.now().toISOString();
+    return true;
+  }
+
+  async deleteRequest(id: number): Promise<boolean> {
+    const i = this.requests.findIndex((x) => x.id === id);
+    if (i < 0) return false;
+    this.requests.splice(i, 1);
+    return true;
   }
 
   async unsettledEntries(): Promise<{ userId: string; ref: string }[]> {

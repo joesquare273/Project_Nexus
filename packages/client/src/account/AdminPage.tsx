@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { accessToken, ShardIcon, showShards, useSession } from './AccountBar.tsx';
+import { RequestCard, requestApi, STATUS_LABEL, type RequestStatus, type SupportRequest } from './RequestsPage.tsx';
 
 interface AdminAccount {
   id: string;
@@ -52,7 +53,131 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
 
 const fresh = (): Draft => ({ mode: 'set', amount: '', note: '', requestId: crypto.randomUUID() });
 
+/** The admin page: accounts (shards, fragments) and the players' requests. */
 export function AdminPage() {
+  const [tab, setTab] = useState<'accounts' | 'requests'>('accounts');
+  return (
+    <>
+      <div className="admin-tabs" role="tablist" aria-label="Admin">
+        <button role="tab" aria-selected={tab === 'accounts'} className={tab === 'accounts' ? 'chosen' : ''} onClick={() => setTab('accounts')}>
+          Accounts
+        </button>
+        <button role="tab" aria-selected={tab === 'requests'} className={tab === 'requests' ? 'chosen' : ''} onClick={() => setTab('requests')}>
+          Requests
+        </button>
+      </div>
+      {tab === 'accounts' ? <AdminAccounts /> : <AdminRequests />}
+    </>
+  );
+}
+
+/**
+ * The players' requests: newest first, with the account that sent each one.
+ * Set a status (not started, incomplete, complete), or delete a request once
+ * it's dealt with.
+ */
+function AdminRequests() {
+  const [list, setList] = useState<SupportRequest[] | null>(null);
+  const [filter, setFilter] = useState<RequestStatus | 'all' | 'open'>('open');
+  const [problem, setProblem] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const load = () =>
+    requestApi<{ requests: SupportRequest[] }>('/api/admin/requests')
+      .then((r) => {
+        setList(r.requests);
+        setProblem(null);
+      })
+      .catch((e: Error) => setProblem(e.message));
+  useEffect(() => {
+    void load();
+  }, []);
+  if (!list) return <p className="packs-loading">{problem ?? 'Loading the requests…'}</p>;
+  const shown = list.filter((r) => (filter === 'all' ? true : filter === 'open' ? r.status !== 'complete' : r.status === filter));
+  const count = (f: RequestStatus) => list.filter((r) => r.status === f).length;
+  const setStatus = async (r: SupportRequest, status: RequestStatus) => {
+    try {
+      await requestApi('/api/admin/requests/status', 'POST', { id: r.id, status });
+      setList(list.map((x) => (x.id === r.id ? { ...x, status, updatedAt: new Date().toISOString() } : x)));
+    } catch (e) {
+      setProblem((e as Error).message);
+    }
+  };
+  const remove = async (r: SupportRequest) => {
+    try {
+      await requestApi(`/api/admin/requests/${r.id}`, 'DELETE');
+      setList(list.filter((x) => x.id !== r.id));
+      setDeleting(null);
+    } catch (e) {
+      setProblem((e as Error).message);
+    }
+  };
+  return (
+    <div className="admin-page">
+      <div className="admin-head">
+        <div className="admin-filters" role="radiogroup" aria-label="Show">
+          {(
+            [
+              ['open', `Open (${list.length - count('complete')})`],
+              ['not_started', `Not started (${count('not_started')})`],
+              ['incomplete', `Incomplete (${count('incomplete')})`],
+              ['complete', `Complete (${count('complete')})`],
+              ['all', `All (${list.length})`],
+            ] as const
+          ).map(([f, label]) => (
+            <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? 'chosen' : ''} onClick={() => setFilter(f)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <button className="ghost" onClick={() => void load()}>
+          Refresh
+        </button>
+      </div>
+      {problem && <p className="online-error">{problem}</p>}
+      {shown.length === 0 ? (
+        <p className="fineprint">No requests here.</p>
+      ) : (
+        shown.map((r) => (
+          <RequestCard
+            key={r.id}
+            r={r}
+            admin={
+              <div className="request-admin">
+                <label>
+                  Status{' '}
+                  <select value={r.status} onChange={(e) => void setStatus(r, e.target.value as RequestStatus)}>
+                    {(Object.keys(STATUS_LABEL) as RequestStatus[]).map((st) => (
+                      <option key={st} value={st}>
+                        {STATUS_LABEL[st]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {deleting === r.id ? (
+                  <>
+                    <span>Delete this request?</span>
+                    <button className="danger" onClick={() => void remove(r)}>
+                      Yes, delete
+                    </button>
+                    <button className="ghost" onClick={() => setDeleting(null)}>
+                      Keep
+                    </button>
+                  </>
+                ) : (
+                  <button className="ghost" onClick={() => setDeleting(r.id)}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            }
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
+function AdminAccounts() {
   const me = useSession().session?.user.id;
   const [data, setData] = useState<{ accounts: AdminAccount[]; actions: AdminAction[] } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);

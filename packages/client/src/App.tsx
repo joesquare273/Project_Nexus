@@ -7,6 +7,7 @@ import { ManaCost, ManaText } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { CreditsPage, LegalFooter } from './components/Credits.tsx';
 import { AdminPage } from './account/AdminPage.tsx';
+import { RequestsPage } from './account/RequestsPage.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { CraftTab } from './craft/CraftTab.tsx';
@@ -50,7 +51,7 @@ export function App() {
   return <MainApp />;
 }
 
-type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop' | 'credits' | 'admin';
+type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop' | 'requests' | 'credits' | 'admin';
 type PlayMode = 'ai' | 'online' | 'draft';
 type ShopMode = 'packs' | 'store';
 interface Route {
@@ -66,6 +67,7 @@ const PAGES: { id: Page; label: string }[] = [
   { id: 'decks', label: 'Decks' },
   { id: 'craft', label: 'Craft' },
   { id: 'shop', label: 'Shop' },
+  { id: 'requests', label: 'Requests' },
 ];
 
 /** The page from the address bar (#/play/online), so the browser's back button works. */
@@ -416,6 +418,12 @@ function MainApp() {
           </>
         )}
 
+        {route.page === 'requests' && (
+          <>
+            <PageTitle title="Requests" subtitle="Report a problem or send an idea to the admin" art="decks" />
+            <RequestsPage />
+          </>
+        )}
         {route.page === 'credits' && <CreditsPage />}
         {route.page === 'admin' && (
           <>
