@@ -59,6 +59,8 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
       .reduce((n, x) => n + ((s.cardDefs[x.defId]?.manaCost ?? '').match(new RegExp(`\\{[^}]*${color}[^}]*\\}`, 'g'))?.length ?? 0), 0);
     if (devotion < atLeast) { change(); out.types = out.types.filter((t) => t !== 'creature'); }
   }
+  // Impending: not a creature while it has a time counter (rule 702.176).
+  if (def.alternativeCost?.impending && (c.namedCounters?.time ?? 0) > 0) { change(); out.types = out.types.filter((t) => t !== 'creature'); }
   // "Becomes a 7/7 Beast creature in addition to its other types" (Ride the Shoopuf).
   if (c.animated) {
     change();

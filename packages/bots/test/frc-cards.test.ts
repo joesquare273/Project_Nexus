@@ -358,3 +358,159 @@ describe('R2b: spells with new choices', () => {
     expect([powerOf(u, cycled), toughnessOf(u, cycled)]).toEqual([3, 3]);
   });
 });
+
+describe('R3a: creatures', () => {
+  const tokensOf = (s: GameState, pid: string, defId: string) => s.players[pid]!.battlefield.filter((id) => s.cards[id]!.defId === defId);
+
+  it('Avacyn: a nontoken creature of yours that dies returns at the beginning of the next end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'avacyn-angel-of-horror');
+    const bear = put(s, 'P1', 'thawbringer');
+    const despark = put(s, 'P2', 'martial-coup', 'hand');
+    void despark;
+    // Destroy it directly, then go to the end step.
+    const vanquish = put(s, 'P1', 'despark', 'hand');
+    void vanquish;
+    s.cards[bear]!.damage = 99;
+    s = goTo(s, 'main2');
+    expect(zone(s, bear)).toBe('graveyard');
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep');
+    expect(zone(s, bear)).toBe('battlefield');
+    expect(s.cards[bear]!.controller).toBe('P1');
+  });
+
+  it("Archfiend of Despair: opponents can't gain life, and lose again what they lost this turn at each end step", () => {
+    let s = newGame();
+    put(s, 'P1', 'archfiend-of-despair');
+    const niv = put(s, 'P2', 'niv-mizzet-ghost-counsel');
+    s.cards[niv]!.summoningSick = false;
+    const life = s.players.P2!.life;
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    // Niv-Mizzet's drain: P1 loses 1, P2 gains nothing.
+    s = cast(s, { type: 'ActivateAbility', player: 'P2', card: niv, ability: 0 }).state;
+    expect(s.players.P2!.life).toBe(life);
+    // P2 lost 3 this turn: at the end step they lose 3 more.
+    let u = newGame();
+    put(u, 'P1', 'archfiend-of-despair');
+    u.players.P2!.life -= 3;
+    u.players.P2!.lifeLostThisTurn = 3;
+    const before = u.players.P2!.life;
+    u = goTo(u, 'end');
+    expect(u.players.P2!.life).toBe(before - 3);
+  });
+
+  it("Darksteel Angel: you can't lose the game, and your creatures can't get -1/-1 counters", () => {
+    let s = newGame();
+    const angel = put(s, 'P1', 'darksteel-angel');
+    s.players.P1!.life = 0;
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(s.players.P1!.eliminated).toBeFalsy();
+    // A -1/-1 counter can't be put on your creatures (Yawgmoth puts one on a target creature).
+    let u = newGame();
+    put(u, 'P1', 'darksteel-angel');
+    const bear = put(u, 'P1', 'thawbringer');
+    const yawgmoth = put(u, 'P2', 'yawgmoth-thran-physician');
+    const fodder = put(u, 'P2', 'thawbringer');
+    u.activePlayer = 'P2';
+    u.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    u = cast(u, { type: 'ActivateAbility', player: 'P2', card: yawgmoth, ability: 0, costCards: [fodder], targets: [card(bear)] }).state;
+    expect(u.cards[bear]!.namedCounters?.['-1/-1'] ?? 0).toBe(0);
+    expect(zone(u, bear)).toBe('battlefield');
+  });
+
+  it('Overlord of the Mistmoors: impending enters with four time counters and is not a creature; two Insects either way', () => {
+    let s = newGame();
+    const overlord = put(s, 'P1', 'overlord-of-the-mistmoors', 'hand');
+    mana(s, 'P1', { W: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: overlord, alternative: true }).state;
+    expect(s.cards[overlord]!.namedCounters?.time).toBe(4);
+    expect(currentDefinition(s, s.cards[overlord]!).types).not.toContain('creature');
+    expect(tokensOf(s, 'P1', 'insect-token-frc')).toHaveLength(2);
+    // A time counter comes off at your end step.
+    s = goTo(s, 'end');
+    expect(s.cards[overlord]!.namedCounters?.time).toBe(3);
+    // Cast normally it's a creature at once.
+    let u = newGame();
+    const full = put(u, 'P1', 'overlord-of-the-mistmoors', 'hand');
+    mana(u, 'P1', { W: 2, C: 5 });
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: full }).state;
+    expect(currentDefinition(u, u.cards[full]!).types).toContain('creature');
+  });
+
+  it("Jhoira takes the first historic permanent from the opponent's library, and you lose life equal to its mana value", () => {
+    let s = newGame();
+    const jhoira = put(s, 'P1', 'jhoira-weatherlight-corsair', 'hand');
+    put(s, 'P2', 'plains', 'library');
+    const ring = put(s, 'P2', 'sol-ring', 'library');
+    put(s, 'P2', 'island', 'library');
+    // Library top: island, sol ring, plains.
+    s.players.P2!.library = [s.players.P2!.library.find((id) => s.cards[id]!.defId === 'island')!, ring, ...s.players.P2!.library.filter((id) => s.cards[id]!.defId !== 'island' && id !== ring)];
+    mana(s, 'P1', { B: 2, C: 4 });
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: jhoira }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(zone(s, ring)).toBe('battlefield');
+    expect(s.cards[ring]!.controller).toBe('P1');
+    expect(s.players.P1!.life).toBe(life - 1);
+  });
+
+  it('Niv-Mizzet: when you gain life you may pay that much to draw that many; its tap drains each opponent', () => {
+    let s = newGame();
+    const niv = put(s, 'P1', 'niv-mizzet-ghost-counsel');
+    s.cards[niv]!.summoningSick = false;
+    const life = s.players.P1!.life;
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: niv, ability: 0 }, { accept: true }).state;
+    // Gained 1, paid 1, drew 1.
+    expect([s.players.P1!.life, s.players.P1!.hand.length, s.players.P2!.life]).toEqual([life, hand + 1, 19]);
+  });
+
+  it('Ginger makes you the monarch, a Gingerbrute each upkeep while you are; Gingerbrute dodges blockers without haste', () => {
+    let s = newGame();
+    const ginger = put(s, 'P1', 'ginger-queen-of-sweets', 'hand');
+    mana(s, 'P1', { C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ginger }).state;
+    expect(s.monarch).toBe('P1');
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep');
+    expect(tokensOf(s, 'P1', 'gingerbrute-token-frc')).toHaveLength(1);
+    const brute = tokensOf(s, 'P1', 'gingerbrute-token-frc')[0]!;
+    expect(hasKeyword(s, s.cards[brute]!, 'Haste')).toBe(true);
+    // {1}: only creatures with haste can block it.
+    let u = newGame();
+    const g = put(u, 'P1', 'gingerbrute-token-frc');
+    const blocker = put(u, 'P2', 'thawbringer');
+    mana(u, 'P1', { C: 1 });
+    u = cast(u, { type: 'ActivateAbility', player: 'P1', card: g, ability: 0 }).state;
+    expect(canBlockCheck(u, blocker, g)).toBe(false);
+  });
+
+  it('Memnarch makes two Myr and draws a card per artifact when it attacks; Archon of Cruelty drains', () => {
+    let s = newGame();
+    const memnarch = put(s, 'P1', 'memnarch-the-warden', 'hand');
+    mana(s, 'P1', { C: 10 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: memnarch }).state;
+    expect(tokensOf(s, 'P1', 'myr-token-frc')).toHaveLength(2);
+    s.cards[memnarch]!.summoningSick = false;
+    const hand = s.players.P1!.hand.length;
+    s = fight(s, [{ attacker: memnarch, defender: 'P2' }]).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 3);
+    // Archon of Cruelty.
+    let u = newGame();
+    const archon = put(u, 'P1', 'archon-of-cruelty', 'hand');
+    const victim = put(u, 'P2', 'thawbringer');
+    put(u, 'P2', 'plains', 'hand');
+    mana(u, 'P1', { B: 2, C: 6 });
+    const [mine, theirs] = [u.players.P1!.life, u.players.P2!.life];
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: archon }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    // The opponent chooses what to sacrifice, then what to discard.
+    for (let i = 0; i < 3 && u.pending.kind === 'chooseCards'; i++) {
+      const p = u.pending;
+      u = cast(u, { type: 'ChooseCards', player: p.player, cards: p.cards.slice(0, Math.max(1, p.min)) }).state;
+    }
+    expect(zone(u, victim)).toBe('graveyard');
+    expect(u.players.P2!.hand).toHaveLength(0);
+    expect([u.players.P1!.life, u.players.P2!.life]).toEqual([mine + 3, theirs - 3]);
+  });
+});

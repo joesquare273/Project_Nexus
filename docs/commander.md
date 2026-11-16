@@ -33,7 +33,7 @@ Reality Fracture has one Commander deck. It was imported with the same script
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 69/97 entries (65 of 93 distinct cards) |
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 78/97 entries (74 of 93 distinct cards) |
 
 - **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
 - **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
@@ -60,7 +60,13 @@ The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
   - Engine: `cyclingEffects` (Shark Typhoon's X/X Shark when cycled, with X paid as part of cycling) and `tokenSizeFromAmount`.
   - Simplifications: Fact or Fiction's opponent is the next one in turn order (the caster doesn't choose). Shark Typhoon's "when you cycle this card" resolves with the cycling draw instead of as its own trigger.
 - Fatehold Charm and Plan for All Outcomes use Jace's empower, so they move to R5.
-- **R3: creatures.** Akroma, Avacyn, Darksteel Angel, Serra's Emissary, Archfiend of Despair, Archon of Cruelty, Overlord of the Mistmoors, The Ur-Sphinx, Memnarch, Ginger, Jhoira, Niv-Mizzet, Omnath and Venser.
+- **R3a (done 2026-11-16): creatures.** Avacyn, Archfiend of Despair, Darksteel Angel, Overlord of the Mistmoors, Jhoira, Niv-Mizzet, Ginger, Memnarch and Archon of Cruelty, with the Insect, Myr and Gingerbrute tokens (tfrc 2, 15 and 12).
+  - Engine: impending (`alternativeCost.impending`: time counters, not a creature while it has any; the `time` counter kind).
+  - Engine: delayed triggers that keep their triggering card (`keepSubject`: Avacyn), and the statics `opponentsCantGainLife`, `controllerCantLose` and `noMinusCountersOnYourCreatures`.
+  - Engine: LoseLife `lifeLostThisTurn`, RevealUntil `fromTargetPlayer` (Jhoira), and the trigger condition `ifYouAreMonarch`.
+  - Engine: LifeGained triggers carry the amount (`lifeGainedInEvent`, and the trigger cost `lifeOf: 'lifeGainedInEvent'`), and the temporary flag `onlyBlockedByHaste`.
+  - Simplification: the Gingerbrute token has no mana cost here (its {1} only gives it a mana value of 1).
+- **R3b: creatures with bigger rules.** Akroma, Angel of Fury (morph), Serra's Emissary (protection from a card type for you and your creatures), The Ur-Sphinx (eminence; cast milled cards free), Omnath, Locus of the Void (unspent mana) and Venser, Fervent Forger (copies of spells and permanents).
 - **R4: artifacts and enchantments.** Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.
 - **R5: the planeswalkers and the commanders.** Jace, Multiverse Architect (with empower), Nissa, Leyline Tamer, Dack Fayden, Ob Nixilis, the Ascended, Tamiyo, Upriser Crowned and Elspeth, Sun's Champion.
 

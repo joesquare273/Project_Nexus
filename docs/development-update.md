@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture R3a: creatures (2026-11-16)
+
+- Nine creatures: Avacyn, Angel of Horror, Archfiend of Despair, Darksteel Angel, Overlord of the Mistmoors (impending), Jhoira, Weatherlight Corsair, Niv-Mizzet, Ghost Counsel, Ginger, Queen of Sweets, Memnarch, the Warden and Archon of Cruelty, plus the Insect, Myr and Gingerbrute tokens. Multiverse Reforged now has 74 of its 93 distinct cards built.
+- New engine pieces are listed under R3a in docs/commander.md. R3 is split: R3b has the five creatures that each need a larger rule (morph, protection from a card type, eminence, unspent mana, copies).
+
 ### Reality Fracture R2b: the harder spells (2026-11-16)
 
 - Fact or Fiction (piles), Teferi's Reproach (a shielded player), Mass Polymorph and Synthetic Destiny (reveal until that many creatures), and Shark Typhoon (cycling with X), plus the Shark token. Multiverse Reforged now has 65 of its 93 distinct cards built.

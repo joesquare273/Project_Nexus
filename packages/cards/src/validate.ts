@@ -68,6 +68,8 @@ const PLAYER_TARGETS = new Set([
   'TargetPlayer',
   'DefendingPlayer',
   'PreviousTargetController',
+  // The player chosen by an earlier target ("target opponent sacrifices ..., discards a card, and loses 3 life").
+  'PreviousTarget',
   'ActivePlayer',
   'EachPlayerWhoChose',
   'EachOpponentWhoChose',
@@ -112,6 +114,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetPower',
       'destroyedThisWay',
       'exiledThisWay',
+      'lifeGainedInEvent',
       'chosenCount',
       'chosenManaValue',
       'sourceCounterKinds',

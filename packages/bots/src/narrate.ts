@@ -176,6 +176,7 @@ function effectText(e: EffectSpec): string {
     case 'GainLife':
       return `${you ? 'you gain' : `${who} gains`} ${n} life`;
     case 'LoseLife':
+      if (e.lifeLostThisTurn) return `${who} loses life equal to the life they lost this turn`;
       return `${you ? 'you lose' : `${who} loses`} ${n} life`;
     case 'Tap':
       return `tap ${who}`;

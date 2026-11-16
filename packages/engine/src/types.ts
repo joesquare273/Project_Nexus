@@ -107,7 +107,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling', 'loyalty'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling', 'loyalty', 'time'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -736,6 +736,8 @@ export type Amount =
         | 'destroyedThisWay'
         /** Permanents exiled from the battlefield earlier in this resolution ("the number of creatures exiled this way"). */
         | 'exiledThisWay'
+        /** LifeGained triggers: how much life was gained ("you may pay that much life": Niv-Mizzet). */
+        | 'lifeGainedInEvent'
         | 'chosenCount'
         | 'chosenManaValue'
         /** Number of distinct counter kinds on the ability's source. */
@@ -789,6 +791,8 @@ export type Amount =
 
 export const TEMPORARY_FLAGS = [
   'cantBeBlocked',
+  /** "Can't be blocked this turn except by creatures with haste" (the Gingerbrute token). */
+  'onlyBlockedByHaste',
   'mustBeBlocked',
   'mustAttack',
   /** "If that creature would die this turn, exile it instead." */
@@ -866,6 +870,12 @@ export interface EffectSpec {
   ifYouControlGreatestPower?: boolean;
   /** CreateDelayedTrigger: "when you next ..." (it triggers only once). */
   next?: boolean;
+  /** CreateDelayedTrigger: the delayed trigger keeps this ability's triggering object ("return that card": Avacyn). */
+  keepSubject?: boolean;
+  /** LoseLife: each target player loses as much life as they've lost this turn (Archfiend of Despair). */
+  lifeLostThisTurn?: boolean;
+  /** RevealUntil: from the target player's library; the card found enters the battlefield under your control, and you lose life equal to its mana value (Jhoira). */
+  fromTargetPlayer?: boolean;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
   /** CreateDelayedTrigger: you get an emblem with this ability instead; it lasts the rest of the game (Sephiroth). */
@@ -1416,6 +1426,8 @@ export interface TriggerSpec {
   ifCardLeftYourGraveyardThisTurn?: boolean;
   /** Intervening "if": "if a counter was put on this creature this turn". */
   ifSourceGotCountersThisTurn?: boolean;
+  /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
+  ifYouAreMonarch?: boolean;
   /** Intervening "if": "if a player lost N or more life this turn". */
   ifPlayerLostLifeThisTurn?: number;
   /** Intervening "if": "if a player was dealt N or more combat damage this turn" (Sidequest: Play Blitzball). */
@@ -1443,7 +1455,7 @@ export interface TriggerSpec {
   optional?: boolean;
   /** "You may pay ... If you do, ...": optional, and the effects need the cost paid. */
   /** `lifeOf`: pay life equal to the triggering spell's mana value ("you may pay X life, where X is that spell's mana value"). */
-  cost?: { mana?: string; life?: number; /** Or: life equal to the triggering spell's mana value, or to the number of opponents dealt combat damage this turn (Tymna). */ lifeOf?: 'subjectManaValue' | 'opponentsDealtCombatDamage'; discard?: number; /** Exile this many cards from your graveyard, chosen as it resolves (Ultimecia). */ exileGraveyard?: number };
+  cost?: { mana?: string; life?: number; /** Or: life equal to the triggering spell's mana value, or to the number of opponents dealt combat damage this turn (Tymna). */ lifeOf?: 'subjectManaValue' | 'opponentsDealtCombatDamage' | 'lifeGainedInEvent'; discard?: number; /** Exile this many cards from your graveyard, chosen as it resolves (Ultimecia). */ exileGraveyard?: number };
   /** Shares its once-each-turn mark with the card's other abilities that have the same key (Carpet of Flowers: "each of your main phases"). */
   onceKey?: string;
   /** "Do this only once each turn": after its cost is paid once, it doesn't trigger again this turn. */
@@ -1726,6 +1738,12 @@ export interface StaticSpec {
   extraFrogOnTokens?: boolean;
   /** "You have protection from each of your opponents" (Absolute Virtue). */
   controllerProtectedFromOpponents?: boolean;
+  /** Archfiend of Despair: "Your opponents can't gain life." */
+  opponentsCantGainLife?: boolean;
+  /** Darksteel Angel: "You can't lose the game and your opponents can't win the game." */
+  controllerCantLose?: boolean;
+  /** Darksteel Angel: "Creatures you control can't have -1/-1 counters put on them." */
+  noMinusCountersOnYourCreatures?: boolean;
   /** "Doesn't untap during its controller's untap step" (Sleep Magic). */
   doesntUntap?: boolean;
   /** "Its activated abilities can't be activated", mana abilities included (Stuck in Summoner's Sanctum). */
@@ -1964,6 +1982,12 @@ export interface CardDefinition {
     effects?: EffectSpec[];
     /** "Discard a card" as part of this cost (blitz); chosen with the action (`costCards`). */
     discard?: number;
+    /**
+     * Impending N (rule 702.176): cast this way, the permanent enters with N
+     * time counters and isn't a creature while it has any; a time counter is
+     * removed at the beginning of its controller's end step.
+     */
+    impending?: number;
     /**
      * Blitz (rule 702.152): the creature gains haste and "When this creature
      * dies, draw a card", and is sacrificed at the beginning of the next end step.
@@ -2907,7 +2931,7 @@ export interface GameState {
   endingTurn?: boolean;
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
   /** `next`: "when you next ... this turn": it triggers once, then is gone. */
-  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean; /** An emblem (rule 114): it never ends. */ emblem?: boolean }[];
+  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean; /** The triggering object it acts on (keepSubject). */ subject?: InstanceId; /** An emblem (rule 114): it never ends. */ emblem?: boolean }[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
   triggeredThisTurn: string[];
   /** "Until end of turn" effects. */

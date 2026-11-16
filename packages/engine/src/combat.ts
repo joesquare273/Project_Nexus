@@ -41,6 +41,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (!isCreatureOnBattlefield(s, blocker) || blocker.tapped) return false;
   if (hasFlag(s, blocker, 'cantBlock') || cantAttackOrBlock(s, blocker)) return false;
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
+  if (hasFlag(s, attacker, 'onlyBlockedByHaste') && !hasKeyword(s, blocker, 'Haste')) return false;
   for (const source of battlefield(s)) {
     for (const spec of currentDefinition(s, source).statics ?? []) {
       if (spec.cantBeBlocked && staticAffects(s, source, spec, attacker)) return false;

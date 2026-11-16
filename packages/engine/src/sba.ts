@@ -198,7 +198,9 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
             : commanderDamage
               ? 'commanderDamage'
               : null;
-      if (reason) {
+      // Darksteel Angel: "You can't lose the game" (conceding still works, rule 104.3a).
+      const cantLose = reason && reason !== 'conceded' && battlefield(s).some((c) => c.controller === pid && !c.phasedOut && defOf(s, c).statics?.some((st) => st.controllerCantLose));
+      if (reason && !cantLose) {
         eliminatePlayer(ctx, pid, reason);
         eliminatedAny = true;
         changed = true;

@@ -2065,7 +2065,7 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                           ? powerOver(s, r)
                         : a.of === 'landsToGraveyardThisWay'
                           ? (r.landsToGraveyard ?? 0)
-                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent' || a.of === 'countersAddedInEvent'
+                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent' || a.of === 'lifeGainedInEvent' || a.of === 'countersAddedInEvent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
@@ -2193,6 +2193,7 @@ export function triggerLifeCost(s: GameState, item: AbilityItem): number | undef
     return subject ? objectManaValue(s, subject) : 0;
   }
   if (cost?.lifeOf === 'opponentsDealtCombatDamage') return countOf(s, 'OpponentsDealtCombatDamageThisTurn', item.controller);
+  if (cost?.lifeOf === 'lifeGainedInEvent') return item.amount ?? 0;
   return undefined;
 }
 
@@ -2488,8 +2489,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (t.kind !== 'player') continue;
         if (effect.perOpponentWhoChoseNone && !opponentsWhoChoseNone(s, r).includes(t.player)) continue;
         const before = s.players[t.player]!.life;
-        // "Loses half their life, rounded up" (Alpharael).
-        changeLife(ctx, t.player, -(effect.halfLifeRoundedUp ? Math.ceil(Math.max(0, before) / 2) : amount));
+        // "Loses half their life, rounded up" (Alpharael); "life equal to the life that player lost this turn" (Archfiend of Despair).
+        changeLife(ctx, t.player, -(effect.halfLifeRoundedUp ? Math.ceil(Math.max(0, before) / 2) : effect.lifeLostThisTurn ? (s.players[t.player]!.lifeLostThisTurn ?? 0) : amount));
         r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
       }
       return;
@@ -2677,12 +2678,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'RevealUntil': {
-      const library = s.players[item.controller]!.library;
+      const owner = effect.fromTargetPlayer ? (targetPlayers(targets)[0] ?? item.controller) : item.controller;
+      const library = s.players[owner]!.library;
       const revealed: InstanceId[] = [];
       let found: InstanceId | undefined;
       for (const id of library) {
         revealed.push(id);
-        ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+        ctx.ev.push({ type: 'CardRevealed', player: owner, card: id, defId: s.cards[id]!.defId });
         if (matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })) {
           found = id;
           break;
@@ -2691,6 +2693,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const rest = revealed.filter((id) => id !== found);
       if (found) {
         r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[found]!).manaCost));
+        // Jhoira: onto the battlefield under your control; you lose life equal to its mana value.
+        if (effect.fromTargetPlayer) {
+          moveCard(ctx, found, 'battlefield');
+          const c = s.cards[found]!;
+          c.controller = item.controller;
+          c.summoningSick = true;
+          if (entersTapped(s, c)) c.tapped = true;
+          changeLife(ctx, item.controller, -r.revealedManaValue);
+        } else
         // The Regalia: "put that card onto the battlefield tapped".
         if (effect.entersTapped) {
           moveCard(ctx, found, 'battlefield');
@@ -3591,7 +3602,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // Amounts counted in this resolution ("that many": Synthetic Destiny) are fixed now.
       const spec = structuredClone(effect.trigger!);
       for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'exiledThisWay') e.amount = r.exiledCount ?? 0;
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
+      const kept = effect.keepSubject && item.kind === 'ability' ? item.subject : undefined;
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(kept ? { subject: kept } : {}), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':
@@ -4165,6 +4177,8 @@ export function resolveTop(ctx: Ctx): void {
       }
       // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
       if (item.alternative && def.alternativeCost?.evoke) c.evoked = true;
+      // Impending: it enters with N time counters.
+      if (item.alternative && def.alternativeCost?.impending) addCounters(ctx, c.id, def.alternativeCost.impending, item.controller, 'time');
       if (item.alternative && def.alternativeCost?.warp) c.warped = true;
       if (item.alternative && def.alternativeCost?.dash) {
         c.returnToHandAtEndStep = true;

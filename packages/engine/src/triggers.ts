@@ -143,7 +143,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'LifeChanged':
         if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player, amount: e.from - e.to });
-        if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player });
+        if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player, amount: e.to - e.from });
         break;
       case 'AttackDeclared': {
         const subjectController = s.cards[e.attacker]!.controller;
@@ -328,6 +328,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'BeginCombat' || o.when === 'EndCombat' || o.when === 'Upkeep' || o.when === 'EndStep' || o.when === 'SecondMain' || o.when === 'FirstMain') {
     if (spec.ifPlayerDealtCombatDamageThisTurn !== undefined && !s.turnOrder.some((pid) => (s.players[pid]!.combatDamageThisTurn ?? 0) >= spec.ifPlayerDealtCombatDamageThisTurn!)) return false;
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
+    if (spec.ifYouAreMonarch && s.monarch !== controller) return false;
     if (spec.ifYouPutCounterOnCreatureThisTurn && s.players[controller]!.counterOnCreatureTurn !== s.turnNumber) return false;
     // "If a player lost 4 or more life this turn" (an intervening "if", rule 603.4).
     if (
@@ -537,7 +538,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         sourceZone: 'battlefield',
         ...(o.subjectController ? { subjectController: o.subjectController } : {}),
         ...(o.defender ? { defender: o.defender } : {}),
-        ...(o.subject ? { subject: o.subject } : {}),
+        ...(d.subject ? { subject: d.subject } : o.subject ? { subject: o.subject } : {}),
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
       });
     }

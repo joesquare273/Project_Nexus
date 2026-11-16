@@ -476,6 +476,8 @@ export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   if (delta === 0 || p.eliminated) return;
   // Teferi's Reproach: "their life total can't change".
   if (p.shielded) return;
+  // Archfiend of Despair: "Your opponents can't gain life."
+  if (delta > 0 && battlefield(ctx.s).some((c) => c.controller !== playerId && !c.phasedOut && defOf(ctx.s, c).statics?.some((st) => st.opponentsCantGainLife))) return;
   // The Wind Crystal: each one its controller controls doubles life they'd gain (rule 614.1a).
   if (delta > 0) {
     for (const c of battlefield(ctx.s)) {
@@ -649,7 +651,8 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   const s = ctx.s;
   const c = s.cards[id]!;
   if (c.zone !== 'battlefield' || amount <= 0) return;
-  // Loading Zone: twice that many of each kind.
+  // Darksteel Angel: "Creatures you control can't have -1/-1 counters put on them."
+  if (kind === '-1/-1' && hasType(s, c, 'creature') && battlefield(s).some((x) => x.controller === c.controller && !x.phasedOut && defOf(s, x).statics?.some((st) => st.noMinusCountersOnYourCreatures))) return;
   for (const source of battlefield(s)) {
     for (const spec of defOf(s, source).statics ?? []) {
       if (spec.doubleAnyCounters && staticAffects(s, source, spec, c)) amount *= 2;

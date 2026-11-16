@@ -7563,6 +7563,28 @@
       }
     ]
   },
+  "gingerbrute-token-frc": {
+    "name": "Gingerbrute Token",
+    "typeLine": "Token Artifact Creature — Food Golem",
+    "oracleText": "Haste\n{1}: This token can't be blocked this turn except by creatures with haste.\n{2}, {T}, Sacrifice this token: You gain 3 life.\n(This token's mana cost is {1}.)",
+    "set": "tfrc",
+    "number": "12",
+    "artist": "Alexandre Honoré",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861",
+      "normal": "https://cards.scryfall.io/normal/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861",
+      "large": "https://cards.scryfall.io/large/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/12/gingerbrute-token?utm_source=api",
+    "scryfallId": "dc2dff97-a68b-497f-a004-1e14ba5116ea",
+    "relatedTokens": [
+      {
+        "name": "Gingerbrute Token",
+        "scryfallId": "dc2dff97-a68b-497f-a004-1e14ba5116ea"
+      }
+    ]
+  },
   "giott-king-of-the-dwarves": {
     "name": "Giott, King of the Dwarves",
     "typeLine": "Legendary Creature — Dwarf Noble",
@@ -9328,6 +9350,28 @@
       {
         "name": "Insect",
         "scryfallId": "2172a126-2ea6-4b5c-84c2-7879c1982a3a"
+      }
+    ]
+  },
+  "insect-token-frc": {
+    "name": "Insect",
+    "typeLine": "Token Creature — Insect",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "2",
+    "artist": "Michele Giorgi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199",
+      "normal": "https://cards.scryfall.io/normal/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199",
+      "large": "https://cards.scryfall.io/large/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/2/insect?utm_source=api",
+    "scryfallId": "f5d782a4-6726-4d64-9977-82ea2ab77e0f",
+    "relatedTokens": [
+      {
+        "name": "Insect",
+        "scryfallId": "f5d782a4-6726-4d64-9977-82ea2ab77e0f"
       }
     ]
   },
@@ -12370,6 +12414,28 @@
     "scryfallUri": "https://scryfall.com/card/eoe/222/mutinous-massacre?utm_source=api",
     "scryfallId": "42d5034f-18f0-4d57-9840-6be52c286247",
     "relatedTokens": []
+  },
+  "myr-token-frc": {
+    "name": "Myr",
+    "typeLine": "Token Artifact Creature — Myr",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "15",
+    "artist": "Michele Giorgi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643",
+      "normal": "https://cards.scryfall.io/normal/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643",
+      "large": "https://cards.scryfall.io/large/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/15/myr?utm_source=api",
+    "scryfallId": "e41f83c6-c20f-455a-b630-5fad99fa54ad",
+    "relatedTokens": [
+      {
+        "name": "Myr",
+        "scryfallId": "e41f83c6-c20f-455a-b630-5fad99fa54ad"
+      }
+    ]
   },
   "myriad-landscape": {
     "name": "Myriad Landscape",

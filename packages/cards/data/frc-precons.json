@@ -76,20 +76,16 @@
           "count": 1,
           "set": "frc",
           "number": "7",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Jhoira, Weatherlight Corsair",
           "count": 1,
           "set": "frc",
           "number": "8",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Venser, Fervent Forger",
@@ -107,11 +103,8 @@
           "count": 1,
           "set": "frc",
           "number": "10",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Tamiyo, Upriser Crowned",
@@ -141,31 +134,24 @@
           "count": 1,
           "set": "frc",
           "number": "13",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Ginger, Queen of Sweets",
           "count": 1,
           "set": "frc",
           "number": "14",
-          "implemented": false,
-          "needs": [
-            "triggers",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Memnarch, the Warden",
           "count": 1,
           "set": "frc",
           "number": "15",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Turbulent Crater",
@@ -251,12 +237,8 @@
           "count": 1,
           "set": "frc",
           "number": "29",
-          "implemented": false,
-          "needs": [
-            "impending",
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Secure the Wastes",
@@ -349,21 +331,16 @@
           "count": 1,
           "set": "frc",
           "number": "46",
-          "implemented": false,
-          "needs": [
-            "static-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Archon of Cruelty",
           "count": 1,
           "set": "frc",
           "number": "47",
-          "implemented": false,
-          "needs": [
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dreadhorde Invasion",
