@@ -318,6 +318,8 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'NextSpellCantBeCountered':
+      return "the next spell you cast this turn can't be countered";
     case 'Empower':
       return `empower Jace ${n} (put ${n} loyalty counter${n === '1' ? '' : 's'} on a Jace token you control; if you don't control one, first create a blue Jace planeswalker token with "−1: Surveil 1" and "−3: Draw a card")`;
     case 'CreateEmblem':

@@ -356,6 +356,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.toOpponent && (o.defender === undefined || o.defender === controller)) return false;
   if (spec.alone && !o.alone) return false;
   if (spec.plusOneCountersOnly && o.counter !== undefined) return false;
+  if (spec.counterKind && (o.counter ?? '+1/+1') !== spec.counterKind) return false;
   // Evolve: the entering creature has greater power or toughness than this one.
   if (spec.evolve) {
     const me = s.cards[source]!;

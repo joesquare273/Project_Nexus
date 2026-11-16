@@ -24,6 +24,10 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture F2: empower Jace (2026-11-16)
+
+- 17 cards that empower Jace (docs/reality-fracture.md), with excess damage, "the next spell can't be countered" and loyalty-counter triggers in the engine.
+
 ### Reality Fracture F1: lands (2026-11-16)
 
 - The main set's card roadmap is in docs/reality-fracture.md (groups F1-F13). F1 builds 19 lands: the Commons and Annexes ("unless you control a planeswalker"), the portal view lands ("unless you control two or more other lands"), Theorist's Sanctum (behold a Jace), Hall of Echoes (becomes a copy; the legend rule is off for you that turn), Roiling Canopy and Room of Refuge.

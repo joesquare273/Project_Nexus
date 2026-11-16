@@ -1437,9 +1437,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
     delete player(s, playerId).nextCreatureCounters;
   }
+  // Theorist's Proxy: "The next spell you cast this turn can't be countered."
+  const uncounterable = player(s, playerId).nextSpellUncounterableTurn === s.turnNumber;
+  if (uncounterable) delete player(s, playerId).nextSpellUncounterableTurn;
   const item: SpellItem = {
     id: newId(s, 's'),
     kind: 'spell',
+    ...(uncounterable ? { uncounterable: true } : {}),
     ...(choice.adventure ? { adventure: true } : {}),
     card: id,
     controller: playerId,
@@ -2107,6 +2111,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                           ? powerOver(s, r)
                         : a.of === 'landsToGraveyardThisWay'
                           ? (r.landsToGraveyard ?? 0)
+                        : a.of === 'excessDamage'
+                          ? (r.excessDamage ?? 0)
                         : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent' || a.of === 'lifeGainedInEvent' || a.of === 'countersAddedInEvent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
@@ -2488,6 +2494,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           dealDamage(ctx, from, t, damage, false);
           const dealt = (s.cards[t.card]!.zone === 'battlefield' ? s.cards[t.card]!.damage : damageBefore + damage) - damageBefore;
           if (dealt > lethal) excess = true;
+          continue;
+        }
+        // "If excess damage was dealt to that permanent this way" (rule 120.4a): beyond lethal damage for a creature, beyond its loyalty for a planeswalker.
+        if (effect.recordExcess && t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield') {
+          const c = s.cards[t.card]!;
+          const isCreature = hasType(s, c, 'creature');
+          const lethal = isCreature ? Math.max(0, toughnessOf(s, c) - c.damage) : Math.max(0, c.namedCounters?.loyalty ?? 0);
+          dealDamage(ctx, from, t, damage, false);
+          r.excessDamage = (r.excessDamage ?? 0) + Math.max(0, damage - lethal);
           continue;
         }
         dealDamage(ctx, from, t, damage, false);
@@ -3157,7 +3172,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n, ...(effect.toBottom ? { toBottom: true } : {}) }];
       return;
     }
+    case 'NextSpellCantBeCountered':
+      player(s, item.controller).nextSpellUncounterableTurn = s.turnNumber;
+      return;
     case 'Empower': {
+      // "If excess damage was dealt ... empower Jace X": nothing when X is 0.
+      if (amount <= 0 && typeof effect.amount === 'object') return;
       // Empower Jace N: a Jace token you control gets N loyalty counters; create one first if you have none.
       const jaces = () => battlefield(s).filter((c) => c.controller === item.controller && c.isToken && !c.phasedOut && subtypesOf(s, c).includes('Jace') && hasType(s, c, 'planeswalker'));
       let tokens = jaces();
@@ -5070,6 +5090,7 @@ function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, e
 function cantBeCountered(s: GameState, id: InstanceId): boolean {
   const c = s.cards[id]!;
   if (defOf(s, c).cantBeCountered) return true;
+  if ((s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem | undefined)?.uncounterable) return true;
   if (!defOf(s, c).types.includes('creature')) return false;
   const controller = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem | undefined)?.controller ?? c.owner;
   return battlefield(s).some((p) => p.controller === controller && !p.phasedOut && !!defOf(s, p).statics?.some((st) => st.creatureSpellsCantBeCountered));

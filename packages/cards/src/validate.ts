@@ -130,6 +130,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectManaValue',
       'previousTargetPowerOverSubject',
       'damageDealt',
+      'excessDamage',
       'subjectManaSpent',
       'dieRoll',
       'chosenCardTypes',

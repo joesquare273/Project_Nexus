@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, cast, mana, newGame, put } from './kit-helpers.ts';
+import { act, cast, fight, mana, newGame, put } from './kit-helpers.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -91,5 +91,91 @@ describe('F1: lands', () => {
     expect(toughnessOf(s, s.cards[hall]!)).toBe(toughnessOf(s, s.cards[legend]!));
     s.turnNumber++;
     expect(currentDefinition(s, s.cards[hall]!).name).toBe('Hall of Echoes');
+  });
+});
+
+describe('F2: empower Jace', () => {
+  const jace = (s: GameState) => s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'jace-token-fra');
+  const loyalty = (s: GameState) => jace(s)?.namedCounters?.loyalty ?? 0;
+
+  it('creatures that empower as they enter or attack, and Campus Crier from the graveyard', () => {
+    let s = newGame();
+    const oculus = put(s, 'P1', 'mindseeker-oculus', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: oculus }).state;
+    expect(loyalty(s)).toBe(4);
+    const crier = put(s, 'P1', 'campus-crier', 'graveyard');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: crier, ability: 0, targets: [] }).state;
+    expect([zone(s, crier), loyalty(s)]).toEqual(['exile', 6]);
+    // Repurposed Enforcer: X is the number of creatures you control (Oculus and itself).
+    const enforcer = put(s, 'P1', 'repurposed-enforcer');
+    s = fight(s, [{ attacker: enforcer, defender: 'P2' }]).state;
+    expect(loyalty(s)).toBe(8);
+  });
+
+  it('Overwrite the Multiverse exiles all creatures and empowers once for each', () => {
+    let s = newGame();
+    put(s, 'P1', 'thawbringer');
+    put(s, 'P2', 'thawbringer');
+    put(s, 'P2', 'archon-of-cruelty');
+    const spell = put(s, 'P1', 'overwrite-the-multiverse', 'hand');
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(loyalty(s)).toBe(3);
+    expect(s.players.P2!.battlefield.filter((id) => s.cards[id]!.zone === 'battlefield' && currentDefinition(s, s.cards[id]!).types.includes('creature'))).toHaveLength(0);
+  });
+
+  it('Violent Echoes empowers Jace by the excess damage only', () => {
+    let s = newGame();
+    const small = put(s, 'P2', 'thawbringer');
+    const spell = put(s, 'P1', 'violent-echoes', 'hand');
+    mana(s, 'P1', { R: 2, C: 2 });
+    const toughness = toughnessOf(s, s.cards[small]!);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(small)] }).state;
+    expect([zone(s, small), loyalty(s)]).toEqual(['graveyard', 6 - toughness]);
+    // No excess: no Jace.
+    let u = newGame();
+    const big = put(u, 'P2', 'archon-of-cruelty');
+    const spell2 = put(u, 'P1', 'violent-echoes', 'hand');
+    mana(u, 'P1', { R: 2, C: 2 });
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: spell2, targets: [card(big)] }).state;
+    expect(jace(u)).toBeUndefined();
+  });
+
+  it("Theorist's Proxy: the next spell you cast this turn can't be countered", () => {
+    let s = newGame();
+    const proxy = put(s, 'P1', 'theorists-proxy');
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: proxy, ability: 0, targets: [] }).state;
+    expect(zone(s, proxy)).toBe('graveyard');
+    const bolt = put(s, 'P1', 'no-admittance', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] });
+    expect(s.stack.find((i) => i.kind === 'spell')).toMatchObject({ uncounterable: true });
+  });
+
+  it("Inspired Tethermage grows whenever you put loyalty counters on a planeswalker; Vraska's Final Mercy can empower 6", () => {
+    let s = newGame();
+    const tethermage = put(s, 'P1', 'inspired-tethermage');
+    const mercy = put(s, 'P1', 'vraskas-final-mercy', 'hand');
+    mana(s, 'P1', { B: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mercy, targets: [], mode: 1 }).state;
+    expect([loyalty(s), s.players.P1!.life, s.cards[tethermage]!.counters]).toEqual([6, 18, 1]);
+  });
+
+  it("Tam's Resistance costs {1}{G/U} and Solve for Disappointment takes a nonland permanent card", () => {
+    let s = newGame();
+    expect(currentDefinition(s, s.cards[put(s, 'P1', 'tams-resistance', 'hand')]!).manaCost).toBe('{1}{G/U}');
+    const land = put(s, 'P2', 'plains', 'hand');
+    const creature = put(s, 'P2', 'thawbringer', 'hand');
+    const solve = put(s, 'P1', 'solve-for-disappointment', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: solve, targets: [{ kind: 'player', player: 'P2' }] });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseCards');
+    expect((s.pending as { cards: string[] }).cards).toEqual([creature]);
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [creature] });
+    expect([zone(s, creature), zone(s, land), loyalty(s)]).toEqual(['graveyard', 'hand', 1]);
   });
 });

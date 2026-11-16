@@ -28,7 +28,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | Group | Cards | Status |
 |---|---|---|
 | F1 | Lands (19): the Commons and Annexes, portal view lands, Hall of Echoes, Roiling Canopy, Room of Refuge, Theorist's Sanctum | Done |
-| F2 | Empower Jace spells and creatures (simple ones) | |
+| F2 | Empower Jace spells and creatures (17) | Done |
 | F3 | The ten "Way of the ..." enchantments and other cards that give planeswalkers abilities (Sanctum Lurker, Avatar of Burgeoning Echoes, Kiora of Salt and Sand) | |
 | F4 | Prepared: the 24 prepare creatures, Codie, Hexhaven Dueling Arena, Infinite Coursework | |
 | F5 | White commons, uncommons and rares | |
@@ -49,3 +49,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Hall of Echoes: becomes a copy of your creature until end of turn, and the legend rule doesn't apply to your permanents this turn (`legendRuleOffThisTurn`, `PlayerState.legendRuleOffTurn`).
 - Roiling Canopy (the `ForestsYouControl` count) and Room of Refuge.
 - Hexhaven Dueling Arena waits for prepared (F4).
+
+### F2 (2026-11-16)
+
+- Academic Ascent, Campus Crier (from the graveyard), Hexhaven Battalion (three Cadets, basic landcycling), Repurposed Enforcer (empower X, X creatures you control), Mindseeker Oculus, Protégé's Awakening, Theorist's Proxy, Overwrite the Multiverse, Rewrite Regrets, Solve for Disappointment, Vraska's Final Mercy, No Admittance, Violent Echoes, Arcane Amphisbaena, Inspired Tethermage, Tam's Resistance, Keeper of the Quiet Hour.
+- Engine: the `excessDamage` amount (DealDamage `recordExcess`, for creatures and planeswalkers; empowering 0 does nothing), "the next spell you cast this turn can't be countered" (`NextSpellCantBeCountered`), and `counterKind` on CountersAdded triggers. The Cadet token (tfra 1).
+- Countersculpt (behold a Jace or pay {1}) and Jace's Machinations (loyalty abilities at instant speed) come with F13.

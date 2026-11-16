@@ -2844,6 +2844,28 @@
     "scryfallId": "d5273db4-6214-41e4-825a-612fca8bbe03",
     "relatedTokens": []
   },
+  "cadet-token-fra": {
+    "name": "Cadet",
+    "typeLine": "Token Creature — Wizard Soldier",
+    "oracleText": "",
+    "set": "tfra",
+    "number": "1",
+    "artist": "Elizabeth Peiró",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318",
+      "normal": "https://cards.scryfall.io/normal/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318",
+      "large": "https://cards.scryfall.io/large/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/f/8f4534d8-2783-484f-8ebf-a47b1cc4c6df.jpg?1789734318"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/1/cadet?utm_source=api",
+    "scryfallId": "8f4534d8-2783-484f-8ebf-a47b1cc4c6df",
+    "relatedTokens": [
+      {
+        "name": "Cadet",
+        "scryfallId": "8f4534d8-2783-484f-8ebf-a47b1cc4c6df"
+      }
+    ]
+  },
   "cait-sith-fortune-teller": {
     "name": "Cait Sith, Fortune Teller",
     "typeLine": "Legendary Artifact Creature — Cat Moogle",

@@ -522,6 +522,8 @@ export const EFFECT_KINDS = [
    * it into your hand and the rest on the bottom in a random order (Yuna's Whistle).
    */
   'RevealUntil',
+  /** "The next spell you cast this turn can't be countered" (Theorist's Proxy). */
+  'NextSpellCantBeCountered',
   /** Turn the target face-down permanents face up (rule 702.37e; a manifested instant or sorcery stays face down and is revealed, 701.34c). */
   'TurnFaceUp',
   /** Turn the target permanents face down: each becomes a 2/2 creature with no name, abilities or mana cost (rule 708.2). */
@@ -798,6 +800,8 @@ export type Amount =
         | 'previousTargetPowerOverSubject'
         /** The damage dealt in the triggering event ("it deals that much damage"). */
         | 'damageDealt'
+        /** Excess damage the last DealDamage with `recordExcess` dealt to a creature or planeswalker (rule 120.4a: Violent Echoes). */
+        | 'excessDamage'
         /** SpellCast triggers: the mana spent to cast the triggering spell ("where X is the amount of mana spent"). */
         | 'subjectManaSpent'
         /** The result of the last RollDie. */
@@ -1163,6 +1167,8 @@ export interface EffectSpec {
   doubleIfPreviousTargetIs?: ObjectFilter;
   /** CounterUnlessPays: if the spell's controller pays, you create this token (Divert Disaster). */
   tokenIfPaid?: CardDefId;
+  /** DealDamage: remember the excess damage dealt, for a later `{ of: 'excessDamage' }` (Violent Echoes). */
+  recordExcess?: boolean;
   /** DealDamage: then create this token if excess damage was dealt (Orbital Plunge). */
   tokenIfExcess?: CardDefId;
   /** LoseLife: half the target player's life, rounded up (Alpharael). */
@@ -1456,6 +1462,8 @@ export interface TriggerSpec {
   blockingMatching?: ObjectFilter;
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
+  /** CountersAdded: only counters of this kind ("whenever you put one or more loyalty counters on a planeswalker"). */
+  counterKind?: CounterKind;
   /** SpellCast: only your Nth noncreature spell this turn ("whenever you cast your first noncreature spell each turn"). */
   nthNoncreatureSpellThisTurn?: number;
   /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you. */
@@ -2553,6 +2561,8 @@ export interface PlayerState {
   turnsTaken?: number;
   /** "The 'legend rule' doesn't apply to permanents you control this turn": the turn it's off (Hall of Echoes). */
   legendRuleOffTurn?: number;
+  /** "The next spell you cast this turn can't be countered": the turn (Theorist's Proxy). */
+  nextSpellUncounterableTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
   permanentLeftTurn?: number;
   /** The last turn an artifact entered the battlefield under this player's control (Mechan Shieldmate). */
@@ -2620,6 +2630,8 @@ export type Step = (typeof STEPS)[number];
 export type Target = { kind: 'player'; player: PlayerId } | { kind: 'card'; card: InstanceId } | { kind: 'ability'; ability: string } | { kind: 'none' };
 
 export interface SpellItem {
+  /** "The next spell you cast this turn can't be countered" (Theorist's Proxy). */
+  uncounterable?: boolean;
   /** This cast actually used flashback, rather than another permission on a card with flashback. */
   flashback?: boolean;
   adventure?: boolean;
@@ -2816,6 +2828,8 @@ export interface Resolving {
   lifeLostThisWay?: number;
   /** The mana value of the card RevealUntil found. */
   revealedManaValue?: number;
+  /** Excess damage dealt by a DealDamage with `recordExcess`. */
+  excessDamage?: number;
   /** Who controlled the permanent this ability last put into a library ("that creature's controller": Proteus Staff). */
   movedPermanentController?: PlayerId;
   /** Whether the triggering creature had less power than the source, checked once as it starts resolving (Shelinda). */
