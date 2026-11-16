@@ -103,6 +103,13 @@ the cards they want (user spec, 2026-11-04), in the **Craft** tab.
 | E5 | Paid event entry and prizes, with the online draft events (sealed.md, S3). **Built.** Draft events live in the server's memory, so a restart (every deploy) loses any that were running. At startup the server gives back each entry with neither a prize nor a refund (`refundLostEntries`, ledger `event_entry` with ref `draft-<event>-refund`, once). |
 | Audit (2026-11-12) | Live database checked. No negative balances. Every account's balance matches its ledger, except the owner's test account (balances set by hand). Fragment balances match the fragment ledger and are kept per account (`fragment_balances` keyed by user). No game had yet been recorded for match rewards (`match_results` empty): only signed-in games against the computer with a saved deck, and online tables, pay; practice games don't. The 4 draft entries on the owner's account had no prize or refund (events lost to deploys); they are refunded on the next server start. |
 
+## Administration (built 2026-11-16)
+
+- **Who:** accounts with `profiles.is_admin` (migration `20261116120000_admin.sql`; the owner's account, Solis). The flag is set in the database only; players can read their own profile row but never change it, and the server checks the flag on every admin request.
+- **The Admin page** (`#/admin`, in the menu only for admins; `client/src/account/AdminPage.tsx`) lists every account with its Aether Shards and fragments (common, uncommon, rare and mythic) and the latest admin changes.
+- **Changing shards:** set a balance, or add or take away an amount, with an optional note. The page shows old → new and asks to confirm. `POST /api/admin/shards` calls `admin_adjust_shards`, which writes an ordinary ledger row (`admin_adjustment`, ref `admin-<request>`), so balances still equal their ledger. It also writes a row in `admin_actions` (who, whom, change, balance after, note). Each request id applies once, a balance can't go below zero, and one change is at most 10,000,000.
+- Fragments are shown, not edited.
+
 ## Hosting (free tiers, checked 2026-10-29)
 
 - **Supabase Free:** 500 MB database, 50,000 monthly active users, 5 GB

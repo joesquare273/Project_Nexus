@@ -6,6 +6,7 @@ import { GameSession, type DeckChoice, type SessionOptions } from './game/sessio
 import { ManaCost, ManaText } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
 import { CreditsPage, LegalFooter } from './components/Credits.tsx';
+import { AdminPage } from './account/AdminPage.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { CraftTab } from './craft/CraftTab.tsx';
@@ -49,7 +50,7 @@ export function App() {
   return <MainApp />;
 }
 
-type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop' | 'credits';
+type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop' | 'credits' | 'admin';
 type PlayMode = 'ai' | 'online' | 'draft';
 type ShopMode = 'packs' | 'store';
 interface Route {
@@ -72,7 +73,7 @@ function routeFromHash(hash: string): Route {
   const [page, sub] = hash.replace(/^#\/?/, '').split('/');
   const route: Route = { page: 'home', play: 'ai', shop: 'packs' };
   // The credits page isn't in the top menu; the link at the foot of every page opens it.
-  if (PAGES.some((p) => p.id === page) || page === 'credits') route.page = page as Page;
+  if (PAGES.some((p) => p.id === page) || page === 'credits' || page === 'admin') route.page = page as Page;
   if (route.page === 'play' && (sub === 'online' || sub === 'draft' || sub === 'ai')) route.play = sub;
   if (route.page === 'shop' && (sub === 'store' || sub === 'packs')) route.shop = sub;
   return route;
@@ -249,7 +250,7 @@ function MainApp() {
           <span className="brand-mark" aria-hidden="true">✦</span> Project Nexus
         </button>
         <nav className="top-nav" aria-label="Main">
-          {PAGES.map((p) => (
+          {[...PAGES, ...(account.kind === 'ready' && account.account.admin ? [{ id: 'admin' as Page, label: 'Admin' }] : [])].map((p) => (
             <button
               key={p.id}
               data-nav={p.id}
@@ -416,6 +417,12 @@ function MainApp() {
         )}
 
         {route.page === 'credits' && <CreditsPage />}
+        {route.page === 'admin' && (
+          <>
+            <PageTitle title="Admin" subtitle="Every account's Aether Shards and fragments" art="store" />
+            {account.kind === 'ready' && account.account.admin ? <AdminPage /> : <p className="packs-loading">Only admins can open this page.</p>}
+          </>
+        )}
       </main>
       <LegalFooter onCredits={() => go({ page: 'credits' })} />
     </div>

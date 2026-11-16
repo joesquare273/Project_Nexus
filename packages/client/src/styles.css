@@ -4334,3 +4334,23 @@ h1, h2, h3, .brand, .page-title h1, .stack-title, .reward-card h3, .home-quests 
 .credits h3 { margin: 18px 0 4px; font-size: 15px; color: var(--gold, #e7c96d); }
 .credits p { margin: 4px 0; }
 .credits-art { margin: 4px 0; padding-left: 20px; columns: 2 260px; font-size: 14px; }
+
+/* ---------- The admin page ---------- */
+.admin-page { max-width: 1100px; margin: 0 auto; padding: 0 16px 24px; }
+.admin-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0 12px; }
+.admin-search { flex: 1 1 220px; max-width: 320px; }
+.admin-done { color: var(--playable, #5fd38d); }
+.admin-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(199, 169, 103, 0.2); background: rgba(10, 16, 26, 0.7); }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.admin-table th, .admin-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.06); white-space: nowrap; }
+.admin-table th { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.04em; color: var(--gold, #e7c96d); }
+.admin-table .num { text-align: right; font-family: var(--font-numbers); font-size: 15px; }
+.admin-table td.up { color: var(--playable, #5fd38d); }
+.admin-table td.down { color: var(--danger, #ff6b5a); }
+.admin-table tr.editing td { background: rgba(231, 201, 109, 0.08); }
+.admin-edit { margin: 14px 0; padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(231, 201, 109, 0.35); background: rgba(20, 26, 36, 0.9); }
+.admin-edit h3 { margin: 0 0 10px; }
+.admin-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.admin-edit-row input[type='number'] { width: 140px; }
+.admin-edit-row input:not([type]) { flex: 1 1 220px; }
+.admin-log-title { margin: 22px 0 8px; }

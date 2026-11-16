@@ -76,6 +76,39 @@ export interface AccountService {
    * at startup these are events a restart lost.
    */
   unsettledEntries(): Promise<{ userId: string; ref: string }[]>;
+  /** Whether the player is an admin (profiles.is_admin; set in the database only). */
+  isAdmin(userId: string): Promise<boolean>;
+  /** Every account with its balances, for the admin page. */
+  adminAccounts(): Promise<AdminAccount[]>;
+  /** The latest admin changes, newest first. */
+  adminActions(limit: number): Promise<AdminAction[]>;
+  /**
+   * An admin sets a player's balance ('set') or changes it ('add'), once per
+   * `ref`. Throws if the caller isn't an admin, the player doesn't exist, or
+   * the balance would go below zero.
+   */
+  adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }>;
+}
+
+/** One account on the admin page. */
+export interface AdminAccount {
+  id: string;
+  name: string;
+  shards: number;
+  fragments: Fragments;
+  admin: boolean;
+  createdAt: string;
+}
+
+/** A change an admin made. */
+export interface AdminAction {
+  admin: string;
+  user: string;
+  kind: 'set_shards' | 'add_shards';
+  amount: number;
+  balanceAfter: number;
+  note: string;
+  at: string;
 }
 
 /** The entries in a list of ledger rows that have no prize or refund for their event. */
@@ -331,6 +364,53 @@ export class SupabaseAccounts implements AccountService {
     return unsettled((data ?? []).map((r: { user_id: string; kind: string; ref: string }) => ({ userId: r.user_id, kind: r.kind, ref: r.ref })));
   }
 
+  async isAdmin(userId: string): Promise<boolean> {
+    const { data, error } = await this.db.from('profiles').select('is_admin').eq('id', userId).maybeSingle<{ is_admin: boolean }>();
+    if (error) throw new Error(`Could not check the account: ${error.message}`);
+    return !!data?.is_admin;
+  }
+
+  async adminAccounts(): Promise<AdminAccount[]> {
+    const [profiles, fragments] = await Promise.all([
+      this.db.from('profiles').select('id, display_name, shards, is_admin, created_at').order('created_at'),
+      this.db.from('fragment_balances').select('user_id, rarity, amount'),
+    ]);
+    if (profiles.error) throw new Error(`Could not list the accounts: ${profiles.error.message}`);
+    if (fragments.error) throw new Error(`Could not list the fragments: ${fragments.error.message}`);
+    const byUser = new Map<string, Record<string, number>>();
+    for (const r of fragments.data as { user_id: string; rarity: string; amount: number }[]) byUser.set(r.user_id, { ...(byUser.get(r.user_id) ?? {}), [r.rarity]: r.amount });
+    return (profiles.data as { id: string; display_name: string; shards: number; is_admin: boolean; created_at: string }[]).map((p) => ({
+      id: p.id,
+      name: p.display_name,
+      shards: p.shards,
+      fragments: toFragments(byUser.get(p.id) ?? {}),
+      admin: p.is_admin,
+      createdAt: p.created_at,
+    }));
+  }
+
+  async adminActions(limit: number): Promise<AdminAction[]> {
+    const { data, error } = await this.db.from('admin_actions').select('admin_id, user_id, kind, amount, balance_after, note, created_at').order('created_at', { ascending: false }).limit(limit);
+    if (error) throw new Error(`Could not list the admin changes: ${error.message}`);
+    return (data as { admin_id: string; user_id: string; kind: AdminAction['kind']; amount: number; balance_after: number; note: string; created_at: string }[]).map((r) => ({
+      admin: r.admin_id,
+      user: r.user_id,
+      kind: r.kind,
+      amount: r.amount,
+      balanceAfter: r.balance_after,
+      note: r.note,
+      at: r.created_at,
+    }));
+  }
+
+  async adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }> {
+    const { data, error } = await this.db
+      .rpc('admin_adjust_shards', { p_admin: adminId, p_user: userId, p_mode: mode, p_amount: amount, p_ref: ref, p_note: note })
+      .single<{ balance: number; applied: boolean }>();
+    if (error || !data) throw new Error(error?.message ?? 'no data');
+    return data;
+  }
+
   async matchCount(userId: string, since: Date, won?: boolean): Promise<number> {
     let q = this.db.from('match_results').select('ref', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
     if (won) q = q.eq('won', true);
@@ -472,6 +552,33 @@ export class MemoryAccounts implements AccountService {
 
   async fragments(userId: string): Promise<Fragments> {
     return { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+  }
+
+  readonly admins = new Set<string>();
+  readonly adminLog: AdminAction[] = [];
+
+  async isAdmin(userId: string): Promise<boolean> {
+    return this.admins.has(userId);
+  }
+
+  async adminAccounts(): Promise<AdminAccount[]> {
+    return [...this.accounts].map(([id, a]) => ({ id, name: a.name, shards: a.shards, fragments: { ...(this.fragmentBalances.get(id) ?? NO_FRAGMENTS) }, admin: this.admins.has(id), createdAt: '' }));
+  }
+
+  async adminActions(limit: number): Promise<AdminAction[]> {
+    return this.adminLog.slice(-limit).reverse();
+  }
+
+  async adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }> {
+    if (!this.admins.has(adminId)) throw new Error('not an admin');
+    const account = this.accounts.get(userId);
+    if (!account) throw new Error(`no profile for ${userId}`);
+    if (this.ledger.has(`${userId}|admin_adjustment|admin-${ref}`)) return { balance: account.shards, applied: false };
+    const delta = mode === 'set' ? amount - account.shards : amount;
+    if (delta === 0) return { balance: account.shards, applied: false };
+    const r = this.apply(userId, delta, 'admin_adjustment', `admin-${ref}`);
+    this.adminLog.push({ admin: adminId, user: userId, kind: mode === 'set' ? 'set_shards' : 'add_shards', amount: delta, balanceAfter: r.balance, note, at: new Date().toISOString() });
+    return r;
   }
 
   async unsettledEntries(): Promise<{ userId: string; ref: string }[]> {

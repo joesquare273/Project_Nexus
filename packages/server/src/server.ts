@@ -123,7 +123,9 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
     const user = await signedIn(req, res, accounts);
     if (!user || !accounts) return;
     const method = req.method ?? 'GET';
-    if (path === '/api/account' && method === 'GET') return json(res, 200, await accounts.ensure(user));
+    if (path === '/api/account' && method === 'GET') return json(res, 200, { ...(await accounts.ensure(user)), admin: await accounts.isAdmin(user.id) });
+    // Administration: only for accounts flagged admin in the database (profiles.is_admin).
+    if (path.startsWith('/api/admin/')) return adminRoute(req, res, path, method, user.id, accounts);
     if (path === '/api/collection' && method === 'GET') return json(res, 200, { cards: await accounts.collection(user.id) });
     if (path === '/api/decks' && method === 'GET') return json(res, 200, { decks: await accounts.decks(user.id) });
     if (path === '/api/decks' && method === 'POST') {
@@ -210,6 +212,45 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });
   }
+}
+
+/** The largest balance or single change an admin can set (a typo guard). */
+const ADMIN_MAX_SHARDS = 10_000_000;
+
+/**
+ * The admin page's requests: GET /api/admin/accounts (every account's
+ * balances and the latest admin changes) and POST /api/admin/shards
+ * {userId, mode: 'set' | 'add', amount, requestId, note}.
+ */
+async function adminRoute(req: IncomingMessage, res: ServerResponse, path: string, method: string, adminId: string, accounts: AccountService): Promise<void> {
+  if (!(await accounts.isAdmin(adminId))) return json(res, 403, { error: 'Only admins can do that.' });
+  if (path === '/api/admin/accounts' && method === 'GET') {
+    const [list, actions] = await Promise.all([accounts.adminAccounts(), accounts.adminActions(50)]);
+    return json(res, 200, { accounts: list, actions });
+  }
+  if (path === '/api/admin/shards' && method === 'POST') {
+    const body = (await readJson(req)) as { userId?: unknown; mode?: unknown; amount?: unknown; requestId?: unknown; note?: unknown } | undefined;
+    const mode = body?.mode;
+    const amount = body?.amount;
+    if (typeof body?.userId !== 'string' || !/^[0-9a-zA-Z-]{1,64}$/.test(body.userId)) return json(res, 400, { error: 'Choose an account.' });
+    if (mode !== 'set' && mode !== 'add') return json(res, 400, { error: 'Set the balance or add to it.' });
+    if (typeof amount !== 'number' || !Number.isInteger(amount) || Math.abs(amount) > ADMIN_MAX_SHARDS || (mode === 'set' && amount < 0)) {
+      return json(res, 400, { error: `Enter a whole number${mode === 'set' ? ' from 0' : ''} up to ${ADMIN_MAX_SHARDS.toLocaleString()}.` });
+    }
+    if (typeof body.requestId !== 'string' || !/^[0-9a-zA-Z-]{8,64}$/.test(body.requestId)) return json(res, 400, { error: 'That request could not be read.' });
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 200) : '';
+    try {
+      const r = await accounts.adminAdjustShards(adminId, body.userId, mode, amount, body.requestId, note);
+      return json(res, 200, r);
+    } catch (e) {
+      const message = String(e instanceof Error ? e.message : e);
+      if (/insufficient/.test(message)) return json(res, 400, { error: "That would take the balance below zero." });
+      if (/no profile/.test(message)) return json(res, 404, { error: 'That account was not found.' });
+      if (/not an admin/.test(message)) return json(res, 403, { error: 'Only admins can do that.' });
+      throw e;
+    }
+  }
+  return json(res, 404, { error: 'Unknown request.' });
 }
 
 const PACK_PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };

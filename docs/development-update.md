@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Administration page (2026-11-16)
+
+- An admin flag in the database (`profiles.is_admin`; the owner's account Solis is the admin) and an Admin page listing every account's Aether Shards and fragments. An admin can set or change anyone's shards; each change goes through the ledger and an `admin_actions` audit row with a note. See docs/economy.md, "Administration".
+- Server: `/api/account` returns `admin`; `GET /api/admin/accounts`, `POST /api/admin/shards`; `AccountService.isAdmin`, `adminAccounts`, `adminActions`, `adminAdjustShards`. Tests: `server/test/admin.test.ts` (only admins; set, add, take away; once per request; never below zero; the ledger still matches).
+
 ### Credits and legal notice (2026-11-12)
 
 - Every page ends with the notice that Wizards of the Coast's Fan Content Policy suggests ("Project Nexus is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. ..."), plus a line that nothing is sold for real money. The signed-out pages show it too.

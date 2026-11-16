@@ -27,14 +27,14 @@ describe('accounts', () => {
     const { accounts, get } = await withAccounts();
     const first = await get('token-alice');
     expect(first.status).toBe(200);
-    expect(await first.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS });
+    expect(await first.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS, admin: false });
     // Signing in again, or many retries at once, never pays it twice.
     const again = await Promise.all(Array.from({ length: 5 }, () => get('token-alice')));
-    for (const r of again) expect(await r.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS });
+    for (const r of again) expect(await r.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS, admin: false });
     expect([...accounts.ledger.keys()].filter((k) => k === 'alice-id|welcome_grant|welcome' || k === 'alice-id|welcome_grant|welcome-bonus')).toHaveLength(2);
     expect([...accounts.ledger.keys()].filter((k) => k.startsWith('alice-id|login_reward|'))).toHaveLength(1);
     // Each player has their own account.
-    expect(await (await get('token-bob')).json()).toEqual({ name: 'Bob', shards: FIRST_DAY_SHARDS });
+    expect(await (await get('token-bob')).json()).toEqual({ name: 'Bob', shards: FIRST_DAY_SHARDS, admin: false });
   });
 
   it('refuses a missing or invalid sign-in, and anything but GET', async () => {
@@ -47,7 +47,7 @@ describe('accounts', () => {
   it('ignores anything the browser says about its balance', async () => {
     const { get } = await withAccounts();
     const r = await get('token-alice', '/api/account?shards=999999&welcome=50000');
-    expect(await r.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS });
+    expect(await r.json()).toEqual({ name: 'Alice', shards: FIRST_DAY_SHARDS, admin: false });
   });
 
   it('says so when accounts are not set up, and guest play still works', async () => {
