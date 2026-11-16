@@ -20,6 +20,22 @@ export type ManaPool = Record<ManaType, number>;
 
 /** A parsed mana cost such as {2}{R}{W} -> { generic: 2, R: 1, W: 1 }. */
 /** `x` counts {X} symbols. */
+/**
+ * BecomeCreature: the creature a permanent becomes, in addition to its other
+ * types ("this land becomes a 2/3 white and blue Bird creature with flying").
+ * `colors` replace its colors; `keywords` and `statics` are added while it lasts.
+ */
+export interface Animation {
+  power: number;
+  toughness: number;
+  subtypes?: string[];
+  colors?: Color[];
+  keywords?: Keyword[];
+  /** Abilities it has while animated ("During your turn, this creature has first strike": Restless Spire). */
+  statics?: StaticSpec[];
+  untilEndOfTurn?: boolean;
+}
+
 export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][] } & Partial<Record<ManaType, number>>;
 
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
@@ -831,7 +847,7 @@ export interface EffectSpec {
   /** Only if a card chosen in the last choice has this subtype ("if you put a Town card into your hand this way"). */
   ifChoseSubtype?: string;
   /** BecomeCreature: the permanent becomes a creature with this base power and toughness and these subtypes, in addition to its other types (no end). */
-  becomes?: { power: number; toughness: number; subtypes?: string[]; untilEndOfTurn?: boolean };
+  becomes?: Animation;
   /** Only if you control the creature with the greatest power or tied for it (Summon: Fenrir). */
   ifYouControlGreatestPower?: boolean;
   /** CreateDelayedTrigger: "when you next ..." (it triggers only once). */
@@ -1841,6 +1857,8 @@ export interface CardDefinition {
     basicLands?: number;
     /** "unless it's your first, second, or third turn of the game". */
     yourTurnAtMost?: number;
+    /** "unless your opponents control eight or more lands" (the Turbulent lands): lands all opponents control, together. */
+    opponentsLands?: number;
     /** "you may reveal a Forest or Plains card from your hand. If you don't, ...". */
     revealSubtypes?: string[];
     /** Shock lands: "As this land enters, you may pay 2 life. If you don't, it enters tapped" (chosen with PlayLand's `reveal`: true pays). Put onto the battlefield by an effect, it enters tapped (the engine doesn't offer the payment then). */
@@ -2158,7 +2176,7 @@ export interface CardInstance {
   tokenSize?: number;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
   /** BecomeCreature: a creature with this base power and toughness (until cleanup with `untilEndOfTurn`). */
-  animated?: { power: number; toughness: number; subtypes?: string[]; untilEndOfTurn?: boolean };
+  animated?: Animation;
   /** The turn this permanent was last dealt damage. */
   damagedTurn?: number;
   /** How many times one of its abilities resolved this turn (`turn:ability` key). */

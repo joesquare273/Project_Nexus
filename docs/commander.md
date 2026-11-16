@@ -33,7 +33,7 @@ Reality Fracture has one Commander deck. It was imported with the same script
 
 | Deck | Commander | Fully built |
 |---|---|---|
-| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 40/97 entries (36 of 93 distinct cards) |
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 54/97 entries (50 of 93 distinct cards) |
 
 - **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
 - **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
@@ -44,7 +44,11 @@ What the unbuilt cards need, most first: triggers (22), static abilities (17), a
 
 The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
 
-- **R1: lands and mana.** The four Signets, Reflecting Pool, Mystic Gate, the Turbulent lands, the Landscapes, Kher Keep and the Restless lands.
+- **R1 (done 2026-11-16): lands and mana.** The four Signets, Reflecting Pool, Mystic Gate, Turbulent Crater, Shore and Wetlands, Contaminated and Perilous Landscape, Kher Keep, Restless Anchorage and Restless Spire, with the Kobolds of Kher Keep and Map tokens (tfrc 10 and 14).
+  - Engine: `entersTappedUnless.opponentsLands` ("unless your opponents control eight or more lands", counted across all opponents).
+  - Engine: `BecomeCreature` animations (`Animation`) can set colors and add keywords and abilities while they last. Restless Spire's "during your turn, this creature has first strike" is only on the animated land.
+  - The Signets and Mystic Gate use the paid mana abilities (`manaAbility.paid`) and Reflecting Pool `yourLandColors`.
+  - Simplification: as elsewhere, explore keeps a nonland card on top (the "put it into your graveyard" choice isn't offered).
 - **R2: spells.** Fact or Fiction, Despark, Brainsurge, Teferi's Reproach, Fatehold Charm, Plan for All Outcomes, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Mass Polymorph, Occult Epiphany, Synthetic Destiny, Grand Crescendo, White Sun's Twilight, Shark Typhoon.
 - **R3: creatures.** Akroma, Avacyn, Darksteel Angel, Serra's Emissary, Archfiend of Despair, Archon of Cruelty, Overlord of the Mistmoors, The Ur-Sphinx, Memnarch, Ginger, Jhoira, Niv-Mizzet, Omnath and Venser.
 - **R4: artifacts and enchantments.** Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.

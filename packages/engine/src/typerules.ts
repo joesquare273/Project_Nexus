@@ -226,6 +226,11 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
   if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
   // Shock lands: untapped only when the player chose to pay the life (playLand pays it).
   if (unless.payLife && reveal === true) return false;
+  if (unless.opponentsLands !== undefined) {
+    const theirs = s.turnOrder.filter((p) => p !== c.controller && !s.players[p]!.eliminated)
+      .reduce((n, p) => n + s.players[p]!.battlefield.filter((id) => !s.cards[id]!.phasedOut && defOf(s.cards[id]!).types.includes('land')).length, 0);
+    if (theirs >= unless.opponentsLands) return false;
+  }
   if (unless.yourTurnAtMost !== undefined && s.activePlayer === c.controller && (s.players[c.controller]!.turnsTaken ?? 0) <= unless.yourTurnAtMost) return false;
   return true;
 }

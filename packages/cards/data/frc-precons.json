@@ -174,30 +174,24 @@
           "count": 1,
           "set": "frc",
           "number": "16",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Turbulent Shore",
           "count": 1,
           "set": "frc",
           "number": "17",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Turbulent Wetlands",
           "count": 1,
           "set": "frc",
           "number": "18",
-          "implemented": false,
-          "needs": [
-            "static-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Akroma, Angel of Fury",
@@ -217,10 +211,8 @@
           "count": 1,
           "set": "frc",
           "number": "23",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Elspeth, Sun's Champion",
@@ -551,20 +543,16 @@
           "count": 1,
           "set": "frc",
           "number": "75",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Mystic Gate",
           "count": 1,
           "set": "frc",
           "number": "76",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Prairie Stream",
@@ -587,23 +575,16 @@
           "count": 1,
           "set": "frc",
           "number": "81",
-          "implemented": false,
-          "needs": [
-            "activated-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Restless Spire",
           "count": 1,
           "set": "frc",
           "number": "82",
-          "implemented": false,
-          "needs": [
-            "scry",
-            "activated-abilities",
-            "triggers"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Shivan Reef",
@@ -767,20 +748,16 @@
           "count": 1,
           "set": "frc",
           "number": "53",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Dimir Signet",
           "count": 1,
           "set": "frc",
           "number": "56",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Fellwar Stone",
@@ -795,20 +772,16 @@
           "count": 1,
           "set": "frc",
           "number": "58",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Rakdos Signet",
           "count": 1,
           "set": "frc",
           "number": "60",
-          "implemented": false,
-          "needs": [
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Talisman of Creativity",
@@ -847,11 +820,8 @@
           "count": 1,
           "set": "frc",
           "number": "68",
-          "implemented": false,
-          "needs": [
-            "cycling",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Path of Ancestry",
@@ -866,11 +836,8 @@
           "count": 1,
           "set": "frc",
           "number": "78",
-          "implemented": false,
-          "needs": [
-            "cycling",
-            "activated-abilities"
-          ]
+          "implemented": true,
+          "needs": []
         },
         {
           "name": "Plains",

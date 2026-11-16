@@ -66,6 +66,9 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
     out.subtypes = [...new Set([...(out.subtypes ?? []), ...(c.animated.subtypes ?? [])])];
     out.power = c.animated.power;
     out.toughness = c.animated.toughness;
+    if (c.animated.colors) out.colors = [...c.animated.colors];
+    if (c.animated.keywords) out.keywords = [...new Set([...(out.keywords ?? []), ...c.animated.keywords])];
+    if (c.animated.statics) out.statics = [...(out.statics ?? []), ...c.animated.statics];
   }
   // Station (rule 702.184): an artifact creature at its threshold, and abilities that only work with enough charge counters.
   if (def.station) {

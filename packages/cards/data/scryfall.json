@@ -10331,6 +10331,28 @@
       }
     ]
   },
+  "kobolds-of-kher-keep-token": {
+    "name": "Kobolds of Kher Keep",
+    "typeLine": "Token Creature — Kobold",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "10",
+    "artist": "Paolo Parente",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548",
+      "normal": "https://cards.scryfall.io/normal/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548",
+      "large": "https://cards.scryfall.io/large/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/10/kobolds-of-kher-keep?utm_source=api",
+    "scryfallId": "d0d630b2-1e42-4cf7-bfa1-36d5c135877b",
+    "relatedTokens": [
+      {
+        "name": "Kobolds of Kher Keep",
+        "scryfallId": "d0d630b2-1e42-4cf7-bfa1-36d5c135877b"
+      }
+    ]
+  },
   "korvold-fae-cursed-king": {
     "name": "Korvold, Fae-Cursed King",
     "typeLine": "Legendary Creature — Dragon Noble",
@@ -11353,6 +11375,28 @@
     "scryfallUri": "https://scryfall.com/card/fca/25/mangara-the-diplomat?utm_source=api",
     "scryfallId": "232b5c18-0a0a-425d-89aa-de2db833a22c",
     "relatedTokens": []
+  },
+  "map-token": {
+    "name": "Map",
+    "typeLine": "Token Artifact — Map",
+    "oracleText": "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as a sorcery. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard.)",
+    "set": "tfrc",
+    "number": "14",
+    "artist": "Francesca Baerald",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819",
+      "normal": "https://cards.scryfall.io/normal/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819",
+      "large": "https://cards.scryfall.io/large/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/14/map?utm_source=api",
+    "scryfallId": "91613970-c25c-4959-b5b0-b6e2a7657634",
+    "relatedTokens": [
+      {
+        "name": "Map",
+        "scryfallId": "91613970-c25c-4959-b5b0-b6e2a7657634"
+      }
+    ]
   },
   "martial-coup": {
     "name": "Martial Coup",

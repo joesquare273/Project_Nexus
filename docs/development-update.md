@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture R1: lands and mana (2026-11-16)
+
+- 14 cards: the Azorius, Dimir, Izzet and Rakdos Signets, Reflecting Pool, Mystic Gate, the three Turbulent lands, Contaminated and Perilous Landscape, Kher Keep, Restless Anchorage and Restless Spire, plus the Kobolds of Kher Keep and Map tokens. Multiverse Reforged now has 50 of its 93 distinct cards built.
+- Engine: lands that enter tapped unless opponents control eight or more lands (`entersTappedUnless.opponentsLands`), and land animation with colors, keywords and abilities (`Animation`: `colors`, `keywords`, `statics`).
+- Tests: `packages/bots/test/frc-cards.test.ts`. `mana-abilities.test.ts` now skips Fellwar Stone (built at import), which needs an opponent's lands.
+
 ### Reality Fracture: the Multiverse Reforged precon imported (2026-11-16)
 
 - The next set is Reality Fracture. Its only Commander deck, **Multiverse Reforged** (Jace, Multiverse Architect; white, blue, black and red), comes from MTGJSON (`import-precons.ts frc`): 60 new definitions in `frc.json` and the exact decklist in `frc-precons.json` (`FRC_PRECONS`, also in `ALL_PRECONS`). 40 of its 97 entries play already; the rest are `notBuilt` (groups R1-R5 in docs/commander.md).
