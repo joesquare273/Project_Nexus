@@ -776,5 +776,472 @@
     "power": "1",
     "toughness": "1",
     "colors": []
+  },
+  "1159d02c-0291-42de-91e6-e9a49d5ed968": {
+    "name": "Angel",
+    "typeLine": "Token Creature — Angel",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "1",
+    "artist": "Harkalé Linaï",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317",
+      "normal": "https://cards.scryfall.io/normal/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317",
+      "large": "https://cards.scryfall.io/large/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/1/1159d02c-0291-42de-91e6-e9a49d5ed968.jpg?1789737317"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/1/angel?utm_source=api",
+    "scryfallId": "1159d02c-0291-42de-91e6-e9a49d5ed968",
+    "relatedTokens": [
+      {
+        "name": "Angel",
+        "scryfallId": "1159d02c-0291-42de-91e6-e9a49d5ed968"
+      }
+    ],
+    "power": "4",
+    "toughness": "4",
+    "colors": [
+      "W"
+    ]
+  },
+  "dc2dff97-a68b-497f-a004-1e14ba5116ea": {
+    "name": "Gingerbrute Token",
+    "typeLine": "Token Artifact Creature — Food Golem",
+    "oracleText": "Haste\n{1}: This token can't be blocked this turn except by creatures with haste.\n{2}, {T}, Sacrifice this token: You gain 3 life.\n(This token's mana cost is {1}.)",
+    "set": "tfrc",
+    "number": "12",
+    "artist": "Alexandre Honoré",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861",
+      "normal": "https://cards.scryfall.io/normal/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861",
+      "large": "https://cards.scryfall.io/large/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/c/dc2dff97-a68b-497f-a004-1e14ba5116ea.jpg?1792371861"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/12/gingerbrute-token?utm_source=api",
+    "scryfallId": "dc2dff97-a68b-497f-a004-1e14ba5116ea",
+    "relatedTokens": [
+      {
+        "name": "Gingerbrute Token",
+        "scryfallId": "dc2dff97-a68b-497f-a004-1e14ba5116ea"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "e41f83c6-c20f-455a-b630-5fad99fa54ad": {
+    "name": "Myr",
+    "typeLine": "Token Artifact Creature — Myr",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "15",
+    "artist": "Michele Giorgi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643",
+      "normal": "https://cards.scryfall.io/normal/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643",
+      "large": "https://cards.scryfall.io/large/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/4/e41f83c6-c20f-455a-b630-5fad99fa54ad.jpg?1789737643"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/15/myr?utm_source=api",
+    "scryfallId": "e41f83c6-c20f-455a-b630-5fad99fa54ad",
+    "relatedTokens": [
+      {
+        "name": "Myr",
+        "scryfallId": "e41f83c6-c20f-455a-b630-5fad99fa54ad"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f": {
+    "name": "Soldier",
+    "typeLine": "Token Creature — Soldier",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "3",
+    "artist": "Magali Villeneuve",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284",
+      "normal": "https://cards.scryfall.io/normal/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284",
+      "large": "https://cards.scryfall.io/large/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/5/a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f.jpg?1789737284"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/3/soldier?utm_source=api",
+    "scryfallId": "a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f",
+    "relatedTokens": [
+      {
+        "name": "Soldier",
+        "scryfallId": "a58c2fc3-c07f-4f06-a9d5-1d0fe3dbde1f"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "b7171de9-476d-4bfa-8cc0-b4fbc168cf4d": {
+    "name": "Citizen",
+    "typeLine": "Token Creature — Citizen",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "11",
+    "artist": "Maria Poliakova",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561",
+      "normal": "https://cards.scryfall.io/normal/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561",
+      "large": "https://cards.scryfall.io/large/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/7/b7171de9-476d-4bfa-8cc0-b4fbc168cf4d.jpg?1789737561"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/11/citizen?utm_source=api",
+    "scryfallId": "b7171de9-476d-4bfa-8cc0-b4fbc168cf4d",
+    "relatedTokens": [
+      {
+        "name": "Citizen",
+        "scryfallId": "b7171de9-476d-4bfa-8cc0-b4fbc168cf4d"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "G",
+      "W"
+    ]
+  },
+  "f5d782a4-6726-4d64-9977-82ea2ab77e0f": {
+    "name": "Insect",
+    "typeLine": "Token Creature — Insect",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "2",
+    "artist": "Michele Giorgi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199",
+      "normal": "https://cards.scryfall.io/normal/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199",
+      "large": "https://cards.scryfall.io/large/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/5/f5d782a4-6726-4d64-9977-82ea2ab77e0f.jpg?1789737199"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/2/insect?utm_source=api",
+    "scryfallId": "f5d782a4-6726-4d64-9977-82ea2ab77e0f",
+    "relatedTokens": [
+      {
+        "name": "Insect",
+        "scryfallId": "f5d782a4-6726-4d64-9977-82ea2ab77e0f"
+      }
+    ],
+    "power": "2",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "e9c68c64-f3b9-45b7-83d1-bd1439a49942": {
+    "name": "Phyrexian Mite",
+    "typeLine": "Token Artifact Creature — Phyrexian Mite",
+    "oracleText": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+    "set": "tfrc",
+    "number": "16",
+    "artist": "Oriana Menendez",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661",
+      "normal": "https://cards.scryfall.io/normal/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661",
+      "large": "https://cards.scryfall.io/large/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/e/9/e9c68c64-f3b9-45b7-83d1-bd1439a49942.jpg?1789737661"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/16/phyrexian-mite?utm_source=api",
+    "scryfallId": "e9c68c64-f3b9-45b7-83d1-bd1439a49942",
+    "relatedTokens": [
+      {
+        "name": "Phyrexian Mite",
+        "scryfallId": "e9c68c64-f3b9-45b7-83d1-bd1439a49942"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": []
+  },
+  "7b7f2e3a-ec43-4408-affd-a09338566ce3": {
+    "name": "Incubator // Phyrexian",
+    "typeLine": "Token Artifact — Incubator // Token Artifact Creature — Phyrexian",
+    "oracleText": "Incubator\n{2}: Transform this artifact.\n\n//\n\nPhyrexian\n",
+    "set": "tfrc",
+    "number": "13",
+    "artist": "Johann Bodin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993",
+      "normal": "https://cards.scryfall.io/normal/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993",
+      "large": "https://cards.scryfall.io/large/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/b/7b7f2e3a-ec43-4408-affd-a09338566ce3.jpg?1789599993"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/13/incubator-phyrexian?utm_source=api",
+    "scryfallId": "7b7f2e3a-ec43-4408-affd-a09338566ce3",
+    "relatedTokens": [
+      {
+        "name": "Incubator // Phyrexian",
+        "scryfallId": "7b7f2e3a-ec43-4408-affd-a09338566ce3"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Incubator",
+        "typeLine": "Token Artifact — Incubator",
+        "oracleText": "{2}: Transform this artifact.",
+        "colors": []
+      },
+      {
+        "name": "Phyrexian",
+        "typeLine": "Token Artifact Creature — Phyrexian",
+        "oracleText": "",
+        "power": "0",
+        "toughness": "0",
+        "colors": []
+      }
+    ]
+  },
+  "06a96ac2-94a4-4b1c-a3c5-add1a3112cb2": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "4",
+    "artist": "Kim Sokol",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345",
+      "normal": "https://cards.scryfall.io/normal/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345",
+      "large": "https://cards.scryfall.io/large/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/6/06a96ac2-94a4-4b1c-a3c5-add1a3112cb2.jpg?1789737345"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/4/spirit?utm_source=api",
+    "scryfallId": "06a96ac2-94a4-4b1c-a3c5-add1a3112cb2",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "06a96ac2-94a4-4b1c-a3c5-add1a3112cb2"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "21a614b0-2e65-4ea0-94c3-9c9afa0bc03c": {
+    "name": "Shark",
+    "typeLine": "Token Creature — Shark",
+    "oracleText": "Flying",
+    "set": "tfrc",
+    "number": "6",
+    "artist": "Caio Monteiro",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376",
+      "normal": "https://cards.scryfall.io/normal/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376",
+      "large": "https://cards.scryfall.io/large/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/1/21a614b0-2e65-4ea0-94c3-9c9afa0bc03c.jpg?1789737376"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/6/shark?utm_source=api",
+    "scryfallId": "21a614b0-2e65-4ea0-94c3-9c9afa0bc03c",
+    "relatedTokens": [
+      {
+        "name": "Shark",
+        "scryfallId": "21a614b0-2e65-4ea0-94c3-9c9afa0bc03c"
+      }
+    ],
+    "power": "*",
+    "toughness": "*",
+    "colors": [
+      "U"
+    ]
+  },
+  "14474e29-27a4-475a-9d2c-eb1d6c146421": {
+    "name": "Zombie Army",
+    "typeLine": "Token Creature — Zombie Army",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "8",
+    "artist": "David Astruga",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477",
+      "normal": "https://cards.scryfall.io/normal/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477",
+      "large": "https://cards.scryfall.io/large/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/4/14474e29-27a4-475a-9d2c-eb1d6c146421.jpg?1789737477"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/8/zombie-army?utm_source=api",
+    "scryfallId": "14474e29-27a4-475a-9d2c-eb1d6c146421",
+    "relatedTokens": [
+      {
+        "name": "Zombie Army",
+        "scryfallId": "14474e29-27a4-475a-9d2c-eb1d6c146421"
+      }
+    ],
+    "power": "0",
+    "toughness": "0",
+    "colors": [
+      "B"
+    ]
+  },
+  "0c7f299e-4774-4e8b-bb0e-db27d57d2621": {
+    "name": "Goblin",
+    "typeLine": "Token Creature — Goblin",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "9",
+    "artist": "Paolo Parente",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534",
+      "normal": "https://cards.scryfall.io/normal/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534",
+      "large": "https://cards.scryfall.io/large/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/c/0c7f299e-4774-4e8b-bb0e-db27d57d2621.jpg?1789737534"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/9/goblin?utm_source=api",
+    "scryfallId": "0c7f299e-4774-4e8b-bb0e-db27d57d2621",
+    "relatedTokens": [
+      {
+        "name": "Goblin",
+        "scryfallId": "0c7f299e-4774-4e8b-bb0e-db27d57d2621"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "R"
+    ]
+  },
+  "03992f88-7a15-4234-9bed-b7617d7ff09c": {
+    "name": "Treasure",
+    "typeLine": "Token Artifact — Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tfra",
+    "number": "15",
+    "artist": "Alayna Danner",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245",
+      "normal": "https://cards.scryfall.io/normal/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245",
+      "large": "https://cards.scryfall.io/large/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/3/03992f88-7a15-4234-9bed-b7617d7ff09c.jpg?1789735245"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/15/treasure?utm_source=api",
+    "scryfallId": "03992f88-7a15-4234-9bed-b7617d7ff09c",
+    "relatedTokens": [
+      {
+        "name": "Smaug",
+        "scryfallId": "bb4ac08f-f6a5-49d6-91e9-38c4f217932b"
+      },
+      {
+        "name": "Treasure",
+        "scryfallId": "03992f88-7a15-4234-9bed-b7617d7ff09c"
+      },
+      {
+        "name": "Goblin Shaman",
+        "scryfallId": "0d9461c3-f545-4efb-926e-759961db0495"
+      },
+      {
+        "name": "Smoke Blessing",
+        "scryfallId": "5eb01bef-8989-4b38-a303-0aafab1b33e5"
+      }
+    ],
+    "colors": []
+  },
+  "0526330e-40eb-4c5f-b0f5-5489839e5f44": {
+    "name": "Rogue",
+    "typeLine": "Token Creature — Rogue",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "7",
+    "artist": "Maria Poliakova",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431",
+      "normal": "https://cards.scryfall.io/normal/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431",
+      "large": "https://cards.scryfall.io/large/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/0/5/0526330e-40eb-4c5f-b0f5-5489839e5f44.jpg?1789737431"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/7/rogue?utm_source=api",
+    "scryfallId": "0526330e-40eb-4c5f-b0f5-5489839e5f44",
+    "relatedTokens": [
+      {
+        "name": "Rogue",
+        "scryfallId": "0526330e-40eb-4c5f-b0f5-5489839e5f44"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "B"
+    ]
+  },
+  "d0d630b2-1e42-4cf7-bfa1-36d5c135877b": {
+    "name": "Kobolds of Kher Keep",
+    "typeLine": "Token Creature — Kobold",
+    "oracleText": "",
+    "set": "tfrc",
+    "number": "10",
+    "artist": "Paolo Parente",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548",
+      "normal": "https://cards.scryfall.io/normal/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548",
+      "large": "https://cards.scryfall.io/large/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/0/d0d630b2-1e42-4cf7-bfa1-36d5c135877b.jpg?1789737548"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/10/kobolds-of-kher-keep?utm_source=api",
+    "scryfallId": "d0d630b2-1e42-4cf7-bfa1-36d5c135877b",
+    "relatedTokens": [
+      {
+        "name": "Kobolds of Kher Keep",
+        "scryfallId": "d0d630b2-1e42-4cf7-bfa1-36d5c135877b"
+      }
+    ],
+    "power": "0",
+    "toughness": "1",
+    "colors": [
+      "R"
+    ]
+  },
+  "91613970-c25c-4959-b5b0-b6e2a7657634": {
+    "name": "Map",
+    "typeLine": "Token Artifact — Map",
+    "oracleText": "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as a sorcery. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard.)",
+    "set": "tfrc",
+    "number": "14",
+    "artist": "Francesca Baerald",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819",
+      "normal": "https://cards.scryfall.io/normal/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819",
+      "large": "https://cards.scryfall.io/large/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/1/91613970-c25c-4959-b5b0-b6e2a7657634.jpg?1789737819"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfrc/14/map?utm_source=api",
+    "scryfallId": "91613970-c25c-4959-b5b0-b6e2a7657634",
+    "relatedTokens": [
+      {
+        "name": "Map",
+        "scryfallId": "91613970-c25c-4959-b5b0-b6e2a7657634"
+      }
+    ],
+    "colors": []
+  },
+  "8d1e424f-6407-4f8c-bed2-eaf148237c81": {
+    "name": "Jace",
+    "typeLine": "Token Planeswalker — Jace",
+    "oracleText": "−1: Surveil 1. (Look at the top card of your library. You may put that card into your graveyard.)\n−3: Draw a card.",
+    "set": "tfra",
+    "number": "5",
+    "artist": "Manuel Castañón",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324",
+      "normal": "https://cards.scryfall.io/normal/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324",
+      "large": "https://cards.scryfall.io/large/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/d/8d1e424f-6407-4f8c-bed2-eaf148237c81.jpg?1789738324"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/5/jace?utm_source=api",
+    "scryfallId": "8d1e424f-6407-4f8c-bed2-eaf148237c81",
+    "relatedTokens": [
+      {
+        "name": "Jace",
+        "scryfallId": "8d1e424f-6407-4f8c-bed2-eaf148237c81"
+      }
+    ],
+    "colors": [
+      "U"
+    ]
   }
 }

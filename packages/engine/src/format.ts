@@ -77,6 +77,8 @@ export const COMMANDER: FormatConfig = {
  * of Eternities).
  */
 export function canBeCommander(def: CardDefinition): boolean {
+  // "This card can be your commander" (rule 903.3d).
+  if (def.canBeCommander) return true;
   if (!def.supertypes?.includes('Legendary')) return false;
   return def.types.includes('creature') || !!def.subtypes?.includes('Vehicle') || (!!def.subtypes?.includes('Spacecraft') && def.power !== undefined);
 }
@@ -101,11 +103,11 @@ export function validateCommander(
   const def = cardDefs[commander];
   if (!def) return [`Unknown commander "${commander}".`];
   const errors: string[] = [];
-  if (!canBeCommander(def)) errors.push(`"${def.name}" isn't a legendary creature, Vehicle or Spacecraft, so it can't be a commander.`);
+  if (!canBeCommander(def)) errors.push(`"${def.name}" isn't a legendary creature, Vehicle or Spacecraft (or a card that says it can be your commander), so it can't be a commander.`);
   const second = partner !== undefined ? cardDefs[partner] : undefined;
   if (partner !== undefined && !second) return [...errors, `Unknown commander "${partner}".`];
   if (second) {
-    if (!canBeCommander(second)) errors.push(`"${second.name}" isn't a legendary creature, Vehicle or Spacecraft, so it can't be a commander.`);
+    if (!canBeCommander(second)) errors.push(`"${second.name}" isn't a legendary creature, Vehicle or Spacecraft (or a card that says it can be your commander), so it can't be a commander.`);
     if (!canPartner(def, second)) errors.push(`${def.name} and ${second.name} can't be commanders together: both need Partner (or to partner with each other).`);
   }
   const identity = new Set([...(def.colorIdentity ?? []), ...(second?.colorIdentity ?? [])]);

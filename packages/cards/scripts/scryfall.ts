@@ -247,12 +247,12 @@ function checkTokens(): void {
  * by "set/number" when no card definition uses them.
  */
 async function savePreconPrintings(): Promise<void> {
-  const { FIN_PRECONS, EOC_PRECONS, SCRYFALL_PRINTINGS } = await import('../src/index.ts');
+  const { ALL_PRECONS, SCRYFALL_PRINTINGS } = await import('../src/index.ts');
   const printingsFile = new URL('../data/precon-printings.json', import.meta.url);
   const kept: Record<string, ScryfallInfo> = JSON.parse(readFileSync(printingsFile, 'utf8'));
   const have = new Set([...Object.keys(SCRYFALL_PRINTINGS), ...Object.values(saved).map((i) => `${i.set}/${i.number}`)]);
   const need = new Map<string, { set: string; number: string }>();
-  for (const deck of [...FIN_PRECONS, ...EOC_PRECONS]) {
+  for (const deck of ALL_PRECONS) {
     for (const c of [deck.commander, ...deck.cards]) if (!have.has(`${c.set}/${c.number}`)) need.set(`${c.set}/${c.number}`, { set: c.set, number: c.number });
   }
   if (need.size === 0) return;

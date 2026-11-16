@@ -5,7 +5,7 @@
 
 import { BOOSTER_CARDS, SECRET_LAIR_CARDS, SECRET_LAIR_DROPS, type BoosterCard, type Finish } from '@nexus/cards/boosters';
 import { ECONOMY } from './economy.ts';
-import { EOC_PRECONS } from '@nexus/cards';
+import { EOC_PRECONS, FRC_PRECONS } from '@nexus/cards';
 import { STARTER_CHOICES, preconCards, storePreconCards } from './starter.ts';
 
 export interface StoreItem {
@@ -122,6 +122,25 @@ export function storeSets(): StoreSet[] {
         })),
         // The two Edge of Eternities Commander precons, each saved as a deck when bought.
         ...EOC_PRECONS.map((p) => {
+          const precon = storePreconCards(p.name)!;
+          return {
+            key: `precon-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+            name: p.name,
+            line: `Commander precon (${p.commander.name}): 100 cards, saved as a deck`,
+            price: prices.precon,
+            cards: precon.cards,
+            cover: precon.commander,
+            deck: { name: p.name, commander: precon.commander },
+          };
+        }),
+      ],
+    },
+    {
+      name: 'Reality Fracture',
+      ready: true,
+      items: [
+        // The Reality Fracture Commander precon, saved as a deck when bought.
+        ...FRC_PRECONS.map((p) => {
           const precon = storePreconCards(p.name)!;
           return {
             key: `precon-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,

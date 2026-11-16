@@ -11,6 +11,8 @@ import ficPrecons from '../data/fic-precons.json' with { type: 'json' };
 import eoc from '../data/eoc.json' with { type: 'json' };
 import eocPrecons from '../data/eoc-precons.json' with { type: 'json' };
 import eoeSet from '../data/eoe-set.json' with { type: 'json' };
+import frc from '../data/frc.json' with { type: 'json' };
+import frcPrecons from '../data/frc-precons.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import preconPrintings from '../data/precon-printings.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
@@ -31,7 +33,8 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
 // store-cards.json: cards sold only in the Store that no set file defines (Snapcaster Mage).
 // eoc.json: the Edge of Eternities Commander precons' cards no other file defines (import-precons.ts eoc).
 // eoe-set.json: the rest of the Edge of Eternities main set, for its packs (import-sets.ts eoe).
-const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...tokens];
+// frc.json: the Reality Fracture Commander precon's cards no other file defines (import-precons.ts frc).
+const all = [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...frc, ...tokens];
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 
@@ -110,8 +113,11 @@ export const FIN_PRECONS = ficPrecons.decks as PreconDeck[];
 /** The two Edge of Eternities Commander precons (Counter Intelligence, World Shaper), being built. */
 export const EOC_PRECONS = eocPrecons.decks as PreconDeck[];
 
+/** The Reality Fracture Commander precon (Multiverse Reforged, led by Jace, Multiverse Architect), being built. */
+export const FRC_PRECONS = frcPrecons.decks as PreconDeck[];
+
 /** Every Commander precon the game knows, for looking one up by name. */
-const ALL_PRECONS = [...FIN_PRECONS, ...EOC_PRECONS];
+export const ALL_PRECONS = [...FIN_PRECONS, ...EOC_PRECONS, ...FRC_PRECONS];
 
 /** Card ids by exact card name, for turning decklists into decks. */
 export const CARD_IDS_BY_NAME: Record<string, CardDefId> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));

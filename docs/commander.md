@@ -26,6 +26,30 @@ card is built it can't be cast or played (since 2026-10-29; all precon
 cards are built).
 The Starter Kit cards that also appear in the precons are shared.
 
+## Reality Fracture Commander precon (imported 2026-11-16)
+
+Reality Fracture has one Commander deck. It was imported with the same script
+(`import-precons.ts frc`, MTGJSON's `MultiverseReforged_FRC`):
+
+| Deck | Commander | Fully built |
+|---|---|---|
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 40/97 entries (36 of 93 distinct cards) |
+
+- **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
+- **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
+- **The commander** is a planeswalker that says "Jace, Multiverse Architect can be your commander" (rule 903.3d). New definition field: `canBeCommander` (the importer sets it from that line; `format.ts canBeCommander`).
+- **Store and starter:** the deck is sold in the Store's Reality Fracture tab (2,000, saved as a deck), offered as a free starter, and shown in the Collection's Reality Fracture tab. Its packs aren't imported; only the precon so far.
+
+What the unbuilt cards need, most first: triggers (22), static abilities (17), activated abilities (16), spell effects (14), X costs (5), cycling (3), landfall and Jace's empower (2 each), and one each of eminence, mill, morph, protection, impending, corrupted, incubate, transform, amass, Treasure, scry and surveil.
+
+The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
+
+- **R1: lands and mana.** The four Signets, Reflecting Pool, Mystic Gate, the Turbulent lands, the Landscapes, Kher Keep and the Restless lands.
+- **R2: spells.** Fact or Fiction, Despark, Brainsurge, Teferi's Reproach, Fatehold Charm, Plan for All Outcomes, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Mass Polymorph, Occult Epiphany, Synthetic Destiny, Grand Crescendo, White Sun's Twilight, Shark Typhoon.
+- **R3: creatures.** Akroma, Avacyn, Darksteel Angel, Serra's Emissary, Archfiend of Despair, Archon of Cruelty, Overlord of the Mistmoors, The Ur-Sphinx, Memnarch, Ginger, Jhoira, Niv-Mizzet, Omnath and Venser.
+- **R4: artifacts and enchantments.** Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.
+- **R5: the planeswalkers and the commanders.** Jace, Multiverse Architect (with empower), Nissa, Leyline Tamer, Dack Fayden, Ob Nixilis, the Ascended, Tamiyo, Upriser Crowned and Elspeth, Sun's Champion.
+
 ## Edge of Eternities Commander precons (complete 2026-11-06)
 
 Imported with the same script (`import-precons.ts eoc`); every card is built:

@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture: the Multiverse Reforged precon imported (2026-11-16)
+
+- The next set is Reality Fracture. Its only Commander deck, **Multiverse Reforged** (Jace, Multiverse Architect; white, blue, black and red), comes from MTGJSON (`import-precons.ts frc`): 60 new definitions in `frc.json` and the exact decklist in `frc-precons.json` (`FRC_PRECONS`, also in `ALL_PRECONS`). 40 of its 97 entries play already; the rest are `notBuilt` (groups R1-R5 in docs/commander.md).
+- Card data and art are cached (`npm run scryfall`). Running the import scripts in a cloud session needs `NODE_USE_ENV_PROXY=1` for Node's fetch.
+- Rule 903.3d: a card that says it "can be your commander" can be one (`canBeCommander` on the definition; Jace is a planeswalker).
+- Store: a Reality Fracture tab with the precon (2,000, saved as a deck). It's a free starter choice, and the Collection has a Reality Fracture tab with its cards.
+- Tests: `cards/test/frc-precons.test.ts` (100 cards, every printing cached, a legal Commander deck that starts games with its printings) and the Store and starter tests in `server/test/collection.test.ts`.
+
 ### Administration page (2026-11-16)
 
 - An admin flag in the database (`profiles.is_admin`; the owner's account Solis is the admin) and an Admin page listing every account's Aether Shards and fragments. An admin can set or change anyone's shards; each change goes through the ledger and an `admin_actions` audit row with a note. See docs/economy.md, "Administration".

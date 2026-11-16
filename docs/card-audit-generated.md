@@ -1,4 +1,4 @@
-# Card audit: 1118 built cards
+# Card audit: 1121 built cards
 
 ## tooManyTargets (11)
 - Sun Titan (fic) — asks 2, text says "target" 1x

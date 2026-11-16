@@ -9,7 +9,7 @@ import { CardShine } from '../components/Card.tsx';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
 import { DecksView } from './DecksView.tsx';
-import { bestLook, browse, finishChips, finishText, isUnbuilt, PRECON_CARDS, SETS, SORTS, type Show, type SortBy } from './browse.ts';
+import { bestLook, browse, finishChips, finishText, FRC_PRECON_CARDS, isUnbuilt, PRECON_CARDS, SETS, SORTS, type BinderSet, type Show, type SortBy } from './browse.ts';
 import { addPack, buyPacks, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
@@ -589,7 +589,7 @@ const EOE_GROUPS: Group[] = [
   { name: 'Secret Lair', test: () => true, secretLair: true },
   { name: 'Tokens and art cards', test: (c) => c.set === 'teoe' || c.set === 'aeoe' },
 ];
-const GROUPS_BY_SET: Record<'fin' | 'eoe', Group[]> = { fin: GROUPS, eoe: EOE_GROUPS };
+const GROUPS_BY_SET: Record<BinderSet, Group[]> = { fin: GROUPS, eoe: EOE_GROUPS, frc: [{ name: 'Commander deck', test: () => true, precons: true }] };
 
 const SHOWS: { show: Show; label: string }[] = [
   { show: 'all', label: 'All' },
@@ -598,14 +598,14 @@ const SHOWS: { show: Show; label: string }[] = [
 ];
 
 function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Collection; onPreview: (c: BoosterCard | null) => void }) {
-  const [binderSet, setBinderSet] = useState<'fin' | 'eoe'>('fin');
+  const [binderSet, setBinderSet] = useState<BinderSet>('fin');
   const [group, setGroup] = useState(0);
   const [show, setShow] = useState<Show>('all');
   const [sort, setSort] = useState<SortBy>('number');
   const groups = GROUPS_BY_SET[binderSet];
   const g = groups[group] ?? groups[0]!;
   const cards = useMemo(
-    () => (g.precons ? PRECON_CARDS : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
+    () => (g.precons ? (binderSet === 'frc' ? FRC_PRECON_CARDS : PRECON_CARDS) : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
     [mod, g, binderSet],
   );
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;

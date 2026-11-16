@@ -4,7 +4,7 @@
 
 import { finishLook, finishName, type BoosterCard, type Finish } from '@nexus/cards/boosters';
 import type { CardFinish } from '@nexus/engine';
-import { CARD_DEFS, CARD_IDS_BY_NAME, FIN_PRECONS, SCRYFALL_PRINTINGS } from '@nexus/cards';
+import { CARD_DEFS, CARD_IDS_BY_NAME, FIN_PRECONS, FRC_PRECONS, SCRYFALL_PRINTINGS, type PreconDeck } from '@nexus/cards';
 import { manaValue, parseManaCost } from '@nexus/engine';
 import { owned, type Collection } from './collection.ts';
 
@@ -19,9 +19,12 @@ export const SORTS: { by: SortBy; label: string }[] = [
 ];
 
 /** Sets in the collection; ones that aren't finished show greyed out as Coming soon. */
-export const SETS: { code: 'fin' | 'eoe'; name: string; ready: boolean }[] = [
+export type BinderSet = 'fin' | 'eoe' | 'frc';
+export const SETS: { code: BinderSet; name: string; ready: boolean }[] = [
   { code: 'fin', name: 'Final Fantasy', ready: true },
   { code: 'eoe', name: 'Edge of Eternities', ready: true },
+  // Only its Commander precon so far (no packs).
+  { code: 'frc', name: 'Reality Fracture', ready: true },
 ];
 
 /** Every printing the game knows (precons, Starter Kits), shown like booster cards. */
@@ -29,18 +32,23 @@ export const PRINTING_CARDS: BoosterCard[] = Object.values(SCRYFALL_PRINTINGS)
   .filter((p) => p.scryfallId)
   .map((p) => ({ id: p.scryfallId!, name: p.name, set: p.set, number: p.number, rarity: 'common', typeLine: p.typeLine, colors: [], border: 'black', finishes: ['nonfoil'], layout: 'normal', images: [p.image] }));
 
-/** The four Final Fantasy Commander precons' printings, once each. */
-export const PRECON_CARDS: BoosterCard[] = (() => {
+/** A set's Commander precons' printings, once each. */
+function preconCards(decks: readonly PreconDeck[]): BoosterCard[] {
   const byPrinting = new Map(PRINTING_CARDS.map((c) => [`${c.set}/${c.number}`, c]));
   const out = new Map<string, BoosterCard>();
-  for (const deck of FIN_PRECONS) {
+  for (const deck of decks) {
     for (const k of [deck.commander, ...deck.cards]) {
       const c = byPrinting.get(`${k.set}/${k.number}`);
       if (c) out.set(c.id, c);
     }
   }
   return [...out.values()];
-})();
+}
+
+/** The four Final Fantasy Commander precons' printings, once each. */
+export const PRECON_CARDS: BoosterCard[] = preconCards(FIN_PRECONS);
+/** The Reality Fracture precon's printings, once each. */
+export const FRC_PRECON_CARDS: BoosterCard[] = preconCards(FRC_PRECONS);
 
 /** A card that isn't built in the engine yet: shown, but it can't be used in games. Tokens and art cards are never "unbuilt". */
 export function isUnbuilt(c: BoosterCard): boolean {

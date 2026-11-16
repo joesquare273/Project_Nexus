@@ -1730,6 +1730,8 @@ export interface CardDefinition {
   partner?: boolean;
   /** "Partner with [name]": this card and that one can be commanders together. */
   partnerWith?: string;
+  /** "[This card] can be your commander" (rule 903.3d): a commander though it isn't a creature (Jace, Multiverse Architect). */
+  canBeCommander?: boolean;
   /**
    * Station (rule 702.184, Spacecraft): "Tap another creature you control: put
    * charge counters equal to its power on this. Station only as a sorcery."
