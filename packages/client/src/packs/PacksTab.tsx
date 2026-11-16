@@ -20,12 +20,14 @@ type Boosters = typeof import('@nexus/cards/boosters');
 const PACK_PHOTOS: Record<BoosterSet, Record<PackKind, string>> = {
   fin: { play: '/packs/ff-play-booster.png', collector: '/packs/ff-collector-booster.png' },
   eoe: { play: '/packs/eoe-play-booster.png', collector: '/packs/eoe-collector-booster.png' },
+  fra: { play: '/packs/fra-play-booster.png', collector: '/packs/fra-collector-booster.png' },
 };
 
 /** Each set's name on the shop's set choice and on the drawn pack. */
 const SET_NAMES: Record<BoosterSet, { name: string; brand: string }> = {
   fin: { name: 'Final Fantasy', brand: 'FINAL FANTASY' },
   eoe: { name: 'Edge of Eternities', brand: 'EDGE OF ETERNITIES' },
+  fra: { name: 'Reality Fracture', brand: 'REALITY FRACTURE' },
 };
 
 const PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };
@@ -62,6 +64,22 @@ const PACKS: Record<BoosterSet, PackInfo[]> = {
       title: 'Collector Booster',
       blurb: '15 cards and an art card or foil token: 10+ foils, a Stellar Sights land in every pack, extended art, borderless, Japan Showcase and galaxy foils.',
       art: 'Tezzeret, Cruel Captain',
+      ready: true,
+    },
+  ],
+  fra: [
+    {
+      kind: 'play',
+      title: 'Play Booster',
+      blurb: '14 cards and a token or counter card. Three echoed pairs cards (two from the same pair), one rare or mythic, one foil, and a chance at Special Guests.',
+      art: 'Jace, Reality Sculptor',
+      ready: true,
+    },
+    {
+      kind: 'collector',
+      title: 'Collector Booster',
+      blurb: '15 cards and a foil token or art card: 11+ foils, a foil echoed pair, braintwister and Commander cards, shattered mirror, Japan Showcase and the serialized Bloodline Recollector.',
+      art: 'Emrakul, the Exigent Doom',
       ready: true,
     },
   ],
@@ -306,7 +324,11 @@ function Odds({ mod, set, kind, onClose }: { mod: Boosters; set: BoosterSet; kin
           </div>
         ))}
         <p className="fineprint">
-          {set === 'eoe' ? (
+          {set === 'fra' ? (
+            <>
+              Odds follow Wizards of the Coast's "Collecting Reality Fracture" article. Where it says "less than 1%", those outcomes share what the slot's other odds leave over. Two of the three echoed pairs cards are always the two halves of one pair. Japan Showcase cards are in English here.
+            </>
+          ) : set === 'eoe' ? (
             <>
               Odds follow Wizards of the Coast's "Collecting Edge of Eternities" article. Where it says "less than 1%", those outcomes share what the slot's other odds leave over. Japan Showcase cards are in English here.
             </>
@@ -585,11 +607,21 @@ const EOE_GROUPS: Group[] = [
   { name: 'Booster Fun', test: (c) => c.set === 'eoe' && n(c) >= 277 && n(c) <= 392 },
   { name: 'Stellar Sights', test: (c) => c.set === 'eos' },
   { name: 'Commander Booster Fun', test: (c) => c.set === 'eoc' && ((n(c) >= 1 && n(c) <= 4) || (n(c) >= 25 && n(c) <= 44)) },
-  { name: 'Special Guests', test: (c) => c.set === 'spg' },
+  { name: 'Special Guests', test: (c) => c.set === 'spg' && n(c) >= 119 && n(c) <= 128 },
   { name: 'Secret Lair', test: () => true, secretLair: true },
   { name: 'Tokens and art cards', test: (c) => c.set === 'teoe' || c.set === 'aeoe' },
 ];
-const GROUPS_BY_SET: Record<BinderSet, Group[]> = { fin: GROUPS, eoe: EOE_GROUPS, frc: [{ name: 'Commander deck', test: () => true, precons: true }] };
+/** Reality Fracture, sheet by sheet (cards/src/boosters.ts), and its Commander deck. */
+const FRA_GROUPS: Group[] = [
+  { name: 'Main set', test: (c) => c.set === 'fra' && n(c) <= 290 },
+  { name: 'Booster Fun', test: (c) => c.set === 'fra' && n(c) >= 291 && n(c) <= 431 },
+  { name: 'Shattered mirror facet foils', test: (c) => c.set === 'fra' && n(c) >= 449 && n(c) <= 461 },
+  { name: 'Commander Booster Fun', test: (c) => c.set === 'frc' && ((n(c) >= 1 && n(c) <= 2) || (n(c) >= 88 && n(c) <= 103)) },
+  { name: 'Commander deck', test: () => true, precons: true },
+  { name: 'Special Guests', test: (c) => c.set === 'spg' && n(c) >= 159 && n(c) <= 168 },
+  { name: 'Tokens and art cards', test: (c) => c.set === 'tfra' || c.set === 'afra' },
+];
+const GROUPS_BY_SET: Record<BinderSet, Group[]> = { fin: GROUPS, eoe: EOE_GROUPS, fra: FRA_GROUPS };
 
 const SHOWS: { show: Show; label: string }[] = [
   { show: 'all', label: 'All' },
@@ -605,7 +637,7 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
   const groups = GROUPS_BY_SET[binderSet];
   const g = groups[group] ?? groups[0]!;
   const cards = useMemo(
-    () => (g.precons ? (binderSet === 'frc' ? FRC_PRECON_CARDS : PRECON_CARDS) : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
+    () => (g.precons ? (binderSet === 'fra' ? FRC_PRECON_CARDS : PRECON_CARDS) : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
     [mod, g, binderSet],
   );
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;

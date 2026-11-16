@@ -90,6 +90,9 @@ export const SPECIAL_FOILS: Record<string, { name: string; look: CardFinish }> =
   galaxyfoil: { name: 'Galaxy foil', look: 'foil' },
   fracturefoil: { name: 'Fracture foil', look: 'foil' },
   singularityfoil: { name: 'Singularity foil', look: 'foil' },
+  // Reality Fracture.
+  facetfoil: { name: 'Facet foil', look: 'foil' },
+  doublerainbow: { name: 'Double rainbow foil', look: 'foil' },
 };
 
 /** How a copy looks, for the shine: undefined for non-foil. */
@@ -127,8 +130,8 @@ export interface Pack {
 }
 
 /** The sets with boosters on the Packs tab. */
-export type BoosterSet = 'fin' | 'eoe';
-export const BOOSTER_SETS: readonly BoosterSet[] = ['fin', 'eoe'];
+export type BoosterSet = 'fin' | 'eoe' | 'fra';
+export const BOOSTER_SETS: readonly BoosterSet[] = ['fin', 'eoe', 'fra'];
 
 /** A random number in [0, 1). Tests pass a seeded one. */
 export type Rng = () => number;
@@ -696,12 +699,302 @@ export function openEoePack(kind: PackKind, rng: Rng = Math.random, sheets: EoeS
 
 /** Opens one pack of a set's booster. */
 export function openSetPack(set: BoosterSet, kind: PackKind, rng: Rng = Math.random): Pack {
-  return set === 'eoe' ? openEoePack(kind, rng) : openPack(kind, rng);
+  return set === 'fra' ? openFraPack(kind, rng) : set === 'eoe' ? openEoePack(kind, rng) : openPack(kind, rng);
 }
 
 /** A set's slots as percentages, for the "Pack odds" screen. */
 export function setPackOdds(set: BoosterSet, kind: PackKind): ReturnType<typeof packOdds> {
+  if (set === 'fra') return oddsOf(kind === 'play' ? FRA_PLAY_BOOSTER : FRA_COLLECTOR_BOOSTER, (cachedFraSheets ??= buildFraSheets()));
   if (set !== 'eoe') return packOdds(kind);
   const sheets = (cachedEoeSheets ??= buildEoeSheets());
   return oddsOf(kind === 'play' ? EOE_PLAY_BOOSTER : EOE_COLLECTOR_BOOSTER, sheets);
 }
+
+// ---------------------------------------------------------------------------
+// Reality Fracture (Wizards' "Collecting Reality Fracture", 2026)
+// ---------------------------------------------------------------------------
+
+/**
+ * The 43 echoed pairs (FRA 195-280), by collector number: each Multiverse card
+ * and its Echoverse counterpart, as Wizards' "The Legends of Reality Fracture"
+ * shows them side by side. The five "Way of the ..." pairs follow their
+ * planeswalkers (Liliana, Chandra, Garruk, Ajani, Jace and Tam).
+ */
+export const FRA_ECHOED_PAIRS: readonly (readonly [number, number])[] = [
+  [216, 276], [195, 242], [244, 212], [259, 229], [231, 200], [278, 277], [243, 211], [196, 227], [270, 257], [213, 258],
+  [245, 228], [260, 197], [198, 230], [271, 215], [261, 246], [279, 272], [273, 247], [248, 199], [262, 232], [201, 217],
+  [274, 233], [263, 249], [234, 202], [250, 264], [218, 235], [265, 219], [275, 203], [251, 220], [221, 252], [204, 236],
+  [205, 214], [237, 266], [206, 253], [280, 222], [240, 256], [241, 225], [209, 269], [226, 210],
+  // Way of the Necromancer / Healer, Pyromancer / Cryomancer, Wildspeaker / Deathbringer, Mentor / Warlord, Mind Sculptor / Paradox.
+  [239, 207], [254, 223], [268, 238], [208, 255], [224, 267],
+];
+
+/** Reality Fracture's print sheets, by Scryfall collector number. */
+export interface FraSheets {
+  /** FRA 1-194: 72 commons (the 10 common dual lands apart), 43 uncommons, 50 rares, 20 mythics; echoed pairs aren't on these sheets. */
+  commons: BoosterCard[];
+  uncommons: BoosterCard[];
+  rares: BoosterCard[];
+  mythics: BoosterCard[];
+  /** The 10 common dual lands (Annexes and Commons), default-frame basics (281-290), borderless tower basics (382-396). */
+  duals: BoosterCard[];
+  basics: BoosterCard[];
+  towers: BoosterCard[];
+  /** Echoed pairs (195-280) and their borderless versions (291-320), as pairs of the same rarity. */
+  pairs: Record<'uncommon' | 'rare' | 'mythic', [BoosterCard, BoosterCard][]>;
+  borderlessPairs: Record<'uncommon' | 'rare' | 'mythic', [BoosterCard, BoosterCard][]>;
+  /** Every echoed pairs card of a rarity, one at a time (the third echoed pairs card; the foil slot). */
+  echoed: Record<'uncommon' | 'rare' | 'mythic', BoosterCard[]>;
+  borderlessEchoed: Record<'uncommon' | 'rare' | 'mythic', BoosterCard[]>;
+  /** Shattered mirror (321-333; facet foil 449-461), sculptor's stronghold (334-358), braintwister series (359-381), portal view lands (397-401). */
+  shattered: RM;
+  facetShattered: RM;
+  stronghold: RM;
+  braintwister: RM & { uncommon: BoosterCard[] };
+  portal: BoosterCard[];
+  /** Extended art from the main set (423-431). */
+  extended: RM;
+  /** The serialized double rainbow foil headliner, Bloodline Recollector (402). */
+  headliner: BoosterCard[];
+  /** Japan Showcase (403-412) and their fracture foils (413-422). */
+  japan: BoosterCard[];
+  fractureJapan: BoosterCard[];
+  /** Reality Fracture Commander: borderless mythics (FRC 1-2) and extended-art rares (88-103). */
+  commanderBorderless: BoosterCard[];
+  commanderExtended: BoosterCard[];
+  /** The ten Special Guests (SPG 159-168). */
+  specialGuests: BoosterCard[];
+  tokens: BoosterCard[];
+  artCards: BoosterCard[];
+}
+
+type PairRarity = 'uncommon' | 'rare' | 'mythic';
+
+export function buildFraSheets(all: readonly BoosterCard[] = BOOSTER_CARDS): FraSheets {
+  const set = (code: string, from: number, to: number) => all.filter((c) => c.set === code && num(c) >= from && num(c) <= to);
+  const rm = (list: BoosterCard[]): RM => ({ rare: list.filter((c) => c.rarity === 'rare'), mythic: list.filter((c) => c.rarity === 'mythic') });
+  const main = set('fra', 1, 194);
+  const isDual = (c: BoosterCard) => c.rarity === 'common' && isLand(c) && / (Annex|Commons)$/.test(c.name);
+  const byNumber = new Map(set('fra', 195, 280).map((c) => [num(c), c]));
+  const borderless = set('fra', 291, 320);
+  const borderlessOf = (c: BoosterCard) => borderless.find((b) => b.name === c.name);
+  const pairs: FraSheets['pairs'] = { uncommon: [], rare: [], mythic: [] };
+  const borderlessPairs: FraSheets['borderlessPairs'] = { uncommon: [], rare: [], mythic: [] };
+  for (const [a, b] of FRA_ECHOED_PAIRS) {
+    const x = byNumber.get(a), y = byNumber.get(b);
+    if (!x || !y) continue;
+    const rarity = x.rarity as PairRarity;
+    pairs[rarity].push([x, y]);
+    const bx = borderlessOf(x), by = borderlessOf(y);
+    if (bx && by) borderlessPairs[rarity].push([bx, by]);
+  }
+  const flat = (p: [BoosterCard, BoosterCard][]) => p.flat();
+  const bt = set('fra', 359, 381);
+  return {
+    commons: main.filter((c) => c.rarity === 'common' && !isDual(c)),
+    uncommons: main.filter((c) => c.rarity === 'uncommon'),
+    rares: main.filter((c) => c.rarity === 'rare'),
+    mythics: main.filter((c) => c.rarity === 'mythic'),
+    duals: main.filter(isDual),
+    basics: set('fra', 281, 290),
+    towers: set('fra', 382, 396),
+    pairs,
+    borderlessPairs,
+    echoed: { uncommon: flat(pairs.uncommon), rare: flat(pairs.rare), mythic: flat(pairs.mythic) },
+    borderlessEchoed: { uncommon: flat(borderlessPairs.uncommon), rare: flat(borderlessPairs.rare), mythic: flat(borderlessPairs.mythic) },
+    shattered: rm(set('fra', 321, 333)),
+    facetShattered: rm(set('fra', 449, 461)),
+    stronghold: rm(set('fra', 334, 358)),
+    braintwister: { ...rm(bt), uncommon: bt.filter((c) => c.rarity === 'uncommon') },
+    portal: set('fra', 397, 401),
+    extended: rm(set('fra', 423, 431)),
+    headliner: set('fra', 402, 402),
+    japan: set('fra', 403, 412),
+    fractureJapan: set('fra', 413, 422),
+    commanderBorderless: set('frc', 1, 2),
+    commanderExtended: set('frc', 88, 103),
+    specialGuests: set('spg', 159, 168),
+    tokens: all.filter((c) => c.set === 'tfra'),
+    artCards: all.filter((c) => c.set === 'afra'),
+  };
+}
+
+const f = (label: string, weight: number, sheet: (s: FraSheets) => BoosterCard[], finish: Finish = 'nonfoil', hype: Pull['hype'] = 0, extra: Partial<Outcome<FraSheets>> = {}): Outcome<FraSheets> => ({ label, weight, sheet, finish, hype, ...extra });
+
+/**
+ * "Includes 2 cards of the same rarity from the same set of echoed pairs": a
+ * slot marked `pairWithNext` is filled with one card of a pair and the next
+ * slot with its counterpart (see openFraPack).
+ */
+const FRA_PAIRED = new WeakSet<Slot<FraSheets>>();
+const paired = (slot: Slot<FraSheets>): Slot<FraSheets> => (FRA_PAIRED.add(slot), slot);
+
+/*
+ * As for Edge of Eternities, "less than 1%" outcomes share what the slot's
+ * listed odds leave over, split as noted beside each.
+ */
+
+const FRA_ECHOED_PLAY: Outcome<FraSheets>[] = [
+  f('Echoed pairs uncommon', 88.9, (s) => s.echoed.uncommon),
+  f('Echoed pairs rare', 6.7, (s) => s.echoed.rare, 'nonfoil', 1),
+  f('Echoed pairs mythic', 1.4, (s) => s.echoed.mythic, 'nonfoil', 2),
+  f('Borderless echoed pairs uncommon', 1.7, (s) => s.borderlessEchoed.uncommon, 'nonfoil', 1),
+  f('Borderless echoed pairs rare', 0.9, (s) => s.borderlessEchoed.rare, 'nonfoil', 2), // "less than 1%"
+  f('Borderless echoed pairs mythic', 0.4, (s) => s.borderlessEchoed.mythic, 'nonfoil', 3), // "less than 1%"
+];
+
+/** Reality Fracture Play Booster: 14 Magic cards and a punch-out counter card or double-sided token. */
+export const FRA_PLAY_BOOSTER: Slot<FraSheets>[] = [
+  ...Array.from({ length: 5 }, (): Slot<FraSheets> => ({ name: 'Common', outcomes: [f('Common', 1, (s) => s.commons)] })),
+  // "In 1 of 55 Play Boosters, 1 of 10 Special Guests cards will replace a common."
+  { name: 'Common or Special Guests', group: 'Common', outcomes: [f('Common', 54, (s) => s.commons), f('Special Guests card', 1, (s) => s.specialGuests, 'nonfoil', 3)] },
+  { name: 'Uncommon', outcomes: [f('Uncommon', 96.2, (s) => s.uncommons), f('Braintwister series uncommon', 3.8, (s) => s.braintwister.uncommon, 'nonfoil', 1)] },
+  {
+    name: 'Common or uncommon',
+    group: 'Uncommon',
+    outcomes: [f('Common', 23, (s) => s.commons), f('Uncommon', 74, (s) => s.uncommons), f('Braintwister series uncommon', 3, (s) => s.braintwister.uncommon, 'nonfoil', 1)],
+  },
+  paired({ name: 'Echoed pairs', outcomes: FRA_ECHOED_PLAY }),
+  { name: 'Echoed pairs', outcomes: FRA_ECHOED_PLAY },
+  { name: 'Echoed pairs', outcomes: FRA_ECHOED_PLAY },
+  {
+    name: 'Rare',
+    outcomes: [
+      f('Rare', 74.4, (s) => s.rares, 'nonfoil', 1),
+      f('Mythic', 14.8, (s) => s.mythics, 'nonfoil', 2),
+      f('Shattered mirror rare', 1, (s) => s.shattered.rare, 'nonfoil', 2),
+      f('Shattered mirror mythic', 0.4, (s) => s.shattered.mythic, 'nonfoil', 3), // "less than 1%"
+      f("Sculptor's stronghold rare", 3.8, (s) => s.stronghold.rare, 'nonfoil', 2),
+      f("Sculptor's stronghold mythic", 1, (s) => s.stronghold.mythic, 'nonfoil', 3),
+      f('Braintwister series rare', 3.1, (s) => s.braintwister.rare, 'nonfoil', 2),
+      f('Braintwister series mythic', 0.5, (s) => s.braintwister.mythic, 'nonfoil', 3), // "less than 1%"
+      f('Portal view land', 1, (s) => s.portal, 'nonfoil', 2),
+    ],
+  },
+  {
+    name: 'Foil',
+    outcomes: [
+      f('Foil common', 49.5, (s) => s.commons, 'foil'),
+      f('Foil uncommon', 40.5, (s) => [...s.uncommons, ...s.echoed.uncommon], 'foil'),
+      f('Foil rare', 6, (s) => [...s.rares, ...s.echoed.rare], 'foil', 1),
+      f('Foil mythic', 1.2, (s) => [...s.mythics, ...s.echoed.mythic], 'foil', 2),
+      // The rest are "less than 1%" each; together they're the 2.8% left over.
+      f('Foil borderless echoed pairs uncommon', 0.6, (s) => s.borderlessEchoed.uncommon, 'foil', 1),
+      f('Foil borderless echoed pairs rare', 0.3, (s) => s.borderlessEchoed.rare, 'foil', 2),
+      f('Foil borderless echoed pairs mythic', 0.1, (s) => s.borderlessEchoed.mythic, 'foil', 3),
+      f('Foil braintwister series uncommon', 0.6, (s) => s.braintwister.uncommon, 'foil', 1),
+      f('Foil braintwister series rare', 0.3, (s) => s.braintwister.rare, 'foil', 2),
+      f('Foil braintwister series mythic', 0.1, (s) => s.braintwister.mythic, 'foil', 3),
+      f("Foil sculptor's stronghold rare", 0.4, (s) => s.stronghold.rare, 'foil', 2),
+      f("Foil sculptor's stronghold mythic", 0.1, (s) => s.stronghold.mythic, 'foil', 3),
+      f('Foil portal view land', 0.3, (s) => s.portal, 'foil', 2),
+    ],
+  },
+  {
+    name: 'Land',
+    outcomes: [
+      f('Basic land', 14.6, (s) => s.basics),
+      f('Foil basic land', 3.6, (s) => s.basics, 'foil'),
+      f('Tower basic land', 21.8, (s) => s.towers, 'nonfoil', 1),
+      f('Foil tower basic land', 5.5, (s) => s.towers, 'foil', 1),
+      f('Common dual land', 43.6, (s) => s.duals),
+      f('Foil common dual land', 10.9, (s) => s.duals, 'foil'),
+    ],
+  },
+  { name: 'Counter card or double-sided token', outcomes: [f('Counter card or double-sided token', 1, (s) => s.tokens)] },
+];
+
+const FRA_ECHOED_COLLECTOR: Outcome<FraSheets>[] = [
+  f('Foil echoed pairs uncommon', 86.8, (s) => s.echoed.uncommon, 'foil'),
+  f('Foil borderless echoed pairs uncommon', 13.2, (s) => s.borderlessEchoed.uncommon, 'foil', 1),
+];
+
+/** Reality Fracture Collector Booster: 15 Magic cards and a foil double-sided token or art card. */
+export const FRA_COLLECTOR_BOOSTER: Slot<FraSheets>[] = [
+  ...Array.from({ length: 4 }, (): Slot<FraSheets> => ({ name: 'Foil common', outcomes: [f('Foil common', 72, (s) => s.commons, 'foil'), f('Foil common dual land', 10, (s) => s.duals, 'foil')] })),
+  ...Array.from({ length: 2 }, (): Slot<FraSheets> => ({ name: 'Foil uncommon', outcomes: [f('Foil uncommon', 89.6, (s) => s.uncommons, 'foil'), f('Foil braintwister series uncommon', 10.4, (s) => s.braintwister.uncommon, 'foil', 1)] })),
+  paired({ name: 'Foil echoed pairs uncommon', outcomes: FRA_ECHOED_COLLECTOR }),
+  { name: 'Foil echoed pairs uncommon', outcomes: FRA_ECHOED_COLLECTOR },
+  { name: 'Foil echoed pairs uncommon', outcomes: FRA_ECHOED_COLLECTOR },
+  { name: 'Foil tower basic land', outcomes: [f('Foil tower basic land', 1, (s) => s.towers, 'foil', 1)] },
+  { name: 'Foil rare or mythic', outcomes: [f('Foil rare', 83.1, (s) => [...s.rares, ...s.echoed.rare], 'foil', 1), f('Foil mythic', 16.9, (s) => [...s.mythics, ...s.echoed.mythic], 'foil', 2)] },
+  {
+    name: 'Braintwister or Commander card',
+    outcomes: [
+      f('Braintwister series rare', 44.8, (s) => s.braintwister.rare, 'nonfoil', 2),
+      f('Braintwister series mythic', 4.5, (s) => s.braintwister.mythic, 'nonfoil', 3),
+      f('Commander borderless mythic', 3, (s) => s.commanderBorderless, 'nonfoil', 3),
+      f('Commander extended-art rare', 47.8, (s) => s.commanderExtended, 'nonfoil', 2),
+    ],
+  },
+  ...Array.from({ length: 2 }, (): Slot<FraSheets> => ({
+    name: 'Booster Fun card',
+    outcomes: [
+      f('Borderless echoed pairs rare', 23.1, (s) => s.borderlessEchoed.rare, 'nonfoil', 2),
+      f('Borderless echoed pairs mythic', 5, (s) => s.borderlessEchoed.mythic, 'nonfoil', 3),
+      f('Shattered mirror rare', 8.3, (s) => s.shattered.rare, 'nonfoil', 2),
+      f('Shattered mirror mythic', 6.6, (s) => s.shattered.mythic, 'nonfoil', 3),
+      f("Sculptor's stronghold rare", 29.8, (s) => s.stronghold.rare, 'nonfoil', 2),
+      f("Sculptor's stronghold mythic", 5.8, (s) => s.stronghold.mythic, 'nonfoil', 3),
+      f('Portal view land', 8.3, (s) => s.portal, 'nonfoil', 2),
+      f('Extended-art rare', 11.6, (s) => s.extended.rare, 'nonfoil', 2),
+      f('Extended-art mythic', 1.7, (s) => s.extended.mythic, 'nonfoil', 3),
+    ],
+  })),
+  {
+    name: 'Foil Booster Fun card',
+    outcomes: [
+      f('Foil borderless echoed pairs rare', 17.1, (s) => s.borderlessEchoed.rare, 'foil', 2),
+      f('Foil borderless echoed pairs mythic', 3.7, (s) => s.borderlessEchoed.mythic, 'foil', 3),
+      f("Foil sculptor's stronghold rare", 22, (s) => s.stronghold.rare, 'foil', 2),
+      f("Foil sculptor's stronghold mythic", 4.3, (s) => s.stronghold.mythic, 'foil', 3),
+      f('Foil braintwister series rare', 18.3, (s) => s.braintwister.rare, 'foil', 2),
+      f('Foil braintwister series mythic', 1.8, (s) => s.braintwister.mythic, 'foil', 3),
+      f('Foil portal view land', 6.1, (s) => s.portal, 'foil', 2),
+      f('Foil extended-art rare', 8.5, (s) => s.extended.rare, 'foil', 2),
+      f('Foil extended-art mythic', 1.2, (s) => s.extended.mythic, 'foil', 3),
+      f('Foil Special Guests card', 6.1, (s) => s.specialGuests, 'foil', 3),
+      f('Foil Japan Showcase card', 9, (s) => s.japan, 'foil', 3),
+      f('Fracture foil Japan Showcase card', 1, (s) => s.fractureJapan, 'foil', 3),
+      f('Facet foil shattered mirror rare', 0.5, (s) => s.facetShattered.rare, 'foil', 3), // "less than 1%"
+      f('Facet foil shattered mirror mythic', 0.3, (s) => s.facetShattered.mythic, 'foil', 3), // "less than 1%"
+      f('Serialized double rainbow foil Bloodline Recollector', 0.1, (s) => s.headliner, 'foil', 3), // "less than 1%"
+    ],
+  },
+  { name: 'Foil token or art card', outcomes: [f('Foil double-sided token', 65, (s) => s.tokens, 'foil'), f('Art card', 35, (s) => s.artCards)] },
+];
+
+let cachedFraSheets: FraSheets | undefined;
+
+/** The echoed pair a card belongs to, from these sheets (main set or borderless). */
+function counterpartOf(sheets: FraSheets, card: BoosterCard): BoosterCard | undefined {
+  for (const list of [...Object.values(sheets.pairs), ...Object.values(sheets.borderlessPairs)]) {
+    for (const [a, b] of list) {
+      if (a.id === card.id) return b;
+      if (b.id === card.id) return a;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Opens one Reality Fracture pack. Slots of the same kind never repeat a card,
+ * as in print; the first echoed pairs slot's card comes with its counterpart
+ * (same rarity, treatment and finish) in the next slot.
+ */
+export function openFraPack(kind: PackKind, rng: Rng = Math.random, sheets: FraSheets = (cachedFraSheets ??= buildFraSheets())): Pack {
+  const slots = kind === 'play' ? FRA_PLAY_BOOSTER : FRA_COLLECTOR_BOOSTER;
+  const cards: Pull[] = [];
+  slots.forEach((slot, i) => {
+    if (cards[i]) return;
+    const groupOf = (x: Slot<FraSheets>) => x.group ?? x.name;
+    const same = cards.filter((_, k) => groupOf(slots[k]!) === groupOf(slot));
+    let pull = rollSlot(slot, sheets, rng);
+    for (let tries = 0; tries < 20 && same.some((c) => c.card.id === pull.card.id); tries++) pull = rollSlot(slot, sheets, rng);
+    cards[i] = pull;
+    const partner = FRA_PAIRED.has(slot) ? counterpartOf(sheets, pull.card) : undefined;
+    if (partner && slots[i + 1]) cards[i + 1] = { ...pull, card: partner };
+  });
+  return { kind, set: 'fra', cards };
+}
+

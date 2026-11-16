@@ -24,6 +24,11 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture packs (2026-11-16)
+
+- Play and Collector Boosters for Reality Fracture on the Packs tab (`set: 'fra'`), with Wizards' published odds slot by slot and the echoed pairs arriving as pairs; the Collection binder's Reality Fracture tab now holds the whole set (main set, Booster Fun, Commander Booster Fun, the precon, Special Guests, tokens and art cards). Details in docs/packs.md.
+- New special foils named: facet foil and double rainbow foil (shown with the regular foil shine for now).
+
 ### Reality Fracture main set imported (2026-11-16)
 
 - Reality Fracture (FRA, released 2026-10-02) is its own set, separate from the Multiverse Reforged precon. Its main set, collector numbers 1-290 with the basics (281-290; 291+ are borderless and other variants), is imported from MTGJSON: `node packages/cards/scripts/import-sets.ts fra` writes the 278 cards no other file defines to `data/fra-set.json` (2 built automatically, the vanilla Yargles; 276 `notBuilt`). Card data and images are cached (`npm run scryfall`), and the tokens its cards make are waiting in `pending-tokens.json`.
