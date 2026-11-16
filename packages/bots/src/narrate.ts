@@ -313,6 +313,14 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'TurnFaceUp':
+      return `turn ${who} face up`;
+    case 'TurnFaceDown':
+      return `turn ${who} face down`;
+    case 'Manifest':
+      return `${e.cloak ? 'cloak' : 'manifest'} the top ${e.amount === 1 || e.amount === undefined ? 'card' : `${amountText(e.amount)} cards`} of your library`;
+    case 'ManifestDread':
+      return 'manifest dread (look at the top two cards of your library; manifest one and put the other into your graveyard)';
     case 'ExileFromEachGraveyard':
       return `exile a ${subjectText({ ...e.filter, controller: undefined }, 'card')} from each graveyard`;
     case 'GrantLinkedExileCast':
@@ -459,6 +467,7 @@ function keywordText(keywords: readonly string[]): string {
 
 /** A plain summary of an activated ability, e.g. "{1}{W}, {T}: tap target creature". */
 export function activatedText(a: ActivatedSpec): string {
+  if (a.turnFaceUp) return `Turn face up (${a.cost.mana})`;
   if (a.cost.crew !== undefined) return `Crew ${a.cost.crew} — tap other creatures with total power ${a.cost.crew} or more`;
   if (a.cost.station) return 'Station — tap another creature you control: put charge counters equal to its power on this (as a sorcery)';
   if (a.effects[0]?.unearth) return `Unearth ${a.cost.mana}`;
@@ -564,6 +573,7 @@ function triggerCondition(t: TriggerSpec): string {
     OpponentLosesLife: '',
     LifeGained: '',
     OpponentCommitsCrime: '',
+    TurnedFaceUp: 'is turned face up',
   }[t.when] ?? '';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
   if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';
@@ -787,6 +797,8 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       if (e.from === 'library' && e.to === 'exile') return `  ${cardName(s, e.card)} is exiled from the top of the library.`;
       if (e.from === 'library' && e.to === 'graveyard') return `  ${cardName(s, e.card)} is milled.`;
       return null;
+    case 'TurnedFaceDown':
+      return `${cardName(s, e.card)} was turned face down.`;
     case 'TurnedFaceUp':
       return `${who(e.player)} turned ${s.cardDefs[e.defId]?.name ?? 'a creature'} face up.`;
     case 'Transformed':

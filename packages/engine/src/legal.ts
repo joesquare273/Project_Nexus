@@ -239,10 +239,11 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   }
   }
   }
-  // Morph: a card with morph can also be cast face down from your hand, as a creature spell, for {3}.
+  // Morph and disguise: such a card can also be cast face down from your hand, as a creature spell, for {3}.
   if (sorcerySpeed) {
     for (const id of p.hand) {
-      if (!s.cardDefs[s.cards[id]!.defId]?.morph) continue;
+      const real = s.cardDefs[s.cards[id]!.defId];
+      if (!real?.morph && !real?.disguise) continue;
       out.push({ action: { type: 'CastSpell', player: playerId, card: id, targets: [], faceDown: true }, cost: parseManaCost('{3}'), forEquipment: false });
     }
   }

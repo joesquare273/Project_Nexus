@@ -24,6 +24,13 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Face-down permanents, complete (2026-11-16)
+
+- Morph and disguise (cast face down for {3}; disguise's face-down 2/2 also has ward {2}), manifest, cloak (manifest with ward {2}) and manifest dread (look at two, manifest one, the other to the graveyard; a `manifestDread` card choice).
+- Turning face up is a special action (rule 116.2b): no stack, no "activated ability" triggers, and effects that stop activated abilities don't stop it. The cost is the morph or disguise cost, or a manifested creature card's mana cost. Effects `TurnFaceUp` and `TurnFaceDown`; a manifested instant or sorcery can't be turned face up (it is revealed instead). The `TurnedFaceUp` trigger ("when this is turned face up") and the `faceDown` object filter.
+- Face-down characteristics are the copiable values (rule 707.2): a copy of a face-down permanent is a face-up nameless 2/2 (with ward if the original had it) showing nothing of the card, and token copies get the face-down id. A face-down permanent can't transform, and doesn't enter with the real card's counters, loyalty or lore.
+- Hidden information: other players get `?facedown` or `?facedown-ward`; everything is revealed when it leaves the battlefield or stack, when its player leaves the game, and when the game ends (rule 708.10).
+
 ### Reality Fracture R3b: four creatures (2026-11-16)
 
 - Serra's Emissary (protection from a chosen card type), The Ur-Sphinx (eminence cost reduction; mills each player and casts one of their spells free), Omnath, Locus of the Void (grows with unspent mana, which turns colorless instead of emptying) and Venser, Fervent Forger (copies an opponent's spell twice, or makes two hasty copies of their permanent). Multiverse Reforged now has 78 of its 93 distinct cards built. Akroma (morph) is R3c.

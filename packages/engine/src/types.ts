@@ -520,6 +520,14 @@ export const EFFECT_KINDS = [
    * it into your hand and the rest on the bottom in a random order (Yuna's Whistle).
    */
   'RevealUntil',
+  /** Turn the target face-down permanents face up (rule 702.37e; a manifested instant or sorcery stays face down and is revealed, 701.34c). */
+  'TurnFaceUp',
+  /** Turn the target permanents face down: each becomes a 2/2 creature with no name, abilities or mana cost (rule 708.2). */
+  'TurnFaceDown',
+  /** Manifest the top `amount` cards of your library (rule 701.34); with `cloak`, cloak them: face down with ward {2} (701.58). */
+  'Manifest',
+  /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
+  'ManifestDread',
   /** The target players win the game: every other player loses. */
   'WinGame',
   /** "Until your next turn, damage dealt to that player or a permanent they control is doubled" (Lightning, Army of One). */
@@ -815,6 +823,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** Manifest: cloak instead (face down with ward {2}, rule 701.58). */
+  cloak?: boolean;
   /** Mill: each target player mills half their library, rounded down (Jidoor's Overture). */
   halfLibrary?: boolean;
   /** Sacrifice: each player sacrifices half the matching permanents they control, rounded down (Zodiark). */
@@ -1243,6 +1253,8 @@ export const TRIGGER_EVENTS = [
    * another player's graveyard. Once per spell or ability.
    */
   'OpponentCommitsCrime',
+  /** "When this is turned face up" (rule 702.37): the permanent was turned face up (subject: this permanent by default). */
+  'TurnedFaceUp',
 ] as const;
 export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
 
@@ -1291,6 +1303,8 @@ export interface ObjectFilter {
   /** Has none of these supertypes ("nonbasic land"). */
   nonSupertypes?: Supertype[];
   tapped?: boolean;
+  /** Is face down (morph, disguise, manifest, cloak), or face up with `false`. */
+  faceDown?: boolean;
   attacking?: boolean;
   /** Is attacking the player whose ability this is ("target creature attacking you"). */
   attackingYou?: boolean;
@@ -1792,6 +1806,8 @@ export interface CardDefinition {
   partner?: boolean;
   /** Morph (rule 702.37): cast face down as a 2/2 creature for {3}; turned face up any time for this cost. */
   morph?: string;
+  /** Disguise (rule 702.168): like morph, but face down it also has ward {2}; turned face up for this cost. */
+  disguise?: string;
   /** "Partner with [name]": this card and that one can be commanders together. */
   partnerWith?: string;
   /** "[This card] can be your commander" (rule 903.3d): a commander though it isn't a creature (Jace, Multiverse Architect). */
@@ -2236,6 +2252,10 @@ export interface CardInstance {
   chosenCardType?: CardType;
   /** Face down (morph, rule 708): a 2/2 creature with no name, abilities or mana cost; its identity is hidden from the other players. */
   faceDown?: boolean;
+  /** Face down by manifest or cloak (rule 701.34): a creature card can be turned face up for its mana cost. */
+  manifested?: boolean;
+  /** Face down with ward {2}: cast using disguise, or cloaked (rules 702.168, 701.58). */
+  faceDownWard?: boolean;
   /** "Create an X/X token": the X it was created with (its base power and toughness). */
   tokenSize?: number;
   /** BecomeCreature: a permanent that's also a creature now, with this base power, toughness and subtypes. */
@@ -2742,7 +2762,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3091,8 +3111,8 @@ export type GameEvent =
       type: 'CardMoved';
       /** Private identity when a face-down card moves to another hidden zone. */
       visibleTo?: PlayerId[];
-      /** Morph: a face-down card moving to the stack or battlefield; only its controller learns which card it is. */
-      faceDown?: boolean;
+      /** A face-down card moving to the stack or battlefield: the face-down characteristics' id; only its owner learns which card it is. */
+      faceDown?: CardDefId;
       card?: InstanceId;
       defId?: CardDefId;
       owner: PlayerId;
@@ -3115,9 +3135,11 @@ export type GameEvent =
   | { type: 'ManaSpent'; player: PlayerId; amounts: Partial<ManaPool> }
   | { type: 'FaceDownExiled'; player: PlayerId; card?: InstanceId }
   | { type: 'LandPlayed'; player: PlayerId; card: InstanceId; from: ZoneName }
-  | { type: 'SpellCast'; castFrom?: ZoneName; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[]; /** Cast face down (morph): its identity is hidden from the other players. */ faceDown?: boolean }
+  | { type: 'SpellCast'; castFrom?: ZoneName; player: PlayerId; card: InstanceId; defId: CardDefId; targets: Target[]; manaSpent: number; scryMana?: CreatureScryMana[]; /** Cast face down (morph, disguise): the face-down characteristics' id, shown to the other players instead of the card. */ faceDown?: CardDefId }
   /** A face-down permanent was turned face up (morph). */
   | { type: 'TurnedFaceUp'; player: PlayerId; card: InstanceId; defId: CardDefId }
+  /** A permanent was turned face down (it is now a 2/2 creature with no name). */
+  | { type: 'TurnedFaceDown'; player: PlayerId; card: InstanceId }
   | {
       type: 'AbilityTriggered';
       item: string;

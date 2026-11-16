@@ -120,7 +120,9 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
             // Alternative costs get their own entry: "Pay 4 life for", "Overload".
             label: `${
               faceDown
-                ? 'Cast face down as a 2/2 ({3}, morph)'
+                ? s.cardDefs[card.defId]!.morph
+                  ? 'Cast face down as a 2/2 ({3}, morph)'
+                  : 'Cast face down as a 2/2 with ward {2} ({3}, disguise)'
                 : adventure
                 ? `Cast Adventure: ${def.adventure!.name} (${def.adventure!.manaCost})`
                 : alternative

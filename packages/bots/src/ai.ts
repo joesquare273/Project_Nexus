@@ -687,6 +687,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Choco: every land.
   if (p.purpose === 'digLands') return pick([...p.cards]);
   // Hideaway: the best spell (a land found this way still needs a land play).
+  // Manifest dread: manifest a creature card (it can be turned face up), the other goes to the graveyard.
+  if (p.purpose === 'manifestDread') return pick([p.cards.find((id) => s.cardDefs[s.cards[id]!.defId]?.types.includes('creature')) ?? byValue.at(-1)!]);
   if (p.purpose === 'hideaway') return pick([byValue.findLast((id) => !isLandCard(s, id)) ?? byValue.at(-1)!]);
   // Espers to Magicite: an artifact copy of the best creature card.
   if (p.purpose === 'artifactCopy') return pick(byValue.slice(-1));

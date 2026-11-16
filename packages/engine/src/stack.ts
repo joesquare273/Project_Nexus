@@ -2,7 +2,7 @@ import type { ManaRestriction } from './types.ts';
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
+import { copiableDefinition, copyLook, currentDefinition, faceDownCharacteristics, spellDefinition } from './cardface.ts';
 import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, powerOf, protectedFrom, protectedFromType, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
@@ -42,6 +42,9 @@ import {
   removeFromCombat,
   staticRule,
   playerProtectedFromOpponents,
+  manifest,
+  turnFaceDown,
+  turnFaceUp,
 } from './state.ts';
 import { enterStep, givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, landEntersUntapped, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue, tapOtherManaTypes } from './typerules.ts';
@@ -1245,12 +1248,14 @@ export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
 export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], choice: SpellChoice = {}): void {
   const s = ctx.s;
   const c = card(s, id);
-  // Morph (rule 702.37c): cast face down from your hand as a 2/2 creature spell for {3}.
+  // Morph and disguise (rules 702.37c, 702.168b): cast face down from your hand as a 2/2 creature spell for {3}.
   if (choice.faceDown) {
-    if (!s.cardDefs[c.defId]?.morph) reject("That card can't be cast face down.");
+    const real = s.cardDefs[c.defId];
+    if (!real?.morph && !real?.disguise) reject("That card can't be cast face down.");
     if (c.zone !== 'hand' || c.owner !== playerId) reject('Cast it face down from your hand.');
     if (choice.adventure || choice.alternative || choice.x) reject('A face-down spell is cast for {3} only.');
     c.faceDown = true;
+    if (!real!.morph) c.faceDownWard = true;
   }
   const printed = defOf(s, c);
   if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
@@ -1464,7 +1469,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     commander.isCommander && commander.owner === playerId && !commander.phasedOut &&
     !['hand', 'library'].includes(commander.zone) &&
     subtypesOf(s, commander).some(type => def.subtypes?.includes(type)));
-  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: true } : {}),
+  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
     ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
   });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
@@ -1559,7 +1564,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (zone === 'battlefield' && (c.zone !== 'battlefield' || c.controller !== playerId)) {
     return 'You do not control that permanent.';
   }
-  if (zone === 'battlefield' && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
+  if (zone === 'battlefield' && !spec.turnFaceUp && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
   if (spec.stationLevel !== undefined && (c.namedCounters?.charge ?? 0) < spec.stationLevel) return `That needs ${spec.stationLevel} or more charge counters.`;
   if (spec.loyalty !== undefined) {
     if (!canActAtSorcerySpeed(s, playerId)) return 'Loyalty abilities can only be activated in your main phase with an empty stack.';
@@ -1900,8 +1905,7 @@ export function activateAbility(
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
   // Morph: turning it face up is a special action; it doesn't use the stack (rule 702.37e).
   if (spec.turnFaceUp) {
-    delete c.faceDown;
-    ctx.ev.push({ type: 'TurnedFaceUp', player: playerId, card: id, defId: c.defId });
+    turnFaceUp(ctx, id, playerId);
     return;
   }
 
@@ -3080,8 +3084,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const original = copiableDefinition(s, target), definition = structuredClone(original);
       definition.id = self.defId;
       delete definition.token;
-      const printing = target.copy?.printing ?? target.printing ?? original.printing;
-      self.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };
+      const look = copyLook(s, target);
+      self.copy = { definition, artDefId: look.artDefId, copiedName: original.name, ...(look.printing ? { printing: structuredClone(look.printing) } : {}) };
       newTimestamp(s);
       ctx.ev.push({ type: 'BecameCopy', card: self.id, copied: target.id, name: original.name });
       return;
@@ -3347,7 +3351,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Transform':
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
-        if (c.phasedOut || !s.cardDefs[c.defId]?.backFace || c.copy) continue;
+        // A face-down permanent can't transform (rule 701.28d).
+        if (c.phasedOut || c.faceDown || !s.cardDefs[c.defId]?.backFace || c.copy) continue;
         c.transformed = !c.transformed;
         ctx.ev.push({ type: 'Transformed', card: id, toBack: c.transformed });
       }
@@ -3715,6 +3720,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         { player: item.controller, purpose: 'hand', cards: looked, min: 0, max: 1 },
         { player: item.controller, purpose: 'digLands', cards: looked.filter((id) => hasType(s, s.cards[id]!, 'land')), min: 0, max: looked.length, looked },
       ];
+      return;
+    }
+    case 'TurnFaceUp':
+      for (const id of onBattlefield) turnFaceUp(ctx, id, item.controller);
+      return;
+    case 'TurnFaceDown':
+      for (const id of onBattlefield) if (!s.cards[id]!.phasedOut) turnFaceDown(ctx, id);
+      return;
+    case 'Manifest':
+      for (const id of topOfLibrary(s, item.controller, amount)) manifest(ctx, id, item.controller, !!effect.cloak);
+      return;
+    case 'ManifestDread': {
+      const looked = topOfLibrary(s, item.controller, 2);
+      if (looked.length === 1) manifest(ctx, looked[0]!, item.controller);
+      else if (looked.length === 2) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'manifestDread', cards: looked, min: 1, max: 1 }];
       return;
     }
     case 'Hideaway': {
@@ -4620,6 +4640,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.tapped = true;
     }
     for (const id of pending.looked ?? []) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+  } else if (pending.purpose === 'manifestDread') {
+    // Manifest the chosen card; the other goes into the graveyard (rule 701.62a).
+    for (const id of cards) manifest(ctx, id, pending.player);
+    for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
   } else if (pending.purpose === 'hideaway') {
     const source = sourceOf(r.item);
     const sourceObject = r.item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (r.item.sourceObject ?? 0);
@@ -4860,8 +4884,8 @@ function enterAsCopy(ctx: Ctx, c: CardInstance, chosen: { card: InstanceId; obje
   if (artifactsToo && !definition.types.includes('artifact')) definition.types = ['artifact', ...definition.types];
   if (artifactsToo) definition.entersAsCopyOfArtifact = true;
   delete definition.token;
-  const printing = target.copy?.printing ?? target.printing ?? original.printing;
-  c.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };
+  const look = copyLook(s, target);
+  c.copy = { definition, artDefId: look.artDefId, copiedName: original.name, ...(look.printing ? { printing: structuredClone(look.printing) } : {}) };
   newTimestamp(s);
   ctx.ev.push({ type: 'BecameCopy', card: c.id, copied: target.id, name: original.name });
 }
@@ -4884,8 +4908,8 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
     delete definition.token;
     definition.keywords=[...new Set([...(definition.keywords??[]),...(effect.copyKeywords??[])])];
     if(effect.copyKeepTrigger && r.item.kind==='ability' && r.item.spec) definition.triggers=[...(definition.triggers??[]),structuredClone(r.item.spec)];
-    const printing=target.copy?.printing??target.printing??original.printing;
-    source.copy={definition,artDefId:target.copy?.artDefId??target.defId,copiedName:original.name,...(printing?{printing:structuredClone(printing)}:{}),...(effect.copyUntilEndOfTurn?{untilTurn:s.turnNumber,...(source.copy?{previous:structuredClone(source.copy)}:{})}:{})};
+    const look=copyLook(s,target);
+    source.copy={definition,artDefId:look.artDefId,copiedName:original.name,...(look.printing?{printing:structuredClone(look.printing)}:{}),...(effect.copyUntilEndOfTurn?{untilTurn:s.turnNumber,...(source.copy?{previous:structuredClone(source.copy)}:{})}:{})};
     newTimestamp(s);
     ctx.ev.push({type:'BecameCopy',card:source.id,copied:target.id,name:original.name});
     if(effect.copyBuffBoth) for(const id of new Set([source.id,target.id])) {
@@ -4913,8 +4937,8 @@ function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, e
   if (equipCostsLess) definition.equipCostsLess = (definition.equipCostsLess ?? 0) + equipCostsLess;
   // Adagia: "except it's legendary".
   if (legendary) definition.supertypes = [...new Set([...(definition.supertypes ?? []), 'Legendary' as const])];
-  const printing = c.copy?.printing ?? c.printing ?? definition.printing;
-  return createToken(ctx, c.defId, controller, { definition, artDefId: c.copy?.artDefId ?? c.defId, copiedName: definition.name, ...(printing ? { printing } : {}) });
+  const look = copyLook(ctx.s, c);
+  return createToken(ctx, look.defId, controller, { definition, artDefId: look.artDefId, copiedName: definition.name, ...(look.printing ? { printing: look.printing } : {}) });
 }
 
 /** "This spell can't be countered", or a creature spell of a player with Frenzied Baloth. */

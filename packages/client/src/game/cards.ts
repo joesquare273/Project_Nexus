@@ -1,6 +1,6 @@
 // Display helpers for cards: definitions, colors, Scryfall info and text.
 
-import { parseManaCost, manaProduced, COLORS, HIDDEN_CARD, FACE_DOWN_CARD, type CardDefinition, type CardDefId, type Color } from '@nexus/engine';
+import { parseManaCost, manaProduced, COLORS, HIDDEN_CARD, FACE_DOWN_CARD, FACE_DOWN_WARD_CARD, type CardDefinition, type CardDefId, type Color } from '@nexus/engine';
 import { CARD_DEFS, SCRYFALL, SCRYFALL_PRINTINGS, type ScryfallInfo } from '@nexus/cards';
 import { BOOSTER_CARDS, SECRET_LAIR_CARDS, type BoosterCard } from '@nexus/cards/boosters';
 import { rulesSummary } from '@nexus/bots/narrate';
@@ -10,6 +10,7 @@ export function defOf(defId: CardDefId): CardDefinition {
   if (defId === HIDDEN_CARD.id) return HIDDEN_CARD;
   // An opponent's face-down creature (morph): a 2/2 with no name.
   if (defId === FACE_DOWN_CARD.id) return FACE_DOWN_CARD;
+  if (defId === FACE_DOWN_WARD_CARD.id) return FACE_DOWN_WARD_CARD;
   const def = CARD_DEFS[defId];
   if (!def) throw new Error(`Unknown card "${defId}"`);
   return def;

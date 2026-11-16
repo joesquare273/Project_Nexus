@@ -164,6 +164,9 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           amount: e.amount,
         });
         break;
+      case 'TurnedFaceUp':
+        out.push({ when: 'TurnedFaceUp', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
+        break;
       case 'CardTapped':
         out.push({ when: 'BecomesTapped', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
         break;

@@ -3,7 +3,7 @@ import type { ManaRestriction } from './types.ts';
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { backFaceDefinition, copiableDefinition, currentDefinition as defOf } from './cardface.ts';
+import { backFaceDefinition, copiableDefinition, copyLook, currentDefinition as defOf, faceDownCharacteristics } from './cardface.ts';
 import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, protectedFromType, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped, objectManaValue } from './typerules.ts';
@@ -227,7 +227,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (toList) toList.push(id);
   // A face-down card moving to the stack or battlefield stays secret; anywhere else it's turned face up (rule 708.9).
   const stillFaceDown = !!c.faceDown && (to === 'stack' || to === 'battlefield');
-  if (c.faceDown && !stillFaceDown) delete c.faceDown;
+  if (c.faceDown && !stillFaceDown) {
+    delete c.faceDown;
+    delete c.manifested;
+    delete c.faceDownWard;
+  }
   const visibleTo = c.linkedExile && (to === 'hand' || to === 'library') ? [...new Set([...c.linkedExile.lookers, c.owner])] : undefined;
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
@@ -325,7 +329,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     ctx.ev.push({
       type: 'CardMoved',
       ...(visibleTo ? { visibleTo } : {}),
-      ...(stillFaceDown ? { faceDown: true } : {}),
+      ...(stillFaceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
       card: id,
       defId: c.defId,
       owner: c.owner,
@@ -358,7 +362,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   // so its back face's "as this enters" rules apply (a Saga back face gets its lore counter).
   if (to === 'battlefield' && opts.transformed && s.cardDefs[c.defId]!.backFace) c.transformed = true;
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
-  const d = c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
+  const d = c.faceDown && to === 'battlefield' ? faceDownCharacteristics(c) : c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
   if (to === 'battlefield') { c.enteredTurn = s.turnNumber; c.enteredTimestamp = newTimestamp(s); }
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
   // A planeswalker enters with its loyalty (rule 306.5b).
@@ -740,9 +744,9 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
     if (aura) {
       const host = s.cards[aura.attachedTo!]!;
       const definition = structuredClone(copiableDefinition(s, host));
-      const printing = host.copy?.printing ?? host.printing ?? definition.printing;
-      defId = host.defId;
-      copy = { definition, artDefId: host.copy?.artDefId ?? host.defId, copiedName: definition.name, ...(printing ? { printing } : {}) };
+      const look = copyLook(s, host);
+      defId = look.defId;
+      copy = { definition, artDefId: look.artDefId, copiedName: definition.name, ...(look.printing ? { printing: look.printing } : {}) };
     }
   }
   // Exalted Sunborn: twice that many tokens (each such permanent doubles again). The extra tokens are
@@ -875,4 +879,47 @@ function landEntered(s: GameState, pid: PlayerId): void {
   if (!p) return;
   if (p.landsEnteredTurn !== s.turnNumber) { p.landsEnteredTurn = s.turnNumber; p.landsEntered = 0; }
   p.landsEntered = (p.landsEntered ?? 0) + 1;
+}
+
+/**
+ * Turns a face-down permanent face up (rules 702.37e, 708.8): it keeps its counters, damage and
+ * tapped state and doesn't enter the battlefield again. A manifested instant or sorcery can't be
+ * turned face up; it is revealed and stays face down (rule 701.34c). True if it was turned face up.
+ */
+export function turnFaceUp(ctx: Ctx, id: InstanceId, by: PlayerId): boolean {
+  const s = ctx.s, c = s.cards[id];
+  if (!c?.faceDown || c.zone !== 'battlefield') return false;
+  const def = s.cardDefs[c.defId]!;
+  if (!def.types.some((t) => (['artifact', 'creature', 'enchantment', 'land', 'planeswalker', 'battle'] as string[]).includes(t))) {
+    ctx.ev.push({ type: 'CardRevealed', player: c.controller, card: id, defId: c.defId });
+    return false;
+  }
+  delete c.faceDown;
+  delete c.manifested;
+  delete c.faceDownWard;
+  newTimestamp(s);
+  // "When this is turned face up" triggers from this event (triggers.ts).
+  ctx.ev.push({ type: 'TurnedFaceUp', player: by, card: id, defId: c.defId });
+  return true;
+}
+
+/** Turns a permanent face down (rule 708.2): a 2/2 creature with no name, abilities, mana cost or color. */
+export function turnFaceDown(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s, c = s.cards[id];
+  if (!c || c.zone !== 'battlefield' || c.faceDown) return;
+  c.faceDown = true;
+  delete c.transformed;
+  newTimestamp(s);
+  ctx.ev.push({ type: 'TurnedFaceDown', player: c.controller, card: id });
+}
+
+/** Manifests (or, with `cloak`, cloaks) a card from a library: onto the battlefield face down under `controller`'s control (rules 701.34, 701.58). */
+export function manifest(ctx: Ctx, id: InstanceId, controller: PlayerId, cloak = false): void {
+  const c = ctx.s.cards[id];
+  if (!c || c.zone === 'battlefield') return;
+  c.faceDown = true;
+  c.manifested = true;
+  if (cloak) c.faceDownWard = true;
+  moveCard(ctx, id, 'battlefield', { controller });
+  c.summoningSick = true;
 }

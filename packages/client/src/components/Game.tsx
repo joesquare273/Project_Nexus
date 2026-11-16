@@ -1442,6 +1442,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'devourOnEntry' ? 'to sacrifice (devour); the entering creature gets three +1/+1 counters for each'
                   : c.purpose === 'removeCountersOnEntry' ? 'to remove all counters from; the entering creature gets twice that many +1/+1 counters'
                   : c.purpose === 'artifactCopy' ? 'to create an artifact token copy of; choose none for no token'
+                  : c.purpose === 'manifestDread' ? 'to manifest (put onto the battlefield face down as a 2/2); the other goes into your graveyard'
                   : c.purpose === 'hideaway' ? 'to exile face down (hideaway); the rest go on the bottom of your library in a random order'
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'
                     : 'to keep; the others are sacrificed';

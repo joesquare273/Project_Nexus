@@ -109,7 +109,6 @@ choices keep opponents' hand identities hidden.
 
 ## Known rules simplifications (to revisit)
 
-- **Morph (2026-11-16):** only casting face down and turning face up by paying the morph cost are built. Not yet: "when turned face up" triggers, effects that turn a card face up or down, copying a face-down permanent, manifest/disguise, and revealing face-down cards when the game ends (a face-down card is revealed when it leaves the battlefield).
 
 | Area | Engine today | Real rule |
 |---|---|---|

@@ -1,7 +1,7 @@
 // Adventurer cards use their normal characteristics everywhere except while
 // being cast as an Adventure and on the stack (rule 715).
 import { CREATURE_SUBTYPES } from './subtypes.ts';
-import type { CardDefinition, CardInstance, GameState, StaticSpec } from './types.ts';
+import type { CardDefId, CardDefinition, CardInstance, GameState, StaticSpec } from './types.ts';
 
 export function spellDefinition(def: CardDefinition, adventure = false): CardDefinition {
   if (!adventure || !def.adventure) return def;
@@ -10,6 +10,8 @@ export function spellDefinition(def: CardDefinition, adventure = false): CardDef
 
 /** Copy effects operate on these values, before type/color changes, buffs, counters or crew. */
 export function copiableDefinition(s: GameState, c: CardInstance): CardDefinition {
+  // A face-down permanent or spell's copiable values are its face-down characteristics (rule 707.2, 708.2).
+  if (c.faceDown) return faceDownCharacteristics(c);
   let copy = c.zone === 'battlefield' ? c.copy : undefined;
   while (copy?.untilTurn !== undefined && copy.untilTurn < s.turnNumber) copy = copy.previous;
   if (copy) return copy.definition;
@@ -47,15 +49,51 @@ export function continuousSources(s: GameState): CardInstance[] {
 
 /** A face-down permanent or spell's characteristics (rule 708.2): online, other players see only this id. */
 export const FACE_DOWN_CARD: CardDefinition = { id: '?facedown', name: 'Face-down creature', types: ['creature'], power: 2, toughness: 2, colors: [] };
+/** Face down with ward {2}: disguised or cloaked (rules 702.168a, 701.58a). */
+export const FACE_DOWN_WARD_CARD: CardDefinition = { ...FACE_DOWN_CARD, id: '?facedown-ward', ward: 2 };
+export const FACE_DOWN_IDS: ReadonlySet<string> = new Set([FACE_DOWN_CARD.id, FACE_DOWN_WARD_CARD.id]);
 
-/** A face-down card: a 2/2 with no name or abilities, plus (for whoever knows the card) the special action that turns it face up. */
-function faceDownDefinition(s: GameState, c: CardInstance): CardDefinition {
-  const morph = s.cardDefs[c.defId]?.morph;
-  return morph ? { ...FACE_DOWN_CARD, activated: [{ cost: { mana: morph }, turnFaceUp: true, effects: [] }] } : FACE_DOWN_CARD;
+/** The face-down characteristics of this face-down object: copiable values too (rule 707.2). */
+export function faceDownCharacteristics(c: CardInstance): CardDefinition {
+  return c.faceDownWard ? FACE_DOWN_WARD_CARD : FACE_DOWN_CARD;
+}
+
+/**
+ * What its controller pays to turn this face-down permanent face up, if anything: its
+ * morph or disguise cost, or (manifested or cloaked) a creature card's mana cost (rules 702.37e, 702.168d, 701.34a).
+ */
+export function turnFaceUpCost(s: GameState, c: CardInstance): string | undefined {
+  const def = s.cardDefs[c.defId];
+  if (!c.faceDown || !def || FACE_DOWN_IDS.has(def.id)) return undefined;
+  if (def.morph) return def.morph;
+  if (def.disguise) return def.disguise;
+  if (c.manifested && def.types.includes('creature') && def.manaCost) return def.manaCost;
+  return undefined;
+}
+
+/**
+ * The card a copy of this permanent shows, and the id its token copies get (rule 707.2):
+ * a copy of a face-down permanent is a face-up nameless 2/2, so it shows nothing of the card.
+ */
+export function copyLook(s: GameState, c: CardInstance): { defId: CardDefId; artDefId: CardDefId; printing?: CardDefinition['printing'] } {
+  if (c.faceDown) {
+    const d = faceDownCharacteristics(c);
+    if (s.cardDefs[d.id] !== d) s.cardDefs = { ...s.cardDefs, [d.id]: d };
+    return { defId: d.id, artDefId: d.id };
+  }
+  const printing = c.copy?.printing ?? c.printing ?? copiableDefinition(s, c).printing;
+  return { defId: c.defId, artDefId: c.copy?.artDefId ?? c.defId, ...(printing ? { printing } : {}) };
 }
 
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
-  if (c.faceDown) return faceDownDefinition(s, c);
+  const out = definitionWithEffects(s, c);
+  // Turning a face-down permanent face up is a special action (rule 116.2b), not an ability, so nothing removes it.
+  if (!c.faceDown || c.zone !== 'battlefield') return out;
+  const cost = turnFaceUpCost(s, c);
+  return cost ? { ...out, activated: [...(out.activated ?? []), { cost: { mana: cost }, turnFaceUp: true, effects: [] }] } : out;
+}
+
+function definitionWithEffects(s: GameState, c: CardInstance): CardDefinition {
   const def = copiableDefinition(s,c);
   if (!def) throw new Error(`Missing card definition "${c.defId}".`);
   if (c.zone !== 'battlefield') return withGrantedWarp(s, c, spellDefinition(def, c.zone === 'stack' && !!c.adventureSpell));
