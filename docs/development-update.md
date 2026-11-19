@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F6: blue (2026-11-19)
+
+- 13 blue cards (docs/reality-fracture.md), with behold costs, Sphinx's Approach's exile-to-search, and "if you've scried or surveilled this turn" (Surveillance Phantasm).
+
 ### Reality Fracture R3c: Akroma and morph (2026-11-16)
 
 - Morph in the engine: a card with `morph` can be cast face down from hand for {3} at sorcery speed (its own play option, "Cast face down as a 2/2"), and becomes a nameless, colorless 2/2 creature with no abilities (`cardface.ts`, `FACE_DOWN_CARD`). Its controller turns it face up any time they could pay the morph cost, as a special action that doesn't use the stack (`TurnedFaceUp` event). It is turned face up wherever it goes other than the stack or battlefield.

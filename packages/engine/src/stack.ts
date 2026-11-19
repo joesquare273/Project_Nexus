@@ -1308,6 +1308,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (costCards.length !== 1 || !exileFromHandChoices(s, def, playerId, id).includes(costCards[0]!)) reject(`Choose a card in your hand to exile for ${def.name}.`);
   } else if (def.additionalCost?.chooseCreatureOrWarped) {
     if (costCards.length !== 1 || !encounterChoices(s, playerId).includes(costCards[0]!)) reject(`Choose a creature you control or a warped creature card you own in exile for ${def.name}.`);
+  } else if (def.additionalCost?.behold) {
+    if (costCards.length > 1 || (costCards.length === 1 && !beholdChoices(s, playerId, id, def.additionalCost.behold).includes(costCards[0]!))) reject(`Behold a ${def.additionalCost.behold} or pay ${def.additionalCost.orMana ?? ''} for ${def.name}.`);
   } else if (def.additionalCost?.sacrifice || (def.kickerSacrifice && (choice.kicks ?? 0) > 0)) {
     // A sacrifice cost (rule 601.2h): one matching permanent, or none when paying the mana instead.
     const ways = spellSacrificeChoices(s, playerId, def, id, choice.kicks ?? 0);
@@ -1389,6 +1391,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const paid of costCards) {
     if (def.additionalCost?.chooseCreatureOrWarped) continue;
+    // Behold: reveal it if it's in your hand; nothing else happens to it.
+    if (def.additionalCost?.behold) {
+      if (s.cards[paid]!.zone === 'hand') ctx.ev.push({ type: 'CardRevealed', player: playerId, card: paid, defId: s.cards[paid]!.defId });
+      continue;
+    }
     if (exileCost) moveCard(ctx, paid, 'exile');
     else if (sacrificing && def.kickerReturnsToHand && kicks > 0 && !def.additionalCost?.sacrifice) moveCard(ctx, paid, 'hand');
     else if (sacrificing) sacrifice(ctx, paid);
@@ -1724,7 +1731,15 @@ export function spellSacrificeChoices(s: GameState, playerId: PlayerId, def: Car
 
 /** The mana a spell's additional cost adds for these cost cards ("or pay {2}" when nothing was sacrificed). */
 export function additionalManaFor(def: CardDefinition, costCards: readonly InstanceId[]): string | undefined {
-  return def.additionalCost?.sacrifice && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
+  return (def.additionalCost?.sacrifice || def.additionalCost?.behold) && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
+}
+
+/** Behold a [subtype] (rule 701.4x): a permanent with it you control, or a card with it in your hand (not this one). */
+export function beholdChoices(s: GameState, playerId: PlayerId, self: InstanceId, subtype: string): InstanceId[] {
+  const p = player(s, playerId);
+  const onField = p.battlefield.filter((id) => !s.cards[id]!.phasedOut && s.cards[id]!.controller === playerId && subtypesOf(s, s.cards[id]!).includes(subtype));
+  const inHand = p.hand.filter((id) => id !== self && (defOf(s, s.cards[id]!).subtypes ?? []).includes(subtype));
+  return [...onField, ...inHand];
 }
 
 /** Ethersworn Canonist: whether this player may cast no more nonartifact spells this turn. */
@@ -2108,6 +2123,10 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
           ? (r.exiledCount ?? 0)
           : a.of === 'chosenCount'
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
+          : a.of === 'chosenNonlandCount'
+            ? (r.chosen?.at(-1)?.cards ?? []).filter((id) => s.cards[id] && !defOf(s, s.cards[id]!).types.includes('land')).length
+          : a.of === 'previousTargetLibraryToGraveyardThisTurn'
+            ? (() => { const p = r.previousTarget?.kind === 'player' ? s.players[r.previousTarget.player] : undefined; return p?.libraryToGraveyard?.turn === s.turnNumber ? p.libraryToGraveyard.count : 0; })()
             : a.of === 'sourceCounterKinds'
               ? sourceCounterKinds(s, r.item)
               : a.of === 'sourceCounters'
@@ -2626,6 +2645,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (s.cards[id]?.zone !== 'battlefield') r.sacrificedAny = true;
       }
       return;
+    case 'ExileNamedToSearch': {
+      // Sphinx's Approach: only if there are enough named cards to exile (you may; the engine always does when it can).
+      const spell = item.kind === 'spell' ? s.cards[item.card] : undefined;
+      if (!spell) return;
+      const name = defOf(s, spell).name;
+      const yard = player(s, item.controller).graveyard.filter((id) => s.cards[id] && defOf(s, s.cards[id]!).name === name);
+      if (yard.length < amount) return;
+      (item as SpellItem).exileAfter = true;
+      for (const id of yard.slice(0, amount)) moveCard(ctx, id, 'exile');
+      queueSearch(s, r, item.controller, { ...effect, amount: 1 }, 1, 'battlefield');
+      return;
+    }
     case 'ChooseCreatureType': {
       // The creature types among creatures on the battlefield, and any other type (sparing none of them).
       const types = [...new Set(battlefield(s).filter((c) => !c.phasedOut && hasType(s, c, 'creature')).flatMap((c) => subtypesOf(s, c).filter((t) => CREATURE_SUBTYPES.has(t))))].sort();
@@ -3144,6 +3175,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         return;
       }
       const chooser = effect.chosenByPreviousTargetPlayer ? (controllerOfTarget(s, r.previousTarget) ?? item.controller) : item.controller;
+      // "Up to that many": none to choose when it's 0.
+      if (effect.upToCount !== undefined) {
+        const most = Math.min(cards.length, resolvedAmount(s, { ...effect, amount: effect.upToCount }, r));
+        if (most <= 0) {
+          if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
+          return;
+        }
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: 0, max: most }];
+        return;
+      }
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.exactly ? effect.exactly : effect.optional || effect.anyNumber ? 0 : 1, max: effect.exactly ?? (effect.anyNumber ? cards.length : 1) }];
       return;
     }
@@ -4968,7 +5009,10 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     if (most !== undefined && s.cards[id]?.zone === 'graveyard' && objectManaValue(s, s.cards[id]!) <= most) moveCard(ctx, id, 'hand');
   }
   ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
-  if (s.resolving.surveilQueue.length === 0) ctx.ev.push({ type: 'ScryOrSurveilDone', player: playerId, scry });
+  if (s.resolving.surveilQueue.length === 0) {
+    player(s, playerId).scriedOrSurveiledTurn = s.turnNumber;
+    ctx.ev.push({ type: 'ScryOrSurveilDone', player: playerId, scry });
+  }
   continueResolving(ctx);
 }
 

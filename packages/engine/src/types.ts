@@ -524,6 +524,11 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** "The next spell you cast this turn can't be countered" (Theorist's Proxy). */
   'NextSpellCantBeCountered',
+  /**
+   * "You may exile this spell and `amount` cards named [this] from your graveyard. If you do, search
+   * your library for a card matching `filter`, put it onto the battlefield, then shuffle" (Sphinx's Approach).
+   */
+  'ExileNamedToSearch',
   /** "Choose a creature type" as it resolves (a chooseOption); a later effect's `exceptChosenCreatureType` uses it (Kindred Judgment). */
   'ChooseCreatureType',
   /** The target creatures become prepared (only creatures with a prepare spell can). */
@@ -810,6 +815,10 @@ export type Amount =
         | 'previousTargetPowerOverSubject'
         /** The damage dealt in the triggering event ("it deals that much damage"). */
         | 'damageDealt'
+        /** Cards put into the previous target player's graveyard from their library this turn (Cruel Calculations). */
+        | 'previousTargetLibraryToGraveyardThisTurn'
+        /** Nonland cards among those chosen in the last choice (discarded "this way": Seasoned Cryomancer). */
+        | 'chosenNonlandCount'
         /** Excess damage the last DealDamage with `recordExcess` dealt to a creature or planeswalker (rule 120.4a: Violent Echoes). */
         | 'excessDamage'
         /** SpellCast triggers: the mana spent to cast the triggering spell ("where X is the amount of mana spent"). */
@@ -860,6 +869,8 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** ChoosePermanent: choose up to this many (none if it's 0: Seasoned Cryomancer's "up to that many"). */
+  upToCount?: Amount;
   /** Destroy: spare creatures of the type chosen earlier in this spell (Kindred Judgment). */
   exceptChosenCreatureType?: boolean;
   /** Destroy: "If it wasn't attacking, its controller draws a card" (Prophesied End). */
@@ -1725,6 +1736,8 @@ export interface StaticSpec {
   exileOpponentCreaturesThatDie?: { gainLife: number };
   /** "As long as this creature has a counter on it, it can attack as though it didn't have defender" (Demon Wall). */
   attacksDespiteDefenderWithCounters?: boolean;
+  /** Surveillance Phantasm: it can attack as though it didn't have defender as long as you've scried or surveilled this turn. */
+  attacksDespiteDefenderIfScried?: boolean;
   /** Mechan Shieldmate: it can attack as though it didn't have defender while an artifact entered the battlefield under your control this turn. */
   attacksDespiteDefenderIfArtifactEntered?: boolean;
   /** Frenzied Baloth: creature spells you control can't be countered. */
@@ -2162,7 +2175,7 @@ export interface CardDefinition {
    * permanent matching `sacrifice` (chosen with `costCards`); with `orMana`,
    * paying that mana instead of sacrificing ("sacrifice a legendary creature or pay {2}").
    */
-  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string; /** "Choose a creature you control or a warped creature card you own in exile" (Close Encounter): chosen with `costCards`; nothing happens to it. */ chooseCreatureOrWarped?: boolean };
+  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string; /** "Behold a Jace or pay {1}": a permanent with this subtype you control, or a card with it in your hand (chosen with `costCards`), or `orMana`. */ behold?: string; /** "Choose a creature you control or a warped creature card you own in exile" (Close Encounter): chosen with `costCards`; nothing happens to it. */ chooseCreatureOrWarped?: boolean };
   /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
   kickerSacrifice?: ObjectFilter;
   /** "Protection from Humans" (rule 702.16): protection from sources with these subtypes. */
@@ -2612,6 +2625,10 @@ export interface PlayerState {
   noncombatDamageTurn?: number;
   /** "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}" (Molten Tide). */
   extraMana?: { turn: number; subtype: string; mana: ManaType }[];
+  /** Cards put into this player's graveyard from their library this turn. */
+  libraryToGraveyard?: { turn: number; count: number };
+  /** The last turn this player scried or surveilled. */
+  scriedOrSurveiledTurn?: number;
   /** The last turn this player activated a loyalty ability. */
   loyaltyActivatedTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */

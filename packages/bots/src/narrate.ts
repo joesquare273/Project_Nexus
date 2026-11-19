@@ -318,6 +318,8 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'ExileNamedToSearch':
+      return `you may exile this spell and ${n} cards with the same name from your graveyard. If you do, search your library for a ${subjectText({ ...e.filter, controller: undefined }, 'card')}, put it onto the battlefield, then shuffle`;
     case 'ChooseCreatureType':
       return 'choose a creature type';
     case 'BecomePrepared':

@@ -31,8 +31,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F2 | Empower Jace spells and creatures (17) | Done |
 | F3 | The ten "Way of the ..." enchantments and other cards that give planeswalkers abilities (Sanctum Lurker, Avatar of Burgeoning Echoes, Kiora of Salt and Sand) | Done |
 | F4 | Prepared (24): the 21 creatures with prepare spells, Codie, Hexhaven Dueling Arena, Infinite Coursework | Done |
-| F5 | White (19) | Done |
-| F6 | Blue | |
+| F5 | White (18) | Done |
+| F6 | Blue (13) | Done |
 | F7 | Black | |
 | F8 | Red | |
 | F9 | Green | |
@@ -72,3 +72,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 
 - Enlightened Confidant, Fateshaper Aspirant, Flickering Hound, Generous Revival, Germinate Recruits, Graft Surgeon, Guiding Hydra, Kindred Judgment, Loyal Tutor, Memory Trap, Predictive Preparations, Prophesied End, Refute Destiny, Return to the Light Realms, Shatterwing Pegasus, Surgical Precision, Unflinching Hortimancer and Your Fate Ends Here (with Campus Crier, Hexhaven Battalion, Repurposed Enforcer, Academic Ascent and Blossom-Blessed Angel from F2 and F4, every white card but Emrakul's colorless self is built).
 - Engine: "choose a creature type" as a spell resolves (`ChooseCreatureType`, a `chooseOption` with `forResolution`; the choices are the creature types on the battlefield and "Another type"), Destroy's `exceptChosenCreatureType` and `drawIfNotAttacking`, and Surveil's `returnIfManaValueAtMostLifeGained`.
+
+### F6 (2026-11-19)
+
+- Countersculpt, Cruel Calculations, Cryotheory Adept, Divining Duelist, Icy Reception, Perfected Theory, Precise Redaction, Seasoned Cryomancer, Sphinx of False Conclusions, Sphinx's Approach, Surveillance Phantasm, Undulating Witness and Unsummon.
+- Engine: behold as an additional cost (`additionalCost.behold`: reveal a card of that type from hand or choose one you control), "up to X" choices counted from the cards already chosen (`upToCount`, `chosenNonlandCount`), cards put from a player's library into their graveyard this turn (`PlayerState.libraryToGraveyard`), "if you've scried or surveilled this turn" (`PlayerState.scriedOrSurveiledTurn`, `attacksDespiteDefenderIfScried`), and Sphinx's Approach's "exile four cards named ... from your graveyard to search" (`ExileNamedToSearch`).
+- Simplifications: Seasoned Cryomancer chooses the creatures as it resolves rather than targeting them, and Sphinx's Approach always exiles the four cards and searches when it can (the "you may" is taken).

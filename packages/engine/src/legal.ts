@@ -22,6 +22,7 @@ import {
   spellManaRestrictions,
   exileFromHandChoices,
   encounterChoices,
+  beholdChoices,
   canActAtSorcerySpeed,
   canEverCast,
   canPayFromPool,
@@ -209,6 +210,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
           ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
           : def.additionalCost?.chooseCreatureOrWarped
             ? encounterChoices(s, playerId).map((id) => [id])
+          : def.additionalCost?.behold
+            ? [...beholdChoices(s, playerId, c.id, def.additionalCost.behold).slice(0, 1).map((id) => [id]), []]
           : def.additionalCost?.sacrifice || def.kickerSacrifice
             ? spellSacrificeChoices(s, playerId, def, c.id, kicks)
             : discard > 0 ? subsets(discardCandidates(s, playerId, c.id, retrace ? RETRACE_DISCARD : undefined), discard, discard) : [[]];

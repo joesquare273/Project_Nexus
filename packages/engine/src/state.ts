@@ -200,6 +200,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     to = 'void';
     opts = { ...opts, silent: true };
   }
+  // "Cards put into a graveyard from a library this turn" (milled, surveiled, discarded from the top...).
+  if (from === 'library' && to === 'graveyard' && s.players[c.owner]) {
+    const p = s.players[c.owner]!;
+    p.libraryToGraveyard = { turn: s.turnNumber, count: (p.libraryToGraveyard?.turn === s.turnNumber ? p.libraryToGraveyard.count : 0) + 1 };
+  }
   delete c.graveyardCastTurn;
   delete c.activatedTurns;
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).

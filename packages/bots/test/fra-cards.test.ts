@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, put } from './kit-helpers.ts';
+import { canAttack } from '../../engine/src/combat.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -462,5 +463,94 @@ describe('F5: white', () => {
     const fate = put(s, 'P1', 'your-fate-ends-here', 'hand');
     mana(s, 'P1', { W: 1, C: 2 });
     expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === fate && a.targets?.some((t) => t.kind === 'card' && t.card === small))).toBe(false);
+  });
+});
+
+describe('F6: blue', () => {
+  it('Countersculpt: behold a Jace (a Jace card in hand counts) or pay {1}, then counter and empower', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'no-admittance', 'hand');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { R: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: theirs, targets: [{ kind: 'player', player: 'P1' }] });
+    const counter = put(s, 'P1', 'countersculpt', 'hand');
+    const jace = put(s, 'P1', 'jace-multiverse-architect', 'hand');
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    mana(s, 'P1', { U: 2 });
+    const ways = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === counter);
+    // With only {U}{U}: beholding the Jace is the way (paying {1} more isn't possible).
+    expect(ways.map((a) => (a.type === 'CastSpell' ? a.costCards ?? [] : []))).toEqual([[jace]]);
+    s = cast(s, ways[0]!).state;
+    expect([zone(s, theirs), zone(s, jace), s.players.P1!.life]).toEqual(['graveyard', 'hand', 20]);
+  });
+
+  it('Cruel Calculations draws one card for each card put into the target player\'s graveyard from their library this turn', () => {
+    let s = newGame();
+    const mill = put(s, 'P1', 'void-extrapolator-omit-variables'); // enters prepared: Omit Variables mills three
+    void mill;
+    s.players.P2!.libraryToGraveyard = { turn: s.turnNumber, count: 3 };
+    const spell = put(s, 'P1', 'cruel-calculations', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 3);
+  });
+
+  it('a mill counts for this turn', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'something-worth-saving', 'hand');
+    void spell;
+    const before = s.players.P1!.libraryToGraveyard;
+    expect(before).toBeUndefined();
+    const voidEx = put(s, 'P1', 'void-extrapolator-omit-variables', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: voidEx }).state;
+    const copy = Object.values(s.cards).find((c) => c.prepareSpellOf?.card === voidEx)!;
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === copy.id)!).state;
+    expect(s.players.P1!.libraryToGraveyard).toEqual({ turn: s.turnNumber, count: 3 });
+  });
+
+  it('Surveillance Phantasm can attack once you have surveilled this turn', () => {
+    let s = newGame();
+    const phantasm = put(s, 'P1', 'surveillance-phantasm');
+    expect(canAttack(s, s.cards[phantasm]!, 'P1')).toBe(false);
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: phantasm, ability: 0, targets: [] }).state;
+    if (s.pending.kind === 'surveil') s = act(s, { type: 'Surveil', player: 'P1', toGraveyard: false });
+    expect(s.players.P1!.scriedOrSurveiledTurn).toBe(s.turnNumber);
+    expect(canAttack(s, s.cards[phantasm]!, 'P1')).toBe(true);
+  });
+
+  it('Seasoned Cryomancer: draw two, discard two, then tap and stun up to one creature per nonland card discarded', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'thawbringer');
+    const cryo = put(s, 'P1', 'seasoned-cryomancer', 'hand');
+    const spell1 = put(s, 'P1', 'unsummon', 'hand');
+    const land = put(s, 'P1', 'plains', 'hand');
+    mana(s, 'P1', { U: 2, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: cryo });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'discard' });
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [spell1, land] });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'mark', max: 1 });
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [theirs] });
+    expect([s.cards[theirs]!.tapped, s.cards[theirs]!.namedCounters?.stun]).toEqual([true, 1]);
+  });
+
+  it("Sphinx's Approach: with four more in the graveyard, it exiles them and itself to put a Sphinx onto the battlefield", () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'sphinxs-approach', 'graveyard');
+    const sphinx = put(s, 'P1', 'sphinx-of-false-conclusions', 'library');
+    put(s, 'P1', 'island', 'library'); // the two cards it draws first
+    put(s, 'P1', 'island', 'library');
+    const spell = put(s, 'P1', 'sphinxs-approach', 'hand');
+    mana(s, 'P1', { U: 2, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: spell });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'search' });
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [sphinx] });
+    expect([zone(s, sphinx), zone(s, spell), s.players.P1!.graveyard.length]).toEqual(['battlefield', 'exile', 0]);
   });
 });

@@ -292,6 +292,8 @@ const PLAYER_FIELDS = {
   loyaltyActivatedTurn: 'copy',
   noncombatDamageTurn: 'copy',
   extraMana: 'copy',
+  libraryToGraveyard: 'copy',
+  scriedOrSurveiledTurn: 'copy',
   nextSpellUncounterableTurn: 'copy',
   legendRuleOffTurn: 'copy',
   endStepsBegun: 'copy',

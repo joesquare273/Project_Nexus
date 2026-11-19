@@ -132,6 +132,8 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetPowerOverSubject',
       'damageDealt',
       'excessDamage',
+      'previousTargetLibraryToGraveyardThisTurn',
+      'chosenNonlandCount',
       'subjectManaSpent',
       'dieRoll',
       'chosenCardTypes',
