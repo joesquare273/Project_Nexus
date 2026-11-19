@@ -24,6 +24,11 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Crowded battlefields fit their seats (2026-11-19)
+
+- With many permanents (a 1-on-1 Commander game), battlefield rows wrapped onto lines the seat had no room for, so cards spilled under the life totals and the next seat. Now, in 2- and 3-player games, each row (creatures, lands) stays on one line: its cards shrink to fit the row's width, then every row shrinks together if they're taller than the seat; only below a readable minimum (55% of the usual size) do a row's cards fan out with a small overlap, the one under the pointer on top (`useFitBattlefield` in `components/Zones.tsx`). Four-player games keep scaling the whole seat (`FitBoard`). Hand cards are unchanged.
+- The board preview takes `?crowd=N` to put N more permanents on each battlefield (`/preview.html?players=2&crowd=14`).
+
 ### Reality Fracture F4: prepared (2026-11-16)
 
 - The prepared mechanic and its 24 cards (docs/reality-fracture.md): a prepared creature's controller may cast a copy of its prepare spell, which unprepares it.

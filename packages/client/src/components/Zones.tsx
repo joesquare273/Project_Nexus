@@ -1,5 +1,5 @@
 import { playerAvatar } from '../game/avatars.ts';
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
 import { YOU, type Placement } from '../game/session.ts';
@@ -233,12 +233,106 @@ function DraggableCard({
   );
 }
 
+/**
+ * Fits a battlefield inside its seat: each row (creatures, lands) stays on one line, its permanents
+ * shrinking when they don't fit the row's width (every battlefield size is a multiple of --bf-w);
+ * then, if the rows are taller than the seat, every row shrinks together. Below a readable minimum
+ * the cards of a row fan out, overlapping a little, instead of wrapping onto lines the seat has no
+ * room for or spilling under the rest of the board.
+ */
+function useFitBattlefield(box: RefObject<HTMLDivElement | null>, rows: RefObject<HTMLDivElement | null>[], enabled: boolean): void {
+  useLayoutEffect(() => {
+    const battlefield = box.current;
+    const list = rows.map((r) => r.current).filter((r): r is HTMLDivElement => !!r);
+    if (!battlefield || !enabled || list.length === 0) return;
+    const items = (row: HTMLElement) => [...row.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.classList.contains('empty-row') && e.style.position !== 'absolute');
+    const outer = (e: HTMLElement) => {
+      const m = getComputedStyle(e);
+      return e.getBoundingClientRect().width + (parseFloat(m.marginLeft) || 0) + (parseFloat(m.marginRight) || 0);
+    };
+    const fit = () => {
+      // Measured sizes must be the final ones, not part-way through a card's resize transition.
+      battlefield.classList.add('fitting');
+      try {
+        measure();
+      } finally {
+        battlefield.classList.remove('fitting');
+      }
+    };
+    const measure = () => {
+      for (const row of list) {
+        row.style.removeProperty('--bf-w');
+        for (const e of [...row.children]) if (e instanceof HTMLElement) e.style.removeProperty('margin-left');
+      }
+      // Each row's own card width, from a probe that reads its --bf-w.
+      const base = list.map((row) => {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--bf-w);height:0;pointer-events:none';
+        row.appendChild(probe);
+        const w = probe.getBoundingClientRect().width;
+        probe.remove();
+        return w;
+      });
+      const smallest = base.map((b) => Math.min(b, Math.max(38, b * 0.55)));
+      const width = [...base];
+      const apply = () => list.forEach((row, k) => (width[k]! < base[k]! - 0.5 ? row.style.setProperty('--bf-w', `${width[k]!.toFixed(2)}px`) : row.style.removeProperty('--bf-w')));
+      const need = (row: HTMLElement) => {
+        const cs = getComputedStyle(row);
+        const children = items(row);
+        const gaps = (parseFloat(cs.columnGap) || 0) * Math.max(0, children.length - 1);
+        const available = row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+        return { content: children.reduce((w, e) => w + outer(e), 0), gaps, available, count: children.length };
+      };
+      // Width: widths scale with --bf-w; measured again each time, since a few parts don't.
+      for (let pass = 0; pass < 4; pass++) {
+        let changed = false;
+        list.forEach((row, k) => {
+          const { content, gaps, available } = need(row);
+          if (content === 0 || available <= 0 || content + gaps <= available + 1 || width[k]! <= smallest[k]!) return;
+          width[k] = Math.max(smallest[k]!, (width[k]! * (available - gaps)) / content);
+          changed = true;
+        });
+        if (!changed) break;
+        apply();
+      }
+      // Height: the seat's room for the battlefield.
+      const room = battlefield.parentElement?.clientHeight ?? 0;
+      for (let pass = 0; pass < 4 && room > 0; pass++) {
+        const tall = battlefield.scrollHeight;
+        if (tall <= room + 1 || width.every((w, k) => w <= smallest[k]!)) break;
+        const factor = room / tall;
+        width.forEach((w, k) => (width[k] = Math.max(smallest[k]!, w * factor)));
+        apply();
+      }
+      // Still too wide at the smallest size: the cards of that row overlap.
+      for (const row of list) {
+        const { content, gaps, available, count } = need(row);
+        const over = content + gaps - available;
+        if (over > 1 && count > 1) items(row).slice(1).forEach((e) => e.style.setProperty('margin-left', `${(-over / (count - 1)).toFixed(2)}px`));
+      }
+    };
+    let frame = 0;
+    fit();
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    });
+    observer.observe(battlefield);
+    if (battlefield.parentElement) observer.observe(battlefield.parentElement);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  });
+}
+
 function Battlefield({
   view,
   pid,
   h,
   placement,
   onPlaced,
+  fitRows = false,
 }: {
   view: GameView;
   pid: PlayerId;
@@ -246,8 +340,14 @@ function Battlefield({
   /** Your battlefield: nonland permanents can be dragged around. */
   placement?: Placement;
   onPlaced?: () => void;
+  /** Shrink each row's cards to fit its width (the 2- and 3-player board; 4 players scale the whole seat). */
+  fitRows?: boolean;
 }) {
   const area = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const creatureRow = useRef<HTMLDivElement>(null);
+  const landRow = useRef<HTMLDivElement>(null);
+  useFitBattlefield(box, [placement ? area : creatureRow, landRow], fitRows);
   const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
   const ids = view.players[pid]!.battlefield;
   const lands = ids.filter((id) => defOf(view.cards[id]!.defId).types.includes('land'));
@@ -276,11 +376,11 @@ function Battlefield({
     for (const id of [...placement.keys()]) if (!hosts.includes(id)) placement.delete(id);
   }
   return (
-    <div className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
+    <div ref={box} className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
       <div className="zone-label">Battlefield{placement && ordered.length > 0 ? ' · drag your permanents to arrange them' : ''}</div>
       {expandedStacks.size > 0 && <button className="stack-tokens-button ghost" onClick={() => setExpandedStacks(new Set())}>Stack tokens</button>}
       {placement ? (
-        <div ref={area} className="row creatures free">
+        <div ref={area} className={`row creatures free ${fitRows ? 'fit' : ''}`}>
           {groups.map((group) => group.members.length > 1 ? tokenStack(group) : (
             <DraggableCard
               key={group.id}
@@ -296,14 +396,14 @@ function Battlefield({
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>
       ) : (
-        <div className="row creatures">
+        <div ref={creatureRow} className={`row creatures ${fitRows ? 'fit' : ''}`}>
           {groups.map((group) => group.members.length > 1 ? tokenStack(group) : (
             <AttachedGroup key={group.id} view={view} id={group.id} attached={attachedTo(group.id)} h={h} />
           ))}
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>
       )}
-      <div className="row lands">
+      <div ref={landRow} className={`row lands ${fitRows ? 'fit' : ''}`}>
         {lands.map((id) => (
           <BattlefieldCard key={id} view={view} id={id} h={h} />
         ))}
@@ -534,7 +634,7 @@ export function OpponentZone({ view, pid, h, fit = false, commandCorner = 'top-l
       </div>
       <OpponentHand view={view} pid={pid} h={h} />
       <FitBoard enabled={fit}><div className="zone-body">
-        <Battlefield view={view} pid={pid} h={h} />
+        <Battlefield view={view} pid={pid} h={h} fitRows={!fit} />
         <ZonePiles view={view} pid={pid} h={h} />
       </div></FitBoard>
       {!top && <div className="zone-bottom">{command}</div>}
@@ -559,7 +659,7 @@ export function YourZone({
     <section className={`zone you ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
       <div className="zone-top"><CommandZone view={view} pid={YOU} h={h} /><PlayerHeader view={view} pid={YOU} h={h} /></div>
       <FitBoard enabled={fit}><div className="zone-body">
-        <Battlefield view={view} pid={YOU} h={h} placement={fit ? undefined : placement} onPlaced={onPlaced} />
+        <Battlefield view={view} pid={YOU} h={h} placement={fit ? undefined : placement} onPlaced={onPlaced} fitRows={!fit} />
         <ZonePiles view={view} pid={YOU} h={h} />
       </div></FitBoard>
     </section>

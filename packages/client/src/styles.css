@@ -4395,3 +4395,30 @@ h1, h2, h3, .brand, .page-title h1, .stack-title, .reward-card h3, .home-quests 
 .admin-tabs button.chosen, .admin-filters button.chosen { background: rgba(231, 201, 109, 0.2); border-color: rgba(231, 201, 109, 0.6); }
 button.danger { background: #8e2b2b; border-color: #b84040; color: #fff; }
 .top-nav { min-width: 0; overflow-x: auto; }
+
+/* ---------- Crowded rows (2026-11-19) ----------
+   A row keeps one line: its cards shrink to fit (useFitRow in Zones.tsx sets --bf-w), then fan out
+   with a little overlap; the card under the pointer comes to the front. */
+.row.fit {
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
+}
+/* Without wrapping, a row's content mustn't widen the battlefield past its seat. */
+.zone-body > .battlefield {
+  min-width: 0;
+  flex: 1 1 0;
+}
+.row.fit > * {
+  position: relative;
+  flex-shrink: 0;
+}
+.row.fit > *:hover,
+.row.fit > *:focus-within {
+  z-index: 6;
+}
+.battlefield.fitting,
+.battlefield.fitting * {
+  transition: none !important;
+}
+

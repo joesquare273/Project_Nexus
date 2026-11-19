@@ -26,6 +26,21 @@ for (let guard = 0; guard < 4000 && session.state.turnNumber <= turns && session
   } else session.advance();
 }
 
+// ?crowd=N: N more permanents from each library onto each battlefield (lands and nonlands), to see a full board.
+const crowd = Number(params.get('crowd') ?? 0);
+if (crowd > 0) {
+  const s = session.state;
+  for (const pid of s.turnOrder) {
+    const p = s.players[pid]!;
+    for (const id of p.library.splice(0, crowd)) {
+      const c = s.cards[id]!;
+      c.zone = 'battlefield';
+      c.summoningSick = false;
+      p.battlefield.push(id);
+    }
+  }
+}
+
 // ?control=1: you control the next opponent's turn (The Dominion Bracelet), to see that board.
 if (params.get('control')) {
   for (let guard = 0; guard < 400 && session.state.activePlayer === YOU; guard++) {
