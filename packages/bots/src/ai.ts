@@ -759,6 +759,12 @@ export function basicAi(_seed = 0): Bot {
     // A Siege's mode: Jeskai (a hasty lifelink Goblin each upkeep) unless you have several attack triggers to double.
     if (pending.kind === 'chooseOption') {
       const options = legal.filter((a): a is Extract<Action, { type: 'ChooseOption' }> => a.type === 'ChooseOption');
+      // A creature type to spare (Kindred Judgment): the one most of its own creatures have.
+      if (pending.forResolution === 'creatureType') {
+        const mine = s.players[pending.player]!.battlefield.map((id) => s.cards[id]!).filter((c) => currentDefinition(s, c).types.includes('creature'));
+        const count = (t: string) => mine.filter((c) => (currentDefinition(s, c).subtypes ?? []).includes(t)).length;
+        return [...options].sort((a, b) => count(b.option) - count(a.option))[0] ?? legal[0]!;
+      }
       return options.find((a) => a.option === 'Jeskai') ?? options[0] ?? legal[0]!;
     }
     if (pending.kind === 'chooseCardType') {

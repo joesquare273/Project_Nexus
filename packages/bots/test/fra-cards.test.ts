@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, cast, fight, mana, newGame, put } from './kit-helpers.ts';
+import { act, cast, fight, goTo, mana, newGame, put } from './kit-helpers.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -392,5 +392,75 @@ describe('F4: prepared', () => {
     s = act(s, { type: 'ChooseCards', player: 'P1', cards: [...(s.pending as { cards: string[] }).cards] });
     s = act(s, { type: 'ChooseCards', player: 'P2', cards: [] });
     expect([s.players.P1!.hand.length, s.players.P2!.hand, zone(s, kept)]).toEqual([7, [kept], 'hand']);
+  });
+});
+
+describe('F5: white', () => {
+  it('Kindred Judgment: choose a creature type as it resolves; every creature not of that type is destroyed', () => {
+    let s = newGame();
+    const soldier = put(s, 'P1', 'repurposed-enforcer'); // Human Soldier
+    const angel = put(s, 'P2', 'blossom-blessed-angel-seed-suture'); // Angel Cleric
+    const spell = put(s, 'P1', 'kindred-judgment', 'hand');
+    mana(s, 'P1', { W: 2, C: 5 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: spell });
+    s = act(act(s, { type: 'PassPriority', player: 'P1' }), { type: 'PassPriority', player: 'P2' });
+    expect(s.pending).toMatchObject({ kind: 'chooseOption', forResolution: 'creatureType' });
+    expect((s.pending as { options: string[] }).options).toEqual(expect.arrayContaining(['Soldier', 'Angel', 'Another type']));
+    s = act(s, { type: 'ChooseOption', player: 'P1', option: 'Soldier' });
+    expect([zone(s, soldier), zone(s, angel), zone(s, spell)]).toEqual(['battlefield', 'graveyard', 'graveyard']);
+  });
+
+  it("Prophesied End: its controller draws a card unless it was attacking", () => {
+    let s = newGame();
+    const bear = put(s, 'P2', 'thawbringer');
+    const spell = put(s, 'P1', 'prophesied-end', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    const hand = s.players.P2!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(bear)] }).state;
+    expect([zone(s, bear), s.players.P2!.hand.length]).toEqual(['graveyard', hand + 1]);
+  });
+
+  it('Enlightened Confidant: after you gained life, surveil 1, and a cheap enough card goes to your hand instead', () => {
+    let s = newGame();
+    put(s, 'P1', 'enlightened-confidant');
+    const cheap = put(s, 'P1', 'unsummon', 'library'); // mana value 1
+    s.players.P1!.lifeGainedThisTurn = 2;
+    s.step = 'main2';
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    for (let i = 0; i < 6 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'surveil', card: cheap });
+    s = act(s, { type: 'Surveil', player: 'P1', toGraveyard: true });
+    expect(zone(s, cheap)).toBe('hand');
+  });
+
+  it('Graft Surgeon enters with a counter and passes its counters on as it dies; Guiding Hydra spreads one', () => {
+    let s = newGame();
+    const surgeon = put(s, 'P1', 'graft-surgeon', 'hand');
+    const bear = put(s, 'P1', 'thawbringer');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: surgeon }).state;
+    expect(s.cards[surgeon]!.counters).toBe(1);
+    const bolt = put(s, 'P1', 'no-admittance', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(surgeon)] }).state;
+    expect([zone(s, surgeon), s.cards[bear]!.counters]).toEqual(['graveyard', 1]);
+    const hydra = put(s, 'P1', 'guiding-hydra', 'battlefield', { counters: 3 });
+    s.step = 'main1';
+    s = goTo(s, 'beginCombat');
+    expect([s.cards[hydra]!.counters, s.cards[bear]!.counters]).toEqual([2, 2]);
+  });
+
+  it('Memory Trap exiles a nonland permanent until it leaves; Your Fate Ends Here needs mana value 3 or more', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'archon-of-cruelty');
+    const trap = put(s, 'P1', 'memory-trap', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: trap }).state;
+    expect(zone(s, theirs)).toBe('exile');
+    const small = put(s, 'P2', 'diviner-of-victory-unwind-history'); // mana value 1
+    const fate = put(s, 'P1', 'your-fate-ends-here', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === fate && a.targets?.some((t) => t.kind === 'card' && t.card === small))).toBe(false);
   });
 });

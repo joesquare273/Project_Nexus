@@ -1,3 +1,4 @@
+import { CREATURE_SUBTYPES } from './subtypes.ts';
 import type { ManaRestriction } from './types.ts';
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
@@ -2625,8 +2626,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (s.cards[id]?.zone !== 'battlefield') r.sacrificedAny = true;
       }
       return;
+    case 'ChooseCreatureType': {
+      // The creature types among creatures on the battlefield, and any other type (sparing none of them).
+      const types = [...new Set(battlefield(s).filter((c) => !c.phasedOut && hasType(s, c, 'creature')).flatMap((c) => subtypesOf(s, c).filter((t) => CREATURE_SUBTYPES.has(t))))].sort();
+      s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: [...types, 'Another type'], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'creatureType' };
+      return;
+    }
     case 'Destroy':
-      for (const id of onBattlefield) if (destroy(ctx, id)) { r.destroyedCount = (r.destroyedCount ?? 0) + 1; r.destroyedCards = [...(r.destroyedCards ?? []), id]; }
+      for (const id of onBattlefield) {
+        // Kindred Judgment: "Destroy all creatures that aren't of the chosen type."
+        if (effect.exceptChosenCreatureType && r.chosenCreatureType && subtypesOf(s, s.cards[id]!).includes(r.chosenCreatureType)) continue;
+        const attacking = !!s.combat?.attacks.some((a) => a.attacker === id);
+        const controller = s.cards[id]!.controller;
+        if (destroy(ctx, id)) { r.destroyedCount = (r.destroyedCount ?? 0) + 1; r.destroyedCards = [...(r.destroyedCards ?? []), id]; }
+        // Prophesied End: "If it wasn't attacking, its controller draws a card."
+        if (effect.drawIfNotAttacking && !attacking && !s.players[controller]!.eliminated) drawCards(ctx, controller, 1);
+      }
       return;
     case 'Exile':
       // A card in a graveyard ("exile target creature card from a graveyard").
@@ -3923,6 +3938,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'Surveil':
     case 'Scry':
+      if (effect.returnIfManaValueAtMostLifeGained) r.surveilReturnAtMost = player(s, item.controller).lifeGainedThisTurn ?? 0;
       r.surveilQueue.push(...topOfLibrary(s, item.controller, amount));
       r.scrying = effect.effect === 'Scry';
       return;
@@ -4285,7 +4301,7 @@ function continueResolving(ctx: Ctx): void {
       targets = targets.filter((t) => t.kind === 'card' && objectManaValue(s, s.cards[t.card]!) <= colors);
     }
     applyEffect(ctx, effect, r, targets);
-    if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent' || s.pending.kind === 'chooseCopyTargets') return;
+    if (s.pending.kind === 'copyCreature' || (s.pending.kind === 'chooseOption' && !!s.pending.forResolution) || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent' || s.pending.kind === 'chooseCopyTargets') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -4947,6 +4963,9 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     library.push(id);
   } else if (toGraveyard) {
     moveCard(ctx, id, 'graveyard');
+    // Enlightened Confidant: "If you put a card with mana value less than or equal to the amount of life you gained this turn into your graveyard this way, put that card into your hand."
+    const most = s.resolving.surveilReturnAtMost;
+    if (most !== undefined && s.cards[id]?.zone === 'graveyard' && objectManaValue(s, s.cards[id]!) <= most) moveCard(ctx, id, 'hand');
   }
   ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
   if (s.resolving.surveilQueue.length === 0) ctx.ev.push({ type: 'ScryOrSurveilDone', player: playerId, scry });
@@ -5150,4 +5169,15 @@ function giveControl(ctx: Ctx, id: InstanceId, receiver: PlayerId): void {
   c.controller = receiver;
   c.summoningSick = true;
   ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver, from: previous });
+}
+
+/** "Choose a creature type" as a spell resolves: remember it, then go on resolving. */
+export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: string): void {
+  const s = ctx.s, pending = s.pending, r = s.resolving;
+  if (pending.kind !== 'chooseOption' || !pending.forResolution || pending.player !== playerId || !r) reject('You are not choosing anything right now.');
+  if (!pending.options.includes(option)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  r.chosenCreatureType = option;
+  ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+  s.pending = pending.resume;
+  continueResolving(ctx);
 }

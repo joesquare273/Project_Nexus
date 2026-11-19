@@ -31,7 +31,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F2 | Empower Jace spells and creatures (17) | Done |
 | F3 | The ten "Way of the ..." enchantments and other cards that give planeswalkers abilities (Sanctum Lurker, Avatar of Burgeoning Echoes, Kiora of Salt and Sand) | Done |
 | F4 | Prepared (24): the 21 creatures with prepare spells, Codie, Hexhaven Dueling Arena, Infinite Coursework | Done |
-| F5 | White commons, uncommons and rares | |
+| F5 | White (19) | Done |
 | F6 | Blue | |
 | F7 | Black | |
 | F8 | Red | |
@@ -67,3 +67,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - A card's prepare spell is `prepare` on its definition (name, cost, type, effects), like an Adventure. On the board the creature shows a "Prepared" badge and the cast option appears on the creature; the copies aren't listed in the exile pile.
 - The 21 creatures (eleven spells: Seed Suture, Unwind History, Peer Review, Arc of Fortune, Ancestral Craving, Omit Variables, Vicious Verse, Improvised Act, Molten Tide, Enroot, Soul Tether), Codie, Ravenous Codex (copies prepared spells; makes your creatures prepared), Hexhaven Dueling Arena and Infinite Coursework. Their hybrid costs are set.
 - Also new: threshold and "an opponent was dealt noncombat damage this turn" as static conditions, "each player may discard their hand and draw seven", "whenever you tap a Mountain for mana, add an additional {R}" until end of turn, and the Heartwood token (tfra 11; "Heartwood" isn't in Scryfall's artifact-type catalog yet, so the validator adds it).
+
+### F5 (2026-11-19)
+
+- Enlightened Confidant, Fateshaper Aspirant, Flickering Hound, Generous Revival, Germinate Recruits, Graft Surgeon, Guiding Hydra, Kindred Judgment, Loyal Tutor, Memory Trap, Predictive Preparations, Prophesied End, Refute Destiny, Return to the Light Realms, Shatterwing Pegasus, Surgical Precision, Unflinching Hortimancer and Your Fate Ends Here (with Campus Crier, Hexhaven Battalion, Repurposed Enforcer, Academic Ascent and Blossom-Blessed Angel from F2 and F4, every white card but Emrakul's colorless self is built).
+- Engine: "choose a creature type" as a spell resolves (`ChooseCreatureType`, a `chooseOption` with `forResolution`; the choices are the creature types on the battlefield and "Another type"), Destroy's `exceptChosenCreatureType` and `drawIfNotAttacking`, and Surveil's `returnIfManaValueAtMostLifeGained`.

@@ -1604,7 +1604,9 @@ function PromptBar(p: PromptProps) {
     text = `${cardName(s, pending.card)}: choose a card type as it enters.`;
     buttons = pending.options.map((cardType) => ({ label: cardType[0]!.toUpperCase() + cardType.slice(1), onClick: () => p.submit([{ type: 'ChooseCardType', player: ME, cardType }]) }));
   } else if (pending.kind === 'chooseOption') {
-    text = `${cardName(s, pending.card)}: choose ${pending.options.join(' or ')} as it enters.`;
+    text = pending.forResolution === 'creatureType'
+      ? `${cardName(s, pending.card)}: choose a creature type.`
+      : `${cardName(s, pending.card)}: choose ${pending.options.join(' or ')} as it enters.`;
     buttons = pending.options.map((option) => ({ label: option, onClick: () => p.submit([{ type: 'ChooseOption', player: ME, option }]) }));
   } else if (pending.kind === 'orderTriggers') {
     // Rule 603.3b: click your triggers in the order they should resolve.

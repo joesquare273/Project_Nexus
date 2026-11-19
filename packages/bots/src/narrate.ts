@@ -318,6 +318,8 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'ChooseCreatureType':
+      return 'choose a creature type';
     case 'BecomePrepared':
       return `${who} become${you ? '' : 's'} prepared`;
     case 'Unprepare':

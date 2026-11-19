@@ -24,6 +24,10 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Reality Fracture F5: white (2026-11-19)
+
+- 19 white cards (docs/reality-fracture.md), with "choose a creature type" as a spell resolves (Kindred Judgment), Prophesied End's draw, and Enlightened Confidant's surveil.
+
 ### Token stacks: two or more, and "how many" (2026-11-19)
 
 - Two or more tokens with the same name and power/toughness now share one card with a ×N count (before: six or more, and never tokens with keywords or abilities, so Treasures and flying Spirits didn't stack). They stack by token, controller, current power/toughness and keywords, tapped state and summoning sickness; attackers stack by whom they attack. A token with counters, damage, something attached or an effect of its own, and blockers and blocked attackers, show on their own.

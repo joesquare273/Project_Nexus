@@ -524,6 +524,8 @@ export const EFFECT_KINDS = [
   'RevealUntil',
   /** "The next spell you cast this turn can't be countered" (Theorist's Proxy). */
   'NextSpellCantBeCountered',
+  /** "Choose a creature type" as it resolves (a chooseOption); a later effect's `exceptChosenCreatureType` uses it (Kindred Judgment). */
+  'ChooseCreatureType',
   /** The target creatures become prepared (only creatures with a prepare spell can). */
   'BecomePrepared',
   /** The target creatures become unprepared (Infinite Coursework). */
@@ -858,6 +860,12 @@ export const TEMPORARY_FLAGS = [
 export type TemporaryFlag = (typeof TEMPORARY_FLAGS)[number];
 
 export interface EffectSpec {
+  /** Destroy: spare creatures of the type chosen earlier in this spell (Kindred Judgment). */
+  exceptChosenCreatureType?: boolean;
+  /** Destroy: "If it wasn't attacking, its controller draws a card" (Prophesied End). */
+  drawIfNotAttacking?: boolean;
+  /** Surveil: a card put into the graveyard this way with mana value at most the life you gained this turn goes to your hand instead (Enlightened Confidant). */
+  returnIfManaValueAtMostLifeGained?: boolean;
   /** ExtraManaFromSubtype: the land subtype ("Mountain"). */
   landSubtype?: string;
   /** PutFromHandOnTop: on the bottom of your library instead. */
@@ -2871,6 +2879,10 @@ export interface Resolving {
   lifeLostThisWay?: number;
   /** The mana value of the card RevealUntil found. */
   revealedManaValue?: number;
+  /** The creature type chosen as this resolves (ChooseCreatureType). */
+  chosenCreatureType?: string;
+  /** Enlightened Confidant: a surveiled card with at most this mana value goes to your hand instead of the graveyard. */
+  surveilReturnAtMost?: number;
   /** Excess damage dealt by a DealDamage with `recordExcess`. */
   excessDamage?: number;
   /** Who controlled the permanent this ability last put into a library ("that creature's controller": Proteus Staff). */
@@ -3041,7 +3053,7 @@ export type Pending =
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /** "As this enters, choose Mardu or Jeskai". */
-  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending }
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.

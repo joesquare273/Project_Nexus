@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCardType, chooseOption, chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
-import { chooseCopy, chooseEntryCopy, chooseEntryCounters, chooseDevour, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
+import { chooseCopy, chooseResolutionOption, chooseEntryCopy, chooseEntryCounters, chooseDevour, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -142,7 +142,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         chooseCardType(ctx, action.player, action.cardType);
         break;
       case 'ChooseOption':
-        chooseOption(ctx, action.player, action.option);
+        if (ctx.s.pending.kind === 'chooseOption' && ctx.s.pending.forResolution) chooseResolutionOption(ctx, action.player, action.option);
+        else chooseOption(ctx, action.player, action.option);
         break;
       case 'ChooseColor':
         chooseColor(ctx, action.player, action.color);
