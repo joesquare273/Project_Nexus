@@ -31,6 +31,14 @@ export interface ZoneHandlers {
   /** A short label under a card, e.g. "→ Bot1" or "blocks Bear". */
   cardNote: (id: InstanceId) => string | null;
   onCard: (id: InstanceId) => void;
+  /**
+   * A click on a stack of identical tokens: choose how many of them attack, block or are chosen,
+   * or use one of them. Returns false when there's nothing to do with them right now (the stack
+   * then shows each token).
+   */
+  onStack?: (members: InstanceId[]) => boolean;
+  /** The label under a stack while some of its tokens are chosen ("3 of 5 attacking"). */
+  stackNote?: (members: InstanceId[]) => string | null;
   onPlayer: (id: PlayerId) => void;
   onHover: (id: InstanceId | null) => void;
   /** Open a list of a player's graveyard or exile. */
@@ -358,17 +366,24 @@ function Battlefield({
   const ordered = hosts;
   const groups = groupTokenCards(ordered, (id) => {
     const key = h.tokenStackKey(id);
-    // Unfold automatically for targets, combat selection, payments, or manually positioned tokens.
-    return key && !expandedStacks.has(key) && !placement?.has(id) && h.markCard(id).every((m) => m === 'recent') ? key : null;
+    // Shown one by one only when the player asks, or for tokens they've dragged into place.
+    return key && !expandedStacks.has(key) && !placement?.has(id) ? key : null;
   });
   const tokenStack = (group: (typeof groups)[number]) => {
     const expand = () => setExpandedStacks(new Set([...expandedStacks, group.key!]));
+    const use = () => {
+      if (!h.onStack?.(group.members)) expand();
+    };
+    // The stack shows what any of its tokens could do (attack, block, be chosen), and how many are chosen.
+    const marks = [...new Set(group.members.flatMap((m) => h.markCard(m)))];
+    const note = h.stackNote?.(group.members) ?? h.cardNote(group.id);
+    const name = defOf(view.cards[group.id]!.defId).name;
     return <div key={group.id} className="token-stack" role="button" tabIndex={0}
-      aria-label={`${group.members.length} ${defOf(view.cards[group.id]!.defId).name} tokens. Expand to choose individual tokens.`}
-      onClick={expand}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(); } }}>
-      <BattlefieldCard view={view} id={group.id} h={{ ...h, onCard: expand }} />
-      <span className="token-stack-count" aria-hidden="true">{group.members.length}</span>
+      aria-label={`${group.members.length} ${name} tokens. ${note ?? 'Click to choose how many, or to see each one.'}`}
+      onClick={use}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); use(); } }}>
+      <BattlefieldCard view={view} id={group.id} h={{ ...h, onCard: use, markCard: () => marks, cardNote: () => note }} />
+      <span className="token-stack-count" aria-hidden="true">×{group.members.length}</span>
     </div>;
   };
   if (placement) {

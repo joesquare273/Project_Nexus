@@ -751,6 +751,123 @@ export function Game({
         }
       }
     },
+    onStack: (members) => {
+      if (!yourMove || members.length === 0) return false;
+      const name = cardName(s, members[0]!);
+      // "How many?": 0 to `max`, then `apply` sets exactly that many of the stack's tokens.
+      const howMany = (title: string, max: number, current: number, apply: (n: number) => void) => {
+        if (max <= 0) return false;
+        if (max === 1) {
+          apply(current > 0 ? 0 : 1);
+          return true;
+        }
+        setMenu({
+          title,
+          options: Array.from({ length: max + 1 }, (_, n) => max - n).map((n) => ({
+            label: n === 0 ? 'None' : n === max ? `All ${n}` : `${n}`,
+            pick: () => {
+              setMenu(null);
+              apply(n);
+            },
+          })),
+        });
+        return true;
+      };
+      // Paying: each click taps one more of them for mana (or unmarks one).
+      if (paying) {
+        if (menu) return true;
+        const source = members.find((m) => manaIds.has(m) && !markedIds.has(m));
+        if (source) {
+          useManaSource(source);
+          return true;
+        }
+        const marked = members.find((m) => markedIds.has(m));
+        if (marked) unmarkSource(marked);
+        return true;
+      }
+      if (choosing) {
+        const offered = members.filter((m) => choosing.cards.includes(m));
+        if (offered.length > 0) {
+          const others = bottomPicks.filter((m) => !offered.includes(m));
+          const max = Math.min(offered.length, Math.max(0, choosing.max - others.length));
+          return howMany(`How many ${name}?`, max, offered.filter((m) => bottomPicks.includes(m)).length, (n) => setBottomPicks([...others, ...offered.slice(0, n)]));
+        }
+      }
+      // A target: one of them, each click choosing another.
+      const option = nextOptions.find((t) => t.kind === 'card' && members.includes(t.card) && !chosen.some((c) => c.kind === 'card' && c.card === t.card));
+      if (option) {
+        pickTarget(option);
+        return true;
+      }
+      if (activeTargeting || menu) return true;
+      if (pending.kind === 'declareAttackers' && members.some((m) => canAttackIds.has(m))) {
+        const able = members.filter((m) => canAttackIds.has(m) && canAttackPlayer(s, s.cards[m]!, currentDefender));
+        if (able.length === 0) {
+          showError('A vow prevents these creatures from attacking that opponent.');
+          return true;
+        }
+        const pw = targetPw && s.cards[targetPw]?.zone === 'battlefield' && s.cards[targetPw]!.controller === currentDefender ? targetPw : null;
+        return howMany(`How many ${name} attack ${pw ? cardName(s, pw) : currentDefender === YOU ? 'you' : currentDefender}?`, able.length, able.filter((m) => attackers.has(m)).length, (n) => {
+          const next = new Map(attackers);
+          const nextPw = new Map(attackPw);
+          for (const m of members) {
+            next.delete(m);
+            nextPw.delete(m);
+          }
+          for (const m of able.slice(0, n)) {
+            next.set(m, currentDefender);
+            if (pw) nextPw.set(m, pw);
+          }
+          setAttackers(next);
+          setAttackPw(nextPw);
+        });
+      }
+      if (pending.kind === 'declareBlockers') {
+        // Attacking tokens: choose one of them to block.
+        const attacking = members.find((m) => attacksOnYou.includes(m));
+        if (attacking) {
+          setPickedAttacker(pickedAttacker && members.includes(pickedAttacker) ? null : attacking);
+          return true;
+        }
+        const able = members.filter((m) => canBlockIds.has(m));
+        if (able.length > 0) {
+          const attacker = pickedAttacker ?? (attacksOnYou.length === 1 ? attacksOnYou[0]! : null);
+          if (!attacker) {
+            showError('Click an attacking creature first, then the creatures that block it.');
+            return true;
+          }
+          // Tokens already blocking another attacker keep doing so.
+          const free = able.filter((m) => !blocks.has(m) || blocks.get(m) === attacker);
+          return howMany(`How many ${name} block ${cardName(s, attacker)}?`, free.length, free.filter((m) => blocks.get(m) === attacker).length, (n) => {
+            const next = new Map(blocks);
+            for (const m of free) next.delete(m);
+            for (const m of free.slice(0, n)) next.set(m, attacker);
+            setBlocks(next);
+          });
+        }
+      }
+      // An ability, or tapping for mana: one of them.
+      const withPlays = members.find((m) => playsFor(m).length > 0);
+      if (withPlays) {
+        usePlays(withPlays, playsFor(withPlays));
+        return true;
+      }
+      const source = members.find((m) => manaIds.has(m));
+      if (source) {
+        useManaSource(source);
+        return true;
+      }
+      return false;
+    },
+    stackNote: (members) => {
+      const of = (n: number, what: string) => (n > 0 ? `${n} of ${members.length} ${what}` : null);
+      return (
+        of(members.filter((m) => attackers.has(m)).length, 'attacking') ??
+        of(members.filter((m) => blocks.has(m)).length, 'blocking') ??
+        of(members.filter((m) => bottomPicks.includes(m)).length, 'chosen') ??
+        of(members.filter((m) => markedIds.has(m)).length, 'tapped for mana')
+      );
+    },
     onPlayer: (pid) => {
       if (!yourMove) return;
       const option = nextOptions.find((t) => t.kind === 'player' && t.player === pid);

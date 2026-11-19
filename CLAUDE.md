@@ -86,7 +86,7 @@ this repo, not only in local memory.
   `docs/frontend-roadmap.md`; audit the known rules simplifications rather than
   claiming the engine already implements every rule exactly.
 
-- **Token display:** group six or more identical, unmodified tokens with an upper-right count; tokens with keywords, counters, damage, attachments or individual effects remain separate. Keep individual engine IDs and choices.
+- **Token display (user, 2026-11-19):** two or more tokens with the same name and power/toughness share one card with an upper-right count (same token, controller, keywords, tapped state and summoning sickness). A token with counters, damage, something attached, an effect of its own, or a blocker/blocked role shows on its own. Attacking, blocking, choosing (sacrifice, tap) asks "how many" from a stack; targets, abilities and mana use one token per click. Keep individual engine IDs and choices (`game/tokenStacks.ts`, `onStack` in Game.tsx).
 - **Damage display:** show remaining damage capacity in red until cleanup, while preserving actual MTG toughness and prevention/indestructible behavior.
 
 ## Where things are

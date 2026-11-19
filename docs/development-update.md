@@ -24,6 +24,12 @@ says.
 - Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
 - Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
 
+### Token stacks: two or more, and "how many" (2026-11-19)
+
+- Two or more tokens with the same name and power/toughness now share one card with a ×N count (before: six or more, and never tokens with keywords or abilities, so Treasures and flying Spirits didn't stack). They stack by token, controller, current power/toughness and keywords, tapped state and summoning sickness; attackers stack by whom they attack. A token with counters, damage, something attached or an effect of its own, and blockers and blocked attackers, show on their own.
+- Clicking a stack while declaring attackers or blockers, or while choosing cards (sacrifice, tap, discard...), asks how many of them ("How many Soldier attack Bot1?": All 6, 5 ... None); the stack then reads "3 of 6 attacking". Targets, activated abilities and tapping for mana use one token per click. When there's nothing to do with a stack, a click shows each token (the "Stack tokens" button puts them back).
+- The engine is unchanged: every token keeps its own id, and the choice becomes that many individual tokens in the action. The board preview takes `?tokens=N`.
+
 ### Crowded battlefields fit their seats (2026-11-19)
 
 - With many permanents (a 1-on-1 Commander game), battlefield rows wrapped onto lines the seat had no room for, so cards spilled under the life totals and the next seat. Now, in 2- and 3-player games, each row (creatures, lands) stays on one line: its cards shrink to fit the row's width, then every row shrinks together if they're taller than the seat; only below a readable minimum (55% of the usual size) do a row's cards fan out with a small overlap, the one under the pointer on top (`useFitBattlefield` in `components/Zones.tsx`). Four-player games keep scaling the whole seat (`FitBoard`). Hand cards are unchanged.

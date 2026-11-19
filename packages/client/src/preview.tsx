@@ -41,6 +41,19 @@ if (crowd > 0) {
   }
 }
 
+// ?tokens=N: you get N ready Soldier tokens and three Treasures (token stacks).
+const tokens = Number(params.get('tokens') ?? 0);
+if (tokens > 0) {
+  const s = session.state;
+  const make = (defId: string) => {
+    const id = `t${s.nextId++}`;
+    s.cards[id] = { id, defId, owner: YOU, controller: YOU, zone: 'battlefield', tapped: false, summoningSick: false, damage: 0, deathtouched: false, isToken: true };
+    s.players[YOU]!.battlefield.push(id);
+  };
+  for (let i = 0; i < tokens; i++) make('soldier-token');
+  for (let i = 0; i < 3; i++) make('treasure-token');
+}
+
 // ?control=1: you control the next opponent's turn (The Dominion Bracelet), to see that board.
 if (params.get('control')) {
   for (let guard = 0; guard < 400 && session.state.activePlayer === YOU; guard++) {
