@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F11b: blue legends (2026-11-20)
+
+- The 11 blue echoed-pairs legends (docs/reality-fracture.md). New: split second (Samut), "becomes the target" triggers, Fblthp's win, Tetsuko's unblockable small creatures, and the FRA Angel token.
+
 ### Reality Fracture F11a: white legends (2026-11-20)
 
 - The 13 white echoed-pairs legends (docs/reality-fracture.md; F11 is split by color). New: Thalia's tax, Yuriko's combat lock, Tomik's one attacker per planeswalker, Ghalta's defender and toughness rules, planeswalker-only mana, and the FRA Thopter token.

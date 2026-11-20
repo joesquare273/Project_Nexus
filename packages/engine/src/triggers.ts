@@ -135,9 +135,11 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'AbilityActivated':
         out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller, ...(e.loyalty !== undefined ? { loyalty: e.loyalty } : {}) });
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
+        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller });
         break;
       case 'AbilityTriggered':
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
+        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller });
         break;
       case 'ManaAdded':
         // A mana ability was activated (one occurrence per source in a batch).
@@ -188,6 +190,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'SpellCast':
         if (isCrime(s, e.player, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.player });
+        for (const t of e.targets ?? []) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.player });
         out.push({
           when: 'SpellCast',
           from: e.castFrom,
@@ -206,6 +209,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         }
         if (s.cards[e.source]) out.push({ when: 'DealsDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         if (!e.combat && e.target.kind === 'player' && e.amount > 0) out.push({ when: 'OpponentDealtNoncombatDamage', at, defender: e.target.player });
+        if (e.combat && e.target.kind === 'player' && e.amount > 0) out.push({ when: 'OpponentsDealtCombatDamageYourTurn', at, defender: e.target.player });
         if (e.combat) {
           out.push({ when: 'CombatDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         }
@@ -315,6 +319,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     const targetsMine = !!item && item.targets.some((t) => t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && s.cards[t.card]!.controller === controller && defOf(s, s.cards[t.card]!).types.includes('creature'));
     if (!equipment && !targetsMine) return false;
   }
+  if (o.when === 'BecomesTarget' && spec.byOpponent && o.by === controller) return false;
+  if (o.when === 'OpponentsDealtCombatDamageYourTurn') return o.defender !== undefined && o.defender !== controller && s.activePlayer === controller;
   if (o.when === 'OpponentDealtNoncombatDamage') return o.defender !== undefined && o.defender !== controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).

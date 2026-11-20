@@ -103,7 +103,9 @@ const PROWESS_TRIGGER: TriggerSpec = { when: 'SpellCast', what: { nonTypes: ['cr
 
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
   let out = definitionWithEffects(s, c);
-  if (out.keywords?.includes('Prowess')) out = { ...out, triggers: [...(out.triggers ?? []), PROWESS_TRIGGER] };
+  // Each instance of prowess triggers separately (Ruric Thar: "Prowess, prowess").
+  const prowess = out.keywords?.filter((k) => k === 'Prowess').length ?? 0;
+  if (prowess) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(prowess).fill(PROWESS_TRIGGER)] };
   // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.
   if (c.zone === 'battlefield' && out.types.includes('planeswalker')) {
     const granted = continuousSources(s).flatMap((src) => (src.controller === c.controller && !src.phasedOut ? (copiableDefinition(s, src).statics ?? []).flatMap((st) => st.planeswalkersHave ?? []) : []));

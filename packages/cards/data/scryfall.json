@@ -712,6 +712,28 @@
     "scryfallId": "fd9c99f0-390d-4ab1-ac0a-b18f1b0af12c",
     "relatedTokens": []
   },
+  "angel-token-fra": {
+    "name": "Angel",
+    "typeLine": "Token Creature — Angel",
+    "oracleText": "Flying",
+    "set": "tfra",
+    "number": "3",
+    "artist": "Raluca Marinescu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744",
+      "normal": "https://cards.scryfall.io/normal/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744",
+      "large": "https://cards.scryfall.io/large/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/1/5165055a-89e1-471b-ac96-732e593c910b.jpg?1789735744"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/3/angel?utm_source=api",
+    "scryfallId": "5165055a-89e1-471b-ac96-732e593c910b",
+    "relatedTokens": [
+      {
+        "name": "Angel",
+        "scryfallId": "5165055a-89e1-471b-ac96-732e593c910b"
+      }
+    ]
+  },
   "angel-token-frc": {
     "name": "Angel",
     "typeLine": "Token Creature — Angel",

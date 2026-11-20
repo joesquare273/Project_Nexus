@@ -39,7 +39,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F10a | Multicolor, FRA 121-147 (20) | Done |
 | F10b | Multicolor and artifacts, FRA 148-174 (18; Uldaros Theorix moved to F13) | Done |
 | F11a | Echoed pairs legends, white (13) | Done |
-| F11b | Echoed pairs legends, blue (11) | |
+| F11b | Echoed pairs legends, blue (11) | Done |
 | F11c | Echoed pairs legends, black (11) | |
 | F12 | Echoed pairs legends, red, green and multicolor | |
 | F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
@@ -115,3 +115,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Danitha, Sword of Hope; Ghalta, the Immovable; Gideon's Memorial; Koth of the Homestead; Liliana, the Faultless; Lyra, Archangel of Dawn; Rescue Girl, First Responder; Saheeli, Consul of Oversight; Teyo, Lightshield Expert; Thalia, the Survivor; Tomik, Orzhov Lawmage; Yoshimaru, Beloved Companion; Yuriko, Blade of the Mighty.
 - Engine: "whenever you cast an Equipment spell or a spell that targets a creature you control" (`equipmentOrTargetsYourCreature`); the greatest toughness among your creatures (`GreatestToughnessAmongYourCreatures`) and "creatures you control can attack as though they didn't have defender" (`yourCreaturesAttackDespiteDefender`); mana spendable only on planeswalker spells (`planeswalkerSpell` restriction); opponents' noncreature spells costing more (`opponentsNoncreatureSpellsCostMore`); one attacker per planeswalker (`planeswalkersOneAttacker`); no spells or nonmana abilities during combat (`noSpellsOrAbilitiesDuringCombat`). The FRA Thopter token (tfra 14).
 - Yuriko's double strike triggers for a creature attacking alone, whether it attacks a player or a planeswalker (the card says a player).
+
+### F11b (2026-11-20)
+
+- Arni, Humble Scribe; Fblthp, Impossibly Lost; Geist of Saint Thalia; Hapatra, the Desert Frost; Lyra, Tolarian Archangel; Proft, Consulting Detective; Ruric Thar, Biomagus; Samut, Tyrant of Naktamun; Tetsuko Umezawa, Fugitive; Traxos, Academy Guardian; Yuriko, Hope from the Shadows.
+- Engine: "becomes the target of a spell or ability an opponent controls" (`BecomesTarget` with `byOpponent`, from spells cast, abilities activated and triggers put on the stack); "one or more of your opponents are dealt combat damage during your turn" (`OpponentsDealtCombatDamageYourTurn`); split second for your instants and sorceries (`yourInstantsAndSorceriesHaveSplitSecond`: no spells and no nonmana abilities while one is on the stack); "creatures you control with power or toughness 1 or less can't be blocked" (`yourSmallCreaturesCantBeBlocked`); prowess listed twice triggers twice; cards you drew this turn and cards in your library as counts; "if you've cast a noncreature spell this turn" cost reduction. The FRA Angel token (tfra 3).

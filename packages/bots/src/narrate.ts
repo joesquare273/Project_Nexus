@@ -614,7 +614,10 @@ function triggerCondition(t: TriggerSpec): string {
     OpponentCommitsCrime: '',
     TurnedFaceUp: 'is turned face up',
     OpponentDealtNoncombatDamage: '',
+    BecomesTarget: 'becomes the target of a spell or ability',
+    OpponentsDealtCombatDamageYourTurn: '',
   }[t.when] ?? '';
+  if (t.when === 'OpponentsDealtCombatDamageYourTurn') return 'When one or more of your opponents are dealt combat damage during your turn';
   if (t.when === 'OpponentDealtNoncombatDamage') return 'Whenever one or more opponents are dealt noncombat damage';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
   if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';

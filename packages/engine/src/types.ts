@@ -717,6 +717,10 @@ export const COUNT_KINDS = [
   'LoreCountersOnThis',
   /** Cards in your hand. */
   'CardsInYourHand',
+  /** Cards in your library ("if your library has no cards in it"). */
+  'CardsInYourLibrary',
+  /** Cards you've drawn this turn (Lyra, Tolarian Archangel). */
+  'CardsYouDrewThisTurn',
   /** Charge counters on the card with the ability (Excalibur II). */
   'ChargeCountersOnThis',
   /** Life you gained this turn (Hope Estheim). */
@@ -1318,6 +1322,10 @@ export const TRIGGER_EVENTS = [
   'CombatDamageToPlayer',
   /** One or more of your opponents were dealt noncombat damage (Master of Barbs; with `oneOrMore`). */
   'OpponentDealtNoncombatDamage',
+  /** The subject becomes the target of a spell or ability (`byOpponent`: one an opponent controls; Ruric Thar). */
+  'BecomesTarget',
+  /** One or more of your opponents are dealt combat damage during your turn (Fblthp, Impossibly Lost; with `oneOrMore`). */
+  'OpponentsDealtCombatDamageYourTurn',
   /** A token was created (subject: the token; use with `oneOrMore` for "whenever you create one or more creature tokens"). */
   'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
@@ -1542,7 +1550,7 @@ export interface TriggerSpec {
   counterKind?: CounterKind;
   /** SpellCast: only your Nth noncreature spell this turn ("whenever you cast your first noncreature spell each turn"). */
   nthNoncreatureSpellThisTurn?: number;
-  /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you. */
+  /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you; BecomesTarget: only a spell or ability an opponent controls. */
   byOpponent?: boolean;
   attackingYouAtLeast?: number;
   /** Attacks: only a creature attacking alone. */
@@ -1751,6 +1759,10 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "Instant and sorcery spells you control have split second" (Samut, Tyrant of Naktamun; rule 702.61). */
+  yourInstantsAndSorceriesHaveSplitSecond?: boolean;
+  /** "Creatures you control with power or toughness 1 or less can't be blocked" (Tetsuko Umezawa, Fugitive). */
+  yourSmallCreaturesCantBeBlocked?: boolean;
   /** "Creatures you control can attack as though they didn't have defender" (Ghalta, the Immovable). */
   yourCreaturesAttackDespiteDefender?: boolean;
   /** "Noncreature spells your opponents cast cost {N} more to cast" (Thalia, the Survivor). */
@@ -2188,7 +2200,7 @@ export interface CardDefinition {
    */
   /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
   /** `ifCastAnotherSpell`: "if you've cast another spell this turn" (Gigastorm Titan). */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If you control a legendary creature" (Wrath of the Bloodmane). */ ifYouControl?: ObjectFilter; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If you've cast a noncreature spell this turn" (Traxos, Academy Guardian). */ ifCastNoncreatureThisTurn?: true; /** "If you control a legendary creature" (Wrath of the Bloodmane). */ ifYouControl?: ObjectFilter; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };

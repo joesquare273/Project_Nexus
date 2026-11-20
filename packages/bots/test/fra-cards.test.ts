@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, put, settle } from './kit-helpers.ts';
-import { canAttack } from '../../engine/src/combat.ts';
+import { canAttack, canBlock } from '../../engine/src/combat.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -1297,5 +1297,92 @@ describe('F11a: white echoed-pairs legends', () => {
     const b = put(s, 'P1', 'rank-rat');
     s = goTo(s, 'declareAttackers');
     expect(() => act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: a, defender: 'P2', planeswalker: walker }, { attacker: b, defender: 'P2', planeswalker: walker }] })).toThrow(/one creature/);
+  });
+});
+
+describe('F11b: blue echoed-pairs legends', () => {
+  it('Geist of Saint Thalia makes your noncreature spells cost {1} less', () => {
+    const s = newGame();
+    put(s, 'P1', 'geist-of-saint-thalia');
+    put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === gasp)).toBe(true);
+  });
+
+  it('Hapatra taps up to one creature each opponent controls and stuns it', () => {
+    let s = newGame(3);
+    const a = put(s, 'P2', 'rank-rat');
+    const b = put(s, 'P3', 'rank-rat');
+    const hapatra = put(s, 'P1', 'hapatra-the-desert-frost', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: hapatra }, { targets: (options) => options.find((t) => t.filter((x) => x.kind === 'card').length === 2)! }).state;
+    expect([s.cards[a]!.tapped, s.cards[a]!.namedCounters?.stun, s.cards[b]!.tapped, s.cards[b]!.namedCounters?.stun]).toEqual([true, 1, true, 1]);
+  });
+
+  it('Lyra, Tolarian Archangel makes an Angel at each end step if you drew three or more cards', () => {
+    let s = newGame();
+    put(s, 'P1', 'lyra-tolarian-archangel');
+    s.players.P1!.cardsDrawnThisTurn = 3;
+    s = settle(goTo(s, 'end')).state;
+    expect(Object.values(s.cards).filter((c) => c.defId === 'angel-token-fra').length).toBe(1);
+  });
+
+  it('Ruric Thar has prowess twice and draws when an opponent targets it', () => {
+    let s = newGame();
+    const ruric = put(s, 'P1', 'ruric-thar-biomagus');
+    const rat = put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] }).state;
+    expect(powerOf(s, s.cards[ruric]!)).toBe(6);
+    const theirs = put(s, 'P2', 'last-gasp', 'hand');
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { B: 1, C: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: theirs, targets: [card(ruric)] }).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Samut gives your instants and sorceries split second', () => {
+    let s = newGame();
+    put(s, 'P1', 'samut-tyrant-of-naktamun');
+    const rat = put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] });
+    const answer = put(s, 'P2', 'unsummon', 'hand');
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { U: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === answer)).toBe(false);
+  });
+
+  it('Tetsuko Umezawa, Fugitive: your creatures with power or toughness 1 or less can\'t be blocked', () => {
+    const s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const big = put(s, 'P1', 'apex-witchstalker');
+    const blocker = put(s, 'P2', 'apex-witchstalker');
+    expect(canBlock(s, s.cards[blocker]!, s.cards[rat]!)).toBe(true);
+    put(s, 'P1', 'tetsuko-umezawa-fugitive');
+    expect([canBlock(s, s.cards[blocker]!, s.cards[rat]!), canBlock(s, s.cards[blocker]!, s.cards[big]!)]).toEqual([false, true]);
+  });
+
+  it('Traxos costs {2} less once you have cast a noncreature spell this turn, and has prowess', () => {
+    const s = newGame();
+    const traxos = put(s, 'P1', 'traxos-academy-guardian', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === traxos)).toBe(false);
+    s.players.P1!.noncreatureSpellsThisTurn = 1;
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === traxos)).toBe(true);
+  });
+
+  it('Fblthp draws two when opponents are dealt combat damage on your turn, then shuffles into your library', () => {
+    let s = newGame();
+    const fblthp = put(s, 'P1', 'fblthp-impossibly-lost');
+    const rat = put(s, 'P1', 'rank-rat');
+    const hand = s.players.P1!.hand.length;
+    s = settle(fight(s, [{ attacker: rat, defender: 'P2' }]).state).state;
+    expect(zone(s, fblthp)).toBe('library');
+    expect(s.players.P1!.hand.length).toBe(hand + 2);
   });
 });

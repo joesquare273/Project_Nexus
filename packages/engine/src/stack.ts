@@ -1214,6 +1214,7 @@ export function spellCost(
   if (opposing !== undefined && card && battlefield(s).filter((c) => c.controller !== payer && !c.phasedOut && isCreatureOnBattlefield(s, c)).length >= opposing) cost = reduceGeneric(cost, def.costReduction!.generic);
   if (def.costReduction?.ifTargetsBlockingCreature && targets.some((t) => t.kind === 'card' && !!s.combat?.blocks.some((b) => b.blocker === t.card))) cost = reduceGeneric(cost, def.costReduction.generic);
   // "Costs {3} less to cast if you've cast another spell this turn" (Gigastorm Titan).
+  if (def.costReduction?.ifCastNoncreatureThisTurn && card && (s.players[payer!]!.noncreatureSpellsThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.ifCastAnotherSpell && card && (s.players[payer!]!.spellsCastThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.perMatching && card) {
     const f = def.costReduction.perMatching;
@@ -1259,7 +1260,18 @@ export function spellCost(
 }
 
 /** Yuriko, Blade of the Mighty: during combat, no spells and no abilities that aren't mana abilities. */
+/** Split second (rule 702.61): while such a spell is on the stack, no spells and no abilities that aren't mana abilities. */
+export function splitSecondOnStack(s: GameState): boolean {
+  return s.stack.some((i) => {
+    if (i.kind !== 'spell') return false;
+    const c = s.cards[i.card];
+    if (!c || !['instant', 'sorcery'].some((t) => defOf(s, c).types.includes(t as 'instant'))) return false;
+    return battlefield(s).some((x) => x.controller === i.controller && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.yourInstantsAndSorceriesHaveSplitSecond));
+  });
+}
+
 export function combatLocked(s: GameState): boolean {
+  if (splitSecondOnStack(s)) return true;
   return ['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)
     && battlefield(s).some((x) => !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.noSpellsOrAbilitiesDuringCombat));
 }
