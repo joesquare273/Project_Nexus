@@ -28,6 +28,8 @@ import type {
 
 /** One thing that happened that an ability might be waiting for. */
 interface Occurrence {
+  /** BecomesTarget: the spell or ability doing the targeting (for ward). */
+  targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
   lastTypes?: CardType[];
   damageSource?: DamageSourceSnapshot;
   when: TriggerEvent;
@@ -135,11 +137,11 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
       case 'AbilityActivated':
         out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller, ...(e.loyalty !== undefined ? { loyalty: e.loyalty } : {}) });
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
-        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller });
+        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller, targetedBy: { kind: 'ability', item: e.item } });
         break;
       case 'AbilityTriggered':
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
-        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller });
+        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller, targetedBy: { kind: 'ability', item: e.item } });
         break;
       case 'ManaAdded':
         // A mana ability was activated (one occurrence per source in a batch).
@@ -190,7 +192,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'SpellCast':
         if (isCrime(s, e.player, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.player });
-        for (const t of e.targets ?? []) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.player });
+        for (const t of e.targets ?? []) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.player, targetedBy: { kind: 'spell', card: e.card } });
         out.push({
           when: 'SpellCast',
           from: e.castFrom,
@@ -312,6 +314,11 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
+  if (spec.targetsOpponentOrTheirCreature && o.when === 'SpellCast' && o.subject) {
+    const item = s.stack.find((i) => i.kind === 'spell' && i.card === o.subject);
+    const hits = !!item && item.targets.some((t) => (t.kind === 'player' && t.player !== controller) || (t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && s.cards[t.card]!.controller !== controller && defOf(s, s.cards[t.card]!).types.includes('creature')));
+    if (!hits) return false;
+  }
   if (spec.equipmentOrTargetsYourCreature && o.when === 'SpellCast' && o.subject) {
     const spell = s.cards[o.subject];
     const item = s.stack.find((i) => i.kind === 'spell' && i.card === o.subject);
@@ -535,6 +542,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         sourceZone: c.zone,
         ...(o.defender ? { defender: o.defender } : {}),
         ...(o.subject ? { subject: o.subject } : {}),
+        ...(o.targetedBy ? { targetedBy: o.targetedBy } : {}),
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
         // "Choose one at random" is decided as it triggers.
         ...(spec.randomModes ? { mode: randomInt(s, spec.randomModes.length) } : {}),
@@ -652,6 +660,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     ...(t.modes ? { modes: [...t.modes] } : {}),
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
+    ...(t.targetedBy ? { targetedBy: t.targetedBy } : {}),
     ...(t.subjects ? { subjects: [...t.subjects] } : {}),
     ...(t.amount !== undefined ? { amount: t.amount } : {}),
     ...(t.mode !== undefined ? { mode: t.mode } : {}),

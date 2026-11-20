@@ -188,6 +188,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'LoreCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'lore') : 0;
+    case 'CreatureAndPlaneswalkerCardsInYourGraveyard':
+      return s.players[player]!.graveyard.filter((id) => { const t = def(s, s.cards[id]!).types; return t.includes('creature') || t.includes('planeswalker'); }).length;
     case 'CardsInYourLibrary':
       return s.players[player]!.library.length;
     case 'CardsYouDrewThisTurn':
@@ -389,6 +391,7 @@ export function powerOf(s: GameState, c: CardInstance): number {
 export function combatPowerOf(s: GameState, c: CardInstance): number {
   const ch = characteristics(s, c);
   if (ch.toughness > ch.power && battlefieldCards(s).some((src) => !src.phasedOut && (def(s, src).statics ?? []).some((st) => st.toughnessForDamageAndStation && staticAffects(s, src, st, c)))) return ch.toughness;
+  if (ch.power < 0 && def(s, c).negativePowerAssignsPositive) return -ch.power;
   return ch.power;
 }
 

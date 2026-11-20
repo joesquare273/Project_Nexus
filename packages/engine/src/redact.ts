@@ -204,6 +204,7 @@ const CARD_FIELDS = {
   outsideGame: 'copy',
   flashbackTurn: 'copy',
   lostAbilitiesTurn: 'copy',
+  exhausted: 'copy',
   prepareSpellOf: 'refs',
   faceDown: 'copy',
   manifested: 'copy',

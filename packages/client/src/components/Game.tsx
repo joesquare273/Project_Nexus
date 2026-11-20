@@ -1505,6 +1505,8 @@ function PromptBar(p: PromptProps) {
           ? (c.purpose === 'handSize' ? 'to discard down to your maximum hand size' : 'to discard (in your hand)')
           : c.purpose === 'handToTop'
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
+          : c.purpose === 'wardDiscard'
+            ? 'to discard for ward (or none, and your spell or ability is countered)'
           : c.purpose === 'revealOutside'
             ? 'from your sideboard to reveal: exactly two with different names, or none; an opponent chooses one to put into your hand'
           : c.purpose === 'pickOutside'

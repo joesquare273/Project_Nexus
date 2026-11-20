@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, put, settle } from './kit-helpers.ts';
 import { canAttack, canBlock } from '../../engine/src/combat.ts';
+import { combatPowerOf } from '../../engine/src/characteristics.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -1384,5 +1385,118 @@ describe('F11b: blue echoed-pairs legends', () => {
     s = settle(fight(s, [{ attacker: rat, defender: 'P2' }]).state).state;
     expect(zone(s, fblthp)).toBe('library');
     expect(s.players.P1!.hand.length).toBe(hand + 2);
+  });
+});
+
+describe('F11c: black echoed-pairs legends', () => {
+  it('Gideon, the Oathless: Ward—Discard a card counters an opponent\'s spell unless they discard', () => {
+    let s = newGame();
+    const gideon = put(s, 'P2', 'gideon-the-oathless');
+    const kept = put(s, 'P1', 'island', 'hand');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(gideon)] });
+    s = settle(s).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'wardDiscard' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    // Not paid: Last Gasp is countered and the Island stays in hand.
+    expect([zone(s, gasp), zone(s, gideon), zone(s, kept)]).toEqual(['graveyard', 'battlefield', 'hand']);
+    expect(powerOf(s, s.cards[gideon]!)).toBe(3);
+  });
+
+  it('Gideon, the Oathless: paying the ward lets the spell resolve', () => {
+    let s = newGame();
+    const gideon = put(s, 'P2', 'gideon-the-oathless');
+    const fodder = put(s, 'P1', 'island', 'hand');
+    const gasp = put(s, 'P1', 'wrath-of-the-bloodmane', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(gideon)] });
+    s = settle(s).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [fodder] })).state;
+    for (let i = 0; i < 6 && s.stack.length; i++) s = settle(act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player })).state;
+    expect([zone(s, fodder), zone(s, gideon)]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Gideon, the Oathless pings an opponent when their creature enters', () => {
+    let s = newGame();
+    put(s, 'P1', 'gideon-the-oathless');
+    const rat = put(s, 'P2', 'rank-rat', 'hand');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    s.step = 'main1';
+    mana(s, 'P2', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: rat }).state;
+    expect(s.players.P2!.life).toBe(19);
+  });
+
+  it('Liliana, the Repentant: exhaust returns a creature card once', () => {
+    let s = newGame();
+    const lili = put(s, 'P1', 'liliana-the-repentant');
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    mana(s, 'P1', { B: 1, C: 5 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: lili, ability: 0, targets: [card(dead)] }).state;
+    expect([zone(s, dead), s.cards[lili]!.counters]).toEqual(['battlefield', 1]);
+    put(s, 'P1', 'rank-rat', 'graveyard');
+    mana(s, 'P1', { B: 1, C: 5 });
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === lili)).toBe(false);
+  });
+
+  it('Loot, the Anomaly assigns combat damage as though its negative power were positive', () => {
+    const s = newGame();
+    const loot = put(s, 'P1', 'loot-the-anomaly');
+    expect([powerOf(s, s.cards[loot]!), combatPowerOf(s, s.cards[loot]!)]).toEqual([-2, 2]);
+  });
+
+  it('Mabel removes up to three counters from another creature or planeswalker', () => {
+    let s = newGame();
+    const walker = put(s, 'P2', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 5 } });
+    const mabel = put(s, 'P1', 'mabel-bitter-recluse', 'hand');
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mabel }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === walker)! }).state;
+    expect(s.cards[walker]!.namedCounters?.loyalty).toBe(2);
+  });
+
+  it('Proft, Sinister Mastermind can only be cast with threshold', () => {
+    const s = newGame();
+    const proft = put(s, 'P1', 'proft-sinister-mastermind', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    const castable = () => getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === proft);
+    expect(castable()).toBe(false);
+    for (let i = 0; i < 7; i++) put(s, 'P1', 'island', 'graveyard');
+    expect(castable()).toBe(true);
+  });
+
+  it('Tinybones makes each opponent discard, then deals 1 damage to each opponent when a player discards', () => {
+    let s = newGame();
+    put(s, 'P2', 'island', 'hand');
+    const bones = put(s, 'P1', 'tinybones-pocket-nuisance', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bones }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [s.pending.cards[0]!] })).state;
+    expect(s.players.P2!.life).toBe(19);
+  });
+
+  it('Winter, Tormented Loner gets +1/+0 per creature and planeswalker card in your graveyard; sacrifice to make opponents sacrifice', () => {
+    let s = newGame();
+    const fodder = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'rank-rat');
+    const winter = put(s, 'P1', 'winter-tormented-loner', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: winter }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [fodder] })).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [theirs] })).state;
+    expect([zone(s, fodder), zone(s, theirs), powerOf(s, s.cards[winter]!)]).toEqual(['graveyard', 'graveyard', 1]);
+  });
+
+  it('Danitha, Spear of Agony grows when you cast a spell that targets an opponent or their creature', () => {
+    let s = newGame();
+    const danitha = put(s, 'P1', 'danitha-spear-of-agony');
+    const rat = put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] }).state;
+    expect(s.cards[danitha]!.counters).toBe(1);
   });
 });

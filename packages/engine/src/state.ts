@@ -208,6 +208,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.graveyardCastTurn;
   delete c.flashbackTurn;
   delete c.lostAbilitiesTurn;
+  delete c.exhausted;
   delete c.activatedTurns;
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).
   delete c.transformed;

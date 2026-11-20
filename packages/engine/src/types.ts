@@ -480,6 +480,8 @@ export const EFFECT_KINDS = [
   'SacrificeGreatestManaValue',
   /** The target card gains flashback until end of turn, its flashback cost equal to its mana cost (Stingcaster Mage). */
   'GrantFlashback',
+  /** Ward—Discard a card (rule 702.21): counter the spell or ability that targeted the source unless its controller discards a card (Gideon, the Oathless). */
+  'CounterUnlessDiscard',
   /** The targets lose all abilities until end of turn (Flourishing Grapple). */
   'LoseAllAbilities',
   /** Choose one of `keywords` as this resolves; a later GrantKeywords with `chosenKeyword` grants it (Hungering Puppetbeast). */
@@ -719,6 +721,8 @@ export const COUNT_KINDS = [
   'CardsInYourHand',
   /** Cards in your library ("if your library has no cards in it"). */
   'CardsInYourLibrary',
+  /** Creature and planeswalker cards in your graveyard (Winter, Tormented Loner). */
+  'CreatureAndPlaneswalkerCardsInYourGraveyard',
   /** Cards you've drawn this turn (Lyra, Tolarian Archangel). */
   'CardsYouDrewThisTurn',
   /** Charge counters on the card with the ability (Excalibur II). */
@@ -1575,6 +1579,8 @@ export interface TriggerSpec {
   ifOpponentDealtNoncombatDamageLastTurn?: boolean;
   /** SpellCast: only an Equipment spell or a spell that targets a creature you control (Danitha, Sword of Hope). */
   equipmentOrTargetsYourCreature?: boolean;
+  /** SpellCast: only a spell that targets an opponent or a creature an opponent controls (Danitha, Spear of Agony). */
+  targetsOpponentOrTheirCreature?: boolean;
   /** Intervening "if": you control at least `atLeast` (default 1) permanents matching `filter` ("if you control a creature with power 7 or greater"). */
   ifYouControl?: { filter: ObjectFilter; atLeast?: number };
   /** Intervening "if": a count is at least this ("if there are six or more permanent cards in your graveyard"). */
@@ -1730,6 +1736,10 @@ export interface ActivatedSpec {
   ifOpponentDealtNoncombatDamageThisTurn?: boolean;
   /** "Activate only if you've scried or surveilled this turn" (Proctor of Potential). */
   ifScriedOrSurveiledThisTurn?: boolean;
+  /** Exhaust (rule 702.177): activate only once for as long as the permanent stays (`CardInstance.exhausted`). */
+  exhaust?: boolean;
+  /** "Activate only if there are seven or more cards in your graveyard" (threshold). */
+  ifThreshold?: boolean;
   /** Only while this Equipment is attached to a creature (The Dominion Bracelet). */
   ifAttached?: boolean;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
@@ -2175,6 +2185,10 @@ export interface CardDefinition {
   flashback?: string;
   /** "Flashback—[cost], Discard a card" (Twinned Vision): cards to discard when cast with flashback. */
   flashbackDiscard?: number;
+  /** "Threshold — You can't cast this spell unless there are seven or more cards in your graveyard" (Proft, Sinister Mastermind). */
+  castOnlyWithThreshold?: boolean;
+  /** "If its power is negative, it assigns combat damage as though its power were positive" (Loot, the Anomaly). */
+  negativePowerAssignsPositive?: boolean;
   /** Retrace (rule 702.81): cast from your graveyard by discarding a land card in addition to its other costs (it returns to the graveyard as usual). */
   retrace?: boolean;
   /** Dredge N (rule 702.52): instead of your draw step's draw, mill N and return this card from your graveyard to your hand. */
@@ -2477,6 +2491,8 @@ export interface CardInstance {
   flashbackTurn?: number;
   /** "Loses all abilities until end of turn" (Flourishing Grapple): the turn. */
   lostAbilitiesTurn?: number;
+  /** Exhaust abilities of this object already activated (their indexes). */
+  exhausted?: number[];
   /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
@@ -2876,6 +2892,8 @@ export interface AbilityItem {
   /** A "one or more" trigger: every object the batched events happened to. */
   subjects?: InstanceId[];
   subject?: InstanceId;
+  /** Ward: the spell or ability that targeted the source. */
+  targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
   /** Damage triggers: how much damage was dealt; SpellCast triggers: the mana spent on the spell. */
   amount?: number;
   /** "Choose one at random": which of `randomModes` came up. */
@@ -2909,6 +2927,8 @@ export interface QueuedTrigger {
   /** A "one or more" trigger: every object the batched events happened to. */
   subjects?: InstanceId[];
   subject?: InstanceId;
+  /** Ward: the spell or ability that targeted the source. */
+  targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
   /** Damage triggers: how much damage was dealt. */
   amount?: number;
   /** "Choose one at random": which of `randomModes` came up. */
@@ -3026,7 +3046,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3046,6 +3066,8 @@ export interface CardChoice {
   /** payToAvoidCounter: if they don't pay, their creatures can't attack this subtype of planeswalkers `protectFor` controls this turn. */
   protectSubtype?: string;
   protectFor?: PlayerId;
+  /** wardDiscard: the spell or ability countered unless a card is discarded. */
+  wardTarget?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
   /** library: if its owner puts it on top, the spell deals this much damage to them (Clash of Elements). */
   damageIfTop?: number;
   /** discard: exile the card instead; the chooser may cast it while they have threshold (Null Summoner). */

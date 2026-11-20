@@ -40,7 +40,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F10b | Multicolor and artifacts, FRA 148-174 (18; Uldaros Theorix moved to F13) | Done |
 | F11a | Echoed pairs legends, white (13) | Done |
 | F11b | Echoed pairs legends, blue (11) | Done |
-| F11c | Echoed pairs legends, black (11) | |
+| F11c | Echoed pairs legends, black (11) | Done |
 | F12 | Echoed pairs legends, red, green and multicolor | |
 | F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
 
@@ -120,3 +120,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 
 - Arni, Humble Scribe; Fblthp, Impossibly Lost; Geist of Saint Thalia; Hapatra, the Desert Frost; Lyra, Tolarian Archangel; Proft, Consulting Detective; Ruric Thar, Biomagus; Samut, Tyrant of Naktamun; Tetsuko Umezawa, Fugitive; Traxos, Academy Guardian; Yuriko, Hope from the Shadows.
 - Engine: "becomes the target of a spell or ability an opponent controls" (`BecomesTarget` with `byOpponent`, from spells cast, abilities activated and triggers put on the stack); "one or more of your opponents are dealt combat damage during your turn" (`OpponentsDealtCombatDamageYourTurn`); split second for your instants and sorceries (`yourInstantsAndSorceriesHaveSplitSecond`: no spells and no nonmana abilities while one is on the stack); "creatures you control with power or toughness 1 or less can't be blocked" (`yourSmallCreaturesCantBeBlocked`); prowess listed twice triggers twice; cards you drew this turn and cards in your library as counts; "if you've cast a noncreature spell this turn" cost reduction. The FRA Angel token (tfra 3).
+
+### F11c (2026-11-20)
+
+- Danitha, Spear of Agony; Gallia, Tragic Host; Gideon, the Oathless; Liliana, the Repentant; Loot, the Anomaly; Mabel, Bitter Recluse; Massacre Girl, Most Wanted; Proft, Sinister Mastermind; Teyo, Diamondblade Mage; Tinybones, Pocket Nuisance; Winter, Tormented Loner.
+- Engine: **Ward—Discard a card** as a real ward trigger (rule 702.21: when an opponent's spell or ability targets it, that spell or ability is countered unless its controller discards a card of their choice; `CounterUnlessDiscard`, with the targeting spell or ability carried on the trigger as `targetedBy`); **exhaust** (`exhaust` on an activated ability, `CardInstance.exhausted`); threshold activation (`ifThreshold`) and casting (`castOnlyWithThreshold`); negative power assigning combat damage as positive (`negativePowerAssignsPositive`); "whenever you cast a spell that targets an opponent or a creature an opponent controls" (`targetsOpponentOrTheirCreature`); removing counters of any kind (`RemoveCounters` with `anyKind`); creature and planeswalker cards in your graveyard as a count.
+- Mabel removes +1/+1 counters first, then the other kinds in order, rather than letting you pick the kinds.

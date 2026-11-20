@@ -157,6 +157,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const groups = castGroupsFor(s,playerId,c);
     const from = naturalFrom ?? ((c.zone==='graveyard'||c.zone==='exile') && groups.length ? c.zone : null);
     const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+    if (def.castOnlyWithThreshold && s.players[playerId]!.graveyard.length < 7) continue;
     if (!from || !canEverCast(def) || (!castsAtInstantSpeed(s, playerId, c, def) && !sorcerySpeed && !anyTime)) continue;
     // Bolas's Citadel: the life must be there to pay.
     if (from === 'library' && libraryTopCostsLife(s, playerId) && p.life < manaValue(parseManaCost(def.manaCost))) continue;

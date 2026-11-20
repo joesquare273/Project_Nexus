@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F11c: black legends (2026-11-20)
+
+- The 11 black echoed-pairs legends (docs/reality-fracture.md). New: Ward—Discard a card as a real ward trigger (Gideon), exhaust (Liliana), threshold casting and activation, and Loot's negative power.
+
 ### Reality Fracture F11b: blue legends (2026-11-20)
 
 - The 11 blue echoed-pairs legends (docs/reality-fracture.md). New: split second (Samut), "becomes the target" triggers, Fblthp's win, Tetsuko's unblockable small creatures, and the FRA Angel token.

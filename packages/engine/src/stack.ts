@@ -1259,6 +1259,25 @@ export function spellCost(
   return cost;
 }
 
+/** Counters a spell or ability still on the stack (ward). */
+function counterStackObject(ctx: Ctx, what: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string }, by: InstanceId): void {
+  const s = ctx.s;
+  if (what.kind === 'ability') {
+    const index = s.stack.findIndex((i) => i.kind === 'ability' && i.id === what.item);
+    if (index < 0) return;
+    const countered = s.stack[index] as AbilityItem;
+    s.stack.splice(index, 1);
+    ctx.ev.push({ type: 'AbilityCountered', ability: countered.id, source: countered.source, by });
+    return;
+  }
+  const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === what.card);
+  if (index < 0 || cantBeCountered(s, what.card)) return;
+  const countered = s.stack[index] as SpellItem;
+  s.stack.splice(index, 1);
+  ctx.ev.push({ type: 'SpellCountered', card: what.card, defId: s.cards[what.card]!.defId, by });
+  moveCard(ctx, what.card, countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
+}
+
 /** Yuriko, Blade of the Mighty: during combat, no spells and no abilities that aren't mana abilities. */
 /** Split second (rule 702.61): while such a spell is on the stack, no spells and no abilities that aren't mana abilities. */
 export function splitSecondOnStack(s: GameState): boolean {
@@ -1315,6 +1334,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
+  if (def.castOnlyWithThreshold && player(s, playerId).graveyard.length < 7) reject(`You can't cast ${def.name} unless there are seven or more cards in your graveyard.`);
   const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
   if (!castsAtInstantSpeed(s, playerId, c, def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
     reject('This card can only be cast in your main phase with an empty stack.');
@@ -1645,6 +1665,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
+  if (spec.exhaust && index !== undefined && c.exhausted?.includes(index)) return 'That exhaust ability has already been activated.';
+  if (spec.ifThreshold && player(s, playerId).graveyard.length < 7) return 'That can be activated only if there are seven or more cards in your graveyard.';
   if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
   if (spec.duringCombat && !['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)) return 'That can be activated only during combat.';
   if (spec.ifAttackedThisTurn && c.attackedTurn !== s.turnNumber) return 'That can be activated only if this creature attacked this turn.';
@@ -1932,6 +1954,7 @@ export function activateAbility(
   }
   payWardDiscards(ctx, targets, playerId);
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
+  if (spec.exhaust) c.exhausted = [...(c.exhausted ?? []), index];
   if (spec.loyalty !== undefined) {
     c.loyaltyActivatedTurn = s.turnNumber;
     player(s, playerId).loyaltyActivatedTurn = s.turnNumber;
@@ -2818,6 +2841,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ChooseKeyword':
       s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: [...(effect.keywords ?? [])], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'keyword' };
       return;
+    case 'CounterUnlessDiscard': {
+      const by = item.kind === 'ability' ? item.targetedBy : undefined;
+      if (!by) return;
+      const onStack = s.stack.find((i) => (by.kind === 'spell' ? i.kind === 'spell' && i.card === by.card : i.kind === 'ability' && i.id === by.item));
+      if (!onStack) return;
+      const hand = s.players[onStack.controller]!.hand;
+      if (hand.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: onStack.controller, purpose: 'wardDiscard', cards: [...hand], min: 0, max: 1, wardTarget: by }];
+      else counterStackObject(ctx, by, source);
+      return;
+    }
     case 'GrantFlashback':
       for (const id of cards) if (s.cards[id]?.zone === 'graveyard') s.cards[id]!.flashbackTurn = s.turnNumber;
       return;
@@ -3285,7 +3318,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'RemoveCounters':
-      for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
+      for (const id of onBattlefield) {
+        if (!effect.anyKind) {
+          removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
+          continue;
+        }
+        // "Remove up to three counters" of any kinds (Mabel): +1/+1 counters first, then the others in the order they're listed.
+        let left = amount;
+        const kinds = [...((s.cards[id]!.counters ?? 0) > 0 ? ['+1/+1'] : []), ...Object.keys(s.cards[id]!.namedCounters ?? {})];
+        for (const kind of kinds) if (left > 0) left -= removeCounters(ctx, id, kind as never, left);
+      }
       return;
     case 'BecomeCopy': {
       const self = s.cards[source];
@@ -4786,6 +4828,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       delete s.cards[id]!.outsideGame;
       moveCard(ctx, id, 'hand');
     }
+  } else if (pending.purpose === 'wardDiscard') {
+    // Ward—Discard a card: discard one to keep the spell or ability, or let it be countered.
+    if (cards.length) for (const id of cards) discard(ctx, id);
+    else if (pending.wardTarget) counterStackObject(ctx, pending.wardTarget, sourceOf(r.item));
   } else if (pending.purpose === 'separatePiles') {
     // The chosen cards are one pile, the rest the other; the caster takes one.
     const other = pending.cards.filter((id) => !cards.includes(id));

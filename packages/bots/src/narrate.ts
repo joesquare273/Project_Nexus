@@ -146,6 +146,8 @@ function effectText(e: EffectSpec): string {
       return `${who} loses all abilities until end of turn`;
     case 'ChooseKeyword':
       return `choose ${(e.keywords ?? []).join(', ')}`;
+    case 'CounterUnlessDiscard':
+      return 'counter that spell or ability unless its controller discards a card';
     case 'GrantFlashback':
       return `${who} gains flashback until end of turn`;
     case 'SacrificeGreatestManaValue':
