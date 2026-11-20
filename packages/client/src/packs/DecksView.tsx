@@ -77,6 +77,21 @@ export function deckNote(d: DeckDraft, names: Map<string, string>, unbuilt: (id:
   return null;
 }
 
+/** A saved deck's contents as a draft (no id: saving it makes a new deck). */
+function draftOf(d: SavedDeck): DeckDraft {
+  return { name: d.name, format: d.format, cards: structuredClone(d.cards), basics: { ...d.basics }, commander: d.commander, partner: d.partner ?? null };
+}
+
+/** "Mono Red (copy)", then "Mono Red (copy 2)" ..., within the 40-character name limit. */
+export function copyName(name: string, decks: readonly { name: string }[]): string {
+  const taken = new Set(decks.map((d) => d.name));
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? ' (copy)' : ` (copy ${n})`;
+    const candidate = name.slice(0, 40 - suffix.length) + suffix;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
 export function DecksView({ mod, collection, onPreview }: { mod: Boosters; collection: Collection; onPreview: (c: BoosterCard | null) => void }) {
   const [decks, setDecks] = useState<SavedDeck[] | null>(null);
   const [editing, setEditing] = useState<DeckDraft | null>(null);
@@ -147,6 +162,33 @@ export function DecksView({ mod, collection, onPreview }: { mod: Boosters; colle
         </div>
         <div className="deck-tile-buttons">
           <button onClick={() => setEditing(structuredClone(d))}>Edit</button>
+          <button
+            disabled={busy}
+            title="Give this deck a new name"
+            onClick={() => {
+              const name = window.prompt('New name for this deck:', d.name)?.trim().slice(0, 40);
+              if (!name || name === d.name) return;
+              void withToken(async (token) => {
+                const saved = await saveDeck(token, { ...draftOf(d), id: d.id, name });
+                setDecks((list) => (list ?? []).map((x) => (x.id === saved.id ? saved : x)));
+              });
+            }}
+          >
+            Rename
+          </button>
+          <button
+            disabled={busy}
+            title="Save a copy of this deck and edit the copy; the original stays as it is"
+            onClick={() =>
+              void withToken(async (token) => {
+                const saved = await saveDeck(token, { ...draftOf(d), name: copyName(d.name, decks ?? []) });
+                setDecks((list) => [saved, ...(list ?? [])]);
+                setEditing(structuredClone(saved));
+              })
+            }
+          >
+            Duplicate
+          </button>
           <button
             disabled={busy}
             onClick={() => {

@@ -1479,10 +1479,12 @@ body:has(.set-showcase) {
 }
 .deck-tile-buttons {
   flex-direction: row;
+  flex-wrap: wrap;
   padding: 8px 12px 12px;
 }
+/* Edit, Rename, Duplicate and Delete: two to a row on a narrow tile. */
 .deck-tile-buttons button {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px);
   padding: 6px 10px;
   font-size: 13px;
 }

@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Decks: rename and duplicate (2026-11-20)
+
+- Each saved deck has Rename (a new name, up to 40 characters) and Duplicate (user request): Duplicate saves a copy straight away as "<name> (copy)" ("(copy 2)" and on when that's taken) and opens the copy in the deck editor, so changes go to the copy and the original stays as it was. The server already saves a deck without an id as a new one (up to 100 decks).
+
 ### Reality Fracture F13c: Emrakul, Jace's Machinations, Uldaros Theorix (2026-11-20)
 
 - The last three Reality Fracture cards: every card of the set is built (docs/reality-fracture.md). New: Ward—Sacrifice three permanents, Emrakul's land mana while it's exiled, instant-speed Jace loyalty abilities, and Uldaros' copies cast within a mana value budget (permanents become tokens).
