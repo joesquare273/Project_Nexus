@@ -305,7 +305,7 @@ export function grantedManaAbilities(s: GameState, c: CardInstance): { source: s
   // "Other permanents you control have '{T}: Add one mana of any color'" (A Realm Reborn).
   const fromStatics = sources.flatMap((source) =>
     (currentDefinition(s, source).statics ?? [])
-      .filter((spec) => spec.affects === 'EachMatching' && spec.grantsMana && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id }))
+      .filter((spec) => spec.affects === 'EachMatching' && spec.grantsMana && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id }) && (!spec.grantsManaToChosenName || currentDefinition(s, c).name === source.chosenOption))
       .map((spec) => ({ source: source.id, mana: spec.grantsMana!, ...(spec.grantsManaRestricted ? { restricted: spec.grantsManaRestricted } : {}) })));
   return [...fromExiled, ...fromEquipment, ...fromStatics];
 }

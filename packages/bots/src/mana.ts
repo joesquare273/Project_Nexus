@@ -110,7 +110,10 @@ function sourceTap(src: TapSource, mana: ManaType): ManaTap {
 }
 function sourceChoices(s: GameState, src: TapSource): ManaType[] {
   if (src.manaVia) return tapOtherManaTypes(s, s.cards[src.manaVia]!);
-  return src.grantedBy ? grantedManaAbilities(s, src).find((a) => a.source === src.grantedBy)?.mana ?? [] : manaChoices(s, src);
+  if (src.grantedBy) return grantedManaAbilities(s, src).find((a) => a.source === src.grantedBy)?.mana ?? [];
+  // Mana paid for with life that's restricted (Great Hall of the Biblioplex) is only ever made by hand.
+  const ability = currentDefinition(s, src).manaAbility;
+  return ability?.lifeRestricted ? manaChoices(s, src).filter((m) => !ability.lifeFor?.includes(m)) : manaChoices(s, src);
 }
 function grantedSources(s: GameState, player: PlayerId, opts: TapOptions): TapSource[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player && !c.tapped && !opts.exclude?.includes(c.id) && (!c.summoningSick || hasKeyword(s, c, 'Haste')))

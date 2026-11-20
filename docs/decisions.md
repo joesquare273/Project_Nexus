@@ -656,3 +656,12 @@ abilities.
 ## 2026-11-12: Credits and the fan content notice
 
 Project Nexus stays free and non-commercial, with no real-money purchases; Aether Shards can't be bought. Every page carries the notice suggested by Wizards of the Coast's Fan Content Policy and links a credits page naming Wizards of the Coast, Square Enix, the card artists (with the menu-art crops by name), Scryfall and the font licenses. Music stays out until there are tracks with clear licenses (see docs/audio.md). This lowers the risk; it isn't a license.
+
+## 2026-11-20: Choosing a land card name (Petrified Hamlet)
+
+"When this land enters, choose a land card name" is made as the land enters
+(like a Siege's "as this enters" choice), not as a trigger on the stack. The
+options are the basic lands and the land cards in public zones (battlefield,
+graveyards, exile, command zone): everyone sees the options, so cards in
+hands and libraries aren't offered, even the chooser's own. The real card can
+name any land in Magic; one that isn't in the game would do nothing yet.

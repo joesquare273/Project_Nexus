@@ -29,7 +29,7 @@ import {
 import { shuffleInPlace } from './rng.ts';
 import { isLegendary } from './typerules.ts';
 import { resumeResolving } from './stack.ts';
-import type { CardType, Color, EliminationReason, GameEvent, PlayerId } from './types.ts';
+import type { CardType, Color, EliminationReason, GameEvent, GameState, PlayerId } from './types.ts';
 
 /**
  * A player leaving a multiplayer game takes everything they own with them
@@ -338,10 +338,26 @@ function checkCardTypeChoice(ctx: Ctx): boolean {
 function checkOptionChoice(ctx: Ctx): boolean {
   const s = ctx.s;
   if (s.pending.kind === 'chooseOption' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseOption';
-  const c = battlefield(s).find((x) => !x.chosenOption && !x.phasedOut && defOf(s, x).chooseOptionAsEnters?.length);
+  const c = battlefield(s).find((x) => !x.chosenOption && !x.phasedOut && (defOf(s, x).chooseOptionAsEnters?.length || defOf(s, x).chooseLandNameAsEnters));
   if (!c) return false;
-  s.pending = { kind: 'chooseOption', player: c.controller, card: c.id, options: [...defOf(s, c).chooseOptionAsEnters!], resume: s.pending };
+  const options = defOf(s, c).chooseOptionAsEnters ?? landNames(s);
+  s.pending = { kind: 'chooseOption', player: c.controller, card: c.id, options: [...options], resume: s.pending };
   return true;
+}
+
+/**
+ * Land card names to choose from (Petrified Hamlet): the basic lands and
+ * every land card in a public zone. Everyone sees the options, so cards in
+ * hands and libraries (even the chooser's own) aren't offered.
+ */
+function landNames(s: GameState): string[] {
+  const names = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest']);
+  for (const c of Object.values(s.cards)) {
+    if (!['battlefield', 'graveyard', 'exile', 'command'].includes(c.zone) || c.faceDown || c.isToken) continue;
+    const def = defOf(s, c);
+    if (def.types.includes('land')) names.add(def.name);
+  }
+  return [...names].sort();
 }
 
 export function chooseOption(ctx: Ctx, playerId: PlayerId, option: string): void {

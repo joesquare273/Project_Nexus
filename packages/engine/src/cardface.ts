@@ -155,6 +155,7 @@ function definitionWithEffects(s: GameState, c: CardInstance): CardDefinition {
     if (c.animated.colors) out.colors = [...c.animated.colors];
     if (c.animated.keywords) out.keywords = [...new Set([...(out.keywords ?? []), ...c.animated.keywords])];
     if (c.animated.statics) out.statics = [...(out.statics ?? []), ...c.animated.statics];
+    if (c.animated.triggers) out.triggers = [...(out.triggers ?? []), ...c.animated.triggers];
   }
   // Station (rule 702.184): an artifact creature at its threshold, and abilities that only work with enough charge counters.
   if (def.station) {

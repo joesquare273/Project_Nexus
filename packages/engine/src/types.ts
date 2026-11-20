@@ -33,13 +33,17 @@ export interface Animation {
   keywords?: Keyword[];
   /** Abilities it has while animated ("During your turn, this creature has first strike": Restless Spire). */
   statics?: StaticSpec[];
+  /** Triggered abilities it has while animated ("Whenever you cast an instant or sorcery spell, this creature gets +1/+0": Great Hall of the Biblioplex). */
+  triggers?: TriggerSpec[];
+  /** BecomeCreature: only "if this land isn't a creature" (Great Hall of the Biblioplex). */
+  onlyIfNotCreature?: boolean;
   untilEndOfTurn?: boolean;
 }
 
 export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][]; /** Monocolored hybrid ({2/W}): each is paid with that color or with two generic mana (rule 107.4e); mana value 2. */ monoHybrid?: ManaType[] } & Partial<Record<ManaType, number>>;
 
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
-export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell';
+export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell' | 'instantOrSorcerySpell';
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -1845,6 +1849,10 @@ export interface StaticSpec {
   grantsMana?: ManaType[];
   /** With `grantsMana`: that mana is restricted (Mmmenon: only for spells cast from anywhere other than your hand). */
   grantsManaRestricted?: ManaRestriction;
+  /** With `grantsMana` (EachMatching): only permanents with the name chosen as this entered ("Lands with the chosen name have '{T}: Add {C}'": Petrified Hamlet). */
+  grantsManaToChosenName?: boolean;
+  /** "Activated abilities of sources with the chosen name can't be activated unless they're mana abilities" (Petrified Hamlet; the name is this permanent's chosen option). */
+  chosenNameCantActivate?: boolean;
   /** "Prevent all combat damage that would be dealt to this creature" (Diamond Weapon). */
   preventCombatDamage?: boolean;
   /** "Twice that many +1/+1 counters are put on that creature instead" for each affected creature (The Earth Crystal). */
@@ -2154,6 +2162,8 @@ export interface CardDefinition {
     anyColorIfControls?: ObjectFilter;
     /** Producing one of these costs 1 life ("{T}, Pay 1 life: Add one mana of any color"). */
     lifeFor?: ManaType[];
+    /** The mana paid for with life is restricted ("Spend this mana only to cast an instant or sorcery spell": Great Hall of the Biblioplex); it's never tapped for automatically. */
+    lifeRestricted?: ManaRestriction;
     /** "{T}, Mill a card: Add {C}." */
     mill?: number;
     /**
@@ -2366,6 +2376,8 @@ export interface CardDefinition {
   chooseCardTypeAsEnters?: CardType[];
   /** "As this enters, choose Mardu or Jeskai" (a Siege): the options, by name. */
   chooseOptionAsEnters?: string[];
+  /** "Choose a land card name" as this enters (Petrified Hamlet): the name is its chosen option. Offered: the basic land names and the land cards in public zones (everyone sees the options, so not hands or libraries). */
+  chooseLandNameAsEnters?: boolean;
   /** entersAsCopy: the copy lasts until end of turn, and it has haste (Cursed Mirror). */
   entersAsCopyUntilEndOfTurn?: boolean;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */

@@ -106,9 +106,30 @@ drawn pack shows.
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
 | SOC1-SOC5 | The decks' cards, one group per deck | |
-| SOS1 | Lands (13) | |
+| SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (74, in color batches) | |
 | SOS3 | Increment and Opus | |
 | SOS4 | Repartee and Infusion | |
 | SOS5 | Paradigm and Converge | |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
+
+## SOS1: lands (built 2026-11-20)
+
+The five slow lands (Deathcap Glade, Dreamroot Cascade, Shattered Sanctum,
+Stormcarved Coast, Sundown Pass), the five college lands that enter tapped
+and surveil 1 for {2}{X}{Y} and a tap (Fields of Strife, Forum of Amity,
+Paradox Gardens, Spectacle Summit, Titan's Grave), and three one-offs:
+
+- **Great Hall of the Biblioplex:** {C}, or pay 1 life for any color that
+  can only cast instant and sorcery spells (a new `instantOrSorcerySpell`
+  restricted pool, `manaAbility.lifeRestricted`; automatic payment only ever
+  takes its {C}). {5}: if it isn't a creature, it becomes a 2/4 Wizard with
+  the +1/+0 spell trigger (an animation can now carry triggers).
+- **Petrified Hamlet:** chooses a land card name as it enters; lands with that
+  name tap for {C}, and sources with that name (in any zone, cycling included)
+  can't activate abilities other than mana abilities.
+- **Skycoach Waypoint:** {C}; {3}, {T}: target creature becomes prepared.
+
+The Commander decks' five Turbulent lands (enter tapped unless an opponent
+controls eight or more lands) were built with them. Tests:
+`packages/bots/test/sos-cards.test.ts`.

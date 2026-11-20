@@ -427,7 +427,7 @@ function Battlefield({
   );
 }
 
-const RESTRICTED_TITLES: Record<string, string> = { artifactSpell: 'Only for artifact spells', artifactAbility: 'Only for abilities of artifacts', notFromHand: 'Only for spells cast from anywhere other than your hand' };
+const RESTRICTED_TITLES: Record<string, string> = { artifactSpell: 'Only for artifact spells', artifactAbility: 'Only for abilities of artifacts', notFromHand: 'Only for spells cast from anywhere other than your hand', planeswalkerSpell: 'Only for planeswalker spells', instantOrSorcerySpell: 'Only for instant and sorcery spells' };
 
 function ManaPool({ pool, equipment, noncreature, artifact, others }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool']; noncreature?: GameView['players'][string]['manaPool']; artifact?: GameView['players'][string]['manaPool']; others?: NonNullable<GameView['players'][string]['restrictedMana']> }) {
   const symbols = (p: typeof pool) => Object.entries(p).flatMap(([t, n]) => Array.from({ length: n }, () => `{${t}}`));

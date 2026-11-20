@@ -738,7 +738,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 /** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
 /** The restricted mana that can pay for a spell: artifact-spell mana, and mana for spells cast from anywhere other than your hand. */
 export function spellManaRestrictions(def: CardDefinition, from: string): ManaRestriction[] {
-  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
+  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(def.types.includes('instant') || def.types.includes('sorcery') ? ['instantOrSorcerySpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
 }
 
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
@@ -834,7 +834,7 @@ export function activateManaAbility(
   // Nyxbloom Ancient: three times as much (each one triples again).
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def, s) * 3 ** triplers;
-  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.restricted ?? (ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined));
+  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, (ability?.lifeFor?.includes(mana) ? ability.lifeRestricted : undefined) ?? ability?.restricted ?? (ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined));
   // Molten Tide: "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}."
   for (const e of player(s, playerId).extraMana ?? []) if (e.turn === s.turnNumber && subtypesOf(s, c).includes(e.subtype)) addMana(ctx, playerId, e.mana, id);
   // With `addCounterFirst`, the amount above already counted this counter.
@@ -1665,6 +1665,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
     return 'You do not control that permanent.';
   }
   if (zone === 'battlefield' && !spec.turnFaceUp && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
+  // Petrified Hamlet: sources with the chosen name (in any zone) can't activate abilities other than mana abilities.
+  if (!spec.effects.every((e) => e.effect === 'AddMana') && battlefield(s).some((x) => !x.phasedOut && x.chosenOption === defOf(s, c).name && (defOf(s, x).statics ?? []).some((st) => st.chosenNameCantActivate))) return 'Abilities of sources with that name can’t be activated.';
   if (spec.stationLevel !== undefined && (c.namedCounters?.charge ?? 0) < spec.stationLevel) return `That needs ${spec.stationLevel} or more charge counters.`;
   if (spec.loyalty !== undefined) {
     const anyTime = player(s, playerId).jaceLoyaltyAnyTimeTurn === s.turnNumber && subtypesOf(s, c).includes('Jace');
@@ -3388,6 +3390,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     case 'BecomeCreature':
       for (const id of onBattlefield) {
+        if (effect.becomes!.onlyIfNotCreature && hasType(s, s.cards[id]!, 'creature')) continue;
         s.cards[id]!.animated = structuredClone(effect.becomes!);
         if (effect.sacrificeAtEndStep) s.cards[id]!.sacrificeAtEndStep = true;
       }

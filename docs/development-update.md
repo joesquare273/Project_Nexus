@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS1: lands (2026-11-20)
+
+- The main set's 13 lands and the Commander decks' five Turbulent lands. New: mana restricted to instant and sorcery spells (Great Hall of the Biblioplex), animations with triggers, choosing a land card name (Petrified Hamlet; see decisions.md). docs/strixhaven.md.
+
 ### Secrets of Strixhaven Commander decks (2026-11-20)
 
 - The five college decks imported (`import-precons.ts soc`): 222 new definitions, 39-44 of each deck's 100 cards built. Sold in the Store's new Secrets of Strixhaven tab and shown in the Collection; not a free starter until their cards are built. `Snow` joins the supertype list (Ohran Frostfang). Details: docs/strixhaven.md.
