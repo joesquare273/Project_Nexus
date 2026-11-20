@@ -234,6 +234,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         if (e.step === 'main2') out.push({ when: 'SecondMain', at, activePlayer: e.activePlayer });
         if (e.step === 'beginCombat') out.push({ when: 'BeginCombat', at, activePlayer: e.activePlayer });
         if (e.step === 'upkeep') out.push({ when: 'Upkeep', at, activePlayer: e.activePlayer });
+        if (e.step === 'draw') out.push({ when: 'DrawStep', at, activePlayer: e.activePlayer });
         if (e.step === 'end') out.push({ when: 'EndStep', at, activePlayer: e.activePlayer });
         break;
     }
@@ -363,7 +364,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     if (spec.nthDrawThisTurn !== undefined && o.drawNumber !== spec.nthDrawThisTurn) return false;
     return !spec.notOnDrawersTurn || o.drawer !== s.activePlayer;
   }
-  if (o.when === 'BeginCombat' || o.when === 'EndCombat' || o.when === 'Upkeep' || o.when === 'EndStep' || o.when === 'SecondMain' || o.when === 'FirstMain') {
+  if (o.when === 'BeginCombat' || o.when === 'EndCombat' || o.when === 'Upkeep' || o.when === 'DrawStep' || o.when === 'EndStep' || o.when === 'SecondMain' || o.when === 'FirstMain') {
     if (spec.ifPlayerDealtCombatDamageThisTurn !== undefined && !s.turnOrder.some((pid) => (s.players[pid]!.combatDamageThisTurn ?? 0) >= spec.ifPlayerDealtCombatDamageThisTurn!)) return false;
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
     if (spec.ifYouAreMonarch && s.monarch !== controller) return false;
@@ -583,7 +584,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     for (const c of inCommand) consider(c, c.owner, 'command', o);
     // Delayed triggers work even after their source has left (rule 603.7).
     for (const d of s.delayedTriggers ?? []) {
-      if ((!d.emblem && d.turn !== s.turnNumber) || s.players[d.controller]!.eliminated || !triggersOn(d.spec, o, s, d.source, d.controller)) continue;
+      const lasts = d.emblem || d.turn === s.turnNumber || (d.untilYourNextTurn && !(s.activePlayer === d.controller && s.turnNumber > d.turn));
+      if (!lasts || s.players[d.controller]!.eliminated || !triggersOn(d.spec, o, s, d.source, d.controller)) continue;
       // "When you next ...": only the first time, then it's gone.
       if (d.next) s.delayedTriggers = (s.delayedTriggers ?? []).filter((x) => x !== d);
       found.push({

@@ -150,6 +150,8 @@ function effectText(e: EffectSpec): string {
       return 'counter that spell or ability unless its controller discards a card';
     case 'ExileTopMayCastElseDamage':
       return `exile the top card of your library; you may cast it, or ${e.amount ?? 2} damage to each opponent`;
+    case 'ExileAllButBottomOfOpponentsLibraries':
+      return "exile all but the bottom card of each opponent's library";
     case 'GrantFlashback':
       return `${who} gains flashback until end of turn`;
     case 'SacrificeGreatestManaValue':
@@ -620,7 +622,9 @@ function triggerCondition(t: TriggerSpec): string {
     OpponentDealtNoncombatDamage: '',
     BecomesTarget: 'becomes the target of a spell or ability',
     OpponentsDealtCombatDamageYourTurn: '',
+    DrawStep: '',
   }[t.when] ?? '';
+  if (t.when === 'DrawStep') return t.turn === 'Opponents' ? "At the beginning of each opponent's draw step" : t.turn === 'Each' ? 'At the beginning of each draw step' : 'At the beginning of your draw step';
   if (t.when === 'OpponentsDealtCombatDamageYourTurn') return 'When one or more of your opponents are dealt combat damage during your turn';
   if (t.when === 'OpponentDealtNoncombatDamage') return 'Whenever one or more opponents are dealt noncombat damage';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';

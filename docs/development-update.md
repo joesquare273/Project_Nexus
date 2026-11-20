@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F13b: Garruk and Jace planeswalkers (2026-11-20)
+
+- Four planeswalkers (docs/reality-fracture.md). New: exile instead of dying for opponents' creatures, delayed triggers until your next turn, draw-step triggers, and the Illusion token.
+
 ### Reality Fracture F13a: Ajani and Chandra planeswalkers (2026-11-20)
 
 - Four planeswalkers (docs/reality-fracture.md; F13 is split in three). New: −X loyalty abilities, Chandra, Torch of Defiance's cast-or-damage, surveil returning a card, and the Ajani's Pridemate token.

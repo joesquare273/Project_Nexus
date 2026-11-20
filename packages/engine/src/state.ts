@@ -640,7 +640,9 @@ export function putIntoGraveyard(ctx: Ctx, id: InstanceId, sacrificed = false): 
   const c = s.cards[id]!;
   const backToHand = hasFlag(s, c, 'returnToHandIfDies');
   const backToBattlefield = hasFlag(s, c, 'returnToBattlefieldTappedIfDies');
-  if (hasFlag(s, c, 'exileIfWouldDie') || c.unearthed) {
+  // Garruk, Veiled Butcher: an opponent's creature that would die is exiled instead.
+  const garruk = hasType(s, c, 'creature') && battlefield(s).some((x) => x.controller !== c.controller && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.opponentCreaturesExiledInsteadOfDying));
+  if (hasFlag(s, c, 'exileIfWouldDie') || c.unearthed || garruk) {
     moveCard(ctx, id, 'exile', { sacrificed });
     return;
   }

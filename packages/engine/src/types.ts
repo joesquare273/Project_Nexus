@@ -480,6 +480,8 @@ export const EFFECT_KINDS = [
   'SacrificeGreatestManaValue',
   /** The target card gains flashback until end of turn, its flashback cost equal to its mana cost (Stingcaster Mage). */
   'GrantFlashback',
+  /** Exile all but the bottom card of each opponent's library (Jace, Reality Sculptor). */
+  'ExileAllButBottomOfOpponentsLibraries',
   /** Exile the top card of your library; you may cast it right away (paying its cost); if you don't, the source deals `amount` damage to each opponent (Chandra, Torch of Defiance). */
   'ExileTopMayCastElseDamage',
   /** Ward—Discard a card (rule 702.21): counter the spell or ability that targeted the source unless its controller discards a card (Gideon, the Oathless). */
@@ -769,6 +771,8 @@ export const COUNT_KINDS = [
   'LandsYouControl',
   /** Forests you control (Roiling Canopy). */
   'ForestsYouControl',
+  /** Islands you control (Jace, Reality Sculptor). */
+  'IslandsYouControl',
   /** Land cards in all graveyards (Centaur Vinecrasher). */
   'LandCardsInAllGraveyards',
   /** Your devotion to red: {R} symbols in the mana costs of permanents you control (rule 700.5). */
@@ -850,6 +854,8 @@ export type Amount =
         | 'lifeLostThisWay'
         /** Cards drawn earlier in this resolution ("lose life equal to the number of cards drawn this way"). */
         | 'drawnThisWay'
+        /** Opponents who didn't discard two nonland cards to this (Garruk, Veiled Butcher). */
+        | 'opponentsWhoDidntDiscardTwoNonland'
         /** DealDamage from the previous target: its loyalty (Compel Brutality). */
         | 'previousTargetLoyalty'
         /** The mana value of the card found by RevealUntil. */
@@ -1261,6 +1267,8 @@ export interface EffectSpec {
   ifSacrificed?: boolean;
   /** "Up to one target": the target may be left out. */
   upTo?: boolean;
+  /** Only if this effect's controller sacrificed something earlier in it ("If you sacrificed a creature this way"). */
+  ifYouSacrificed?: boolean;
   /** Only if you've (true) or you haven't (false) scried or surveilled this turn (Desperate Futurescribe). */
   ifScriedOrSurveiledThisTurn?: boolean;
   /** Surveil: a card put into the graveyard this way that matches goes to your hand instead (Chandra, Chill of Compliance). */
@@ -1360,6 +1368,8 @@ export const TRIGGER_EVENTS = [
   'DealtDamage',
   'BeginCombat',
   'Upkeep',
+  /** The beginning of the draw step (`turn` as for Upkeep; The Theorist: "each opponent's draw step"). */
+  'DrawStep',
   /** "At the beginning of your end step". */
   'EndStep',
   /** Counters were put on a permanent (with `byYou`: by a spell or ability you control). */
@@ -1758,6 +1768,8 @@ export interface ActivatedSpec {
   exhaust?: boolean;
   /** "Activate only if there are seven or more cards in your graveyard" (threshold). */
   ifThreshold?: boolean;
+  /** "Activate only if there are N or more loyalty counters among [subtype] planeswalkers you control" (Jace, Reality Sculptor). */
+  ifLoyaltyAmongAtLeast?: { subtype: string; atLeast: number };
   /** Only while this Equipment is attached to a creature (The Dominion Bracelet). */
   ifAttached?: boolean;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
@@ -1787,6 +1799,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "If a creature an opponent controls would die, exile it instead" (Garruk, Veiled Butcher). */
+  opponentCreaturesExiledInsteadOfDying?: boolean;
   /** "Artifacts and creatures entering the battlefield don't cause abilities to trigger" (Karn, Argent Defender; rule 603.2g). */
   enteringArtifactsAndCreaturesDontTrigger?: boolean;
   /** "If a source you control would deal noncombat damage to an opponent or a permanent an opponent controls, it deals that much damage plus 1 instead" (Tomik, Izzet Sparkmage). */
@@ -3037,6 +3051,10 @@ export interface Resolving {
   wonFlip?: boolean;
   /** A permanent was sacrificed by an earlier effect of this spell ("If you do"). */
   sacrificedAny?: boolean;
+  /** Players who sacrificed something to this spell or ability ("if you sacrificed a creature this way"). */
+  sacrificedBy?: PlayerId[];
+  /** Nonland cards each player discarded to this spell or ability (Garruk, Veiled Butcher). */
+  nonlandDiscarded?: Record<PlayerId, number>;
   /** Life players lost to this spell or ability's effects so far. */
   lifeLostThisWay?: number;
   drawnThisWay?: number;
@@ -3307,7 +3325,7 @@ export interface GameState {
   endingTurn?: boolean;
   /** Delayed triggered abilities that last until the end of `turn` (Summon: Good King Mog XII). */
   /** `next`: "when you next ... this turn": it triggers once, then is gone. */
-  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean; /** The triggering object it acts on (keepSubject). */ subject?: InstanceId; /** An emblem (rule 114): it never ends. */ emblem?: boolean }[];
+  delayedTriggers?: { source: InstanceId; sourceObject: number; controller: PlayerId; turn: number; spec: TriggerSpec; next?: boolean; /** The triggering object it acts on (keepSubject). */ subject?: InstanceId; /** An emblem (rule 114): it never ends. */ emblem?: boolean; /** "Until your next turn": it lasts until its controller's next turn begins. */ untilYourNextTurn?: boolean }[];
   /** "source#ability" keys of once-each-turn abilities that already triggered this turn. */
   triggeredThisTurn: string[];
   /** "Until end of turn" effects. */

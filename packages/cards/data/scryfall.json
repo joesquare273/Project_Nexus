@@ -11261,6 +11261,28 @@
     "scryfallId": "ae612312-3a8e-495f-8730-deaaf7505ca1",
     "relatedTokens": []
   },
+  "illusion-token-fra": {
+    "name": "Illusion",
+    "typeLine": "Token Creature — Illusion",
+    "oracleText": "",
+    "set": "tfra",
+    "number": "4",
+    "artist": "Daniel Cotter",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525",
+      "normal": "https://cards.scryfall.io/normal/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525",
+      "large": "https://cards.scryfall.io/large/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/b/7bda0b63-fd0f-495d-9eb0-20057571c0ee.jpg?1787952525"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/4/illusion?utm_source=api",
+    "scryfallId": "7bda0b63-fd0f-495d-9eb0-20057571c0ee",
+    "relatedTokens": [
+      {
+        "name": "Illusion",
+        "scryfallId": "7bda0b63-fd0f-495d-9eb0-20057571c0ee"
+      }
+    ]
+  },
   "illvoi-galeblade": {
     "name": "Illvoi Galeblade",
     "typeLine": "Creature — Jellyfish Warrior",

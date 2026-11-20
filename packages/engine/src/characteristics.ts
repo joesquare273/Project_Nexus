@@ -122,6 +122,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'LandsYouControl':
       return battlefieldCards(s).filter((c) => c.controller === player && def(s, c).types.includes('land')).length;
+    case 'IslandsYouControl':
+      return battlefieldCards(s).filter((c) => c.controller === player && subtypesOf(s, c).includes('Island')).length;
     case 'ForestsYouControl':
       return battlefieldCards(s).filter((c) => c.controller === player && subtypesOf(s, c).includes('Forest')).length;
     case 'LandCardsInYourGraveyard':

@@ -130,6 +130,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'x',
       'lifeLostThisWay',
       'drawnThisWay',
+      'opponentsWhoDidntDiscardTwoNonland',
       'previousTargetLoyalty',
       'revealedManaValue',
       'subjectManaValue',
@@ -409,8 +410,8 @@ function validateTrigger(t: TriggerSpec, err: Err): void {
   }
   validateFilter(t.what, e);
   if (t.when === 'SpellCast' && !t.what && t.zone !== 'stack') e('say which spells with "what".');
-  if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep' && t.when !== 'EndStep') {
-    e('"turn" is only for BeginCombat, Upkeep and EndStep.');
+  if (t.turn !== undefined && t.when !== 'BeginCombat' && t.when !== 'Upkeep' && t.when !== 'DrawStep' && t.when !== 'EndStep') {
+    e('"turn" is only for BeginCombat, Upkeep, DrawStep and EndStep.');
   }
   if (t.fromZone !== undefined && (!['hand', 'library', 'graveyard', 'exile', 'command', 'battlefield', 'stack', 'void'].includes(t.fromZone) || !['SpellCast', 'LandPlayed'].includes(t.when))) e('fromZone requires a valid zone and a SpellCast or LandPlayed trigger.');
   if (t.fromGraveyard && t.when !== 'EntersBattlefield') e('"fromGraveyard" is only for EntersBattlefield.');

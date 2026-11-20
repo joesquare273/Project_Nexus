@@ -45,7 +45,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F12b | Echoed pairs legends, green (10) | Done |
 | F12c | Echoed pairs legends, multicolor and colorless (10) | Done |
 | F13a | Planeswalkers: Ajani Resolute, Ajani, Unrelenting, Chandra, Chill of Compliance, Chandra, Torch of Defiance (4) | Done |
-| F13b | Planeswalkers: the Garruks, Jace, Reality Sculptor, The Theorist (4) | |
+| F13b | Planeswalkers: the Garruks, Jace, Reality Sculptor, The Theorist (4) | Done |
 | F13c | The rest: Emrakul, the Exigent Doom, Jace's Machinations, Uldaros Theorix (3) | |
 
 ### F1 (2026-11-16)
@@ -151,3 +151,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 
 - Ajani Resolute; Ajani, Unrelenting; Chandra, Chill of Compliance; Chandra, Torch of Defiance.
 - Engine: **−X loyalty abilities** (`loyaltyX`: X from 0 up to the loyalty, removed as the cost); "exile the top card; you may cast it; if you don't, [damage]" (`ExileTopMayCastElseDamage`: a cast-right-now permission whose lapse deals the damage, `castPermission.orDamage`); surveil returning a matching card to your hand (`returnIfMatches`); mana restricted to noncreature spells from an effect (`manaRestricted: 'noncreatureSpell'`). Emblems with triggers use the existing emblem delayed triggers. The Ajani's Pridemate token (tfra 2).
+
+### F13b (2026-11-20)
+
+- Garruk, Veiled Butcher; Garruk, Curse Breaker; Jace, Reality Sculptor; The Theorist, Jace Beleren.
+- Engine: "if a creature an opponent controls would die, exile it instead" (`opponentCreaturesExiledInsteadOfDying`); delayed triggers that last until your next turn (`CreateDelayedTrigger` with `untilYourNextTurn`); "at the beginning of each opponent's draw step" (`DrawStep` with `turn`); "if you sacrificed a creature this way" (`ifYouSacrificed`, `Resolving.sacrificedBy`); "for each opponent who didn't discard two nonland cards this way" (`opponentsWhoDidntDiscardTwoNonland`); an ability that needs N loyalty counters among your Jaces (`ifLoyaltyAmongAtLeast`); exiling all but the bottom card of each opponent's library; Islands you control as a count. The Illusion token (tfra 4).
+- Garruk, Curse Breaker's −4 gives each of your attacking creatures +2/+2 and trample as it attacks (the card's "one or more creatures attack one of your opponents" batches them; the effect is the same).

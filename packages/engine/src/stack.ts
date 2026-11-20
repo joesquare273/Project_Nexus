@@ -1666,6 +1666,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
   if (spec.exhaust && index !== undefined && c.exhausted?.includes(index)) return 'That exhaust ability has already been activated.';
+  if (spec.ifLoyaltyAmongAtLeast && battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && subtypesOf(s, x).includes(spec.ifLoyaltyAmongAtLeast!.subtype)).reduce((n, x) => n + (x.namedCounters?.loyalty ?? 0), 0) < spec.ifLoyaltyAmongAtLeast.atLeast) return 'Not enough loyalty among your planeswalkers of that type.';
   if (spec.ifThreshold && player(s, playerId).graveyard.length < 7) return 'That can be activated only if there are seven or more cards in your graveyard.';
   if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
   if (spec.duringCombat && !['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)) return 'That can be activated only during combat.';
@@ -2206,6 +2207,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                     ? (r.lifeLostThisWay ?? 0)
                   : a.of === 'drawnThisWay'
                     ? (r.drawnThisWay ?? 0)
+                  : a.of === 'opponentsWhoDidntDiscardTwoNonland'
+                    ? alivePlayers(s).filter((p) => p !== r.item.controller && (r.nonlandDiscarded?.[p] ?? 0) < 2).length
                     : a.of === 'revealedManaValue'
                       ? (r.revealedManaValue ?? 0)
                       : a.of === 'subjectManaValue'
@@ -2866,6 +2869,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'ExileAllButBottomOfOpponentsLibraries':
+      for (const pid of alivePlayers(s)) {
+        if (pid === item.controller) continue;
+        const library = s.players[pid]!.library;
+        for (const id of library.slice(0, Math.max(0, library.length - 1))) moveCard(ctx, id, 'exile');
+      }
+      return;
     case 'GrantFlashback':
       for (const id of cards) if (s.cards[id]?.zone === 'graveyard') s.cards[id]!.flashbackTurn = s.turnNumber;
       return;
@@ -3976,7 +3986,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const spec = structuredClone(effect.trigger!);
       for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'exiledThisWay') e.amount = r.exiledCount ?? 0;
       const kept = effect.keepSubject && item.kind === 'ability' ? item.subject : undefined;
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(kept ? { subject: kept } : {}), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(kept ? { subject: kept } : {}), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}), ...(effect.untilYourNextTurn ? { untilYourNextTurn: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':
@@ -4410,6 +4420,7 @@ function continueResolving(ctx: Ctx): void {
     if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
     // "If you do": something was chosen in the last choice (of the right kind, for Mog).
     if (effect.ifSacrificed && !r.sacrificedAny) continue;
+    if (effect.ifYouSacrificed && !r.sacrificedBy?.includes(item.controller)) continue;
     if (effect.ifWonFlip && !r.wonFlip) continue;
     if (effect.ifYouControlGreatestPower) {
       const creatures = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c));
@@ -4761,6 +4772,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       if (s.cards[id]?.zone === 'exile') s.cards[id]!.playableFromExile = { player: pending.player, source: sourceOf(r.item), whileExiled: true, costMore: 1, landEntersTapped: true };
     }
   } else if (pending.purpose === 'discard') {
+    const nonland = cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
+    r.nonlandDiscarded = { ...r.nonlandDiscarded, [pending.player]: (r.nonlandDiscarded?.[pending.player] ?? 0) + nonland };
     for (const id of cards) discard(ctx, id);
     if (r.conniving) {
       const nonland = cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
@@ -5118,6 +5131,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   else if (pending.purpose === 'sacrifice') {
     for (const id of cards) sacrifice(ctx, id);
     if (cards.length > 0) r.sacrificedAny = true;
+    if (cards.length > 0) r.sacrificedBy = [...(r.sacrificedBy ?? []), pending.player];
   }
   else if (pending.purpose === 'destroy') {
     for (const id of cards) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;

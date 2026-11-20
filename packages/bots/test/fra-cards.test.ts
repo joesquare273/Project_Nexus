@@ -1821,3 +1821,89 @@ describe('F13a: Ajani and Chandra planeswalkers', () => {
     expect(s.players.P2!.life).toBe(15);
   });
 });
+
+describe('F13b: Garruk and Jace planeswalkers', () => {
+  const loyalty = (n: number) => ({ namedCounters: { loyalty: n } });
+  const use = (s: GameState, cardId: string, ability: number, targets: { kind: 'card'; card: string }[] = [], opts: Parameters<typeof cast>[2] = {}) =>
+    cast(s, { type: 'ActivateAbility', player: 'P1', card: cardId, ability, targets }, opts);
+
+  it('Garruk, Veiled Butcher exiles an opponent\'s creature that would die', () => {
+    let s = newGame();
+    put(s, 'P1', 'garruk-veiled-butcher', 'battlefield', loyalty(5));
+    const rat = put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] }).state;
+    expect(zone(s, rat)).toBe('exile');
+  });
+
+  it('Garruk, Veiled Butcher -2: each player sacrifices a creature; a Beast if you did', () => {
+    let s = newGame();
+    const garruk = put(s, 'P1', 'garruk-veiled-butcher', 'battlefield', loyalty(5));
+    const mine = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'rank-rat');
+    s = use(s, garruk, 1).state;
+    for (let i = 0; i < 3 && s.pending.kind === 'chooseCards'; i++) s = settle(act(s, { type: 'ChooseCards', player: s.pending.player, cards: [s.pending.cards[0]!] })).state;
+    expect([zone(s, mine), zone(s, theirs)]).toEqual(['graveyard', 'exile']);
+    expect(Object.values(s.cards).some((c) => c.defId === 'beast-token-fra' && c.zone === 'battlefield')).toBe(true);
+  });
+
+  it('Garruk, Veiled Butcher -3: you draw for each opponent who didn\'t discard two nonland cards', () => {
+    let s = newGame();
+    const garruk = put(s, 'P1', 'garruk-veiled-butcher', 'battlefield', loyalty(5));
+    s.players.P2!.hand = [];
+    const a = put(s, 'P2', 'island', 'hand');
+    const b = put(s, 'P2', 'last-gasp', 'hand');
+    const hand = s.players.P1!.hand.length;
+    s = use(s, garruk, 2).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [a, b] })).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Garruk, Curse Breaker -4: until your next turn, your attackers get +2/+2 and trample', () => {
+    let s = newGame();
+    const garruk = put(s, 'P1', 'garruk-curse-breaker', 'battlefield', loyalty(5));
+    const rat = put(s, 'P1', 'rank-rat');
+    s = use(s, garruk, 2).state;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: rat, defender: 'P2' }] })).state;
+    expect([powerOf(s, s.cards[rat]!), hasKeyword(s, s.cards[rat]!, 'Trample')]).toEqual([3, true]); // a 1/1 Rank Rat
+  });
+
+  it('Jace, Reality Sculptor +1 empowers Jace by the number of Islands you control', () => {
+    let s = newGame();
+    const jace = put(s, 'P1', 'jace-reality-sculptor', 'battlefield', loyalty(5));
+    put(s, 'P1', 'island');
+    put(s, 'P1', 'island');
+    s = use(s, jace, 0).state;
+    const token = Object.values(s.cards).find((c) => c.defId === 'jace-token-fra');
+    expect(token?.namedCounters?.loyalty).toBe(2);
+  });
+
+  it('Jace, Reality Sculptor 0 needs 25 loyalty among your Jaces, then exiles all but the bottom card of each opponent\'s library', () => {
+    let s = newGame();
+    const jace = put(s, 'P1', 'jace-reality-sculptor', 'battlefield', loyalty(24));
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === jace && a.ability === 2)).toBe(false);
+    s.cards[jace]!.namedCounters = { loyalty: 25 };
+    s = use(s, jace, 2).state;
+    expect(s.players.P2!.library.length).toBe(1);
+  });
+
+  it('The Theorist draws a card at the beginning of each opponent\'s draw step', () => {
+    let s = newGame();
+    put(s, 'P1', 'the-theorist-jace-beleren', 'battlefield', loyalty(3));
+    const hand = s.players.P1!.hand.length;
+    for (let i = 0; i < 6 && !(s.activePlayer === 'P2' && s.step === 'draw'); i++) s = settle(goTo(s, 'draw')).state;
+    s = settle(s).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('The Theorist -6: draw three, then counters on each of your creatures equal to your hand size', () => {
+    let s = newGame();
+    const jace = put(s, 'P1', 'the-theorist-jace-beleren', 'battlefield', loyalty(6));
+    const rat = put(s, 'P1', 'rank-rat');
+    s.players.P1!.hand = [];
+    s = use(s, jace, 2).state;
+    expect(s.cards[rat]!.counters).toBe(3);
+  });
+});
