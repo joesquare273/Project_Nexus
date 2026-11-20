@@ -21,6 +21,9 @@
 .packs.set-eoe {
   --set-showcase: url('/packs/eoe-showcase.jpg');
 }
+.packs.set-fra {
+  --set-showcase: url('/packs/fra-showcase.jpg');
+}
 /* The set choice above the boosters. */
 .pack-sets {
   display: inline-flex;

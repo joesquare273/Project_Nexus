@@ -721,6 +721,8 @@ export const COUNT_KINDS = [
   'CardsInYourHand',
   /** Cards in your library ("if your library has no cards in it"). */
   'CardsInYourLibrary',
+  /** Cards you've discarded this turn (Jiang Yanggu, Alone). */
+  'CardsYouDiscardedThisTurn',
   /** Creature and planeswalker cards in your graveyard (Winter, Tormented Loner). */
   'CreatureAndPlaneswalkerCardsInYourGraveyard',
   /** Cards you've drawn this turn (Lyra, Tolarian Archangel). */
@@ -1769,6 +1771,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "If a source you control would deal noncombat damage to an opponent or a permanent an opponent controls, it deals that much damage plus 1 instead" (Tomik, Izzet Sparkmage). */
+  noncombatDamageToOpponentsPlusOne?: boolean;
   /** "Instant and sorcery spells you control have split second" (Samut, Tyrant of Naktamun; rule 702.61). */
   yourInstantsAndSorceriesHaveSplitSecond?: boolean;
   /** "Creatures you control with power or toughness 1 or less can't be blocked" (Tetsuko Umezawa, Fugitive). */
@@ -2736,6 +2740,8 @@ export interface PlayerState {
   libraryToGraveyard?: { turn: number; count: number };
   /** The last turn this player scried or surveilled. */
   scriedOrSurveiledTurn?: number;
+  /** Cards this player discarded this turn (Jiang Yanggu, Alone). */
+  discardedThisTurn?: { turn: number; count: number };
   /** The last turn this player activated a loyalty ability. */
   loyaltyActivatedTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */

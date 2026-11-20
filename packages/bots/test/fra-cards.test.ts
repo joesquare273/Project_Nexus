@@ -1500,3 +1500,80 @@ describe('F11c: black echoed-pairs legends', () => {
     expect(s.cards[danitha]!.counters).toBe(1);
   });
 });
+
+describe('F12a: red echoed-pairs legends', () => {
+  it('Arni, Renowned Champion gets +X/+0 equal to the power of a creature entering under your control', () => {
+    let s = newGame();
+    const arni = put(s, 'P1', 'arni-renowned-champion');
+    const witch = put(s, 'P1', 'apex-witchstalker', 'hand');
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: witch }).state;
+    expect(powerOf(s, s.cards[arni]!)).toBe(7);
+  });
+
+  it('Gallia, the Merrymaker gives your other creatures with +1/+1 counters haste', () => {
+    const s = newGame();
+    put(s, 'P1', 'gallia-the-merrymaker');
+    const plain = put(s, 'P1', 'rank-rat', 'battlefield', { summoningSick: true });
+    const grown = put(s, 'P1', 'rank-rat', 'battlefield', { summoningSick: true, counters: 1 });
+    expect([hasKeyword(s, s.cards[plain]!, 'Haste'), hasKeyword(s, s.cards[grown]!, 'Haste')]).toEqual([false, true]);
+  });
+
+  it('Jiang Yanggu, Alone: a lone attacker loots, then gets a counter for each card you discarded this turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'jiang-yanggu-alone');
+    const rat = put(s, 'P1', 'rank-rat');
+    put(s, 'P1', 'island', 'hand');
+    s.players.P1!.discardedThisTurn = { turn: s.turnNumber, count: 1 };
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: rat, defender: 'P2' }] })).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [s.pending.cards[0]!] })).state;
+    expect(s.cards[rat]!.counters).toBe(2);
+  });
+
+  it('Koth, the Geomancer: landfall deals 1 damage to each opponent, and a Mountain adds {R}', () => {
+    let s = newGame();
+    put(s, 'P1', 'koth-the-geomancer');
+    const mountain = put(s, 'P1', 'mountain', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: mountain })).state;
+    expect([s.players.P2!.life, s.players.P1!.manaPool.R]).toEqual([19, 1]);
+  });
+
+  it('Tomik, Izzet Sparkmage adds 1 to noncombat damage your sources deal to opponents', () => {
+    let s = newGame();
+    put(s, 'P1', 'tomik-izzet-sparkmage');
+    const spell = put(s, 'P1', 'stinging-vitriol', 'hand');
+    mana(s, 'P1', { B: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(17);
+  });
+
+  it('Winter, Team Player has convoke and pumps your creatures when you cast a noncreature spell', () => {
+    let s = newGame();
+    const winter = put(s, 'P1', 'winter-team-player');
+    const rat = put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] }).state;
+    expect(powerOf(s, s.cards[winter]!)).toBe(4);
+    expect(s.cardDefs['winter-team-player']!.convoke).toBe(true);
+  });
+
+  it('Tetsuko Umezawa, Pursuer deals 1 damage to an opponent when their small creature blocks', () => {
+    let s = newGame();
+    const tetsuko = put(s, 'P1', 'tetsuko-umezawa-pursuer');
+    const rat = put(s, 'P2', 'rank-rat');
+    s = fight(s, [{ attacker: tetsuko, defender: 'P2' }], { P2: [{ blocker: rat, attacker: tetsuko }] }).state;
+    expect(s.players.P2!.life).toBe(19);
+  });
+});
+
+describe('AddMana effects (fixed manaType)', () => {
+  it('Konstrari Charm adds {C}{C}{C}', () => {
+    let s = newGame();
+    const charm = put(s, 'P1', 'konstrari-charm', 'hand');
+    mana(s, 'P1', { R: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 2 }).state;
+    expect(s.players.P1!.manaPool.C).toBe(3);
+  });
+});

@@ -190,6 +190,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'lore') : 0;
     case 'CreatureAndPlaneswalkerCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => { const t = def(s, s.cards[id]!).types; return t.includes('creature') || t.includes('planeswalker'); }).length;
+    case 'CardsYouDiscardedThisTurn': {
+      const d = s.players[player]!.discardedThisTurn;
+      return d?.turn === s.turnNumber ? d.count : 0;
+    }
     case 'CardsInYourLibrary':
       return s.players[player]!.library.length;
     case 'CardsYouDrewThisTurn':

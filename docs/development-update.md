@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F12a: red legends (2026-11-20)
+
+- The 11 red echoed-pairs legends (docs/reality-fracture.md; F12 is split into red, green, and multicolor/colorless). New: Tomik's +1 noncombat damage and Jiang Yanggu's discard count. Fixed Konstrari Charm's and Gardenize's mana (`manaType`).
+- The Reality Fracture booster page has its own pack photos and showcase art (`packages/client/public/packs/fra-*`; the white backgrounds cut away like the other sets').
+- The fuzz suite's "basic AI beats a random bot" test (ten whole games) gets a 60-second limit: it took 5-6 seconds on a slower container, past vitest's default 5.
+
 ### Reality Fracture F11c: black legends (2026-11-20)
 
 - The 11 black echoed-pairs legends (docs/reality-fracture.md). New: Ward—Discard a card as a real ward trigger (Gideon), exhaust (Liliana), threshold casting and activation, and Loot's negative power.

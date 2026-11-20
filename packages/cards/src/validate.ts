@@ -341,6 +341,8 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'ChooseCounterRecipients' && (e.target !== 'You' || !e.filter || typeof e.amount !== 'number' || !isNonNegativeInt(e.amount))) err('ChooseCounterRecipients needs You, a filter, and a nonnegative whole-number amount.');
   if (e.effect === 'MillAndGrantOneCast' && e.token !== undefined && typeof e.token !== 'string') err('MillAndGrantOneCast token must be a token id.');
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
+  // AddMana takes `manaType` (a misspelled key would be ignored and the player asked to choose).
+  if (e.effect === 'AddMana' && 'mana' in (e as object)) err('AddMana takes manaType, not mana.');
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length && !e.chosenKeyword) err('GrantKeywords needs keywords.');
   if (e.effect === 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyBuffBoth].some(x=>x!==undefined)) err('CreateTokenCopy takes only copyKeywords of the copy options.');

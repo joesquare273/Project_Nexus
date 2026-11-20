@@ -88,5 +88,6 @@ describe('basic AI', () => {
       if (game.state.winner === 'P1') wins++;
     }
     expect(wins).toBeGreaterThanOrEqual(8);
-  });
+    // Ten whole games: about 5-6 seconds on a slower machine, past vitest's default 5.
+  }, 60_000);
 });

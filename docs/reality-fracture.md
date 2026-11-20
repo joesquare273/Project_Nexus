@@ -41,7 +41,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F11a | Echoed pairs legends, white (13) | Done |
 | F11b | Echoed pairs legends, blue (11) | Done |
 | F11c | Echoed pairs legends, black (11) | Done |
-| F12 | Echoed pairs legends, red, green and multicolor | |
+| F12a | Echoed pairs legends, red (11) | Done |
+| F12b | Echoed pairs legends, green (10) | |
+| F12c | Echoed pairs legends, multicolor and colorless (10) | |
 | F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
 
 ### F1 (2026-11-16)
@@ -126,3 +128,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Danitha, Spear of Agony; Gallia, Tragic Host; Gideon, the Oathless; Liliana, the Repentant; Loot, the Anomaly; Mabel, Bitter Recluse; Massacre Girl, Most Wanted; Proft, Sinister Mastermind; Teyo, Diamondblade Mage; Tinybones, Pocket Nuisance; Winter, Tormented Loner.
 - Engine: **Ward—Discard a card** as a real ward trigger (rule 702.21: when an opponent's spell or ability targets it, that spell or ability is countered unless its controller discards a card of their choice; `CounterUnlessDiscard`, with the targeting spell or ability carried on the trigger as `targetedBy`); **exhaust** (`exhaust` on an activated ability, `CardInstance.exhausted`); threshold activation (`ifThreshold`) and casting (`castOnlyWithThreshold`); negative power assigning combat damage as positive (`negativePowerAssignsPositive`); "whenever you cast a spell that targets an opponent or a creature an opponent controls" (`targetsOpponentOrTheirCreature`); removing counters of any kind (`RemoveCounters` with `anyKind`); creature and planeswalker cards in your graveyard as a count.
 - Mabel removes +1/+1 counters first, then the other kinds in order, rather than letting you pick the kinds.
+
+### F12a (2026-11-20)
+
+- Arni, Renowned Champion; Gallia, the Merrymaker; Jiang Yanggu, Alone; Kiora of Fire and Ashes; Koth, the Geomancer; Marwyn, the Clearcutter; Pia, Determined Rebuilder; Samut, Hazoret's Champion; Tetsuko Umezawa, Pursuer; Tomik, Izzet Sparkmage; Winter, Team Player.
+- Engine: noncombat damage to opponents and their permanents plus 1 (`noncombatDamageToOpponentsPlusOne`, applied in `dealDamage`); cards discarded this turn (`PlayerState.discardedThisTurn`, `CardsYouDiscardedThisTurn`).
+- Fix: Koth, the Geomancer, Konstrari Charm and Gardenize named their mana `mana` instead of `manaType`, so they asked for a color instead of adding {R}, {C}{C}{C} or {G}; the validator now rejects that key.

@@ -299,6 +299,7 @@ const PLAYER_FIELDS = {
   extraMana: 'copy',
   libraryToGraveyard: 'copy',
   scriedOrSurveiledTurn: 'copy',
+  discardedThisTurn: 'copy',
   nextSpellUncounterableTurn: 'copy',
   legendRuleOffTurn: 'copy',
   endStepsBegun: 'copy',

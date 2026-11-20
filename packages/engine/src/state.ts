@@ -539,6 +539,13 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     const kujas = battlefield(s).filter((c) => c.controller === source.controller && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.doubleWizardDamage)).length;
     amount *= 2 ** kujas;
   }
+  // Tomik, Izzet Sparkmage: noncombat damage your sources deal to an opponent or their permanents, plus 1 each.
+  {
+    const victim = target.kind === 'player' ? target.player : target.kind === 'card' && s.cards[target.card]?.zone === 'battlefield' ? s.cards[target.card]!.controller : undefined;
+    if (!combat && victim && victim !== source.controller) {
+      amount += battlefield(s).filter((c) => c.controller === source.controller && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.noncombatDamageToOpponentsPlusOne)).length;
+    }
+  }
   // Stagger (Lightning, Army of One): damage to that player or their permanents is doubled.
   const hurt = target.kind === 'player' ? target.player : target.kind === 'card' ? s.cards[target.card]?.controller : undefined;
   if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;
@@ -889,6 +896,8 @@ export function emptyAllManaPools(s: GameState): void {
 export function discard(ctx: Ctx, id: InstanceId): void {
   const c = ctx.s.cards[id]!;
   moveCard(ctx, id, 'graveyard');
+  const p = ctx.s.players[c.owner];
+  if (p) p.discardedThisTurn = { turn: ctx.s.turnNumber, count: (p.discardedThisTurn?.turn === ctx.s.turnNumber ? p.discardedThisTurn.count : 0) + 1 };
   ctx.ev.push({ type: 'Discarded', player: c.owner, card: id });
 }
 
