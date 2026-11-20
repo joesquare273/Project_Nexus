@@ -297,7 +297,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
-    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell && !c.costReduction.ifVoid && c.costReduction.ifOpponentsControlCreatures === undefined && !c.costReduction.ifYourTurn && !c.costReduction.ifTargetsBlockingCreature) {
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell && !c.costReduction.ifVoid && c.costReduction.ifOpponentsControlCreatures === undefined && !c.costReduction.ifYourTurn && !c.costReduction.ifTargetsBlockingCreature && !c.costReduction.ifYouControl) {
       err('costReduction needs a condition, perCount or perMatching.');
     }
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
@@ -342,7 +342,8 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
   if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
-  if (e.effect !== 'CopyCreature' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyKeywords,e.copyBuffBoth].some(x=>x!==undefined)) err('copy options require CopyCreature.');
+  if (e.effect === 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyBuffBoth].some(x=>x!==undefined)) err('CreateTokenCopy takes only copyKeywords of the copy options.');
+  if (e.effect !== 'CopyCreature' && e.effect !== 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyKeywords,e.copyBuffBoth].some(x=>x!==undefined)) err('copy options require CopyCreature.');
   for (const k of e.copyKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown copy keyword "${k}".`);
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   if (e.effect === 'ReflexiveTrigger') {

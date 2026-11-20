@@ -6022,6 +6022,28 @@
       }
     ]
   },
+  "dragon-token-fra": {
+    "name": "Dragon",
+    "typeLine": "Token Creature — Dragon",
+    "oracleText": "Flying",
+    "set": "tfra",
+    "number": "7",
+    "artist": "Loïc Canavaggia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473",
+      "normal": "https://cards.scryfall.io/normal/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473",
+      "large": "https://cards.scryfall.io/large/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/9/991a5840-adc7-45b5-8d5f-b24dae384bab.jpg?1789734473"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/7/dragon?utm_source=api",
+    "scryfallId": "991a5840-adc7-45b5-8d5f-b24dae384bab",
+    "relatedTokens": [
+      {
+        "name": "Dragon",
+        "scryfallId": "991a5840-adc7-45b5-8d5f-b24dae384bab"
+      }
+    ]
+  },
   "dragonskull-summit": {
     "name": "Dragonskull Summit",
     "typeLine": "Land",

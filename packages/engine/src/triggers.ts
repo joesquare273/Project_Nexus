@@ -205,6 +205,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           out.push({ when: 'DealtDamage', at, subject: e.target.card, subjectController: s.cards[e.target.card]!.controller, amount: e.amount });
         }
         if (s.cards[e.source]) out.push({ when: 'DealsDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
+        if (!e.combat && e.target.kind === 'player' && e.amount > 0) out.push({ when: 'OpponentDealtNoncombatDamage', at, defender: e.target.player });
         if (e.combat) {
           out.push({ when: 'CombatDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         }
@@ -283,6 +284,7 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
   if (spec.ifKicked && !(s.cards[source]?.kicksPaid ?? 0)) return false;
   if (spec.ifNotEnteredThisTurn && s.cards[source]?.enteredTurn === s.turnNumber) return false;
   if (spec.ifCardLeftYourGraveyardThisTurn && p.cardLeftGraveyardTurn !== s.turnNumber) return false;
+  if (spec.ifOpponentDealtNoncombatDamageLastTurn && !s.turnOrder.some((pid) => pid !== controller && (s.players[pid]!.noncombatDamageTurn === s.turnNumber - 1 || s.players[pid]!.noncombatDamagePreviousTurn === s.turnNumber - 1))) return false;
   if (spec.ifYouControlNone && battlefield(s).some((c) => c.controller === controller && matchesObject(s, spec.ifYouControlNone, c, { controller, source }))) return false;
   if (spec.ifYouControl) {
     const { filter, atLeast = 1 } = spec.ifYouControl;
@@ -306,6 +308,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
+  if (o.when === 'OpponentDealtNoncombatDamage') return o.defender !== undefined && o.defender !== controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).
   if (o.when === 'Chapter') {

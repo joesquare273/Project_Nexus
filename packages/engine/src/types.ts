@@ -476,6 +476,8 @@ export const EFFECT_KINDS = [
   'SacrificeGreatestPower',
   /** Each target player sacrifices a permanent matching `filter` with the greatest mana value among those they control (Break Under Pressure). */
   'SacrificeGreatestManaValue',
+  /** The target card gains flashback until end of turn, its flashback cost equal to its mana cost (Stingcaster Mage). */
+  'GrantFlashback',
   /**
    * "You may reveal exactly two cards you own with different names from outside the game. An opponent chooses one of them.
    * You put that card into your hand" (Extrapolate the Impossible): outside the game is the player's sideboard.
@@ -1225,6 +1227,14 @@ export interface EffectSpec {
   ifSacrificed?: boolean;
   /** "Up to one target": the target may be left out. */
   upTo?: boolean;
+  /** Discard: at random (Curse-Marred Demon). */
+  atRandom?: boolean;
+  /** CreateTokenCopy: "At the beginning of the end step, if you don't control a planeswalker, sacrifice this token" (Face Yourself; `copyKeywords` gives it haste). */
+  copySacrificeUnlessPlaneswalker?: boolean;
+  /** CreateTokenCopy with a player target: a copy of each creature that player controls. */
+  eachCreatureOfTarget?: boolean;
+  /** AllPermanents: not the tokens created earlier in this resolution ("each other Wizard token you control"). */
+  exceptCreatedTokens?: boolean;
   /**
    * Targets of effects sharing a `group` are one "up to N target" phrase, so
    * each must be a different object (rule 115.3). With `groupOwnersDiffer`,
@@ -1286,6 +1296,8 @@ export const TRIGGER_EVENTS = [
   'LandPlayed',
   'SpellCast',
   'CombatDamageToPlayer',
+  /** One or more of your opponents were dealt noncombat damage (Master of Barbs; with `oneOrMore`). */
+  'OpponentDealtNoncombatDamage',
   /** A token was created (subject: the token; use with `oneOrMore` for "whenever you create one or more creature tokens"). */
   'TokensCreated',
   /** The subject dealt combat damage to anything ("whenever equipped creature deals combat damage"; use with `oneOrMore`). */
@@ -1531,6 +1543,8 @@ export interface TriggerSpec {
   ifYouPutCounterOnCreatureThisTurn?: boolean;
   /** Intervening "if": you control no permanent matching this ("if you don't control a creature named Darkstar"). */
   ifYouControlNone?: ObjectFilter;
+  /** Intervening "if an opponent was dealt noncombat damage last turn" (Command the Stage). */
+  ifOpponentDealtNoncombatDamageLastTurn?: boolean;
   /** Intervening "if": you control at least `atLeast` (default 1) permanents matching `filter` ("if you control a creature with power 7 or greater"). */
   ifYouControl?: { filter: ObjectFilter; atLeast?: number };
   /** Intervening "if": a count is at least this ("if there are six or more permanent cards in your graveyard"). */
@@ -1709,6 +1723,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "If one or more artifact tokens would be created under your control, that many [token] are created instead" (Draconic Visitor). */
+  artifactTokensBecome?: CardDefId;
   /** Station: only applies while the source has at least this many charge counters ("8+ | Flying" is a Self static with keywords). */
   stationLevel?: number;
   /** Layer 4: this object is not a creature while its controller has fewer graveyard cards. */
@@ -2128,7 +2144,7 @@ export interface CardDefinition {
    */
   /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
   /** `ifCastAnotherSpell`: "if you've cast another spell this turn" (Gigastorm Titan). */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If you control a legendary creature" (Wrath of the Bloodmane). */ ifYouControl?: ObjectFilter; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };
@@ -2399,6 +2415,8 @@ export interface CardInstance {
   prepared?: boolean;
   /** A card outside the game (its owner's sideboard), kept in the void until a spell brings it in (rule 400.11). */
   outsideGame?: boolean;
+  /** "Gains flashback until end of turn; the flashback cost is equal to its mana cost" (Stingcaster Mage): the turn it was granted. */
+  flashbackTurn?: number;
   /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
@@ -2634,6 +2652,8 @@ export interface PlayerState {
   nextSpellUncounterableTurn?: number;
   /** The last turn this player was dealt noncombat damage. */
   noncombatDamageTurn?: number;
+  /** The turn before that this player was dealt noncombat damage ("was dealt noncombat damage last turn"). */
+  noncombatDamagePreviousTurn?: number;
   /** "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}" (Molten Tide). */
   extraMana?: { turn: number; subtype: string; mana: ManaType }[];
   /** Cards put into this player's graveyard from their library this turn. */

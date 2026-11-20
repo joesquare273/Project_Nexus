@@ -142,6 +142,8 @@ function effectText(e: EffectSpec): string {
       return `exile ${who}${e.sameNameTokens ? ' and all tokens that player controls with the same name' : ''}`;
     case 'ExileGraveyard':
       return e.target === 'EachPlayer' ? 'exile all graveyards' : `exile ${who === 'you' ? 'your' : `${who}'s`} graveyard`;
+    case 'GrantFlashback':
+      return `${who} gains flashback until end of turn`;
     case 'SacrificeGreatestManaValue':
       return `${who} sacrifices a creature or planeswalker with the greatest mana value among those they control`;
     case 'RevealFromOutsideGame':
@@ -607,7 +609,9 @@ function triggerCondition(t: TriggerSpec): string {
     LifeGained: '',
     OpponentCommitsCrime: '',
     TurnedFaceUp: 'is turned face up',
+    OpponentDealtNoncombatDamage: '',
   }[t.when] ?? '';
+  if (t.when === 'OpponentDealtNoncombatDamage') return 'Whenever one or more opponents are dealt noncombat damage';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
   if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';
   if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";

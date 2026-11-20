@@ -943,7 +943,7 @@ export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, 
   if (c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'permission';
   if (c.owner !== playerId) return null;
   const def = spellDefinition(defOf(s, c), adventure);
-  if (def.flashback) return 'flashback';
+  if (def.flashback || (c.flashbackTurn === s.turnNumber && def.manaCost !== undefined)) return 'flashback';
   if (def.retrace) return 'retrace';
   if (def.alternativeCost?.fromGraveyard) return 'blitz';
   if (graveyardCastStatic(s, playerId, c, undefined, adventure)) return 'static';
@@ -1157,7 +1157,7 @@ export function spellCost(
     : alternative
       ? def.alternativeCost?.mana
       : way === 'flashback'
-        ? def.flashback
+        ? def.flashback ?? def.manaCost
         : from === 'exile' && card?.foretoldTurn !== undefined
           ? def.foretell
           : def.manaCost;
@@ -1195,6 +1195,8 @@ export function spellCost(
   }
   if (def.costReduction?.ifVoid && card && s.voidTurn === s.turnNumber) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.ifYourTurn && card && s.activePlayer === payer) cost = reduceGeneric(cost, def.costReduction.generic);
+  const controlFilter = def.costReduction?.ifYouControl;
+  if (controlFilter && card && battlefield(s).some((c) => c.controller === payer && !c.phasedOut && matchesObject(s, controlFilter, c, { controller: payer! }))) cost = reduceGeneric(cost, def.costReduction!.generic);
   const opposing = def.costReduction?.ifOpponentsControlCreatures;
   if (opposing !== undefined && card && battlefield(s).filter((c) => c.controller !== payer && !c.phasedOut && isCreatureOnBattlefield(s, c)).length >= opposing) cost = reduceGeneric(cost, def.costReduction!.generic);
   if (def.costReduction?.ifTargetsBlockingCreature && targets.some((t) => t.kind === 'card' && !!s.combat?.blocks.some((b) => b.blocker === t.card))) cost = reduceGeneric(cost, def.costReduction.generic);
@@ -2088,7 +2090,7 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
     case 'AllPermanents': {
       const viewpoint = { controller: item.controller, source: sourceOf(item), ...contextOf(item), x: item.kind === 'spell' ? (item.x ?? 0) : 0 };
       return battlefield(s)
-        .filter((c) => matchesObject(s, effect.filter, c, viewpoint))
+        .filter((c) => matchesObject(s, effect.filter, c, viewpoint) && !(effect.exceptCreatedTokens && s.resolving?.createdTokens.includes(c.id)))
         .map((c) => ({ kind: 'card', card: c.id }));
     }
     default:
@@ -2712,6 +2714,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const pid of targetPlayers(targets)) for (const id of [...s.players[pid]!.hand]) discard(ctx, id);
         return;
       }
+      if (effect.atRandom) {
+        for (const pid of targetPlayers(targets)) {
+          const hand = [...s.players[pid]!.hand];
+          for (let i = 0; i < amount && hand.length; i++) discard(ctx, hand.splice(randomInt(s, hand.length), 1)[0]!);
+        }
+        return;
+      }
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Sacrifice':
@@ -2762,6 +2771,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (tied.length === 1) sacrifice(ctx, tied[0]!.id);
         else r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'sacrifice', cards: tied.map((c) => c.id), min: 1, max: 1 }];
       }
+      return;
+    case 'GrantFlashback':
+      for (const id of cards) if (s.cards[id]?.zone === 'graveyard') s.cards[id]!.flashbackTurn = s.turnNumber;
       return;
     case 'RevealFromOutsideGame': {
       const outside = Object.values(s.cards).filter((c) => c.zone === 'void' && c.outsideGame && c.owner === item.controller).map((c) => c.id);
@@ -3633,9 +3645,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'CreateTokenCopy':
-      for (const id of onBattlefield) {
+      // "For each creature target player controls, create a token that's a copy of that creature" (Face Yourself).
+      for (const id of effect.eachCreatureOfTarget ? battlefield(s).filter((c) => !c.phasedOut && targetPlayers(targets).includes(c.controller) && isCreatureOnBattlefield(s, c)).map((c) => c.id) : onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
-          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess, effect.copyLegendary);
+          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess, effect.copyLegendary, (d) => {
+            // Face Yourself: "except it has haste and 'At the beginning of the end step, if you don't control a planeswalker, sacrifice this token.'"
+            if (effect.copyKeywords) d.keywords = [...new Set([...(d.keywords ?? []), ...effect.copyKeywords])];
+            if (effect.copySacrificeUnlessPlaneswalker) {
+              d.triggers = [...(d.triggers ?? []), { when: 'EndStep', turn: 'Each', ifYouControlNone: { types: ['planeswalker'] }, effects: [{ effect: 'Sacrifice', target: 'You', amount: 1, filter: { self: true }, noChoice: true }] }];
+            }
+          });
           if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
           // "At the beginning of your next end step": only the controller's.
           if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
@@ -5217,8 +5236,9 @@ function quinaFrogs(ctx: Ctx, controller: PlayerId, r?: Resolving): void {
   }
 }
 
-function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number, legendary?: boolean): InstanceId {
+function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number, legendary?: boolean, except?: (d: CardDefinition) => void): InstanceId {
   const c = ctx.s.cards[original]!, definition = structuredClone(copiableDefinition(ctx.s, c));
+  except?.(definition);
   // Firion: "except it has 'This Equipment's equip abilities cost {2} less to activate.'"
   if (equipCostsLess) definition.equipCostsLess = (definition.equipCostsLess ?? 0) + equipCostsLess;
   // Adagia: "except it's legendary".

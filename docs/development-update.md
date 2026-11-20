@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F8: red (2026-11-20)
+
+- 20 red cards (docs/reality-fracture.md), with granted flashback, random discards, Draconic Visitor's Dragon replacement, noncombat-damage triggers and Face Yourself's token copies.
+
 ### Reality Fracture F7: black (2026-11-20)
 
 - 17 black cards (docs/reality-fracture.md), with sideboards as cards outside the game for Extrapolate the Impossible (draft-event games pass the rest of the pool), sacrificing the greatest mana value, and "cards drawn this way".

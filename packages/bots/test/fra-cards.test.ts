@@ -675,3 +675,151 @@ describe('F7: black', () => {
     expect([zone(s, necro), zone(s, rat)]).toEqual(['exile', 'hand']);
   });
 });
+
+describe('F8: red', () => {
+  const castFirst = (s: GameState, card: string, opts: Parameters<typeof cast>[2] = {}) => cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === card)!, opts).state;
+
+  it("Ajani's Anguish deals X damage as it enters, and your creatures have trample", () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const anguish = put(s, 'P1', 'ajanis-anguish', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: anguish, x: 3 }, { targets: (options) => options.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.players.P2!.life).toBe(17);
+    expect(hasKeyword(s, s.cards[rat]!, 'Trample')).toBe(true);
+  });
+
+  it('Command the Stage: a Cadet, a counter on each other Wizard token, and it returns after noncombat damage last turn', () => {
+    let s = newGame();
+    const heart = put(s, 'P1', 'heartstring-puller', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: heart }).state;
+    const first = Object.values(s.cards).find((c) => c.defId === 'cadet-token-fra')!.id;
+    const spell = put(s, 'P1', 'command-the-stage', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    const cadets = Object.values(s.cards).filter((c) => c.defId === 'cadet-token-fra');
+    expect(cadets.map((c) => c.counters ?? 0).sort()).toEqual([0, 1]);
+    expect(s.cards[first]!.counters).toBe(1);
+    expect(zone(s, spell)).toBe('graveyard');
+    // An opponent dealt noncombat damage this turn: it comes back at the next upkeep.
+    s.players.P2!.noncombatDamageTurn = s.turnNumber;
+    s = goTo(s, 'upkeep');
+    s = settle(s).state;
+    expect(zone(s, spell)).toBe('hand');
+  });
+
+  it('Curse-Marred Demon searches for any card, then you discard a card at random', () => {
+    let s = newGame();
+    const wanted = put(s, 'P1', 'last-gasp', 'library');
+    const demon = put(s, 'P1', 'curse-marred-demon', 'hand');
+    mana(s, 'P1', { R: 2, C: 2 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: demon }).state;
+    // The search put a card into the hand, then one card at random was discarded.
+    expect(zone(s, wanted)).not.toBe('library');
+    expect(s.players.P1!.hand.length).toBe(hand - 1);
+    expect(s.players.P1!.graveyard.length).toBe(1);
+  });
+
+  it('Draconic Visitor: artifact tokens you would create are 5/5 flying Dragons instead', () => {
+    let s = newGame();
+    put(s, 'P1', 'draconic-visitor');
+    const rat = put(s, 'P1', 'rank-rat');
+    const dispute = put(s, 'P1', 'deadly-dispute', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === dispute && a.costCards?.includes(rat))!).state;
+    const made = Object.values(s.cards).filter((c) => c.isToken);
+    expect(made.map((c) => c.defId)).toEqual(['dragon-token-fra']);
+    expect([powerOf(s, made[0]!), hasKeyword(s, made[0]!, 'Flying')]).toEqual([5, true]);
+  });
+
+  it('Essence Burn: 5 damage to a black or green creature, exiled if it would die', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    put(s, 'P2', 'heartstring-puller');
+    const burn = put(s, 'P1', 'essence-burn', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    const targets = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === burn).flatMap((a) => (a.type === 'CastSpell' ? a.targets ?? [] : []));
+    expect(targets).toEqual([card(rat)]);
+    s = castFirst(s, burn);
+    expect(zone(s, rat)).toBe('exile');
+  });
+
+  it('Face Yourself copies each creature the target player controls, with haste, sacrificed at the end step without a planeswalker', () => {
+    let s = newGame();
+    put(s, 'P2', 'rank-rat');
+    put(s, 'P2', 'apex-witchstalker');
+    const face = put(s, 'P1', 'face-yourself', 'hand');
+    mana(s, 'P1', { R: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: face, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    const copies = Object.values(s.cards).filter((c) => c.isToken && c.controller === 'P1');
+    expect(copies.map((c) => c.copy?.copiedName).sort()).toEqual(['Apex Witchstalker', 'Rank Rat']);
+    expect(copies.every((c) => hasKeyword(s, c, 'Haste'))).toBe(true);
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    expect(Object.values(s.cards).filter((c) => c.isToken && c.zone === 'battlefield' && c.controller === 'P1')).toEqual([]);
+  });
+
+  it('Master of Barbs: creatures you control get +1/+0 once when opponents are dealt noncombat damage', () => {
+    let s = newGame(3);
+    const barbs = put(s, 'P1', 'master-of-barbs');
+    const spell = put(s, 'P1', 'cast-away-doubt', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = castFirst(s, spell);
+    expect(powerOf(s, s.cards[barbs]!)).toBe(3);
+  });
+
+  it('Skilled Battlecarver has first strike only during your turn', () => {
+    const s = newGame();
+    const carver = put(s, 'P1', 'skilled-battlecarver');
+    expect(hasKeyword(s, s.cards[carver]!, 'FirstStrike')).toBe(true);
+    s.activePlayer = 'P2';
+    expect(hasKeyword(s, s.cards[carver]!, 'FirstStrike')).toBe(false);
+  });
+
+  it('Stingcaster Mage gives an instant or sorcery in your graveyard flashback for its mana cost this turn', () => {
+    let s = newGame();
+    const gasp = put(s, 'P1', 'last-gasp', 'graveyard');
+    const rat = put(s, 'P2', 'rank-rat');
+    const mage = put(s, 'P1', 'stingcaster-mage', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mage }).state;
+    expect(s.cards[gasp]!.flashbackTurn).toBe(s.turnNumber);
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] }).state;
+    expect([zone(s, rat), zone(s, gasp)]).toEqual(['graveyard', 'exile']);
+  });
+
+  it('Tether Technician: discard a card as it enters to deal 2 damage', () => {
+    let s = newGame();
+    const tech = put(s, 'P1', 'tether-technician', 'hand');
+    put(s, 'P1', 'island', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tech }, { targets: (options) => options.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [s.pending.cards[0]!] }), { targets: (options) => options.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.players.P2!.life).toBe(18);
+    expect(s.players.P1!.graveyard.length).toBe(1);
+  });
+
+  it('Wrath of the Bloodmane costs {1} less while you control a legendary creature', () => {
+    const s = newGame();
+    put(s, 'P2', 'rank-rat');
+    const wrath = put(s, 'P1', 'wrath-of-the-bloodmane', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === wrath)).toBe(false);
+    put(s, 'P1', 'akroma-angel-of-fury');
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === wrath)).toBe(true);
+  });
+
+  it('Identity Echo exiles your creature and reveals until a creature or planeswalker card, putting it onto the battlefield', () => {
+    let s = newGame();
+    const echo = put(s, 'P1', 'identity-echo');
+    const rat = put(s, 'P1', 'rank-rat');
+    const found = put(s, 'P1', 'apex-witchstalker', 'library');
+    put(s, 'P1', 'island', 'library');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: echo, ability: 0, targets: [card(rat)] }).state;
+    expect([zone(s, rat), zone(s, found)]).toEqual(['exile', 'battlefield']);
+  });
+});

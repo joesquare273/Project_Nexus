@@ -206,6 +206,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     p.libraryToGraveyard = { turn: s.turnNumber, count: (p.libraryToGraveyard?.turn === s.turnNumber ? p.libraryToGraveyard.count : 0) + 1 };
   }
   delete c.graveyardCastTurn;
+  delete c.flashbackTurn;
   delete c.activatedTurns;
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).
   delete c.transformed;
@@ -576,7 +577,11 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
     if (combat) player(s, target.player).combatDamageThisTurn = (player(s, target.player).combatDamageThisTurn ?? 0) + amount;
-    else player(s, target.player).noncombatDamageTurn = s.turnNumber;
+    else {
+      const hurt = player(s, target.player);
+      if (hurt.noncombatDamageTurn !== undefined && hurt.noncombatDamageTurn !== s.turnNumber) hurt.noncombatDamagePreviousTurn = hurt.noncombatDamageTurn;
+      hurt.noncombatDamageTurn = s.turnNumber;
+    }
     if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {
       source: sourceId, sourceObject: source.zoneChanges ?? 0, player: target.player,
       dragon: characteristics(s, source).subtypes.includes('Dragon'),
@@ -757,6 +762,16 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
       const look = copyLook(s, host);
       defId = look.defId;
       copy = { definition, artDefId: look.artDefId, copiedName: definition.name, ...(look.printing ? { printing: look.printing } : {}) };
+    }
+  }
+  // Draconic Visitor: an artifact token is replaced by a Dragon (the replacement applies to each token, after copy effects).
+  const tokenTypes = copy?.definition.types ?? s.cardDefs[defId]!.types;
+  if (tokenTypes.includes('artifact')) {
+    const visitor = battlefield(s).find((x) => x.controller === controller && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.artifactTokensBecome));
+    const instead = visitor && (defOf(s, visitor).statics ?? []).find((st) => st.artifactTokensBecome)!.artifactTokensBecome!;
+    if (instead && s.cardDefs[instead]) {
+      defId = instead;
+      copy = undefined;
     }
   }
   // Exalted Sunborn: twice that many tokens (each such permanent doubles again). The extra tokens are

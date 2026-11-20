@@ -34,7 +34,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F5 | White (18) | Done |
 | F6 | Blue (13) | Done |
 | F7 | Black (17) | Done |
-| F8 | Red | |
+| F8 | Red (20) | Done |
 | F9 | Green | |
 | F10 | Multicolor and artifacts | |
 | F11 | Echoed pairs legends, white, blue and black | |
@@ -84,3 +84,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Apex Witchstalker, Break Under Pressure, Cast Away Doubt, Dark Matter Manipulator, Darklight Phoenix, Extended Absence, Extrapolate the Impossible, Last Gasp, Lich's Relic, Multiply by Zero, Rampart Hunter, Rank Rat, Rise of the Deathbringer, Screeching Soulbreaker, Silence the Echo, Terminal Criticism and Theoretical Necromancer. The black echoed-pairs legends are F11 and Garruk, Veiled Butcher is F13.
 - Engine: "sacrifices a [creature or planeswalker] with the greatest mana value" (`SacrificeGreatestManaValue`; on a tie that player chooses), "for every seven cards" amounts (`per` on a count amount), "cards drawn this way" (`drawnThisWay`).
 - Cards from outside the game (rule 400.11): a player's sideboard is `PlayerSetup.sideboard`, kept as cards in the void marked `outsideGame` that no player is sent. In draft-event games it's the rest of the drafted pool; Commander and constructed games have none, so Extrapolate the Impossible does nothing there. `RevealFromOutsideGame`: reveal exactly two with different names (or none), and the next opponent in turn order chooses the one that goes to your hand (in multiplayer the rules would let the caster choose which opponent).
+
+### F8 (2026-11-20)
+
+- Ajani's Anguish, Artifist Acumen, Awaken the Inferno, Blazing Crescendo, Chandra's Emberling, Command the Stage, Craterclaw Colossus, Curse-Marred Demon, Draconic Visitor, Eardrum Rattler, Essence Burn, Face Yourself, Fulminous Forte, Heartstring Puller, Identity Echo, Master of Barbs, Skilled Battlecarver, Stingcaster Mage, Tether Technician and Wrath of the Bloodmane. The red echoed-pairs legends are F12; Ajani, Unrelenting and Chandra, Torch of Defiance are F13.
+- Engine: flashback granted until end of turn with the card's mana cost as its cost (`GrantFlashback`, `CardInstance.flashbackTurn`); discarding at random (`atRandom`); Draconic Visitor's replacement of artifact tokens with Dragons (`artifactTokensBecome`, checked as each token is created, after copy effects); "whenever one or more opponents are dealt noncombat damage" (`OpponentDealtNoncombatDamage`); "if an opponent was dealt noncombat damage last turn" (`ifOpponentDealtNoncombatDamageLastTurn`, `PlayerState.noncombatDamagePreviousTurn`); token copies of each creature a player controls with haste and the planeswalker end-step sacrifice (`eachCreatureOfTarget`, `copyKeywords`, `copySacrificeUnlessPlaneswalker`); "each other Wizard token" (`exceptCreatedTokens`); a cost reduction while you control a matching permanent (`costReduction.ifYouControl`). The Dragon token (tfra 7).
