@@ -291,8 +291,11 @@ export function canCastLibraryTop(s: GameState, player: string, c: CardInstance,
   });
 }
 /** Each entry is an ability of the equipped creature, distinct from its printed mana abilities. */
-export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[]; restricted?: ManaRestriction }[] {
+export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[]; restricted?: ManaRestriction; amount?: number }[] {
   if (c.zone !== 'battlefield' || c.phasedOut) return [];
+  // Emrakul, the Exigent Doom: "{T}: Add {C}{C}" until that card is cast from exile.
+  const linked = c.manaWhileExiled && s.cards[c.manaWhileExiled.card];
+  const fromExiled = linked && linked.zone === 'exile' && (linked.zoneChanges ?? 0) === c.manaWhileExiled!.object ? [{ source: linked.id, mana: ['C'] as ManaType[], amount: 2 }] : [];
   const sources = Object.values(s.cards).filter((source) => source.zone === 'battlefield' && !source.phasedOut);
   // An Equipment's "equipped creature has ..." (Summoning Materia).
   const fromEquipment = !currentDefinition(s, c).types.includes('creature')
@@ -304,5 +307,5 @@ export function grantedManaAbilities(s: GameState, c: CardInstance): { source: s
     (currentDefinition(s, source).statics ?? [])
       .filter((spec) => spec.affects === 'EachMatching' && spec.grantsMana && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id }))
       .map((spec) => ({ source: source.id, mana: spec.grantsMana!, ...(spec.grantsManaRestricted ? { restricted: spec.grantsManaRestricted } : {}) })));
-  return [...fromEquipment, ...fromStatics];
+  return [...fromExiled, ...fromEquipment, ...fromStatics];
 }

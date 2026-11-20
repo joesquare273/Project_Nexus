@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F13c: Emrakul, Jace's Machinations, Uldaros Theorix (2026-11-20)
+
+- The last three Reality Fracture cards: every card of the set is built (docs/reality-fracture.md). New: Ward—Sacrifice three permanents, Emrakul's land mana while it's exiled, instant-speed Jace loyalty abilities, and Uldaros' copies cast within a mana value budget (permanents become tokens).
+
 ### Reality Fracture F13b: Garruk and Jace planeswalkers (2026-11-20)
 
 - Four planeswalkers (docs/reality-fracture.md). New: exile instead of dying for opponents' creatures, delayed triggers until your next turn, draw-step triggers, and the Illusion token.

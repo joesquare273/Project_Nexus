@@ -786,7 +786,8 @@ export function activateManaAbility(
     if (tapCreature !== undefined || output !== undefined || !grantedManaAbilities(s, c).some((ability) => ability.source === grantedBy && ability.mana.includes(mana))) reject('That granted mana ability is not available.');
     if (c.tapped || (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That permanent cannot tap for mana right now.');
     tap(ctx, c);
-    addMana(ctx, playerId, mana, id, grantedManaAbilities(s, c).find((ability) => ability.source === grantedBy && ability.mana.includes(mana))?.restricted);
+    const granted = grantedManaAbilities(s, c).find((ability) => ability.source === grantedBy && ability.mana.includes(mana));
+    for (let i = 0; i < (granted?.amount ?? 1); i++) addMana(ctx, playerId, mana, id, granted?.restricted);
     kinnanBonus(ctx, playerId, c, mana);
     return;
   }
@@ -897,7 +898,7 @@ export function playableZone(
   if (includeGroups && (c.zone === 'graveyard' || c.zone === 'exile') && isSpellCard(spellDefinition(defOf(s,c),adventure)) && castGroupsFor(s,playerId,c).length) return c.zone;
   if (c.zone === 'exile' && c.adventurer === playerId && !adventure) return 'exile';
   // Rebound, or another permission to cast it this turn.
-  if (c.zone === 'exile' && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'exile';
+  if (c.zone === 'exile' && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && withinBudget(s, c)) return 'exile';
   // A foretold card can be cast on a later turn than the one it was foretold on.
   if (c.owner === playerId && c.zone === 'exile' && c.foretoldTurn !== undefined) return c.foretoldTurn < s.turnNumber ? 'exile' : null;
   // Warp: its owner may cast it from exile on a later turn than the one it was exiled on.
@@ -1278,6 +1279,14 @@ function counterStackObject(ctx: Ctx, what: { kind: 'spell'; card: InstanceId } 
   moveCard(ctx, what.card, countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
 }
 
+/** Uldaros Theorix: a copy can be cast only while its mana value fits what's left of the shared budget. */
+function withinBudget(s: GameState, c: CardInstance): boolean {
+  const id = c.castPermission?.budget;
+  if (!id) return true;
+  const budget = (s.castBudgets ?? []).find((b) => b.id === id);
+  return !!budget && objectManaValue(s, c) <= budget.remaining;
+}
+
 /** Yuriko, Blade of the Mighty: during combat, no spells and no abilities that aren't mana abilities. */
 /** Split second (rule 702.61): while such a spell is on the stack, no spells and no abilities that aren't mana abilities. */
 export function splitSecondOnStack(s: GameState): boolean {
@@ -1532,6 +1541,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
     ...(kicks > 0 ? { kicks } : {}),
     ...(permission?.exileAfter || group?.exileAfter ? { exileAfter: true } : {}),
+    ...(permission?.asCopy ? { asTokenCopy: true } : {}),
+    ...((() => {
+      // Uldaros Theorix: the spell's mana value comes out of the shared budget.
+      const budget = permission?.budget ? (s.castBudgets ?? []).find((b) => b.id === permission.budget) : undefined;
+      if (budget) budget.remaining -= objectManaValue(s, c);
+      return {};
+    })()),
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
     ...(edgar?.finality ? { finalityOnEnter: true as const } : {}),
     ...(sacrificeLater ? { sacrificeAtEndStep: true as const } : {}),
@@ -1651,7 +1667,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (zone === 'battlefield' && !spec.turnFaceUp && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
   if (spec.stationLevel !== undefined && (c.namedCounters?.charge ?? 0) < spec.stationLevel) return `That needs ${spec.stationLevel} or more charge counters.`;
   if (spec.loyalty !== undefined) {
-    if (!canActAtSorcerySpeed(s, playerId)) return 'Loyalty abilities can only be activated in your main phase with an empty stack.';
+    const anyTime = player(s, playerId).jaceLoyaltyAnyTimeTurn === s.turnNumber && subtypesOf(s, c).includes('Jace');
+    if (!anyTime && !canActAtSorcerySpeed(s, playerId)) return 'Loyalty abilities can only be activated in your main phase with an empty stack.';
     if (c.loyaltyActivatedTurn === s.turnNumber) return 'Only one loyalty ability of a planeswalker can be activated each turn.';
     if (spec.loyalty < 0 && (c.namedCounters?.loyalty ?? 0) < -spec.loyalty) return `That needs ${-spec.loyalty} loyalty.`;
   }
@@ -2322,6 +2339,7 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
     return one ? null : `Choose ${choice.max} cards, or one that matches instead.`;
   }
   if (choice.purpose === 'revealOutside' && cards.length === 1) return 'Reveal exactly two cards, or none.';
+  if (choice.purpose === 'wardSacrifice' && cards.length > 0 && cards.length < choice.max) return `Sacrifice exactly ${choice.max} permanents, or none.`;
   if (choice.differentNames && new Set(cards.map((id) => defOf(s, s.cards[id]!).name)).size !== cards.length) return 'Choose cards with different names.';
   if (choice.shareLandType && cards.length > 1 && !BASIC_LAND_TYPES.some((t) => cards.every((id) => subtypesOf(s, s.cards[id]!).includes(t)))) return 'Choose lands that share a land type.';
   if (cards.length < choice.min || cards.length > choice.max) {
@@ -2875,6 +2893,38 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const library = s.players[pid]!.library;
         for (const id of library.slice(0, Math.max(0, library.length - 1))) moveCard(ctx, id, 'exile');
       }
+      return;
+    case 'ExileToCastCopyWithBudget':
+      for (const id of cards) {
+        if (s.cards[id]?.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'exile');
+        if ((s.cards[id]?.zone as string) !== 'exile' || !isSpellCard(defOf(s, s.cards[id]!))) continue;
+        if (!r.castBudget) {
+          r.castBudget = `budget${s.nextId++}`;
+          s.castBudgets = [...(s.castBudgets ?? []), { id: r.castBudget, player: item.controller, remaining: amount }];
+        }
+        s.cards[id]!.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, exileAfter: true, asCopy: true, budget: r.castBudget };
+      }
+      return;
+    case 'GrantLandManaWhileSourceExiled': {
+      const self = s.cards[source];
+      if (!self || self.zone !== 'exile') return;
+      for (const id of onBattlefield) s.cards[id]!.manaWhileExiled = { card: source, object: self.zoneChanges ?? 0 };
+      self.playableFromExile = { player: item.controller, source, whileExiled: true, castOnly: true };
+      return;
+    }
+    case 'CounterUnlessSacrifice': {
+      const by = item.kind === 'ability' ? item.targetedBy : undefined;
+      if (!by) return;
+      const onStack = s.stack.find((i) => (by.kind === 'spell' ? i.kind === 'spell' && i.card === by.card : i.kind === 'ability' && i.id === by.item));
+      if (!onStack) return;
+      const theirs = battlefield(s).filter((c) => c.controller === onStack.controller && !c.phasedOut).map((c) => c.id);
+      if (theirs.length >= amount) r.choiceQueue = [...(r.choiceQueue ?? []), { player: onStack.controller, purpose: 'wardSacrifice', cards: theirs, min: 0, max: amount, wardTarget: by }];
+      else counterStackObject(ctx, by, source);
+      return;
+    }
+    case 'JaceLoyaltyAnyTime':
+      player(s, item.controller).jaceLoyaltyAnyTimeTurn = s.turnNumber;
       return;
     case 'GrantFlashback':
       for (const id of cards) if (s.cards[id]?.zone === 'graveyard') s.cards[id]!.flashbackTurn = s.turnNumber;
@@ -4566,6 +4616,16 @@ export function resolveTop(ctx: Ctx): void {
     const def = defOf(s, c);
     const permanent = isPermanentCard(def);
     ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: c.id, fizzled: fizzled && (!permanent || !!def.enchant) });
+    // Uldaros Theorix: a permanent spell that's a copy becomes a token (rule 608.3f); the card goes back to exile.
+    if (permanent && item.asTokenCopy) {
+      const definition = structuredClone(copiableDefinition(s, c));
+      const look = copyLook(s, c);
+      moveCard(ctx, c.id, 'exile');
+      const token = createToken(ctx, look.defId, item.controller, { definition, artDefId: look.artDefId, copiedName: definition.name, ...(look.printing ? { printing: look.printing } : {}) });
+      if (item.x) s.cards[token]!.xPaid = item.x;
+      givePriority(ctx, s.activePlayer);
+      return;
+    }
     if (permanent) {
       // An Aura spell needs its target to remain legal before it can enter attached.
       if (def.enchant && fizzled) { moveCard(ctx,c.id,'graveyard'); givePriority(ctx,s.activePlayer); return; }
@@ -4857,6 +4917,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       delete s.cards[id]!.outsideGame;
       moveCard(ctx, id, 'hand');
     }
+  } else if (pending.purpose === 'wardSacrifice') {
+    // Ward—Sacrifice N permanents: sacrifice them to keep the spell or ability, or let it be countered.
+    if (cards.length) for (const id of cards) sacrifice(ctx, id);
+    else if (pending.wardTarget) counterStackObject(ctx, pending.wardTarget, sourceOf(r.item));
   } else if (pending.purpose === 'wardDiscard') {
     // Ward—Discard a card: discard one to keep the spell or ability, or let it be countered.
     if (cards.length) for (const id of cards) discard(ctx, id);

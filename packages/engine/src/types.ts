@@ -480,6 +480,14 @@ export const EFFECT_KINDS = [
   'SacrificeGreatestManaValue',
   /** The target card gains flashback until end of turn, its flashback cost equal to its mana cost (Stingcaster Mage). */
   'GrantFlashback',
+  /** Jace's Machinations: until end of turn, you may activate your Jaces' loyalty abilities any time you could cast an instant. */
+  'JaceLoyaltyAnyTime',
+  /** Emrakul, the Exigent Doom: the target land gains "{T}: Add {C}{C}" until the (just exiled) source is cast from exile, and you may cast the source for as long as it remains exiled. */
+  'GrantLandManaWhileSourceExiled',
+  /** Ward—Sacrifice N permanents: counter the spell or ability that targeted the source unless its controller sacrifices `amount` permanents (Emrakul, the Exigent Doom). */
+  'CounterUnlessSacrifice',
+  /** Uldaros Theorix: exile the target card from your graveyard; you may cast a copy of it right away without paying its mana cost, sharing a total mana value budget of `amount` with the others this ability exiled. */
+  'ExileToCastCopyWithBudget',
   /** Exile all but the bottom card of each opponent's library (Jace, Reality Sculptor). */
   'ExileAllButBottomOfOpponentsLibraries',
   /** Exile the top card of your library; you may cast it right away (paying its cost); if you don't, the source deals `amount` damage to each opponent (Chandra, Torch of Defiance). */
@@ -2535,6 +2543,8 @@ export interface CardInstance {
   exhausted?: number[];
   /** This object has dealt combat damage (Ruric Thar, Magecrusher). */
   dealtCombatDamage?: boolean;
+  /** Emrakul, the Exigent Doom: this land has "{T}: Add {C}{C}" while that card stays in exile (the same object). */
+  manaWhileExiled?: { card: InstanceId; object: number };
   /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
@@ -2649,6 +2659,10 @@ export interface CardInstance {
     ownerLosesLife?: boolean;
     /** Paid rather than its mana cost (Blue Mage's Cane: {3}). */
     manaCost?: string;
+    /** Uldaros Theorix: a copy is cast (a permanent spell becomes a token; the card stays in exile). */
+    asCopy?: boolean;
+    /** Uldaros Theorix: spells cast with this permission share a total mana value budget (`GameState.castBudgets`). */
+    budget?: string;
     /** A card in hand (Buster Sword: "cast a spell from your hand ... without paying its mana cost"). */
     fromHand?: boolean;
     /** Only right away: gone once the player does anything else ("you may cast it" as an ability resolves). */
@@ -2782,6 +2796,8 @@ export interface PlayerState {
   scriedOrSurveiledTurn?: number;
   /** Cards this player discarded this turn (Jiang Yanggu, Alone). */
   discardedThisTurn?: { turn: number; count: number };
+  /** Jace's Machinations: this turn, loyalty abilities of this player's Jaces can be activated any time they could cast an instant. */
+  jaceLoyaltyAnyTimeTurn?: number;
   /** The last turn this player activated a loyalty ability. */
   loyaltyActivatedTurn?: number;
   /** The turn a permanent last left the battlefield under this player's control (revolt). */
@@ -2896,6 +2912,8 @@ export interface SpellItem {
   kicks?: number;
   /** Exiled instead of going to the graveyard (cast with a permission that says so). */
   exileAfter?: boolean;
+  /** A copy of the card was cast (Uldaros Theorix): a permanent becomes a token, and the card returns to exile. */
+  asTokenCopy?: boolean;
   /** The permanent enters tapped (Edgar). */
   entersTapped?: boolean;
 }
@@ -3058,6 +3076,8 @@ export interface Resolving {
   /** Life players lost to this spell or ability's effects so far. */
   lifeLostThisWay?: number;
   drawnThisWay?: number;
+  /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
+  castBudget?: string;
   /** The mana value of the card RevealUntil found. */
   revealedManaValue?: number;
   /** The creature type chosen as this resolves (ChooseCreatureType). */
@@ -3097,7 +3117,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3277,6 +3297,8 @@ export interface CastGroup {
 
 export interface GameState {
   castGroups?: CastGroup[];
+  /** "Any number of spells with total mana value N or less" (Uldaros Theorix): what's left of each budget. */
+  castBudgets?: { id: string; player: PlayerId; remaining: number }[];
   /** The monarch designation persists independently of the cards that created it. */
   monarch?: PlayerId;
   /**

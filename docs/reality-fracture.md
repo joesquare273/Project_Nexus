@@ -46,7 +46,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F12c | Echoed pairs legends, multicolor and colorless (10) | Done |
 | F13a | Planeswalkers: Ajani Resolute, Ajani, Unrelenting, Chandra, Chill of Compliance, Chandra, Torch of Defiance (4) | Done |
 | F13b | Planeswalkers: the Garruks, Jace, Reality Sculptor, The Theorist (4) | Done |
-| F13c | The rest: Emrakul, the Exigent Doom, Jace's Machinations, Uldaros Theorix (3) | |
+| F13c | The rest: Emrakul, the Exigent Doom, Jace's Machinations, Uldaros Theorix (3) | Done |
 
 ### F1 (2026-11-16)
 
@@ -157,3 +157,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Garruk, Veiled Butcher; Garruk, Curse Breaker; Jace, Reality Sculptor; The Theorist, Jace Beleren.
 - Engine: "if a creature an opponent controls would die, exile it instead" (`opponentCreaturesExiledInsteadOfDying`); delayed triggers that last until your next turn (`CreateDelayedTrigger` with `untilYourNextTurn`); "at the beginning of each opponent's draw step" (`DrawStep` with `turn`); "if you sacrificed a creature this way" (`ifYouSacrificed`, `Resolving.sacrificedBy`); "for each opponent who didn't discard two nonland cards this way" (`opponentsWhoDidntDiscardTwoNonland`); an ability that needs N loyalty counters among your Jaces (`ifLoyaltyAmongAtLeast`); exiling all but the bottom card of each opponent's library; Islands you control as a count. The Illusion token (tfra 4).
 - Garruk, Curse Breaker's −4 gives each of your attacking creatures +2/+2 and trample as it attacks (the card's "one or more creatures attack one of your opponents" batches them; the effect is the same).
+
+### F13c (2026-11-20): every Reality Fracture card is built
+
+- Emrakul, the Exigent Doom; Jace's Machinations; Uldaros Theorix. With these, every Reality Fracture card is built.
+- Engine: **Ward—Sacrifice three permanents** as a real ward trigger, like Gideon's (`CounterUnlessSacrifice`: sacrifice exactly three, or the spell or ability is countered); a land gaining "{T}: Add {C}{C}" while a card stays exiled (`CardInstance.manaWhileExiled`, as a granted mana ability that adds two), with the card castable from exile (`GrantLandManaWhileSourceExiled`); "you may activate loyalty abilities of Jace planeswalkers you control on any player's turn any time you could cast an instant" (`PlayerState.jaceLoyaltyAnyTimeTurn`); **casting copies with a shared mana value budget** (Uldaros: `ExileToCastCopyWithBudget`, `castPermission.budget`, `GameState.castBudgets`): the copies are cast right away, before the trigger is done, and a permanent spell cast as a copy becomes a token while the card goes back to exile (`asTokenCopy`).
+- Uldaros' copies are cast from the exiled cards and the cards return to exile, which stands in for copying them (as Blue Mage's Cane already does).

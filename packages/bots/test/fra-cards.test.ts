@@ -1907,3 +1907,81 @@ describe('F13b: Garruk and Jace planeswalkers', () => {
     expect(s.cards[rat]!.counters).toBe(3);
   });
 });
+
+describe('F13c: Emrakul, Jace\'s Machinations, Uldaros Theorix', () => {
+  it('Uldaros Theorix: a copy that no longer fits the mana value budget can\'t be cast', () => {
+    let s = newGame();
+    const witch = put(s, 'P1', 'apex-witchstalker', 'graveyard'); // creature, 6
+    const gasp = put(s, 'P1', 'last-gasp', 'graveyard'); // instant, 2
+    const theirs = put(s, 'P2', 'rank-rat');
+    const uldaros = put(s, 'P1', 'uldaros-theorix', 'hand');
+    mana(s, 'P1', { U: 1, B: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: uldaros }, { targets: (options) => options.find((t) => t.some((x) => x.kind === 'card' && x.card === witch) && t.some((x) => x.kind === 'card' && x.card === gasp))! }).state;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(theirs)] });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === witch)).toBe(false);
+  });
+
+  it('Emrakul: exile it from hand to give a land "{T}: Add {C}{C}" and cast it from exile later; casting it untaps your lands', () => {
+    let s = newGame();
+    const emrakul = put(s, 'P1', 'emrakul-the-exigent-doom', 'hand');
+    const wastes = put(s, 'P1', 'island');
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: emrakul, ability: 0, targets: [card(wastes)] }).state;
+    expect(zone(s, emrakul)).toBe('exile');
+    const tap = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === wastes && (a as { grantedBy?: string }).grantedBy === emrakul)!;
+    s = act(s, tap);
+    expect(s.players.P1!.manaPool.C).toBe(2);
+    mana(s, 'P1', { C: 8 });
+    const castIt = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === emrakul);
+    expect(castIt).toBeDefined();
+    s = cast(s, castIt!).state;
+    expect([zone(s, emrakul), s.cards[wastes]!.tapped]).toEqual(['battlefield', false]);
+    // Cast from exile: the land's {C}{C} ability is gone.
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === wastes && (a as { grantedBy?: string }).grantedBy === emrakul)).toBe(false);
+  });
+
+  it('Emrakul: Ward—Sacrifice three permanents', () => {
+    let s = newGame();
+    const emrakul = put(s, 'P2', 'emrakul-the-exigent-doom');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    const mine = [put(s, 'P1', 'island'), put(s, 'P1', 'island'), put(s, 'P1', 'island')];
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(emrakul)] })).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'wardSacrifice' });
+    expect(() => act(s, { type: 'ChooseCards', player: 'P1', cards: [mine[0]!] })).toThrow(/exactly 3/);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: mine })).state;
+    expect(mine.map((id) => zone(s, id))).toEqual(['graveyard', 'graveyard', 'graveyard']);
+  });
+
+  it("Jace's Machinations: empower Jace 8, and Jaces' loyalty abilities at instant speed this turn", () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'jaces-machinations', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    const jace = Object.values(s.cards).find((c) => c.defId === 'jace-token-fra')!;
+    expect(jace.namedCounters?.loyalty).toBe(8);
+    s = goTo(s, 'beginCombat');
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === jace.id)).toBe(true);
+  });
+
+  it('Uldaros Theorix: exile one card of each type from your graveyard and cast copies with total mana value 6 or less', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat', 'graveyard'); // creature, 2
+    const gasp = put(s, 'P1', 'last-gasp', 'graveyard'); // instant, 2
+    const crusher = put(s, 'P1', 'apex-witchstalker', 'graveyard'); // also a creature: only one creature
+    const theirs = put(s, 'P2', 'heartstring-puller');
+    const uldaros = put(s, 'P1', 'uldaros-theorix', 'hand');
+    mana(s, 'P1', { U: 1, B: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: uldaros }, { targets: (options) => options.find((t) => t.some((x) => x.kind === 'card' && x.card === rat) && t.some((x) => x.kind === 'card' && x.card === gasp))! }).state;
+    expect([zone(s, rat), zone(s, gasp), zone(s, crusher)]).toEqual(['exile', 'exile', 'graveyard']);
+    // Both copies are cast right away (as the trigger resolves), then resolve.
+    s = act(s, { type: 'CastSpell', player: 'P1', card: rat });
+    // 2 of 6 used: the instant (2) still fits.
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === gasp)).toBe(true);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(theirs)] }).state;
+    // The creature copy became a token; both cards are back in exile.
+    expect([zone(s, rat), zone(s, gasp), zone(s, theirs)]).toEqual(['exile', 'exile', 'graveyard']);
+    expect(Object.values(s.cards).some((c) => c.isToken && c.copy?.copiedName === 'Rank Rat' && c.zone === 'battlefield')).toBe(true);
+  });
+});

@@ -549,6 +549,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
   // Fact or Fiction, splitting for an opponent: the best card alone against the rest.
   // Ward—Discard a card: pay with the least valuable card in hand.
+  // Ward—Sacrifice N permanents: pay with the least valuable only with plenty to spare.
+  if (p.purpose === 'wardSacrifice') return pick(p.cards.length >= p.max * 2 ? [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, p.max) : []);
   if (p.purpose === 'wardDiscard') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   // Extrapolate the Impossible: reveal the two best cards with different names; an opponent gives us the weaker one.
   if (p.purpose === 'revealOutside') {

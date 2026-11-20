@@ -152,6 +152,14 @@ function effectText(e: EffectSpec): string {
       return `exile the top card of your library; you may cast it, or ${e.amount ?? 2} damage to each opponent`;
     case 'ExileAllButBottomOfOpponentsLibraries':
       return "exile all but the bottom card of each opponent's library";
+    case 'ExileToCastCopyWithBudget':
+      return `exile ${who}; you may cast copies with total mana value ${e.amount ?? 6} or less without paying their mana costs`;
+    case 'GrantLandManaWhileSourceExiled':
+      return `${who} gains "{T}: Add {C}{C}" until this card is cast from exile; you may cast it from exile`;
+    case 'CounterUnlessSacrifice':
+      return `counter that spell or ability unless its controller sacrifices ${e.amount ?? 3} permanents`;
+    case 'JaceLoyaltyAnyTime':
+      return "until end of turn, you may activate your Jaces' loyalty abilities any time you could cast an instant";
     case 'GrantFlashback':
       return `${who} gains flashback until end of turn`;
     case 'SacrificeGreatestManaValue':

@@ -206,6 +206,7 @@ const CARD_FIELDS = {
   lostAbilitiesTurn: 'copy',
   exhausted: 'copy',
   dealtCombatDamage: 'copy',
+  manaWhileExiled: 'copy',
   prepareSpellOf: 'refs',
   faceDown: 'copy',
   manifested: 'copy',
@@ -301,6 +302,7 @@ const PLAYER_FIELDS = {
   libraryToGraveyard: 'copy',
   scriedOrSurveiledTurn: 'copy',
   discardedThisTurn: 'copy',
+  jaceLoyaltyAnyTimeTurn: 'copy',
   nextSpellUncounterableTurn: 'copy',
   legendRuleOffTurn: 'copy',
   endStepsBegun: 'copy',
@@ -333,6 +335,7 @@ const GAME_FIELDS = {
   // "card#ability" keys: only the engine needs them.
   triggeredThisTurn: 'empty',
   castGroups: 'refs',
+  castBudgets: 'copy',
   monarch: 'copy',
   turnControl: 'copy',
   effectTimestamp: 'copy',
