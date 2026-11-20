@@ -224,12 +224,26 @@ come after Final Fantasy testing is complete.
 ## Reality Fracture (packs added 2026-11-16)
 
 The booster page's set choice has Reality Fracture too (same prices; the
-server opens them with `set: 'fra'`). Until photos of the real packs are in
+server opens them with `set: 'fra'`). The photos of the real packs are
 `packages/client/public/packs/fra-play-booster.png` and
-`fra-collector-booster.png`, the drawn pack shows. The Collection binder's
+`fra-collector-booster.png` (white background cut away), and the showcase art
+behind the page is `fra-showcase.jpg` (2026-11-20). The Collection binder's
 Reality Fracture tab groups the main set, Booster Fun, the facet foil shattered
-mirror cards, Commander Booster Fun, the Multiverse Reforged deck, Special
-Guests, and tokens and art cards.
+mirror cards, the Secret Lair Bundle cards, Commander Booster Fun, the
+Multiverse Reforged deck, Special Guests, and tokens and art cards.
+
+**Secret Lair Bundle (Store, 2026-11-20).** Reality Fracture's Secret Lair
+tie-in is its Secret Lair Bundle, not Commander Reinforcements drops: its
+eleven borderless foils are FRA 438-448 (Emrakul, the Exigent Doom; Enlightened
+Confidant; Return to the Light Realms; Seasoned Cryomancer; Sphinx's Approach;
+The Theorist, Jace Beleren; Darklight Phoenix; Overwrite the Multiverse;
+Craterclaw Colossus; Stingcaster Mage; Omnipresence), which no booster sheet
+uses. The Store's Reality Fracture tab sells all eleven together at the Secret
+Lair drop price (`sld-bundle-fra`) and each on its own at the single price,
+foil (`packages/server/src/store.ts`). The bundle's boosters and basics aren't
+sold with it. FRA 432-437 (promo-pack Charms and the Bundle promo) and the
+stamped PFRA promos aren't sold. The Secret Lair drop released 2026-09-28 (SLD
+2116-2132) isn't included: nothing ties it to Reality Fracture.
 
 Card data: `npm run scryfall:boosters` saves FRA, FRC, TFRA, AFRA and the ten
 Special Guests (SPG 159-168). Print sheets by collector number

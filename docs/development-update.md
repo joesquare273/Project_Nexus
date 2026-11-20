@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture Secret Lair Bundle in the Store (2026-11-20)
+
+- The Store's Reality Fracture tab sells the Secret Lair Bundle's eleven borderless foils (FRA 438-448): all together at the Secret Lair drop price (3,500), or each at the single price (1,000). The Collection binder has a Secret Lair Bundle group for them (docs/packs.md).
+
 ### Decks: rename and duplicate (2026-11-20)
 
 - Each saved deck has Rename (a new name, up to 40 characters) and Duplicate (user request): Duplicate saves a copy straight away as "<name> (copy)" ("(copy 2)" and on when that's taken) and opens the copy in the deck editor, so changes go to the copy and the original stays as it was. The server already saves a deck without an id as a new one (up to 100 decks).

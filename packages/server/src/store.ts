@@ -37,9 +37,14 @@ const isLegendaryCreature = (c: BoosterCard) => /\bLegendary\b/.test(c.typeLine)
 /** Secret Lair cards are sold foil (user, 2026-11-05): every printing the Store sells comes in foil (galaxy foil for Edge of Eternities). */
 const secretLairFinish = (c: BoosterCard): Finish => (c.finishes.includes('foil') ? 'foil' : 'nonfoil');
 
+/** Reality Fracture's Secret Lair Bundle cards: the borderless foils FRA 438-448, which no booster sheet uses. */
+const fraNumber = (c: BoosterCard) => Number(c.number.replace(/\D/g, ''));
+const FRA_SECRET_LAIR_BUNDLE = (cards: readonly BoosterCard[]) => cards.filter((c) => c.set === 'fra' && fraNumber(c) >= 438 && fraNumber(c) <= 448 && c.finishes.includes('foil'));
+
 /** Every set in the Store, in the order the tabs show them. */
 export function storeSets(): StoreSet[] {
   const prices = ECONOMY.storePrices;
+  const fraBundle = FRA_SECRET_LAIR_BUNDLE(BOOSTER_CARDS).sort((a, b) => fraNumber(a) - fraNumber(b));
   const track = BOOSTER_CARDS.filter(chocoboTrack);
   const lands = track.filter(isBasic);
   return [
@@ -152,6 +157,23 @@ export function storeSets(): StoreSet[] {
             deck: { name: p.name, commander: precon.commander },
           };
         }),
+        // The Secret Lair Bundle's eleven borderless foils (FRA 438-448): all of them, then each on its own.
+        ...(fraBundle.length
+          ? [{
+              key: 'sld-bundle-fra',
+              name: 'Reality Fracture Secret Lair Bundle',
+              line: `Secret Lair Bundle: ${fraBundle.length} borderless foil cards`,
+              price: prices.secretLairDrop,
+              cards: fraBundle.map((c) => ({ id: c.id, finish: 'foil' as const })),
+            }]
+          : []),
+        ...fraBundle.map((c) => ({
+          key: c.id,
+          name: c.name,
+          line: 'Secret Lair Bundle, borderless foil',
+          price: prices.secretLairSingle,
+          cards: [{ id: c.id, finish: 'foil' as const }],
+        })),
       ],
     },
   ];

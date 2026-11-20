@@ -616,6 +616,8 @@ const FRA_GROUPS: Group[] = [
   { name: 'Main set', test: (c) => c.set === 'fra' && n(c) <= 290 },
   { name: 'Booster Fun', test: (c) => c.set === 'fra' && n(c) >= 291 && n(c) <= 431 },
   { name: 'Shattered mirror facet foils', test: (c) => c.set === 'fra' && n(c) >= 449 && n(c) <= 461 },
+  // Sold in the Store (the Secret Lair Bundle's borderless foils, FRA 438-448).
+  { name: 'Secret Lair Bundle', test: (c) => c.set === 'fra' && n(c) >= 438 && n(c) <= 448 },
   { name: 'Commander Booster Fun', test: (c) => c.set === 'frc' && ((n(c) >= 1 && n(c) <= 2) || (n(c) >= 88 && n(c) <= 103)) },
   { name: 'Commander deck', test: () => true, precons: true },
   { name: 'Special Guests', test: (c) => c.set === 'spg' && n(c) >= 159 && n(c) <= 168 },

@@ -260,10 +260,17 @@ describe('the Store', () => {
     const precons = eoe.filter((i) => i.line.startsWith('Commander precon'));
     expect(precons.map((p) => p.name)).toEqual(['Counter Intelligence', 'World Shaper']);
     for (const p of precons) expect(p.cards.reduce((n, c) => n + ((c as { count?: number }).count ?? 1), 0)).toBe(100);
-    // Reality Fracture: its Commander precon, 100 cards, at the precon price.
+    // Reality Fracture: its Commander precon, 100 cards, at the precon price; then the Secret Lair Bundle and its eleven cards, foil.
     const frc: Item[] = sets[2].items;
-    expect(frc.map((i) => [i.name, i.price])).toEqual([['Multiverse Reforged', ECONOMY.storePrices.precon]]);
+    expect(frc[0]!.name).toBe('Multiverse Reforged');
+    expect(frc[0]!.price).toBe(ECONOMY.storePrices.precon);
     expect(frc[0]!.cards.reduce((n, c) => n + ((c as { count?: number }).count ?? 1), 0)).toBe(100);
+    const sld = frc.find((i) => i.key === 'sld-bundle-fra')!;
+    expect([sld.name, sld.price, sld.cards.length]).toEqual(['Reality Fracture Secret Lair Bundle', ECONOMY.storePrices.secretLairDrop, 11]);
+    const sldSingles = frc.filter((i) => i.line === 'Secret Lair Bundle, borderless foil');
+    expect(sldSingles.map((i) => i.name)).toEqual(['Emrakul, the Exigent Doom', 'Enlightened Confidant', 'Return to the Light Realms', 'Seasoned Cryomancer', "Sphinx's Approach", 'The Theorist, Jace Beleren', 'Darklight Phoenix', 'Overwrite the Multiverse', 'Craterclaw Colossus', 'Stingcaster Mage', 'Omnipresence']);
+    for (const i of [sld, ...sldSingles]) expect(i.cards.every((c) => c.finish === 'foil')).toBe(true);
+    expect(sldSingles.every((i) => i.price === ECONOMY.storePrices.secretLairSingle)).toBe(true);
     // The Final Fantasy tab doesn't list them, and its Secret Lair cards are foil too.
     expect(items.some((i) => i.name === 'Arcbound Ravager')).toBe(false);
     for (const i of items.filter((i) => i.line.startsWith('Secret Lair'))) expect(i.cards.every((c) => c.finish === 'foil')).toBe(true);
@@ -285,6 +292,19 @@ describe('the Store', () => {
     expect((await call('token-alice', '/api/store/buy', 'POST', { key: precon.key })).status).toBe(200);
     const decks = await (await call('token-alice', '/api/decks')).json();
     expect((decks.decks ?? decks).some((d: { name: string }) => d.name === 'World Shaper')).toBe(true);
+  });
+
+  it('the Reality Fracture Secret Lair Bundle adds its eleven borderless foils', async () => {
+    const { accounts, call } = await withAccounts();
+    accounts.apply('alice-id', 20000 - FIRST_DAY_SHARDS, 'admin_adjustment', 'set-balance');
+    const { sets } = await (await call('token-alice', '/api/store')).json();
+    const bundle = (sets[2].items as Item[]).find((i) => i.key === 'sld-bundle-fra')!;
+    const r = await call('token-alice', '/api/store/buy', 'POST', { key: bundle.key });
+    expect(r.status).toBe(200);
+    expect((await r.json()).balance).toBe(20000 - bundle.price!);
+    const owned = await accounts.collection('alice-id');
+    expect(owned).toHaveLength(11);
+    expect(owned.every((c) => c.finish === 'foil')).toBe(true);
   });
 
   it('buying charges once and adds the card; the bundle adds all five lands', async () => {
