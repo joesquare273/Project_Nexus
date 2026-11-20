@@ -148,6 +148,8 @@ function effectText(e: EffectSpec): string {
       return `choose ${(e.keywords ?? []).join(', ')}`;
     case 'CounterUnlessDiscard':
       return 'counter that spell or ability unless its controller discards a card';
+    case 'ExileTopMayCastElseDamage':
+      return `exile the top card of your library; you may cast it, or ${e.amount ?? 2} damage to each opponent`;
     case 'GrantFlashback':
       return `${who} gains flashback until end of turn`;
     case 'SacrificeGreatestManaValue':

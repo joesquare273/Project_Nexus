@@ -1742,3 +1742,82 @@ describe('F12c: multicolor and colorless echoed-pairs legends', () => {
     expect(Object.values(s.cards).some((c) => c.defId === 'treasure-token-fra' && c.controller === 'P2')).toBe(true);
   });
 });
+
+describe('F13a: Ajani and Chandra planeswalkers', () => {
+  const loyalty = (n: number) => ({ namedCounters: { loyalty: n } });
+  const use = (s: GameState, card: string, ability: number, opts: { targets?: { kind: 'card'; card: string }[]; x?: number } = {}) =>
+    cast(s, { type: 'ActivateAbility', player: 'P1', card, ability, targets: opts.targets ?? [], ...(opts.x !== undefined ? { x: opts.x } : {}) });
+
+  it('Ajani Resolute gets a loyalty counter whenever you gain life, and its -4 makes a Pridemate that grows', () => {
+    let s = newGame();
+    const ajani = put(s, 'P1', 'ajani-resolute', 'battlefield', loyalty(4));
+    s = use(s, ajani, 0).state; // 0: gain 1 life, which adds a loyalty counter
+    expect([s.players.P1!.life, s.cards[ajani]!.namedCounters?.loyalty]).toEqual([21, 5]);
+    let u = newGame();
+    const other = put(u, 'P1', 'ajani-resolute', 'battlefield', loyalty(4));
+    u = use(u, other, 1).state;
+    const pridemate = Object.values(u.cards).find((c) => c.defId === 'ajanis-pridemate-token-fra')!;
+    const spell = put(u, 'P1', 'restore-with-empathy', 'hand');
+    put(u, 'P1', 'rank-rat', 'graveyard');
+    mana(u, 'P1', { G: 1, C: 2 });
+    u = cast(u, getLegalActions(u).find((a) => a.type === 'CastSpell' && a.card === spell)!).state;
+    expect(u.cards[pridemate.id]!.counters).toBe(1);
+  });
+
+  it('Ajani, Unrelenting makes a Cadet whenever you activate a loyalty ability; -3 spares your tokens', () => {
+    let s = newGame();
+    const ajani = put(s, 'P1', 'ajani-unrelenting', 'battlefield', loyalty(5));
+    const theirs = put(s, 'P2', 'apex-witchstalker');
+    const mine = put(s, 'P1', 'rank-rat');
+    s = use(s, ajani, 2).state;
+    const cadet = Object.values(s.cards).find((c) => c.defId === 'cadet-token-fra');
+    expect([zone(s, theirs), zone(s, mine), cadet && zone(s, cadet.id)]).toEqual(['graveyard', 'graveyard', 'battlefield']);
+  });
+
+  it('Chandra, Chill of Compliance: -X taps an artifact or creature and puts X stun counters on it', () => {
+    let s = newGame();
+    const chandra = put(s, 'P1', 'chandra-chill-of-compliance', 'battlefield', loyalty(3));
+    const witch = put(s, 'P2', 'apex-witchstalker');
+    s = use(s, chandra, 2, { targets: [card(witch)], x: 2 }).state;
+    expect([s.cards[witch]!.tapped, s.cards[witch]!.namedCounters?.stun, s.cards[chandra]!.namedCounters?.loyalty]).toEqual([true, 2, 1]);
+  });
+
+  it('Chandra, Chill of Compliance: +1 surveil returns a noncreature, nonland card put into the graveyard', () => {
+    let s = newGame();
+    const chandra = put(s, 'P1', 'chandra-chill-of-compliance', 'battlefield', loyalty(3));
+    const gasp = put(s, 'P1', 'last-gasp', 'library');
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: chandra, ability: 0, targets: [] }, { surveilToGraveyard: true }).state;
+    expect(zone(s, gasp)).toBe('hand');
+  });
+
+  it('Chandra, Torch of Defiance: +1 exiles the top card; not casting it deals 2 damage to each opponent', () => {
+    let s = newGame();
+    const chandra = put(s, 'P1', 'chandra-torch-of-defiance', 'battlefield', loyalty(4));
+    const top = put(s, 'P1', 'last-gasp', 'library');
+    s = use(s, chandra, 0).state;
+    expect([zone(s, top), s.cards[top]!.castPermission?.immediate]).toEqual(['exile', true]);
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    expect(s.players.P2!.life).toBe(18);
+  });
+
+  it('Chandra, Torch of Defiance: casting the exiled card instead deals no damage', () => {
+    let s = newGame();
+    const chandra = put(s, 'P1', 'chandra-torch-of-defiance', 'battlefield', loyalty(4));
+    const top = put(s, 'P1', 'last-gasp', 'library');
+    const rat = put(s, 'P2', 'rank-rat');
+    s = use(s, chandra, 0).state;
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: top, targets: [card(rat)] }).state;
+    expect([zone(s, rat), s.players.P2!.life]).toEqual(['graveyard', 20]);
+  });
+
+  it('Chandra, Torch of Defiance: the emblem deals 5 damage whenever you cast a spell', () => {
+    let s = newGame();
+    const chandra = put(s, 'P1', 'chandra-torch-of-defiance', 'battlefield', loyalty(7));
+    s = use(s, chandra, 3).state;
+    const rat = put(s, 'P1', 'rank-rat', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rat }, { targets: (options) => options.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.players.P2!.life).toBe(15);
+  });
+});

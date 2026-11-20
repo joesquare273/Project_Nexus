@@ -1901,7 +1901,8 @@ export function activateAbility(
   const problem = activationProblem(s, playerId, c, spec, index);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
-  const hasX = !!parseManaCost(spec.cost.mana).x || !!spec.cost.removeCounter?.amountX;
+  const hasX = !!parseManaCost(spec.cost.mana).x || !!spec.cost.removeCounter?.amountX || !!spec.loyaltyX;
+  if (spec.loyaltyX && (xChosen ?? 0) > (c.namedCounters?.loyalty ?? 0)) reject(`That needs ${xChosen} loyalty.`);
   if (!hasX && !spec.cost.discardX && !spec.cost.tapUntapped?.countX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
   if (hasX && (xChosen === undefined || !Number.isInteger(xChosen) || xChosen < (spec.xMin ?? 0))) reject(`Choose a value for X${spec.xMin ? ` of at least ${spec.xMin}` : ''}.`);
   // Station: X is the power of the creature tapped for it (as the cost is paid).
@@ -1960,6 +1961,7 @@ export function activateAbility(
     player(s, playerId).loyaltyActivatedTurn = s.turnNumber;
     if (spec.loyalty > 0) addCounters(ctx, id, spec.loyalty, playerId, 'loyalty');
     else if (spec.loyalty < 0) removeCounters(ctx, id, 'loyalty', -spec.loyalty);
+    if (spec.loyaltyX && (xChosen ?? 0) > 0) removeCounters(ctx, id, 'loyalty', xChosen!);
   }
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
@@ -2849,6 +2851,19 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const hand = s.players[onStack.controller]!.hand;
       if (hand.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: onStack.controller, purpose: 'wardDiscard', cards: [...hand], min: 0, max: 1, wardTarget: by }];
       else counterStackObject(ctx, by, source);
+      return;
+    }
+    case 'ExileTopMayCastElseDamage': {
+      const top = player(s, item.controller).library[0];
+      if (top === undefined) return;
+      moveCard(ctx, top, 'exile');
+      if (s.cards[top]?.zone !== 'exile') return;
+      s.cards[top]!.castPermission = { player: item.controller, turn: s.turnNumber, ignoreTiming: true, immediate: true, orDamage: { source, amount } };
+      // A land can't be cast: the damage happens at once.
+      if (defOf(s, s.cards[top]!).types.includes('land')) {
+        delete s.cards[top]!.castPermission;
+        for (const pid of s.turnOrder) if (pid !== item.controller && !s.players[pid]!.eliminated) dealDamage(ctx, source, { kind: 'player', player: pid }, amount, false);
+      }
       return;
     }
     case 'GrantFlashback':
@@ -4113,6 +4128,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Surveil':
     case 'Scry':
       if (effect.returnIfManaValueAtMostLifeGained) r.surveilReturnAtMost = player(s, item.controller).lifeGainedThisTurn ?? 0;
+      if (effect.returnIfMatches) r.surveilReturnIf = effect.returnIfMatches;
       r.surveilQueue.push(...topOfLibrary(s, item.controller, amount));
       r.scrying = effect.effect === 'Scry';
       return;
@@ -5169,6 +5185,8 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     // Enlightened Confidant: "If you put a card with mana value less than or equal to the amount of life you gained this turn into your graveyard this way, put that card into your hand."
     const most = s.resolving.surveilReturnAtMost;
     if (most !== undefined && s.cards[id]?.zone === 'graveyard' && objectManaValue(s, s.cards[id]!) <= most) moveCard(ctx, id, 'hand');
+    const like = s.resolving.surveilReturnIf;
+    if (like && s.cards[id]?.zone === 'graveyard' && matchesObject(s, like, s.cards[id]!, { controller: playerId })) moveCard(ctx, id, 'hand');
   }
   ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
   if (s.resolving.surveilQueue.length === 0) {

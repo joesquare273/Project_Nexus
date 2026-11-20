@@ -480,6 +480,8 @@ export const EFFECT_KINDS = [
   'SacrificeGreatestManaValue',
   /** The target card gains flashback until end of turn, its flashback cost equal to its mana cost (Stingcaster Mage). */
   'GrantFlashback',
+  /** Exile the top card of your library; you may cast it right away (paying its cost); if you don't, the source deals `amount` damage to each opponent (Chandra, Torch of Defiance). */
+  'ExileTopMayCastElseDamage',
   /** Ward—Discard a card (rule 702.21): counter the spell or ability that targeted the source unless its controller discards a card (Gideon, the Oathless). */
   'CounterUnlessDiscard',
   /** The targets lose all abilities until end of turn (Flourishing Grapple). */
@@ -970,7 +972,7 @@ export interface EffectSpec {
   /** TargetSpellPermanentOrGraveyardCard: a spell or any permanent, lands included, but no graveyard card (Venser, Shaper Savant). */
   spellOrPermanent?: boolean;
   /** AddMana with `manaType`: the mana is restricted (Steelswarm Operator's second ability). */
-  manaRestricted?: ManaRestriction;
+  manaRestricted?: ManaRestriction | 'noncreatureSpell';
   /** Discard: the card is exiled instead, and its owner may play it for as long as it stays exiled; spells cast this way cost {1} more and lands enter tapped (Lightstall Inquisitor). */
   exileToPlayTaxed?: boolean;
   /** ShuffleGraveyardIntoLibrary: your hand too (Weftwalking). */
@@ -1261,6 +1263,8 @@ export interface EffectSpec {
   upTo?: boolean;
   /** Only if you've (true) or you haven't (false) scried or surveilled this turn (Desperate Futurescribe). */
   ifScriedOrSurveiledThisTurn?: boolean;
+  /** Surveil: a card put into the graveyard this way that matches goes to your hand instead (Chandra, Chill of Compliance). */
+  returnIfMatches?: ObjectFilter;
   /** PutIntoLibrary: its owner chooses top or bottom; if they put it on top, the source deals this much damage to them (Clash of Elements). */
   damageIfTop?: number;
   /** Discard (chooser You): the chosen card is exiled instead; you may cast it while you have threshold, spending mana as though it were any type (Null Summoner). */
@@ -1682,6 +1686,8 @@ export interface ActivatedSpec {
    * Only at sorcery speed, and only one loyalty ability of a planeswalker each turn.
    */
   loyalty?: number;
+  /** "−X": a loyalty ability that removes X loyalty counters, X chosen as it's activated, from 0 up to the loyalty (Chandra, Chill of Compliance). */
+  loyaltyX?: boolean;
   /** The least X this ability allows ("X can't be 0"). */
   xMin?: number;
   /** "This ability can't be copied" (Gogo). */
@@ -2635,6 +2641,8 @@ export interface CardInstance {
     immediate?: boolean;
     /** Discover: not cast right away, the card goes to its owner's hand. */
     orHand?: boolean;
+    /** Chandra, Torch of Defiance: not cast right away, the source deals this much damage to each opponent. */
+    orDamage?: { source: InstanceId; amount: number };
   };
   /** Phased out (rule 702.26): off the battlefield list until its controller's next untap step, keeping its state. */
   phasedOut?: boolean;
@@ -3040,6 +3048,7 @@ export interface Resolving {
   chosenKeyword?: string;
   /** Enlightened Confidant: a surveiled card with at most this mana value goes to your hand instead of the graveyard. */
   surveilReturnAtMost?: number;
+  surveilReturnIf?: ObjectFilter;
   /** Excess damage dealt by a DealDamage with `recordExcess`. */
   excessDamage?: number;
   /** Who controlled the permanent this ability last put into a library ("that creature's controller": Proteus Staff). */

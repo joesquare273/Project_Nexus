@@ -408,6 +408,28 @@
     "scryfallId": "d9039a58-2f17-4b8a-b714-3a2f0b46f057",
     "relatedTokens": []
   },
+  "ajanis-pridemate-token-fra": {
+    "name": "Ajani's Pridemate",
+    "typeLine": "Token Creature — Cat Soldier",
+    "oracleText": "Whenever you gain life, put a +1/+1 counter on Ajani's Pridemate.",
+    "set": "tfra",
+    "number": "2",
+    "artist": "Diego Gisbert",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461",
+      "normal": "https://cards.scryfall.io/normal/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461",
+      "large": "https://cards.scryfall.io/large/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/8/7801c326-d740-4cec-9268-05348ace8302.jpg?1789735461"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/2/ajanis-pridemate?utm_source=api",
+    "scryfallId": "7801c326-d740-4cec-9268-05348ace8302",
+    "relatedTokens": [
+      {
+        "name": "Ajani's Pridemate",
+        "scryfallId": "7801c326-d740-4cec-9268-05348ace8302"
+      }
+    ]
+  },
   "akroma-angel-of-fury": {
     "name": "Akroma, Angel of Fury",
     "typeLine": "Legendary Creature — Angel",

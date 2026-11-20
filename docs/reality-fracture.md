@@ -44,7 +44,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F12a | Echoed pairs legends, red (11) | Done |
 | F12b | Echoed pairs legends, green (10) | Done |
 | F12c | Echoed pairs legends, multicolor and colorless (10) | Done |
-| F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
+| F13a | Planeswalkers: Ajani Resolute, Ajani, Unrelenting, Chandra, Chill of Compliance, Chandra, Torch of Defiance (4) | Done |
+| F13b | Planeswalkers: the Garruks, Jace, Reality Sculptor, The Theorist (4) | |
+| F13c | The rest: Emrakul, the Exigent Doom, Jace's Machinations, Uldaros Theorix (3) | |
 
 ### F1 (2026-11-16)
 
@@ -144,3 +146,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 
 - Edgar, Ancient Bloodlord; Hapatra, the Desert Fang; Karn, Gilded Guardian; Mabel, Valley Hero; Saheeli, Jewel of Avishkar; Tam, the Possibility; Vraska, Soul of Stone; Vraska, the Cutting Glare; Karn, Argent Defender; Traxos, Scourge Eternal. Every echoed-pairs legend is now built.
 - Engine: **monocolored hybrid mana** (`{2/W}`: that color or two generic, mana value 2; `ManaCost.monoHybrid`), so Karn, Gilded Guardian gets its real cost; "artifacts and creatures entering the battlefield don't cause abilities to trigger" (`enteringArtifactsAndCreaturesDontTrigger`); the greatest mana value in your graveyard, colors among your other artifacts, and planeswalker types among your planeswalkers as counts. The Sculpture Treasure token (tfra 13).
+
+### F13a (2026-11-20)
+
+- Ajani Resolute; Ajani, Unrelenting; Chandra, Chill of Compliance; Chandra, Torch of Defiance.
+- Engine: **−X loyalty abilities** (`loyaltyX`: X from 0 up to the loyalty, removed as the cost); "exile the top card; you may cast it; if you don't, [damage]" (`ExileTopMayCastElseDamage`: a cast-right-now permission whose lapse deals the damage, `castPermission.orDamage`); surveil returning a matching card to your hand (`returnIfMatches`); mana restricted to noncreature spells from an effect (`manaRestricted: 'noncreatureSpell'`). Emblems with triggers use the existing emblem delayed triggers. The Ajani's Pridemate token (tfra 2).

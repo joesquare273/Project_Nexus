@@ -7,7 +7,7 @@ import { chooseCopy, chooseResolutionOption, chooseEntryCopy, chooseEntryCounter
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
-import { cloneState, moveCard, reject, RuleError, type Ctx } from './state.ts';
+import { cloneState, dealDamage, moveCard, reject, RuleError, type Ctx } from './state.ts';
 import type { Action, ActionResult, GameState } from './types.ts';
 
 function requirePriority(s: GameState, playerId: string): void {
@@ -32,8 +32,11 @@ function dropImmediatePermissions(ctx: Ctx, action: Action): void {
     if (c.castPermission?.immediate && c.castPermission.player === who) {
       // Discover: a card not cast goes to its owner's hand.
       const toHand = c.castPermission.orHand && c.zone === 'exile';
+      const orDamage = c.castPermission.orDamage;
       delete c.castPermission;
       if (toHand) moveCard(ctx, c.id, 'hand');
+      // Chandra, Torch of Defiance: "If you don't [cast it], Chandra deals 2 damage to each opponent."
+      if (orDamage) for (const pid of s.turnOrder) if (pid !== who && !s.players[pid]!.eliminated) dealDamage(ctx, orDamage.source, { kind: 'player', player: pid }, orDamage.amount, false);
     }
     if (c.playableFromExile?.immediate && c.playableFromExile.player === who) delete c.playableFromExile;
   }

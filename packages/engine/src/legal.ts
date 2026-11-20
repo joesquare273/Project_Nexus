@@ -366,7 +366,8 @@ function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alterna
 }
 
 /** The values of X an activated ability could be given with the mana available ({X}{X}: Gogo). */
-function abilityXChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, costCards: InstanceId[] = []): (number | undefined)[] {
+function abilityXChoices(s: GameState, playerId: PlayerId, spec: ActivatedSpec, costCards: InstanceId[] = [], source?: CardInstance): (number | undefined)[] {
+  if (spec.loyaltyX) return Array.from({ length: Math.min(MAX_X, source?.namedCounters?.loyalty ?? 0) + 1 }, (_, i) => i);
   // "Remove X counters from an artifact or creature you control": 1 to the counters on the chosen permanent.
   if (spec.cost.removeCounter?.amountX) {
     const from = costCards[0] ? s.cards[costCards[0]] : undefined;
@@ -392,7 +393,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
       if (activationProblem(s, playerId, c, spec, ability)) return;
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
-         for (const x of abilityXChoices(s, playerId, spec, costCards)) {
+         for (const x of abilityXChoices(s, playerId, spec, costCards, c)) {
           out.push({
             action: { type: 'ActivateAbility', player: playerId, card: c.id, ability, targets, ...(costCards.length ? { costCards } : {}), ...(x !== undefined ? { x } : {}) },
             cost: abilityCost(s, spec, targets, c, x ?? 0),
