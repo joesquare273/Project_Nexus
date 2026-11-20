@@ -12,6 +12,7 @@ import eoc from '../data/eoc.json' with { type: 'json' };
 import eocPrecons from '../data/eoc-precons.json' with { type: 'json' };
 import eoeSet from '../data/eoe-set.json' with { type: 'json' };
 import fraSet from '../data/fra-set.json' with { type: 'json' };
+import sosSet from '../data/sos-set.json' with { type: 'json' };
 import frc from '../data/frc.json' with { type: 'json' };
 import frcPrecons from '../data/frc-precons.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
@@ -35,9 +36,10 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
 // eoc.json: the Edge of Eternities Commander precons' cards no other file defines (import-precons.ts eoc).
 // eoe-set.json: the rest of the Edge of Eternities main set, for its packs (import-sets.ts eoe).
 // fra-set.json: the Reality Fracture main set (import-sets.ts fra); its precon's cards are in frc.json.
+// sos-set.json: the Secrets of Strixhaven main set (import-sets.ts sos).
 // frc.json: the Reality Fracture Commander precon's cards no other file defines (import-precons.ts frc).
 // Each file is read as plain data (their JSON types together are too complex for TypeScript to combine); validateCardList checks them.
-const all = ([lands, fin, fic, finSet, storeCards, eoc, eoeSet, frc, fraSet, tokens] as unknown as CardDefinition[][]).flat();
+const all = ([lands, fin, fic, finSet, storeCards, eoc, eoeSet, frc, fraSet, sosSet, tokens] as unknown as CardDefinition[][]).flat();
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 

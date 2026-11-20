@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven: the main set imported (2026-11-20)
+
+- The user's next set. SOS 1-281 imported from MTGJSON (`import-sets.ts sos` -> `sos-set.json`): 264 new definitions, 2 built automatically (Rearing Embermare, Noxious Newt), the rest `notBuilt` for now. Card data and images cached; the six token kinds its cards make are in pending-tokens.json. Plan: docs/strixhaven.md.
+
 ### Card audit with Reality Fracture; prowess as a keyword (2026-11-20)
 
 - The card audit reran over all 1,456 built cards (docs/card-audit.md); nothing wrong in Reality Fracture. Six cards with prowess written as a trigger now use the Prowess keyword.

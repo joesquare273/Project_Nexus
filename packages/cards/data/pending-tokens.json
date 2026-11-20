@@ -1583,5 +1583,180 @@
     "power": "1",
     "toughness": "1",
     "colors": []
+  },
+  "d0f3bd3d-08cf-4783-ae31-03770c8be69c": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "",
+    "set": "tsos",
+    "number": "11",
+    "artist": "Filipe Pagliuso",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562",
+      "normal": "https://cards.scryfall.io/normal/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562",
+      "large": "https://cards.scryfall.io/large/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/11/spirit?utm_source=api",
+    "scryfallId": "d0f3bd3d-08cf-4783-ae31-03770c8be69c",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "d0f3bd3d-08cf-4783-ae31-03770c8be69c"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "R",
+      "W"
+    ]
+  },
+  "43e9f729-abaf-4000-8df5-fa46d59eff9e": {
+    "name": "Inkling",
+    "typeLine": "Token Creature — Inkling",
+    "oracleText": "Flying",
+    "set": "tsos",
+    "number": "7",
+    "artist": "Nia Kovalevski",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562",
+      "normal": "https://cards.scryfall.io/normal/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562",
+      "large": "https://cards.scryfall.io/large/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/7/inkling?utm_source=api",
+    "scryfallId": "43e9f729-abaf-4000-8df5-fa46d59eff9e",
+    "relatedTokens": [
+      {
+        "name": "Inkling",
+        "scryfallId": "43e9f729-abaf-4000-8df5-fa46d59eff9e"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B",
+      "W"
+    ]
+  },
+  "b5b2df9c-228f-4441-a962-46b335bb356e": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "Flying",
+    "set": "tsos",
+    "number": "3",
+    "artist": "Filipe Pagliuso",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563",
+      "normal": "https://cards.scryfall.io/normal/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563",
+      "large": "https://cards.scryfall.io/large/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/3/elemental?utm_source=api",
+    "scryfallId": "b5b2df9c-228f-4441-a962-46b335bb356e",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "b5b2df9c-228f-4441-a962-46b335bb356e"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "R",
+      "U"
+    ]
+  },
+  "8b5f1fdb-04df-4224-acb4-7819c37565f5": {
+    "name": "Fractal",
+    "typeLine": "Token Creature — Fractal",
+    "oracleText": "",
+    "set": "tsos",
+    "number": "5",
+    "artist": "Rudy Siswanto",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564",
+      "normal": "https://cards.scryfall.io/normal/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564",
+      "large": "https://cards.scryfall.io/large/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/5/fractal?utm_source=api",
+    "scryfallId": "8b5f1fdb-04df-4224-acb4-7819c37565f5",
+    "relatedTokens": [
+      {
+        "name": "Fractal",
+        "scryfallId": "8b5f1fdb-04df-4224-acb4-7819c37565f5"
+      }
+    ],
+    "power": "0",
+    "toughness": "0",
+    "colors": [
+      "G",
+      "U"
+    ]
+  },
+  "40b22872-7b7b-4a6d-a343-4152e552b00a": {
+    "name": "Pest",
+    "typeLine": "Token Creature — Pest",
+    "oracleText": "Whenever this token attacks, you gain 1 life.",
+    "set": "tsos",
+    "number": "9",
+    "artist": "Nino Vecia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561",
+      "normal": "https://cards.scryfall.io/normal/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561",
+      "large": "https://cards.scryfall.io/large/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/9/pest?utm_source=api",
+    "scryfallId": "40b22872-7b7b-4a6d-a343-4152e552b00a",
+    "relatedTokens": [
+      {
+        "name": "Pest",
+        "scryfallId": "40b22872-7b7b-4a6d-a343-4152e552b00a"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B",
+      "G"
+    ]
+  },
+  "b4f61b5e-9c53-40b1-b93e-3ffa351ff052": {
+    "name": "Treasure",
+    "typeLine": "Token Artifact — Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tsos",
+    "number": "12",
+    "artist": "Joseph Meehan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560",
+      "normal": "https://cards.scryfall.io/normal/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560",
+      "large": "https://cards.scryfall.io/large/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/12/treasure?utm_source=api",
+    "scryfallId": "b4f61b5e-9c53-40b1-b93e-3ffa351ff052",
+    "relatedTokens": [
+      {
+        "name": "Smaug",
+        "scryfallId": "bb4ac08f-f6a5-49d6-91e9-38c4f217932b"
+      },
+      {
+        "name": "Treasure",
+        "scryfallId": "b4f61b5e-9c53-40b1-b93e-3ffa351ff052"
+      },
+      {
+        "name": "Goblin Shaman",
+        "scryfallId": "0d9461c3-f545-4efb-926e-759961db0495"
+      },
+      {
+        "name": "Smoke Blessing",
+        "scryfallId": "5eb01bef-8989-4b38-a303-0aafab1b33e5"
+      }
+    ],
+    "colors": []
   }
 }

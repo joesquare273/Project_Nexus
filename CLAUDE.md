@@ -46,8 +46,11 @@ this repo, not only in local memory.
   Reality Fracture is also its own main set (FRA, separate from the precon):
   imported 2026-11-16 (`import-sets.ts fra`, `fra-set.json`, cards 1-290);
   its packs and Collection tab are in (docs/packs.md); its cards were built in
-  groups F1-F13 (docs/reality-fracture.md; all built 2026-11-20). Next: its
-  Secret Lair Bundle cards (FRA 438-448) in the Store.
+  groups F1-F13 (docs/reality-fracture.md; all built 2026-11-20); its Secret
+  Lair Bundle cards (FRA 438-448) are in the Store.
+  Next set (user, 2026-11-20): **Secrets of Strixhaven** (SOS). Its main set
+  is imported (`import-sets.ts sos`, `sos-set.json`, cards 1-281); its packs,
+  Commander decks (SOC) and card groups are planned in docs/strixhaven.md.
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).
 - **Tokens come from Scryfall too**, matched by the exact token printing each
@@ -97,6 +100,7 @@ this repo, not only in local memory.
 - `docs/starter-kits.md`: Starter Kit roadmap (K1–K6, done) and card status.
 - `docs/commander.md`: Commander format and precon roadmap (C1–C5).
 - `docs/reality-fracture.md`: the Reality Fracture main set's card groups (F1-F13).
+- `docs/strixhaven.md`: Secrets of Strixhaven (import, packs, Commander, card groups).
 - `docs/decisions.md`: design decisions and known rules simplifications.
 - `docs/card-types.md`: card types and categories (permanent, nonpermanent,
   spell), the rules each brings, and whether they are built. Rules tied to a

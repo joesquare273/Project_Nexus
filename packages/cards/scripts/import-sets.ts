@@ -5,6 +5,7 @@
 //   node packages/cards/scripts/import-sets.ts        # Final Fantasy (FIN, FCA) -> data/fin-set.json
 //   node packages/cards/scripts/import-sets.ts eoe    # Edge of Eternities (EOE) -> data/eoe-set.json
 //   node packages/cards/scripts/import-sets.ts fra    # Reality Fracture (FRA) -> data/fra-set.json
+//   node packages/cards/scripts/import-sets.ts sos    # Secrets of Strixhaven (SOS) -> data/sos-set.json
 //
 // MTGJSON's set files are static downloads (no API rate limit). Run
 // `npm run scryfall` afterwards for images and Oracle text.
@@ -30,6 +31,8 @@ const IMPORTS = {
   eoe: { sets: [{ code: 'EOE', maxNumber: 276 }], file: 'eoe-set.json' },
   // 1-290: the main set with its basics (281-290); 291+ are borderless and other variants.
   fra: { sets: [{ code: 'FRA', maxNumber: 290 }], file: 'fra-set.json' },
+  // 1-281: the main set with its basics; 282+ are borderless and other variants.
+  sos: { sets: [{ code: 'SOS', maxNumber: 281 }], file: 'sos-set.json' },
 } as const;
 const which = (process.argv[2] ?? 'fin') as keyof typeof IMPORTS;
 if (!IMPORTS[which]) throw new Error(`Unknown import "${which}"; use ${Object.keys(IMPORTS).join(' or ')}.`);
