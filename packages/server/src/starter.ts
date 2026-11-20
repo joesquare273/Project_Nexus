@@ -30,12 +30,13 @@ const printingId = (c: KitCard): string => {
   return id;
 };
 
-/** A precon's cards (one entry per printing, nonfoil) and its commander's printing id: any of the free starters. */
+/** A precon's cards (one entry per printing, nonfoil) and its commander's printing id: only the free starters (not Secrets of Strixhaven's decks yet). */
 export function preconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
+  if (!STARTER_CHOICES.some((c) => c.name === name)) return null;
   return cardsOf(ALL_PRECONS.find((p) => p.name === name));
 }
 
-/** Any precon the Store sells (Final Fantasy or Edge of Eternities): its cards and commander's printing id. */
+/** Any precon the Store sells (every set's): its cards and commander's printing id. */
 export function storePreconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
   return cardsOf(ALL_PRECONS.find((p) => p.name === name));
 }

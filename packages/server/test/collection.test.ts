@@ -197,7 +197,8 @@ describe('the free starter precon', () => {
 
   it('refuses anything but one of the precons', async () => {
     const { call } = await withAccounts();
-    for (const precon of ['Cloud', '', 5, undefined]) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
+    // Secrets of Strixhaven's decks are sold, but aren't a starter until their cards are built.
+    for (const precon of ['Cloud', '', 5, undefined, 'Lorehold Spirit']) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(false);
   });
 });
@@ -240,6 +241,7 @@ describe('the Store', () => {
       ['Final Fantasy', true],
       ['Edge of Eternities', true],
       ['Reality Fracture', true],
+      ['Secrets of Strixhaven', true],
     ]);
     const items: Item[] = sets[0].items;
     const singles = items.filter((i) => i.line === 'Chocobo Track foil');
@@ -270,6 +272,10 @@ describe('the Store', () => {
     const sldSingles = frc.filter((i) => i.line === 'Secret Lair Bundle, borderless foil');
     expect(sldSingles.map((i) => i.name)).toEqual(['Emrakul, the Exigent Doom', 'Enlightened Confidant', 'Return to the Light Realms', 'Seasoned Cryomancer', "Sphinx's Approach", 'The Theorist, Jace Beleren', 'Darklight Phoenix', 'Overwrite the Multiverse', 'Craterclaw Colossus', 'Stingcaster Mage', 'Omnipresence']);
     for (const i of [sld, ...sldSingles]) expect(i.cards.every((c) => c.finish === 'foil')).toBe(true);
+    // Secrets of Strixhaven: the five college Commander decks, 100 cards each.
+    const soc: Item[] = sets[3].items;
+    expect(soc.map((i) => i.name)).toEqual(['Lorehold Spirit', 'Prismari Artistry', 'Quandrix Unlimited', 'Silverquill Influence', 'Witherbloom Pestilence']);
+    for (const p of soc) expect([p.price, p.cards.reduce((n, c) => n + ((c as { count?: number }).count ?? 1), 0)]).toEqual([ECONOMY.storePrices.precon, 100]);
     expect(sldSingles.every((i) => i.price === ECONOMY.storePrices.secretLairSingle)).toBe(true);
     // The Final Fantasy tab doesn't list them, and its Secret Lair cards are foil too.
     expect(items.some((i) => i.name === 'Arcbound Ravager')).toBe(false);

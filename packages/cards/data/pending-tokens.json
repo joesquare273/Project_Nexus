@@ -2151,5 +2151,500 @@
       "B",
       "G"
     ]
+  },
+  "f6469938-5af9-4f0a-9f2e-603c833e48ba": {
+    "name": "Illusion",
+    "typeLine": "Token Creature — Illusion",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "7",
+    "artist": "Jason A. Engle",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575",
+      "normal": "https://cards.scryfall.io/normal/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575",
+      "large": "https://cards.scryfall.io/large/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/7/illusion?utm_source=api",
+    "scryfallId": "f6469938-5af9-4f0a-9f2e-603c833e48ba",
+    "relatedTokens": [
+      {
+        "name": "Illusion",
+        "scryfallId": "f6469938-5af9-4f0a-9f2e-603c833e48ba"
+      }
+    ],
+    "power": "*",
+    "toughness": "*",
+    "colors": [
+      "U"
+    ]
+  },
+  "65c65445-1016-4fd3-963e-1c9eb252d4a6": {
+    "name": "Phyrexian Germ",
+    "typeLine": "Token Creature — Phyrexian Germ",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "9",
+    "artist": "Igor Kieryluk",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574",
+      "normal": "https://cards.scryfall.io/normal/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574",
+      "large": "https://cards.scryfall.io/large/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/9/phyrexian-germ?utm_source=api",
+    "scryfallId": "65c65445-1016-4fd3-963e-1c9eb252d4a6",
+    "relatedTokens": [
+      {
+        "name": "Phyrexian Germ",
+        "scryfallId": "65c65445-1016-4fd3-963e-1c9eb252d4a6"
+      },
+      {
+        "name": "Germ",
+        "scryfallId": "377d9749-3d78-4a33-93d1-2e673f6e2e28"
+      }
+    ],
+    "power": "0",
+    "toughness": "0",
+    "colors": [
+      "B"
+    ]
+  },
+  "44b7c73d-80a0-4a27-b0a2-317164362449": {
+    "name": "Dragon Illusion",
+    "typeLine": "Token Creature — Dragon Illusion",
+    "oracleText": "Flying, haste",
+    "set": "tsoc",
+    "number": "13",
+    "artist": "Andrew Mar",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573",
+      "normal": "https://cards.scryfall.io/normal/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573",
+      "large": "https://cards.scryfall.io/large/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/13/dragon-illusion?utm_source=api",
+    "scryfallId": "44b7c73d-80a0-4a27-b0a2-317164362449",
+    "relatedTokens": [
+      {
+        "name": "Dragon Illusion",
+        "scryfallId": "44b7c73d-80a0-4a27-b0a2-317164362449"
+      }
+    ],
+    "power": "*",
+    "toughness": "*",
+    "colors": [
+      "R"
+    ]
+  },
+  "ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4": {
+    "name": "Phyrexian Myr",
+    "typeLine": "Token Artifact Creature — Phyrexian Myr",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "8",
+    "artist": "Samuel Perin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574",
+      "normal": "https://cards.scryfall.io/normal/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574",
+      "large": "https://cards.scryfall.io/large/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/8/phyrexian-myr?utm_source=api",
+    "scryfallId": "ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4",
+    "relatedTokens": [
+      {
+        "name": "Myr",
+        "scryfallId": "483c8cd6-288c-49d7-ac28-642132f85259"
+      },
+      {
+        "name": "Phyrexian Myr",
+        "scryfallId": "ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4"
+      }
+    ],
+    "power": "2",
+    "toughness": "1",
+    "colors": [
+      "U"
+    ]
+  },
+  "8ba20bb4-a476-448d-bb39-23f8dd59e5a8": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "20",
+    "artist": "Mila Pesic",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570",
+      "normal": "https://cards.scryfall.io/normal/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570",
+      "large": "https://cards.scryfall.io/large/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/20/elemental?utm_source=api",
+    "scryfallId": "8ba20bb4-a476-448d-bb39-23f8dd59e5a8",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "8ba20bb4-a476-448d-bb39-23f8dd59e5a8"
+      }
+    ],
+    "power": "4",
+    "toughness": "4",
+    "colors": [
+      "R",
+      "U"
+    ]
+  },
+  "32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc": {
+    "name": "Boar",
+    "typeLine": "Token Creature — Boar",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "15",
+    "artist": "James Ryman",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571",
+      "normal": "https://cards.scryfall.io/normal/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571",
+      "large": "https://cards.scryfall.io/large/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/15/boar?utm_source=api",
+    "scryfallId": "32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc",
+    "relatedTokens": [
+      {
+        "name": "Boar",
+        "scryfallId": "32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "G"
+    ]
+  },
+  "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37": {
+    "name": "Food",
+    "typeLine": "Token Artifact — Food",
+    "oracleText": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+    "set": "tsoc",
+    "number": "27",
+    "artist": "Steve Prescott",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567",
+      "normal": "https://cards.scryfall.io/normal/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567",
+      "large": "https://cards.scryfall.io/large/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/27/food?utm_source=api",
+    "scryfallId": "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37",
+    "relatedTokens": [
+      {
+        "name": "Food",
+        "scryfallId": "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37"
+      },
+      {
+        "name": "Boar",
+        "scryfallId": "365b2234-c29d-42db-a8e0-80685a4b6434"
+      }
+    ],
+    "colors": []
+  },
+  "c990db6b-e1f2-4802-b8b1-80a8b768be0e": {
+    "name": "Primo, the Indivisible",
+    "typeLine": "Token Legendary Creature — Fractal",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "24",
+    "artist": "Michele Giorgi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571",
+      "normal": "https://cards.scryfall.io/normal/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571",
+      "large": "https://cards.scryfall.io/large/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/24/primo-the-indivisible?utm_source=api",
+    "scryfallId": "c990db6b-e1f2-4802-b8b1-80a8b768be0e",
+    "relatedTokens": [
+      {
+        "name": "Primo, the Indivisible",
+        "scryfallId": "c990db6b-e1f2-4802-b8b1-80a8b768be0e"
+      }
+    ],
+    "power": "0",
+    "toughness": "0",
+    "colors": [
+      "G",
+      "U"
+    ]
+  },
+  "42e98a20-325e-476f-8297-cbe8e09d85b2": {
+    "name": "Frog Lizard",
+    "typeLine": "Token Creature — Frog Lizard",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "16",
+    "artist": "Jack Wang",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571",
+      "normal": "https://cards.scryfall.io/normal/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571",
+      "large": "https://cards.scryfall.io/large/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/16/frog-lizard?utm_source=api",
+    "scryfallId": "42e98a20-325e-476f-8297-cbe8e09d85b2",
+    "relatedTokens": [
+      {
+        "name": "Frog Lizard",
+        "scryfallId": "42e98a20-325e-476f-8297-cbe8e09d85b2"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ]
+  },
+  "7d400b41-813d-4a63-848f-5eb4db4bf3bb": {
+    "name": "Cat",
+    "typeLine": "Token Creature — Cat",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "2",
+    "artist": "Jesper Ejsing",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/d/7d400b41-813d-4a63-848f-5eb4db4bf3bb.jpg?1783903575",
+      "normal": "https://cards.scryfall.io/normal/front/7/d/7d400b41-813d-4a63-848f-5eb4db4bf3bb.jpg?1783903575",
+      "large": "https://cards.scryfall.io/large/front/7/d/7d400b41-813d-4a63-848f-5eb4db4bf3bb.jpg?1783903575",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/d/7d400b41-813d-4a63-848f-5eb4db4bf3bb.jpg?1783903575"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/2/cat?utm_source=api",
+    "scryfallId": "7d400b41-813d-4a63-848f-5eb4db4bf3bb",
+    "relatedTokens": [
+      {
+        "name": "Cat",
+        "scryfallId": "7d400b41-813d-4a63-848f-5eb4db4bf3bb"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "W"
+    ]
+  },
+  "f130171f-a3e2-4dac-806a-1f2c428ac9fc": {
+    "name": "Pegasus",
+    "typeLine": "Token Creature — Pegasus",
+    "oracleText": "Flying",
+    "set": "tsoc",
+    "number": "5",
+    "artist": "Lars Grant-West",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/1/f130171f-a3e2-4dac-806a-1f2c428ac9fc.jpg?1783903574",
+      "normal": "https://cards.scryfall.io/normal/front/f/1/f130171f-a3e2-4dac-806a-1f2c428ac9fc.jpg?1783903574",
+      "large": "https://cards.scryfall.io/large/front/f/1/f130171f-a3e2-4dac-806a-1f2c428ac9fc.jpg?1783903574",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/1/f130171f-a3e2-4dac-806a-1f2c428ac9fc.jpg?1783903574"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/5/pegasus?utm_source=api",
+    "scryfallId": "f130171f-a3e2-4dac-806a-1f2c428ac9fc",
+    "relatedTokens": [
+      {
+        "name": "Pegasus",
+        "scryfallId": "f130171f-a3e2-4dac-806a-1f2c428ac9fc"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "W"
+    ]
+  },
+  "62340bbb-cff0-48c1-8854-235340e80477": {
+    "name": "Snake",
+    "typeLine": "Token Creature — Snake",
+    "oracleText": "Deathtouch",
+    "set": "tsoc",
+    "number": "11",
+    "artist": "Caroline Gariba",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/2/62340bbb-cff0-48c1-8854-235340e80477.jpg?1783903573",
+      "normal": "https://cards.scryfall.io/normal/front/6/2/62340bbb-cff0-48c1-8854-235340e80477.jpg?1783903573",
+      "large": "https://cards.scryfall.io/large/front/6/2/62340bbb-cff0-48c1-8854-235340e80477.jpg?1783903573",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/2/62340bbb-cff0-48c1-8854-235340e80477.jpg?1783903573"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/11/snake?utm_source=api",
+    "scryfallId": "62340bbb-cff0-48c1-8854-235340e80477",
+    "relatedTokens": [
+      {
+        "name": "Snake",
+        "scryfallId": "62340bbb-cff0-48c1-8854-235340e80477"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B"
+    ]
+  },
+  "248ade83-ac57-42d6-985c-1e4cc3639f36": {
+    "name": "Saproling",
+    "typeLine": "Token Creature — Saproling",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "18",
+    "artist": "Joseph Meehan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/4/248ade83-ac57-42d6-985c-1e4cc3639f36.jpg?1783903570",
+      "normal": "https://cards.scryfall.io/normal/front/2/4/248ade83-ac57-42d6-985c-1e4cc3639f36.jpg?1783903570",
+      "large": "https://cards.scryfall.io/large/front/2/4/248ade83-ac57-42d6-985c-1e4cc3639f36.jpg?1783903570",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/4/248ade83-ac57-42d6-985c-1e4cc3639f36.jpg?1783903570"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/18/saproling?utm_source=api",
+    "scryfallId": "248ade83-ac57-42d6-985c-1e4cc3639f36",
+    "relatedTokens": [
+      {
+        "name": "Saproling",
+        "scryfallId": "248ade83-ac57-42d6-985c-1e4cc3639f36"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "G"
+    ]
+  },
+  "b0d6fd21-48f0-4151-9671-762c25d95592": {
+    "name": "Zombie",
+    "typeLine": "Token Creature — Zombie",
+    "oracleText": "Decayed (This creature can't block. When it attacks, sacrifice it at end of combat.)",
+    "set": "tsoc",
+    "number": "12",
+    "artist": "Sam White",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/0/b0d6fd21-48f0-4151-9671-762c25d95592.jpg?1783903573",
+      "normal": "https://cards.scryfall.io/normal/front/b/0/b0d6fd21-48f0-4151-9671-762c25d95592.jpg?1783903573",
+      "large": "https://cards.scryfall.io/large/front/b/0/b0d6fd21-48f0-4151-9671-762c25d95592.jpg?1783903573",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/0/b0d6fd21-48f0-4151-9671-762c25d95592.jpg?1783903573"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/12/zombie?utm_source=api",
+    "scryfallId": "b0d6fd21-48f0-4151-9671-762c25d95592",
+    "relatedTokens": [
+      {
+        "name": "Zombie",
+        "scryfallId": "b0d6fd21-48f0-4151-9671-762c25d95592"
+      }
+    ],
+    "power": "2",
+    "toughness": "2",
+    "colors": [
+      "B"
+    ]
+  },
+  "a8d85b98-8390-412f-9542-2f1e2890235d": {
+    "name": "Goat",
+    "typeLine": "Token Creature — Goat",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "4",
+    "artist": "Adam Paquette",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/8/a8d85b98-8390-412f-9542-2f1e2890235d.jpg?1783903576",
+      "normal": "https://cards.scryfall.io/normal/front/a/8/a8d85b98-8390-412f-9542-2f1e2890235d.jpg?1783903576",
+      "large": "https://cards.scryfall.io/large/front/a/8/a8d85b98-8390-412f-9542-2f1e2890235d.jpg?1783903576",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/8/a8d85b98-8390-412f-9542-2f1e2890235d.jpg?1783903576"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/4/goat?utm_source=api",
+    "scryfallId": "a8d85b98-8390-412f-9542-2f1e2890235d",
+    "relatedTokens": [
+      {
+        "name": "Goat",
+        "scryfallId": "a8d85b98-8390-412f-9542-2f1e2890235d"
+      }
+    ],
+    "power": "0",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "96b0ffdf-351e-4b89-92f2-79b20420b3bc": {
+    "name": "Eldrazi Spawn",
+    "typeLine": "Token Creature — Eldrazi Spawn",
+    "oracleText": "Sacrifice this creature: Add {C}.",
+    "set": "tsoc",
+    "number": "1",
+    "artist": "Aleksi Briclot",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/6/96b0ffdf-351e-4b89-92f2-79b20420b3bc.jpg?1783903577",
+      "normal": "https://cards.scryfall.io/normal/front/9/6/96b0ffdf-351e-4b89-92f2-79b20420b3bc.jpg?1783903577",
+      "large": "https://cards.scryfall.io/large/front/9/6/96b0ffdf-351e-4b89-92f2-79b20420b3bc.jpg?1783903577",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/6/96b0ffdf-351e-4b89-92f2-79b20420b3bc.jpg?1783903577"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/1/eldrazi-spawn?utm_source=api",
+    "scryfallId": "96b0ffdf-351e-4b89-92f2-79b20420b3bc",
+    "relatedTokens": [
+      {
+        "name": "Eldrazi Spawn",
+        "scryfallId": "96b0ffdf-351e-4b89-92f2-79b20420b3bc"
+      }
+    ],
+    "power": "0",
+    "toughness": "1",
+    "colors": []
+  },
+  "2646dda1-05f0-49e4-b610-19205784b3b0": {
+    "name": "Fungus Beast",
+    "typeLine": "Token Creature — Fungus Beast",
+    "oracleText": "Trample",
+    "set": "tsoc",
+    "number": "17",
+    "artist": "Adam Paquette",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/6/2646dda1-05f0-49e4-b610-19205784b3b0.jpg?1783903570",
+      "normal": "https://cards.scryfall.io/normal/front/2/6/2646dda1-05f0-49e4-b610-19205784b3b0.jpg?1783903570",
+      "large": "https://cards.scryfall.io/large/front/2/6/2646dda1-05f0-49e4-b610-19205784b3b0.jpg?1783903570",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/6/2646dda1-05f0-49e4-b610-19205784b3b0.jpg?1783903570"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/17/fungus-beast?utm_source=api",
+    "scryfallId": "2646dda1-05f0-49e4-b610-19205784b3b0",
+    "relatedTokens": [
+      {
+        "name": "Fungus Beast",
+        "scryfallId": "2646dda1-05f0-49e4-b610-19205784b3b0"
+      }
+    ],
+    "power": "4",
+    "toughness": "4",
+    "colors": [
+      "G"
+    ]
+  },
+  "9f5ddcda-dcf0-468d-a5db-011e1b6ccab1": {
+    "name": "Worm",
+    "typeLine": "Token Creature — Worm",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "26",
+    "artist": "Chuck Lukacs",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/f/9f5ddcda-dcf0-468d-a5db-011e1b6ccab1.jpg?1783903567",
+      "normal": "https://cards.scryfall.io/normal/front/9/f/9f5ddcda-dcf0-468d-a5db-011e1b6ccab1.jpg?1783903567",
+      "large": "https://cards.scryfall.io/large/front/9/f/9f5ddcda-dcf0-468d-a5db-011e1b6ccab1.jpg?1783903567",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/f/9f5ddcda-dcf0-468d-a5db-011e1b6ccab1.jpg?1783903567"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/26/worm?utm_source=api",
+    "scryfallId": "9f5ddcda-dcf0-468d-a5db-011e1b6ccab1",
+    "relatedTokens": [
+      {
+        "name": "Worm",
+        "scryfallId": "9f5ddcda-dcf0-468d-a5db-011e1b6ccab1"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B",
+      "G"
+    ]
   }
 }

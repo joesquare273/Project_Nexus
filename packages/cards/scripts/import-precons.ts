@@ -6,6 +6,7 @@
 //   node packages/cards/scripts/import-precons.ts        # FINAL FANTASY (fic)
 //   node packages/cards/scripts/import-precons.ts eoc    # Edge of Eternities (eoc)
 //   node packages/cards/scripts/import-precons.ts frc    # Reality Fracture (frc)
+//   node packages/cards/scripts/import-precons.ts soc    # Secrets of Strixhaven (soc)
 //
 // MTGJSON's deck files are static downloads (no API rate limit). Card data
 // comes from them too; run `npm run scryfall` afterwards for images.
@@ -27,6 +28,9 @@ import lands from '../data/lands.json' with { type: 'json' };
 import storeCards from '../data/store-cards.json' with { type: 'json' };
 import eoc from '../data/eoc.json' with { type: 'json' };
 import eoeSet from '../data/eoe-set.json' with { type: 'json' };
+import frc from '../data/frc.json' with { type: 'json' };
+import fraSet from '../data/fra-set.json' with { type: 'json' };
+import sosSet from '../data/sos-set.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 
 const SETS = {
@@ -46,6 +50,12 @@ const SETS = {
     label: 'Reality Fracture Commander',
     files: ['MultiverseReforged_FRC'],
     existing: [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...tokens],
+  },
+  soc: {
+    label: 'Secrets of Strixhaven Commander',
+    files: ['LoreholdSpirit_SOC', 'PrismariArtistry_SOC', 'QuandrixUnlimited_SOC', 'SilverquillInfluence_SOC', 'WitherbloomPestilence_SOC'],
+    // The SOC cards that come in Collector Boosters are in sos-set.json already.
+    existing: [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...frc, ...fraSet, ...sosSet, ...tokens],
   },
 } as const;
 const SET = (process.argv[2] ?? 'fic') as keyof typeof SETS;

@@ -26,6 +26,13 @@ card is built it can't be cast or played (since 2026-10-29; all precon
 cards are built).
 The Starter Kit cards that also appear in the precons are shared.
 
+## Secrets of Strixhaven Commander decks (imported 2026-11-20)
+
+The five college decks (`import-precons.ts soc`; `soc.json`,
+`soc-precons.json`): Lorehold Spirit, Prismari Artistry, Quandrix Unlimited,
+Silverquill Influence and Witherbloom Pestilence. Status and build groups are
+in [strixhaven.md](strixhaven.md#commander-decks-imported-2026-11-20).
+
 ## Reality Fracture Commander precon (imported 2026-11-16)
 
 Reality Fracture has one Commander deck. It was imported with the same script

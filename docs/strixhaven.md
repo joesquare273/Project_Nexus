@@ -13,8 +13,32 @@ The same import also defines the cards that come in packs: the Mystical
 Archive (SOA), the ten Special Guests (SPG 149-158) and the Collector
 Boosters' Commander cards (SOC 1-108), 129 more `notBuilt` definitions (the
 four SOC cycling dual lands were built automatically). Still to import: the
-Commander decks themselves (SOC, 426 printings), the other tokens (TSOC) and
-promos (PSOS).
+other tokens (TSOC) and promos (PSOS).
+
+## Commander decks (imported 2026-11-20)
+
+The five college decks, imported with
+`node packages/cards/scripts/import-precons.ts soc` into
+`packages/cards/data/soc.json` (222 cards no other file defines; 11 built
+automatically) and `soc-precons.json` (the exact decklists). Cards the
+Collector Boosters' Commander sheet already put in sos-set.json (Dina,
+Essence Brewer and the others) aren't defined twice. `npm run scryfall`
+cached their data, images and each deck's own printings.
+
+| Deck | Commander | Colors | Built |
+|---|---|---|---|
+| Lorehold Spirit | Quintorius, History Chaser | RW | 44/100 |
+| Prismari Artistry | Rootha, Mastering the Moment | UR | 44/100 |
+| Quandrix Unlimited | Zimone, Infinite Analyst | GU | 40/100 |
+| Silverquill Influence | Killian, Decisive Mentor | WB | 39/100 |
+| Witherbloom Pestilence | Dina, Essence Brewer | BG | 44/100 |
+
+284 of the decks' 391 distinct cards still need building. The decks are sold
+in the Store's Secrets of Strixhaven tab (precon price, saved as a deck) and
+shown in the Collection's Secrets of Strixhaven tab. They aren't offered as a
+free starter yet: a new player's first deck should be playable, so they join
+the starter choice once their cards are built. Ohran Frostfang brought the
+Snow supertype into the engine's list (no snow rules yet).
 
 ## Packs (2026-11-20)
 
@@ -80,7 +104,8 @@ drawn pack shows.
 |---|---|---|
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
-| Commander | The Commander decks (SOC) | |
+| Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
+| SOC1-SOC5 | The decks' cards, one group per deck | |
 | SOS1 | Lands (13) | |
 | SOS2 | Prepared (74, in color batches) | |
 | SOS3 | Increment and Opus | |

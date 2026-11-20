@@ -53,7 +53,7 @@ export type CardType = (typeof CARD_TYPES)[number];
 export const CARD_CATEGORIES = ['permanent', 'nonpermanent', 'spell'] as const;
 export type CardCategory = (typeof CARD_CATEGORIES)[number];
 
-export const SUPERTYPES = ['Basic', 'Legendary'] as const;
+export const SUPERTYPES = ['Basic', 'Legendary', 'Snow'] as const;
 export type Supertype = (typeof SUPERTYPES)[number];
 
 export const KEYWORDS = [

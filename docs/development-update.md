@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven Commander decks (2026-11-20)
+
+- The five college decks imported (`import-precons.ts soc`): 222 new definitions, 39-44 of each deck's 100 cards built. Sold in the Store's new Secrets of Strixhaven tab and shown in the Collection; not a free starter until their cards are built. `Snow` joins the supertype list (Ohran Frostfang). Details: docs/strixhaven.md.
+
 ### Secrets of Strixhaven packs (2026-11-20)
 
 - Play and Collector Boosters on the Packs tab and a Collection binder tab. They're drawn from MTGJSON's print sheets (`scripts/mtgjson-boosters.ts` -> `sos-boosters.json`; `openSheetPack`, `sheetPackOdds`), a general opener a later set can reuse. The cards packs can hold (Mystical Archive, Special Guests SPG 149-158, Commander cards SOC 1-108) are imported as `notBuilt` too. The importer now also skips cards the Store defines, and a card with no mana cost (Living End) is imported as uncastable.

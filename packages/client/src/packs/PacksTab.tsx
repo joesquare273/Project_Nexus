@@ -9,7 +9,7 @@ import { CardShine } from '../components/Card.tsx';
 import { ECONOMY } from '@nexus/server/economy';
 import { accessToken, showShards, ShardIcon } from '../account/AccountBar.tsx';
 import { DecksView } from './DecksView.tsx';
-import { bestLook, browse, finishChips, finishText, FRC_PRECON_CARDS, isUnbuilt, PRECON_CARDS, SETS, SORTS, type BinderSet, type Show, type SortBy } from './browse.ts';
+import { bestLook, browse, finishChips, finishText, FRC_PRECON_CARDS, isUnbuilt, PRECON_CARDS, SOC_PRECON_CARDS, SETS, SORTS, type BinderSet, type Show, type SortBy } from './browse.ts';
 import { addPack, buyPacks, fetchCollection, owned, type Collection } from './collection.ts';
 import { sound, soundOn, setSoundOn } from './sound.ts';
 import './packs.css';
@@ -652,6 +652,7 @@ const SOS_GROUPS: Group[] = [
   { name: 'Mystical Archive', test: (c) => c.set === 'soa' },
   // The Commander cards in Collector Boosters (SOC 1-10 and 61-108).
   { name: 'Commander cards', test: (c) => c.set === 'soc' && (n(c) <= 10 || (n(c) >= 61 && n(c) <= 108)) },
+  { name: 'Commander decks', test: () => true, precons: true },
   { name: 'Special Guests', test: (c) => c.set === 'spg' && n(c) >= 149 && n(c) <= 158 },
   { name: 'Tokens and art cards', test: (c) => c.set === 'tsos' || c.set === 'asos' },
 ];
@@ -671,7 +672,7 @@ function Binder({ mod, collection, onPreview }: { mod: Boosters; collection: Col
   const groups = GROUPS_BY_SET[binderSet];
   const g = groups[group] ?? groups[0]!;
   const cards = useMemo(
-    () => (g.precons ? (binderSet === 'fra' ? FRC_PRECON_CARDS : PRECON_CARDS) : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
+    () => (g.precons ? (binderSet === 'fra' ? FRC_PRECON_CARDS : binderSet === 'sos' ? SOC_PRECON_CARDS : PRECON_CARDS) : g.secretLair ? mod.SECRET_LAIR_CARDS.filter((c) => c.series === binderSet) : mod.BOOSTER_CARDS.filter(g.test)),
     [mod, g, binderSet],
   );
   const have = cards.filter((c) => owned(collection, c.id) > 0).length;

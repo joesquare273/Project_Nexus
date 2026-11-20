@@ -15,6 +15,8 @@ import fraSet from '../data/fra-set.json' with { type: 'json' };
 import sosSet from '../data/sos-set.json' with { type: 'json' };
 import frc from '../data/frc.json' with { type: 'json' };
 import frcPrecons from '../data/frc-precons.json' with { type: 'json' };
+import soc from '../data/soc.json' with { type: 'json' };
+import socPrecons from '../data/soc-precons.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import preconPrintings from '../data/precon-printings.json' with { type: 'json' };
 import scryfall from '../data/scryfall.json' with { type: 'json' };
@@ -38,8 +40,9 @@ export { validateCardDefinition, validateCardList } from './validate.ts';
 // fra-set.json: the Reality Fracture main set (import-sets.ts fra); its precon's cards are in frc.json.
 // sos-set.json: the Secrets of Strixhaven main set (import-sets.ts sos).
 // frc.json: the Reality Fracture Commander precon's cards no other file defines (import-precons.ts frc).
+// soc.json: the Secrets of Strixhaven Commander decks' cards no other file defines (import-precons.ts soc).
 // Each file is read as plain data (their JSON types together are too complex for TypeScript to combine); validateCardList checks them.
-const all = ([lands, fin, fic, finSet, storeCards, eoc, eoeSet, frc, fraSet, sosSet, tokens] as unknown as CardDefinition[][]).flat();
+const all = ([lands, fin, fic, finSet, storeCards, eoc, eoeSet, frc, fraSet, sosSet, soc, tokens] as unknown as CardDefinition[][]).flat();
 const errors = validateCardList(all);
 if (errors.length > 0) throw new Error(`Invalid card data:\n${errors.join('\n')}`);
 
@@ -121,8 +124,11 @@ export const EOC_PRECONS = eocPrecons.decks as PreconDeck[];
 /** The Reality Fracture Commander precon (Multiverse Reforged, led by Jace, Multiverse Architect), being built. */
 export const FRC_PRECONS = frcPrecons.decks as PreconDeck[];
 
+/** The five Secrets of Strixhaven Commander decks (one per college), being built. */
+export const SOC_PRECONS = socPrecons.decks as PreconDeck[];
+
 /** Every Commander precon the game knows, for looking one up by name. */
-export const ALL_PRECONS = [...FIN_PRECONS, ...EOC_PRECONS, ...FRC_PRECONS];
+export const ALL_PRECONS = [...FIN_PRECONS, ...EOC_PRECONS, ...FRC_PRECONS, ...SOC_PRECONS];
 
 /** Card ids by exact card name, for turning decklists into decks. */
 export const CARD_IDS_BY_NAME: Record<string, CardDefId> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));

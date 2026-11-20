@@ -51,7 +51,9 @@ this repo, not only in local memory.
   Next set (user, 2026-11-20): **Secrets of Strixhaven** (SOS). Its main set
   is imported (`import-sets.ts sos`, `sos-set.json`, cards 1-281, plus the
   pack-only SOA/SPG/SOC cards); its packs are in (MTGJSON print sheets,
-  `sos-boosters.json`); its Commander decks (SOC) and card groups are planned
+  `sos-boosters.json`); its five Commander decks are imported
+  (`import-precons.ts soc`, `soc.json`, `soc-precons.json`; in the Store, not
+  yet a free starter); their cards and the main set's card groups are planned
   in docs/strixhaven.md.
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).

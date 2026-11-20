@@ -4,7 +4,7 @@
 
 import { finishLook, finishName, type BoosterCard, type Finish } from '@nexus/cards/boosters';
 import type { CardFinish } from '@nexus/engine';
-import { CARD_DEFS, CARD_IDS_BY_NAME, FIN_PRECONS, FRC_PRECONS, SCRYFALL_PRINTINGS, type PreconDeck } from '@nexus/cards';
+import { CARD_DEFS, CARD_IDS_BY_NAME, FIN_PRECONS, FRC_PRECONS, SCRYFALL_PRINTINGS, SOC_PRECONS, type PreconDeck } from '@nexus/cards';
 import { manaValue, parseManaCost } from '@nexus/engine';
 import { owned, type Collection } from './collection.ts';
 
@@ -51,6 +51,8 @@ function preconCards(decks: readonly PreconDeck[]): BoosterCard[] {
 export const PRECON_CARDS: BoosterCard[] = preconCards(FIN_PRECONS);
 /** The Reality Fracture precon's printings, once each. */
 export const FRC_PRECON_CARDS: BoosterCard[] = preconCards(FRC_PRECONS);
+/** The five Secrets of Strixhaven Commander decks' printings, once each. */
+export const SOC_PRECON_CARDS: BoosterCard[] = preconCards(SOC_PRECONS);
 
 /** A card that isn't built in the engine yet: shown, but it can't be used in games. Tokens and art cards are never "unbuilt". */
 export function isUnbuilt(c: BoosterCard): boolean {
