@@ -80,7 +80,7 @@ drawn pack shows.
 
 ## Mechanics
 
-- **Prepared** (74 cards): the same mechanic as Reality Fracture's, already in
+- **Prepared** (37 cards; 38 mention it): the same mechanic as Reality Fracture's, already in
   the engine (`becomePrepared`, `entersPrepared`, `prepare` on a card).
 - **Repartee** (12): "whenever you cast an instant or sorcery spell that targets
   a creature, ..." (Graduation Day).
@@ -107,7 +107,7 @@ drawn pack shows.
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
 | SOC1-SOC5 | The decks' cards, one group per deck | |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
-| SOS2 | Prepared (74, in color batches) | |
+| SOS2 | Prepared (37, in color batches): SOS2a white and blue (14) done 2026-11-20 | In progress |
 | SOS3 | Increment and Opus | |
 | SOS4 | Repartee and Infusion | |
 | SOS5 | Paradigm and Converge | |
@@ -133,3 +133,18 @@ Paradox Gardens, Spectacle Summit, Titan's Grave), and three one-offs:
 The Commander decks' five Turbulent lands (enter tapped unless an opponent
 controls eight or more lands) were built with them. Tests:
 `packages/bots/test/sos-cards.test.ts`.
+
+## SOS2a: white and blue prepared creatures (built 2026-11-20)
+
+Elite Interceptor (Rejoinder), Emeritus of Truce (Swords to Plowshares),
+Honorbound Page (Forum's Favor), Joined Researchers (Secret Rendezvous),
+Quill-Blade Laureate (Twofold Intent), Spiritcall Enthusiast (Scrollboost),
+Campus Composer (Aqueous Aria), Emeritus of Ideation (Ancestral Recall),
+Encouraging Aviator (Jump), Harmonized Trio (Brainstorm), Jadzi, Steward of
+Fate (Oracle's Gift, an X spell), Landscape Painter (Vibrant Idea), Skycoach
+Conductor (All Aboard) and Spellbook Seeker (Careful Study).
+
+New: `TapOrUntap` (Rejoinder's "you may tap or untap target creature":
+tapping a tapped creature or untapping an untapped one does nothing, so it
+toggles, and "you may" is the choice), the `OpponentsWithMoreCardsInHand`
+count, and the Inkling, Elemental and Fractal tokens (TSOS 7, 3, 5).

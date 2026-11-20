@@ -56,6 +56,7 @@ function effectValue(e: EffectSpec): number {
     case 'ReturnToHand':
       return AT_THEM.has(e.target) ? 1.2 : 0.3;
     case 'Tap':
+    case 'TapOrUntap':
       return 0.5;
     case 'GainLife':
       return 0.25;

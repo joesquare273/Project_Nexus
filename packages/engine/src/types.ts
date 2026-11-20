@@ -312,6 +312,8 @@ export const EFFECT_KINDS = [
   'Destroy',
   'Exile',
   'Tap',
+  /** "Tap or untap target creature": taps it if it's untapped, untaps it if it's tapped (with `optional`, "you may"; tapping a tapped creature or untapping an untapped one would do nothing, so that's the whole choice). */
+  'TapOrUntap',
   'ReturnToHand',
   /** Put +1/+1 counters on the target(s). */
   'AddCounters',
@@ -799,6 +801,8 @@ export const COUNT_KINDS = [
   'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
   'OpponentsWithMoreCreatures',
+  /** Opponents who have more cards in hand than you (Joined Researchers). */
+  'OpponentsWithMoreCardsInHand',
   'ArtifactsYouControl',
   /** The unspent mana in your mana pool (Omnath, Locus of the Void). */
   'UnspentManaYouHave',

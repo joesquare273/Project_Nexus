@@ -2960,6 +2960,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Tap':
       for (const id of onBattlefield) if (!s.cards[id]!.tapped) tap(ctx, s.cards[id]!);
       return;
+    case 'TapOrUntap':
+      for (const id of onBattlefield) {
+        const c = s.cards[id]!;
+        if (!c.tapped) tap(ctx, c);
+        else if (untap(ctx, c)) ctx.ev.push({ type: 'CardsUntapped', player: item.controller, cards: [id] });
+      }
+      return;
     case 'ReturnToHand':
       for (const id of cards) {
         // A spell returned to its owner's hand leaves the stack (Venser).

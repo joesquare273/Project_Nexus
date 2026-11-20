@@ -205,6 +205,8 @@ function effectText(e: EffectSpec): string {
       return `${you ? 'you lose' : `${who} loses`} ${n} life`;
     case 'Tap':
       return `tap ${who}`;
+    case 'TapOrUntap':
+      return `tap or untap ${who}`;
     case 'ReturnToHand':
       return `return ${who} to ${e.target === 'This' ? 'your' : "its owner's"} hand`;
     case 'AddCounters':

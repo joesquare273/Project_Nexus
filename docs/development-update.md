@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS2a: white and blue prepared creatures (2026-11-20)
+
+- 14 cards, with `TapOrUntap`, an opponents-with-more-cards count and three Strixhaven tokens. docs/strixhaven.md.
+
 ### Secrets of Strixhaven SOS1: lands (2026-11-20)
 
 - The main set's 13 lands and the Commander decks' five Turbulent lands. New: mana restricted to instant and sorcery spells (Great Hall of the Biblioplex), animations with triggers, choosing a land card name (Petrified Hamlet; see decisions.md). docs/strixhaven.md.

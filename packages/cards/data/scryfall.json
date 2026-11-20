@@ -9396,6 +9396,28 @@
     "scryfallId": "fe592a5c-5e6e-40ed-8818-f4651bcf2fe8",
     "relatedTokens": []
   },
+  "elemental-token-sos": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "Flying",
+    "set": "tsos",
+    "number": "3",
+    "artist": "Filipe Pagliuso",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563",
+      "normal": "https://cards.scryfall.io/normal/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563",
+      "large": "https://cards.scryfall.io/large/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/5/b5b2df9c-228f-4441-a962-46b335bb356e.jpg?1783903563"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/3/elemental?utm_source=api",
+    "scryfallId": "b5b2df9c-228f-4441-a962-46b335bb356e",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "b5b2df9c-228f-4441-a962-46b335bb356e"
+      }
+    ]
+  },
   "elementalists-palette": {
     "name": "Elementalist's Palette",
     "typeLine": "Artifact",
@@ -12314,6 +12336,28 @@
     },
     "scryfallUri": "https://scryfall.com/card/sos/190/fractal-tender?utm_source=api",
     "scryfallId": "ea7f5262-4ddb-410a-be72-4bac6af9b4ec",
+    "relatedTokens": [
+      {
+        "name": "Fractal",
+        "scryfallId": "8b5f1fdb-04df-4224-acb4-7819c37565f5"
+      }
+    ]
+  },
+  "fractal-token-sos": {
+    "name": "Fractal",
+    "typeLine": "Token Creature — Fractal",
+    "oracleText": "",
+    "set": "tsos",
+    "number": "5",
+    "artist": "Rudy Siswanto",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564",
+      "normal": "https://cards.scryfall.io/normal/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564",
+      "large": "https://cards.scryfall.io/large/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/b/8b5f1fdb-04df-4224-acb4-7819c37565f5.jpg?1783903564"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/5/fractal?utm_source=api",
+    "scryfallId": "8b5f1fdb-04df-4224-acb4-7819c37565f5",
     "relatedTokens": [
       {
         "name": "Fractal",
@@ -16552,6 +16596,28 @@
     "scryfallUri": "https://scryfall.com/card/sos/196/inkling-mascot?utm_source=api",
     "scryfallId": "6d4a2f39-0e1e-4076-815a-2676a09a1aab",
     "relatedTokens": []
+  },
+  "inkling-token-sos": {
+    "name": "Inkling",
+    "typeLine": "Token Creature — Inkling",
+    "oracleText": "Flying",
+    "set": "tsos",
+    "number": "7",
+    "artist": "Nia Kovalevski",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562",
+      "normal": "https://cards.scryfall.io/normal/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562",
+      "large": "https://cards.scryfall.io/large/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/3/43e9f729-abaf-4000-8df5-fa46d59eff9e.jpg?1783903562"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/7/inkling?utm_source=api",
+    "scryfallId": "43e9f729-abaf-4000-8df5-fa46d59eff9e",
+    "relatedTokens": [
+      {
+        "name": "Inkling",
+        "scryfallId": "43e9f729-abaf-4000-8df5-fa46d59eff9e"
+      }
+    ]
   },
   "inkshape-demonstrator": {
     "name": "Inkshape Demonstrator",

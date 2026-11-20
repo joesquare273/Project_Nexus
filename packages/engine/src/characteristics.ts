@@ -183,6 +183,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = creatures(player);
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
     }
+    case 'OpponentsWithMoreCardsInHand': {
+      const mine = s.players[player]!.hand.length;
+      return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && s.players[pid]!.hand.length > mine).length;
+    }
     case 'TappedCreaturesOfEnchantedController': {
       const host = source ? s.cards[s.cards[source]?.attachedTo ?? ''] : undefined;
       if (!host) return 0;
