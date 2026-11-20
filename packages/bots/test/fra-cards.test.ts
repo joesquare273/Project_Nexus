@@ -1204,3 +1204,98 @@ describe('F10b: multicolor and artifacts', () => {
     expect([zone(s, theirs), zone(s, rat)]).toEqual(['graveyard', 'battlefield']);
   });
 });
+
+describe('F11a: white echoed-pairs legends', () => {
+  it('Danitha, Sword of Hope draws once a turn for a spell that targets your creature', () => {
+    let s = newGame();
+    put(s, 'P1', 'danitha-sword-of-hope');
+    const rat = put(s, 'P1', 'rank-rat');
+    const hand = s.players.P1!.hand.length;
+    for (let i = 0; i < 2; i++) {
+      const spell = put(s, 'P1', 'tethermages-advantage', 'hand');
+      mana(s, 'P1', { G: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(rat)] }).state;
+    }
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Ghalta, the Immovable costs less by your greatest toughness; your creatures attack despite defender and deal damage by toughness', () => {
+    const s = newGame();
+    put(s, 'P1', 'rank-rat', 'battlefield', { counters: 6 }); // 7/7
+    const ghalta = put(s, 'P1', 'ghalta-the-immovable', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === ghalta)).toBe(true);
+    const wall = put(s, 'P1', 'surveillance-phantasm'); // defender
+    put(s, 'P1', 'ghalta-the-immovable');
+    expect(canAttack(s, s.cards[wall]!, 'P1')).toBe(true);
+  });
+
+  it("Gideon's Memorial gives creature tokens +1/+0 and vigilance, and its mana only casts planeswalker spells", () => {
+    let s = newGame();
+    const memorial = put(s, 'P1', 'gideons-memorial');
+    const heart = put(s, 'P1', 'heartstring-puller', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: heart }).state;
+    const cadet = Object.values(s.cards).find((c) => c.defId === 'cadet-token-fra')!;
+    expect([powerOf(s, cadet), hasKeyword(s, cadet, 'Vigilance')]).toEqual([3, true]);
+    const tap = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === memorial)!;
+    s = act(s, tap);
+    expect(Object.values(s.players.P1!.restrictedMana?.planeswalkerSpell ?? {}).reduce((a, b) => a + b, 0)).toBe(1);
+  });
+
+  it('Thalia, the Survivor makes opponents\' noncreature spells cost {1} more', () => {
+    const s = newGame();
+    put(s, 'P2', 'thalia-the-survivor');
+    put(s, 'P2', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === gasp)).toBe(false);
+    mana(s, 'P1', { C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === gasp)).toBe(true);
+  });
+
+  it('Teyo, Lightshield Expert: hexproof, plus a +1/+1 counter on a creature or a loyalty counter on a planeswalker', () => {
+    let s = newGame();
+    const walker = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const teyo = put(s, 'P1', 'teyo-lightshield-expert', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: teyo }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === walker)! }).state;
+    expect(s.cards[walker]!.namedCounters?.loyalty).toBe(5);
+  });
+
+  it('Yoshimaru puts one more +1/+1 counter on your creatures', () => {
+    let s = newGame();
+    put(s, 'P1', 'yoshimaru-beloved-companion');
+    const rat = put(s, 'P1', 'rank-rat');
+    const spell = put(s, 'P1', 'vinelasher-adept', 'hand');
+    mana(s, 'P1', { G: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === rat)! }).state;
+    expect(s.cards[rat]!.counters).toBe(4);
+  });
+
+  it('Yuriko, Blade of the Mighty: no spells or nonmana abilities during combat', () => {
+    let s = newGame();
+    put(s, 'P1', 'yuriko-blade-of-the-mighty');
+    const attacker = put(s, 'P1', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    put(s, 'P2', 'rank-rat');
+    mana(s, 'P1', { B: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === gasp)).toBe(true);
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker, defender: 'P2' }] });
+    s = settle(s).state;
+    expect(hasKeyword(s, s.cards[attacker]!, 'DoubleStrike')).toBe(true);
+    mana(s, 'P1', { B: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === gasp)).toBe(false);
+  });
+
+  it('Tomik, Orzhov Lawmage: no more than one creature can attack each of your planeswalkers', () => {
+    let s = newGame();
+    put(s, 'P2', 'tomik-orzhov-lawmage');
+    const walker = put(s, 'P2', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    s = goTo(s, 'declareAttackers');
+    expect(() => act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: a, defender: 'P2', planeswalker: walker }, { attacker: b, defender: 'P2', planeswalker: walker }] })).toThrow(/one creature/);
+  });
+});

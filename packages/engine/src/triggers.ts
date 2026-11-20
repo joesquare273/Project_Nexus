@@ -308,6 +308,13 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
+  if (spec.equipmentOrTargetsYourCreature && o.when === 'SpellCast' && o.subject) {
+    const spell = s.cards[o.subject];
+    const item = s.stack.find((i) => i.kind === 'spell' && i.card === o.subject);
+    const equipment = !!spell && (defOf(s, spell).subtypes ?? []).includes('Equipment');
+    const targetsMine = !!item && item.targets.some((t) => t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && s.cards[t.card]!.controller === controller && defOf(s, s.cards[t.card]!).types.includes('creature'));
+    if (!equipment && !targetsMine) return false;
+  }
   if (o.when === 'OpponentDealtNoncombatDamage') return o.defender !== undefined && o.defender !== controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).

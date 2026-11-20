@@ -39,7 +39,7 @@ export interface Animation {
 export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][] } & Partial<Record<ManaType, number>>;
 
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
-export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand';
+export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell';
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -731,6 +731,8 @@ export const COUNT_KINDS = [
   'ArtifactsOpponentsControl',
   /** The greatest power among creatures you control. */
   'GreatestPowerAmongYourCreatures',
+  /** The greatest toughness among creatures you control (Ghalta, the Immovable). */
+  'GreatestToughnessAmongYourCreatures',
   /** The power of the creature this Equipment is attached to (The Dominion Bracelet). */
   'EquippedCreaturePower',
   /** The total mana value of the other permanents you control (Summon: Bahamut's Mega Flare). */
@@ -1563,6 +1565,8 @@ export interface TriggerSpec {
   ifYouControlNone?: ObjectFilter;
   /** Intervening "if an opponent was dealt noncombat damage last turn" (Command the Stage). */
   ifOpponentDealtNoncombatDamageLastTurn?: boolean;
+  /** SpellCast: only an Equipment spell or a spell that targets a creature you control (Danitha, Sword of Hope). */
+  equipmentOrTargetsYourCreature?: boolean;
   /** Intervening "if": you control at least `atLeast` (default 1) permanents matching `filter` ("if you control a creature with power 7 or greater"). */
   ifYouControl?: { filter: ObjectFilter; atLeast?: number };
   /** Intervening "if": a count is at least this ("if there are six or more permanent cards in your graveyard"). */
@@ -1747,6 +1751,14 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "Creatures you control can attack as though they didn't have defender" (Ghalta, the Immovable). */
+  yourCreaturesAttackDespiteDefender?: boolean;
+  /** "Noncreature spells your opponents cast cost {N} more to cast" (Thalia, the Survivor). */
+  opponentsNoncreatureSpellsCostMore?: number;
+  /** "Planeswalkers you control have 'No more than one creature can attack this planeswalker each combat'" (Tomik, Orzhov Lawmage). */
+  planeswalkersOneAttacker?: boolean;
+  /** "During combat, players can't cast spells or activate abilities that aren't mana abilities" (Yuriko, Blade of the Mighty). */
+  noSpellsOrAbilitiesDuringCombat?: boolean;
   /** "You may cast spells with mana value less than or equal to the number of creatures you control from your hand without paying their mana costs" (Omnipresence). */
   castFromHandFreeUpToCreatures?: boolean;
   /** An Aura: "Enchanted permanent is a [subtypes] creature with base power and toughness P/T in addition to its other types" (Puppet Crafting). */

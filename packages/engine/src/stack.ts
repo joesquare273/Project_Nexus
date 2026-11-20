@@ -738,7 +738,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 /** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
 /** The restricted mana that can pay for a spell: artifact-spell mana, and mana for spells cast from anywhere other than your hand. */
 export function spellManaRestrictions(def: CardDefinition, from: string): ManaRestriction[] {
-  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
+  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
 }
 
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
@@ -1201,6 +1201,13 @@ export function spellCost(
   }
   if (def.costReduction?.ifVoid && card && s.voidTurn === s.turnNumber) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.ifYourTurn && card && s.activePlayer === payer) cost = reduceGeneric(cost, def.costReduction.generic);
+  // Thalia, the Survivor: "Noncreature spells your opponents cast cost {1} more to cast."
+  if (card && payer && !def.types.includes('creature')) {
+    for (const x of battlefield(s)) {
+      if (x.controller === payer || x.phasedOut) continue;
+      for (const st of defOf(s, x).statics ?? []) if (st.opponentsNoncreatureSpellsCostMore) cost = { ...cost, generic: (cost.generic ?? 0) + st.opponentsNoncreatureSpellsCostMore };
+    }
+  }
   const controlFilter = def.costReduction?.ifYouControl;
   if (controlFilter && card && battlefield(s).some((c) => c.controller === payer && !c.phasedOut && matchesObject(s, controlFilter, c, { controller: payer! }))) cost = reduceGeneric(cost, def.costReduction!.generic);
   const opposing = def.costReduction?.ifOpponentsControlCreatures;
@@ -1251,9 +1258,16 @@ export function spellCost(
   return cost;
 }
 
+/** Yuriko, Blade of the Mighty: during combat, no spells and no abilities that aren't mana abilities. */
+export function combatLocked(s: GameState): boolean {
+  return ['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)
+    && battlefield(s).some((x) => !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.noSpellsOrAbilitiesDuringCombat));
+}
+
 /** Conqueror's Flail: whether an opponent's attached Flail stops this player casting spells right now. */
 export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
   if (s.players[playerId]?.cantCastTurn === s.turnNumber) return true;
+  if (combatLocked(s)) return true;
   if (s.activePlayer === playerId) return false;
   return battlefield(s).some(
     (source) =>
@@ -1626,6 +1640,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
     return 'That can only be activated in your main phase with an empty stack.';
   }
   if (spec.ifAttached && !c.attachedTo) return 'That only works while it’s attached to a creature.';
+  if (!spec.turnFaceUp && combatLocked(s)) return "Players can't activate abilities during combat.";
   if (spec.ifOpponentDealtNoncombatDamageThisTurn && !s.turnOrder.some((pid) => pid !== playerId && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return 'That can be activated only if an opponent has been dealt noncombat damage this turn.';
   if (spec.ifScriedOrSurveiledThisTurn && s.players[playerId]!.scriedOrSurveiledTurn !== s.turnNumber) return "That can be activated only if you've scried or surveilled this turn.";
   if (spec.ifYouControl) {

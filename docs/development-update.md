@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F11a: white legends (2026-11-20)
+
+- The 13 white echoed-pairs legends (docs/reality-fracture.md; F11 is split by color). New: Thalia's tax, Yuriko's combat lock, Tomik's one attacker per planeswalker, Ghalta's defender and toughness rules, planeswalker-only mana, and the FRA Thopter token.
+
 ### Reality Fracture F10b: multicolor and artifacts (2026-11-20)
 
 - 18 cards, FRA 148-174 (docs/reality-fracture.md); Uldaros Theorix moved to F13. New: flashback with a discard, Warriors' Blades' equip discount, and Vindictive Triumph's steal.

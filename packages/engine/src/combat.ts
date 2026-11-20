@@ -29,7 +29,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
   return (
     isCreatureOnBattlefield(s, c) &&
     !cantAttackOrBlock(s, c) &&
-    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfArtifactEntered) && s.players[c.controller]!.artifactEnteredTurn === s.turnNumber) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfScried) && s.players[c.controller]!.scriedOrSurveiledTurn === s.turnNumber)) &&
+    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfArtifactEntered) && s.players[c.controller]!.artifactEnteredTurn === s.turnNumber) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfScried) && s.players[c.controller]!.scriedOrSurveiledTurn === s.turnNumber) || battlefield(s).some((x) => x.controller === c.controller && !x.phasedOut && !!currentDefinition(s, x).statics?.some((st) => st.yourCreaturesAttackDespiteDefender))) &&
     c.controller === playerId &&
     !c.tapped &&
     (!c.summoningSick || hasKeyword(s, c, 'Haste'))
@@ -196,6 +196,9 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
       // Jace, Multiverse Architect: "creatures they control can't attack Jaces you control this turn".
       const ban = (s.attackBans ?? []).find((b) => b.turn === s.turnNumber && b.attacker === playerId && b.controller === pw.controller && subtypesOf(s, pw).includes(b.subtype));
       if (ban) reject(`Your creatures can't attack ${ban.subtype} planeswalkers that player controls this turn.`);
+      // Tomik, Orzhov Lawmage: "No more than one creature can attack this planeswalker each combat."
+      const guarded = battlefield(s).some((x) => x.controller === pw.controller && !x.phasedOut && !!currentDefinition(s, x).statics?.some((st) => st.planeswalkersOneAttacker));
+      if (guarded && attacks.filter((b) => b.planeswalker === a.planeswalker).length > 1) reject('No more than one creature can attack that planeswalker each combat.');
     }
   }
   const required = attackRequirementProblem(s, playerId, attacks);

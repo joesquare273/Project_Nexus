@@ -24908,6 +24908,28 @@
       }
     ]
   },
+  "thopter-token-fra": {
+    "name": "Thopter",
+    "typeLine": "Token Artifact Creature — Thopter",
+    "oracleText": "Flying",
+    "set": "tfra",
+    "number": "14",
+    "artist": "Diego Gisbert",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223",
+      "normal": "https://cards.scryfall.io/normal/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223",
+      "large": "https://cards.scryfall.io/large/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/f/bfd6132f-c96b-4ce0-ac4d-c46356afc767.jpg?1789735223"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/14/thopter?utm_source=api",
+    "scryfallId": "bfd6132f-c96b-4ce0-ac4d-c46356afc767",
+    "relatedTokens": [
+      {
+        "name": "Thopter",
+        "scryfallId": "bfd6132f-c96b-4ce0-ac4d-c46356afc767"
+      }
+    ]
+  },
   "thought-monitor": {
     "name": "Thought Monitor",
     "typeLine": "Artifact Creature — Construct",

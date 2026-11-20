@@ -38,7 +38,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F9 | Green (20) | Done |
 | F10a | Multicolor, FRA 121-147 (20) | Done |
 | F10b | Multicolor and artifacts, FRA 148-174 (18; Uldaros Theorix moved to F13) | Done |
-| F11 | Echoed pairs legends, white, blue and black | |
+| F11a | Echoed pairs legends, white (13) | Done |
+| F11b | Echoed pairs legends, blue (11) | |
+| F11c | Echoed pairs legends, black (11) | |
 | F12 | Echoed pairs legends, red, green and multicolor | |
 | F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
 
@@ -107,3 +109,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Solarium Sentry, Solitary Cell, Stingerquill Charm, Stinging Vitriol, Tenured Tethermage, Theorix Charm, Twinned Vision, Twisted Fates, Vigorbloom Charm, Vindictive Triumph, Warriors' Blades, Afterthought Sentry, Archive Arbiter, The Echoverse Fulcrum, Eye of Jace, Living Library, Medic's Kitesail and Murmuring Volume. Twinned Vision gets its hybrid cost.
 - Engine: flashback with an additional discard (`flashbackDiscard`); equip costing {1} less per +1/+1 counter on its target (`equipLessPerTargetCounter`); returning a permanent exiled earlier in the same spell under your control, exiled again at the next end step (Vindictive Triumph: ReturnToBattlefield from `PreviousTarget` with `exileAtEndStep`).
 - Uldaros Theorix moves to F13: it needs copies of graveyard cards cast for free within a shared mana value budget.
+
+### F11a (2026-11-20)
+
+- Danitha, Sword of Hope; Ghalta, the Immovable; Gideon's Memorial; Koth of the Homestead; Liliana, the Faultless; Lyra, Archangel of Dawn; Rescue Girl, First Responder; Saheeli, Consul of Oversight; Teyo, Lightshield Expert; Thalia, the Survivor; Tomik, Orzhov Lawmage; Yoshimaru, Beloved Companion; Yuriko, Blade of the Mighty.
+- Engine: "whenever you cast an Equipment spell or a spell that targets a creature you control" (`equipmentOrTargetsYourCreature`); the greatest toughness among your creatures (`GreatestToughnessAmongYourCreatures`) and "creatures you control can attack as though they didn't have defender" (`yourCreaturesAttackDespiteDefender`); mana spendable only on planeswalker spells (`planeswalkerSpell` restriction); opponents' noncreature spells costing more (`opponentsNoncreatureSpellsCostMore`); one attacker per planeswalker (`planeswalkersOneAttacker`); no spells or nonmana abilities during combat (`noSpellsOrAbilitiesDuringCombat`). The FRA Thopter token (tfra 14).
+- Yuriko's double strike triggers for a creature attacking alone, whether it attacks a player or a planeswalker (the card says a player).
