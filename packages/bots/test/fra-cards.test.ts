@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, cast, fight, goTo, mana, newGame, put } from './kit-helpers.ts';
+import { act, cast, fight, goTo, mana, newGame, put, settle } from './kit-helpers.ts';
 import { canAttack } from '../../engine/src/combat.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
@@ -552,5 +552,126 @@ describe('F6: blue', () => {
     expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'search' });
     s = act(s, { type: 'ChooseCards', player: 'P1', cards: [sphinx] });
     expect([zone(s, sphinx), zone(s, spell), s.players.P1!.graveyard.length]).toEqual(['battlefield', 'exile', 0]);
+  });
+});
+
+describe('F7: black', () => {
+  it('Break Under Pressure: the opponent sacrifices the creature or planeswalker with the greatest mana value; you gain 2', () => {
+    let s = newGame();
+    const small = put(s, 'P2', 'rank-rat');
+    const big = put(s, 'P2', 'apex-witchstalker');
+    const spell = put(s, 'P1', 'break-under-pressure', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect([zone(s, small), zone(s, big), s.players.P1!.life]).toEqual(['battlefield', 'graveyard', 22]);
+  });
+
+  it('Break Under Pressure: on a tie the opponent chooses', () => {
+    let s = newGame();
+    const a = put(s, 'P2', 'rank-rat');
+    const b = put(s, 'P2', 'rank-rat');
+    const spell = put(s, 'P1', 'break-under-pressure', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'sacrifice' });
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [b] });
+    expect([zone(s, a), zone(s, b)]).toEqual(['battlefield', 'graveyard']);
+  });
+
+  it('Dark Matter Manipulator gets +2/+0 for every seven cards in your graveyard', () => {
+    const s = newGame();
+    const dm = put(s, 'P1', 'dark-matter-manipulator');
+    for (let i = 0; i < 6; i++) put(s, 'P1', 'island', 'graveyard');
+    expect(powerOf(s, s.cards[dm]!)).toBe(1);
+    put(s, 'P1', 'island', 'graveyard');
+    expect(powerOf(s, s.cards[dm]!)).toBe(3);
+    for (let i = 0; i < 7; i++) put(s, 'P1', 'island', 'graveyard');
+    expect([powerOf(s, s.cards[dm]!), toughnessOf(s, s.cards[dm]!)]).toEqual([5, 2]);
+  });
+
+  it('Darklight Phoenix returns at the beginning of your combat if two or more creatures died this turn', () => {
+    let s = newGame();
+    const phoenix = put(s, 'P1', 'darklight-phoenix', 'graveyard');
+    s.creaturesDiedThisTurn = 1;
+    s = goTo(s, 'beginCombat');
+    expect(zone(s, phoenix)).toBe('graveyard');
+    let u = newGame();
+    const again = put(u, 'P1', 'darklight-phoenix', 'graveyard');
+    u.creaturesDiedThisTurn = 2;
+    u = goTo(u, 'beginCombat');
+    u = settle(u).state;
+    expect(zone(u, again)).toBe('battlefield');
+    expect(hasKeyword(u, u.cards[again]!, 'Haste')).toBe(true);
+  });
+
+  it('Extrapolate the Impossible: reveal two sideboard cards; an opponent chooses the one you put into your hand', () => {
+    let s = newGame();
+    const outside = (defId: string) => {
+      const id = `o${s.nextId++}`;
+      s.cards[id] = { id, defId, owner: 'P1', controller: 'P1', zone: 'void', tapped: false, summoningSick: false, damage: 0, deathtouched: false, outsideGame: true };
+      return id;
+    };
+    const a = outside('last-gasp');
+    const b = outside('rank-rat');
+    outside('rank-rat');
+    const spell = put(s, 'P1', 'extrapolate-the-impossible', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'revealOutside' });
+    expect(() => act(s, { type: 'ChooseCards', player: 'P1', cards: [a] })).toThrow();
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [a, b] });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'pickOutside', cards: [a, b] });
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [b] });
+    expect([zone(s, a), zone(s, b), s.cards[b]!.outsideGame]).toEqual(['void', 'hand', undefined]);
+  });
+
+  it("Lich's Relic: pay {2} as it enters to destroy up to one creature or planeswalker each opponent controls", () => {
+    let s = newGame(3);
+    const r2 = put(s, 'P2', 'rank-rat');
+    const r3 = put(s, 'P3', 'rank-rat');
+    const relic = put(s, 'P1', 'lichs-relic', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: relic }, { targets: (options) => options[0]! }).state;
+    expect([zone(s, r2), zone(s, r3)]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Rise of the Deathbringer: draw cards equal to the greatest power among your creatures, and lose that much life', () => {
+    let s = newGame();
+    put(s, 'P1', 'apex-witchstalker');
+    const spell = put(s, 'P1', 'rise-of-the-deathbringer', 'hand');
+    mana(s, 'P1', { B: 1, C: 4 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 0 }).state;
+    expect([s.players.P1!.hand.length, s.players.P1!.life]).toEqual([hand - 1 + 6, 14]);
+  });
+
+  it('Silence the Echo: sacrifice a creature or pay {3} more', () => {
+    const s = newGame();
+    put(s, 'P2', 'rank-rat');
+    const fodder = put(s, 'P1', 'rank-rat');
+    const spell = put(s, 'P1', 'silence-the-echo', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const ways = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell);
+    expect(ways.length).toBeGreaterThan(0);
+    expect(ways.every((a) => a.type === 'CastSpell' && (a.costCards ?? []).includes(fodder))).toBe(true);
+  });
+
+  it('Terminal Criticism only destroys a blue or red creature or planeswalker', () => {
+    const s = newGame();
+    put(s, 'P2', 'rank-rat');
+    const blue = put(s, 'P2', 'sphinx-of-false-conclusions');
+    const spell = put(s, 'P1', 'terminal-criticism', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const targets = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell).flatMap((a) => (a.type === 'CastSpell' ? a.targets ?? [] : []));
+    expect(targets).toEqual([card(blue)]);
+  });
+
+  it('Theoretical Necromancer exiles itself from your graveyard to return another creature card', () => {
+    let s = newGame();
+    const necro = put(s, 'P1', 'theoretical-necromancer', 'graveyard');
+    const rat = put(s, 'P1', 'rank-rat', 'graveyard');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: necro, ability: 0, targets: [card(rat)] }).state;
+    expect([zone(s, necro), zone(s, rat)]).toEqual(['exile', 'hand']);
   });
 });

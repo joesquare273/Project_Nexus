@@ -142,6 +142,10 @@ function effectText(e: EffectSpec): string {
       return `exile ${who}${e.sameNameTokens ? ' and all tokens that player controls with the same name' : ''}`;
     case 'ExileGraveyard':
       return e.target === 'EachPlayer' ? 'exile all graveyards' : `exile ${who === 'you' ? 'your' : `${who}'s`} graveyard`;
+    case 'SacrificeGreatestManaValue':
+      return `${who} sacrifices a creature or planeswalker with the greatest mana value among those they control`;
+    case 'RevealFromOutsideGame':
+      return 'reveal two cards with different names from your sideboard; an opponent chooses one to put into your hand';
     case 'SacrificeGreatestPower':
       return `${who} sacrifices a creature with the greatest power among creatures they control`;
     case 'Discard':

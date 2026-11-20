@@ -232,7 +232,8 @@ export function amountOf(s: GameState, amount: Amount | undefined, player: Playe
   // Amounts that refer back to earlier in the same spell or ability are worked out while it resolves.
   if ('of' in amount) return 0;
   if ('matching' in amount) return battlefieldCards(s).filter((c) => !c.phasedOut && matchesObject(s, amount.matching, c, { controller: player, ...(source ? { source } : {}) })).length;
-  return amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0) * (amount.times ?? 1) + (amount.plus ?? 0);
+  const total = amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0);
+  return Math.floor(total / (amount.per ?? 1)) * (amount.times ?? 1) + (amount.plus ?? 0);
 }
 
 /** Cards whose static abilities may apply: permanents, and graveyard cards with abilities that work from there (Anger). */

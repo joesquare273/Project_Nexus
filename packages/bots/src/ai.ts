@@ -548,6 +548,15 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
   // Fact or Fiction, splitting for an opponent: the best card alone against the rest.
+  // Extrapolate the Impossible: reveal the two best cards with different names; an opponent gives us the weaker one.
+  if (p.purpose === 'revealOutside') {
+    const best: InstanceId[] = [];
+    for (const id of [...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!))) {
+      if (best.length < 2 && !best.some((x) => s.cardDefs[s.cards[x]!.defId]!.name === s.cardDefs[s.cards[id]!.defId]!.name)) best.push(id);
+    }
+    return pick(best.length === 2 ? best : []);
+  }
+  if (p.purpose === 'pickOutside') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   if (p.purpose === 'separatePiles') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   // Taking a pile: the one worth more (each card counts, and so does how good it is).
   if (p.purpose === 'choosePile') {

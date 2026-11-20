@@ -1505,6 +1505,10 @@ function PromptBar(p: PromptProps) {
           ? (c.purpose === 'handSize' ? 'to discard down to your maximum hand size' : 'to discard (in your hand)')
           : c.purpose === 'handToTop'
             ? 'from your hand to put on top of your library (the first one you click goes on top)'
+          : c.purpose === 'revealOutside'
+            ? 'from your sideboard to reveal: exactly two with different names, or none; an opponent chooses one to put into your hand'
+          : c.purpose === 'pickOutside'
+            ? 'of these revealed cards for its owner to put into their hand'
           : c.purpose === 'separatePiles'
             ? 'for the first pile (the rest form the second pile); the other player puts one pile into their hand and the other into their graveyard'
           : c.purpose === 'choosePile'

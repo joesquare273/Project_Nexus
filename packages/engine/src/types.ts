@@ -474,6 +474,13 @@ export const EFFECT_KINDS = [
    * creatures they control (Crackling Doom).
    */
   'SacrificeGreatestPower',
+  /** Each target player sacrifices a permanent matching `filter` with the greatest mana value among those they control (Break Under Pressure). */
+  'SacrificeGreatestManaValue',
+  /**
+   * "You may reveal exactly two cards you own with different names from outside the game. An opponent chooses one of them.
+   * You put that card into your hand" (Extrapolate the Impossible): outside the game is the player's sideboard.
+   */
+  'RevealFromOutsideGame',
   /**
    * The target permanent's owner shuffles it into their library, then reveals
    * the top card; a permanent card is put onto the battlefield (Chaos Warp).
@@ -773,7 +780,7 @@ export type CountKind = (typeof COUNT_KINDS)[number];
 export type Amount =
   | number
   /** `times` multiplies the total ("twice the number of creature cards in your graveyard"). */
-  | { count: CountKind[]; times?: number; /** Added to the total ("2 plus the number of ...": Focus Fire). */ plus?: number }
+  | { count: CountKind[]; times?: number; /** Added to the total ("2 plus the number of ...": Focus Fire). */ plus?: number; /** "For every seven cards": the count divided by this, rounded down, before `times` (Dark Matter Manipulator). */ per?: number }
   /** How many permanents match, from the controller's point of view ("look at that many cards", one per attacking Bird). */
   | { matching: ObjectFilter }
   /**
@@ -807,6 +814,8 @@ export type Amount =
         | 'x'
         /** Life lost to earlier effects of the same spell ("you gain life equal to the life lost this way"). */
         | 'lifeLostThisWay'
+        /** Cards drawn earlier in this resolution ("lose life equal to the number of cards drawn this way"). */
+        | 'drawnThisWay'
         /** The mana value of the card found by RevealUntil. */
         | 'revealedManaValue'
         /** The triggering spell's mana value (counting X while it's on the stack). */
@@ -2388,6 +2397,8 @@ export interface CardInstance {
   faceDown?: boolean;
   /** Prepared: its controller may cast the copy of its prepare spell. */
   prepared?: boolean;
+  /** A card outside the game (its owner's sideboard), kept in the void until a spell brings it in (rule 400.11). */
+  outsideGame?: boolean;
   /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
@@ -2894,6 +2905,7 @@ export interface Resolving {
   sacrificedAny?: boolean;
   /** Life players lost to this spell or ability's effects so far. */
   lifeLostThisWay?: number;
+  drawnThisWay?: number;
   /** The mana value of the card RevealUntil found. */
   revealedManaValue?: number;
   /** The creature type chosen as this resolves (ChooseCreatureType). */
@@ -2930,7 +2942,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

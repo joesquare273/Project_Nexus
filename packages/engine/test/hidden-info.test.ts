@@ -32,6 +32,16 @@ describe.each([2, 3, 4])('hidden information with %i players', (n) => {
   });
 });
 
+describe('cards outside the game', () => {
+  it('a sideboard is in the game state but no player is sent its cards', () => {
+    const setup = { format: FREE_FOR_ALL, cardDefs: DEFS, seed: 3, skipDeckValidation: true, players: playerIds(2).map((id) => ({ id, deck: Array(30).fill('island'), sideboard: ['island', 'island'] })) };
+    const s = createGame(setup).state;
+    const outside = Object.values(s.cards).filter((c) => c.outsideGame);
+    expect(outside.map((c) => c.zone)).toEqual(['void', 'void', 'void', 'void']);
+    for (const viewer of playerIds(2)) expect(Object.values(viewFor(s, viewer).cards).filter((c) => c.zone === 'void' || c.outsideGame)).toEqual([]);
+  });
+});
+
 describe('event filtering', () => {
   it('hides which card another player drew, but not that they drew', () => {
     const drawn = { type: 'CardDrawn' as const, player: 'P2', card: 'c1', defId: 'island' };

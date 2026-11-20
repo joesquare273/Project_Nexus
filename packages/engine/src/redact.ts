@@ -201,6 +201,7 @@ const CARD_FIELDS = {
   chosenOption: 'copy',
   goadedForever: 'copy',
   prepared: 'copy',
+  outsideGame: 'copy',
   prepareSpellOf: 'refs',
   faceDown: 'copy',
   manifested: 'copy',

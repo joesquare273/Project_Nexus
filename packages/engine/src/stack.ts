@@ -2141,6 +2141,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                     : (r.item.x ?? s.cards[r.item.source]!.xPaid ?? 0)
                   : a.of === 'lifeLostThisWay'
                     ? (r.lifeLostThisWay ?? 0)
+                  : a.of === 'drawnThisWay'
+                    ? (r.drawnThisWay ?? 0)
                     : a.of === 'revealedManaValue'
                       ? (r.revealedManaValue ?? 0)
                       : a.of === 'subjectManaValue'
@@ -2253,6 +2255,7 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
     const one = cards.length === 1 && matchesObject(s, choice.orOneMatching, s.cards[cards[0]!]!, { controller: choice.player });
     return one ? null : `Choose ${choice.max} cards, or one that matches instead.`;
   }
+  if (choice.purpose === 'revealOutside' && cards.length === 1) return 'Reveal exactly two cards, or none.';
   if (choice.differentNames && new Set(cards.map((id) => defOf(s, s.cards[id]!).name)).size !== cards.length) return 'Choose cards with different names.';
   if (choice.shareLandType && cards.length > 1 && !BASIC_LAND_TYPES.some((t) => cards.every((id) => subtypesOf(s, s.cards[id]!).includes(t)))) return 'Choose lands that share a land type.';
   if (cards.length < choice.min || cards.length > choice.max) {
@@ -2551,7 +2554,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'DrawCards':
-      for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
+      for (const t of targets) {
+        if (t.kind !== 'player') continue;
+        const before = s.players[t.player]!.cardsDrawnThisTurn ?? 0;
+        drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
+        r.drawnThisWay = (r.drawnThisWay ?? 0) + Math.max(0, (s.players[t.player]!.cardsDrawnThisTurn ?? 0) - before);
+      }
       return;
     case 'PutExiledWithThisOntoBattlefield': {
       const object = item.kind === 'ability' ? item.sourceObject : undefined;
@@ -2744,6 +2752,23 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         sacrifice(ctx, theirs.find((c) => powerOf(s, c) === greatest)!.id);
       }
       return;
+    case 'SacrificeGreatestManaValue':
+      for (const pid of targetPlayers(targets)) {
+        const theirs = battlefield(s).filter((c) => c.controller === pid && matchesObject(s, effect.filter ?? { types: ['creature'] }, c, { controller: pid }));
+        if (theirs.length === 0) continue;
+        const greatest = Math.max(...theirs.map((c) => objectManaValue(s, c)));
+        const tied = theirs.filter((c) => objectManaValue(s, c) === greatest);
+        // On a tie the player chooses which one.
+        if (tied.length === 1) sacrifice(ctx, tied[0]!.id);
+        else r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'sacrifice', cards: tied.map((c) => c.id), min: 1, max: 1 }];
+      }
+      return;
+    case 'RevealFromOutsideGame': {
+      const outside = Object.values(s.cards).filter((c) => c.zone === 'void' && c.outsideGame && c.owner === item.controller).map((c) => c.id);
+      if (new Set(outside.map((id) => defOf(s, s.cards[id]!).name)).size < 2) return;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'revealOutside', cards: outside, min: 0, max: 2, differentNames: true }];
+      return;
+    }
     case 'ShuffleIntoLibrary':
     case 'ShuffleIntoLibraryReveal':
       for (const id of onBattlefield) {
@@ -4670,6 +4695,21 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
     const owner = pending.libraryOf ?? pending.player;
     shuffleInPlace(s, player(s, owner).library);
+  } else if (pending.purpose === 'revealOutside') {
+    // Revealed from outside the game; an opponent (the next in turn order) chooses the one that goes to your hand.
+    if (cards.length === 2) {
+      for (const id of cards) ctx.ev.push({ type: 'CardRevealed', player: pending.player, card: id, defId: s.cards[id]!.defId });
+      const order = alivePlayers(s);
+      const at = order.indexOf(pending.player);
+      const opponent = [...order.slice(at + 1), ...order.slice(0, at)].find((p) => p !== pending.player);
+      if (opponent) r.choiceQueue = [{ player: opponent, purpose: 'pickOutside', cards: [...cards], min: 1, max: 1, pileOwner: pending.player }, ...(r.choiceQueue ?? [])];
+    }
+  } else if (pending.purpose === 'pickOutside') {
+    for (const id of cards) {
+      if (s.cards[id]?.zone !== 'void') continue;
+      delete s.cards[id]!.outsideGame;
+      moveCard(ctx, id, 'hand');
+    }
   } else if (pending.purpose === 'separatePiles') {
     // The chosen cards are one pile, the rest the other; the caster takes one.
     const other = pending.cards.filter((id) => !cards.includes(id));

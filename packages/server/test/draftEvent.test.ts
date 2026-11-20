@@ -107,6 +107,8 @@ describe('a draft event with bots', () => {
           const now = ev.matches.find((x) => x.id === m.id)!;
           if (botMatch(ev, now)) {
             expect(gameSetup(ev, m.id, 1).players.map((p) => p.deck.length)).toEqual([40, 40]);
+            // The rest of each drafted pool (6 packs of 14+ cards, 40-card decks with basics) is that player's sideboard.
+            expect(gameSetup(ev, m.id, 1).players.every((p) => (p.sideboard?.length ?? 0) > 0 && p.sideboard!.length === p.sideboardPrintings!.length)).toBe(true);
             ev = recordGame(ev, m.id, now.a, rng);
             continue;
           }

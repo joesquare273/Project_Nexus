@@ -33,7 +33,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F4 | Prepared (24): the 21 creatures with prepare spells, Codie, Hexhaven Dueling Arena, Infinite Coursework | Done |
 | F5 | White (18) | Done |
 | F6 | Blue (13) | Done |
-| F7 | Black | |
+| F7 | Black (17) | Done |
 | F8 | Red | |
 | F9 | Green | |
 | F10 | Multicolor and artifacts | |
@@ -78,3 +78,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Countersculpt, Cruel Calculations, Cryotheory Adept, Divining Duelist, Icy Reception, Perfected Theory, Precise Redaction, Seasoned Cryomancer, Sphinx of False Conclusions, Sphinx's Approach, Surveillance Phantasm, Undulating Witness and Unsummon.
 - Engine: behold as an additional cost (`additionalCost.behold`: reveal a card of that type from hand or choose one you control), "up to X" choices counted from the cards already chosen (`upToCount`, `chosenNonlandCount`), cards put from a player's library into their graveyard this turn (`PlayerState.libraryToGraveyard`), "if you've scried or surveilled this turn" (`PlayerState.scriedOrSurveiledTurn`, `attacksDespiteDefenderIfScried`), and Sphinx's Approach's "exile four cards named ... from your graveyard to search" (`ExileNamedToSearch`).
 - Simplifications: Seasoned Cryomancer chooses the creatures as it resolves rather than targeting them, and Sphinx's Approach always exiles the four cards and searches when it can (the "you may" is taken).
+
+### F7 (2026-11-20)
+
+- Apex Witchstalker, Break Under Pressure, Cast Away Doubt, Dark Matter Manipulator, Darklight Phoenix, Extended Absence, Extrapolate the Impossible, Last Gasp, Lich's Relic, Multiply by Zero, Rampart Hunter, Rank Rat, Rise of the Deathbringer, Screeching Soulbreaker, Silence the Echo, Terminal Criticism and Theoretical Necromancer. The black echoed-pairs legends are F11 and Garruk, Veiled Butcher is F13.
+- Engine: "sacrifices a [creature or planeswalker] with the greatest mana value" (`SacrificeGreatestManaValue`; on a tie that player chooses), "for every seven cards" amounts (`per` on a count amount), "cards drawn this way" (`drawnThisWay`).
+- Cards from outside the game (rule 400.11): a player's sideboard is `PlayerSetup.sideboard`, kept as cards in the void marked `outsideGame` that no player is sent. In draft-event games it's the rest of the drafted pool; Commander and constructed games have none, so Extrapolate the Impossible does nothing there. `RevealFromOutsideGame`: reveal exactly two with different names (or none), and the next opponent in turn order chooses the one that goes to your hand (in multiplayer the rules would let the caster choose which opponent).

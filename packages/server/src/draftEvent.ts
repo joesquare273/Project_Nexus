@@ -533,14 +533,19 @@ export function gameSetup(ev: DraftEvent, matchId: string, seed: Seed): GameSetu
 }
 
 /** A Limited deck as engine card ids, with each drafted card's printing and finish (its art in the game). */
-export function gameDeck(deck: LimitedDeck, picks: readonly DraftCard[]): { deck: string[]; deckPrintings: GameSetup['players'][number]['deckPrintings']; deckFinishes: GameSetup['players'][number]['deckFinishes'] } {
+export function gameDeck(deck: LimitedDeck, picks: readonly DraftCard[]): Pick<GameSetup['players'][number], 'deck' | 'deckPrintings' | 'deckFinishes' | 'sideboard' | 'sideboardPrintings'> {
   const byUid = new Map(picks.map((c) => [c.uid, c]));
   const cards = deck.cards.map((uid) => byUid.get(uid)!);
+  // The rest of the pool is the sideboard: cards from outside the game (Extrapolate the Impossible).
+  const inDeck = new Set(deck.cards);
+  const sideboard = picks.filter((c) => !inDeck.has(c.uid) && defIdOf(c.card));
   const lands = COLORS.flatMap((c) => Array<string>(deck.basics[c]).fill(BASIC_LANDS[c]));
   return {
     deck: [...cards.map((c) => defIdOf(c.card)!), ...lands],
     deckPrintings: [...cards.map((c) => ({ set: c.card.set, number: c.card.number })), ...lands.map(() => undefined)],
     deckFinishes: [...cards.map((c) => finishLook(c.card, c.finish)), ...lands.map(() => undefined)],
+    sideboard: sideboard.map((c) => defIdOf(c.card)!),
+    sideboardPrintings: sideboard.map((c) => ({ set: c.card.set, number: c.card.number })),
   };
 }
 
