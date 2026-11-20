@@ -113,8 +113,9 @@ export function manaCounters(c: CardInstance, def: CardDefinition): number {
 }
 
 /** How much one activation of a permanent's mana ability adds: one, a fixed amount, or one per counter. */
-export function manaAbilityAmount(c: CardInstance, def: CardDefinition): number {
+export function manaAbilityAmount(c: CardInstance, def: CardDefinition, s?: GameState): number {
   const ability = def.manaAbility;
+  if (ability?.amountDifferentPowers && s) return new Set(s.turnOrder.flatMap((p) => s.players[p]!.battlefield.map((id) => s.cards[id]!)).filter((x) => x.controller === c.controller && !x.phasedOut && currentDefinition(s, x).types.includes('creature')).map((x) => powerOf(s, x))).size;
   if (ability?.removeCounter) return 1;
   if (ability?.amountPerCounter) {
     const kind = ability.amountPerCounter === true ? undefined : ability.amountPerCounter;

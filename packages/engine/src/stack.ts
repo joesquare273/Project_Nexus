@@ -832,7 +832,7 @@ export function activateManaAbility(
   if (ability?.exileSelf) moveCard(ctx, id, 'exile');
   // Nyxbloom Ancient: three times as much (each one triples again).
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
-  const amount = manaAbilityAmount(c, def) * 3 ** triplers;
+  const amount = manaAbilityAmount(c, def, s) * 3 ** triplers;
   for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.restricted ?? (ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined));
   // Molten Tide: "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}."
   for (const e of player(s, playerId).extraMana ?? []) if (e.turn === s.turnNumber && subtypesOf(s, c).includes(e.subtype)) addMana(ctx, playerId, e.mana, id);

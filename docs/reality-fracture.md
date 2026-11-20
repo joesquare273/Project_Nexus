@@ -42,7 +42,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F11b | Echoed pairs legends, blue (11) | Done |
 | F11c | Echoed pairs legends, black (11) | Done |
 | F12a | Echoed pairs legends, red (11) | Done |
-| F12b | Echoed pairs legends, green (10) | |
+| F12b | Echoed pairs legends, green (10) | Done |
 | F12c | Echoed pairs legends, multicolor and colorless (10) | |
 | F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
 
@@ -134,3 +134,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 - Arni, Renowned Champion; Gallia, the Merrymaker; Jiang Yanggu, Alone; Kiora of Fire and Ashes; Koth, the Geomancer; Marwyn, the Clearcutter; Pia, Determined Rebuilder; Samut, Hazoret's Champion; Tetsuko Umezawa, Pursuer; Tomik, Izzet Sparkmage; Winter, Team Player.
 - Engine: noncombat damage to opponents and their permanents plus 1 (`noncombatDamageToOpponentsPlusOne`, applied in `dealDamage`); cards discarded this turn (`PlayerState.discardedThisTurn`, `CardsYouDiscardedThisTurn`).
 - Fix: Koth, the Geomancer, Konstrari Charm and Gardenize named their mana `mana` instead of `manaType`, so they asked for a color instead of adding {R}, {C}{C}{C} or {G}; the validator now rejects that key.
+
+### F12b (2026-11-20)
+
+- Edgar, Moonlit Sovereign; Fblthp, Knows the Way; Ghalta, the Unstoppable; Jiang Yanggu, Never Alone; Loot, the Nexus; Marwyn, the Preserver; Pia, Aether Ascetic; Ruric Thar, Magecrusher; Titanbones, Towering Heart; Yoshimaru, Scrappy Stray.
+- Engine: a mana ability adding one mana for each different power among your creatures (`manaAbility.amountDifferentPowers`); hexproof until it has dealt combat damage (`hexproofUntilCombatDamage`, `CardInstance.dealtCombatDamage`); domain (`BasicLandTypesAmongYourLands`) and spells you cast this turn as counts. The Mowu token (tfra 10).

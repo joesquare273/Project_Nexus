@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F12b: green legends (2026-11-20)
+
+- The 10 green echoed-pairs legends (docs/reality-fracture.md). New: Loot's mana for each different power, Ruric Thar's hexproof until it deals combat damage, domain, and the Mowu token.
+
 ### Reality Fracture F12a: red legends (2026-11-20)
 
 - The 11 red echoed-pairs legends (docs/reality-fracture.md; F12 is split into red, green, and multicolor/colorless). New: Tomik's +1 noncombat damage and Jiang Yanggu's discard count. Fixed Konstrari Charm's and Gardenize's mana (`manaType`).

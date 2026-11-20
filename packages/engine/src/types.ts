@@ -721,6 +721,10 @@ export const COUNT_KINDS = [
   'CardsInYourHand',
   /** Cards in your library ("if your library has no cards in it"). */
   'CardsInYourLibrary',
+  /** Basic land types among lands you control (domain). */
+  'BasicLandTypesAmongYourLands',
+  /** Spells you've cast this turn. */
+  'SpellsYouCastThisTurn',
   /** Cards you've discarded this turn (Jiang Yanggu, Alone). */
   'CardsYouDiscardedThisTurn',
   /** Creature and planeswalker cards in your graveyard (Winter, Tormented Loner). */
@@ -2082,6 +2086,8 @@ export interface CardDefinition {
     onlyForNoncreatureSpells?: boolean;
     /** Adds this many of the chosen mana instead of one ("{T}: Add {C}{C}"). */
     amount?: number;
+    /** "Add one mana of that color for each different power among creatures you control" (Loot, the Nexus). */
+    amountDifferentPowers?: boolean;
     /** Producing one of these deals 1 damage to you (pain lands, Talismans). */
     painFor?: ManaType[];
     /** "Add one mana of any color in your commander's color identity." */
@@ -2191,6 +2197,8 @@ export interface CardDefinition {
   flashbackDiscard?: number;
   /** "Threshold — You can't cast this spell unless there are seven or more cards in your graveyard" (Proft, Sinister Mastermind). */
   castOnlyWithThreshold?: boolean;
+  /** "Has hexproof as long as it hasn't dealt combat damage yet" (Ruric Thar, Magecrusher; `CardInstance.dealtCombatDamage`). */
+  hexproofUntilCombatDamage?: boolean;
   /** "If its power is negative, it assigns combat damage as though its power were positive" (Loot, the Anomaly). */
   negativePowerAssignsPositive?: boolean;
   /** Retrace (rule 702.81): cast from your graveyard by discarding a land card in addition to its other costs (it returns to the graveyard as usual). */
@@ -2497,6 +2505,8 @@ export interface CardInstance {
   lostAbilitiesTurn?: number;
   /** Exhaust abilities of this object already activated (their indexes). */
   exhausted?: number[];
+  /** This object has dealt combat damage (Ruric Thar, Magecrusher). */
+  dealtCombatDamage?: boolean;
   /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */

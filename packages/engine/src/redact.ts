@@ -205,6 +205,7 @@ const CARD_FIELDS = {
   flashbackTurn: 'copy',
   lostAbilitiesTurn: 'copy',
   exhausted: 'copy',
+  dealtCombatDamage: 'copy',
   prepareSpellOf: 'refs',
   faceDown: 'copy',
   manifested: 'copy',

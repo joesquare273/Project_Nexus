@@ -209,6 +209,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.flashbackTurn;
   delete c.lostAbilitiesTurn;
   delete c.exhausted;
+  delete c.dealtCombatDamage;
   delete c.activatedTurns;
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).
   delete c.transformed;
@@ -578,6 +579,7 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     : [];
   const damagedMonarch = combat && target.kind === 'player' && s.monarch === target.player && hasType(s, source, 'creature') ? target.player : undefined;
   const sourceSnapshot=combat && target.kind==='player' ? frozen ?? damageSourceSnapshot(s,source) : undefined;
+  if (combat) source.dealtCombatDamage = true;
   ctx.ev.push({ type: 'DamageDealt', source: sourceId, target, amount, combat,
     ...(sourceSnapshot ? {sourceSnapshot,sourceController:sourceSnapshot.card.controller} : {}),
     ...(damagedMonarch ? { damagedMonarch } : {}),

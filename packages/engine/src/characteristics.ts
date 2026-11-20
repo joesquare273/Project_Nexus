@@ -194,6 +194,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const d = s.players[player]!.discardedThisTurn;
       return d?.turn === s.turnNumber ? d.count : 0;
     }
+    case 'BasicLandTypesAmongYourLands':
+      return new Set(yours().filter((x) => def(s, x).types.includes('land')).flatMap((x) => subtypesOf(s, x).filter((t) => ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(t)))).size;
+    case 'SpellsYouCastThisTurn':
+      return s.players[player]!.spellsCastThisTurn ?? 0;
     case 'CardsInYourLibrary':
       return s.players[player]!.library.length;
     case 'CardsYouDrewThisTurn':
@@ -330,6 +334,8 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     out.toughness += n;
   }
   if (c.zone !== 'battlefield') return out;
+  // Ruric Thar, Magecrusher: hexproof until it has dealt combat damage.
+  if (d.hexproofUntilCombatDamage && !c.dealtCombatDamage) out.keywords.add('Hexproof');
 
   const removed: Keyword[] = [];
   // Base-setting effects share layer 7b; later timestamps win before additions/counters.

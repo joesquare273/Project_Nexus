@@ -337,7 +337,7 @@ function availableMana(s: GameState, playerId: PlayerId, improvisedSpell?: CardI
     }
     if (c.tapped || c.controller !== playerId) continue;
     if (d.types.includes('creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) continue;
-    if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d);
+    if (manaChoices(s, c).length > 0) available += manaAbilityAmount(c, d, s);
     else if (d.manaAbility?.paid || grantedManaAbilities(s, c).length > 0) available += 1;
   }
   if (improvisedSpell && hasImprovise(s, playerId, improvisedSpell)) available += improviseCandidates(s, playerId)

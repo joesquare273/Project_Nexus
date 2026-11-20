@@ -15311,6 +15311,28 @@
     "scryfallId": "380f16d6-ad43-4e0d-9645-6abde6248182",
     "relatedTokens": []
   },
+  "mowu-token-fra": {
+    "name": "Mowu",
+    "typeLine": "Token Legendary Creature — Dog",
+    "oracleText": "",
+    "set": "tfra",
+    "number": "10",
+    "artist": "Leonardo Santanna",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768",
+      "normal": "https://cards.scryfall.io/normal/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768",
+      "large": "https://cards.scryfall.io/large/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/8/5868190d-18f6-43b6-af83-9e0ef585687d.jpg?1789735768"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/10/mowu?utm_source=api",
+    "scryfallId": "5868190d-18f6-43b6-af83-9e0ef585687d",
+    "relatedTokens": [
+      {
+        "name": "Mowu",
+        "scryfallId": "5868190d-18f6-43b6-af83-9e0ef585687d"
+      }
+    ]
+  },
   "moxite-refinery": {
     "name": "Moxite Refinery",
     "typeLine": "Artifact",

@@ -1577,3 +1577,90 @@ describe('AddMana effects (fixed manaType)', () => {
     expect(s.players.P1!.manaPool.C).toBe(3);
   });
 });
+
+describe('F12b: green echoed-pairs legends', () => {
+  it('Edgar, Moonlit Sovereign gets two counters at your end step if you cast no spell this turn', () => {
+    let s = newGame();
+    const edgar = put(s, 'P1', 'edgar-moonlit-sovereign');
+    s = settle(goTo(s, 'end')).state;
+    expect(s.cards[edgar]!.counters).toBe(2);
+    let u = newGame();
+    const other = put(u, 'P1', 'edgar-moonlit-sovereign');
+    u.players.P1!.spellsCastThisTurn = 1;
+    u = settle(goTo(u, 'end')).state;
+    expect(u.cards[other]!.counters ?? 0).toBe(0);
+  });
+
+  it('Fblthp, Knows the Way: domain power, and it finds up to X basic lands with different names', () => {
+    let s = newGame();
+    const forest = put(s, 'P1', 'forest', 'library');
+    const island = put(s, 'P1', 'island', 'library');
+    put(s, 'P1', 'forest', 'library');
+    put(s, 'P1', 'plains');
+    const fblthp = put(s, 'P1', 'fblthp-knows-the-way', 'hand');
+    mana(s, 'P1', { G: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fblthp, x: 2 }).state;
+    // The search (answered by the test helper) takes two basics with different names.
+    const found = s.players.P1!.hand.map((id) => s.cards[id]!.defId).filter((d) => d === 'forest' || d === 'island');
+    expect([found.sort(), zone(s, island), powerOf(s, s.cards[fblthp]!)]).toEqual([['forest', 'island'], 'hand', 1]);
+    void forest;
+  });
+
+  it('Ghalta, the Unstoppable costs {X} less for your greatest power and gives your other creatures trample', () => {
+    const s = newGame();
+    const big = put(s, 'P1', 'rank-rat', 'battlefield', { counters: 6 }); // 7/7
+    const ghalta = put(s, 'P1', 'ghalta-the-unstoppable', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === ghalta)).toBe(true);
+    put(s, 'P1', 'ghalta-the-unstoppable');
+    expect(hasKeyword(s, s.cards[big]!, 'Trample')).toBe(true);
+  });
+
+  it('Jiang Yanggu, Never Alone makes Mowu and untaps your tokens at your end step', () => {
+    let s = newGame();
+    const jiang = put(s, 'P1', 'jiang-yanggu-never-alone', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: jiang }).state;
+    const mowu = Object.values(s.cards).find((c) => c.defId === 'mowu-token-fra')!;
+    mowu.tapped = true;
+    s = settle(goTo(s, 'end')).state;
+    expect(s.cards[mowu.id]!.tapped).toBe(false);
+  });
+
+  it('Loot, the Nexus adds one mana of a color for each different power among your creatures', () => {
+    let s = newGame();
+    const loot = put(s, 'P1', 'loot-the-nexus');
+    put(s, 'P1', 'rank-rat');
+    put(s, 'P1', 'apex-witchstalker');
+    const tap = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === loot && (a as { mana: string }).mana === 'G')!;
+    s = act(s, tap);
+    expect(s.players.P1!.manaPool.G).toBe(3); // powers 2, 1 and 6
+  });
+
+  it('Ruric Thar, Magecrusher has hexproof until it deals combat damage', () => {
+    let s = newGame();
+    const ruric = put(s, 'P1', 'ruric-thar-magecrusher');
+    expect(hasKeyword(s, s.cards[ruric]!, 'Hexproof')).toBe(true);
+    s = fight(s, [{ attacker: ruric, defender: 'P2' }]).state;
+    expect(hasKeyword(s, s.cards[ruric]!, 'Hexproof')).toBe(false);
+  });
+
+  it('Titanbones gains you 3 life when you discard it', () => {
+    let s = newGame();
+    const bones = put(s, 'P1', 'titanbones-towering-heart', 'hand');
+    const sower = put(s, 'P1', 'murmuring-volume');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: sower, ability: 0, targets: [], costCards: [bones] }).state;
+    expect([zone(s, bones), s.players.P1!.life]).toEqual(['graveyard', 23]);
+  });
+
+  it('Yoshimaru, Scrappy Stray: your other creature fights up to one creature an opponent controls', () => {
+    let s = newGame();
+    const witch = put(s, 'P1', 'apex-witchstalker');
+    const rat = put(s, 'P2', 'rank-rat');
+    const yoshi = put(s, 'P1', 'yoshimaru-scrappy-stray', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: yoshi, }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === witch && t[1]?.kind === 'card')! }).state;
+    expect([zone(s, rat), s.cards[witch]!.damage]).toEqual(['graveyard', 1]);
+  });
+});
