@@ -37,10 +37,10 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F8 | Red (20) | Done |
 | F9 | Green (20) | Done |
 | F10a | Multicolor, FRA 121-147 (20) | Done |
-| F10b | Multicolor and artifacts, FRA 148-174 (21) | |
+| F10b | Multicolor and artifacts, FRA 148-174 (18; Uldaros Theorix moved to F13) | Done |
 | F11 | Echoed pairs legends, white, blue and black | |
 | F12 | Echoed pairs legends, red, green and multicolor | |
-| F13 | Planeswalkers and the rest (Emrakul, The Theorist, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
+| F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
 
 ### F1 (2026-11-16)
 
@@ -101,3 +101,9 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 
 - Aerid Konstrari, Blessed Ghoul, Bloombrute, Charge the Sanctum, Clash of Elements, Craftwork Crusher, Denzilore Fatehold, Desperate Futurescribe, Entrust the Spark, Ferocity of the Hunt, Frostbite Pyromental, Grim Repriser, Ingris Stingerquill, Konstrari Charm, Kwia Vigorbloom, Mind Meanderer, Null Summoner, Primal Witchstalker, Proctor of Potential and Recursive Recruitment. Blessed Ghoul, Charge the Sanctum and Ferocity of the Hunt get their hybrid costs.
 - Engine: **prowess** (rule 702.108; a keyword whose trigger `currentDefinition` adds); "choose two" triggered abilities (`chooseModes` on a trigger; the browser lists each pair); Clash of Elements' top-or-bottom choice with damage on top (`damageIfTop`); Null Summoner's exile from a revealed hand, castable with any mana while you have threshold (`exileToCastWithThreshold`, `playableFromExile.whileThreshold`); graveyard abilities that need an opponent dealt noncombat damage or a scry or surveil this turn (`ifOpponentDealtNoncombatDamageThisTurn`, `ifScriedOrSurveiledThisTurn`); effects only if you have or haven't scried or surveilled this turn; "if this spell wasn't cast from your hand" (`notCastFromHand`). The Lotus token (tfra 12).
+
+### F10b (2026-11-20)
+
+- Solarium Sentry, Solitary Cell, Stingerquill Charm, Stinging Vitriol, Tenured Tethermage, Theorix Charm, Twinned Vision, Twisted Fates, Vigorbloom Charm, Vindictive Triumph, Warriors' Blades, Afterthought Sentry, Archive Arbiter, The Echoverse Fulcrum, Eye of Jace, Living Library, Medic's Kitesail and Murmuring Volume. Twinned Vision gets its hybrid cost.
+- Engine: flashback with an additional discard (`flashbackDiscard`); equip costing {1} less per +1/+1 counter on its target (`equipLessPerTargetCounter`); returning a permanent exiled earlier in the same spell under your control, exiled again at the next end step (Vindictive Triumph: ReturnToBattlefield from `PreviousTarget` with `exileAtEndStep`).
+- Uldaros Theorix moves to F13: it needs copies of graveyard cards cast for free within a shared mana value budget.

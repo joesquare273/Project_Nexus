@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F10b: multicolor and artifacts (2026-11-20)
+
+- 18 cards, FRA 148-174 (docs/reality-fracture.md); Uldaros Theorix moved to F13. New: flashback with a discard, Warriors' Blades' equip discount, and Vindictive Triumph's steal.
+
 ### Reality Fracture F10a: multicolor (2026-11-20)
 
 - 20 multicolor cards, FRA 121-147 (docs/reality-fracture.md; F10 is split in two). New: prowess, "choose two" triggers, Clash of Elements, Null Summoner's threshold casting, and the Lotus token.

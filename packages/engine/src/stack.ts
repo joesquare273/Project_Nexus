@@ -1326,7 +1326,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     }
   } else {
     // Retrace: a land card, in addition to its other costs.
-    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (way === 'retrace' ? 1 : 0);
+    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (way === 'retrace' ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);
     checkDiscardCost(s, playerId, discardCount, costCards, id, way === 'retrace' ? RETRACE_DISCARD : undefined);
   }
   const x = choice.x ?? 0;
@@ -1576,6 +1576,7 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
   if (spec.equip && source && defOf(s, source).equipCostsLess) cost = reduceGeneric(cost, defOf(s, source).equipCostsLess!);
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
+    if (source && defOf(s, source).equipLessPerTargetCounter) cost = reduceGeneric(cost, s.cards[t.card]!.counters ?? 0);
   }
   // Forge Anew: the first equip ability you activate during each of your turns costs {0}.
   if (spec.equip && source && s.activePlayer === source.controller && player(s, source.controller).equipActivatedTurn !== s.turnNumber &&
@@ -2710,6 +2711,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         moveCard(ctx, id, 'exile');
         // "Incubate X, where X is the number of creatures exiled this way" (Sunfall).
         r.exiledCount = (r.exiledCount ?? 0) + 1;
+        if (s.cards[id]?.zone === 'exile') r.exiledCards = [...(r.exiledCards ?? []), id];
         if (!effect.sameNameTokens) continue;
         for (const other of battlefield(s)) {
           if (other.isToken && other.controller === controller && defOf(s, other).name === name) moveCard(ctx, other.id, 'exile');
@@ -4048,7 +4050,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ReturnToBattlefield':
       for (const id of cards) {
         const c = s.cards[id]!;
-        if (c.zone !== 'graveyard' && !(c.zone === 'exile' && effect.target === 'TargetCardExiledWithSource')) continue;
+        if (c.zone !== 'graveyard' && !(c.zone === 'exile' && (effect.target === 'TargetCardExiledWithSource' || (effect.target === 'PreviousTarget' && r.exiledCards?.includes(id))))) continue;
         const linked = effect.attachToReturnedTarget === undefined ? undefined : item.targets[effect.attachToReturnedTarget];
         const candidate = linked?.kind === 'card' ? s.cards[linked.card] : undefined;
         const host = candidate && r.returnedObjects?.[candidate.id] === (candidate.zoneChanges ?? 0) ? candidate : undefined;
@@ -4069,6 +4071,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         c.summoningSick = true;
         if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
         if (effect.losesAbilities) c.lostAbilities = true;
+        if (effect.exileAtEndStep && (c.zone as string) === 'battlefield') c.exileAtEndStep = true;
         // Dance of the Manse: "if X is 6 or more, those permanents are 4/4 creatures in addition to their other types".
         if (effect.becomes && effect.becomesIfXAtLeast !== undefined && (item.x ?? 0) >= effect.becomesIfXAtLeast) c.animated = structuredClone(effect.becomes);
         if (effect.addSubtypes && effect.effect === 'ReturnToBattlefield') c.addedSubtypes = [...new Set([...(c.addedSubtypes ?? []), ...effect.addSubtypes])];

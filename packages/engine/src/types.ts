@@ -1008,7 +1008,7 @@ export interface EffectSpec {
   restToBottom?: boolean;
   /** ExileUntilFound: discover (rule 701.57): cast the card free right away, or it goes to your hand. */
   discover?: boolean;
-  /** CreateTokenCopy: the copy is exiled at the beginning of the next end step (Inalla). */
+  /** CreateTokenCopy: the copy is exiled at the beginning of the next end step (Inalla); ReturnToBattlefield: the card is (Vindictive Triumph). */
   exileAtEndStep?: boolean;
   /** CreateTokenCopy with `sacrificeAtEndStep`: at your next end step, not just the next one. */
   atYourEndStep?: boolean;
@@ -2133,6 +2133,8 @@ export interface CardDefinition {
   equipLegendary?: string;
   /** "Equip abilities you activate that target this cost {N} less." */
   equipDiscount?: number;
+  /** "This ability costs {1} less to activate for each +1/+1 counter on the creature it targets" (Warriors' Blades). */
+  equipLessPerTargetCounter?: boolean;
   /** "This Equipment's equip abilities cost {N} less to activate" (Firion's token copies). */
   equipCostsLess?: number;
   /** "[Type]cycling [cost]": discard from hand to search for a card of that subtype, or a basic land. */
@@ -2147,6 +2149,8 @@ export interface CardDefinition {
   anyNumberInDeck?: boolean;
   /** Flashback cost: cast from the graveyard, then exile it. */
   flashback?: string;
+  /** "Flashback—[cost], Discard a card" (Twinned Vision): cards to discard when cast with flashback. */
+  flashbackDiscard?: number;
   /** Retrace (rule 702.81): cast from your graveyard by discarding a land card in addition to its other costs (it returns to the graveyard as usual). */
   retrace?: boolean;
   /** Dredge N (rule 702.52): instead of your draw step's draw, mill N and return this card from your graveyard to your hand. */
@@ -2940,6 +2944,8 @@ export interface Resolving {
   destroyedCount?: number;
   /** Permanents exiled from the battlefield by this resolution's Exile effects (Sunfall). */
   exiledCount?: number;
+  /** Permanents exiled from the battlefield earlier in this resolution (Vindictive Triumph returns "it"). */
+  exiledCards?: InstanceId[];
   /** The cards destroyed so far by this spell or ability. */
   destroyedCards?: InstanceId[];
   createdTokens: InstanceId[];

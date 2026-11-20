@@ -1101,3 +1101,106 @@ describe('F10a: multicolor', () => {
     expect(zone(s, spell)).toBe('exile');
   });
 });
+
+describe('F10b: multicolor and artifacts', () => {
+  it('Solitary Cell exiles a nonland permanent with mana value 3 or less until it leaves', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const big = put(s, 'P2', 'apex-witchstalker');
+    const cell = put(s, 'P1', 'solitary-cell', 'hand');
+    mana(s, 'P1', { R: 1, W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cell }).state;
+    expect([zone(s, rat), zone(s, big)]).toEqual(['exile', 'battlefield']);
+  });
+
+  it('Stinging Vitriol: 2 damage, then you choose a nonland card from their hand to discard', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'last-gasp', 'hand');
+    put(s, 'P2', 'island', 'hand');
+    const spell = put(s, 'P1', 'stinging-vitriol', 'hand');
+    mana(s, 'P1', { B: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'discard', cards: [theirs] });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [theirs] })).state;
+    expect([zone(s, theirs), s.players.P2!.life]).toEqual(['graveyard', 18]);
+  });
+
+  it('Twinned Vision draws two with flashback, which also costs a discard', () => {
+    let s = newGame();
+    const vision = put(s, 'P1', 'twinned-vision', 'graveyard');
+    const fodder = put(s, 'P1', 'island', 'hand');
+    mana(s, 'P1', { U: 2, C: 1 });
+    const way = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === vision);
+    expect(way && way.type === 'CastSpell' ? way.costCards : undefined).toEqual([fodder]);
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, way!).state;
+    expect([zone(s, fodder), zone(s, vision), s.players.P1!.hand.length]).toEqual(['graveyard', 'exile', hand - 1 + 2]);
+  });
+
+  it('Twisted Fates destroys a nonland permanent and puts a counter on each creature the target player controls', () => {
+    let s = newGame();
+    const victim = put(s, 'P2', 'rank-rat');
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    const spell = put(s, 'P1', 'twisted-fates', 'hand');
+    mana(s, 'P1', { W: 2, B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(victim), { kind: 'player', player: 'P1' }] }).state;
+    expect([zone(s, victim), s.cards[a]!.counters, s.cards[b]!.counters]).toEqual(['graveyard', 1, 1]);
+  });
+
+  it('Vindictive Triumph steals a permanent with mana value 3 or less until the end step', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const spell = put(s, 'P1', 'vindictive-triumph', 'hand');
+    mana(s, 'P1', { W: 1, B: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(rat)] }).state;
+    expect([zone(s, rat), s.cards[rat]!.controller, s.cards[rat]!.tapped]).toEqual(['battlefield', 'P1', true]);
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    expect(zone(s, rat)).toBe('exile');
+  });
+
+  it("Warriors' Blades: equip costs {1} less for each +1/+1 counter on the target", () => {
+    const s = newGame();
+    const blades = put(s, 'P1', 'warriors-blades');
+    const big = put(s, 'P1', 'rank-rat', 'battlefield', { counters: 2 });
+    mana(s, 'P1', { C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === blades && a.targets?.[0]?.kind === 'card' && a.targets[0].card === big)).toBe(true);
+  });
+
+  it('Eye of Jace surveils, then with seven cards in your graveyard sacrifices itself to drain', () => {
+    let s = newGame();
+    const eye = put(s, 'P1', 'eye-of-jace');
+    for (let i = 0; i < 7; i++) put(s, 'P1', 'island', 'graveyard');
+    // P1's next upkeep.
+    for (let i = 0; i < 4 && !(s.step === 'upkeep' && s.activePlayer === 'P1'); i++) s = settle(goTo(s, s.step === 'upkeep' ? 'draw' : 'upkeep')).state;
+    expect([zone(s, eye), s.players.P2!.life, s.players.P1!.life]).toEqual(['graveyard', 18, 22]);
+  });
+
+  it('The Echoverse Fulcrum exiles itself to destroy all creatures', () => {
+    let s = newGame();
+    const fulcrum = put(s, 'P1', 'the-echoverse-fulcrum');
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P2', 'rank-rat');
+    mana(s, 'P1', { C: 5 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: fulcrum, ability: 0, targets: [] }).state;
+    expect([zone(s, fulcrum), zone(s, a), zone(s, b)]).toEqual(['exile', 'graveyard', 'graveyard']);
+  });
+
+  it('Theorix Charm can counter a noncreature spell unless its controller pays {2}', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'last-gasp', 'hand');
+    const rat = put(s, 'P1', 'rank-rat');
+    s.activePlayer = 'P2';
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { B: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: theirs, targets: [card(rat)] });
+    const charm = put(s, 'P1', 'theorix-charm', 'hand');
+    s.pending = { kind: 'priority', player: 'P1', passes: 0 };
+    mana(s, 'P1', { U: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 0, targets: [card(theirs)] }).state;
+    // P2 has no mana left to pay {2}.
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [] })).state;
+    expect([zone(s, theirs), zone(s, rat)]).toEqual(['graveyard', 'battlefield']);
+  });
+});
