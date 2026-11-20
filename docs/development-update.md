@@ -46,7 +46,7 @@ says.
 
 - The 11 red echoed-pairs legends (docs/reality-fracture.md; F12 is split into red, green, and multicolor/colorless). New: Tomik's +1 noncombat damage and Jiang Yanggu's discard count. Fixed Konstrari Charm's and Gardenize's mana (`manaType`).
 - The Reality Fracture booster page has its own pack photos and showcase art (`packages/client/public/packs/fra-*`; the white backgrounds cut away like the other sets').
-- The fuzz suite's "basic AI beats a random bot" test (ten whole games) gets a 60-second limit: it took 5-6 seconds on a slower container, past vitest's default 5.
+- The fuzz suite's "basic AI beats a random bot" test (ten whole games), and later the replay test (a 3-player game played and replayed), get a 60-second limit: it took 5-6 seconds on a slower container, past vitest's default 5.
 
 ### Reality Fracture F11c: black legends (2026-11-20)
 

@@ -54,7 +54,8 @@ describe('replays', () => {
       state = r.state;
     }
     expect(state).toEqual(original.state);
-  });
+    // A whole 3-player game, played and then replayed: about 5 seconds on a slower machine.
+  }, 60_000);
 
   it('a 128-bit seed (as online games use) replays identically, also through JSON', () => {
     const seed = seedFromBytes(randomBytes(16));
