@@ -1,14 +1,14 @@
 import { playerAvatar } from '../game/avatars.ts';
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import type { GameView, InstanceId, PlayerId } from '@nexus/engine';
 import { defOf, isCreature } from '../game/cards.ts';
 import { YOU, type Placement } from '../game/session.ts';
 import { groupTokenCards } from '../game/tokenStacks.ts';
 import { FitBoard } from './FitBoard.tsx';
-import { CardBack, CardFace, ManaCost } from './Card.tsx';
+import { CardBack, CardFace, ManaCost, ManaText } from './Card.tsx';
 
 /** How a card or player should be highlighted right now. */
-export type Mark = 'effect-source' | 'effect-target'
+export type Mark = 'effect-source' | 'effect-trigger' | 'stack-trigger' | 'stack-ability' | 'effect-target'
   | 'playable'
   | 'target'
   | 'can-attack'
@@ -31,6 +31,14 @@ export interface ZoneHandlers {
   /** A short label under a card, e.g. "→ Bot1" or "blocks Bear". */
   cardNote: (id: InstanceId) => string | null;
   onCard: (id: InstanceId) => void;
+  /**
+   * A click on a stack of identical tokens: choose how many of them attack, block or are chosen,
+   * or use one of them. Returns false when there's nothing to do with them right now (the stack
+   * then shows each token).
+   */
+  onStack?: (members: InstanceId[]) => boolean;
+  /** The label under a stack while some of its tokens are chosen ("3 of 5 attacking"). */
+  stackNote?: (members: InstanceId[]) => string | null;
   onPlayer: (id: PlayerId) => void;
   onHover: (id: InstanceId | null) => void;
   /** Open a list of a player's graveyard or exile. */
@@ -65,6 +73,8 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
       <div className="bf-inner">
         <CardFace printing={c.copy?.printing ?? c.printing} defId={c.copy?.artDefId ?? c.defId} size="small" backFace={!!c.transformed && !c.copy} {...(c.finish && !c.copy ? { finish: c.finish } : {})} />
         {c.copy && <div className="badge" title={"Copying " + c.copy.copiedName}>Copy</div>}
+        {c.prepared && <div className="badge face-down" title="Prepared: you may cast a copy of its spell. Doing so unprepares it.">Prepared</div>}
+        {c.faceDown && <div className="badge face-down" title={`Face down${c.manifested ? ' (manifested)' : ''}: a 2/2 creature with no name or abilities${c.faceDownWard ? ', with ward {2}' : ''}. Only its controller knows which card it is.`}>Face down</div>}
         {c.isToken && <div className="badge token">token</div>}
         {(c.counters ?? 0) > 0 && (
           <div key={c.counters} className="badge counters pop">
@@ -98,7 +108,7 @@ export function BattlefieldCard({ view, id, h }: { view: GameView; id: InstanceI
           </div>
         )}
       </div>
-      {note && <div className="card-note">{note}</div>}
+      {note && <div className="card-note"><ManaText text={note} size={14} /></div>}
     </div>
   );
 }
@@ -231,12 +241,106 @@ function DraggableCard({
   );
 }
 
+/**
+ * Fits a battlefield inside its seat: each row (creatures, lands) stays on one line, its permanents
+ * shrinking when they don't fit the row's width (every battlefield size is a multiple of --bf-w);
+ * then, if the rows are taller than the seat, every row shrinks together. Below a readable minimum
+ * the cards of a row fan out, overlapping a little, instead of wrapping onto lines the seat has no
+ * room for or spilling under the rest of the board.
+ */
+function useFitBattlefield(box: RefObject<HTMLDivElement | null>, rows: RefObject<HTMLDivElement | null>[], enabled: boolean): void {
+  useLayoutEffect(() => {
+    const battlefield = box.current;
+    const list = rows.map((r) => r.current).filter((r): r is HTMLDivElement => !!r);
+    if (!battlefield || !enabled || list.length === 0) return;
+    const items = (row: HTMLElement) => [...row.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.classList.contains('empty-row') && e.style.position !== 'absolute');
+    const outer = (e: HTMLElement) => {
+      const m = getComputedStyle(e);
+      return e.getBoundingClientRect().width + (parseFloat(m.marginLeft) || 0) + (parseFloat(m.marginRight) || 0);
+    };
+    const fit = () => {
+      // Measured sizes must be the final ones, not part-way through a card's resize transition.
+      battlefield.classList.add('fitting');
+      try {
+        measure();
+      } finally {
+        battlefield.classList.remove('fitting');
+      }
+    };
+    const measure = () => {
+      for (const row of list) {
+        row.style.removeProperty('--bf-w');
+        for (const e of [...row.children]) if (e instanceof HTMLElement) e.style.removeProperty('margin-left');
+      }
+      // Each row's own card width, from a probe that reads its --bf-w.
+      const base = list.map((row) => {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--bf-w);height:0;pointer-events:none';
+        row.appendChild(probe);
+        const w = probe.getBoundingClientRect().width;
+        probe.remove();
+        return w;
+      });
+      const smallest = base.map((b) => Math.min(b, Math.max(38, b * 0.55)));
+      const width = [...base];
+      const apply = () => list.forEach((row, k) => (width[k]! < base[k]! - 0.5 ? row.style.setProperty('--bf-w', `${width[k]!.toFixed(2)}px`) : row.style.removeProperty('--bf-w')));
+      const need = (row: HTMLElement) => {
+        const cs = getComputedStyle(row);
+        const children = items(row);
+        const gaps = (parseFloat(cs.columnGap) || 0) * Math.max(0, children.length - 1);
+        const available = row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+        return { content: children.reduce((w, e) => w + outer(e), 0), gaps, available, count: children.length };
+      };
+      // Width: widths scale with --bf-w; measured again each time, since a few parts don't.
+      for (let pass = 0; pass < 4; pass++) {
+        let changed = false;
+        list.forEach((row, k) => {
+          const { content, gaps, available } = need(row);
+          if (content === 0 || available <= 0 || content + gaps <= available + 1 || width[k]! <= smallest[k]!) return;
+          width[k] = Math.max(smallest[k]!, (width[k]! * (available - gaps)) / content);
+          changed = true;
+        });
+        if (!changed) break;
+        apply();
+      }
+      // Height: the seat's room for the battlefield.
+      const room = battlefield.parentElement?.clientHeight ?? 0;
+      for (let pass = 0; pass < 4 && room > 0; pass++) {
+        const tall = battlefield.scrollHeight;
+        if (tall <= room + 1 || width.every((w, k) => w <= smallest[k]!)) break;
+        const factor = room / tall;
+        width.forEach((w, k) => (width[k] = Math.max(smallest[k]!, w * factor)));
+        apply();
+      }
+      // Still too wide at the smallest size: the cards of that row overlap.
+      for (const row of list) {
+        const { content, gaps, available, count } = need(row);
+        const over = content + gaps - available;
+        if (over > 1 && count > 1) items(row).slice(1).forEach((e) => e.style.setProperty('margin-left', `${(-over / (count - 1)).toFixed(2)}px`));
+      }
+    };
+    let frame = 0;
+    fit();
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    });
+    observer.observe(battlefield);
+    if (battlefield.parentElement) observer.observe(battlefield.parentElement);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  });
+}
+
 function Battlefield({
   view,
   pid,
   h,
   placement,
   onPlaced,
+  fitRows = false,
 }: {
   view: GameView;
   pid: PlayerId;
@@ -244,8 +348,14 @@ function Battlefield({
   /** Your battlefield: nonland permanents can be dragged around. */
   placement?: Placement;
   onPlaced?: () => void;
+  /** Shrink each row's cards to fit its width (the 2- and 3-player board; 4 players scale the whole seat). */
+  fitRows?: boolean;
 }) {
   const area = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const creatureRow = useRef<HTMLDivElement>(null);
+  const landRow = useRef<HTMLDivElement>(null);
+  useFitBattlefield(box, [placement ? area : creatureRow, landRow], fitRows);
   const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
   const ids = view.players[pid]!.battlefield;
   const lands = ids.filter((id) => defOf(view.cards[id]!.defId).types.includes('land'));
@@ -256,17 +366,24 @@ function Battlefield({
   const ordered = hosts;
   const groups = groupTokenCards(ordered, (id) => {
     const key = h.tokenStackKey(id);
-    // Unfold automatically for targets, combat selection, payments, or manually positioned tokens.
-    return key && !expandedStacks.has(key) && !placement?.has(id) && h.markCard(id).every((m) => m === 'recent') ? key : null;
+    // Shown one by one only when the player asks, or for tokens they've dragged into place.
+    return key && !expandedStacks.has(key) && !placement?.has(id) ? key : null;
   });
   const tokenStack = (group: (typeof groups)[number]) => {
     const expand = () => setExpandedStacks(new Set([...expandedStacks, group.key!]));
+    const use = () => {
+      if (!h.onStack?.(group.members)) expand();
+    };
+    // The stack shows what any of its tokens could do (attack, block, be chosen), and how many are chosen.
+    const marks = [...new Set(group.members.flatMap((m) => h.markCard(m)))];
+    const note = h.stackNote?.(group.members) ?? h.cardNote(group.id);
+    const name = defOf(view.cards[group.id]!.defId).name;
     return <div key={group.id} className="token-stack" role="button" tabIndex={0}
-      aria-label={`${group.members.length} ${defOf(view.cards[group.id]!.defId).name} tokens. Expand to choose individual tokens.`}
-      onClick={expand}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(); } }}>
-      <BattlefieldCard view={view} id={group.id} h={{ ...h, onCard: expand }} />
-      <span className="token-stack-count" aria-hidden="true">{group.members.length}</span>
+      aria-label={`${group.members.length} ${name} tokens. ${note ?? 'Click to choose how many, or to see each one.'}`}
+      onClick={use}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); use(); } }}>
+      <BattlefieldCard view={view} id={group.id} h={{ ...h, onCard: use, markCard: () => marks, cardNote: () => note }} />
+      <span className="token-stack-count" aria-hidden="true">×{group.members.length}</span>
     </div>;
   };
   if (placement) {
@@ -274,11 +391,11 @@ function Battlefield({
     for (const id of [...placement.keys()]) if (!hosts.includes(id)) placement.delete(id);
   }
   return (
-    <div className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
+    <div ref={box} className="battlefield" aria-label="Battlefield" data-pile={`${pid}:battlefield`}>
       <div className="zone-label">Battlefield{placement && ordered.length > 0 ? ' · drag your permanents to arrange them' : ''}</div>
       {expandedStacks.size > 0 && <button className="stack-tokens-button ghost" onClick={() => setExpandedStacks(new Set())}>Stack tokens</button>}
       {placement ? (
-        <div ref={area} className="row creatures free">
+        <div ref={area} className={`row creatures free ${fitRows ? 'fit' : ''}`}>
           {groups.map((group) => group.members.length > 1 ? tokenStack(group) : (
             <DraggableCard
               key={group.id}
@@ -294,14 +411,14 @@ function Battlefield({
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>
       ) : (
-        <div className="row creatures">
+        <div ref={creatureRow} className={`row creatures ${fitRows ? 'fit' : ''}`}>
           {groups.map((group) => group.members.length > 1 ? tokenStack(group) : (
             <AttachedGroup key={group.id} view={view} id={group.id} attached={attachedTo(group.id)} h={h} />
           ))}
           {ordered.length === 0 && <div className="empty-row">No creatures</div>}
         </div>
       )}
-      <div className="row lands">
+      <div ref={landRow} className={`row lands ${fitRows ? 'fit' : ''}`}>
         {lands.map((id) => (
           <BattlefieldCard key={id} view={view} id={id} h={h} />
         ))}
@@ -310,16 +427,24 @@ function Battlefield({
   );
 }
 
-function ManaPool({ pool, equipment, noncreature, artifact }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool']; noncreature?: GameView['players'][string]['manaPool']; artifact?: GameView['players'][string]['manaPool'] }) {
+const RESTRICTED_TITLES: Record<string, string> = { artifactSpell: 'Only for artifact spells', artifactAbility: 'Only for abilities of artifacts', notFromHand: 'Only for spells cast from anywhere other than your hand' };
+
+function ManaPool({ pool, equipment, noncreature, artifact, others }: { pool: GameView['players'][string]['manaPool']; equipment: GameView['players'][string]['manaPool']; noncreature?: GameView['players'][string]['manaPool']; artifact?: GameView['players'][string]['manaPool']; others?: NonNullable<GameView['players'][string]['restrictedMana']> }) {
   const symbols = (p: typeof pool) => Object.entries(p).flatMap(([t, n]) => Array.from({ length: n }, () => `{${t}}`));
   const normal = symbols(pool);
   const restricted = symbols(equipment);
   const forNoncreature = noncreature ? symbols(noncreature) : [];
   const forArtifact = artifact ? symbols(artifact) : [];
-  if (normal.length + restricted.length + forNoncreature.length + forArtifact.length === 0) return null;
+  const extra = Object.entries(others ?? {}).map(([kind, p]) => ({ kind, list: symbols(p as typeof pool) })).filter((e) => e.list.length > 0);
+  if (normal.length + restricted.length + forNoncreature.length + forArtifact.length + extra.length === 0) return null;
   return (
     <span className="pool" title="Mana pool">
       <ManaCost cost={normal.join('')} size={13} />
+      {extra.map((e) => (
+        <span key={e.kind} className="pool-restricted" title={RESTRICTED_TITLES[e.kind] ?? 'Restricted mana'}>
+          <ManaCost cost={e.list.join('')} size={13} />
+        </span>
+      ))}
       {restricted.length > 0 && (
         <span className="pool-restricted" title="Only for Equipment spells and equip abilities">
           <ManaCost cost={restricted.join('')} size={13} />
@@ -345,14 +470,14 @@ function ManaPool({ pool, equipment, noncreature, artifact }: { pool: GameView['
  * it fades), so everyone can see the mana going around.
  */
 function ManaLine({ p, note }: { p: GameView['players'][string]; note: { choosing?: string; tapped?: { key: number; mana: string } } | null }) {
-  const floating = [p.manaPool, p.equipmentMana, p.noncreatureSpellMana, p.artifactMana].some((pool) => pool && Object.values(pool).some((n) => n > 0));
+  const floating = [p.manaPool, p.equipmentMana, p.noncreatureSpellMana, p.artifactMana, ...Object.values(p.restrictedMana ?? {})].some((pool) => pool && Object.values(pool).some((n) => n > 0));
   if (!floating && !note?.choosing && !note?.tapped) return null;
   return (
     <div className="mana-line">
       {floating && (
         <span className="mana-line-item" title="Mana in their pool (it empties at the end of each step)">
           <span className="mana-line-label">Floating</span>
-          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} {...(p.artifactMana ? { artifact: p.artifactMana } : {})} />
+          <ManaPool pool={p.manaPool} equipment={p.equipmentMana} noncreature={p.noncreatureSpellMana} {...(p.artifactMana ? { artifact: p.artifactMana } : {})} {...(p.restrictedMana ? { others: p.restrictedMana } : {})} />
         </span>
       )}
       {note?.choosing && (
@@ -404,13 +529,16 @@ export function PlayerHeader({ view, pid, h }: { view: GameView; pid: PlayerId; 
   const marks = h.markPlayer(pid);
   const active = view.activePlayer === pid;
   return (
-    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} onClick={() => h.onPlayer(pid)}>
+    <div className={`player-header ${marks.join(' ')} ${active ? 'active' : ''}`} data-player={pid} onClick={() => h.onPlayer(pid)}>
       <PlayerAvatar pid={pid} />
       <div className="who">
         <div className="name">
           {pid === YOU ? 'You' : pid}
           {active && <span className="turn-pill">Turn</span>}
           {view.monarch === pid && <span className="turn-pill" title="The monarch draws at their end step; creature combat damage can transfer the crown">Monarch</span>}
+          {(view.emblems ?? []).filter((e) => e.controller === pid).map((e, i) => (
+            <span key={i} className="turn-pill" title={`Emblem from ${e.name} (for the rest of the game)`}>Emblem</span>
+          ))}
         </div>
         <div className="counts">
           <span title={p.maximumHandSize === null ? "Cards in hand: no maximum hand size" : `Cards in hand: discard down to ${p.maximumHandSize} during your cleanup step`}>✋ {p.handCount}/{p.maximumHandSize ?? "∞"}</span>
@@ -466,7 +594,8 @@ export function CommandZone({view,pid,h}:{view:GameView;pid:PlayerId;h:ZoneHandl
  */
 export function OpponentHand({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHandlers }) {
   const p = view.players[pid]!;
-  const revealed = (p.revealedHand ?? []).filter((id) => view.cards[id]);
+  // A player you control this turn: you see their whole hand (rule 722.2).
+  const revealed = (p.hand ?? p.revealedHand ?? []).filter((id) => view.cards[id]);
   const hidden = Math.max(0, p.handCount - revealed.length);
   const shown = Math.min(p.handCount, 12);
   const backs = Math.max(0, Math.min(hidden, shown - revealed.length));
@@ -483,7 +612,8 @@ export function OpponentHand({ view, pid, h }: { view: GameView; pid: PlayerId; 
             key={id}
             data-card={id}
             className={`opp-hand-card revealed ${h.markCard(id).join(' ')}`}
-            title={`${defOf(view.cards[id]!.defId).name} (revealed)`}
+            title={`${defOf(view.cards[id]!.defId).name}${p.hand ? '' : ' (revealed)'}`}
+            onClick={() => h.onCard(id)}
             onMouseEnter={() => h.onHover(id)}
             onMouseLeave={() => h.onHover(null)}
           >
@@ -519,7 +649,7 @@ export function OpponentZone({ view, pid, h, fit = false, commandCorner = 'top-l
       </div>
       <OpponentHand view={view} pid={pid} h={h} />
       <FitBoard enabled={fit}><div className="zone-body">
-        <Battlefield view={view} pid={pid} h={h} />
+        <Battlefield view={view} pid={pid} h={h} fitRows={!fit} />
         <ZonePiles view={view} pid={pid} h={h} />
       </div></FitBoard>
       {!top && <div className="zone-bottom">{command}</div>}
@@ -544,7 +674,7 @@ export function YourZone({
     <section className={`zone you ${view.players[YOU]!.eliminated ? 'eliminated' : ''}`}>
       <div className="zone-top"><CommandZone view={view} pid={YOU} h={h} /><PlayerHeader view={view} pid={YOU} h={h} /></div>
       <FitBoard enabled={fit}><div className="zone-body">
-        <Battlefield view={view} pid={YOU} h={h} placement={fit ? undefined : placement} onPlaced={onPlaced} />
+        <Battlefield view={view} pid={YOU} h={h} placement={fit ? undefined : placement} onPlaced={onPlaced} fitRows={!fit} />
         <ZonePiles view={view} pid={YOU} h={h} />
       </div></FitBoard>
     </section>
@@ -650,7 +780,7 @@ function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHan
         onOpen={() => h.onZone(pid, 'graveyard')}
         h={h}
       />
-      <Pile view={view} pile={`${pid}:exile`} label="Exile" count={p.exile.length} top={p.exile.at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
+      <Pile view={view} pile={`${pid}:exile`} label="Exile" count={p.exile.filter((id) => !view.cards[id]?.prepareSpellOf).length} top={p.exile.filter((id) => !view.cards[id]?.prepareSpellOf).at(-1)} onOpen={() => h.onZone(pid, 'exile')} h={h} />
       {/* Phased out until their controller's next turn (Clever Concealment). */}
       {p.phasedOut.length > 0 && (
         <Pile view={view} pile={`${pid}:phasedOut`} label="Phased out" count={p.phasedOut.length} top={p.phasedOut.at(-1)} h={h} />
@@ -660,17 +790,18 @@ function ZonePiles({ view, pid, h }: { view: GameView; pid: PlayerId; h: ZoneHan
 }
 
 /** Your hand, plus cards you can cast from elsewhere right now (flashback, cards exiled to play). */
-export function Hand({ view, h, elsewhere }: { view: GameView; h: ZoneHandlers; elsewhere: InstanceId[] }) {
-  const hand = view.players[YOU]!.hand ?? [];
+export function Hand({ view, h, elsewhere, pid = YOU }: { view: GameView; h: ZoneHandlers; elsewhere: InstanceId[]; pid?: PlayerId }) {
+  const hand = view.players[pid]!.hand ?? [];
   const all = [...hand, ...elsewhere];
   return (
-    <div className="hand" style={{ '--hand-count': all.length } as CSSProperties} data-pile={`${YOU}:hand`}>
+    <div className={`hand ${pid !== YOU ? 'controlled' : ''}`} style={{ '--hand-count': all.length } as CSSProperties} data-pile={`${pid}:hand`}>
+      {pid !== YOU && <div className="controlled-hand-label">{pid}'s hand: you're playing their turn</div>}
       {all.map((id, i) => {
         const tilt = (i - (all.length - 1) / 2) * 2;
         const zone = view.cards[id]!.zone;
         return <HandCard key={id} view={view} id={id} h={h} tilt={tilt} tag={zone === 'hand' ? undefined : zone === 'library' ? 'Top of library' : `from ${zone}`} />;
       })}
-      {all.length === 0 && <div className="empty-row">Your hand is empty</div>}
+      {all.length === 0 && <div className="empty-row">{pid === YOU ? 'Your hand is empty' : `${pid}'s hand is empty`}</div>}
     </div>
   );
 }
@@ -705,7 +836,8 @@ export function ExileList({
   castable: ReadonlySet<InstanceId>;
   onClose: () => void;
 }) {
-  const ids = [...view.players[pid]!.exile].reverse();
+  // Copies of prepare spells wait in exile; they're cast from their prepared creature, so they aren't listed here.
+  const ids = [...view.players[pid]!.exile].filter((id) => !view.cards[id]?.prepareSpellOf).reverse();
   const nameOf = (id: InstanceId) => (view.cards[id] ? defOf(view.cards[id]!.defId).name : 'a card');
   const now: ExileSection['cards'] = [];
   const foretold: ExileSection['cards'] = [];
@@ -786,7 +918,7 @@ export function ExileList({
                   >
                     <CardFace printing={view.cards[id]!.printing} defId={view.cards[id]!.defId} size="normal" />
                   </div>
-                  {note && <div className="list-note">{note}</div>}
+                  {note && <div className="list-note"><ManaText text={note} size={13} /></div>}
                 </div>
               ))}
               {Array.from({ length: sec.faceDown ?? 0 }, (_, i) => (

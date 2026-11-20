@@ -70,6 +70,8 @@ export function manaSources(s: GameState, playerId: PlayerId, opts: TapOptions =
       if (def.manaAbility?.sacrificeLand) return false;
       if (def.manaAbility?.onlyForNoncreatureSpells && !opts.forNoncreatureSpell) return false;
       if (def.manaAbility?.onlyForArtifacts && !opts.forArtifact) return false;
+      // Other restricted mana (artifact spells only, and so on) is never tapped automatically.
+      if (def.manaAbility?.restricted) return false;
       const sick = def.types.includes('creature') && c.summoningSick && !def.keywords?.includes('Haste');
       return !sick || tapFree;
     });
@@ -112,7 +114,7 @@ function sourceChoices(s: GameState, src: TapSource): ManaType[] {
 }
 function grantedSources(s: GameState, player: PlayerId, opts: TapOptions): TapSource[] {
   return Object.values(s.cards).filter((c) => c.zone === 'battlefield' && !c.phasedOut && c.controller === player && !c.tapped && !opts.exclude?.includes(c.id) && (!c.summoningSick || hasKeyword(s, c, 'Haste')))
-    .flatMap((c) => grantedManaAbilities(s, c).map((a) => ({ ...c, grantedBy: a.source })));
+    .flatMap((c) => grantedManaAbilities(s, c).filter((a) => !a.restricted).map((a) => ({ ...c, grantedBy: a.source })));
 }
 function legendarySources(s: GameState, player: PlayerId, opts: TapOptions): TapSource[] {
   const out: TapSource[] = [];

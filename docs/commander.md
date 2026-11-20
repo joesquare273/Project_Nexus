@@ -26,6 +26,56 @@ card is built it can't be cast or played (since 2026-10-29; all precon
 cards are built).
 The Starter Kit cards that also appear in the precons are shared.
 
+## Reality Fracture Commander precon (imported 2026-11-16)
+
+Reality Fracture has one Commander deck. It was imported with the same script
+(`import-precons.ts frc`, MTGJSON's `MultiverseReforged_FRC`):
+
+| Deck | Commander | Fully built |
+|---|---|---|
+| Multiverse Reforged | Jace, Multiverse Architect (WUBR) | 97/97 entries (all 93 distinct cards) |
+
+- **Cards:** 93 distinct. 33 are shared with cards already built (Sol Ring, Arcane Signet, Command Tower, the pain lands...). 60 are new in `packages/cards/data/frc.json`, and 57 of the deck's cards are `notBuilt` until their group is built.
+- **Data:** the decklist with each card's status is in `frc-precons.json` (`FRC_PRECONS`). Every printing's art is cached (`npm run scryfall`; reprints in `precon-printings.json`), and 17 tokens the unbuilt cards make are waiting in `pending-tokens.json`.
+- **The commander** is a planeswalker that says "Jace, Multiverse Architect can be your commander" (rule 903.3d). New definition field: `canBeCommander` (the importer sets it from that line; `format.ts canBeCommander`).
+- **Store and starter:** the deck is sold in the Store's Reality Fracture tab (2,000, saved as a deck), offered as a free starter, and shown in the Collection's Reality Fracture tab. Its packs aren't imported; only the precon so far.
+
+What the unbuilt cards need, most first: triggers (22), static abilities (17), activated abilities (16), spell effects (14), X costs (5), cycling (3), landfall and Jace's empower (2 each), and one each of eminence, mill, morph, protection, impending, corrupted, incubate, transform, amass, Treasure, scry and surveil.
+
+The planned groups (R1-R5, tests in `packages/bots/test/frc-cards.test.ts`):
+
+- **R1 (done 2026-11-16): lands and mana.** The four Signets, Reflecting Pool, Mystic Gate, Turbulent Crater, Shore and Wetlands, Contaminated and Perilous Landscape, Kher Keep, Restless Anchorage and Restless Spire, with the Kobolds of Kher Keep and Map tokens (tfrc 10 and 14).
+  - Engine: `entersTappedUnless.opponentsLands` ("unless your opponents control eight or more lands", counted across all opponents).
+  - Engine: `BecomeCreature` animations (`Animation`) can set colors and add keywords and abilities while they last. Restless Spire's "during your turn, this creature has first strike" is only on the animated land.
+  - The Signets and Mystic Gate use the paid mana abilities (`manaAbility.paid`) and Reflecting Pool `yourLandColors`.
+  - Simplification: as elsewhere, explore keeps a nonland card on top (the "put it into your graveyard" choice isn't offered).
+- **R2a (done 2026-11-16): spells.** Despark, Brainsurge, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Occult Epiphany, Grand Crescendo and White Sun's Twilight, with the Soldier, Citizen, Spirit, Phyrexian Mite and Incubator tokens (tfrc 3, 11, 4, 16 and 13).
+  - Engine: toxic (`toxic` on a definition: combat damage to a player also gives that many poison counters, rule 702.164) and `cantBlock` on a definition.
+  - Engine: the `exiledThisWay` amount (permanents exiled earlier in the resolution) and the `notCreatedThisWay` filter ("destroy all other creatures" spares the tokens the spell just made).
+  - Flawless Maneuver's free cast is an alternative cost with `ifControls: {commander: true}`.
+- **R2b (done 2026-11-16): the harder spells.** Fact or Fiction, Teferi's Reproach, Mass Polymorph, Synthetic Destiny and Shark Typhoon, with the Shark token (tfrc 6).
+  - Engine: `RevealSeparatePiles`. The opponent separates the revealed cards (choice `separatePiles`); the caster takes a pile by choosing any card in it, or nothing for an empty pile (`choosePile`).
+  - Engine: `ShieldPlayerUntilNextTurn`. `PlayerState.shielded` means nothing can target or damage that player and their life can't change. Their nonland permanents phase out, and it ends as their next turn begins.
+  - Engine: `exileOnResolve` on a spell, `RevealCreaturesToBattlefield`, and delayed triggers that fix "that many" when they're created.
+  - Engine: `cyclingEffects` (Shark Typhoon's X/X Shark when cycled, with X paid as part of cycling) and `tokenSizeFromAmount`.
+  - Simplifications: Fact or Fiction's opponent is the next one in turn order (the caster doesn't choose). Shark Typhoon's "when you cycle this card" resolves with the cycling draw instead of as its own trigger.
+- Fatehold Charm and Plan for All Outcomes use Jace's empower, so they move to R5.
+- **R3a (done 2026-11-16): creatures.** Avacyn, Archfiend of Despair, Darksteel Angel, Overlord of the Mistmoors, Jhoira, Niv-Mizzet, Ginger, Memnarch and Archon of Cruelty, with the Insect, Myr and Gingerbrute tokens (tfrc 2, 15 and 12).
+  - Engine: impending (`alternativeCost.impending`: time counters, not a creature while it has any; the `time` counter kind).
+  - Engine: delayed triggers that keep their triggering card (`keepSubject`: Avacyn), and the statics `opponentsCantGainLife`, `controllerCantLose` and `noMinusCountersOnYourCreatures`.
+  - Engine: LoseLife `lifeLostThisTurn`, RevealUntil `fromTargetPlayer` (Jhoira), and the trigger condition `ifYouAreMonarch`.
+  - Engine: LifeGained triggers carry the amount (`lifeGainedInEvent`, and the trigger cost `lifeOf: 'lifeGainedInEvent'`), and the temporary flag `onlyBlockedByHaste`.
+  - Simplification: the Gingerbrute token has no mana cost here (its {1} only gives it a mana value of 1).
+- **R3b (done 2026-11-16): Serra's Emissary, The Ur-Sphinx, Omnath, Locus of the Void and Venser, Fervent Forger.**
+  - Engine: protection from a chosen card type for a player and their creatures (`protectionFromChosenType`, `protectedFromType`: damage, targeting and blocking).
+  - Engine: static abilities with eminence that work from the command zone (`StaticSpec.eminence`, for cost reductions), `CastMilledFree` (one free spell per player among the cards this ability milled), and casting a permitted card from another player's graveyard.
+  - Engine: the count `UnspentManaYouHave`, mana that becomes colorless instead of emptying (`unspentManaBecomesColorless`), and CopySpell on a target spell.
+  - TypeScript: the card files are combined as plain data in cards/src/index.ts, because their combined JSON types grew too complex.
+- **R3c: Akroma, Angel of Fury.** (done) Morph: cast face down as a 2/2 for {3}, turned face up for its morph cost; face-down cards stay hidden from opponents online.
+- **R4: artifacts and enchantments.** (done) Cursed Mirror, Currency Converter, Proteus Staff, Skrelv's Hive, Dreadhorde Invasion and Windcrag Siege.
+- **R5a: four creatures.** (done) Nissa, Leyline Tamer, Dack Fayden, Helping Hand, Ob Nixilis, the Ascended and Tamiyo, Upriser Crowned.
+- **R5b: Jace and empower.** (done) Jace, Multiverse Architect, Elspeth, Sun's Champion, Fatehold Charm and Plan for All Outcomes.
+
 ## Edge of Eternities Commander precons (complete 2026-11-06)
 
 Imported with the same script (`import-precons.ts eoc`); every card is built:

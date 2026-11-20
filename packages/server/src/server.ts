@@ -9,7 +9,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { errorDetails, log, recentLog } from './log.ts';
 import { Lobby, type LobbyOptions } from './rooms.ts';
-import { ONBOARDING_STEPS, type AccountService, type AccountUser, type OnboardingStep } from './accounts.ts';
+import { ONBOARDING_STEPS, REQUEST_STATUSES, type AccountService, type AccountUser, type OnboardingStep, type RequestInput, type RequestStatus } from './accounts.ts';
 import { randomInt, randomUUID } from 'node:crypto';
 import { BOOSTER_SETS, openSetPack, type BoosterSet, type PackKind } from '@nexus/cards/boosters';
 import { DeckInput, deckProblem } from './collection.ts';
@@ -117,13 +117,30 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * - GET /api/rewards: quest progress, one-time rewards and match rewards (rewards.ts).
  * - GET /api/fragments, POST /api/dismantle (and /batch), POST /api/craft: fragments
  *   (crafting.ts), each change once per request id.
+ * - GET /api/requests, POST /api/requests {subject, cards, description}: a
+ *   player's requests to the admin (10 a day).
+ * - /api/admin/*: admins only (profiles.is_admin): accounts and shard
+ *   changes, and every player's requests (list, status, delete).
  */
 async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string, accounts: AccountService | null): Promise<void> {
   try {
     const user = await signedIn(req, res, accounts);
     if (!user || !accounts) return;
     const method = req.method ?? 'GET';
-    if (path === '/api/account' && method === 'GET') return json(res, 200, await accounts.ensure(user));
+    if (path === '/api/account' && method === 'GET') return json(res, 200, { ...(await accounts.ensure(user)), admin: await accounts.isAdmin(user.id) });
+    // Requests to the admin: players send them and see their own.
+    if (path === '/api/requests' && method === 'GET') return json(res, 200, { requests: await accounts.myRequests(user.id) });
+    if (path === '/api/requests' && method === 'POST') {
+      await accounts.ensure(user);
+      const parsed = readRequest(await readJson(req));
+      if (typeof parsed === 'string') return json(res, 400, { error: parsed });
+      if ((await accounts.requestCountSince(user.id, new Date(Date.now() - 86_400_000))) >= REQUESTS_PER_DAY) {
+        return json(res, 429, { error: `You can send ${REQUESTS_PER_DAY} requests a day. Try again tomorrow.` });
+      }
+      return json(res, 200, { request: await accounts.createRequest(user.id, parsed) });
+    }
+    // Administration: only for accounts flagged admin in the database (profiles.is_admin).
+    if (path.startsWith('/api/admin/')) return adminRoute(req, res, path, method, user.id, accounts);
     if (path === '/api/collection' && method === 'GET') return json(res, 200, { cards: await accounts.collection(user.id) });
     if (path === '/api/decks' && method === 'GET') return json(res, 200, { decks: await accounts.decks(user.id) });
     if (path === '/api/decks' && method === 'POST') {
@@ -205,11 +222,81 @@ async function apiRoute(req: IncomingMessage, res: ServerResponse, path: string,
     if (deckId && method === 'DELETE') {
       return (await accounts.deleteDeck(user.id, deckId)) ? json(res, 200, { deleted: deckId }) : json(res, 404, { error: 'That deck was not found.' });
     }
+    if (path === '/api/requests') return json(res, 405, { error: 'That method is not allowed here.' });
     if (['/api/account', '/api/collection', '/api/decks', '/api/onboarding', '/api/packs/open', '/api/starter', '/api/store', '/api/store/buy', '/api/fragments', '/api/dismantle', '/api/dismantle/batch', '/api/craft', '/api/rewards'].includes(path) || deckId) return json(res, 405, { error: 'That method is not allowed here.' });
     return json(res, 404, { error: 'Unknown request.' });
   } catch {
     if (!res.headersSent) json(res, 500, { error: 'The account could not be loaded. Try again.' });
   }
+}
+
+/** Requests a player may send in a day. */
+const REQUESTS_PER_DAY = 10;
+
+/** A player's request, checked and trimmed; or why it can't be sent. */
+function readRequest(body: unknown): RequestInput | string {
+  const b = (body ?? {}) as { subject?: unknown; cards?: unknown; description?: unknown };
+  const subject = typeof b.subject === 'string' ? b.subject.trim() : '';
+  const description = typeof b.description === 'string' ? b.description.trim() : '';
+  if (!subject) return 'Add a subject.';
+  if (subject.length > 120) return 'Keep the subject to 120 characters.';
+  if (!description) return 'Describe the problem.';
+  if (description.length > 4000) return 'Keep the description to 4,000 characters.';
+  if (b.cards !== undefined && !Array.isArray(b.cards)) return 'The card list could not be read.';
+  const cards = [...new Set(((b.cards as unknown[] | undefined) ?? []).filter((c): c is string => typeof c === 'string').map((c) => c.trim()).filter(Boolean))];
+  if (cards.length > 30) return 'List up to 30 cards.';
+  if (cards.some((c) => c.length > 100)) return 'A card name is too long.';
+  return { subject, cards, description };
+}
+
+/** The largest balance or single change an admin can set (a typo guard). */
+const ADMIN_MAX_SHARDS = 10_000_000;
+
+/**
+ * The admin page's requests: GET /api/admin/accounts (every account's
+ * balances and the latest admin changes) and POST /api/admin/shards
+ * {userId, mode: 'set' | 'add', amount, requestId, note}.
+ */
+async function adminRoute(req: IncomingMessage, res: ServerResponse, path: string, method: string, adminId: string, accounts: AccountService): Promise<void> {
+  if (!(await accounts.isAdmin(adminId))) return json(res, 403, { error: 'Only admins can do that.' });
+  if (path === '/api/admin/accounts' && method === 'GET') {
+    const [list, actions] = await Promise.all([accounts.adminAccounts(), accounts.adminActions(50)]);
+    return json(res, 200, { accounts: list, actions });
+  }
+  if (path === '/api/admin/requests' && method === 'GET') return json(res, 200, { requests: await accounts.allRequests() });
+  if (path === '/api/admin/requests/status' && method === 'POST') {
+    const body = (await readJson(req)) as { id?: unknown; status?: unknown } | undefined;
+    if (typeof body?.id !== 'number' || !Number.isInteger(body.id)) return json(res, 400, { error: 'Choose a request.' });
+    if (!REQUEST_STATUSES.includes(body.status as RequestStatus)) return json(res, 400, { error: 'Choose not started, incomplete or complete.' });
+    return (await accounts.setRequestStatus(body.id, body.status as RequestStatus)) ? json(res, 200, { id: body.id, status: body.status }) : json(res, 404, { error: 'That request was not found.' });
+  }
+  const requestId = /^\/api\/admin\/requests\/(\d{1,15})$/.exec(path)?.[1];
+  if (requestId && method === 'DELETE') {
+    return (await accounts.deleteRequest(Number(requestId))) ? json(res, 200, { deleted: Number(requestId) }) : json(res, 404, { error: 'That request was not found.' });
+  }
+  if (path === '/api/admin/shards' && method === 'POST') {
+    const body = (await readJson(req)) as { userId?: unknown; mode?: unknown; amount?: unknown; requestId?: unknown; note?: unknown } | undefined;
+    const mode = body?.mode;
+    const amount = body?.amount;
+    if (typeof body?.userId !== 'string' || !/^[0-9a-zA-Z-]{1,64}$/.test(body.userId)) return json(res, 400, { error: 'Choose an account.' });
+    if (mode !== 'set' && mode !== 'add') return json(res, 400, { error: 'Set the balance or add to it.' });
+    if (typeof amount !== 'number' || !Number.isInteger(amount) || Math.abs(amount) > ADMIN_MAX_SHARDS || (mode === 'set' && amount < 0)) {
+      return json(res, 400, { error: `Enter a whole number${mode === 'set' ? ' from 0' : ''} up to ${ADMIN_MAX_SHARDS.toLocaleString()}.` });
+    }
+    if (typeof body.requestId !== 'string' || !/^[0-9a-zA-Z-]{8,64}$/.test(body.requestId)) return json(res, 400, { error: 'That request could not be read.' });
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 200) : '';
+    try {
+      const r = await accounts.adminAdjustShards(adminId, body.userId, mode, amount, body.requestId, note);
+      return json(res, 200, r);
+    } catch (e) {
+      const message = String(e instanceof Error ? e.message : e);
+      if (/insufficient/.test(message)) return json(res, 400, { error: "That would take the balance below zero." });
+      if (/no profile/.test(message)) return json(res, 404, { error: 'That account was not found.' });
+      if (/not an admin/.test(message)) return json(res, 403, { error: 'Only admins can do that.' });
+      throw e;
+    }
+  }
+  return json(res, 404, { error: 'Unknown request.' });
 }
 
 const PACK_PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };
@@ -239,6 +326,8 @@ async function openPackRoute(res: ServerResponse, user: AccountUser, accounts: A
 
 export function startServer(opts: ServerOptions = {}): Promise<RunningServer> {
   const lobby = new Lobby({ ...opts, accounts: opts.accounts ?? null });
+  // Draft events a restart lost (they live in memory): their entries go back to the players.
+  void lobby.events.refundLostEntries().catch((e) => log('draft-entry-refund-failed', errorDetails(e)));
   // Only a real build (with index.html) is served.
   const root = opts.staticDir && existsSync(join(opts.staticDir, 'index.html')) ? resolve(opts.staticDir) : null;
   const http: Server = createServer((req, res) => {

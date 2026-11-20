@@ -109,6 +109,7 @@ choices keep opponents' hand identities hidden.
 
 ## Known rules simplifications (to revisit)
 
+
 | Area | Engine today | Real rule |
 |---|---|---|
 | First strike | Fixed 2026-10-24: separate first-strike and normal damage steps, state-based actions and priority between them | Rule 510.4 |
@@ -152,7 +153,7 @@ choices keep opponents' hand identities hidden.
 | "Search for up to N cards" | Takes as many as it can (up to N) | The player may take fewer |
 | Choices in "each player" effects | Players choose one at a time in turn order from the active player, seeing earlier choices | Simultaneous, in APNAP order (rule 101.4) |
 | {X} costs | The caster chooses X from 1 up to what their mana could pay, at most 12 | Any X, including 0 |
-| Ward | An opponent's spell or activated ability that targets it simply costs the ward amount more (Alpharael's "discard a card at random" is discarded as the spell is cast, and targeting it is refused with an empty hand); an opponent's triggered ability can't target it | A triggered ability that counters the spell or ability unless its controller pays (rule 702.21) |
+| Ward | An opponent's spell or activated ability that targets it simply costs the ward amount more (Alpharael's "discard a card at random" is discarded as the spell is cast, and targeting it is refused with an empty hand; Sunset Saboteur's "discard a card" is discarded at random the same way, not chosen); an opponent's triggered ability can't target it | A triggered ability that counters the spell or ability unless its controller pays (rule 702.21) |
 | Convoke | Each creature pays a mana of its color if the cost still has one, otherwise {1}; the legal list taps creatures in board order and skips creatures that make mana | The player assigns each creature (rule 702.51) |
 | Connive with several creatures (Lethal Scheme) | Draw one card per creature, discard that many, then each nonland card discarded puts a +1/+1 counter on the next creature | Each creature connives in turn (rule 701.50) |
 | "Any number of target" permanents (Clever Concealment) | Up to six | Any number |
@@ -165,7 +166,12 @@ choices keep opponents' hand identities hidden.
 | Summon: Esper Valigarmanda's chapter I | The engine exiles the instant or sorcery with the greatest mana value from each graveyard | The Saga's controller chooses |
 | Espers to Magicite's "choose up to one target creature card exiled this way" | Chosen as the spell resolves, not by a reflexive trigger | A reflexive triggered ability with a target (rule 603.12) |
 | Good King Mog XII's "a copy of a non-Saga token you control" | The token is targeted | Chosen as the ability resolves, without targeting |
-| Station mana abilities (Uthros, Evendo, The Eternity Elevator's 20+) | Ordinary activated abilities: they use the stack and can be responded to, and the mana arrives when they resolve | Mana abilities: no stack, usable while paying a cost (rule 605) |
+| Station mana abilities (Uthros, Evendo, The Eternity Elevator's 20+) and Gene Pollinator | Ordinary activated abilities: they use the stack and can be responded to, and the mana arrives when they resolve | Mana abilities: no stack, usable while paying a cost (rule 605) |
+| Requiem Monolith's granted ability | The creature's controller draws and loses life as the damage is dealt | A triggered ability that uses the stack |
+| Weftwalking | A player's first spell on their own turn is free automatically (unless X is above 0 or an alternative cost is used) | The player may choose to pay instead (rule 118.9) |
+| Moonlit Meditation | The first tokens you create each turn always become copies of the enchanted permanent | "You may": the player chooses |
+| Steelswarm Operator's {U}{U} | An ordinary activated ability that uses the stack | A mana ability (rule 605) |
+| The Dominion Bracelet | The "{15}, Exile The Dominion Bracelet" ability is on the Bracelet itself, usable while it's attached; a computer player that controls you plays your turn as if it were you | The equipped creature has the ability; the controller makes decisions in their own interest (rule 722) |
 | Blue Mage's Cane's copy | The exiled card itself is cast for {3}, at any time that turn, and returns to exile afterwards (as if the copy ceased to exist) | A copy is cast while the ability resolves (rules 707.12, 608.2g) |
 | Sin's "as it enters, remove all counters" | Only when Sin is cast (as the spell resolves); put onto the battlefield another way, it enters with no counters | Also when it enters another way (rule 614.1c) |
 | "Loses all abilities" (Observed Stasis) | Removes the abilities in its own definition; abilities granted by other permanents or effects still apply | Also removes abilities granted earlier by timestamp (rule 613.1f) |
@@ -646,3 +652,7 @@ abilities.
   pass it for you whenever your own spell was on top; with "Hold priority"
   (a button next to Pass, and a setting) it waits, so you can add more to
   the stack before anyone can respond, then pass yourself.
+
+## 2026-11-12: Credits and the fan content notice
+
+Project Nexus stays free and non-commercial, with no real-money purchases; Aether Shards can't be bought. Every page carries the notice suggested by Wizards of the Coast's Fan Content Policy and links a credits page naming Wizards of the Coast, Square Enix, the card artists (with the menu-art crops by name), Scryfall and the font licenses. Music stays out until there are tracks with clear licenses (see docs/audio.md). This lowers the risk; it isn't a license.

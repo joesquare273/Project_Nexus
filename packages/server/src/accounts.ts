@@ -70,6 +70,99 @@ export interface AccountService {
   recordMatch(userId: string, match: MatchResult): Promise<boolean>;
   /** The player's recorded games since a time (only wins with `won`). */
   matchCount(userId: string, since: Date, won?: boolean): Promise<number>;
+  /**
+   * Draft entries never settled: an entry (ref "draft-<event>") with neither a
+   * prize nor a refund for that event. Events live in the server's memory, so
+   * at startup these are events a restart lost.
+   */
+  unsettledEntries(): Promise<{ userId: string; ref: string }[]>;
+  /** Whether the player is an admin (profiles.is_admin; set in the database only). */
+  isAdmin(userId: string): Promise<boolean>;
+  /** Every account with its balances, for the admin page. */
+  adminAccounts(): Promise<AdminAccount[]>;
+  /** The latest admin changes, newest first. */
+  adminActions(limit: number): Promise<AdminAction[]>;
+  /**
+   * An admin sets a player's balance ('set') or changes it ('add'), once per
+   * `ref`. Throws if the caller isn't an admin, the player doesn't exist, or
+   * the balance would go below zero.
+   */
+  adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }>;
+  /** A player's request to the admin (subject, cards, description). */
+  createRequest(userId: string, request: RequestInput): Promise<SupportRequest>;
+  /** A player's own requests, newest first. */
+  myRequests(userId: string): Promise<SupportRequest[]>;
+  /** Requests a player sent since a time (a guard against floods). */
+  requestCountSince(userId: string, since: Date): Promise<number>;
+  /** Every request, newest first, with the account that sent it (admin page). */
+  allRequests(): Promise<SupportRequest[]>;
+  /** Changes a request's status; false if there's no such request. */
+  setRequestStatus(id: number, status: RequestStatus): Promise<boolean>;
+  /** Deletes a request; false if there's no such request. */
+  deleteRequest(id: number): Promise<boolean>;
+}
+
+export const REQUEST_STATUSES = ['not_started', 'incomplete', 'complete'] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+/** What a player sends. */
+export interface RequestInput {
+  subject: string;
+  cards: string[];
+  description: string;
+}
+
+/** A request as the server returns it. */
+export interface SupportRequest extends RequestInput {
+  id: number;
+  userId: string;
+  /** The sending account's display name (admin page). */
+  from?: string;
+  status: RequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type RequestRow = { id: number; user_id: string; subject: string; cards: string[]; description: string; status: RequestStatus; created_at: string; updated_at: string; profiles?: { display_name: string } | null };
+const requestFromRow = (r: RequestRow): SupportRequest => ({
+  id: r.id,
+  userId: r.user_id,
+  subject: r.subject,
+  cards: r.cards ?? [],
+  description: r.description,
+  status: r.status,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+  ...(r.profiles?.display_name ? { from: r.profiles.display_name } : {}),
+});
+
+/** One account on the admin page. */
+export interface AdminAccount {
+  id: string;
+  name: string;
+  shards: number;
+  fragments: Fragments;
+  admin: boolean;
+  createdAt: string;
+}
+
+/** A change an admin made. */
+export interface AdminAction {
+  admin: string;
+  user: string;
+  kind: 'set_shards' | 'add_shards';
+  amount: number;
+  balanceAfter: number;
+  note: string;
+  at: string;
+}
+
+/** The entries in a list of ledger rows that have no prize or refund for their event. */
+export function unsettled(rows: readonly { userId: string; kind: string; ref: string }[]): { userId: string; ref: string }[] {
+  const has = new Set(rows.map((r) => `${r.userId}|${r.kind}|${r.ref}`));
+  return rows.filter((r) => r.kind === 'event_entry' && r.ref.startsWith('draft-') && !r.ref.endsWith('-refund')
+    && !has.has(`${r.userId}|event_prize|${r.ref}`) && !has.has(`${r.userId}|event_entry|${r.ref}-refund`))
+    .map((r) => ({ userId: r.userId, ref: r.ref }));
 }
 
 /** What the server has already checked and worked out for a dismantle (from the card data and the economy settings). */
@@ -311,6 +404,99 @@ export class SupabaseAccounts implements AccountService {
     return (data ?? []).length > 0;
   }
 
+  async unsettledEntries(): Promise<{ userId: string; ref: string }[]> {
+    const { data, error } = await this.db.from('shard_ledger').select('user_id, kind, ref').in('kind', ['event_entry', 'event_prize']).like('ref', 'draft-%');
+    if (error) throw new Error(`Could not read the draft entries: ${error.message}`);
+    return unsettled((data ?? []).map((r: { user_id: string; kind: string; ref: string }) => ({ userId: r.user_id, kind: r.kind, ref: r.ref })));
+  }
+
+  async isAdmin(userId: string): Promise<boolean> {
+    const { data, error } = await this.db.from('profiles').select('is_admin').eq('id', userId).maybeSingle<{ is_admin: boolean }>();
+    if (error) throw new Error(`Could not check the account: ${error.message}`);
+    return !!data?.is_admin;
+  }
+
+  async adminAccounts(): Promise<AdminAccount[]> {
+    const [profiles, fragments] = await Promise.all([
+      this.db.from('profiles').select('id, display_name, shards, is_admin, created_at').order('created_at'),
+      this.db.from('fragment_balances').select('user_id, rarity, amount'),
+    ]);
+    if (profiles.error) throw new Error(`Could not list the accounts: ${profiles.error.message}`);
+    if (fragments.error) throw new Error(`Could not list the fragments: ${fragments.error.message}`);
+    const byUser = new Map<string, Record<string, number>>();
+    for (const r of fragments.data as { user_id: string; rarity: string; amount: number }[]) byUser.set(r.user_id, { ...(byUser.get(r.user_id) ?? {}), [r.rarity]: r.amount });
+    return (profiles.data as { id: string; display_name: string; shards: number; is_admin: boolean; created_at: string }[]).map((p) => ({
+      id: p.id,
+      name: p.display_name,
+      shards: p.shards,
+      fragments: toFragments(byUser.get(p.id) ?? {}),
+      admin: p.is_admin,
+      createdAt: p.created_at,
+    }));
+  }
+
+  async adminActions(limit: number): Promise<AdminAction[]> {
+    const { data, error } = await this.db.from('admin_actions').select('admin_id, user_id, kind, amount, balance_after, note, created_at').order('created_at', { ascending: false }).limit(limit);
+    if (error) throw new Error(`Could not list the admin changes: ${error.message}`);
+    return (data as { admin_id: string; user_id: string; kind: AdminAction['kind']; amount: number; balance_after: number; note: string; created_at: string }[]).map((r) => ({
+      admin: r.admin_id,
+      user: r.user_id,
+      kind: r.kind,
+      amount: r.amount,
+      balanceAfter: r.balance_after,
+      note: r.note,
+      at: r.created_at,
+    }));
+  }
+
+  async adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }> {
+    const { data, error } = await this.db
+      .rpc('admin_adjust_shards', { p_admin: adminId, p_user: userId, p_mode: mode, p_amount: amount, p_ref: ref, p_note: note })
+      .single<{ balance: number; applied: boolean }>();
+    if (error || !data) throw new Error(error?.message ?? 'no data');
+    return data;
+  }
+
+  async createRequest(userId: string, request: RequestInput): Promise<SupportRequest> {
+    const { data, error } = await this.db
+      .from('support_requests')
+      .insert({ user_id: userId, subject: request.subject, cards: request.cards, description: request.description })
+      .select('*')
+      .single<RequestRow>();
+    if (error || !data) throw new Error(`Could not save the request: ${error?.message ?? 'no data'}`);
+    return requestFromRow(data);
+  }
+
+  async myRequests(userId: string): Promise<SupportRequest[]> {
+    const { data, error } = await this.db.from('support_requests').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(100);
+    if (error) throw new Error(`Could not load the requests: ${error.message}`);
+    return (data as RequestRow[]).map(requestFromRow);
+  }
+
+  async requestCountSince(userId: string, since: Date): Promise<number> {
+    const { count, error } = await this.db.from('support_requests').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
+    if (error) throw new Error(`Could not count the requests: ${error.message}`);
+    return count ?? 0;
+  }
+
+  async allRequests(): Promise<SupportRequest[]> {
+    const { data, error } = await this.db.from('support_requests').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(500);
+    if (error) throw new Error(`Could not load the requests: ${error.message}`);
+    return (data as RequestRow[]).map(requestFromRow);
+  }
+
+  async setRequestStatus(id: number, status: RequestStatus): Promise<boolean> {
+    const { data, error } = await this.db.from('support_requests').update({ status, updated_at: new Date().toISOString() }).eq('id', id).select('id');
+    if (error) throw new Error(`Could not update the request: ${error.message}`);
+    return (data ?? []).length > 0;
+  }
+
+  async deleteRequest(id: number): Promise<boolean> {
+    const { data, error } = await this.db.from('support_requests').delete().eq('id', id).select('id');
+    if (error) throw new Error(`Could not delete the request: ${error.message}`);
+    return (data ?? []).length > 0;
+  }
+
   async matchCount(userId: string, since: Date, won?: boolean): Promise<number> {
     let q = this.db.from('match_results').select('ref', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since.toISOString());
     if (won) q = q.eq('won', true);
@@ -452,6 +638,78 @@ export class MemoryAccounts implements AccountService {
 
   async fragments(userId: string): Promise<Fragments> {
     return { ...(this.fragmentBalances.get(userId) ?? NO_FRAGMENTS) };
+  }
+
+  readonly admins = new Set<string>();
+  readonly adminLog: AdminAction[] = [];
+
+  async isAdmin(userId: string): Promise<boolean> {
+    return this.admins.has(userId);
+  }
+
+  async adminAccounts(): Promise<AdminAccount[]> {
+    return [...this.accounts].map(([id, a]) => ({ id, name: a.name, shards: a.shards, fragments: { ...(this.fragmentBalances.get(id) ?? NO_FRAGMENTS) }, admin: this.admins.has(id), createdAt: '' }));
+  }
+
+  async adminActions(limit: number): Promise<AdminAction[]> {
+    return this.adminLog.slice(-limit).reverse();
+  }
+
+  async adminAdjustShards(adminId: string, userId: string, mode: 'set' | 'add', amount: number, ref: string, note: string): Promise<{ balance: number; applied: boolean }> {
+    if (!this.admins.has(adminId)) throw new Error('not an admin');
+    const account = this.accounts.get(userId);
+    if (!account) throw new Error(`no profile for ${userId}`);
+    if (this.ledger.has(`${userId}|admin_adjustment|admin-${ref}`)) return { balance: account.shards, applied: false };
+    const delta = mode === 'set' ? amount - account.shards : amount;
+    if (delta === 0) return { balance: account.shards, applied: false };
+    const r = this.apply(userId, delta, 'admin_adjustment', `admin-${ref}`);
+    this.adminLog.push({ admin: adminId, user: userId, kind: mode === 'set' ? 'set_shards' : 'add_shards', amount: delta, balanceAfter: r.balance, note, at: new Date().toISOString() });
+    return r;
+  }
+
+  readonly requests: SupportRequest[] = [];
+  private nextRequestId = 1;
+
+  async createRequest(userId: string, request: RequestInput): Promise<SupportRequest> {
+    if (!this.accounts.has(userId)) throw new Error(`no profile for ${userId}`);
+    const at = this.now().toISOString();
+    const r: SupportRequest = { id: this.nextRequestId++, userId, ...structuredClone(request), status: 'not_started', createdAt: at, updatedAt: at };
+    this.requests.push(r);
+    return structuredClone(r);
+  }
+
+  async myRequests(userId: string): Promise<SupportRequest[]> {
+    return this.requests.filter((r) => r.userId === userId).reverse().map((r) => structuredClone(r));
+  }
+
+  async requestCountSince(userId: string, since: Date): Promise<number> {
+    return this.requests.filter((r) => r.userId === userId && new Date(r.createdAt) >= since).length;
+  }
+
+  async allRequests(): Promise<SupportRequest[]> {
+    return [...this.requests].reverse().map((r) => ({ ...structuredClone(r), from: this.accounts.get(r.userId)?.name ?? r.userId }));
+  }
+
+  async setRequestStatus(id: number, status: RequestStatus): Promise<boolean> {
+    const r = this.requests.find((x) => x.id === id);
+    if (!r) return false;
+    r.status = status;
+    r.updatedAt = this.now().toISOString();
+    return true;
+  }
+
+  async deleteRequest(id: number): Promise<boolean> {
+    const i = this.requests.findIndex((x) => x.id === id);
+    if (i < 0) return false;
+    this.requests.splice(i, 1);
+    return true;
+  }
+
+  async unsettledEntries(): Promise<{ userId: string; ref: string }[]> {
+    return unsettled([...this.ledger.keys()].map((k) => {
+      const [userId, kind, ...ref] = k.split('|');
+      return { userId: userId!, kind: kind!, ref: ref.join('|') };
+    }));
   }
 
   async recordMatch(userId: string, match: MatchResult): Promise<boolean> {

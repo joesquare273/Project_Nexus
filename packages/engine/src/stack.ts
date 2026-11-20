@@ -1,8 +1,10 @@
+import { CREATURE_SUBTYPES } from './subtypes.ts';
+import type { ManaRestriction } from './types.ts';
 // Casting spells, playing lands, activating abilities, and resolving the
 // stack (PRD 7.2).
 
-import { copiableDefinition, currentDefinition, spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, countOf, countersOf, isEquipment, powerOf, protectedFrom, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
+import { copiableDefinition, copyLook, currentDefinition, faceDownCharacteristics, spellDefinition } from './cardface.ts';
+import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, powerOf, protectedFrom, protectedFromType, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { randomInt, shuffleInPlace } from './rng.ts';
@@ -41,6 +43,11 @@ import {
   removeFromCombat,
   staticRule,
   playerProtectedFromOpponents,
+  manifest,
+  becomePrepared,
+  unprepare,
+  turnFaceDown,
+  turnFaceUp,
 } from './state.ts';
 import { enterStep, givePriority } from './turn.ts';
 import { canReveal, colorsOf, entersTapped, isPermanentCard, landEntersUntapped, isSpellCard, manaAbilityAmount, grantedManaAbilities, canCastLibraryTop, legendaryManaCreatures, manaChoices, objectManaValue, tapOtherManaTypes } from './typerules.ts';
@@ -191,7 +198,8 @@ export function activatedAbilities(def: CardDefinition): ActivatedSpec[] {
     out.push({
       cost: { mana: def.cycling, discardThis: true },
       zone: 'hand',
-      effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }],
+      // "When you cycle this card, ..." (Shark Typhoon) resolves with the draw (simplified: not a separate trigger).
+      effects: [{ effect: 'DrawCards', amount: 1, target: 'You' }, ...(def.cyclingEffects ?? [])],
     });
   }
   if (def.unearth) {
@@ -231,6 +239,8 @@ export function triggerSpec(s: GameState, item: AbilityItem): TriggerSpec | unde
 
 /** How a spell is being cast: its mode or modes, and whether for its alternative cost. */
 export interface SpellChoice {
+  /** Morph: cast face down as a 2/2 creature for {3}. */
+  faceDown?: boolean;
   /** Select a shared one-spell permission explicitly. Omit to prefer another available permission. */
   castGroup?: string;
   adventure?: boolean;
@@ -283,8 +293,8 @@ function spellEffectsBase(def: CardDefinition, choice: SpellChoice): EffectSpec[
 /** The effects a stack item applies when it resolves. */
 /** How a stack item's targets are judged: a trigger's defending player and subject. */
 function itemTargetContext(item: StackItem): TargetContext {
-  if (item.kind !== 'ability') return {};
-  return { ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
+  if (item.kind !== 'ability') return item.x !== undefined ? { x: item.x } : {};
+  return { ...(item.x !== undefined ? { x: item.x } : {}), ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
 }
 
 /** Each target slot's legal choices for a copy on the stack ("you may choose new targets for the copy"). */
@@ -402,6 +412,8 @@ export interface TargetContext {
   triggered?: boolean;
   /** For a triggered ability: the object the event happened to (the spell that was cast). */
   subject?: InstanceId;
+  /** The X chosen for the spell or ability ("each with mana value X or less": Dance of the Manse). */
+  x?: number;
 }
 
 export function isLegalTarget(
@@ -419,6 +431,10 @@ export function isLegalTarget(
     if (!p || p.eliminated) return false;
     // Protection from each of their opponents: those opponents can't target them.
     if (t.player !== controller && playerProtectedFromOpponents(s, t.player)) return false;
+    // Teferi's Reproach: protection from everything; nothing can target them.
+    if (p.shielded) return false;
+    // Serra's Emissary: protection from the chosen card type.
+    if (source && s.cards[source] && protectedFromType(s, t.player, s.cards[source]!)) return false;
     if (kind === 'TargetOpponent') return t.player !== controller;
     return kind === 'AnyTarget' || kind === 'TargetPlayer';
   }
@@ -439,6 +455,7 @@ export function isLegalTarget(
     ...(source ? { source } : {}),
     ...(context.defender ? { defender: context.defender } : {}),
     ...(context.subject ? { subject: context.subject } : {}),
+    ...(context.x !== undefined ? { x: context.x } : {}),
   };
   if (kind === 'TargetSpellPermanentOrGraveyardCard') {
     if (c.zone === 'graveyard') return !effect.spellOrPermanent && !s.players[c.owner]!.eliminated;
@@ -451,6 +468,7 @@ export function isLegalTarget(
     const spell = s.stack.find((i) => i.kind === 'spell' && i.card === c.id);
     return !!spell && c.id !== source && matchesObject(s, effect.filter, c, viewpoint, spell.controller);
   }
+  if (kind === 'TargetExiledCardWithWarp') return c.zone === 'exile' && !!defOf(s, c).alternativeCost?.warp && c.foretoldTurn === undefined && !c.linkedExile;
   if (kind === 'TargetCardExiledWithSource') {
     const src = source ? s.cards[source] : undefined;
     return c.zone === 'exile' && !!src && c.exiledWith?.source === src.id && c.exiledWith.sourceObject === (src.zoneChanges ?? 0) && matchesObject(s, effect.filter, c, viewpoint);
@@ -471,6 +489,8 @@ export function isLegalTarget(
   // Protection: not the target of anything of that color (rule 702.16b).
   if (source && protectedFrom(s, c, s.cards[source])) return false;
   if (kind === 'TargetPermanent') return matchesObject(s, effect.filter, c, viewpoint);
+  // "Any target": a creature, player or planeswalker (rule 115.4).
+  if (kind === 'AnyTarget' && !isCreatureOnBattlefield(s, c) && hasType(s, c, 'planeswalker')) return matchesObject(s, effect.filter, c, viewpoint);
   if (!isCreatureOnBattlefield(s, c)) return false;
   if (kind === 'AnyTarget' || kind === 'TargetCreature') return matchesObject(s, effect.filter, c, viewpoint);
   if (kind === 'OpponentCreature') return c.controller !== controller;
@@ -490,7 +510,7 @@ export function targetOptions(
   if (effect.target === 'TargetCardInGraveyard' || effect.target === 'TargetSpellPermanentOrGraveyardCard') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.graveyard) all.push({ kind: 'card', card: id });
   }
-  if (effect.target === 'TargetCardExiledWithSource') {
+  if (effect.target === 'TargetCardExiledWithSource' || effect.target === 'TargetExiledCardWithWarp') {
     for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) all.push({ kind: 'card', card: id });
   }
   if (effect.target === 'TargetCardInGraveyard' && effect.alsoExiledFlashback) {
@@ -551,8 +571,9 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
 
 /** A stack item's trigger context. */
 function contextOf(item: StackItem): TargetContext {
-  if (item.kind !== 'ability') return {};
+  if (item.kind !== 'ability') return item.x !== undefined ? { x: item.x } : {};
   return {
+    ...(item.x !== undefined ? { x: item.x } : {}),
     ...(item.defender ? { defender: item.defender } : {}),
     ...(item.from === 'trigger' ? { triggered: true } : {}),
     ...(item.subject ? { subject: item.subject } : {}),
@@ -601,6 +622,8 @@ export interface ManaUse {
   noncreatureSpell?: boolean;
   /** An artifact spell, or an ability of an artifact source. */
   artifact?: boolean;
+  /** The other restricted pools that can pay for this. */
+  restricted?: ManaRestriction[];
   /** Filled with the mana of each type that was spent (converge). */
   spentOut?: Partial<Record<ManaType, number>>;
   /** How many {B} to pay with 2 life each ({B/P}, K'rrik), as the player chose; unset: only what mana can't cover. */
@@ -613,6 +636,7 @@ function poolFor(s: GameState, playerId: PlayerId, use: ManaUse) {
   if (use.equipment) for (const t of MANA_TYPES) pool[t] += p.equipmentMana[t];
   if (use.noncreatureSpell) for (const t of MANA_TYPES) pool[t] += p.noncreatureSpellMana[t];
   if (use.artifact && p.artifactMana) for (const t of MANA_TYPES) pool[t] += p.artifactMana[t];
+  for (const kind of use.restricted ?? []) if (p.restrictedMana?.[kind]) for (const t of MANA_TYPES) pool[t] += p.restrictedMana[kind]![t];
   return pool;
 }
 
@@ -688,7 +712,7 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
   if (!spent) reject('Not enough mana in your mana pool.');
   for (const t of MANA_TYPES) {
     let n = spent[t] ?? 0;
-    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana], [use.artifact, p.artifactMana ?? emptyManaPool()]] as const) {
+    for (const [allowed, pool] of [[use.equipment, p.equipmentMana], [use.noncreatureSpell, p.noncreatureSpellMana], [use.artifact, p.artifactMana ?? emptyManaPool()], ...(use.restricted ?? []).map((kind) => [true, p.restrictedMana?.[kind] ?? emptyManaPool()] as const)] as const) {
       if (!allowed) continue;
       const restricted = Math.min(n, pool[t]);
       pool[t] -= restricted;
@@ -712,6 +736,11 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 }
 
 /** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
+/** The restricted mana that can pay for a spell: artifact-spell mana, and mana for spells cast from anywhere other than your hand. */
+export function spellManaRestrictions(def: CardDefinition, from: string): ManaRestriction[] {
+  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
+}
+
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
   return lifeForBlack(s, playerId, cost, use) !== null;
 }
@@ -755,9 +784,9 @@ export function activateManaAbility(
   if (staticRule(s, c, 'cantActivateAbilities')) reject("That permanent's activated abilities can't be activated.");
   if (grantedBy !== undefined) {
     if (tapCreature !== undefined || output !== undefined || !grantedManaAbilities(s, c).some((ability) => ability.source === grantedBy && ability.mana.includes(mana))) reject('That granted mana ability is not available.');
-    if (c.tapped || (c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That creature cannot tap for mana right now.');
+    if (c.tapped || (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste'))) reject('That permanent cannot tap for mana right now.');
     tap(ctx, c);
-    addMana(ctx, playerId, mana, id);
+    addMana(ctx, playerId, mana, id, grantedManaAbilities(s, c).find((ability) => ability.source === grantedBy && ability.mana.includes(mana))?.restricted);
     kinnanBonus(ctx, playerId, c, mana);
     return;
   }
@@ -804,7 +833,9 @@ export function activateManaAbility(
   // Nyxbloom Ancient: three times as much (each one triples again).
   const triplers = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.tripleMana)).length;
   const amount = manaAbilityAmount(c, def) * 3 ** triplers;
-  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined);
+  for (let i = 0; i < amount; i++) addMana(ctx, playerId, mana, id, ability?.restricted ?? (ability?.onlyForEquipment ? 'equipment' : ability?.onlyForNoncreatureSpells ? 'noncreatureSpell' : ability?.onlyForArtifacts ? 'artifact' : undefined));
+  // Molten Tide: "Until end of turn, whenever you tap a Mountain for mana, add an additional {R}."
+  for (const e of player(s, playerId).extraMana ?? []) if (e.turn === s.turnNumber && subtypesOf(s, c).includes(e.subtype)) addMana(ctx, playerId, e.mana, id);
   // With `addCounterFirst`, the amount above already counted this counter.
   if (ability?.addCounter) addCounters(ctx, id, 1, playerId, ability.addCounter);
   // Ultima, Origin of Oblivion: "Whenever you tap a land for {C}, add an additional {C}" (a triggered mana ability).
@@ -851,6 +882,11 @@ export function playableZone(
   includeGroups = true,
 ): 'hand' | 'graveyard' | 'exile' | 'command' | 'library' | null {
   if (c.owner === playerId && c.zone === 'hand') return 'hand';
+  // The copy of a prepare spell: only the prepared creature's current controller may cast it.
+  if (c.prepareSpellOf) {
+    const perm = s.cards[c.prepareSpellOf.card];
+    return c.zone === 'exile' && perm?.zone === 'battlefield' && !!perm.prepared && !perm.phasedOut && perm.controller === playerId && (perm.zoneChanges ?? 0) === c.prepareSpellOf.object ? 'exile' : null;
+  }
   // Hades, Sorcerer of Eld: "During your turn, you may play cards from your graveyard" (lands too).
   if (c.owner === playerId && c.zone === 'graveyard' && s.activePlayer === playerId && defOf(s, c).types.includes('land')
     && graveyardLandSource(s, playerId, c)) return 'graveyard';
@@ -880,6 +916,8 @@ export function playableZone(
     }
     // "Until you exile another card with this enchantment" (Furious Rise).
     if (p.untilReplaced) return 'exile';
+    // Null Summoner: "As long as there are seven or more cards in your graveyard, you may cast the exiled card."
+    if (p.whileThreshold) return s.players[playerId]!.graveyard.length >= 7 ? 'exile' : null;
     // "For as long as that card remains exiled, you may play it" (Praetor's Grasp).
     if (p.whileExiled) return 'exile';
     // Evendo Brushrazer: "During your turn, as long as you've sacrificed a nontoken permanent this turn".
@@ -907,7 +945,7 @@ export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, 
   if (c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber) return 'permission';
   if (c.owner !== playerId) return null;
   const def = spellDefinition(defOf(s, c), adventure);
-  if (def.flashback) return 'flashback';
+  if (def.flashback || (c.flashbackTurn === s.turnNumber && def.manaCost !== undefined)) return 'flashback';
   if (def.retrace) return 'retrace';
   if (def.alternativeCost?.fromGraveyard) return 'blitz';
   if (graveyardCastStatic(s, playerId, c, undefined, adventure)) return 'static';
@@ -1078,8 +1116,10 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
     const source = graveyardLandSource(s, playerId, c);
     if (source && (defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.perPermanentType)) markPermanentTypeUsed(s, source, { ...defOf(s, c), types: ['land'] });
   }
+  const exileTapped = from === 'exile' && !!c.playableFromExile?.landEntersTapped;
   ctx.ev.push({ type: 'LandPlayed', player: playerId, card: id, from });
   moveCard(ctx, id, 'battlefield');
+  if (exileTapped) c.tapped = true;
   c.controller = playerId;
   c.summoningSick = true;
   if (entersTapped(s, c, reveal)) c.tapped = true;
@@ -1107,18 +1147,29 @@ export function spellCost(
   // Bolas's Citadel: life instead of the mana cost (paid in castSpell).
   if (from === 'library' && payer && libraryTopCostsLife(s, payer)) return parseManaCost('');
   const way = from === 'graveyard' && card ? extra.castGroup ? 'group' : extra.graveyardSource ? 'static' : graveyardWay(s, payer!, card, extra.adventure) : null;
-  const base = permission?.free
+  // Weftwalking: the first spell a player casts during their own turn is free (X is 0; they can still pay an alternative cost or for X instead).
+  const weft = !permission && !alternative && x === 0 && way === null && from !== 'command' && !!payer && s.activePlayer === payer && (s.players[payer]!.spellsCastThisTurn ?? 0) === 0
+    && battlefield(s).some((p) => !p.phasedOut && (defOf(s, p).statics ?? []).some((st) => st.firstSpellEachTurnFree));
+  // Omnipresence: a spell from your hand with mana value up to the number of creatures you control is free (X is 0).
+  const omnipresent = !weft && !permission && !alternative && x === 0 && from === 'hand' && !!payer && !!card && !card.faceDown
+    && battlefield(s).some((p) => p.controller === payer && !p.phasedOut && (defOf(s, p).statics ?? []).some((st) => st.castFromHandFreeUpToCreatures))
+    && objectManaValue(s, card) <= battlefield(s).filter((p) => p.controller === payer && !p.phasedOut && hasType(s, p, 'creature')).length;
+  const base = card?.faceDown && from === 'hand'
+    ? '{3}'
+    : permission?.free || weft || omnipresent
     ? undefined
     : permission?.manaCost
       ? permission.manaCost
     : alternative
       ? def.alternativeCost?.mana
       : way === 'flashback'
-        ? def.flashback
+        ? def.flashback ?? def.manaCost
         : from === 'exile' && card?.foretoldTurn !== undefined
           ? def.foretell
           : def.manaCost;
   let cost = parseManaCost(base);
+  // Lightstall Inquisitor: "Each spell cast this way costs {1} more to cast."
+  if (from === 'exile' && card?.playableFromExile?.costMore && !permission) cost = { ...cost, generic: cost.generic + card.playableFromExile.costMore };
   // "Mana of any type can be spent to cast that spell."
   const anyType = (extra.castGroup && s.castGroups?.find((g) => g.id === extra.castGroup)?.anyManaType) || (from === 'exile' && card?.playableFromExile?.anyManaType && card.playableFromExile.player === payer);
   if (anyType) {
@@ -1150,10 +1201,20 @@ export function spellCost(
   }
   if (def.costReduction?.ifVoid && card && s.voidTurn === s.turnNumber) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.ifYourTurn && card && s.activePlayer === payer) cost = reduceGeneric(cost, def.costReduction.generic);
+  // Thalia, the Survivor: "Noncreature spells your opponents cast cost {1} more to cast."
+  if (card && payer && !def.types.includes('creature')) {
+    for (const x of battlefield(s)) {
+      if (x.controller === payer || x.phasedOut) continue;
+      for (const st of defOf(s, x).statics ?? []) if (st.opponentsNoncreatureSpellsCostMore) cost = { ...cost, generic: (cost.generic ?? 0) + st.opponentsNoncreatureSpellsCostMore };
+    }
+  }
+  const controlFilter = def.costReduction?.ifYouControl;
+  if (controlFilter && card && battlefield(s).some((c) => c.controller === payer && !c.phasedOut && matchesObject(s, controlFilter, c, { controller: payer! }))) cost = reduceGeneric(cost, def.costReduction!.generic);
   const opposing = def.costReduction?.ifOpponentsControlCreatures;
   if (opposing !== undefined && card && battlefield(s).filter((c) => c.controller !== payer && !c.phasedOut && isCreatureOnBattlefield(s, c)).length >= opposing) cost = reduceGeneric(cost, def.costReduction!.generic);
   if (def.costReduction?.ifTargetsBlockingCreature && targets.some((t) => t.kind === 'card' && !!s.combat?.blocks.some((b) => b.blocker === t.card))) cost = reduceGeneric(cost, def.costReduction.generic);
   // "Costs {3} less to cast if you've cast another spell this turn" (Gigastorm Titan).
+  if (def.costReduction?.ifCastNoncreatureThisTurn && card && (s.players[payer!]!.noncreatureSpellsThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.ifCastAnotherSpell && card && (s.players[payer!]!.spellsCastThisTurn ?? 0) >= 1) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.perMatching && card) {
     const f = def.costReduction.perMatching;
@@ -1168,6 +1229,7 @@ export function spellCost(
     for (const source of battlefield(s)) {
       if (source.controller !== payer!) continue;
       for (const spec of defOf(s, source).statics ?? []) {
+        if (spec.eminence) continue; // counted below, wherever the card is
         const r = spec.spellCostReduction;
         if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id }, payer!, def)) continue;
         // "Spells you cast from your graveyard cost {2} less" (Emet-Selch).
@@ -1175,6 +1237,20 @@ export function spellCost(
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
+        cost = reduceGeneric(cost, r.generic * (r.perCount ? countOf(s, r.perCount, source.controller, source.id) : 1));
+      }
+    }
+  }
+  // Eminence (The Ur-Sphinx): from the command zone or the battlefield, "other Sphinx spells you cast cost {1} less".
+  if (card) {
+    const p = s.players[payer!]!;
+    for (const id of [...p.command, ...p.battlefield]) {
+      const source = s.cards[id]!;
+      if (source.id === card.id || (source.zone === 'battlefield' && (source.controller !== payer || source.phasedOut))) continue;
+      if (source.zone === 'command' && source.owner !== payer) continue;
+      for (const spec of defOf(s, source).statics ?? []) {
+        const r = spec.spellCostReduction;
+        if (!spec.eminence || !r || !matchesObject(s, r.filter, card, { controller: payer!, source: source.id }, payer!, def)) continue;
         cost = reduceGeneric(cost, r.generic);
       }
     }
@@ -1183,9 +1259,46 @@ export function spellCost(
   return cost;
 }
 
+/** Counters a spell or ability still on the stack (ward). */
+function counterStackObject(ctx: Ctx, what: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string }, by: InstanceId): void {
+  const s = ctx.s;
+  if (what.kind === 'ability') {
+    const index = s.stack.findIndex((i) => i.kind === 'ability' && i.id === what.item);
+    if (index < 0) return;
+    const countered = s.stack[index] as AbilityItem;
+    s.stack.splice(index, 1);
+    ctx.ev.push({ type: 'AbilityCountered', ability: countered.id, source: countered.source, by });
+    return;
+  }
+  const index = s.stack.findIndex((i) => i.kind === 'spell' && i.card === what.card);
+  if (index < 0 || cantBeCountered(s, what.card)) return;
+  const countered = s.stack[index] as SpellItem;
+  s.stack.splice(index, 1);
+  ctx.ev.push({ type: 'SpellCountered', card: what.card, defId: s.cards[what.card]!.defId, by });
+  moveCard(ctx, what.card, countered.flashback || countered.exileAfter ? 'exile' : 'graveyard');
+}
+
+/** Yuriko, Blade of the Mighty: during combat, no spells and no abilities that aren't mana abilities. */
+/** Split second (rule 702.61): while such a spell is on the stack, no spells and no abilities that aren't mana abilities. */
+export function splitSecondOnStack(s: GameState): boolean {
+  return s.stack.some((i) => {
+    if (i.kind !== 'spell') return false;
+    const c = s.cards[i.card];
+    if (!c || !['instant', 'sorcery'].some((t) => defOf(s, c).types.includes(t as 'instant'))) return false;
+    return battlefield(s).some((x) => x.controller === i.controller && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.yourInstantsAndSorceriesHaveSplitSecond));
+  });
+}
+
+export function combatLocked(s: GameState): boolean {
+  if (splitSecondOnStack(s)) return true;
+  return ['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)
+    && battlefield(s).some((x) => !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.noSpellsOrAbilitiesDuringCombat));
+}
+
 /** Conqueror's Flail: whether an opponent's attached Flail stops this player casting spells right now. */
 export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
   if (s.players[playerId]?.cantCastTurn === s.turnNumber) return true;
+  if (combatLocked(s)) return true;
   if (s.activePlayer === playerId) return false;
   return battlefield(s).some(
     (source) =>
@@ -1198,11 +1311,21 @@ export function castingForbidden(s: GameState, playerId: PlayerId): boolean {
 export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets: Target[] = [], choice: SpellChoice = {}): void {
   const s = ctx.s;
   const c = card(s, id);
+  // Morph and disguise (rules 702.37c, 702.168b): cast face down from your hand as a 2/2 creature spell for {3}.
+  if (choice.faceDown) {
+    const real = s.cardDefs[c.defId];
+    if (!real?.morph && !real?.disguise) reject("That card can't be cast face down.");
+    if (c.zone !== 'hand' || c.owner !== playerId) reject('Cast it face down from your hand.');
+    if (choice.adventure || choice.alternative || choice.x) reject('A face-down spell is cast for {3} only.');
+    c.faceDown = true;
+    if (!real!.morph) c.faceDownWard = true;
+  }
   const printed = defOf(s, c);
   if (choice.adventure && !printed.adventure) reject('That card has no Adventure.');
   const def = spellDefinition(printed, choice.adventure);
   if (castingForbidden(s, playerId)) reject("You can't cast spells right now (Silence, Conqueror's Flail).");
   if (s.players[playerId]!.cantCastNoncreatureTurn === s.turnNumber && !def.types.includes('creature')) reject("You can't cast noncreature spells this turn.");
+  if (!def.types.includes('artifact') && nonartifactSpellLimited(s, playerId)) reject("You've already cast a nonartifact spell this turn (Ethersworn Canonist).");
   const naturalFrom = playableZone(s, playerId, c, choice.adventure, false);
   const group = choice.castGroup !== undefined
     ? castGroupsFor(s,playerId,c).find(g=>g.id===choice.castGroup) ?? reject('That shared casting permission is no longer available.')
@@ -1211,6 +1334,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!from) reject('That card is not in your hand.');
   if (def.types.includes('land')) reject('Lands are played with PlayLand, not cast.');
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
+  if (def.castOnlyWithThreshold && player(s, playerId).graveyard.length < 7) reject(`You can't cast ${def.name} unless there are seven or more cards in your graveyard.`);
   const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
   if (!castsAtInstantSpeed(s, playerId, c, def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
     reject('This card can only be cast in your main phase with an empty stack.');
@@ -1231,11 +1355,15 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
-  checkTargets(s, spellEffects(def, choice), targets, playerId, id);
+  checkTargets(s, spellEffects(def, choice), targets, playerId, id, choice.x !== undefined ? { x: choice.x } : {});
   const costCards = choice.costCards ?? [];
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
   if (exileCost) {
     if (costCards.length !== 1 || !exileFromHandChoices(s, def, playerId, id).includes(costCards[0]!)) reject(`Choose a card in your hand to exile for ${def.name}.`);
+  } else if (def.additionalCost?.chooseCreatureOrWarped) {
+    if (costCards.length !== 1 || !encounterChoices(s, playerId).includes(costCards[0]!)) reject(`Choose a creature you control or a warped creature card you own in exile for ${def.name}.`);
+  } else if (def.additionalCost?.behold) {
+    if (costCards.length > 1 || (costCards.length === 1 && !beholdChoices(s, playerId, id, def.additionalCost.behold).includes(costCards[0]!))) reject(`Behold a ${def.additionalCost.behold} or pay ${def.additionalCost.orMana ?? ''} for ${def.name}.`);
   } else if (def.additionalCost?.sacrifice || (def.kickerSacrifice && (choice.kicks ?? 0) > 0)) {
     // A sacrifice cost (rule 601.2h): one matching permanent, or none when paying the mana instead.
     const ways = spellSacrificeChoices(s, playerId, def, id, choice.kicks ?? 0);
@@ -1244,7 +1372,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     }
   } else {
     // Retrace: a land card, in addition to its other costs.
-    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (way === 'retrace' ? 1 : 0);
+    const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (way === 'retrace' ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);
     checkDiscardCost(s, playerId, discardCount, costCards, id, way === 'retrace' ? RETRACE_DISCARD : undefined);
   }
   const x = choice.x ?? 0;
@@ -1296,7 +1424,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     cost = { ...cost, generic: cost.generic - delved.length };
   }
   const spentScryMana: CreatureScryMana[] = [];
-  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
+  const use: ManaUse = { equipment: isEquipment(s, c), noncreatureSpell: !def.types.includes('creature'), artifact: def.types.includes('artifact'), restricted: spellManaRestrictions(def, from), spentOut: {}, ...(choice.lifeForB !== undefined ? { lifeForB: choice.lifeForB } : {}) };
   // Sunburst granted to this spell: Lux Artillery (artifact creature spells), Solar Array (your next artifact spell this turn).
   const grantedSunburst = !def.sunburst && (
     battlefield(s).some((src) => src.controller === playerId && !src.phasedOut && (defOf(s, src).statics ?? []).some((st) => st.grantSunburst && matchesObject(s, st.grantSunburst, c, { controller: playerId, source: src.id }, playerId, def)))
@@ -1316,6 +1444,12 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   // "As an additional cost, pay X life" (Toxic Deluge).
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const paid of costCards) {
+    if (def.additionalCost?.chooseCreatureOrWarped) continue;
+    // Behold: reveal it if it's in your hand; nothing else happens to it.
+    if (def.additionalCost?.behold) {
+      if (s.cards[paid]!.zone === 'hand') ctx.ev.push({ type: 'CardRevealed', player: playerId, card: paid, defId: s.cards[paid]!.defId });
+      continue;
+    }
     if (exileCost) moveCard(ctx, paid, 'exile');
     else if (sacrificing && def.kickerReturnsToHand && kicks > 0 && !def.additionalCost?.sacrifice) moveCard(ctx, paid, 'hand');
     else if (sacrificing) sacrifice(ctx, paid);
@@ -1361,6 +1495,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     caster.warpedSpellTurn = s.turnNumber;
     s.voidTurn = s.turnNumber;
   }
+  if (!def.types.includes('artifact')) caster.nonartifactSpellsThisTurn = (caster.nonartifactSpellsThisTurn ?? 0) + 1;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
@@ -1373,9 +1508,13 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (next.turn === s.turnNumber) c.extraCountersOnEnter = next.amount;
     delete player(s, playerId).nextCreatureCounters;
   }
+  // Theorist's Proxy: "The next spell you cast this turn can't be countered."
+  const uncounterable = player(s, playerId).nextSpellUncounterableTurn === s.turnNumber;
+  if (uncounterable) delete player(s, playerId).nextSpellUncounterableTurn;
   const item: SpellItem = {
     id: newId(s, 's'),
     kind: 'spell',
+    ...(uncounterable ? { uncounterable: true } : {}),
     ...(choice.adventure ? { adventure: true } : {}),
     card: id,
     controller: playerId,
@@ -1396,6 +1535,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(edgar?.entersTapped ? { entersTapped: true } : {}),
     ...(edgar?.finality ? { finalityOnEnter: true as const } : {}),
     ...(sacrificeLater ? { sacrificeAtEndStep: true as const } : {}),
+    ...(def.additionalCost?.chooseCreatureOrWarped && costCards[0] ? { chosenForCost: { card: costCards[0], power: s.cards[costCards[0]]!.zone === 'battlefield' ? powerOf(s, s.cards[costCards[0]]!) : (defOf(s, s.cards[costCards[0]]!).power ?? 0) } } : {}),
   };
   s.stack.push(item);
   // Check after the spell is on the stack: a commander cast from a hidden
@@ -1404,7 +1544,15 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     commander.isCommander && commander.owner === playerId && !commander.phasedOut &&
     !['hand', 'library'].includes(commander.zone) &&
     subtypesOf(s, commander).some(type => def.subtypes?.includes(type)));
-  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent,
+  // Casting the copy of a prepare spell unprepares its creature.
+  if (c.prepareSpellOf) {
+    const perm = s.cards[c.prepareSpellOf.card];
+    if (perm?.prepared) {
+      delete perm.prepared;
+      ctx.ev.push({ type: 'Unprepared', card: perm.id, controller: perm.controller });
+    }
+  }
+  ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
     ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
   });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
@@ -1474,6 +1622,7 @@ export function abilityCost(s: GameState, spec: ActivatedSpec, targets: Target[]
   if (spec.equip && source && defOf(s, source).equipCostsLess) cost = reduceGeneric(cost, defOf(s, source).equipCostsLess!);
   if (spec.equip && t?.kind === 'card' && s.cards[t.card]) {
     cost = reduceGeneric(cost, defOf(s, s.cards[t.card]!).equipDiscount ?? 0);
+    if (source && defOf(s, source).equipLessPerTargetCounter) cost = reduceGeneric(cost, s.cards[t.card]!.counters ?? 0);
   }
   // Forge Anew: the first equip ability you activate during each of your turns costs {0}.
   if (spec.equip && source && s.activePlayer === source.controller && player(s, source.controller).equipActivatedTurn !== s.turnNumber &&
@@ -1499,8 +1648,13 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (zone === 'battlefield' && (c.zone !== 'battlefield' || c.controller !== playerId)) {
     return 'You do not control that permanent.';
   }
-  if (zone === 'battlefield' && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
+  if (zone === 'battlefield' && !spec.turnFaceUp && staticRule(s, c, 'cantActivateAbilities')) return "That permanent's activated abilities can't be activated.";
   if (spec.stationLevel !== undefined && (c.namedCounters?.charge ?? 0) < spec.stationLevel) return `That needs ${spec.stationLevel} or more charge counters.`;
+  if (spec.loyalty !== undefined) {
+    if (!canActAtSorcerySpeed(s, playerId)) return 'Loyalty abilities can only be activated in your main phase with an empty stack.';
+    if (c.loyaltyActivatedTurn === s.turnNumber) return 'Only one loyalty ability of a planeswalker can be activated each turn.';
+    if (spec.loyalty < 0 && (c.namedCounters?.loyalty ?? 0) < -spec.loyalty) return `That needs ${-spec.loyalty} loyalty.`;
+  }
   if (spec.ifOpponentHitByLegendary && !(s.combatDamageHistory ?? []).some((h) => h.legendary && h.player !== playerId && h.sourceController === playerId)) {
     return 'Only after an opponent was dealt combat damage by a legendary creature this turn.';
   }
@@ -1511,12 +1665,18 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
+  if (spec.exhaust && index !== undefined && c.exhausted?.includes(index)) return 'That exhaust ability has already been activated.';
+  if (spec.ifThreshold && player(s, playerId).graveyard.length < 7) return 'That can be activated only if there are seven or more cards in your graveyard.';
   if (spec.yourTurn && s.activePlayer !== playerId) return 'That can only be activated during your turn.';
   if (spec.duringCombat && !['beginCombat', 'declareAttackers', 'declareBlockers', 'combatDamage', 'endCombat'].includes(s.step)) return 'That can be activated only during combat.';
   if (spec.ifAttackedThisTurn && c.attackedTurn !== s.turnNumber) return 'That can be activated only if this creature attacked this turn.';
   if (spec.sorcerySpeed && !canActAtSorcerySpeed(s, playerId) && !(spec.equip && equipAnyTime(s, playerId))) {
     return 'That can only be activated in your main phase with an empty stack.';
   }
+  if (spec.ifAttached && !c.attachedTo) return 'That only works while it’s attached to a creature.';
+  if (!spec.turnFaceUp && combatLocked(s)) return "Players can't activate abilities during combat.";
+  if (spec.ifOpponentDealtNoncombatDamageThisTurn && !s.turnOrder.some((pid) => pid !== playerId && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return 'That can be activated only if an opponent has been dealt noncombat damage this turn.';
+  if (spec.ifScriedOrSurveiledThisTurn && s.players[playerId]!.scriedOrSurveiledTurn !== s.turnNumber) return "That can be activated only if you've scried or surveilled this turn.";
   if (spec.ifYouControl) {
     const meets = (x: CardInstance) => x.controller === playerId && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
     if (!battlefield(s).some(meets)) return "You don't meet the condition to activate that.";
@@ -1571,7 +1731,7 @@ export function costCardProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (spec.cost.sacrifice && sacrificeCandidates(s, playerId, spec.cost.sacrifice, c.id).length < (spec.cost.sacrificeCount ?? 1)) return 'You have nothing to sacrifice for that.';
   if (spec.cost.returnUnblockedAttacker && unblockedAttackers(s, playerId).length === 0) return 'You have no unblocked attacker to return.';
   if (spec.cost.returnToHand && sacrificeCandidates(s, playerId, spec.cost.returnToHand.filter, c.id).length < spec.cost.returnToHand.count) return `You don't control ${spec.cost.returnToHand.count} of them to return.`;
-  if (spec.cost.tapUntapped && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
+  if (spec.cost.tapUntapped && !spec.cost.tapUntapped.countX && tapCostCandidates(s, playerId, spec, c.id).length < spec.cost.tapUntapped.count) return 'Not enough untapped matching permanents to tap.';
   if (spec.cost.crew !== undefined && crewCandidates(s,playerId,c.id).reduce((sum,k)=>sum+Math.max(0,powerOf(s,k)),0) < spec.cost.crew) return 'Not enough untapped creature power to crew.';
   if (spec.cost.station && crewCandidates(s, playerId, c.id).length === 0) return 'You have no other untapped creature to tap for station.';
   const n = spec.cost.discard ?? 0;
@@ -1586,6 +1746,13 @@ const BASIC_LAND_TYPES = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
 export const RETRACE_DISCARD: ObjectFilter = { types: ['land'] };
 
 /** Other cards in your hand that could pay a discard cost (matching `filter`, if any). */
+/** Close Encounter's additional cost: a creature you control, or a warped creature card you own in exile. */
+export function encounterChoices(s: GameState, playerId: PlayerId): InstanceId[] {
+  const mine = battlefield(s).filter((c) => c.controller === playerId && !c.phasedOut && isCreatureOnBattlefield(s, c)).map((c) => c.id);
+  const warped = s.players[playerId]!.exile.filter((id) => s.cards[id]!.owner === playerId && s.cards[id]!.warpExiledTurn !== undefined && defOf(s, s.cards[id]!).types.includes('creature'));
+  return [...mine, ...warped];
+}
+
 export function discardCandidates(s: GameState, playerId: PlayerId, source: InstanceId, filter?: ObjectFilter): InstanceId[] {
   return player(s, playerId).hand.filter((id) => id !== source && (!filter || matchesObject(s, filter, s.cards[id]!, { controller: playerId, source })));
 }
@@ -1624,11 +1791,25 @@ export function spellSacrificeChoices(s: GameState, playerId: PlayerId, def: Car
 
 /** The mana a spell's additional cost adds for these cost cards ("or pay {2}" when nothing was sacrificed). */
 export function additionalManaFor(def: CardDefinition, costCards: readonly InstanceId[]): string | undefined {
-  return def.additionalCost?.sacrifice && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
+  return (def.additionalCost?.sacrifice || def.additionalCost?.behold) && def.additionalCost.orMana && costCards.length === 0 ? def.additionalCost.orMana : undefined;
 }
 
-/** Lands a player may play this turn: one, plus Azusa's two more on their own turn (rule 305.2). */
+/** Behold a [subtype] (rule 701.4x): a permanent with it you control, or a card with it in your hand (not this one). */
+export function beholdChoices(s: GameState, playerId: PlayerId, self: InstanceId, subtype: string): InstanceId[] {
+  const p = player(s, playerId);
+  const onField = p.battlefield.filter((id) => !s.cards[id]!.phasedOut && s.cards[id]!.controller === playerId && subtypesOf(s, s.cards[id]!).includes(subtype));
+  const inHand = p.hand.filter((id) => id !== self && (defOf(s, s.cards[id]!).subtypes ?? []).includes(subtype));
+  return [...onField, ...inHand];
+}
+
+/** Ethersworn Canonist: whether this player may cast no more nonartifact spells this turn. */
+export function nonartifactSpellLimited(s: GameState, playerId: PlayerId): boolean {
+  return (s.players[playerId]!.nonartifactSpellsThisTurn ?? 0) > 0 && battlefield(s).some((c) => !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.oneNonartifactSpellEachTurn));
+}
+
+/** Lands a player may play this turn: one, plus Azusa's two more on their own turn (rule 305.2); none under Aggressive Mining. */
 export function landDrops(s: GameState, playerId: PlayerId): number {
+  if (battlefield(s).some((c) => c.controller === playerId && !c.phasedOut && (defOf(s, c).statics ?? []).some((st) => st.cantPlayLands))) return 0;
   if (s.activePlayer !== playerId) return 1;
   const extra = s.players[playerId]!.extraLandDrops;
   let n = 1 + (extra?.turn === s.turnNumber ? extra.count : 0);
@@ -1667,6 +1848,11 @@ export function costCardChoices(s: GameState, playerId: PlayerId, spec: Activate
       for(let i=start;i<candidates.length && out.length<200;i++) walk(i+1,[...picked,candidates[i]!.id],power+powerOf(s,candidates[i]!));
     };
     walk(0,[],0);return out;
+  }
+  if (spec.cost.tapUntapped?.countX) {
+    // Every untapped match, or none: the usual choices (any subset is accepted).
+    const all = tapCostCandidates(s, playerId, spec, source);
+    return all.length ? [all, []] : [[]];
   }
   if (spec.cost.tapUntapped) return subsets(tapCostCandidates(s, playerId, spec, source), spec.cost.tapUntapped.count, spec.cost.tapUntapped.count).slice(0, 50);
   if (spec.cost.station) return crewCandidates(s, playerId, source).map((k) => [k.id]);
@@ -1716,12 +1902,12 @@ export function activateAbility(
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
   const hasX = !!parseManaCost(spec.cost.mana).x || !!spec.cost.removeCounter?.amountX;
-  if (!hasX && !spec.cost.discardX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
+  if (!hasX && !spec.cost.discardX && !spec.cost.tapUntapped?.countX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
   if (hasX && (xChosen === undefined || !Number.isInteger(xChosen) || xChosen < (spec.xMin ?? 0))) reject(`Choose a value for X${spec.xMin ? ` of at least ${spec.xMin}` : ''}.`);
   // Station: X is the power of the creature tapped for it (as the cost is paid).
   const stationCreature = spec.cost.station ? costCards[0] : undefined;
   if (spec.cost.station && (costCards.length !== 1 || !crewCandidates(s, playerId, id).some((k) => k.id === stationCreature))) reject('Choose another untapped creature you control to tap for station.');
-  const x = spec.cost.discardX ? costCards.length : spec.cost.station ? Math.max(0, powerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
+  const x = spec.cost.discardX || spec.cost.tapUntapped?.countX ? costCards.length : spec.cost.station ? Math.max(0, combatPowerOf(s, s.cards[stationCreature!]!)) : hasX ? xChosen! : undefined;
   const creatureTargets = [...new Set(targets.flatMap((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : []))];
   for (const target of creatureTargets) ctx.ev.push({ type: 'AbilityTargeted', card: target, controller: s.cards[target]!.controller, source: id });
   const rc = spec.cost.removeCounter;
@@ -1732,7 +1918,7 @@ export function activateAbility(
     // Checked above with X.
   } else if (spec.cost.tapUntapped) {
     const able = tapCostCandidates(s, playerId, spec, id);
-    if (costCards.length !== spec.cost.tapUntapped.count || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${spec.cost.tapUntapped.count} untapped matching permanents you control to tap.`);
+    if ((!spec.cost.tapUntapped.countX && costCards.length !== spec.cost.tapUntapped.count) || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${spec.cost.tapUntapped.count} untapped matching permanents you control to tap.`);
   } else if (spec.cost.exileGraveyard) {
     const available = graveyardCostCandidates(s, playerId, spec, id);
     if (costCards.length !== spec.cost.exileGraveyard.amount || new Set(costCards).size !== costCards.length || costCards.some(card => !available.includes(card))) reject('Choose distinct matching creature cards from your graveyard to exile.');
@@ -1756,7 +1942,7 @@ export function activateAbility(
     checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id, spec.cost.discardFilter);
   }
   if (rc && !rc.from && (!counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) reject(`There ${rc.amount && rc.amount > 1 ? `aren't ${rc.amount} counters` : "is no counter"} to remove for that.`);
-  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact') });
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact'), ...(hasType(s, c, 'artifact') ? { restricted: ['artifactAbility' as const] } : {}) });
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
@@ -1768,6 +1954,13 @@ export function activateAbility(
   }
   payWardDiscards(ctx, targets, playerId);
   if (spec.oncePerTurn) c.activatedTurns = { ...c.activatedTurns, [index]: s.turnNumber };
+  if (spec.exhaust) c.exhausted = [...(c.exhausted ?? []), index];
+  if (spec.loyalty !== undefined) {
+    c.loyaltyActivatedTurn = s.turnNumber;
+    player(s, playerId).loyaltyActivatedTurn = s.turnNumber;
+    if (spec.loyalty > 0) addCounters(ctx, id, spec.loyalty, playerId, 'loyalty');
+    else if (spec.loyalty < 0) removeCounters(ctx, id, 'loyalty', -spec.loyalty);
+  }
   if (spec.cost.tap) tap(ctx, c);
   for (const top of topOfLibrary(s, playerId, spec.cost.mill ?? 0)) moveCard(ctx, top, 'graveyard');
   if (spec.cost.tapUntapped || spec.cost.station) for (const k of costCards) tap(ctx, s.cards[k]!);
@@ -1809,6 +2002,11 @@ export function activateAbility(
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
+  // Morph: turning it face up is a special action; it doesn't use the stack (rule 702.37e).
+  if (spec.turnFaceUp) {
+    turnFaceUp(ctx, id, playerId);
+    return;
+  }
 
   const item: AbilityItem = {
     id: newId(s, 's'),
@@ -1828,7 +2026,7 @@ export function activateAbility(
     ...(sacrificedPower !== undefined ? { sacrificedPower, sacrificedManaValue } : {}),
   };
   s.stack.push(item);
-  ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets });
+  ctx.ev.push({ type: 'AbilityActivated', item: item.id, card: id, ability: index, controller: playerId, targets, ...(spec.loyalty !== undefined ? { loyalty: spec.loyalty } : {}) });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
 }
 
@@ -1888,6 +2086,10 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'battlefield' ? [{ kind: 'card', card: subject }] : [];
     }
+    case 'TriggeringObjects':
+      return (item.kind === 'ability' ? (item.subjects ?? (item.subject ? [item.subject] : [])) : [])
+        .filter((id) => s.cards[id]?.zone === 'battlefield')
+        .map((id) => ({ kind: 'card' as const, card: id }));
     case 'TriggeringCard': {
       const subject = item.kind === 'ability' ? item.subject : undefined;
       return subject && s.cards[subject]?.zone === 'graveyard' ? [{ kind: 'card', card: subject }] : [];
@@ -1970,14 +2172,22 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
         ? (r.previousTarget?.kind === 'player' ? battlefield(s).filter((c) => c.controller === (r.previousTarget as { player: PlayerId }).player && !c.phasedOut && matchesObject(s, effect.filter, c, { controller: r.item.controller })).length : 0)
         : a.of === 'chosenCardTypes'
         ? new Set((r.chosen ?? []).flatMap((c) => c.cards).flatMap((id) => defOf(s, s.cards[id]!).types)).size
+        : a.of === 'chosenCostPower'
+        ? (r.item.kind === 'spell' && r.item.chosenForCost ? Math.max(0, s.cards[r.item.chosenForCost.card]?.zone === 'battlefield' ? powerOf(s, s.cards[r.item.chosenForCost.card]!) : r.item.chosenForCost.power) : 0)
         : a.of === 'sacrificedPower' || a.of === 'sacrificedManaValue'
         ? (r.item.kind === 'ability' ? (r.item[a.of] ?? 0) : 0)
         : a.of === 'previousTargetPower'
         ? Math.max(0, r.previousTargetPower ?? 0)
         : a.of === 'destroyedThisWay'
           ? (r.destroyedCount ?? 0)
+          : a.of === 'exiledThisWay'
+          ? (r.exiledCount ?? 0)
           : a.of === 'chosenCount'
             ? (r.chosen ?? []).reduce((n, c) => n + c.cards.length, 0)
+          : a.of === 'chosenNonlandCount'
+            ? (r.chosen?.at(-1)?.cards ?? []).filter((id) => s.cards[id] && !defOf(s, s.cards[id]!).types.includes('land')).length
+          : a.of === 'previousTargetLibraryToGraveyardThisTurn'
+            ? (() => { const p = r.previousTarget?.kind === 'player' ? s.players[r.previousTarget.player] : undefined; return p?.libraryToGraveyard?.turn === s.turnNumber ? p.libraryToGraveyard.count : 0; })()
             : a.of === 'sourceCounterKinds'
               ? sourceCounterKinds(s, r.item)
               : a.of === 'sourceCounters'
@@ -1992,6 +2202,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                     : (r.item.x ?? s.cards[r.item.source]!.xPaid ?? 0)
                   : a.of === 'lifeLostThisWay'
                     ? (r.lifeLostThisWay ?? 0)
+                  : a.of === 'drawnThisWay'
+                    ? (r.drawnThisWay ?? 0)
                     : a.of === 'revealedManaValue'
                       ? (r.revealedManaValue ?? 0)
                       : a.of === 'subjectManaValue'
@@ -2000,7 +2212,9 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                           ? powerOver(s, r)
                         : a.of === 'landsToGraveyardThisWay'
                           ? (r.landsToGraveyard ?? 0)
-                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent'
+                        : a.of === 'excessDamage'
+                          ? (r.excessDamage ?? 0)
+                        : a.of === 'damageDealt' || a.of === 'subjectManaSpent' || a.of === 'lifeLostInEvent' || a.of === 'lifeGainedInEvent' || a.of === 'countersAddedInEvent'
                           ? (r.item.kind === 'ability' ? (r.item.amount ?? 0) : 0)
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
@@ -2029,6 +2243,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       else delete r.putAttackingDefender;
       if (effect.alsoFromGraveyard || effect.entersTapped) r.putTapped = true;
       else delete r.putTapped;
+      if (effect.terminalVelocity) r.putTerminal = true;
+      else delete r.putTerminal;
       const from = effect.alsoFromGraveyard ? [...s.players[pid]!.hand, ...s.players[pid]!.graveyard] : s.players[pid]!.hand;
       // "With mana value less than or equal to the number of lands you control" (Anticausal Vestige).
       const mvLimit = effect.manaValueAtMostCount ? countOf(s, effect.manaValueAtMostCount, pid, source) : Infinity;
@@ -2043,7 +2259,7 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       // "Reveals their hand. You choose a nonland card from it" (Grief).
       const able = s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
       const n = Math.min(Math.max(1, amount), able.length);
-      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: r.item.controller, purpose: 'discard', cards: able, min: n, max: n }];
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: r.item.controller, purpose: 'discard', cards: able, min: n, max: n, ...(effect.exileToCastWithThreshold ? { exileToCastWithThreshold: true } : {}) }];
       continue;
     }
     if (effect.effect === 'Discard') {
@@ -2054,7 +2270,7 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       else {
         const max = effect.anyNumber ? hand.length : Math.min(amount, hand.length);
         const min = effect.anyNumber || effect.optional ? 0 : effect.orOneMatching ? Math.min(1, max) : max;
-        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max, ...(effect.orOneMatching ? { orOneMatching: effect.orOneMatching } : {}) }];
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'discard', cards: [...hand], min, max, ...(effect.orOneMatching ? { orOneMatching: effect.orOneMatching } : {}), ...(effect.exileToPlayTaxed ? { exileToPlayTaxed: true } : {}) }];
       }
       continue;
     }
@@ -2071,7 +2287,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       const max = effect.halfOfMatching ? Math.floor(cards.length / 2) : effect.anyNumber ? cards.length : Math.min(Math.max(1, amount), cards.length);
       if (max === 0) continue;
       const purpose = effect.effect === 'Sacrifice' ? 'sacrifice' : 'destroy';
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional || effect.anyNumber ? 0 : max, max }];
+      const src = s.cards[source];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose, cards, min: effect.optional || effect.anyNumber ? 0 : max, max, ...(effect.exileLinked && src ? { exileLinked: { source, sourceObject: src.zoneChanges ?? 0 } } : {}) }];
     } else {
       const max = effect.onePerType ? effect.onePerType.length : Math.min(amount, cards.length);
       r.choiceQueue = [
@@ -2099,6 +2316,7 @@ export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceI
     const one = cards.length === 1 && matchesObject(s, choice.orOneMatching, s.cards[cards[0]!]!, { controller: choice.player });
     return one ? null : `Choose ${choice.max} cards, or one that matches instead.`;
   }
+  if (choice.purpose === 'revealOutside' && cards.length === 1) return 'Reveal exactly two cards, or none.';
   if (choice.differentNames && new Set(cards.map((id) => defOf(s, s.cards[id]!).name)).size !== cards.length) return 'Choose cards with different names.';
   if (choice.shareLandType && cards.length > 1 && !BASIC_LAND_TYPES.some((t) => cards.every((id) => subtypesOf(s, s.cards[id]!).includes(t)))) return 'Choose lands that share a land type.';
   if (cards.length < choice.min || cards.length > choice.max) {
@@ -2125,6 +2343,7 @@ export function triggerLifeCost(s: GameState, item: AbilityItem): number | undef
     return subject ? objectManaValue(s, subject) : 0;
   }
   if (cost?.lifeOf === 'opponentsDealtCombatDamage') return countOf(s, 'OpponentsDealtCombatDamageThisTurn', item.controller);
+  if (cost?.lifeOf === 'lifeGainedInEvent') return item.amount ?? 0;
   return undefined;
 }
 
@@ -2337,13 +2556,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'PutOnLibraryBottom':
-      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') moveCard(ctx, id, 'library');
+      for (const id of cards) if (s.cards[id]!.zone === 'graveyard' || (effect.target === 'TargetExiledCardWithWarp' && s.cards[id]!.zone === 'exile')) moveCard(ctx, id, 'library');
+      // "Put target creature on the bottom of its owner's library" (Proteus Staff).
+      for (const id of onBattlefield) {
+        r.movedPermanentController = s.cards[id]!.controller;
+        moveCard(ctx, id, 'library');
+      }
       return;
     case 'AllowAdventureFromGraveyard':
       for (const id of cards) if (s.cards[id]!.zone === 'graveyard') s.cards[id]!.adventureGraveyard = { player: item.controller, grantedTurn: s.turnNumber };
       return;
     case 'PutIntoLibrary':
-      r.choiceQueue = cards.map((id) => ({ player: s.cards[id]!.owner, purpose: 'library', cards: [id], min: 0, max: 1 }));
+      r.choiceQueue = cards.map((id) => ({ player: s.cards[id]!.owner, purpose: 'library', cards: [id], min: 0, max: 1, ...(effect.damageIfTop ? { damageIfTop: effect.damageIfTop } : {}) }));
       return;
     case 'OfferDrawOrMillDamage':
       r.choiceQueue = targetPlayers(targets).map((pid) => ({ player: pid, purpose: 'offerDraw', cards: [source], min: 0, max: 1 }));
@@ -2351,13 +2575,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DealDamage': {
       // "That creature deals damage equal to its power" (Flayer of the Hatebound).
       const subject = item.kind === 'ability' ? item.subject : undefined;
-      const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined;
-      if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
-      const from = effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source;
+      const first = effect.damageFromFirstTarget ? item.targets?.[0] : undefined;
+      const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : first?.kind === 'card' ? first.card : undefined;
+      if ((effect.damageSource === 'PreviousTarget' || effect.damageFromFirstTarget) && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
+      const host = effect.damageSource === 'EquippedCreature' ? s.cards[source]?.attachedTo : undefined;
+      if (effect.damageSource === 'EquippedCreature' && (!host || s.cards[host]?.zone !== 'battlefield')) return;
+      const from = host ?? (effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source);
       let excess = false;
       // "Deals damage equal to its power": its power now, if it's still on the battlefield (rule 608.2h).
-      let damage = amount;
+      let damage = host && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'sourcePower' ? Math.max(0, powerOf(s, s.cards[host]!)) : amount;
       if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetPower') damage = Math.max(0, powerOf(s, s.cards[chosen]!)) * (effect.doubleIfKicked && item.kind === 'spell' && (item.kicks ?? 0) > 0 ? 2 : 1);
+      // Compel Brutality: "Target planeswalker you control deals damage equal to its loyalty".
+      if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetLoyalty') damage = s.cards[chosen]!.namedCounters?.loyalty ?? 0;
       // Cut Propulsion: "If that creature has flying, it deals twice that much damage to itself instead."
       if (effect.doubleIfPreviousTargetIs && chosen && matchesObject(s, effect.doubleIfPreviousTargetIs, s.cards[chosen]!, { controller: item.controller, source })) damage *= 2;
       for (const t of targets) {
@@ -2372,6 +2601,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           if (dealt > lethal) excess = true;
           continue;
         }
+        // "If excess damage was dealt to that permanent this way" (rule 120.4a): beyond lethal damage for a creature, beyond its loyalty for a planeswalker.
+        if (effect.recordExcess && t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield') {
+          const c = s.cards[t.card]!;
+          const isCreature = hasType(s, c, 'creature');
+          const lethal = isCreature ? Math.max(0, toughnessOf(s, c) - c.damage) : Math.max(0, c.namedCounters?.loyalty ?? 0);
+          dealDamage(ctx, from, t, damage, false);
+          r.excessDamage = (r.excessDamage ?? 0) + Math.max(0, damage - lethal);
+          continue;
+        }
         dealDamage(ctx, from, t, damage, false);
       }
       if (excess) r.createdTokens.push(createToken(ctx, effect.tokenIfExcess!, item.controller));
@@ -2380,7 +2618,40 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'DrawCards':
-      for (const t of targets) if (t.kind === 'player') drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
+      for (const t of targets) {
+        if (t.kind !== 'player') continue;
+        const before = s.players[t.player]!.cardsDrawnThisTurn ?? 0;
+        drawCards(ctx, t.player, amount * (effect.perOpponentWhoChoseNone ? opponentsWhoChoseNone(s, r).length : 1));
+        r.drawnThisWay = (r.drawnThisWay ?? 0) + Math.max(0, (s.players[t.player]!.cardsDrawnThisTurn ?? 0) - before);
+      }
+      return;
+    case 'PutExiledWithThisOntoBattlefield': {
+      const object = item.kind === 'ability' ? item.sourceObject : undefined;
+      const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.exiledWith?.source === source && (object === undefined || c.exiledWith.sourceObject === object) && matchesObject(s, effect.filter, c, { controller: item.controller })).map((c) => c.id);
+      if (exiled.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards: exiled, min: 1, max: 1, ...(effect.counters ? { extraCounters: effect.counters } : {}) }];
+      return;
+    }
+    case 'ReturnDestroyedThisWay': {
+      const back = (r.destroyedCards ?? []).filter((id) => s.cards[id]?.zone === 'graveyard' && defOf(s, s.cards[id]!).types.includes('creature'));
+      if (back.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards: back, min: 1, max: 1 }];
+      return;
+    }
+    case 'ExiledWithThisToGraveyard': {
+      let put = 0;
+      for (const c of Object.values(s.cards)) {
+        if (c.zone !== 'exile' || c.exiledUntilLeaves !== source) continue;
+        delete c.exiledUntilLeaves;
+        moveCard(ctx, c.id, 'graveyard');
+        if (s.cards[c.id]?.zone === 'graveyard') put++;
+      }
+      for (let i = 0; i < put && effect.token; i++) r.createdTokens.push(createToken(ctx, effect.token, item.controller));
+      return;
+    }
+    case 'ControlPlayerNextTurn':
+      for (const pid of targetPlayers(targets)) if (pid !== item.controller) s.turnControl = [...(s.turnControl ?? []), { player: pid, by: item.controller }];
+      return;
+    case 'SetLifeHalfStarting':
+      for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, Math.ceil(s.format.startingLife / 2) - s.players[t.player]!.life);
       return;
     case 'GainLife':
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, amount);
@@ -2390,8 +2661,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (t.kind !== 'player') continue;
         if (effect.perOpponentWhoChoseNone && !opponentsWhoChoseNone(s, r).includes(t.player)) continue;
         const before = s.players[t.player]!.life;
-        // "Loses half their life, rounded up" (Alpharael).
-        changeLife(ctx, t.player, -(effect.halfLifeRoundedUp ? Math.ceil(Math.max(0, before) / 2) : amount));
+        // "Loses half their life, rounded up" (Alpharael); "life equal to the life that player lost this turn" (Archfiend of Despair).
+        changeLife(ctx, t.player, -(effect.halfLifeRoundedUp ? Math.ceil(Math.max(0, before) / 2) : effect.lifeLostThisTurn ? (s.players[t.player]!.lifeLostThisTurn ?? 0) : amount));
         r.lifeLostThisWay = (r.lifeLostThisWay ?? 0) + (before - s.players[t.player]!.life);
       }
       return;
@@ -2446,17 +2717,51 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (s.cards[id]?.zone !== 'battlefield') r.sacrificedAny = true;
       }
       return;
+    case 'ExileNamedToSearch': {
+      // Sphinx's Approach: only if there are enough named cards to exile (you may; the engine always does when it can).
+      const spell = item.kind === 'spell' ? s.cards[item.card] : undefined;
+      if (!spell) return;
+      const name = defOf(s, spell).name;
+      const yard = player(s, item.controller).graveyard.filter((id) => s.cards[id] && defOf(s, s.cards[id]!).name === name);
+      if (yard.length < amount) return;
+      (item as SpellItem).exileAfter = true;
+      for (const id of yard.slice(0, amount)) moveCard(ctx, id, 'exile');
+      queueSearch(s, r, item.controller, { ...effect, amount: 1 }, 1, 'battlefield');
+      return;
+    }
+    case 'ChooseCreatureType': {
+      // The creature types among creatures on the battlefield, and any other type (sparing none of them).
+      const types = [...new Set(battlefield(s).filter((c) => !c.phasedOut && hasType(s, c, 'creature')).flatMap((c) => subtypesOf(s, c).filter((t) => CREATURE_SUBTYPES.has(t))))].sort();
+      s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: [...types, 'Another type'], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'creatureType' };
+      return;
+    }
     case 'Destroy':
-      for (const id of onBattlefield) if (destroy(ctx, id)) r.destroyedCount = (r.destroyedCount ?? 0) + 1;
+      for (const id of onBattlefield) {
+        // Kindred Judgment: "Destroy all creatures that aren't of the chosen type."
+        if (effect.exceptChosenCreatureType && r.chosenCreatureType && subtypesOf(s, s.cards[id]!).includes(r.chosenCreatureType)) continue;
+        const attacking = !!s.combat?.attacks.some((a) => a.attacker === id);
+        const controller = s.cards[id]!.controller;
+        if (destroy(ctx, id)) { r.destroyedCount = (r.destroyedCount ?? 0) + 1; r.destroyedCards = [...(r.destroyedCards ?? []), id]; }
+        // Prophesied End: "If it wasn't attacking, its controller draws a card."
+        if (effect.drawIfNotAttacking && !attacking && !s.players[controller]!.eliminated) drawCards(ctx, controller, 1);
+      }
       return;
     case 'Exile':
       // A card in a graveyard ("exile target creature card from a graveyard").
-      for (const id of cards) if (s.cards[id]!.zone === 'graveyard') moveCard(ctx, id, 'exile');
+      for (const id of cards) {
+        if (s.cards[id]!.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'exile');
+        // "You may exile that card from your graveyard" (Currency Converter): exiled with this permanent.
+        if (effect.exileLinked && (s.cards[id]!.zone as string) === 'exile') s.cards[id]!.exiledWith = { source, sourceObject: item.kind === 'ability' ? (item.sourceObject ?? 0) : (s.cards[source]?.zoneChanges ?? 0) };
+      }
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
         const { name } = defOf(s, c);
         const controller = c.controller;
         moveCard(ctx, id, 'exile');
+        // "Incubate X, where X is the number of creatures exiled this way" (Sunfall).
+        r.exiledCount = (r.exiledCount ?? 0) + 1;
+        if (s.cards[id]?.zone === 'exile') r.exiledCards = [...(r.exiledCards ?? []), id];
         if (!effect.sameNameTokens) continue;
         for (const other of battlefield(s)) {
           if (other.isToken && other.controller === controller && defOf(s, other).name === name) moveCard(ctx, other.id, 'exile');
@@ -2472,15 +2777,33 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const pid of targetPlayers(targets)) for (const id of [...s.players[pid]!.hand]) discard(ctx, id);
         return;
       }
+      if (effect.atRandom) {
+        for (const pid of targetPlayers(targets)) {
+          const hand = [...s.players[pid]!.hand];
+          for (let i = 0; i < amount && hand.length; i++) discard(ctx, hand.splice(randomInt(s, hand.length), 1)[0]!);
+        }
+        return;
+      }
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Sacrifice':
+      // "Sacrifice this": nothing to choose.
+      if (effect.noChoice && effect.filter?.self && effect.target === 'You') {
+        const self = s.cards[source];
+        if (self?.zone === 'battlefield' && self.controller === item.controller) {
+          sacrifice(ctx, source);
+          r.sacrificedAny = true;
+        }
+        return;
+      }
+      queueChoices(s, effect, r, targetPlayers(targets), amount);
+      return;
     case 'KeepAndSacrificeRest':
       queueChoices(s, effect, r, targetPlayers(targets), amount);
       return;
     case 'Fight': {
       // Both must still be creatures on the battlefield (rule 701.14b). "Target creature you control fights": the earlier target fights.
-      const fighter = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : source;
+      const fighter = effect.damageSource === 'EquippedCreature' ? (s.cards[source]?.attachedTo ?? source) : effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : source;
       const src = s.cards[fighter];
       if (!isCreatureOnBattlefield(s, src)) return;
       for (const id of onBattlefield) {
@@ -2501,6 +2824,42 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         sacrifice(ctx, theirs.find((c) => powerOf(s, c) === greatest)!.id);
       }
       return;
+    case 'SacrificeGreatestManaValue':
+      for (const pid of targetPlayers(targets)) {
+        const theirs = battlefield(s).filter((c) => c.controller === pid && matchesObject(s, effect.filter ?? { types: ['creature'] }, c, { controller: pid }));
+        if (theirs.length === 0) continue;
+        const greatest = Math.max(...theirs.map((c) => objectManaValue(s, c)));
+        const tied = theirs.filter((c) => objectManaValue(s, c) === greatest);
+        // On a tie the player chooses which one.
+        if (tied.length === 1) sacrifice(ctx, tied[0]!.id);
+        else r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'sacrifice', cards: tied.map((c) => c.id), min: 1, max: 1 }];
+      }
+      return;
+    case 'LoseAllAbilities':
+      for (const id of onBattlefield) s.cards[id]!.lostAbilitiesTurn = s.turnNumber;
+      return;
+    case 'ChooseKeyword':
+      s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: [...(effect.keywords ?? [])], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'keyword' };
+      return;
+    case 'CounterUnlessDiscard': {
+      const by = item.kind === 'ability' ? item.targetedBy : undefined;
+      if (!by) return;
+      const onStack = s.stack.find((i) => (by.kind === 'spell' ? i.kind === 'spell' && i.card === by.card : i.kind === 'ability' && i.id === by.item));
+      if (!onStack) return;
+      const hand = s.players[onStack.controller]!.hand;
+      if (hand.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: onStack.controller, purpose: 'wardDiscard', cards: [...hand], min: 0, max: 1, wardTarget: by }];
+      else counterStackObject(ctx, by, source);
+      return;
+    }
+    case 'GrantFlashback':
+      for (const id of cards) if (s.cards[id]?.zone === 'graveyard') s.cards[id]!.flashbackTurn = s.turnNumber;
+      return;
+    case 'RevealFromOutsideGame': {
+      const outside = Object.values(s.cards).filter((c) => c.zone === 'void' && c.outsideGame && c.owner === item.controller).map((c) => c.id);
+      if (new Set(outside.map((id) => defOf(s, s.cards[id]!).name)).size < 2) return;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'revealOutside', cards: outside, min: 0, max: 2, differentNames: true }];
+      return;
+    }
     case 'ShuffleIntoLibrary':
     case 'ShuffleIntoLibraryReveal':
       for (const id of onBattlefield) {
@@ -2508,7 +2867,6 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const library = s.players[owner]!.library;
         moveCard(ctx, id, 'library');
         shuffleInPlace(s, library);
-        ctx.ev.push({ type: 'LibraryShuffled', player: owner });
         if (effect.effect === 'ShuffleIntoLibrary') continue;
         const top = library[0];
         if (top === undefined) continue;
@@ -2551,6 +2909,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       for (const id of onBattlefield) {
         addCounters(ctx, id, amount, item.controller, effect.counter);
+        if (effect.removeAtEndStep && s.cards[id]!.zone === 'battlefield') s.cards[id]!.removeCountersAtEndStep = { counter: effect.counter ?? '+1/+1', amount };
         // Sazh Katzroy: "then double the number of +1/+1 counters on that creature".
         if (effect.thenDouble && s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, s.cards[id]!.counters ?? 0, item.controller);
       }
@@ -2565,31 +2924,67 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'RevealUntil': {
-      const library = s.players[item.controller]!.library;
+      // Proteus Staff: "that creature's controller reveals cards ... The player puts that card onto the battlefield".
+      if (effect.fromMovedPermanentController && !r.movedPermanentController) return;
+      const owner = effect.fromMovedPermanentController ? r.movedPermanentController! : effect.fromTargetPlayer ? (targetPlayers(targets)[0] ?? item.controller) : item.controller;
+      const library = s.players[owner]!.library;
+      // "Until you reveal X creature cards" (Dack Fayden: X is the number of opponents).
+      const wanted = effect.untilCount !== undefined ? amountOf(s, effect.untilCount, item.controller, source) : 1;
+      if (wanted <= 0) return;
       const revealed: InstanceId[] = [];
-      let found: InstanceId | undefined;
+      const found: InstanceId[] = [];
       for (const id of library) {
         revealed.push(id);
-        ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+        ctx.ev.push({ type: 'CardRevealed', player: owner, card: id, defId: s.cards[id]!.defId });
         if (matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller })) {
-          found = id;
-          break;
+          found.push(id);
+          if (found.length >= wanted) break;
         }
       }
-      const rest = revealed.filter((id) => id !== found);
-      if (found) {
-        r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[found]!).manaCost));
+      const rest = revealed.filter((id) => !found.includes(id));
+      for (const id of found) {
+        r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost));
+        if (effect.fromMovedPermanentController || effect.toBattlefield) {
+          // Onto the battlefield under that player's (or your) control.
+          moveCard(ctx, id, 'battlefield', { controller: owner });
+          const c = s.cards[id]!;
+          c.summoningSick = true;
+          if (entersTapped(s, c)) c.tapped = true;
+          if (effect.goadForever) c.goadedForever = [...new Set([...(c.goadedForever ?? []), item.controller])];
+        } else
+        // Jhoira: onto the battlefield under your control; you lose life equal to its mana value.
+        if (effect.fromTargetPlayer) {
+          moveCard(ctx, id, 'battlefield');
+          const c = s.cards[id]!;
+          c.controller = item.controller;
+          c.summoningSick = true;
+          if (entersTapped(s, c)) c.tapped = true;
+          changeLife(ctx, item.controller, -r.revealedManaValue);
+        } else
         // The Regalia: "put that card onto the battlefield tapped".
         if (effect.entersTapped) {
-          moveCard(ctx, found, 'battlefield');
-          s.cards[found]!.controller = item.controller;
-          s.cards[found]!.tapped = true;
-        } else moveCard(ctx, found, 'hand');
+          moveCard(ctx, id, 'battlefield');
+          s.cards[id]!.controller = item.controller;
+          s.cards[id]!.tapped = true;
+        } else moveCard(ctx, id, 'hand');
       }
-      // The rest go on the bottom in a random order.
-      for (const id of rest) library.splice(library.indexOf(id), 1);
-      shuffleInPlace(s, rest);
-      library.push(...rest);
+      if (effect.shuffleAfter) {
+        // "Then shuffle": the revealed cards that weren't found stay in the library, which is shuffled.
+        shuffleInPlace(s, library);
+      } else {
+        // The rest go on the bottom in a random order.
+        for (const id of rest) library.splice(library.indexOf(id), 1);
+        shuffleInPlace(s, rest);
+        library.push(...rest);
+      }
+      // "For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+      if (effect.giveToDifferentOpponents) {
+        const onField = found.filter((id) => s.cards[id]?.zone === 'battlefield');
+        const opponents = aliveFromActive(s).filter((pid) => pid !== item.controller);
+        if (onField.length > 0 && opponents.length > 0) {
+          r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'giveToOpponent', cards: onField, min: 1, max: 1, recipient: opponents[0]!, laterRecipients: opponents.slice(1) }];
+        }
+      }
       return;
     }
     case 'Explore':
@@ -2654,8 +3049,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const pid of targetPlayers(targets)) s.players[pid]!.lostToEffect = true;
       return;
     case 'CopySpell': {
-      // The triggering spell, while it's still on the stack.
-      const subject = item.kind === 'ability' ? item.subject : undefined;
+      // The targeted spell (Venser), or the triggering spell, while it's still on the stack.
+      const subject = effect.target === 'TargetSpell' ? cards[0] : item.kind === 'ability' ? item.subject : undefined;
       const original = subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === subject) : undefined;
       if (!original) return;
       const from = s.cards[original.card]!;
@@ -2681,7 +3076,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'ReturnFromGraveyardTotalManaValue': {
       const cards = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
-      if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards, min: 0, max: cards.length, maxTotalManaValue: amount }];
+      if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefield', cards, min: 0, max: Math.min(cards.length, effect.keep ?? cards.length), maxTotalManaValue: amount }];
       return;
     }
     case 'ExileFromYourGraveyard': {
@@ -2693,6 +3088,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PreventDamageToYourCreatures':
       player(s, item.controller).preventCreatureDamageTurn = s.turnNumber;
       return;
+    case 'CastMilledFree': {
+      // One choice per player, among the spells this ability milled from their library.
+      for (const pid of alivePlayers(s)) {
+        const cards = player(s, pid).graveyard.filter((id) => {
+          const c = s.cards[id]!;
+          const d = defOf(s, c);
+          return c.milledBy?.source === source && c.milledBy.turn === s.turnNumber && canEverCast(d) && !d.types.includes('land');
+        });
+        if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castFree', cards, min: 0, max: 1 }];
+      }
+      return;
+    }
     case 'CastFreeFromHand': {
       const cards = player(s, item.controller).hand.filter((id) => {
         const d = defOf(s, s.cards[id]!);
@@ -2879,11 +3286,22 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const cards = battlefield(s)
         .filter((c) => !c.phasedOut && matchesObject(s, effect.filter, c, { controller: item.controller, source }) && (!effect.fromProliferated || (r.proliferated ?? []).includes(c.id)))
         .map((c) => c.id);
-      if (cards.length === 0) {
+      if (cards.length === 0 || (effect.exactly !== undefined && cards.length < effect.exactly)) {
         if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
         return;
       }
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.optional || effect.anyNumber ? 0 : 1, max: effect.anyNumber ? cards.length : 1 }];
+      const chooser = effect.chosenByPreviousTargetPlayer ? (controllerOfTarget(s, r.previousTarget) ?? item.controller) : item.controller;
+      // "Up to that many": none to choose when it's 0.
+      if (effect.upToCount !== undefined) {
+        const most = Math.min(cards.length, resolvedAmount(s, { ...effect, amount: effect.upToCount }, r));
+        if (most <= 0) {
+          if (effect.choiceThen === 'mark') r.chosen = [...(r.chosen ?? []), { player: item.controller, cards: [] }];
+          return;
+        }
+        r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: 0, max: most }];
+        return;
+      }
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: chooser, purpose: effect.choiceThen ?? 'bounce', cards, min: effect.exactly ? effect.exactly : effect.optional || effect.anyNumber ? 0 : 1, max: effect.exactly ?? (effect.anyNumber ? cards.length : 1) }];
       return;
     }
     case 'AddSubtypes':
@@ -2900,7 +3318,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'RemoveCounters':
-      for (const id of onBattlefield) removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
+      for (const id of onBattlefield) {
+        if (!effect.anyKind) {
+          removeCounters(ctx, id, (effect.counter ?? '+1/+1') as never, effect.amount === undefined ? 1 : amount);
+          continue;
+        }
+        // "Remove up to three counters" of any kinds (Mabel): +1/+1 counters first, then the others in the order they're listed.
+        let left = amount;
+        const kinds = [...((s.cards[id]!.counters ?? 0) > 0 ? ['+1/+1'] : []), ...Object.keys(s.cards[id]!.namedCounters ?? {})];
+        for (const kind of kinds) if (left > 0) left -= removeCounters(ctx, id, kind as never, left);
+      }
       return;
     case 'BecomeCopy': {
       const self = s.cards[source];
@@ -2910,8 +3337,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const original = copiableDefinition(s, target), definition = structuredClone(original);
       definition.id = self.defId;
       delete definition.token;
-      const printing = target.copy?.printing ?? target.printing ?? original.printing;
-      self.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };
+      const look = copyLook(s, target);
+      self.copy = { definition, artDefId: look.artDefId, copiedName: original.name, ...(look.printing ? { printing: structuredClone(look.printing) } : {}) };
       newTimestamp(s);
       ctx.ev.push({ type: 'BecameCopy', card: self.id, copied: target.id, name: original.name });
       return;
@@ -2941,12 +3368,54 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PutFromHandOnTop': {
       const hand = player(s, item.controller).hand;
       const n = Math.min(effect.amount === undefined ? 1 : amount, hand.length);
-      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n }];
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'handToTop', cards: [...hand], min: n, max: n, ...(effect.toBottom ? { toBottom: true } : {}) }];
+      return;
+    }
+    case 'BecomePrepared':
+      for (const id of onBattlefield) becomePrepared(ctx, id);
+      return;
+    case 'Unprepare':
+      for (const id of onBattlefield) unprepare(ctx, id);
+      return;
+    case 'EachPlayerMayWheel':
+      r.choiceQueue = [...(r.choiceQueue ?? []), ...aliveFromActive(s).map((pid) => ({ player: pid, purpose: 'wheel' as const, cards: [source], min: 0, max: 1, drawCount: amount }))];
+      return;
+    case 'ExtraManaFromSubtype': {
+      const p = player(s, item.controller);
+      if (effect.landSubtype && effect.manaType) p.extraMana = [...(p.extraMana ?? []).filter((e) => e.turn === s.turnNumber), { turn: s.turnNumber, subtype: effect.landSubtype, mana: effect.manaType }];
+      return;
+    }
+    case 'NextSpellCantBeCountered':
+      player(s, item.controller).nextSpellUncounterableTurn = s.turnNumber;
+      return;
+    case 'Empower': {
+      // "If excess damage was dealt ... empower Jace X": nothing when X is 0.
+      if (amount <= 0 && typeof effect.amount === 'object') return;
+      // Empower Jace N: a Jace token you control gets N loyalty counters; create one first if you have none.
+      const jaces = () => battlefield(s).filter((c) => c.controller === item.controller && c.isToken && !c.phasedOut && subtypesOf(s, c).includes('Jace') && hasType(s, c, 'planeswalker'));
+      let tokens = jaces();
+      if (tokens.length === 0 && effect.token) {
+        createToken(ctx, effect.token, item.controller);
+        tokens = jaces();
+      }
+      if (tokens.length === 1) addCounters(ctx, tokens[0]!.id, amount, item.controller, 'loyalty');
+      else if (tokens.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'amass', cards: tokens.map((c) => c.id), min: 1, max: 1, amassCounters: amount, amassCounter: 'loyalty' }];
+      return;
+    }
+    case 'CreateEmblem':
+      if (effect.emblemStatic) s.emblemStatics = [...(s.emblemStatics ?? []), { controller: item.controller, name: defOf(s, s.cards[source]!).name, spec: structuredClone(effect.emblemStatic) }];
+      return;
+    case 'ProtectSubtypeUnlessPays': {
+      // The player whose turn it is may pay; if they don't, their creatures can't attack your [subtype]s this turn.
+      const payer = s.activePlayer;
+      if (payer === item.controller || s.players[payer]!.eliminated || !effect.protectSubtype) return;
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: payer, purpose: 'payToAvoidCounter', cards: [source], min: 0, max: 1, payGeneric: effect.payGeneric ?? 0, protectSubtype: effect.protectSubtype, protectFor: item.controller }];
       return;
     }
     case 'ShuffleGraveyardIntoLibrary': {
       const p = player(s, item.controller);
       const moving = p.graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      if (effect.alsoHand) moving.push(...p.hand);
       for (const id of moving) moveCard(ctx, id, 'library');
       shuffleInPlace(s, p.library);
       ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
@@ -2993,7 +3462,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (amount > 0) quinaFrogs(ctx, item.controller, r);
         return;
       }
-      const size = effect.tokenSizeFromCount ? countOf(s, effect.tokenSizeFromCount, item.controller, source) : undefined;
+      const size = effect.tokenSizeFromCount ? countOf(s, effect.tokenSizeFromCount, item.controller, source) : effect.tokenSizeFromAmount !== undefined ? resolvedAmount(s, { ...effect, amount: effect.tokenSizeFromAmount }, r) : undefined;
       for (const pid of players.length > 0 ? players : [item.controller]) {
         for (let i = 0; i < amount; i++) {
           const id = createToken(ctx, effect.token!, pid);
@@ -3044,6 +3513,54 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'PhaseOut':
       for (const id of onBattlefield) phaseOut(ctx, id);
       return;
+    case 'ShieldPlayerUntilNextTurn':
+      for (const pid of targetPlayers(targets)) {
+        const p = player(s, pid);
+        if (p.eliminated) continue;
+        p.shielded = true;
+        for (const id of [...p.battlefield]) {
+          const c = s.cards[id]!;
+          if (c.controller === pid && !c.phasedOut && !hasType(s, c, 'land')) phaseOut(ctx, id);
+        }
+      }
+      return;
+    case 'RevealCreaturesToBattlefield': {
+      // "Reveal cards from the top of your library until you reveal that many creature cards. Put all creature
+      // cards revealed this way onto the battlefield, then shuffle the rest of the revealed cards into your library."
+      if (amount <= 0) return;
+      const library = player(s, item.controller).library;
+      const found: InstanceId[] = [];
+      for (const id of [...library]) {
+        if (found.length >= amount) break;
+        ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+        if (defOf(s, s.cards[id]!).types.includes('creature')) found.push(id);
+      }
+      for (const id of found) {
+        moveCard(ctx, id, 'battlefield');
+        const c = s.cards[id]!;
+        c.controller = item.controller;
+        c.summoningSick = true;
+        if (entersTapped(s, c)) c.tapped = true;
+      }
+      shuffleInPlace(s, library);
+      ctx.ev.push({ type: 'LibraryShuffled', player: item.controller });
+      return;
+    }
+    case 'RevealSeparatePiles': {
+      // Fact or Fiction: the top cards are revealed; an opponent separates them into two piles (the next opponent in turn order).
+      const library = player(s, item.controller).library;
+      const top = library.slice(0, amount);
+      if (top.length === 0) return;
+      for (const id of top) ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+      const living = alivePlayers(s);
+      const at = living.indexOf(item.controller);
+      const opponent = [...living.slice(at + 1), ...living.slice(0, at)].find((p) => p !== item.controller);
+      const pile = { cards: [...top], min: 0, max: top.length, pileOwner: item.controller };
+      r.choiceQueue = [...(r.choiceQueue ?? []), opponent
+        ? { player: opponent, purpose: 'separatePiles' as const, ...pile }
+        : { player: item.controller, purpose: 'choosePile' as const, ...pile, min: 0, max: 1, piles: [[...top], []] as [InstanceId[], InstanceId[]] }];
+      return;
+    }
     case 'Connive': {
       // Simplified: the creatures connive together: draw one card each, discard as many, then each
       // nonland card discarded puts a +1/+1 counter on the next of them.
@@ -3128,7 +3645,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Transform':
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
-        if (c.phasedOut || !s.cardDefs[c.defId]?.backFace || c.copy) continue;
+        // A face-down permanent can't transform (rule 701.28d).
+        if (c.phasedOut || c.faceDown || !s.cardDefs[c.defId]?.backFace || c.copy) continue;
         c.transformed = !c.transformed;
         ctx.ev.push({ type: 'Transformed', card: id, toBack: c.transformed });
       }
@@ -3215,9 +3733,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'CreateTokenCopy':
-      for (const id of onBattlefield) {
+      // "For each creature target player controls, create a token that's a copy of that creature" (Face Yourself).
+      for (const id of effect.eachCreatureOfTarget ? battlefield(s).filter((c) => !c.phasedOut && targetPlayers(targets).includes(c.controller) && isCreatureOnBattlefield(s, c)).map((c) => c.id) : onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
-          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess);
+          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess, effect.copyLegendary, (d) => {
+            // Face Yourself: "except it has haste and 'At the beginning of the end step, if you don't control a planeswalker, sacrifice this token.'"
+            if (effect.copyKeywords) d.keywords = [...new Set([...(d.keywords ?? []), ...effect.copyKeywords])];
+            if (effect.copySacrificeUnlessPlaneswalker) {
+              d.triggers = [...(d.triggers ?? []), { when: 'EndStep', turn: 'Each', ifYouControlNone: { types: ['planeswalker'] }, effects: [{ effect: 'Sacrifice', target: 'You', amount: 1, filter: { self: true }, noChoice: true }] }];
+            }
+          });
           if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
           // "At the beginning of your next end step": only the controller's.
           if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
@@ -3276,6 +3801,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             ? { toughness: (effect.toughness ?? 0) + plusT + (effect.toughnessFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
             : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
+          ...(effect.chosenKeyword && r.chosenKeyword ? { keywords: [r.chosenKeyword] as NonNullable<EffectSpec['keywords']> } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),
           ...(effect.whileYouControlSource ? { whileControlledBy: item.controller } : {}),
           ...(effect.untilYourNextTurn ? { untilNextTurnOf: item.controller } : {}),
@@ -3329,7 +3855,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const recipient = targets.find(t => t.kind === 'player');
       // "Add {R} for each lore counter": no color to choose.
       if (effect.manaType) {
-        if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source);
+        if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source, effect.manaRestricted);
         return;
       }
       if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(effect.manaTypes ? { options: [...effect.manaTypes] } : {}) };
@@ -3339,8 +3865,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const t = targets.find(t=>t.kind==='card');
       const src=s.cards[source];
       const target=t?.kind==='card' ? s.cards[t.card] : undefined;
+      // Hall of Echoes: "The 'legend rule' doesn't apply to permanents you control this turn."
+      if(effect.legendRuleOffThisTurn) player(s,item.controller).legendRuleOffTurn=s.turnNumber;
       if(src?.zone==='battlefield' && !src.phasedOut && target && isCreatureOnBattlefield(s,target)) {
-        s.pending={kind:'copyCreature',player:item.controller,source,target:target.id,sourceObject:src.zoneChanges??0,targetObject:target.zoneChanges??0,effect:structuredClone(effect)};
+        const pending={kind:'copyCreature' as const,player:item.controller,source,target:target.id,sourceObject:src.zoneChanges??0,targetObject:target.zoneChanges??0,effect:structuredClone(effect)};
+        // "This land becomes a copy" (no "may"): done right away.
+        if(effect.legendRuleOffThisTurn) { becomeCopy(ctx,pending,r); break; }
+        s.pending=pending;
       }
       break;
     }
@@ -3426,7 +3957,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateDelayedTrigger': {
       const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : ((item.kind === 'ability' ? item.sourceObject : undefined) ?? 0);
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec: structuredClone(effect.trigger!), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
+      // Amounts counted in this resolution ("that many": Synthetic Destiny) are fixed now.
+      const spec = structuredClone(effect.trigger!);
+      for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'exiledThisWay') e.amount = r.exiledCount ?? 0;
+      const kept = effect.keepSubject && item.kind === 'ability' ? item.subject : undefined;
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(kept ? { subject: kept } : {}), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':
@@ -3453,7 +3988,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           s.cards[top]!.castPermission = {
             player: item.controller,
             turn: s.turnNumber,
-            free: true,
+            ...(effect.payCost ? {} : { free: true }),
             ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
             // Jodah: cast as the trigger resolves, so timing doesn't apply, and only right away.
             ...(effect.lesserThanSubject || effect.discover ? { ignoreTiming: true, immediate: true } : {}),
@@ -3492,6 +4027,38 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         { player: item.controller, purpose: 'hand', cards: looked, min: 0, max: 1 },
         { player: item.controller, purpose: 'digLands', cards: looked.filter((id) => hasType(s, s.cards[id]!, 'land')), min: 0, max: looked.length, looked },
       ];
+      return;
+    }
+    case 'Amass': {
+      // Amass (rule 701.47): with no Army, create a 0/0 Zombie Army token first; with several, choose one.
+      let armies = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && subtypesOf(s, c).includes('Army'));
+      if (armies.length === 0 && effect.token) {
+        createToken(ctx, effect.token, item.controller);
+        armies = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && subtypesOf(s, c).includes('Army'));
+      }
+      if (armies.length === 1) amassOnto(ctx, armies[0]!.id, item.controller, amount, effect.amassType);
+      else if (armies.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'amass', cards: armies.map((c) => c.id), min: 1, max: 1, amassCounters: amount, ...(effect.amassType ? { amassType: effect.amassType } : {}) }];
+      return;
+    }
+    case 'PutExiledWithThisIntoGraveyard': {
+      const object = item.kind === 'ability' ? item.sourceObject : undefined;
+      const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.exiledWith?.source === source && (object === undefined || c.exiledWith.sourceObject === object)).map((c) => c.id);
+      if (exiled.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'exiledToGraveyard', cards: exiled, min: 1, max: 1, ...(effect.landToken ? { landToken: effect.landToken } : {}), ...(effect.token ? { nonlandToken: effect.token } : {}) }];
+      return;
+    }
+    case 'TurnFaceUp':
+      for (const id of onBattlefield) turnFaceUp(ctx, id, item.controller);
+      return;
+    case 'TurnFaceDown':
+      for (const id of onBattlefield) if (!s.cards[id]!.phasedOut) turnFaceDown(ctx, id);
+      return;
+    case 'Manifest':
+      for (const id of topOfLibrary(s, item.controller, amount)) manifest(ctx, id, item.controller, !!effect.cloak);
+      return;
+    case 'ManifestDread': {
+      const looked = topOfLibrary(s, item.controller, 2);
+      if (looked.length === 1) manifest(ctx, looked[0]!, item.controller);
+      else if (looked.length === 2) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'manifestDread', cards: looked, min: 1, max: 1 }];
       return;
     }
     case 'Hideaway': {
@@ -3545,13 +4112,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'Surveil':
     case 'Scry':
+      if (effect.returnIfManaValueAtMostLifeGained) r.surveilReturnAtMost = player(s, item.controller).lifeGainedThisTurn ?? 0;
       r.surveilQueue.push(...topOfLibrary(s, item.controller, amount));
       r.scrying = effect.effect === 'Scry';
       return;
     case 'ReturnToBattlefield':
       for (const id of cards) {
         const c = s.cards[id]!;
-        if (c.zone !== 'graveyard' && !(c.zone === 'exile' && effect.target === 'TargetCardExiledWithSource')) continue;
+        if (c.zone !== 'graveyard' && !(c.zone === 'exile' && (effect.target === 'TargetCardExiledWithSource' || (effect.target === 'PreviousTarget' && r.exiledCards?.includes(id))))) continue;
         const linked = effect.attachToReturnedTarget === undefined ? undefined : item.targets[effect.attachToReturnedTarget];
         const candidate = linked?.kind === 'card' ? s.cards[linked.card] : undefined;
         const host = candidate && r.returnedObjects?.[candidate.id] === (candidate.zoneChanges ?? 0) ? candidate : undefined;
@@ -3571,6 +4139,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (attaching && host && canAttach(s, c, host)) attach(ctx, id, host.id);
         c.summoningSick = true;
         if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
+        if (effect.losesAbilities) c.lostAbilities = true;
+        if (effect.exileAtEndStep && (c.zone as string) === 'battlefield') c.exileAtEndStep = true;
+        // Dance of the Manse: "if X is 6 or more, those permanents are 4/4 creatures in addition to their other types".
+        if (effect.becomes && effect.becomesIfXAtLeast !== undefined && (item.x ?? 0) >= effect.becomesIfXAtLeast) c.animated = structuredClone(effect.becomes);
+        if (effect.addSubtypes && effect.effect === 'ReturnToBattlefield') c.addedSubtypes = [...new Set([...(c.addedSubtypes ?? []), ...effect.addSubtypes])];
+        // Chorale of the Void: tapped and attacking the player the triggering creature attacked.
+        const like = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
+        if (like && s.combat && !s.players[like]!.eliminated && isCreatureOnBattlefield(s, c)) {
+          c.tapped = true;
+          s.combat.attacks.push({ attacker: id, defender: like });
+          ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender: like });
+        }
         if (effect.attacking && s.combat && defender && defenders.includes(defender)) {
           s.combat.attacks.push({ attacker: id, defender });
           ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });
@@ -3707,6 +4287,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       queueSearch(s, r, item.controller, effect, amount, behind ? 'battlefieldTapped' : 'hand');
       return;
     }
+    case 'SearchLibraryToGraveyard':
+      queueSearch(s, r, item.controller, effect, amount, 'graveyard');
+      return;
   }
 }
 
@@ -3729,7 +4312,7 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
     if (item.adventure && resolved) {
       moveCard(ctx, item.card, 'exile');
       c.adventurer = item.controller;
-    } else if (item.flashback || item.exileAfter) moveCard(ctx, item.card, 'exile');
+    } else if (item.flashback || item.exileAfter || defOf(s, c).exileOnResolve) moveCard(ctx, item.card, 'exile');
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.
       moveCard(ctx, item.card, 'exile');
@@ -3803,6 +4386,9 @@ function continueResolving(ctx: Ctx): void {
     if (effect.if === 'notCastFromGraveyard' && item.kind === 'spell' && item.castFrom === 'graveyard') continue;
     if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
     if (effect.if === 'castFromHand' && !(item.kind === 'spell' && item.castFrom === 'hand')) continue;
+    if (effect.if === 'notCastFromHand' && item.kind === 'spell' && item.castFrom === 'hand') continue;
+    // "If you've scried or surveilled this turn" (true), or "if you haven't" (false).
+    if (effect.ifScriedOrSurveiledThisTurn !== undefined && (s.players[item.controller]!.scriedOrSurveiledTurn === s.turnNumber) !== effect.ifScriedOrSurveiledThisTurn) continue;
     if (effect.if === 'controlChanged' && !r.controlChanged) continue;
     const kicked = item.kind === 'spell' && (item.kicks ?? 0) > 0;
     if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
@@ -3829,6 +4415,7 @@ function continueResolving(ctx: Ctx): void {
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
     if (effect.ifVoid !== undefined && (s.voidTurn === s.turnNumber) !== effect.ifVoid) continue;
+    if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x) ?? 0) < effect.ifXAtLeast) continue;
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
@@ -3892,7 +4479,7 @@ function continueResolving(ctx: Ctx): void {
       targets = targets.filter((t) => t.kind === 'card' && objectManaValue(s, s.cards[t.card]!) <= colors);
     }
     applyEffect(ctx, effect, r, targets);
-    if (s.pending.kind === 'copyCreature' || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent' || s.pending.kind === 'chooseCopyTargets') return;
+    if (s.pending.kind === 'copyCreature' || (s.pending.kind === 'chooseOption' && !!s.pending.forResolution) || s.pending.kind === 'chooseMana' || s.pending.kind === 'exileTop' || s.pending.kind === 'chooseDefender' || s.pending.kind === 'chooseOpponent' || s.pending.kind === 'chooseCopyTargets') return;
   }
   s.resolving = null;
   finishResolving(ctx, item);
@@ -3931,6 +4518,14 @@ export function resolveTop(ctx: Ctx): void {
       }
       item.entryCopy = null;
     }
+    if (entering.devourLand && item.entryCounters === undefined) {
+      const lands = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && hasType(s, c, 'land')).map((c) => c.id);
+      if (lands.length) {
+        s.pending = { kind: 'chooseCards', purpose: 'devourOnEntry', player: item.controller, cards: lands, min: 0, max: lands.length, item: item.id };
+        return;
+      }
+      item.entryCounters = 0;
+    }
     if (entering.entersRemovingCounters && item.entryCounters === undefined) {
       const withCounters = battlefield(s).filter((c) => totalCounters(c) > 0 && (['artifact', 'creature', 'enchantment'] as const).some((t) => hasType(s, c, t))).map((c) => c.id);
       if (withCounters.length) {
@@ -3954,8 +4549,10 @@ export function resolveTop(ctx: Ctx): void {
       if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
       if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
+      c.manaSpentToCast = item.manaSpent;
       if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
+      if (def.entersWithCountersFromManaSpent) addCounters(ctx, c.id, item.manaSpent, item.controller);
       if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
       // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.
       if ((def.sunburst || item.sunburst) && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');
@@ -3975,6 +4572,8 @@ export function resolveTop(ctx: Ctx): void {
       }
       // Blitz: it gains haste, and is sacrificed at the next end step (see enterStep).
       if (item.alternative && def.alternativeCost?.evoke) c.evoked = true;
+      // Impending: it enters with N time counters.
+      if (item.alternative && def.alternativeCost?.impending) addCounters(ctx, c.id, def.alternativeCost.impending, item.controller, 'time');
       if (item.alternative && def.alternativeCost?.warp) c.warped = true;
       if (item.alternative && def.alternativeCost?.dash) {
         c.returnToHandAtEndStep = true;
@@ -4125,6 +4724,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const library = player(s, c.owner).library;
       library.splice(library.indexOf(id), 1);
       library.unshift(id);
+      if (pending.damageIfTop) dealDamage(ctx, sourceOf(r.item), { kind: 'player', player: c.owner }, pending.damageIfTop, false);
     }
   } else if (pending.purpose === 'offerDraw') {
     if (cards.length > 0) drawCards(ctx, r.item.controller, 3);
@@ -4133,6 +4733,16 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const damage = milled.reduce((sum, id) => sum + manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost)), 0);
       for (const id of milled) moveCard(ctx, id, 'graveyard');
       dealDamage(ctx, sourceOf(r.item), { kind: 'player', player: pending.player }, damage, false);
+    }
+  } else if (pending.purpose === 'discard' && pending.exileToCastWithThreshold) {
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile');
+      if (s.cards[id]?.zone === 'exile') s.cards[id]!.playableFromExile = { player: pending.player, source: sourceOf(r.item), whileThreshold: true, castOnly: true, anyManaType: true };
+    }
+  } else if (pending.purpose === 'discard' && pending.exileToPlayTaxed) {
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile');
+      if (s.cards[id]?.zone === 'exile') s.cards[id]!.playableFromExile = { player: pending.player, source: sourceOf(r.item), whileExiled: true, costMore: 1, landEntersTapped: true };
     }
   } else if (pending.purpose === 'discard') {
     for (const id of cards) discard(ctx, id);
@@ -4203,7 +4813,39 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
     const owner = pending.libraryOf ?? pending.player;
     shuffleInPlace(s, player(s, owner).library);
-    ctx.ev.push({ type: 'LibraryShuffled', player: owner });
+  } else if (pending.purpose === 'revealOutside') {
+    // Revealed from outside the game; an opponent (the next in turn order) chooses the one that goes to your hand.
+    if (cards.length === 2) {
+      for (const id of cards) ctx.ev.push({ type: 'CardRevealed', player: pending.player, card: id, defId: s.cards[id]!.defId });
+      const order = alivePlayers(s);
+      const at = order.indexOf(pending.player);
+      const opponent = [...order.slice(at + 1), ...order.slice(0, at)].find((p) => p !== pending.player);
+      if (opponent) r.choiceQueue = [{ player: opponent, purpose: 'pickOutside', cards: [...cards], min: 1, max: 1, pileOwner: pending.player }, ...(r.choiceQueue ?? [])];
+    }
+  } else if (pending.purpose === 'pickOutside') {
+    for (const id of cards) {
+      if (s.cards[id]?.zone !== 'void') continue;
+      delete s.cards[id]!.outsideGame;
+      moveCard(ctx, id, 'hand');
+    }
+  } else if (pending.purpose === 'wardDiscard') {
+    // Ward—Discard a card: discard one to keep the spell or ability, or let it be countered.
+    if (cards.length) for (const id of cards) discard(ctx, id);
+    else if (pending.wardTarget) counterStackObject(ctx, pending.wardTarget, sourceOf(r.item));
+  } else if (pending.purpose === 'separatePiles') {
+    // The chosen cards are one pile, the rest the other; the caster takes one.
+    const other = pending.cards.filter((id) => !cards.includes(id));
+    r.choiceQueue = [{ player: pending.pileOwner ?? r.item.controller, purpose: 'choosePile', cards: [...pending.cards], min: 0, max: 1, piles: [[...cards], other], pileOwner: pending.pileOwner ?? r.item.controller }, ...(r.choiceQueue ?? [])];
+  } else if (pending.purpose === 'choosePile') {
+    // A card from the pile you take, or nothing to take the empty pile; that pile goes to your hand, the other to your graveyard.
+    const [a, b] = pending.piles ?? [pending.cards, []];
+    const take = cards.length ? (a.includes(cards[0]!) ? a : b) : a.length === 0 ? a : b;
+    const leave = take === a ? b : a;
+    for (const id of take) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'hand');
+    for (const id of leave) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+  } else if (pending.purpose === 'handToTop' && pending.toBottom) {
+    // "Put a card from your hand on the bottom of your library".
+    for (const id of cards) moveCard(ctx, id, 'library');
   } else if (pending.purpose === 'handToTop') {
     // The first card chosen ends up on top.
     const library = player(s, pending.player).library;
@@ -4211,6 +4853,14 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       moveCard(ctx, id, 'library');
       library.splice(library.indexOf(id), 1);
       library.unshift(id);
+    }
+  } else if (pending.purpose === 'payToAvoidCounter' && pending.protectSubtype) {
+    const cost = { generic: pending.payGeneric ?? 0 } as ManaCost;
+    if (cards.length > 0) {
+      if (!canPayFromPool(s, pending.player, cost)) reject(`Tap mana for {${pending.payGeneric}} first, or don't pay.`);
+      payMana(ctx, pending.player, cost);
+    } else {
+      s.attackBans = [...(s.attackBans ?? []).filter((b) => b.turn === s.turnNumber), { attacker: pending.player, controller: pending.protectFor!, subtype: pending.protectSubtype, turn: s.turnNumber }];
     }
   } else if (pending.purpose === 'payToAvoidCounter' && pending.drawFor) {
     const cost = { generic: pending.payGeneric ?? 0 } as ManaCost;
@@ -4264,6 +4914,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const { kind: _kind, ...choice } = pending;
       if (left > 0) r.choiceQueue = [{ ...choice, counterCount: left }, ...(r.choiceQueue ?? [])];
     }
+  } else if (pending.purpose === 'wheel') {
+    // Arc of Fortune: this player discards their hand and draws.
+    if (cards.length > 0) {
+      for (const id of [...player(s, pending.player).hand]) discard(ctx, id);
+      drawCards(ctx, pending.player, pending.drawCount ?? 7);
+    }
   } else if (pending.purpose === 'mayDraw') {
     if (cards.length) drawCards(ctx, pending.player, pending.drawCount ?? 1);
   } else if (pending.purpose === 'bounce') {
@@ -4299,7 +4955,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       quinaFrogs(ctx, pending.player, r);
     }
   } else if (pending.purpose === 'castFree') {
-    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true, immediate: true };
+    for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, ...(s.cards[id]!.zone === 'hand' ? { fromHand: true } : {}), immediate: true };
   } else if (pending.purpose === 'removeLore') {
     let removed = 0;
     for (const id of cards) {
@@ -4332,8 +4988,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     ctx.ev.push({ type: 'LibraryShuffled', player: pending.player });
   } else if (pending.purpose === 'search') {
     for (const id of cards) {
-      if (pending.searchTo === 'hand') {
-        moveCard(ctx, id, 'hand');
+      if (pending.searchTo === 'hand' || pending.searchTo === 'graveyard') {
+        moveCard(ctx, id, pending.searchTo);
         continue;
       }
       moveCard(ctx, id, 'battlefield');
@@ -4354,6 +5010,31 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.tapped = true;
     }
     for (const id of pending.looked ?? []) if (s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
+  } else if (pending.purpose === 'giveToOpponent') {
+    // Dack Fayden: the chosen permanent goes to this opponent; then the next opponent's, from the rest.
+    const receiver = pending.recipient!;
+    for (const id of cards) giveControl(ctx, id, receiver);
+    const left = pending.cards.filter((id) => !cards.includes(id) && s.cards[id]?.zone === 'battlefield');
+    const [next, ...later] = (pending.laterRecipients ?? []).filter((pid) => !s.players[pid]!.eliminated);
+    if (next && left.length === 1) giveControl(ctx, left[0]!, next);
+    else if (next && left.length > 1) r.choiceQueue = [{ ...pending, cards: left, recipient: next, laterRecipients: later }, ...(r.choiceQueue ?? [])];
+  } else if (pending.purpose === 'amass') {
+    for (const id of cards) {
+      if (pending.amassCounter) addCounters(ctx, id, pending.amassCounters ?? 0, pending.player, pending.amassCounter);
+      else amassOnto(ctx, id, pending.player, pending.amassCounters ?? 0, pending.amassType);
+    }
+  } else if (pending.purpose === 'exiledToGraveyard') {
+    // Currency Converter: into its owner's graveyard; a Treasure for a land card, a 2/2 Rogue for any other.
+    for (const id of cards) {
+      const land = defOf(s, s.cards[id]!).types.includes('land');
+      moveCard(ctx, id, 'graveyard');
+      const token = land ? pending.landToken : pending.nonlandToken;
+      if (token) r.createdTokens.push(createToken(ctx, token, pending.player));
+    }
+  } else if (pending.purpose === 'manifestDread') {
+    // Manifest the chosen card; the other goes into the graveyard (rule 701.62a).
+    for (const id of cards) manifest(ctx, id, pending.player);
+    for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]?.zone === 'library') moveCard(ctx, id, 'graveyard');
   } else if (pending.purpose === 'hideaway') {
     const source = sourceOf(r.item);
     const sourceObject = r.item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (r.item.sourceObject ?? 0);
@@ -4387,6 +5068,13 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       c.controller = pending.player;
       c.summoningSick = true;
       if ((r.putTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
+      if (pending.extraCounters) addCounters(ctx, id, pending.extraCounters, pending.player);
+      if (r.putTerminal) {
+        c.leavesDealsManaValueDamage = true;
+        c.sacrificeAtEndStep = true;
+        c.sacrificeAtEndStepOf = pending.player;
+        s.temporaryEffects.push({ source: id, affected: id, keywords: ['Haste'], whileControlledBy: pending.player });
+      }
       const defender = r.putAttackingDefender;
       if (defender && s.combat && !s.players[defender]!.eliminated && defOf(s, c).types.includes('enchantment')) {
         c.tapped = true;
@@ -4403,6 +5091,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       else if (c.zone === 'battlefield') sacrifice(ctx, id);
       // "For each land card put into a graveyard this way" (a token isn't a card).
       if (c.zone === 'graveyard' && defOf(s, c).types.includes('land')) r.landsToGraveyard = (r.landsToGraveyard ?? 0) + 1;
+    }
+  }
+  else if (pending.purpose === 'sacrifice' && pending.exileLinked) {
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile');
+      if (s.cards[id]?.zone === 'exile') s.cards[id]!.exiledWith = { ...pending.exileLinked };
     }
   }
   else if (pending.purpose === 'sacrifice') {
@@ -4472,9 +5166,15 @@ export function surveil(ctx: Ctx, playerId: PlayerId, toGraveyard: boolean): voi
     library.push(id);
   } else if (toGraveyard) {
     moveCard(ctx, id, 'graveyard');
+    // Enlightened Confidant: "If you put a card with mana value less than or equal to the amount of life you gained this turn into your graveyard this way, put that card into your hand."
+    const most = s.resolving.surveilReturnAtMost;
+    if (most !== undefined && s.cards[id]?.zone === 'graveyard' && objectManaValue(s, s.cards[id]!) <= most) moveCard(ctx, id, 'hand');
   }
   ctx.ev.push({ type: 'Surveiled', player: playerId, card: id, toGraveyard, ...(scry ? { scry } : {}) });
-  if (s.resolving.surveilQueue.length === 0) ctx.ev.push({ type: 'ScryOrSurveilDone', player: playerId, scry });
+  if (s.resolving.surveilQueue.length === 0) {
+    player(s, playerId).scriedOrSurveiledTurn = s.turnNumber;
+    ctx.ev.push({ type: 'ScryOrSurveilDone', player: playerId, scry });
+  }
   continueResolving(ctx);
 }
 
@@ -4508,7 +5208,7 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
  * cards (one, or up to `amount`), and may find none (rule 701.19b); the
  * library is shuffled after the choice.
  */
-function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped' | 'top'): void {
+function queueSearch(s: GameState, r: Resolving, searcher: PlayerId, effect: EffectSpec, amount: number, searchTo: 'hand' | 'battlefield' | 'battlefieldTapped' | 'top' | 'graveyard'): void {
   const p = s.players[searcher]!;
   // "Search your library and/or graveyard": cards from both are offered.
   const where = effect.alsoGraveyard ? [...p.library, ...p.graveyard] : p.library;
@@ -4528,6 +5228,24 @@ export function chooseEntryCopy(ctx: Ctx, playerId: PlayerId, cards: InstanceId[
   const artifactOk = !!chosen && !!defOf(s, s.cards[item.card]!).entersAsCopyOfArtifact && chosen.zone === 'battlefield' && hasType(s, chosen, 'artifact');
   if (chosen && !artifactOk && !isCreatureOnBattlefield(s, chosen)) reject('Choose a creature (or, for this card, an artifact) still on the battlefield.');
   item.entryCopy = chosen ? { card: chosen.id, object: chosen.zoneChanges ?? 0 } : null;
+  s.pending = { kind: 'priority', player: playerId, passes: 0 };
+  resolveTop(ctx);
+}
+
+/** The ChooseCards answer for devour: sacrifice the chosen lands; it enters with N times that many +1/+1 counters. */
+export function chooseDevour(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
+  const s = ctx.s, p = s.pending, item = s.stack.at(-1);
+  if (p.kind !== 'chooseCards' || p.purpose !== 'devourOnEntry' || p.player !== playerId) reject('You are not choosing lands to devour.');
+  if (item?.kind !== 'spell' || item.id !== p.item) throw new Error('The entering spell is not on top of the stack.');
+  const problem = choiceProblem(s, p, cards);
+  if (problem) reject(problem);
+  let eaten = 0;
+  for (const id of cards) {
+    if (s.cards[id]!.zone !== 'battlefield') continue;
+    sacrifice(ctx, id);
+    eaten++;
+  }
+  item.entryCounters = eaten * (defOf(s, s.cards[item.card]!).devourLand ?? 0);
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   resolveTop(ctx);
 }
@@ -4563,8 +5281,11 @@ function enterAsCopy(ctx: Ctx, c: CardInstance, chosen: { card: InstanceId; obje
   if (artifactsToo && !definition.types.includes('artifact')) definition.types = ['artifact', ...definition.types];
   if (artifactsToo) definition.entersAsCopyOfArtifact = true;
   delete definition.token;
-  const printing = target.copy?.printing ?? target.printing ?? original.printing;
-  c.copy = { definition, artDefId: target.copy?.artDefId ?? target.defId, copiedName: original.name, ...(printing ? { printing: structuredClone(printing) } : {}) };
+  // Cursed Mirror: "until end of turn, except it has haste".
+  const untilEndOfTurn = !!s.cardDefs[c.defId]?.entersAsCopyUntilEndOfTurn;
+  if (untilEndOfTurn) definition.keywords = [...new Set([...(definition.keywords ?? []), 'Haste' as const])];
+  const look = copyLook(s, target);
+  c.copy = { definition, artDefId: look.artDefId, copiedName: original.name, ...(look.printing ? { printing: structuredClone(look.printing) } : {}), ...(untilEndOfTurn ? { untilTurn: s.turnNumber } : {}) };
   newTimestamp(s);
   ctx.ev.push({ type: 'BecameCopy', card: c.id, copied: target.id, name: original.name });
 }
@@ -4580,6 +5301,16 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
   if(p.kind!=='copyCreature' || p.player!==playerId || !r) reject('No copy choice is waiting for you.');
   if(accept) {
     if(!canChooseCopy(s,p)) reject('The creatures are no longer available to copy.');
+    becomeCopy(ctx, p, r);
+  }
+  s.pending={kind:'priority',player:playerId,passes:0};
+  continueResolving(ctx);
+}
+
+/** The source becomes a copy of the target (CopyCreature), with the effect's exceptions. */
+function becomeCopy(ctx: Ctx, p: Extract<GameState['pending'],{kind:'copyCreature'}>, r: Resolving): void {
+  const s=ctx.s;
+  {
     const source=s.cards[p.source]!, target=s.cards[p.target]!, effect=p.effect;
     const original=copiableDefinition(s,target), definition=structuredClone(original);
     definition.id=source.defId;
@@ -4587,16 +5318,14 @@ export function chooseCopy(ctx: Ctx, playerId: PlayerId, accept: boolean): void 
     delete definition.token;
     definition.keywords=[...new Set([...(definition.keywords??[]),...(effect.copyKeywords??[])])];
     if(effect.copyKeepTrigger && r.item.kind==='ability' && r.item.spec) definition.triggers=[...(definition.triggers??[]),structuredClone(r.item.spec)];
-    const printing=target.copy?.printing??target.printing??original.printing;
-    source.copy={definition,artDefId:target.copy?.artDefId??target.defId,copiedName:original.name,...(printing?{printing:structuredClone(printing)}:{}),...(effect.copyUntilEndOfTurn?{untilTurn:s.turnNumber,...(source.copy?{previous:structuredClone(source.copy)}:{})}:{})};
+    const look=copyLook(s,target);
+    source.copy={definition,artDefId:look.artDefId,copiedName:original.name,...(look.printing?{printing:structuredClone(look.printing)}:{}),...(effect.copyUntilEndOfTurn?{untilTurn:s.turnNumber,...(source.copy?{previous:structuredClone(source.copy)}:{})}:{})};
     newTimestamp(s);
     ctx.ev.push({type:'BecameCopy',card:source.id,copied:target.id,name:original.name});
     if(effect.copyBuffBoth) for(const id of new Set([source.id,target.id])) {
       s.temporaryEffects.push({source:source.id,affected:id,power:effect.power??0,toughness:effect.toughness??0,keywords:effect.keywords??[],flags:effect.flags??[]});
     }
   }
-  s.pending={kind:'priority',player:playerId,passes:0};
-  continueResolving(ctx);
 }
 
 /** A token that's a copy of `original`; copy effects and their exceptions are themselves copiable (rule 707.2). */
@@ -4610,19 +5339,53 @@ function quinaFrogs(ctx: Ctx, controller: PlayerId, r?: Resolving): void {
   }
 }
 
-function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number): InstanceId {
+function createTokenCopy(ctx: Ctx, original: InstanceId, controller: PlayerId, equipCostsLess?: number, legendary?: boolean, except?: (d: CardDefinition) => void): InstanceId {
   const c = ctx.s.cards[original]!, definition = structuredClone(copiableDefinition(ctx.s, c));
+  except?.(definition);
   // Firion: "except it has 'This Equipment's equip abilities cost {2} less to activate.'"
   if (equipCostsLess) definition.equipCostsLess = (definition.equipCostsLess ?? 0) + equipCostsLess;
-  const printing = c.copy?.printing ?? c.printing ?? definition.printing;
-  return createToken(ctx, c.defId, controller, { definition, artDefId: c.copy?.artDefId ?? c.defId, copiedName: definition.name, ...(printing ? { printing } : {}) });
+  // Adagia: "except it's legendary".
+  if (legendary) definition.supertypes = [...new Set([...(definition.supertypes ?? []), 'Legendary' as const])];
+  const look = copyLook(ctx.s, c);
+  return createToken(ctx, look.defId, controller, { definition, artDefId: look.artDefId, copiedName: definition.name, ...(look.printing ? { printing: look.printing } : {}) });
 }
 
 /** "This spell can't be countered", or a creature spell of a player with Frenzied Baloth. */
 function cantBeCountered(s: GameState, id: InstanceId): boolean {
   const c = s.cards[id]!;
   if (defOf(s, c).cantBeCountered) return true;
+  if ((s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem | undefined)?.uncounterable) return true;
   if (!defOf(s, c).types.includes('creature')) return false;
   const controller = (s.stack.find((i) => i.kind === 'spell' && i.card === id) as SpellItem | undefined)?.controller ?? c.owner;
   return battlefield(s).some((p) => p.controller === controller && !p.phasedOut && !!defOf(s, p).statics?.some((st) => st.creatureSpellsCantBeCountered));
+}
+
+/** Amass: N +1/+1 counters on this Army, which also becomes `type` (rule 701.47a). */
+function amassOnto(ctx: Ctx, army: InstanceId, controller: PlayerId, n: number, type?: string): void {
+  const c = ctx.s.cards[army];
+  if (!c || c.zone !== 'battlefield') return;
+  if (n > 0) addCounters(ctx, army, n, controller);
+  if (type && !(c.addedSubtypes ?? []).includes(type)) c.addedSubtypes = [...(c.addedSubtypes ?? []), type];
+}
+
+/** A player gains control of a permanent (for good). */
+function giveControl(ctx: Ctx, id: InstanceId, receiver: PlayerId): void {
+  const c = ctx.s.cards[id];
+  if (!c || c.zone !== 'battlefield' || c.controller === receiver) return;
+  const previous = c.controller;
+  c.controller = receiver;
+  c.summoningSick = true;
+  ctx.ev.push({ type: 'ControlChanged', card: id, controller: receiver, from: previous });
+}
+
+/** "Choose a creature type" as a spell resolves: remember it, then go on resolving. */
+export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: string): void {
+  const s = ctx.s, pending = s.pending, r = s.resolving;
+  if (pending.kind !== 'chooseOption' || !pending.forResolution || pending.player !== playerId || !r) reject('You are not choosing anything right now.');
+  if (!pending.options.includes(option)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  if (pending.forResolution === 'keyword') r.chosenKeyword = option;
+  else r.chosenCreatureType = option;
+  ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+  s.pending = pending.resume;
+  continueResolving(ctx);
 }

@@ -1,5 +1,5 @@
 export * from './types.ts';
-export { copiableDefinition, spellDefinition, currentDefinition } from './cardface.ts';
+export { copiableDefinition, spellDefinition, currentDefinition, FACE_DOWN_CARD, FACE_DOWN_WARD_CARD, FACE_DOWN_IDS, turnFaceUpCost } from './cardface.ts';
 export * from './format.ts';
 export { applyAction } from './engine.ts';
 export { createGame, type GameSetup, type PlayerSetup } from './setup.ts';
@@ -69,4 +69,4 @@ export {
   colorsOf,
 } from './typerules.ts';
 
-export { maximumHandSize } from './turn.ts';
+export { controlledBy, decisionMaker, maximumHandSize } from './turn.ts';

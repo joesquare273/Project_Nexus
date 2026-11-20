@@ -1,11 +1,12 @@
+import type { ManaRestriction } from './types.ts';
 // Low-level helpers shared by the rules modules. They mutate a working copy
 // of the state (`ctx.s`) and record events in order (`ctx.ev`). applyAction
 // clones the input first, so callers never see partial mutations.
 
-import { backFaceDefinition, currentDefinition as defOf } from './cardface.ts';
-import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
+import { backFaceDefinition, copiableDefinition, copyLook, currentDefinition as defOf, faceDownCharacteristics } from './cardface.ts';
+import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, protectedFromType, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
-import { entersTapped } from './typerules.ts';
+import { entersTapped, objectManaValue } from './typerules.ts';
 import {
   MANA_TYPES,
   type AnyCounter,
@@ -66,6 +67,7 @@ export function cloneState(s: GameState): GameState {
       equipmentMana: { ...p.equipmentMana },
       noncreatureSpellMana: { ...p.noncreatureSpellMana },
       ...(p.artifactMana ? { artifactMana: { ...p.artifactMana } } : {}),
+      ...(p.restrictedMana ? { restrictedMana: structuredClone(p.restrictedMana) } : {}),
     };
   }
   const copyItem = <T extends GameState['stack'][number]>(item: T): T => ({
@@ -198,7 +200,15 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     to = 'void';
     opts = { ...opts, silent: true };
   }
+  // "Cards put into a graveyard from a library this turn" (milled, surveiled, discarded from the top...).
+  if (from === 'library' && to === 'graveyard' && s.players[c.owner]) {
+    const p = s.players[c.owner]!;
+    p.libraryToGraveyard = { turn: s.turnNumber, count: (p.libraryToGraveyard?.turn === s.turnNumber ? p.libraryToGraveyard.count : 0) + 1 };
+  }
   delete c.graveyardCastTurn;
+  delete c.flashbackTurn;
+  delete c.lostAbilitiesTurn;
+  delete c.exhausted;
   delete c.activatedTurns;
   // A double-faced card is front face up everywhere but where it was transformed (rule 712.14).
   delete c.transformed;
@@ -223,6 +233,13 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   }
   const toList = zoneList(s, c.owner, to);
   if (toList) toList.push(id);
+  // A face-down card moving to the stack or battlefield stays secret; anywhere else it's turned face up (rule 708.9).
+  const stillFaceDown = !!c.faceDown && (to === 'stack' || to === 'battlefield');
+  if (c.faceDown && !stillFaceDown) {
+    delete c.faceDown;
+    delete c.manifested;
+    delete c.faceDownWard;
+  }
   const visibleTo = c.linkedExile && (to === 'hand' || to === 'library') ? [...new Set([...c.linkedExile.lookers, c.owner])] : undefined;
   const controller = c.controller;
   const equippedBy = from === 'battlefield' ? battlefield(s).filter((e) => e.attachedTo === id).map((e) => e.id) : [];
@@ -264,6 +281,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.extraCountersOnEnter;
   delete c.hasteOnEnter;
   delete c.xPaid;
+  delete c.lostAbilities;
+  delete c.manaSpentToCast;
   delete c.kicksPaid;
   delete c.revealedInHand;
   delete c.foretoldTurn;
@@ -273,6 +292,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   // A new object (rule 400.7): "becomes a creature" doesn't follow it.
   delete c.animated;
   delete c.addedSubtypes;
+  delete c.goadedForever;
+  if (from === 'battlefield' && c.prepared) unprepare(ctx, id);
   delete c.turnSubtypes;
   delete c.linkedCreature;
   delete c.rival;
@@ -299,7 +320,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.evoked;
   }
   if (from === 'battlefield') { delete c.sacrificeAtEndStep; delete c.sacrificeAtEndStepOf; delete c.sacrificeAfterTurn; }
-  if (from === 'battlefield') { delete c.exileAtEndOfCombat; delete c.sacrificeAtEndOfCombat; }
+  if (from === 'battlefield') { delete c.exileAtEndOfCombat; delete c.sacrificeAtEndOfCombat; delete c.removeCountersAtEndStep; }
   if (from === 'battlefield') c.lastPower = lastPower;
   else delete c.lastPower;
   // What it was like as it left, for abilities that look back (rule 608.2h). Kept until it enters again.
@@ -318,6 +339,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     ctx.ev.push({
       type: 'CardMoved',
       ...(visibleTo ? { visibleTo } : {}),
+      ...(stillFaceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
       card: id,
       defId: c.defId,
       owner: c.owner,
@@ -333,6 +355,12 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     const gain = defOf(s, darkness).statics!.find((st) => st.exileOpponentCreaturesThatDie)!.exileOpponentCreaturesThatDie!.gainLife;
     changeLife(ctx, darkness.controller, gain);
   }
+  if (from === 'battlefield' && c.leavesDealsManaValueDamage) {
+    // Terminal Velocity: "When this permanent leaves the battlefield, it deals damage equal to its mana value to each creature."
+    delete c.leavesDealsManaValueDamage;
+    const mv = objectManaValue(s, c);
+    s.triggerQueue.push({ source: id, ability: -1, controller, sourceZone: to, sourceObject: c.zoneChanges ?? 0, spec: { when: 'LeavesBattlefield', effects: [{ effect: 'DealDamage', amount: mv, target: 'AllPermanents', filter: { types: ['creature'] } }] } });
+  }
   if (from === 'battlefield') {
     leftBattlefield(ctx, id);
     if (s.players[controller]) s.players[controller]!.permanentLeftTurn = s.turnNumber;
@@ -344,9 +372,14 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   // so its back face's "as this enters" rules apply (a Saga back face gets its lore counter).
   if (to === 'battlefield' && opts.transformed && s.cardDefs[c.defId]!.backFace) c.transformed = true;
   // "Enters with N +1/+1 counters on it" (rule 614.1c).
-  const d = c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
+  const d = c.faceDown && to === 'battlefield' ? faceDownCharacteristics(c) : c.transformed ? backFaceDefinition(s.cardDefs[c.defId]!) : s.cardDefs[c.defId]!;
   if (to === 'battlefield') { c.enteredTurn = s.turnNumber; c.enteredTimestamp = newTimestamp(s); }
+  // "This creature enters prepared."
+  if (to === 'battlefield' && !c.faceDown && d.entersPrepared) becomePrepared(ctx, id);
   if (to === 'battlefield' && d.entersWithCounters) addCounters(ctx, id, d.entersWithCounters, undefined, d.entersWithCounterKind);
+  // A planeswalker enters with its loyalty (rule 306.5b).
+  if (to === 'battlefield' && d.loyalty) addCounters(ctx, id, d.loyalty, undefined, 'loyalty');
+  if (from === 'battlefield') delete c.loyaltyActivatedTurn;
   // "As this Saga enters, add a lore counter" (rule 714.3a).
   if (to === 'battlefield' && d.saga) addCounters(ctx, id, 1, c.controller, 'lore');
   // Tromell: "each other nontoken creature you control enters with an additional +1/+1 counter".
@@ -461,6 +494,10 @@ export function drawCards(ctx: Ctx, playerId: PlayerId, count: number): void {
 export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   const p = player(ctx.s, playerId);
   if (delta === 0 || p.eliminated) return;
+  // Teferi's Reproach: "their life total can't change".
+  if (p.shielded) return;
+  // Archfiend of Despair: "Your opponents can't gain life."
+  if (delta > 0 && battlefield(ctx.s).some((c) => c.controller !== playerId && !c.phasedOut && defOf(ctx.s, c).statics?.some((st) => st.opponentsCantGainLife))) return;
   // The Wind Crystal: each one its controller controls doubles life they'd gain (rule 614.1a).
   if (delta > 0) {
     for (const c of battlefield(ctx.s)) {
@@ -505,6 +542,10 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   // Stagger (Lightning, Army of One): damage to that player or their permanents is doubled.
   const hurt = target.kind === 'player' ? target.player : target.kind === 'card' ? s.cards[target.card]?.controller : undefined;
   if (hurt && (s.players[hurt]?.staggeredBy?.length ?? 0) > 0) amount *= 2 ** s.players[hurt]!.staggeredBy!.length;
+  // Teferi's Reproach: protection from everything prevents all damage to that player.
+  if (!unpreventable && target.kind === 'player' && s.players[target.player]!.shielded) return;
+  // Serra's Emissary: protection from the chosen card type prevents that damage to its controller.
+  if (!unpreventable && target.kind === 'player' && protectedFromType(s, target.player, source)) return;
   // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
   if (!unpreventable && target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
@@ -538,12 +579,24 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (target.kind === 'none') return;
   if (target.kind === 'player') {
     if (combat) player(s, target.player).combatDamageThisTurn = (player(s, target.player).combatDamageThisTurn ?? 0) + amount;
+    else {
+      const hurt = player(s, target.player);
+      if (hurt.noncombatDamageTurn !== undefined && hurt.noncombatDamageTurn !== s.turnNumber) hurt.noncombatDamagePreviousTurn = hurt.noncombatDamageTurn;
+      hurt.noncombatDamageTurn = s.turnNumber;
+    }
     if (combat) s.combatDamageHistory = [...(s.combatDamageHistory ?? []), {
       source: sourceId, sourceObject: source.zoneChanges ?? 0, player: target.player,
       dragon: characteristics(s, source).subtypes.includes('Dragon'),
       legendary: !!defOf(s, source).supertypes?.includes('Legendary'), sourceController: source.controller,
     }];
     changeLife(ctx, target.player, -amount);
+    // Toxic (rule 702.164c): combat damage to a player also gives poison counters.
+    const toxic = combat && amount > 0 ? (defOf(s, source).toxic ?? 0) : 0;
+    if (toxic > 0) {
+      const p = player(s, target.player);
+      p.poison = (p.poison ?? 0) + toxic;
+      ctx.ev.push({ type: 'PoisonChanged', player: target.player, total: p.poison });
+    }
     // Commander damage (rule 903.10a): combat damage from a commander is tracked per commander.
     if (combat && source.isCommander) {
       const taken = player(s, target.player).commanderDamage;
@@ -551,8 +604,19 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
     }
   } else {
     const victim = s.cards[target.card]!;
+    // Damage dealt to a planeswalker removes that many loyalty counters (rule 120.3c).
+    if (hasType(s, victim, 'planeswalker') && !hasType(s, victim, 'creature')) {
+      removeCounters(ctx, victim.id, 'loyalty', amount);
+      if (hasKeyword(s, source, 'Lifelink')) changeLife(ctx, source.controller, amount);
+      return;
+    }
     victim.damage += amount;
     if (amount > 0) victim.damagedTurn = s.turnNumber;
+    // Requiem Monolith: "Whenever this creature is dealt damage, you draw that many cards and lose that much life."
+    if (amount > 0 && hasFlag(s, victim, 'damageDrawsAndDrains')) {
+      drawCards(ctx, victim.controller, amount);
+      changeLife(ctx, victim.controller, -amount);
+    }
     if (hasKeyword(s, source, 'Deathtouch')) victim.deathtouched = true;
   }
   if (hasKeyword(s, source, 'Lifelink')) changeLife(ctx, source.controller, amount);
@@ -614,7 +678,8 @@ export function addCounters(ctx: Ctx, id: InstanceId, amount: number, by?: Playe
   const s = ctx.s;
   const c = s.cards[id]!;
   if (c.zone !== 'battlefield' || amount <= 0) return;
-  // Loading Zone: twice that many of each kind.
+  // Darksteel Angel: "Creatures you control can't have -1/-1 counters put on them."
+  if (kind === '-1/-1' && hasType(s, c, 'creature') && battlefield(s).some((x) => x.controller === c.controller && !x.phasedOut && defOf(s, x).statics?.some((st) => st.noMinusCountersOnYourCreatures))) return;
   for (const source of battlefield(s)) {
     for (const spec of defOf(s, source).statics ?? []) {
       if (spec.doubleAnyCounters && staticAffects(s, source, spec, c)) amount *= 2;
@@ -687,6 +752,30 @@ export function untap(ctx: Ctx, c: CardInstance): boolean {
 export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, copy?: CardInstance['copy'], doubled = false): InstanceId {
   const s = ctx.s;
   if (!s.cardDefs[defId]) throw new Error(`Missing token definition "${defId}".`);
+  if (!doubled) {
+    // Moonlit Meditation: "The first time you would create one or more tokens each turn, you may instead create that many tokens that are copies of enchanted permanent."
+    const p = player(s, controller);
+    const key = `${s.resolving?.item.id ?? ''}:${s.resolving?.next ?? ''}:${s.stack.length}`;
+    const first = p.firstTokens?.turn !== s.turnNumber ? ((p.firstTokens = { turn: s.turnNumber, key }), true) : p.firstTokens.key === key;
+    const aura = first ? battlefield(s).find((x) => x.controller === controller && !x.phasedOut && !!x.attachedTo && s.cards[x.attachedTo]?.zone === 'battlefield' && (defOf(s, x).statics ?? []).some((st) => st.firstTokensBecomeCopies)) : undefined;
+    if (aura) {
+      const host = s.cards[aura.attachedTo!]!;
+      const definition = structuredClone(copiableDefinition(s, host));
+      const look = copyLook(s, host);
+      defId = look.defId;
+      copy = { definition, artDefId: look.artDefId, copiedName: definition.name, ...(look.printing ? { printing: look.printing } : {}) };
+    }
+  }
+  // Draconic Visitor: an artifact token is replaced by a Dragon (the replacement applies to each token, after copy effects).
+  const tokenTypes = copy?.definition.types ?? s.cardDefs[defId]!.types;
+  if (tokenTypes.includes('artifact')) {
+    const visitor = battlefield(s).find((x) => x.controller === controller && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.artifactTokensBecome));
+    const instead = visitor && (defOf(s, visitor).statics ?? []).find((st) => st.artifactTokensBecome)!.artifactTokensBecome!;
+    if (instead && s.cardDefs[instead]) {
+      defId = instead;
+      copy = undefined;
+    }
+  }
   // Exalted Sunborn: twice that many tokens (each such permanent doubles again). The extra tokens are
   // created alongside; effects that go on to act on "that token" act on the first one.
   if (!doubled) {
@@ -713,6 +802,8 @@ export function createToken(ctx: Ctx, defId: CardDefId, controller: PlayerId, co
   const c=s.cards[id]!, d=defOf(s,c);
   c.tapped=entersTapped(s,c);
   if(d.entersWithCounters) addCounters(ctx,id,d.entersWithCounters,undefined,d.entersWithCounterKind);
+  if(d.loyalty) addCounters(ctx,id,d.loyalty,undefined,'loyalty');
+  if(d.entersPrepared) becomePrepared(ctx,id);
   for(const source of battlefield(s)) for(const spec of defOf(s,source).statics??[]) {
     if(source.id!==id && spec.entersWithExtraCounters && staticAffects(s,source,spec,c)) addCounters(ctx,id,spec.entersWithExtraCounters);
     if(source.id!==id && spec.entersWithExtraCountersFromCount && staticAffects(s,source,spec,c)) addCounters(ctx,id,countOf(s,spec.entersWithExtraCountersFromCount,source.controller,source.id));
@@ -760,9 +851,10 @@ export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): v
 }
 
 /** Adds one mana; `restricted` mana goes to its own pool and can only pay for what it says. */
-export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact'): void {
+export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact' | ManaRestriction): void {
   const p = player(ctx.s, playerId);
-  if (restricted === 'equipment') p.equipmentMana[mana] += 1;
+  if (restricted === 'artifactSpell' || restricted === 'artifactAbility' || restricted === 'notFromHand' || restricted === 'planeswalkerSpell') ((p.restrictedMana ??= {})[restricted] ??= emptyManaPool())[mana] += 1;
+  else if (restricted === 'equipment') p.equipmentMana[mana] += 1;
   else if (restricted === 'artifact') (p.artifactMana ??= emptyManaPool())[mana] += 1;
   else if (restricted === 'noncreatureSpell') p.noncreatureSpellMana[mana] += 1;
   else {
@@ -778,11 +870,18 @@ export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: In
 /** Mana empties from every pool at the end of each step and phase. */
 export function emptyAllManaPools(s: GameState): void {
   for (const id of s.turnOrder) {
+    // Omnath, Locus of the Void: unspent mana becomes colorless instead of emptying.
+    const keeps = battlefield(s).some((c) => c.controller === id && !c.phasedOut && defOf(s, c).statics?.some((st) => st.unspentManaBecomesColorless));
+    const p = s.players[id]!;
+    const sum = (pool?: Partial<Record<string, number>>) => Object.values(pool ?? {}).reduce((n: number, k) => n + (k ?? 0), 0);
+    const kept = keeps ? sum(p.manaPool) + sum(p.equipmentMana) + sum(p.noncreatureSpellMana) + sum(p.artifactMana) + Object.values(p.restrictedMana ?? {}).reduce((n, pool) => n + sum(pool), 0) : 0;
     s.players[id]!.manaPool = emptyManaPool();
     delete s.players[id]!.creatureScryMana;
     s.players[id]!.equipmentMana = emptyManaPool();
     s.players[id]!.noncreatureSpellMana = emptyManaPool();
     delete s.players[id]!.artifactMana;
+    delete s.players[id]!.restrictedMana;
+    if (kept > 0) s.players[id]!.manaPool.C = kept;
   }
 }
 
@@ -808,4 +907,75 @@ function landEntered(s: GameState, pid: PlayerId): void {
   if (!p) return;
   if (p.landsEnteredTurn !== s.turnNumber) { p.landsEnteredTurn = s.turnNumber; p.landsEntered = 0; }
   p.landsEntered = (p.landsEntered ?? 0) + 1;
+}
+
+/**
+ * Turns a face-down permanent face up (rules 702.37e, 708.8): it keeps its counters, damage and
+ * tapped state and doesn't enter the battlefield again. A manifested instant or sorcery can't be
+ * turned face up; it is revealed and stays face down (rule 701.34c). True if it was turned face up.
+ */
+export function turnFaceUp(ctx: Ctx, id: InstanceId, by: PlayerId): boolean {
+  const s = ctx.s, c = s.cards[id];
+  if (!c?.faceDown || c.zone !== 'battlefield') return false;
+  const def = s.cardDefs[c.defId]!;
+  if (!def.types.some((t) => (['artifact', 'creature', 'enchantment', 'land', 'planeswalker', 'battle'] as string[]).includes(t))) {
+    ctx.ev.push({ type: 'CardRevealed', player: c.controller, card: id, defId: c.defId });
+    return false;
+  }
+  delete c.faceDown;
+  delete c.manifested;
+  delete c.faceDownWard;
+  newTimestamp(s);
+  // "When this is turned face up" triggers from this event (triggers.ts).
+  ctx.ev.push({ type: 'TurnedFaceUp', player: by, card: id, defId: c.defId });
+  return true;
+}
+
+/** Turns a permanent face down (rule 708.2): a 2/2 creature with no name, abilities, mana cost or color. */
+export function turnFaceDown(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s, c = s.cards[id];
+  if (!c || c.zone !== 'battlefield' || c.faceDown) return;
+  c.faceDown = true;
+  delete c.transformed;
+  newTimestamp(s);
+  ctx.ev.push({ type: 'TurnedFaceDown', player: c.controller, card: id });
+}
+
+/** Manifests (or, with `cloak`, cloaks) a card from a library: onto the battlefield face down under `controller`'s control (rules 701.34, 701.58). */
+export function manifest(ctx: Ctx, id: InstanceId, controller: PlayerId, cloak = false): void {
+  const c = ctx.s.cards[id];
+  if (!c || c.zone === 'battlefield') return;
+  c.faceDown = true;
+  c.manifested = true;
+  if (cloak) c.faceDownWard = true;
+  moveCard(ctx, id, 'battlefield', { controller });
+  c.summoningSick = true;
+}
+
+/**
+ * A creature with a prepare spell becomes prepared: its controller gets a copy of that spell in
+ * exile, which they may cast for as long as the creature stays prepared. False if it can't
+ * (no prepare spell, or already prepared).
+ */
+export function becomePrepared(ctx: Ctx, id: InstanceId): boolean {
+  const s = ctx.s, c = s.cards[id];
+  if (!c || c.zone !== 'battlefield' || c.prepared || c.faceDown || !s.cardDefs[c.defId]?.prepare) return false;
+  c.prepared = true;
+  const spell = newId(s, 'k');
+  s.cards[spell] = {
+    id: spell, defId: c.defId, owner: c.controller, controller: c.controller, zone: 'exile', tapped: false, summoningSick: false, damage: 0, deathtouched: false,
+    spellCopy: true, prepareSpellOf: { card: id, object: c.zoneChanges ?? 0 }, ...(c.printing ? { printing: structuredClone(c.printing) } : {}),
+  };
+  player(s, c.controller).exile.push(spell);
+  ctx.ev.push({ type: 'Prepared', card: id, controller: c.controller, spell });
+  return true;
+}
+
+/** A prepared creature stops being prepared; the copy of its prepare spell in exile ceases to exist. */
+export function unprepare(ctx: Ctx, id: InstanceId): void {
+  const s = ctx.s, c = s.cards[id];
+  if (!c?.prepared) return;
+  delete c.prepared;
+  for (const x of Object.values(s.cards)) if (x.zone === 'exile' && x.prepareSpellOf?.card === id) moveCard(ctx, x.id, 'void', { silent: true });
+  ctx.ev.push({ type: 'Unprepared', card: id, controller: c.controller });
 }

@@ -102,6 +102,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
         const types = def(s, s.cards[id]!).types;
         return !types.includes('creature') && !types.includes('land');
       }).length;
+    case 'CardTypesInAllGraveyards':
+      return new Set(s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.flatMap((id) => def(s, s.cards[id]!).types))).size;
     case 'CreaturesDiedThisTurn':
       return s.creaturesDiedThisTurn;
     case 'OpponentCreaturesDiedThisTurn':
@@ -120,6 +122,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'LandsYouControl':
       return battlefieldCards(s).filter((c) => c.controller === player && def(s, c).types.includes('land')).length;
+    case 'ForestsYouControl':
+      return battlefieldCards(s).filter((c) => c.controller === player && subtypesOf(s, c).includes('Forest')).length;
     case 'LandCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => def(s, s.cards[id]!).types.includes('land')).length;
     case 'CreaturesOnBattlefield':
@@ -152,6 +156,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated).length;
     case 'NontokenCreaturesYouControlThatEnteredThisTurn':
       return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
+    case 'GreatestToughnessAmongYourCreatures':
+      return Math.max(0, ...yours().filter(creature).map((c) => characteristics(s, c).toughness));
     case 'GreatestPowerAmongYourCreatures':
       return Math.max(0, ...yours().filter(creature).map((c) => characteristics(s, c).power));
     case 'ColorsAmongYourPermanents': {
@@ -182,6 +188,12 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'LoreCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'lore') : 0;
+    case 'CreatureAndPlaneswalkerCardsInYourGraveyard':
+      return s.players[player]!.graveyard.filter((id) => { const t = def(s, s.cards[id]!).types; return t.includes('creature') || t.includes('planeswalker'); }).length;
+    case 'CardsInYourLibrary':
+      return s.players[player]!.library.length;
+    case 'CardsYouDrewThisTurn':
+      return s.players[player]!.cardsDrawnThisTurn ?? 0;
     case 'CardsInYourHand':
       return s.players[player]!.hand.length;
     case 'ChargeCountersOnThis':
@@ -190,6 +202,11 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.players[player]!.lifeGainedThisTurn ?? 0;
     case 'SoulCountersOnThis':
       return source && s.cards[source] ? countersOf(s.cards[source]!, 'soul') : 0;
+    case 'UnspentManaYouHave': {
+      const p = s.players[player]!;
+      const sum = (pool?: Partial<Record<string, number>>) => Object.values(pool ?? {}).reduce((n: number, k) => n + (k ?? 0), 0);
+      return sum(p.manaPool) + sum(p.equipmentMana) + sum(p.noncreatureSpellMana) + sum(p.artifactMana) + Object.values(p.restrictedMana ?? {}).reduce((n, pool) => n + sum(pool), 0);
+    }
     case 'ArtifactsYouControl':
       return yours().filter((c) => def(s, c).types.includes('artifact')).length;
     case 'TotalManaValueOfYourOtherPermanents':
@@ -202,6 +219,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return Object.values(s.cards).filter((c) => c.zone === 'exile' && c.owner === player && !c.isToken).length;
     case 'DifferentlyNamedLandsYouControl':
       return new Set(yours().filter((c) => def(s, c).types.includes('land')).map((c) => def(s, c).name)).size;
+    case 'EquippedCreaturePower': {
+      const host = source ? s.cards[source]?.attachedTo : undefined;
+      return host && s.cards[host]?.zone === 'battlefield' ? Math.max(0, characteristics(s, s.cards[host]!).power) : 0;
+    }
     case 'MulticoloredPermanentsYouControl':
       return yours().filter((c) => colorsOf(def(s, c)).length >= 2).length;
     case 'CreaturesAndSpacecraftYouControl':
@@ -221,7 +242,8 @@ export function amountOf(s: GameState, amount: Amount | undefined, player: Playe
   // Amounts that refer back to earlier in the same spell or ability are worked out while it resolves.
   if ('of' in amount) return 0;
   if ('matching' in amount) return battlefieldCards(s).filter((c) => !c.phasedOut && matchesObject(s, amount.matching, c, { controller: player, ...(source ? { source } : {}) })).length;
-  return amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0) * (amount.times ?? 1) + (amount.plus ?? 0);
+  const total = amount.count.reduce((n, kind) => n + countOf(s, kind, player, source), 0);
+  return Math.floor(total / (amount.per ?? 1)) * (amount.times ?? 1) + (amount.plus ?? 0);
 }
 
 /** Cards whose static abilities may apply: permanents, and graveyard cards with abilities that work from there (Anger). */
@@ -243,6 +265,12 @@ export function subtypesOf(s: GameState, c: CardInstance): string[] {
 
 /** Whether a static ability of `source` applies to `c`. */
 export function staticAffects(s: GameState, source: CardInstance, spec: StaticSpec, c: CardInstance): boolean {
+  if (spec.ifChosenOption !== undefined && source.chosenOption !== spec.ifChosenOption) return false;
+  // Corrupted: "as long as an opponent has three or more poison counters".
+  if (spec.conditions?.includes('corrupted') && !corrupted(s, source.controller)) return false;
+  // Threshold: seven or more cards in your graveyard.
+  if (spec.conditions?.includes('threshold') && s.players[source.controller]!.graveyard.length < 7) return false;
+  if (spec.conditions?.includes('opponentDealtNoncombatDamage') && !s.turnOrder.some((pid) => pid !== source.controller && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return false;
   // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
   if (spec.ifYouControlSubtype) {
     const yours = battlefieldCards(s).filter((x) => x.controller === source.controller);
@@ -288,7 +316,10 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     ward: d.ward ?? 0,
   };
   // "Adeline's power is equal to the number of creatures you control" (rule 604.3: in every zone).
-  if (d.powerFromCount) out.power = countOf(s, d.powerFromCount, c.controller, c.id);
+  if (d.powerFromCount) {
+    out.power = countOf(s, d.powerFromCount, c.controller, c.id);
+    if (d.toughnessFromCountPlus !== undefined) out.toughness = out.power + d.toughnessFromCountPlus;
+  }
   if (d.ptPlusCounts) {
     const n = d.ptPlusCounts.reduce((sum, k) => sum + countOf(s, k, c.controller, c.id), 0);
     out.power += n;
@@ -327,6 +358,13 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       removed.push(...(spec.removeKeywords ?? []));
     }
   }
+  // Emblems (rule 114): "creatures you control get +2/+2 and have flying".
+  for (const emblem of s.emblemStatics ?? []) {
+    if (s.players[emblem.controller]?.eliminated || !matchesObject(s, emblem.spec.filter, c, { controller: emblem.controller })) continue;
+    out.power += amountOf(s, emblem.spec.power, emblem.controller);
+    out.toughness += amountOf(s, emblem.spec.toughness, emblem.controller);
+    for (const k of emblem.spec.keywords ?? []) out.keywords.add(k);
+  }
   for (const e of s.temporaryEffects) {
     if (e.affected !== c.id || !effectLasts(s, e)) continue;
     out.power += e.power ?? 0;
@@ -349,6 +387,14 @@ export function powerOf(s: GameState, c: CardInstance): number {
   return characteristics(s, c).power;
 }
 
+/** The amount a creature assigns as combat damage, or stations with: its power, or its toughness under Tapestry Warden. */
+export function combatPowerOf(s: GameState, c: CardInstance): number {
+  const ch = characteristics(s, c);
+  if (ch.toughness > ch.power && battlefieldCards(s).some((src) => !src.phasedOut && (def(s, src).statics ?? []).some((st) => st.toughnessForDamageAndStation && staticAffects(s, src, st, c)))) return ch.toughness;
+  if (ch.power < 0 && def(s, c).negativePowerAssignsPositive) return -ch.power;
+  return ch.power;
+}
+
 export function toughnessOf(s: GameState, c: CardInstance): number {
   return characteristics(s, c).toughness;
 }
@@ -363,11 +409,22 @@ const PROTECTION = { W: 'ProtectionFromWhite', U: 'ProtectionFromBlue', B: 'Prot
 /** Protection (rule 702.16): `c` has protection from one of `source`'s colors. */
 export function protectedFrom(s: GameState, c: CardInstance, source: CardInstance | undefined): boolean {
   if (!source) return false;
+  // Serra's Emissary: "You and creatures you control have protection from the chosen card type."
+  if (c.zone === 'battlefield' && currentDefinition(s, c).types.includes('creature') && protectedFromType(s, c.controller, source)) return true;
   // Yawgmoth: "Protection from Humans".
   const fromTypes = currentDefinition(s, c).protectionFromSubtypes;
   if (fromTypes && source.zone === 'battlefield' && fromTypes.some((t) => subtypesOf(s, source).includes(t))) return true;
   if (fromTypes && source.zone !== 'battlefield' && fromTypes.some((t) => currentDefinition(s, source).subtypes?.includes(t))) return true;
   return colorsOf(currentDefinition(s, source)).some((color) => hasKeyword(s, c, PROTECTION[color]));
+}
+
+/** Serra's Emissary: whether a player (and their creatures) has protection from this source's card type. */
+export function protectedFromType(s: GameState, player: string, source: CardInstance): boolean {
+  const types = currentDefinition(s, source).types;
+  return s.players[player]!.battlefield.some((id) => {
+    const e = s.cards[id]!;
+    return e.controller === player && !e.phasedOut && !!e.chosenCardType && types.includes(e.chosenCardType) && !!currentDefinition(s, e).statics?.some((st) => st.protectionFromChosenType);
+  });
 }
 
 /** Whether an "until end of turn" flag such as "can't be blocked" applies to this object. */
@@ -380,4 +437,9 @@ export function effectLasts(s: GameState, e: TemporaryEffect): boolean {
   if (!e.whileControlledBy) return true;
   const source = s.cards[e.source];
   return source?.zone === 'battlefield' && !source.phasedOut && source.controller === e.whileControlledBy;
+}
+
+/** Corrupted: an opponent of `player` has three or more poison counters. */
+export function corrupted(s: GameState, player: PlayerId): boolean {
+  return s.turnOrder.some((pid) => pid !== player && !s.players[pid]!.eliminated && (s.players[pid]!.poison ?? 0) >= 3);
 }

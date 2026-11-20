@@ -5,6 +5,7 @@
 //
 //   node packages/cards/scripts/import-precons.ts        # FINAL FANTASY (fic)
 //   node packages/cards/scripts/import-precons.ts eoc    # Edge of Eternities (eoc)
+//   node packages/cards/scripts/import-precons.ts frc    # Reality Fracture (frc)
 //
 // MTGJSON's deck files are static downloads (no API rate limit). Card data
 // comes from them too; run `npm run scryfall` afterwards for images.
@@ -24,6 +25,8 @@ import fin from '../data/fin.json' with { type: 'json' };
 import finSet from '../data/fin-set.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import storeCards from '../data/store-cards.json' with { type: 'json' };
+import eoc from '../data/eoc.json' with { type: 'json' };
+import eoeSet from '../data/eoe-set.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 
 const SETS = {
@@ -38,6 +41,11 @@ const SETS = {
     files: ['CounterIntelligence_EOC', 'WorldShaper_EOC'],
     // Cards any other file defines are shared (Sol Ring, Command Tower...).
     existing: [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...tokens],
+  },
+  frc: {
+    label: 'Reality Fracture Commander',
+    files: ['MultiverseReforged_FRC'],
+    existing: [...lands, ...fin, ...fic, ...finSet, ...storeCards, ...eoc, ...eoeSet, ...tokens],
   },
 } as const;
 const SET = (process.argv[2] ?? 'fic') as keyof typeof SETS;

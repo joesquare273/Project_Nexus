@@ -17,6 +17,9 @@ export interface PlayerSetup {
   commanderPrinting?: CardDefinition['printing'];
   /** Parallel to deck: each card's finish (undefined for non-foil). Only finishes the player owns. */
   deckFinishes?: (CardFinish | undefined)[];
+  /** Cards outside the game (rule 400.11b: a sideboard), for "from outside the game" (Extrapolate the Impossible); with their printings. */
+  sideboard?: CardDefId[];
+  sideboardPrintings?: CardDefinition['printing'][];
   commanderFinish?: CardFinish;
   /** Commander format: the commander, which starts in the command zone. */
   commander?: CardDefId;
@@ -141,6 +144,11 @@ export function createGame(setup: GameSetup): { state: GameState; events: GameEv
       s.players[p.id]!.library.push(id);
     }
     ctx.ev.push({ type: 'LibraryShuffled', player: p.id });
+    (p.sideboard ?? []).forEach((defId, i) => {
+      const id = `c${s.nextId++}`;
+      const printing = p.sideboardPrintings?.[i];
+      s.cards[id] = { id, defId, ...(printing ? { printing: { ...printing } } : {}), owner: p.id, controller: p.id, zone: 'void', tapped: false, summoningSick: false, damage: 0, deathtouched: false, outsideGame: true };
+    });
     const commanders = format.commander && p.commander
       ? [{ defId: p.commander, printing: p.commanderPrinting, finish: p.commanderFinish }, ...(p.partner ? [{ defId: p.partner, printing: p.partnerPrinting, finish: p.partnerFinish }] : [])]
       : [];

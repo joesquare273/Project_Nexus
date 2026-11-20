@@ -34,6 +34,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   This: 'this card',
   AllPermanents: 'all permanents',
   TriggeringObject: 'that creature',
+  TriggeringObjects: 'those creatures',
   TriggeringCard: 'that card',
   ActivePlayer: 'that player',
   EachPlayerWhoChose: 'each player who did',
@@ -45,6 +46,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   TargetAbility: 'target activated or triggered ability',
   TargetSpellOrAbility: 'target activated ability, triggered ability, or spell',
   TargetCardExiledWithSource: 'target card exiled with this',
+  TargetExiledCardWithWarp: 'target exiled card with warp',
   TargetSpell: 'target spell',
   EquippedCreature: 'equipped creature',
   SubjectController: 'that player',
@@ -140,6 +142,18 @@ function effectText(e: EffectSpec): string {
       return `exile ${who}${e.sameNameTokens ? ' and all tokens that player controls with the same name' : ''}`;
     case 'ExileGraveyard':
       return e.target === 'EachPlayer' ? 'exile all graveyards' : `exile ${who === 'you' ? 'your' : `${who}'s`} graveyard`;
+    case 'LoseAllAbilities':
+      return `${who} loses all abilities until end of turn`;
+    case 'ChooseKeyword':
+      return `choose ${(e.keywords ?? []).join(', ')}`;
+    case 'CounterUnlessDiscard':
+      return 'counter that spell or ability unless its controller discards a card';
+    case 'GrantFlashback':
+      return `${who} gains flashback until end of turn`;
+    case 'SacrificeGreatestManaValue':
+      return `${who} sacrifices a creature or planeswalker with the greatest mana value among those they control`;
+    case 'RevealFromOutsideGame':
+      return 'reveal two cards with different names from your sideboard; an opponent chooses one to put into your hand';
     case 'SacrificeGreatestPower':
       return `${who} sacrifices a creature with the greatest power among creatures they control`;
     case 'Discard':
@@ -168,9 +182,14 @@ function effectText(e: EffectSpec): string {
       return `the owner of ${who} shuffles it into their library, then reveals the top card; if it's a permanent card, they put it onto the battlefield`;
     case 'DrawCards':
       return `${you ? 'draw' : `${who} draws`} ${plural('card')}`;
+    case 'ControlPlayerNextTurn':
+      return `you control ${who} during their next turn`;
+    case 'SetLifeHalfStarting':
+      return `${you ? 'your' : `${who}'s`} life total becomes half the starting life total, rounded up`;
     case 'GainLife':
       return `${you ? 'you gain' : `${who} gains`} ${n} life`;
     case 'LoseLife':
+      if (e.lifeLostThisTurn) return `${who} loses life equal to the life they lost this turn`;
       return `${you ? 'you lose' : `${who} loses`} ${n} life`;
     case 'Tap':
       return `tap ${who}`;
@@ -182,8 +201,12 @@ function effectText(e: EffectSpec): string {
       return `${e.optional ? 'you may ' : ''}put ${countersText(n, e.counter)} on ${who}${e.thenDouble ? ', then double the +1/+1 counters on it' : ''}`;
     case 'PutLastCounters':
       return `put ${e.countersOf ? "that permanent's" : "this card's"} counters on ${who}`;
-    case 'RevealUntil':
-      return `reveal cards from the top of your library until you reveal a ${subjectText({ ...e.filter, controller: undefined }, 'card')}; put it into your hand and the rest on the bottom`;
+    case 'RevealUntil': {
+      const what = subjectText({ ...e.filter, controller: undefined }, 'card');
+      if (e.untilCount !== undefined) return `reveal cards from the top of your library until you reveal ${amountText(e.untilCount)} ${what}s; put them onto the battlefield, then shuffle${e.goadForever ? '; they\'re goaded for the rest of the game' : ''}${e.giveToDifferentOpponents ? '; choose a different opponent for each, who gains control of it' : ''}`;
+      const where = e.toBattlefield || e.fromMovedPermanentController || e.entersTapped || e.fromTargetPlayer ? 'onto the battlefield' : 'into your hand';
+      return `reveal cards from the top of ${e.fromMovedPermanentController ? "that creature's controller's" : 'your'} library until you reveal a ${what}; put it ${where} and the rest on the bottom`;
+    }
     case 'Explore':
       return `${who} explores`;
     case 'ReturnGreatestManaValue':
@@ -207,7 +230,7 @@ function effectText(e: EffectSpec): string {
     case 'AllowPlayExiledThisWay':
       return 'you may play the exiled card this turn';
     case 'PutFromHandOnTop':
-      return `put ${plural('card')} from your hand on top of your library`;
+      return `put ${plural('card')} from your hand on ${e.toBottom ? 'the bottom' : 'top'} of your library`;
     case 'ShuffleGraveyardIntoLibrary':
       return 'shuffle cards from your graveyard into your library';
     case 'SubjectEntersWithCounters':
@@ -285,6 +308,12 @@ function effectText(e: EffectSpec): string {
       return 'you may attach an Equipment you control to it';
     case 'RemoveFromCombat':
       return `remove ${who} from combat`;
+    case 'PutExiledWithThisOntoBattlefield':
+      return 'put a card exiled with it onto the battlefield under your control';
+    case 'ReturnDestroyedThisWay':
+      return 'return a creature card destroyed this way to the battlefield under your control';
+    case 'ExiledWithThisToGraveyard':
+      return "put each card exiled with it into its owner's graveyard, and create a token for each";
     case 'ShuffleThisIntoLibrary':
       return "shuffle this card into its owner's library";
     case 'ExileGraveyardsCopyCreature':
@@ -301,6 +330,38 @@ function effectText(e: EffectSpec): string {
       return `look at the top ${amountText(e.amount)} cards of your library; you may put one into your hand, then put any lands among them onto the battlefield tapped and the rest into your graveyard`;
     case 'Hideaway':
       return `hideaway ${n}`;
+    case 'ExileNamedToSearch':
+      return `you may exile this spell and ${n} cards with the same name from your graveyard. If you do, search your library for a ${subjectText({ ...e.filter, controller: undefined }, 'card')}, put it onto the battlefield, then shuffle`;
+    case 'ChooseCreatureType':
+      return 'choose a creature type';
+    case 'BecomePrepared':
+      return `${who} become${you ? '' : 's'} prepared`;
+    case 'Unprepare':
+      return `${who} become${you ? '' : 's'} unprepared`;
+    case 'EachPlayerMayWheel':
+      return `each player may discard their hand and draw ${n} cards`;
+    case 'ExtraManaFromSubtype':
+      return `until end of turn, whenever you tap a ${e.landSubtype} for mana, add an additional {${e.manaType}}`;
+    case 'NextSpellCantBeCountered':
+      return "the next spell you cast this turn can't be countered";
+    case 'Empower':
+      return `empower Jace ${n} (put ${n} loyalty counter${n === '1' ? '' : 's'} on a Jace token you control; if you don't control one, first create a blue Jace planeswalker token with "−1: Surveil 1" and "−3: Draw a card")`;
+    case 'CreateEmblem':
+      return `you get an emblem with "${emblemText(e.emblemStatic)}"`;
+    case 'ProtectSubtypeUnlessPays':
+      return `they may pay {${e.payGeneric ?? 0}}. If they don't, creatures they control can't attack ${e.protectSubtype}s you control this turn`;
+    case 'Amass':
+      return `amass ${e.amassType ? `${e.amassType}s ` : ''}${n}`;
+    case 'PutExiledWithThisIntoGraveyard':
+      return "put a card exiled with this into its owner's graveyard; if it's a land card, create a Treasure token, otherwise create a 2/2 black Rogue creature token";
+    case 'TurnFaceUp':
+      return `turn ${who} face up`;
+    case 'TurnFaceDown':
+      return `turn ${who} face down`;
+    case 'Manifest':
+      return `${e.cloak ? 'cloak' : 'manifest'} the top ${e.amount === 1 || e.amount === undefined ? 'card' : `${amountText(e.amount)} cards`} of your library`;
+    case 'ManifestDread':
+      return 'manifest dread (look at the top two cards of your library; manifest one and put the other into your graveyard)';
     case 'ExileFromEachGraveyard':
       return `exile a ${subjectText({ ...e.filter, controller: undefined }, 'card')} from each graveyard`;
     case 'GrantLinkedExileCast':
@@ -407,10 +468,20 @@ function effectText(e: EffectSpec): string {
       return `${who} becomes ${(e.addSubtypes ?? []).join(' ')} in addition to its other types`;
     case 'SearchLibraryToTop':
       return `${who} searches their library for a card, then shuffles and puts that card on top`;
+    case 'SearchLibraryToGraveyard':
+      return `search your library for an ${e.filter?.types?.join(' or ') ?? ''} card and put it into your graveyard`;
     case 'SearchLibraryToHand':
       return `search your library for a ${e.filter?.subtypes?.join(' or ') ?? ''} card and put it into your hand${e.toBattlefieldIfBehindOnLands ? ' (onto the battlefield tapped if an opponent controls more lands)' : ''}`;
     case 'PhaseOut':
       return `${who} phase out`;
+    case 'ShieldPlayerUntilNextTurn':
+      return `until ${who}'s next turn, they have protection from everything, their life total can't change, and their nonland permanents phase out`;
+    case 'CastMilledFree':
+      return 'for each player, you may cast a spell they milled this way without paying its mana cost';
+    case 'RevealCreaturesToBattlefield':
+      return 'reveal cards from the top of your library until you reveal that many creature cards, put them onto the battlefield, and shuffle the rest in';
+    case 'RevealSeparatePiles':
+      return `reveal the top ${typeof e.amount === 'number' ? e.amount : ''} cards; an opponent separates them into two piles; put one into your hand and the other into your graveyard`;
     case 'Connive':
       return `${who} connives`;
     case 'LookAtTopPutInHand':
@@ -437,10 +508,13 @@ function keywordText(keywords: readonly string[]): string {
 
 /** A plain summary of an activated ability, e.g. "{1}{W}, {T}: tap target creature". */
 export function activatedText(a: ActivatedSpec): string {
+  if (a.turnFaceUp) return `Turn face up (${a.cost.mana})`;
   if (a.cost.crew !== undefined) return `Crew ${a.cost.crew} — tap other creatures with total power ${a.cost.crew} or more`;
   if (a.cost.station) return 'Station — tap another creature you control: put charge counters equal to its power on this (as a sorcery)';
   if (a.effects[0]?.unearth) return `Unearth ${a.cost.mana}`;
   const cost = [
+    // A loyalty ability: "+1", "0", "−3".
+    a.loyalty !== undefined && (a.loyalty > 0 ? `+${a.loyalty}` : a.loyalty < 0 ? `−${-a.loyalty}` : '0'),
     a.cost.mana,
     a.cost.tap && '{T}',
     a.cost.mill && 'mill ' + a.cost.mill + ' card(s)',
@@ -540,7 +614,13 @@ function triggerCondition(t: TriggerSpec): string {
     OpponentLosesLife: '',
     LifeGained: '',
     OpponentCommitsCrime: '',
+    TurnedFaceUp: 'is turned face up',
+    OpponentDealtNoncombatDamage: '',
+    BecomesTarget: 'becomes the target of a spell or ability',
+    OpponentsDealtCombatDamageYourTurn: '',
   }[t.when] ?? '';
+  if (t.when === 'OpponentsDealtCombatDamageYourTurn') return 'When one or more of your opponents are dealt combat damage during your turn';
+  if (t.when === 'OpponentDealtNoncombatDamage') return 'Whenever one or more opponents are dealt noncombat damage';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
   if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';
   if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";
@@ -697,6 +777,7 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       return e.card ? `${who(e.player)} drew ${cardName(s, e.card)}.` : `${who(e.player)} drew a card.`;
     case 'SpellCast': {
       const targets = e.targets.length ? ` targeting ${e.targets.map((t) => targetName(s, t, viewer)).join(', ')}` : '';
+      if (e.faceDown) return `${who(e.player)} cast a face-down creature spell.`;
       return `${who(e.player)} cast ${cardName(s, e.card)}${targets}.`;
     }
     case 'AbilityTriggered': {
@@ -762,6 +843,16 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
       if (e.from === 'library' && e.to === 'exile') return `  ${cardName(s, e.card)} is exiled from the top of the library.`;
       if (e.from === 'library' && e.to === 'graveyard') return `  ${cardName(s, e.card)} is milled.`;
       return null;
+    case 'OptionChosen':
+      return `  ${who(e.player)} chose ${e.option} for ${cardName(s, e.card)}.`;
+    case 'Prepared':
+      return `  ${cardName(s, e.card)} is prepared.`;
+    case 'Unprepared':
+      return null;
+    case 'TurnedFaceDown':
+      return `${cardName(s, e.card)} was turned face down.`;
+    case 'TurnedFaceUp':
+      return `${who(e.player)} turned ${s.cardDefs[e.defId]?.name ?? 'a creature'} face up.`;
     case 'Transformed':
       return `  ${cardName(s, e.card)} transforms.`;
     case 'SpellCopied':
@@ -796,4 +887,13 @@ export function describe(s: GameState, e: GameEvent, viewer?: string): string | 
     default:
       return null;
   }
+}
+
+/** An emblem's static ability, in words ("Creatures you control get +2/+2 and have flying."). */
+function emblemText(st: EffectSpec['emblemStatic']): string {
+  if (!st) return '';
+  const p = typeof st.power === 'number' ? st.power : 0, t = typeof st.toughness === 'number' ? st.toughness : 0;
+  const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const parts = [p || t ? `get ${sign(p)}/${sign(t)}` : '', st.keywords?.length ? `have ${st.keywords.map((k) => k.toLowerCase()).join(' and ')}` : ''].filter(Boolean);
+  return `${st.filter ? subjectText(st.filter, 'permanent', true) : 'Permanents'} ${parts.join(' and ')}.`.replace(/^./, (c) => c.toUpperCase());
 }

@@ -1,10 +1,10 @@
 import type { GameEvent, GameState, Target } from '@nexus/engine';
 import { cardName } from '@nexus/bots/narrate';
-export interface TargetNotice { source: string; controller: string; sourceCard: string; targets: Target[]; labels: string[] }
+export interface TargetNotice { source: string; controller: string; sourceCard: string; targets: Target[]; labels: string[]; /** A triggered ability: its card is outlined in red and labelled "Trigger" (shown even with no targets). */ trigger?: boolean }
 /** Keep public names readable even after a target leaves the battlefield. */
-export function targetNotice(s: GameState, source: string, controller: string, targets: Target[]): TargetNotice | null {
+export function targetNotice(s: GameState, source: string, controller: string, targets: Target[], trigger = false): TargetNotice | null {
  const actual = targets.filter(t => t.kind !== 'none');
- if (!actual.length) return null;
+ if (!actual.length && !trigger) return null;
  const labels = actual.map(t => {
   if (t.kind === 'player') return t.player;
   if (t.kind === 'card') return (s.cards[t.card]?.controller ?? s.cards[t.card]?.owner ?? '?') + ' · ' + cardName(s,t.card);
@@ -14,7 +14,7 @@ export function targetNotice(s: GameState, source: string, controller: string, t
   }
   return '';
  });
- return { source:cardName(s,source), controller, sourceCard:source, targets:structuredClone(actual), labels };
+ return { source:cardName(s,source), controller, sourceCard:source, targets:structuredClone(actual), labels, ...(trigger ? { trigger: true } : {}) };
 }
 export function eventTargetNotices(s: GameState, events: GameEvent[]): TargetNotice[] {
  return events.flatMap(e => {
@@ -26,7 +26,8 @@ export function eventTargetNotices(s: GameState, events: GameEvent[]): TargetNot
    return n ? [n] : [];
   }
   if (e.type !== 'SpellCast' && e.type !== 'AbilityActivated' && e.type !== 'AbilityTriggered') return [];
-  const n = targetNotice(s,e.card,e.type === 'SpellCast' ? e.player : e.controller,e.targets);
+  const n = targetNotice(s,e.card,e.type === 'SpellCast' ? e.player : e.controller,e.targets,e.type === 'AbilityTriggered');
+  if (n && e.type === 'AbilityTriggered') n.source += ' triggers';
   return n ? [n] : [];
  });
 }

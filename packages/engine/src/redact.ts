@@ -1,3 +1,5 @@
+import { FACE_DOWN_CARD, FACE_DOWN_WARD_CARD, faceDownCharacteristics } from './cardface.ts';
+import { controlledBy } from './turn.ts';
 // What one player may see, for sending over the network. The server holds
 // the real GameState; each player gets a redacted copy built from an
 // allowlist: every field of the game, its players and its cards is
@@ -107,8 +109,10 @@ export class AliasBook {
 }
 
 /** Every card `viewer` may see right now, with the rules that make it visible. */
-export function visibleCards(s: GameState, viewer: PlayerId): Set<InstanceId> {
+export function visibleCards(s: GameState, viewer: PlayerId, asController = true): Set<InstanceId> {
   const visible = new Set<InstanceId>();
+  // Rule 722.2: a player who controls another sees everything that player could see.
+  if (asController) for (const other of controlledBy(s, viewer)) for (const id of visibleCards(s, other, false)) visible.add(id);
   const top = s.players[viewer] ? visibleLibraryTop(s, viewer) : undefined;
   const p = s.pending;
   // Cards a player is looking at to decide: a surveil or scry, Urianger's look, a choice among cards.
@@ -194,6 +198,17 @@ const CARD_FIELDS = {
   animated: 'copy',
   chosenColor: 'copy',
   chosenCardType: 'copy',
+  chosenOption: 'copy',
+  goadedForever: 'copy',
+  prepared: 'copy',
+  outsideGame: 'copy',
+  flashbackTurn: 'copy',
+  lostAbilitiesTurn: 'copy',
+  exhausted: 'copy',
+  prepareSpellOf: 'refs',
+  faceDown: 'copy',
+  manifested: 'copy',
+  faceDownWard: 'copy',
   tokenSize: 'copy',
   returnToHandAtEndStep: 'copy',
   warped: 'copy',
@@ -214,6 +229,7 @@ const CARD_FIELDS = {
   foretoldTurn: 'copy',
   linkedExile: 'refs',
   xPaid: 'copy',
+  manaSpentToCast: 'copy',
   kicksPaid: 'copy',
   revealedInHand: 'copy',
   isCommander: 'copy',
@@ -226,6 +242,10 @@ const CARD_FIELDS = {
   unearthed: 'copy',
   exileAtEndOfCombat: 'copy',
   sacrificeAtEndOfCombat: 'copy',
+  removeCountersAtEndStep: 'copy',
+  lostAbilities: 'copy',
+  loyaltyActivatedTurn: 'copy',
+  leavesDealsManaValueDamage: 'copy',
   rebounding: 'copy',
   adventureSpell: 'copy',
   adventurer: 'copy',
@@ -249,6 +269,8 @@ const PLAYER_FIELDS = {
   equipmentMana: 'copy',
   noncreatureSpellMana: 'copy',
   artifactMana: 'copy',
+  restrictedMana: 'copy',
+  firstTokens: 'copy',
   landsPlayedThisTurn: 'copy',
   extraLandDrops: 'copy',
   eliminated: 'copy',
@@ -271,10 +293,19 @@ const PLAYER_FIELDS = {
   landsEntered: 'copy',
   landsEnteredTurn: 'copy',
   turnsTaken: 'copy',
+  loyaltyActivatedTurn: 'copy',
+  noncombatDamageTurn: 'copy',
+  noncombatDamagePreviousTurn: 'copy',
+  extraMana: 'copy',
+  libraryToGraveyard: 'copy',
+  scriedOrSurveiledTurn: 'copy',
+  nextSpellUncounterableTurn: 'copy',
+  legendRuleOffTurn: 'copy',
   endStepsBegun: 'copy',
   coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',
   legendaryCreatureSpellsThisTurn: 'copy',
+  nonartifactSpellsThisTurn: 'copy',
   nextCreatureHasteTurn: 'copy',
   spellsCastThisTurn: 'copy',
   lostToEffect: 'copy',
@@ -283,6 +314,7 @@ const PLAYER_FIELDS = {
   preventCreatureDamageTurn: 'copy',
   poison: 'copy',
   cantCastTurn: 'copy',
+  shielded: 'copy',
   cantCastNoncreatureTurn: 'copy',
   staggeredBy: 'copy',
   cardsDrawnThisTurn: 'copy',
@@ -300,6 +332,7 @@ const GAME_FIELDS = {
   triggeredThisTurn: 'empty',
   castGroups: 'refs',
   monarch: 'copy',
+  turnControl: 'copy',
   effectTimestamp: 'copy',
   cleanupCheck: 'copy',
   cleanupNeedsPriority: 'copy',
@@ -318,6 +351,8 @@ const GAME_FIELDS = {
   extraEndSteps: 'copy',
   delayedTriggers: 'refs',
   temporaryEffects: 'refs',
+  emblemStatics: 'copy',
+  attackBans: 'copy',
   creaturesDiedThisTurn: 'copy',
   nextCopyId: 'copy',
   creatureDeathsByController: 'copy',
@@ -389,6 +424,11 @@ export function redactState(s: GameState, viewer: PlayerId, book: AliasBook, vis
       if (rule === 'drop' || v === undefined) continue;
       out[key] = rule === 'copy' ? structuredClone(v) : refs(v);
     }
+    // Morph: only its controller knows what a face-down card is (rule 708.5), until the game ends (rule 708.10).
+    if (c.faceDown && c.controller !== viewer && s.pending.kind !== 'gameOver') {
+      out.defId = faceDownCharacteristics(c).id;
+      for (const k of ['printing', 'finish', 'lastDefinition', 'copy', 'isCommander']) delete out[k];
+    }
     out.id = book.alias(id);
     cards[out.id as string] = out as unknown as CardInstance;
   }
@@ -428,7 +468,7 @@ export function redactState(s: GameState, viewer: PlayerId, book: AliasBook, vis
 
 /** A redacted state as a GameState the engine's read-only helpers (and viewFor) can use. Never has real hidden cards. */
 export function materialize(r: RedactedState, cardDefs: GameState['cardDefs']): GameState {
-  return { ...structuredClone(r), cardDefs: { ...cardDefs, [HIDDEN_CARD.id]: HIDDEN_CARD }, rngState: [0, 0, 0, 0] };
+  return { ...structuredClone(r), cardDefs: { ...cardDefs, [HIDDEN_CARD.id]: HIDDEN_CARD, [FACE_DOWN_CARD.id]: FACE_DOWN_CARD, [FACE_DOWN_WARD_CARD.id]: FACE_DOWN_WARD_CARD }, rngState: [0, 0, 0, 0] };
 }
 
 /**

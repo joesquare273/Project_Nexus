@@ -19,6 +19,7 @@ import {
   phaseInFor,
   player,
   sacrifice,
+  removeCounters,
   untap,
   type Ctx,
   staticRule,
@@ -135,6 +136,10 @@ export function enterStep(ctx: Ctx, step: Step): void {
     }
       // Blitz and unearth: "at the beginning of the next end step" (done as the step begins, without using the stack).
       for (const c of battlefield(s)) {
+        if (c.removeCountersAtEndStep) {
+          removeCounters(ctx, c.id, c.removeCountersAtEndStep.counter, c.removeCountersAtEndStep.amount);
+          delete c.removeCountersAtEndStep;
+        }
         if (c.unattachAtEndStep) {
           delete c.unattachAtEndStep;
           delete c.attachedTo;
@@ -303,6 +308,11 @@ export function startNextTurn(ctx: Ctx): void {
   }
   s.activePlayer = extra ?? nextAlive(s, s.activePlayer);
   s.turnNumber += 1;
+  // Rule 722: control of a player lasts their next turn, then ends.
+  if (s.turnControl?.length) {
+    s.turnControl = s.turnControl.filter((t) => t.turn === undefined).map((t) => (t.player === s.activePlayer && !s.turnControl!.some((o) => o !== t && o.player === t.player && o.turn === s.turnNumber) ? { ...t, turn: s.turnNumber } : t));
+    if (s.turnControl.length === 0) delete s.turnControl;
+  }
   s.players[s.activePlayer]!.turnsTaken = (s.players[s.activePlayer]!.turnsTaken ?? 0) + 1;
   // "Until your next turn" effects end as that player's turn begins.
   s.temporaryEffects = s.temporaryEffects.filter((e) => e.untilNextTurnOf !== s.activePlayer);
@@ -328,6 +338,8 @@ export function startNextTurn(ctx: Ctx): void {
   delete s.endAfterCombat;
   delete s.extraCombatUntaps;
   delete s.players[s.activePlayer]!.attackTaxes;
+  // Teferi's Reproach lasts until that player's next turn.
+  delete s.players[s.activePlayer]!.shielded;
   for (const pid of s.turnOrder) {
     const p = s.players[pid]!;
     p.lifeLostThisTurn = 0;
@@ -335,6 +347,7 @@ export function startNextTurn(ctx: Ctx): void {
     p.lifeGainedThisTurn = 0;
     p.noncreatureSpellsThisTurn = 0;
     p.legendaryCreatureSpellsThisTurn = 0;
+    p.nonartifactSpellsThisTurn = 0;
     p.cardsDrawnThisTurn = 0;
     p.spellsCastThisTurn = 0;
   }
@@ -357,4 +370,18 @@ export function passPriority(ctx: Ctx, playerId: PlayerId): void {
   } else {
     advanceStep(ctx);
   }
+}
+
+/**
+ * Who makes `player`'s decisions right now: `player`, or whoever controls them this turn (rule 722).
+ * An eliminated controller loses that control (rule 800.4a).
+ */
+export function decisionMaker(s: GameState, player: PlayerId): PlayerId {
+  const t = s.turnControl?.find((x) => x.player === player && x.turn === s.turnNumber);
+  return t && s.players[t.by] && !s.players[t.by]!.eliminated ? t.by : player;
+}
+
+/** The players `viewer` makes decisions for this turn (besides themselves). */
+export function controlledBy(s: GameState, viewer: PlayerId): PlayerId[] {
+  return (s.turnControl ?? []).filter((t) => t.by === viewer && t.turn === s.turnNumber && s.players[t.player] && !s.players[t.player]!.eliminated).map((t) => t.player);
 }

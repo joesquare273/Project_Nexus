@@ -165,9 +165,9 @@ describe('the free starter precon', () => {
     const { accounts, call } = await withAccounts();
     const before = await (await call('token-alice', '/api/starter')).json();
     expect(before.claimed).toBe(false);
-    // Every set's precons: Final Fantasy's four and Edge of Eternities' two.
-    expect(before.choices).toHaveLength(6);
-    expect(before.choices.map((c: { set: string }) => c.set)).toEqual(['Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Edge of Eternities', 'Edge of Eternities']);
+    // Every set's precons: Final Fantasy's four, Edge of Eternities' two and Reality Fracture's one.
+    expect(before.choices).toHaveLength(7);
+    expect(before.choices.map((c: { set: string }) => c.set)).toEqual(['Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Edge of Eternities', 'Edge of Eternities', 'Reality Fracture']);
     const name = before.choices[1].name;
     const r = await call('token-alice', '/api/starter', 'POST', { precon: name });
     expect(r.status).toBe(200);
@@ -179,7 +179,7 @@ describe('the free starter precon', () => {
     // Free, and only once: asking again, even for another precon, adds nothing.
     expect(accounts.accounts.get('alice-id')!.shards).toBe(FIRST_DAY_SHARDS);
     const again = await Promise.all(before.choices.map((c: { name: string }) => call('token-alice', '/api/starter', 'POST', { precon: c.name })));
-    expect(again.map((x) => x.status)).toEqual([409, 409, 409, 409, 409, 409]);
+    expect(again.map((x) => x.status)).toEqual([409, 409, 409, 409, 409, 409, 409]);
     expect((await accounts.collection('alice-id')).reduce((n, c) => n + c.count, 0)).toBe(100);
     expect((await (await call('token-alice', '/api/decks')).json()).decks).toHaveLength(1);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(true);
@@ -239,6 +239,7 @@ describe('the Store', () => {
     expect(sets.map((s: { name: string; ready: boolean }) => [s.name, s.ready])).toEqual([
       ['Final Fantasy', true],
       ['Edge of Eternities', true],
+      ['Reality Fracture', true],
     ]);
     const items: Item[] = sets[0].items;
     const singles = items.filter((i) => i.line === 'Chocobo Track foil');
@@ -259,6 +260,10 @@ describe('the Store', () => {
     const precons = eoe.filter((i) => i.line.startsWith('Commander precon'));
     expect(precons.map((p) => p.name)).toEqual(['Counter Intelligence', 'World Shaper']);
     for (const p of precons) expect(p.cards.reduce((n, c) => n + ((c as { count?: number }).count ?? 1), 0)).toBe(100);
+    // Reality Fracture: its Commander precon, 100 cards, at the precon price.
+    const frc: Item[] = sets[2].items;
+    expect(frc.map((i) => [i.name, i.price])).toEqual([['Multiverse Reforged', ECONOMY.storePrices.precon]]);
+    expect(frc[0]!.cards.reduce((n, c) => n + ((c as { count?: number }).count ?? 1), 0)).toBe(100);
     // The Final Fantasy tab doesn't list them, and its Secret Lair cards are foil too.
     expect(items.some((i) => i.name === 'Arcbound Ravager')).toBe(false);
     for (const i of items.filter((i) => i.line.startsWith('Secret Lair'))) expect(i.cards.every((c) => c.finish === 'foil')).toBe(true);

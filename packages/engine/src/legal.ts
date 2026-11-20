@@ -1,3 +1,4 @@
+import type { ManaRestriction } from './types.ts';
 // Enumerates legal actions for whoever the game is waiting on. Used by bots,
 // fuzz tests, and the client to highlight playable cards.
 //
@@ -18,7 +19,10 @@ import {
   activatedAbilities,
   activationProblem,
   alternativeCostProblem,
+  spellManaRestrictions,
   exileFromHandChoices,
+  encounterChoices,
+  beholdChoices,
   canActAtSorcerySpeed,
   canEverCast,
   canPayFromPool,
@@ -38,6 +42,7 @@ import {
   manaSacrificeLands,
   RETRACE_DISCARD,
   castingForbidden,
+  nonartifactSpellLimited,
   convokeCandidates,
   convokeCost,
   hasImprovise,
@@ -85,10 +90,10 @@ function combine(options: Target[][], valid: (partial: Target[]) => boolean = ()
   return combos;
 }
 
-function targetCombos(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string): Target[][] {
+function targetCombos(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string, x?: number): Target[][] {
   const needs = choosingEffects(effects);
   return combine(
-    needs.map((e) => targetOptions(s, e, playerId, source)),
+    needs.map((e) => targetOptions(s, e, playerId, source, x !== undefined ? { x } : {})),
     (ts) => !groupProblem(s, needs, ts),
   );
 }
@@ -103,6 +108,8 @@ export interface CostedOption {
   forNoncreatureSpell?: boolean;
   /** Mana that can only be spent on artifacts can pay for it. */
   forArtifact?: boolean;
+  /** Other restricted mana that can pay for it. */
+  restricted?: ManaRestriction[];
 }
 
 /**
@@ -130,6 +137,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   const p = s.players[playerId]!;
   if (castingForbidden(s, playerId)) return out;
   for (const id of [...p.hand, ...p.graveyard, ...p.command]) candidates.push(s.cards[id]!);
+  // Another player's graveyard: a card this player was given permission to cast (The Ur-Sphinx).
+  for (const pid of s.turnOrder) if (pid !== playerId) for (const id of s.players[pid]!.graveyard) if (s.cards[id]!.castPermission?.player === playerId) candidates.push(s.cards[id]!);
   for (const pid of s.turnOrder) for (const id of s.players[pid]!.exile) candidates.push(s.cards[id]!);
   // Group permissions may include cards in another player's graveyard.
   for (const group of s.castGroups ?? []) if (group.player===playerId && group.turn===s.turnNumber) {
@@ -148,6 +157,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const groups = castGroupsFor(s,playerId,c);
     const from = naturalFrom ?? ((c.zone==='graveyard'||c.zone==='exile') && groups.length ? c.zone : null);
     const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+    if (def.castOnlyWithThreshold && s.players[playerId]!.graveyard.length < 7) continue;
     if (!from || !canEverCast(def) || (!castsAtInstantSpeed(s, playerId, c, def) && !sorcerySpeed && !anyTime)) continue;
     // Bolas's Citadel: the life must be there to pay.
     if (from === 'library' && libraryTopCostsLife(s, playerId) && p.life < manaValue(parseManaCost(def.manaCost))) continue;
@@ -196,13 +206,17 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         };
         // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
         const retrace = way === 'retrace';
-        const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (retrace ? 1 : 0);
+        const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (retrace ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);
         const discards = alternative && def.alternativeCost?.exileFromHand
           ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
+          : def.additionalCost?.chooseCreatureOrWarped
+            ? encounterChoices(s, playerId).map((id) => [id])
+          : def.additionalCost?.behold
+            ? [...beholdChoices(s, playerId, c.id, def.additionalCost.behold).slice(0, 1).map((id) => [id]), []]
           : def.additionalCost?.sacrifice || def.kickerSacrifice
             ? spellSacrificeChoices(s, playerId, def, c.id, kicks)
             : discard > 0 ? subsets(discardCandidates(s, playerId, c.id, retrace ? RETRACE_DISCARD : undefined), discard, discard) : [[]];
-        for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id)) {
+        for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id, x)) {
           const baseCost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
             // "Or pay {2}": the extra mana when nothing is sacrificed.
@@ -217,6 +231,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
                 forEquipment: isEquipment(s, c),
                 forNoncreatureSpell: !def.types.includes('creature'),
                 forArtifact: def.types.includes('artifact'),
+                restricted: spellManaRestrictions(def, from),
               });
             }
           }
@@ -228,9 +243,20 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
   }
   }
   }
+  // Morph and disguise: such a card can also be cast face down from your hand, as a creature spell, for {3}.
+  if (sorcerySpeed) {
+    for (const id of p.hand) {
+      const real = s.cardDefs[s.cards[id]!.defId];
+      if (!real?.morph && !real?.disguise) continue;
+      out.push({ action: { type: 'CastSpell', player: playerId, card: id, targets: [], faceDown: true }, cost: parseManaCost('{3}'), forEquipment: false });
+    }
+  }
   // "Your opponents can't cast noncreature spells this turn" (Ranger-Captain of Eos).
-  if (p.cantCastNoncreatureTurn === s.turnNumber) return out.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('creature')));
-  return out;
+  // Ethersworn Canonist: after a nonartifact spell, only artifact spells.
+  const artifactOnly = nonartifactSpellLimited(s, playerId);
+  const allowed = artifactOnly ? out.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('artifact'))) : out;
+  if (p.cantCastNoncreatureTurn === s.turnNumber) return allowed.filter((o) => o.action.type !== 'CastSpell' || (!o.action.adventure && currentDefinition(s, s.cards[o.action.card]!).types.includes('creature')));
+  return allowed;
 }
 
 /** Most times multikicker is ever offered. */
@@ -372,6 +398,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
             cost: abilityCost(s, spec, targets, c, x ?? 0),
             forEquipment: spec.equip ?? false,
             forArtifact: hasType(s, c, 'artifact'),
+            ...(hasType(s, c, 'artifact') ? { restricted: ['artifactAbility' as const] } : {}),
           });
          }
         }
@@ -530,6 +557,8 @@ export function getLegalActions(s: GameState): Action[] {
       return (['W', 'U', 'B', 'R', 'G'] as const).map((color): Action => ({ type: 'ChooseColor', player: pending.player, color }));
     case 'chooseCardType':
       return pending.options.map((cardType): Action => ({ type: 'ChooseCardType', player: pending.player, cardType }));
+    case 'chooseOption':
+      return pending.options.map((option): Action => ({ type: 'ChooseOption', player: pending.player, option }));
     case 'chooseLegend':
       return pending.cards.map((keep): Action => ({ type: 'ChooseLegend', player: pending.player, keep }));
 
@@ -619,7 +648,7 @@ export function getLegalActions(s: GameState): Action[] {
         }
       }
       for (const o of [...spellOptions(s, player), ...abilityOptions(s, player)]) {
-        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false, artifact: o.forArtifact ?? false })) actions.push(o.action);
+        if (canPayFromPool(s, player, o.cost, { equipment: o.forEquipment, noncreatureSpell: o.forNoncreatureSpell ?? false, artifact: o.forArtifact ?? false, ...(o.restricted ? { restricted: o.restricted } : {}) })) actions.push(o.action);
       }
       for (const id of s.players[player]!.hand) {
         if (!foretellProblem(s, player, s.cards[id]!)) actions.push({ type: 'Foretell', player, card: id });

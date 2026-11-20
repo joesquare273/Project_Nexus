@@ -4,6 +4,7 @@
 //
 //   node packages/cards/scripts/import-sets.ts        # Final Fantasy (FIN, FCA) -> data/fin-set.json
 //   node packages/cards/scripts/import-sets.ts eoe    # Edge of Eternities (EOE) -> data/eoe-set.json
+//   node packages/cards/scripts/import-sets.ts fra    # Reality Fracture (FRA) -> data/fra-set.json
 //
 // MTGJSON's set files are static downloads (no API rate limit). Run
 // `npm run scryfall` afterwards for images and Oracle text.
@@ -18,6 +19,7 @@ import { define, type MtgjsonCard } from './recognize.ts';
 import eoc from '../data/eoc.json' with { type: 'json' };
 import fic from '../data/fic.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
+import frc from '../data/frc.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 
@@ -26,6 +28,8 @@ const IMPORTS = {
   fin: { sets: [{ code: 'FIN', maxNumber: 309 }, { code: 'FCA', maxNumber: 64 }], file: 'fin-set.json' },
   // 1-276: the main set with its basic lands; 277+ are borderless, extended-art and Japan Showcase variants.
   eoe: { sets: [{ code: 'EOE', maxNumber: 276 }], file: 'eoe-set.json' },
+  // 1-290: the main set with its basics (281-290); 291+ are borderless and other variants.
+  fra: { sets: [{ code: 'FRA', maxNumber: 290 }], file: 'fra-set.json' },
 } as const;
 const which = (process.argv[2] ?? 'fin') as keyof typeof IMPORTS;
 if (!IMPORTS[which]) throw new Error(`Unknown import "${which}"; use ${Object.keys(IMPORTS).join(' or ')}.`);
@@ -42,7 +46,7 @@ const otherSets = order
   .flatMap((u) => JSON.parse(readFileSync(u, 'utf8')) as CardDefinition[]);
 
 /** Cards defined elsewhere keep their definitions; this set's file only adds what's missing. */
-const OTHER = [...lands, ...fin, ...fic, ...eoc, ...tokens, ...otherSets] as CardDefinition[];
+const OTHER = [...lands, ...fin, ...fic, ...eoc, ...frc, ...tokens, ...otherSets] as CardDefinition[];
 const definedNames = new Set(OTHER.map((c) => c.name));
 const usedIds = new Set(OTHER.map((c) => c.id));
 

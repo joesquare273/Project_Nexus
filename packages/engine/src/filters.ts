@@ -54,6 +54,7 @@ export function matchesObject(
   if (f.blocking !== undefined && !!s.combat?.blocks.some((b) => b.blocker === obj.id) !== f.blocking) return false;
   if (f.warped !== undefined && !!obj.warped !== f.warped) return false;
   if (f.milledThisWay && !(obj.milledBy?.source === from.source && obj.milledBy?.turn === s.turnNumber)) return false;
+  if (f.notCreatedThisWay && s.resolving?.createdTokens.includes(obj.id)) return false;
   if (f.historic !== undefined) {
     const historic = def.types.includes('artifact') || !!def.supertypes?.includes('Legendary') || !!def.subtypes?.includes('Saga');
     if (historic !== f.historic) return false;
@@ -76,6 +77,10 @@ export function matchesObject(
   if (f.supertypes && !f.supertypes.every((t) => def.supertypes?.includes(t))) return false;
   if (f.nonSupertypes?.some((t) => def.supertypes?.includes(t))) return false;
   if (f.tapped !== undefined && obj.tapped !== f.tapped) return false;
+  if (f.faceDown !== undefined && !!obj.faceDown !== f.faceDown) return false;
+  if (f.prepareSpell && !obj.prepareSpellOf) return false;
+  if (f.attackedThisTurn && obj.attackedTurn !== s.turnNumber) return false;
+  if (f.hasToxic && !(currentDefinition(s, obj).toxic ?? 0)) return false;
   if (f.attacking !== undefined) {
     const attacking = s.combat?.attacks.some((a) => a.attacker === obj.id) ?? false;
     if (attacking !== f.attacking) return false;
@@ -106,6 +111,9 @@ export function matchesObject(
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
   if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
+  if (f.toughnessAtMostX && characteristics(s, obj).toughness > (from.x ?? 0)) return false;
+  if (f.manaValueParity && (objectManaValue(s, obj) % 2 === 1) !== (f.manaValueParity === 'odd')) return false;
+  if (f.manaValueAtMostSourceManaSpent && objectManaValue(s, obj) > ((from.source ? s.cards[from.source]?.manaSpentToCast : undefined) ?? 0)) return false;
   if (f.ofSourceChosenType) {
     const chosen = from.source ? s.cards[from.source]?.chosenCardType : undefined;
     if (!chosen || !def.types.includes(chosen)) return false;

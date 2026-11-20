@@ -1,5 +1,5 @@
 // The free starter (economy step E1c): until a player has picked one, a
-// window offers every Commander precon (Final Fantasy, Edge of Eternities). The server grants
+// window offers every Commander precon (Final Fantasy, Edge of Eternities, Reality Fracture). The server grants
 // the chosen one once (cards and a saved Commander deck); this only asks.
 
 import { useEffect, useState } from 'react';

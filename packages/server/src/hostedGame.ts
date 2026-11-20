@@ -7,7 +7,7 @@
 // the table, so their turns unfold on the board; once only bots are left in
 // the game they play it out in chunks.
 
-import { AliasBook, applyAction, createGame, getLegalActions, playerUpdate, resolveAction, type Action, type GameEvent, type GameSetup, type GameState } from '@nexus/engine';
+import { decisionMaker, AliasBook, applyAction, createGame, getLegalActions, playerUpdate, resolveAction, type Action, type GameEvent, type GameSetup, type GameState } from '@nexus/engine';
 import type { Bot } from '@nexus/bots';
 import { errorDetails, log } from './log.ts';
 import type { ErrorCode, Seat, ServerMessage } from './protocol.ts';
@@ -128,12 +128,13 @@ export class HostedGame {
     if (this.state.pending.kind === 'gameOver') return { code: 'game-over', message: 'The game is over.' };
     if (seq <= (this.lastSeq[seat] ?? 0)) return { code: 'duplicate', message: `Action ${seq} was already received.` };
     if (version !== this.version) return { code: 'stale', message: `That action was for version ${version}; the game is at version ${this.version}.` };
-    if (actions.some((a) => a.player !== seat)) return { code: 'wrong-player', message: `You play as ${seat}.` };
+    // You act as your seat, or for a player you control this turn (The Dominion Bracelet, rule 722); never concede for them.
+    if (actions.some((a) => a.player !== seat && (a.type === 'Concede' || decisionMaker(this.state, a.player) !== seat))) return { code: 'wrong-player', message: `You play as ${seat}.` };
     let state = this.state;
     const events: GameEvent[] = [];
     for (const action of actions) {
       const pending = state.pending;
-      if (action.type !== 'Concede' && (!('player' in pending) || pending.player !== seat)) return { code: 'not-your-decision', message: 'The game is waiting on another player.' };
+      if (action.type !== 'Concede' && (!('player' in pending) || pending.player !== action.player || decisionMaker(state, pending.player) !== seat)) return { code: 'not-your-decision', message: 'The game is waiting on another player.' };
       const r = applyAction(state, resolveAction(action, this.books[seat]!));
       if (!r.ok) return { code: 'illegal', message: r.error };
       state = r.state;
@@ -153,7 +154,7 @@ export class HostedGame {
     this.cancel = undefined;
     const s = this.state;
     if (s.pending.kind === 'gameOver') return this.finish();
-    const who = 'player' in s.pending ? (s.pending.player as Seat) : null;
+    const who = 'player' in s.pending ? (decisionMaker(s, s.pending.player) as Seat) : null;
     const bot = who ? this.opts.bots[who] : undefined;
     if (!bot) return;
     // Only bots left: play on quickly in chunks (nobody is watching a turn unfold).
@@ -175,7 +176,7 @@ export class HostedGame {
     let n = 0;
     while (this.state.pending.kind !== 'gameOver' && n < CHUNK && this.botOnlyActions < this.opts.botGameLimit) {
       const s = this.state;
-      const bot = 'player' in s.pending ? this.opts.bots[s.pending.player as Seat] : undefined;
+      const bot = 'player' in s.pending ? this.opts.bots[decisionMaker(s, s.pending.player) as Seat] : undefined;
       if (!bot) break;
       const r = botMove(s, bot, this.opts.where ?? 'table');
       if (!r) break;

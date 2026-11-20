@@ -103,6 +103,13 @@ describe('draft events on the server', () => {
       const v = joe.event()!;
       const mine = v.matches.find((m) => m.round === v.round && (m.a === 'S1' || m.b === 'S1'))!;
       if (!mine.done && mine.chooser === 'S1' && !mine.nextFirst) await joe.send({ type: 'eventPlayDraw', play: false });
+      else if (!mine.done && mine.sideboardEndsAt && !mine.readyNext.includes('S1')) {
+        // Between games: the bot is ready at once; Joe says he's done sideboarding.
+        expect(mine.readyNext).toEqual([mine.a === 'S1' ? mine.b : mine.a]);
+        const errs = joe.errors().length;
+        await joe.send({ type: 'eventReadyNext' });
+        expect(joe.errors().length).toBe(errs);
+      }
       else if (!mine.done && mine.live && joe.game()?.match === mine.id && joe.game()!.update.state.pending.kind !== 'gameOver') await concede(joe);
       await settle();
     }
@@ -186,5 +193,25 @@ describe('draft events on the server', () => {
     lobby.accounts!.verify = async (t) => (t === 'tok-x' ? { id: 'u-x', name: 'X' } : null);
     await third.send({ type: 'eventJoin', token: 'tok-x', code });
     expect(third.errors().at(-1)).toMatchObject({ code: 'event-full' });
+  });
+
+  it('a restart loses running events: the new server gives their entries back, once, and leaves settled events alone', async () => {
+    const { accounts, lobby } = setup();
+    const joe = browser(lobby);
+    await joe.send({ type: 'eventCreate', token: 'tok-joe', players: 1, bots: 3, set: 'fin' });
+    await joe.send({ type: 'eventStart' });
+    const before = accounts.accounts.get('u-joe')!.shards;
+    // An event that finished (prize paid) and one already refunded stay as they are.
+    accounts.apply('u-joe', -600, 'event_entry', 'draft-done');
+    accounts.apply('u-joe', 400, 'event_prize', 'draft-done');
+    accounts.apply('u-joe', -600, 'event_entry', 'draft-gone');
+    accounts.apply('u-joe', 600, 'event_entry', 'draft-gone-refund');
+    const mid = accounts.accounts.get('u-joe')!.shards;
+    expect(mid).toBe(before - 200);
+    // The server restarts: a new lobby on the same accounts.
+    const after = new Lobby({ accounts, events: { now: () => clock, schedule: () => () => {}, botDelayMs: 0 } });
+    expect(await after.events.refundLostEntries()).toBe(1);
+    expect(accounts.accounts.get('u-joe')!.shards).toBe(mid + 600);
+    expect(await after.events.refundLostEntries()).toBe(0);
   });
 });

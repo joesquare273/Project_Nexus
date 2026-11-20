@@ -18,6 +18,397 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F11c: black legends (2026-11-20)
+
+- The 11 black echoed-pairs legends (docs/reality-fracture.md). New: Ward—Discard a card as a real ward trigger (Gideon), exhaust (Liliana), threshold casting and activation, and Loot's negative power.
+
+### Reality Fracture F11b: blue legends (2026-11-20)
+
+- The 11 blue echoed-pairs legends (docs/reality-fracture.md). New: split second (Samut), "becomes the target" triggers, Fblthp's win, Tetsuko's unblockable small creatures, and the FRA Angel token.
+
+### Reality Fracture F11a: white legends (2026-11-20)
+
+- The 13 white echoed-pairs legends (docs/reality-fracture.md; F11 is split by color). New: Thalia's tax, Yuriko's combat lock, Tomik's one attacker per planeswalker, Ghalta's defender and toughness rules, planeswalker-only mana, and the FRA Thopter token.
+
+### Reality Fracture F10b: multicolor and artifacts (2026-11-20)
+
+- 18 cards, FRA 148-174 (docs/reality-fracture.md); Uldaros Theorix moved to F13. New: flashback with a discard, Warriors' Blades' equip discount, and Vindictive Triumph's steal.
+
+### Reality Fracture F10a: multicolor (2026-11-20)
+
+- 20 multicolor cards, FRA 121-147 (docs/reality-fracture.md; F10 is split in two). New: prowess, "choose two" triggers, Clash of Elements, Null Summoner's threshold casting, and the Lotus token.
+
+### Reality Fracture F9: green (2026-11-20)
+
+- 20 green cards (docs/reality-fracture.md), with Tarmogoyf, Omnipresence's free spells, losing all abilities until end of turn, keyword choices as abilities resolve, and Puppet Crafting's animation.
+
+### Reality Fracture F8: red (2026-11-20)
+
+- 20 red cards (docs/reality-fracture.md), with granted flashback, random discards, Draconic Visitor's Dragon replacement, noncombat-damage triggers and Face Yourself's token copies.
+
+### Reality Fracture F7: black (2026-11-20)
+
+- 17 black cards (docs/reality-fracture.md), with sideboards as cards outside the game for Extrapolate the Impossible (draft-event games pass the rest of the pool), sacrificing the greatest mana value, and "cards drawn this way".
+
+### Reality Fracture F6: blue (2026-11-19)
+
+- 13 blue cards (docs/reality-fracture.md), with behold costs, Sphinx's Approach's exile-to-search, and "if you've scried or surveilled this turn" (Surveillance Phantasm).
+
+### Reality Fracture R3c: Akroma and morph (2026-11-16)
+
+- Morph in the engine: a card with `morph` can be cast face down from hand for {3} at sorcery speed (its own play option, "Cast face down as a 2/2"), and becomes a nameless, colorless 2/2 creature with no abilities (`cardface.ts`, `FACE_DOWN_CARD`). Its controller turns it face up any time they could pay the morph cost, as a special action that doesn't use the stack (`TurnedFaceUp` event). It is turned face up wherever it goes other than the stack or battlefield.
+- Hidden information: other players get `?facedown` instead of its card (state, `SpellCast` and `CardMoved` events), with no printing or finish; the browser board shows them a card back, and shows its controller the real card marked "Face down".
+- Akroma, Angel of Fury (can't be countered; flying, trample, protection from white and blue; {R}: +1/+0; morph {3}{R}{R}{R}). Multiverse Reforged now has 79 of its 93 distinct cards built.
+
+### Reality Fracture F5: white (2026-11-19)
+
+- 19 white cards (docs/reality-fracture.md), with "choose a creature type" as a spell resolves (Kindred Judgment), Prophesied End's draw, and Enlightened Confidant's surveil.
+
+### Token stacks: two or more, and "how many" (2026-11-19)
+
+- Two or more tokens with the same name and power/toughness now share one card with a ×N count (before: six or more, and never tokens with keywords or abilities, so Treasures and flying Spirits didn't stack). They stack by token, controller, current power/toughness and keywords, tapped state and summoning sickness; attackers stack by whom they attack. A token with counters, damage, something attached or an effect of its own, and blockers and blocked attackers, show on their own.
+- Clicking a stack while declaring attackers or blockers, or while choosing cards (sacrifice, tap, discard...), asks how many of them ("How many Soldier attack Bot1?": All 6, 5 ... None); the stack then reads "3 of 6 attacking". Targets, activated abilities and tapping for mana use one token per click. When there's nothing to do with a stack, a click shows each token (the "Stack tokens" button puts them back).
+- The engine is unchanged: every token keeps its own id, and the choice becomes that many individual tokens in the action. The board preview takes `?tokens=N`.
+
+### Crowded battlefields fit their seats (2026-11-19)
+
+- With many permanents (a 1-on-1 Commander game), battlefield rows wrapped onto lines the seat had no room for, so cards spilled under the life totals and the next seat. Now, in 2- and 3-player games, each row (creatures, lands) stays on one line: its cards shrink to fit the row's width, then every row shrinks together if they're taller than the seat; only below a readable minimum (55% of the usual size) do a row's cards fan out with a small overlap, the one under the pointer on top (`useFitBattlefield` in `components/Zones.tsx`). Four-player games keep scaling the whole seat (`FitBoard`). Hand cards are unchanged.
+- The board preview takes `?crowd=N` to put N more permanents on each battlefield (`/preview.html?players=2&crowd=14`).
+
+### Reality Fracture F4: prepared (2026-11-16)
+
+- The prepared mechanic and its 24 cards (docs/reality-fracture.md): a prepared creature's controller may cast a copy of its prepare spell, which unprepares it.
+
+### Reality Fracture F3: planeswalkers you control have ... (2026-11-16)
+
+- The ten "Way of the ..." enchantments, Sanctum Lurker, Avatar of Burgeoning Echoes and Kiora of Salt and Sand: loyalty abilities given to your planeswalkers, loyalty-activation triggers, and planeswalkers that survive at 0 loyalty.
+
+### Reality Fracture F2: empower Jace (2026-11-16)
+
+- 17 cards that empower Jace (docs/reality-fracture.md), with excess damage, "the next spell can't be countered" and loyalty-counter triggers in the engine.
+
+### Reality Fracture F1: lands (2026-11-16)
+
+- The main set's card roadmap is in docs/reality-fracture.md (groups F1-F13). F1 builds 19 lands: the Commons and Annexes ("unless you control a planeswalker"), the portal view lands ("unless you control two or more other lands"), Theorist's Sanctum (behold a Jace), Hall of Echoes (becomes a copy; the legend rule is off for you that turn), Roiling Canopy and Room of Refuge.
+
+### Reality Fracture packs (2026-11-16)
+
+- Play and Collector Boosters for Reality Fracture on the Packs tab (`set: 'fra'`), with Wizards' published odds slot by slot and the echoed pairs arriving as pairs; the Collection binder's Reality Fracture tab now holds the whole set (main set, Booster Fun, Commander Booster Fun, the precon, Special Guests, tokens and art cards). Details in docs/packs.md.
+- New special foils named: facet foil and double rainbow foil (shown with the regular foil shine for now).
+
+### Reality Fracture main set imported (2026-11-16)
+
+- Reality Fracture (FRA, released 2026-10-02) is its own set, separate from the Multiverse Reforged precon. Its main set, collector numbers 1-290 with the basics (281-290; 291+ are borderless and other variants), is imported from MTGJSON: `node packages/cards/scripts/import-sets.ts fra` writes the 278 cards no other file defines to `data/fra-set.json` (2 built automatically, the vanilla Yargles; 276 `notBuilt`). Card data and images are cached (`npm run scryfall`), and the tokens its cards make are waiting in `pending-tokens.json`.
+- A printed power can now be negative (Loot, the Anomaly is -2/4); toughness still can't.
+- Next: its packs (Play and Collector Booster odds, print sheets, the server's `set`), its Collection tab, then building its cards in groups.
+
+### Reality Fracture R5b: Jace and empower; Multiverse Reforged complete (2026-11-16)
+
+- Jace, Multiverse Architect (loyalty 4; on each opponent's turn they may pay {2} or their creatures can't attack your Jaces that turn, `ProtectSubtypeUnlessPays` and `attackBans`; +1 draws two and puts a card from your hand on the bottom; −3 exiles your creature or planeswalker and reveals until a creature or planeswalker card onto the battlefield), Elspeth, Sun's Champion (static emblems: `CreateEmblem`, `emblemStatics`, shown as an "Emblem" marker by the player), Fatehold Charm and Plan for All Outcomes.
+- Empower Jace N (`Empower`): loyalty counters on a Jace token you control, creating the blue Jace planeswalker token (tfra 5: −1 surveil 1, −3 draw a card) first if you have none. The `nthNoncreatureSpellThisTurn` trigger condition.
+- The computer never pays Jace's {2}, since it attacks players rather than planeswalkers. Every card of Multiverse Reforged is now built.
+
+### Reality Fracture R5a: four creatures (2026-11-16)
+
+- Nissa, Leyline Tamer (landfall: draw, then the first time each turn reveal until a creature onto the battlefield), Dack Fayden, Helping Hand (reveal until one creature card per opponent, shuffle; goaded by you for the rest of the game, `goadedForever`; you choose which opponent gains control of each, a `giveToOpponent` card choice per opponent), Ob Nixilis, the Ascended (destroys tapped creatures your opponents control, life for each; an Angel at each end step after you gained life), Tamiyo, Upriser Crowned (you become the monarch; creatures that deal combat damage to you while you're the monarch are tapped and stunned).
+- Engine: `RevealUntil` can find several cards (`untilCount`), put them onto the battlefield (`toBattlefield`) and shuffle afterwards; "one or more" triggers keep every object of the batch (`subjects`, target `TriggeringObjects`); `toYou` and `whileYouAreMonarch` trigger conditions. Angel token (tfrc 1).
+- Dack Fayden: if fewer creature cards are revealed than you have opponents, the opponents earliest in turn order get them. Multiverse Reforged now has 89 of its 93 distinct cards built.
+
+### Reality Fracture R4: artifacts and enchantments (2026-11-16)
+
+- Skrelv's Hive (upkeep Mite; corrupted: your creatures with toxic have lifelink: a `corrupted` static condition and a `hasToxic` filter), Dreadhorde Invasion (the `Amass` effect: a 0/0 Zombie Army token if you have no Army, your choice of Army if you have several, and it becomes a Zombie too), Cursed Mirror (may enter as a copy of a creature until end of turn, with haste), Windcrag Siege ("as this enters, choose Mardu or Jeskai": a general `chooseOptionAsEnters` choice, a `ChooseOption` action and `ifChosenOption` on statics and triggers; Mardu doubles attack triggers like Isshin), Currency Converter (discarded cards exiled with it; {T} puts one into its owner's graveyard for a Treasure or a 2/2 Rogue), Proteus Staff (the creature's controller reveals until a creature card and puts it onto the battlefield).
+- New tokens from Scryfall: Zombie Army, Goblin and Rogue (tfrc), Treasure (tfra).
+- Proteus Staff: the revealed cards go on the bottom in a random order (the player chooses the order in paper), as for other "reveal until" cards. Multiverse Reforged now has 85 of its 93 distinct cards built.
+
+### Face-down permanents, complete (2026-11-16)
+
+- Morph and disguise (cast face down for {3}; disguise's face-down 2/2 also has ward {2}), manifest, cloak (manifest with ward {2}) and manifest dread (look at two, manifest one, the other to the graveyard; a `manifestDread` card choice).
+- Turning face up is a special action (rule 116.2b): no stack, no "activated ability" triggers, and effects that stop activated abilities don't stop it. The cost is the morph or disguise cost, or a manifested creature card's mana cost. Effects `TurnFaceUp` and `TurnFaceDown`; a manifested instant or sorcery can't be turned face up (it is revealed instead). The `TurnedFaceUp` trigger ("when this is turned face up") and the `faceDown` object filter.
+- Face-down characteristics are the copiable values (rule 707.2): a copy of a face-down permanent is a face-up nameless 2/2 (with ward if the original had it) showing nothing of the card, and token copies get the face-down id. A face-down permanent can't transform, and doesn't enter with the real card's counters, loyalty or lore.
+- Hidden information: other players get `?facedown` or `?facedown-ward`; everything is revealed when it leaves the battlefield or stack, when its player leaves the game, and when the game ends (rule 708.10).
+
+### Reality Fracture R3b: four creatures (2026-11-16)
+
+- Serra's Emissary (protection from a chosen card type), The Ur-Sphinx (eminence cost reduction; mills each player and casts one of their spells free), Omnath, Locus of the Void (grows with unspent mana, which turns colorless instead of emptying) and Venser, Fervent Forger (copies an opponent's spell twice, or makes two hasty copies of their permanent). Multiverse Reforged now has 78 of its 93 distinct cards built. Akroma (morph) is R3c.
+
+### Player requests (2026-11-16)
+
+- A Requests page where players send the admin a subject, the cards involved and a description, and follow the status of their own requests. The Admin page has an Accounts tab and a Requests tab, where each request shows the account that sent it, can be set to not started, incomplete or complete, and can be deleted. Details in docs/economy.md, "Administration". Tests in `server/test/admin.test.ts`.
+
+### Reality Fracture R3a: creatures (2026-11-16)
+
+- Nine creatures: Avacyn, Angel of Horror, Archfiend of Despair, Darksteel Angel, Overlord of the Mistmoors (impending), Jhoira, Weatherlight Corsair, Niv-Mizzet, Ghost Counsel, Ginger, Queen of Sweets, Memnarch, the Warden and Archon of Cruelty, plus the Insect, Myr and Gingerbrute tokens. Multiverse Reforged now has 74 of its 93 distinct cards built.
+- New engine pieces are listed under R3a in docs/commander.md. R3 is split: R3b has the five creatures that each need a larger rule (morph, protection from a card type, eminence, unspent mana, copies).
+
+### Reality Fracture R2b: the harder spells (2026-11-16)
+
+- Fact or Fiction (piles), Teferi's Reproach (a shielded player), Mass Polymorph and Synthetic Destiny (reveal until that many creatures), and Shark Typhoon (cycling with X), plus the Shark token. Multiverse Reforged now has 65 of its 93 distinct cards built.
+- New choices `separatePiles` and `choosePile`, with prompts on the board and choices for the computer players (the best card alone; take the pile worth more). `PlayerState.shielded` is classified in redact.ts.
+
+### Reality Fracture R2a: spells (2026-11-16)
+
+- 10 cards: Despark, Brainsurge, Flawless Maneuver, Secure the Wastes, Martial Coup, Sunfall, Whirlwind of Thought, Occult Epiphany, Grand Crescendo and White Sun's Twilight, with five tokens (Soldier, Citizen, Spirit, Phyrexian Mite, Incubator). Multiverse Reforged now has 60 of its 93 distinct cards built.
+- Engine: toxic and "can't block" on a definition, the `exiledThisWay` amount and the `notCreatedThisWay` filter. R2 is split: R2b has the five spells that need new choices; the two empower cards move to R5 with Jace.
+
+### Reality Fracture R1: lands and mana (2026-11-16)
+
+- 14 cards: the Azorius, Dimir, Izzet and Rakdos Signets, Reflecting Pool, Mystic Gate, the three Turbulent lands, Contaminated and Perilous Landscape, Kher Keep, Restless Anchorage and Restless Spire, plus the Kobolds of Kher Keep and Map tokens. Multiverse Reforged now has 50 of its 93 distinct cards built.
+- Engine: lands that enter tapped unless opponents control eight or more lands (`entersTappedUnless.opponentsLands`), and land animation with colors, keywords and abilities (`Animation`: `colors`, `keywords`, `statics`).
+- Tests: `packages/bots/test/frc-cards.test.ts`. `mana-abilities.test.ts` now skips Fellwar Stone (built at import), which needs an opponent's lands.
+
+### Reality Fracture: the Multiverse Reforged precon imported (2026-11-16)
+
+- The next set is Reality Fracture. Its only Commander deck, **Multiverse Reforged** (Jace, Multiverse Architect; white, blue, black and red), comes from MTGJSON (`import-precons.ts frc`): 60 new definitions in `frc.json` and the exact decklist in `frc-precons.json` (`FRC_PRECONS`, also in `ALL_PRECONS`). 40 of its 97 entries play already; the rest are `notBuilt` (groups R1-R5 in docs/commander.md).
+- Card data and art are cached (`npm run scryfall`). Running the import scripts in a cloud session needs `NODE_USE_ENV_PROXY=1` for Node's fetch.
+- Rule 903.3d: a card that says it "can be your commander" can be one (`canBeCommander` on the definition; Jace is a planeswalker).
+- Store: a Reality Fracture tab with the precon (2,000, saved as a deck). It's a free starter choice, and the Collection has a Reality Fracture tab with its cards.
+- Tests: `cards/test/frc-precons.test.ts` (100 cards, every printing cached, a legal Commander deck that starts games with its printings) and the Store and starter tests in `server/test/collection.test.ts`.
+
+### Administration page (2026-11-16)
+
+- An admin flag in the database (`profiles.is_admin`; the owner's account Solis is the admin) and an Admin page listing every account's Aether Shards and fragments. An admin can set or change anyone's shards; each change goes through the ledger and an `admin_actions` audit row with a note. See docs/economy.md, "Administration".
+- Server: `/api/account` returns `admin`; `GET /api/admin/accounts`, `POST /api/admin/shards`; `AccountService.isAdmin`, `adminAccounts`, `adminActions`, `adminAdjustShards`. Tests: `server/test/admin.test.ts` (only admins; set, add, take away; once per request; never below zero; the ledger still matches).
+
+### Credits and legal notice (2026-11-12)
+
+- Every page ends with the notice that Wizards of the Coast's Fan Content Policy suggests ("Project Nexus is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. ..."), plus a line that nothing is sold for real money. The signed-out pages show it too.
+- The footer's *Credits and legal* link opens a credits page (`#/credits`, `components/Credits.tsx`; inline on the signed-out pages). It covers:
+  - Magic: The Gathering (Wizards of the Coast and Hasbro), FINAL FANTASY (Square Enix) and the card artists, with each menu-art crop listed by card and artist (from `ui-art.json`).
+  - Scryfall (not endorsed by it), the fonts (SIL Open Font License) and the Victory and Defeat art.
+  - That Aether Shards can't be bought and have no cash value, and a takedown line for rights holders.
+- The policy page couldn't be opened from the development session (its host is blocked there), so its wording came from search results. The owner should read the current policy at company.wizards.com/en/legal/fancontentpolicy, including whether fan-made games are covered.
+
+### Typefaces: Cinzel, Lora and Oswald (2026-11-12)
+
+- Two fonts with a third for numbers, as the user asked. All three are under the SIL Open Font License and bundled with the app from npm (`@fontsource/*`, imported in `client/src/fonts.ts`), so nothing loads from another site.
+  - **Cinzel** for titles and headers: page titles, the brand, section headers, card names.
+  - **Lora** for rules and body text, buttons and prompts. Flavor text uses its italic.
+  - **Oswald** for numbers: mana symbol digits, power and toughness, counters and badges, life totals, stack numbers, pile counts, reward amounts and the deckbuilder's counts.
+- The three roles are CSS variables (`--font-display`, `--font-body`, `--font-numbers` in styles.css); the old Georgia headers use `--font-display`.
+- Card names use **Grenze** (600), a condensed medieval serif. Measured on the game's 1,155 card names at the same size, 63% fit a small card's name bar against 17% for Cinzel (Marcellus 37%, Cormorant Garamond 53%, EB Garamond 50%). A long name also shrinks to fit its bar, down to 62% of the size (`FittedName` in Card.tsx), and is cut off with an ellipsis only below that. On a two-player board at 1440x900, 4 of 23 names are cut off, against 7 with Cinzel. This applies to the drawn card frames, which show when Scryfall's images can't load; the real card images carry their own printed names.
+- Player names use bold Lora, because Cinzel's "1" reads as an "I" ("Bot1" looked like "BOTI"). Card names have no extra letter spacing, so more of each name fits.
+- Checked at 1280x720 to 1920x1080 and on a phone: nothing on the board is covered.
+
+### The reward screen after a game (2026-11-12)
+
+- At the end of a game, a full reward screen replaces the small game-over box. It shows the result (Victory, Defeat or Draw, and the turn) and each reward line in turn, with the shard icon, the total counting up and your new balance. Quest progress is fetched fresh from the server.
+- The server sends the rewards just after the game ends; the screen waits up to 6 seconds for them ("Adding up your rewards…"). A game that earns nothing says why: a practice game, or a game that ended before every player's second turn, or one you conceded.
+- **Continue** goes to Home. After a draft game it's **Back to the draft**. **View the board** hides the screen to look at the final board, and *Show the results* brings it back. The lesson keeps its own ending.
+- The user's Victory and Defeat art (`client/public/results/victory.webp`, `defeat.webp`) is the banner across the top of the screen, with a short zoom-in. A draw, or art that fails to load, shows the word instead.
+- `components/RewardScreen.tsx`; `GameSession.earnsRewards` (true for server-run tables and draft games, false for local practice and Starter Kit duels) and `draftGame`; `Quests compact`. The board preview has `?over=win|loss|none` to see the screen.
+
+### Rewards and crafting audit (2026-11-12)
+
+- Checked the live database with read-only queries. No negative balances. Every account's balance equals its ledger, except the owner's test account (set by hand). Fragment balances equal the fragment ledger, per account.
+- Found: draft entries whose event was lost to a server restart (events live in memory; every deploy restarts) kept the entry, with no prize and no refund. The server now refunds them at startup (`EventHub.refundLostEntries`, `AccountService.unsettledEntries`), once each. Test in `events.test.ts`.
+- The Craft tab reloads fragments, cards and decks when the signed-in account changes. A test in `crafting.test.ts` checks that two accounts' fragments stay separate, even with the same request id.
+- Quests per account: a test has two players share three games. Each counts only their own games and is paid their own quest once. The Home page's quest panel reloads when the signed-in account changes.
+- No game had been recorded for rewards yet. The reward path has tests (`rewards.test.ts`); only server-run games pay (signed in, a saved deck, the AI opponent, no seed; or online tables and draft games).
+
+### Sideboarding between draft games (2026-11-12)
+
+- Before, the next game began as soon as the loser chose play or draw, so the winner had no time to sideboard. Now each game of an unfinished match is followed by a sideboarding window of up to three minutes. The match keeps `sideboardEndsAt` and `readyNext`; `readyForNextGame` and `expireSideboarding` are in `draftEvent.ts`; the server runs one timer per event. A timer that fires counts as its deadline, so a lagging clock can't make it reschedule forever.
+- New message `eventReadyNext`. The match view shows `sideboardEndsAt` and `readyNext`.
+- Draft page: the match panel offers *Sideboard* (the deckbuilder with a sideboard clock and a *Ready for game N* button) and *Ready for game N*, and shows when the opponent is ready. Every legal deck is saved as you go.
+- Tests: `draftEvent.test.ts` (the window, readiness, the clock, a ready player's deck locked while the other sideboards) and `events.test.ts` (the message during a full event).
+
+### Effects shown where they happen (2026-11-12)
+
+From the friend's playtest notes (effects should be more apparent, and it shouldn't feel like guessing where they come from):
+- A line with an arrow runs from each new spell, ability, attacker or blocker to its targets for about 2.5 seconds. It is orange, or violet for a trigger. Spells start from their card in the stack panel.
+- Damage, life gained or lost, and counters pop up as large numbers on the card or player they hit. Damage to the same target in one batch shows as one total (two attackers for 2 and 4 show -6). The card or player that took damage shakes and glows red.
+- The session collects `impacts` from DamageDealt, LifeChanged and CountersAdded events. These are public events, so online games show them too. `components/Impacts.tsx` draws the effects. Player headers carry `data-player`. Reduced-motion settings turn the arrows off.
+
+### Commander Reinforcements Secret Lair: the last 10 cards (2026-11-12)
+
+Every card in the game is now built (no `notBuilt` cards left in any set).
+The Edge of Eternities Secret Lair drops sold in the Store:
+- Featuring Deathburger: Ethersworn Canonist (static
+  `oneNonartifactSpellEachTurn`, counted by the new player field
+  `nonartifactSpellsThisTurn`, redacted as a copy), Goblin Engineer (new
+  effect `SearchLibraryToGraveyard`), Dance of the Manse (`repeatX` targets
+  with `manaValueAtMostX`, plus `becomesIfXAtLeast`, which makes the returned
+  permanents 4/4 creatures when X is 6 or more), Arcbound Ravager (modular 1
+  as an entry counter and a dies trigger that moves its +1/+1 counters), and
+  Foundry Inspector.
+- Alien Auroras: Reprocess, Aggressive Mining (static `cantPlayLands`),
+  Sylvan Safekeeper, Crucible of Worlds and Zuran Orb.
+- Engine fix: the X chosen for a spell now reaches its target checks, both
+  when it's cast and as it resolves (`TargetContext.x`), so "each with mana
+  value X or less" targets work for spells.
+- Tests: `packages/bots/test/sld-reinforcements.test.ts`. The card audit flags
+  Arcbound Ravager because its target appears only in modular's reminder text.
+
+### Color key and one meaning per color (2026-11-12)
+
+A readability pass after the friend's feedback and Hodent's "The Gamer's Brain":
+- Each signal color now means one thing: green is playable or usable, gold is choose, orange is the target of what just happened, red is attacking or damage, and teal is blocking. On the stack, the number under a card is gold for a spell, violet for a triggered ability and blue for an activated ability. A dark teal badge marks turn control.
+- Small text on the board (names, counts, piles, notes, phases) is larger.
+- A color key (`components/ColorKey.tsx`) opens on a player's first game and from the Key button in the phase bar.
+- Two- and three-player games keep the life-counter hub (seat-colored tiles; click one for its commander damage) and now show it in the middle of the table, on the phase bar, as four-player games already did. The phase bar splits around it.
+
+### Nothing covered on the board (2026-11-12)
+
+Applying Celia Hodent's "The Gamer's Brain" (GDC 2015) usability checklist:
+- Card sizes follow the window height, so both battlefields (creatures and
+  lands) fit between the phase bar and the prompt at 720-1080px; checked at
+  1280x720, 1366x768, 1440x900 and 1920x1080 (2-4 players).
+- The "who targeted what" line is in the phase bar instead of its own row;
+  Pause is the ❚❚ icon on narrower screens and the log button says "Log".
+- What was just cast or triggered shows on the right of your battlefield,
+  sized to it, not over your seat, the phase bar or the prompt.
+- The prompt glows once when a decision becomes yours; prompt text is
+  shorter; "Hold priority" appears only when it can be used.
+- Four players: cards grow to fill each seat (up to 1.6x; the hand keeps its
+  size), and the lower-right seat's name is clear of the life totals.
+
+### The Dominion Bracelet: controlling another player's turn (2026-11-12)
+
+The last Edge of Eternities main set card: 261 of 261 built. The engine
+has rule 722: `GameState.turnControl` and `decisionMaker(s, player)` say who
+makes a player's decisions (their controller during the controlled turn),
+and `controlledBy` the players someone controls. The controller sees what
+the controlled player sees (`viewFor`, `visibleCards`). The local session
+(`actor()`, `decidesNow()`), the online server (`hostedGame.ts` accepts the
+controller's actions for that player and runs a bot that controls someone)
+and the board follow it: while you control a player, their hand is where
+yours usually is, a purple "You control Bot1 this turn" badge is in the
+phase bar, and you can attack anyone else, yourself included. See
+docs/decisions.md for the simplifications.
+
+### Stack numbers on the board (2026-11-12)
+
+A card whose ability is on the stack shows that ability's number
+underneath (1 resolves first, as in the stack panel), with a matching
+outline: red for a triggered ability, blue for an activated one. The stack
+panel numbers its items the same way, gold for spells. Orange still marks
+targets. This replaces the SOURCE / TRIGGER labels.
+
+### Satyr Wayfinder showed nothing to pick (2026-11-12)
+
+"Look at the top N cards; you may put a matching one into your hand"
+(Satyr Wayfinder, Pulsar Squadron Ace, Famished Worldsire and the like)
+opened an empty list: the board's view (`view.ts`) only revealed looked-at
+library cards for some kinds of choice. It now shows the chooser the same
+cards `redact.ts` does: the ones on offer and the others looked at with them.
+The fuzz invariants now fail any game where a player must choose among
+cards they can't see (`bots/src/invariants.ts`); a run over random decks of
+every built card found no other case.
+
+### Mana symbols everywhere (2026-11-12)
+
+Text that mentions mana ("pay {2}{R}", rules text, the log, the stack,
+menus, error messages, the lesson) draws the symbols instead of the braces.
+Generic mana and X are a gray circle with the number or letter; the rest
+use Scryfall's symbols, with a colored letter if one can't load.
+
+### Easier to follow: a friend's first impressions (2026-11-12)
+
+- **Targets are confirmed.** Picking the last target no longer goes
+  through at once: the picks are outlined and the prompt offers Confirm,
+  Change target and Cancel. A spell that costs mana then goes on to the
+  mana step, whose title names the target ("Chaos Warp → Terra").
+- **The card viewer opens beside the card you point at** (above a card in
+  your hand), not at the right edge. A card the game shows on its own (a
+  trigger) still uses the right edge.
+- **The stack is a clear panel**: gold-bordered, numbered from the top
+  ("Next", 2, 3), with a count, who controls each item, its targets, and
+  for abilities what they do.
+- **The game log is a drawer** opened with the "Game log" button in the
+  phase bar, in every layout; it isn't a permanent column any more.
+- **The computer plays slower** at the normal pace (about 40% longer
+  pauses after spells, abilities, combat and new permanents); Settings
+  still has slow and fast.
+- **Larger type** in the prompt bar and its buttons, the phase bar, the
+  log, the card viewer's rules text and the notes under cards; the
+  "who targeted what" line is larger and brighter.
+
+### Planeswalkers, and Tezzeret, Cruel Captain
+
+The engine has planeswalkers: the card type, starting loyalty, loyalty
+abilities (+N, 0, -N: one per planeswalker each turn, at sorcery speed),
+damage that removes loyalty, the graveyard at 0 loyalty, "any target"
+reaching them, and creatures attacking them instead of the player
+(`Attack.planeswalker`; on the board, click an opponent's planeswalker
+while declaring attackers). Tezzeret, Cruel Captain is built: 260 of 261.
+The computer opponents use loyalty abilities like any other ability but
+never attack a planeswalker yet.
+
+### Edge of Eternities main set, group M21
+
+Four more: 259 of 261 built; only Tezzeret, Cruel Captain (planeswalkers)
+and The Dominion Bracelet (controlling another player's turn) remain. New:
+general restricted mana (`ManaRestriction`, `PlayerState.restrictedMana`:
+artifact spells only, abilities of artifacts only, spells from outside your
+hand only) for Steelswarm Operator and Mmmenon; Moonlit Meditation replaces
+the first tokens a player creates each turn (in `createToken`); Lightstall
+Inquisitor's exiled cards are playable at a tax. The bots never tap the new
+restricted sources.
+
+### Edge of Eternities main set, group M20
+
+Three more: 255 of 261 built. Devour land (a choice as the spell resolves,
+like Sin's counters; the bots eat about half their lands), Ragost's Foods
+(artifacts gain the subtype and the life ability in `currentDefinition`),
+and Weftwalking (in `spellCost`: a player's first spell on their own turn
+costs no mana unless they choose X or an alternative cost).
+
+### Mana symbols under tapped lands
+
+The note under a card you're tapping for mana ("+{R}") now draws the mana
+symbols instead of the text in braces.
+
+### Edge of Eternities main set, group M19
+
+Three more: 252 of 261 built. Close Encounter's additional cost is a chosen
+creature or warped exiled creature card (`costCards`, offered through the
+legal actions); Terminal Velocity marks the permanent it puts onto the
+battlefield (haste, end-step sacrifice, and a leave-the-battlefield trigger
+queued by `moveCard`); Sothera exiles opponents' chosen creatures linked to
+it and returns one after sacrificing itself.
+
+### Edge of Eternities main set, group M18
+
+Three more: 249 of 261 built. Tannuk, Steadfast Second grants warp to cards
+in hand (`grantWarpInHand`, applied in `currentDefinition` for cards in hand
+and on the stack; a card that already has an alternative cost keeps only
+its own). Tapestry Warden's creatures deal combat damage and station with
+toughness (`combatPowerOf`). Requiem Monolith's granted ability is applied
+as the damage is dealt, without the stack.
+
+### Edge of Eternities main set, group M17
+
+Six more: 246 of 261 built. Zero Point Ballad (toughness X or less, and a
+return of one creature destroyed this way), Mutinous Massacre (odd or even
+mana value), Dyadrine (counters equal to the mana spent), Blade of the
+Swarm (a new target: an exiled card with warp), Pinnacle Starcage and
+Sunset Saboteur (its ward discard is random, like Alpharael's: see
+docs/decisions.md).
+
+### Edge of Eternities main set, group M16
+
+Three more one-offs: 240 of 261 built. A returned card can lose its
+abilities for as long as it stays (Xu-Ifit), a returned creature can enter
+attacking the player the triggering creature attacked (Chorale of the
+Void), and "tap X untapped artifacts" is a cost (Secluded Starforge).
+"Sacrifice this" no longer asks you to pick the only option (Command Bridge).
+
+### Edge of Eternities main set, group M15
+
+Ten more cards: 237 of 261 built. An Aura's enchanted creature can deal
+damage or fight (`damageSource: 'EquippedCreature'`), counters can be
+removed again at the next end step, every spell can get affinity
+(`spellCostReduction.perCount`), token copies can be legendary, and a
+creature can be limited to one blocker.
+
+### Edge of Eternities main set, group M14
+
+Eight one-off designs: 227 of 261 built. Cards remember the mana spent to
+cast them (Astelli Reclaimer), triggers can check the source's power as it
+left (Syr Vondam), an opponent can make a choice for an ability (Terrapact
+Intimidator), and a new effect sets life to half the starting total (The
+Endstone).
+
 ### Edge of Eternities main set, group M13
 
 14 more cards: 219 of 261 built. Three Planets and The Eternity Elevator

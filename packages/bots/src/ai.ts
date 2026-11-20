@@ -547,9 +547,31 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.kind !== 'chooseCards') return legal[0]!;
   const pick = (cards: InstanceId[]): Action => ({ type: 'ChooseCards', player: me, cards });
   if (p.purpose === 'offerDraw') return pick([...p.cards]);
+  // Fact or Fiction, splitting for an opponent: the best card alone against the rest.
+  // Ward—Discard a card: pay with the least valuable card in hand.
+  if (p.purpose === 'wardDiscard') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
+  // Extrapolate the Impossible: reveal the two best cards with different names; an opponent gives us the weaker one.
+  if (p.purpose === 'revealOutside') {
+    const best: InstanceId[] = [];
+    for (const id of [...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!))) {
+      if (best.length < 2 && !best.some((x) => s.cardDefs[s.cards[x]!.defId]!.name === s.cardDefs[s.cards[id]!.defId]!.name)) best.push(id);
+    }
+    return pick(best.length === 2 ? best : []);
+  }
+  if (p.purpose === 'pickOutside') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
+  if (p.purpose === 'separatePiles') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
+  // Taking a pile: the one worth more (each card counts, and so does how good it is).
+  if (p.purpose === 'choosePile') {
+    const [a, b] = p.piles ?? [p.cards, []];
+    const worth = (pile: InstanceId[]) => pile.reduce((n, id) => n + 1 + Math.max(0, value(s, s.cards[id]!)) / 10, 0);
+    const take = worth(a) >= worth(b) ? a : b;
+    return pick(take.length ? [take[0]!] : []);
+  }
   // Temporal Extortion: pay half our life to stop an extra turn only while plenty of life remains.
   if (p.purpose === 'payHalfLife') return pick(s.players[me]!.life >= 16 ? [...p.cards] : []);
   // Syncopate: pay to keep our spell if we can (tapping mana first), else let it go.
+  // The computer attacks players, not planeswalkers: no need to pay Jace's tax.
+  if (p.purpose === 'payToAvoidCounter' && p.protectSubtype) return pick([]);
   if (p.purpose === 'payToAvoidCounter') {
     const cost = { generic: p.payGeneric ?? 0 };
     const pool = s.players[me]!.manaPool;
@@ -568,6 +590,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'castOrTreasure') return pick([]);
   // Rhystic Study: always draw.
   if (p.purpose === 'mayDraw') return pick([...p.cards]);
+  // Arc of Fortune: a new hand of seven when holding three or fewer cards.
+  if (p.purpose === 'wheel') return pick(s.players[me]!.hand.length <= 3 ? [...p.cards] : []);
   // Zell: return our least valuable land. Ambrosia: nothing (bouncing is only worth it with an enters ability). Zenos: their weakest creature, the likeliest to leave and flip him.
   if (p.purpose === 'bounce') return p.min === 0 ? pick([]) : pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   if (p.purpose === 'counter' || p.purpose === 'attachSource') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
@@ -678,12 +702,16 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Choco: every land.
   if (p.purpose === 'digLands') return pick([...p.cards]);
   // Hideaway: the best spell (a land found this way still needs a land play).
+  // Manifest dread: manifest a creature card (it can be turned face up), the other goes to the graveyard.
+  if (p.purpose === 'manifestDread') return pick([p.cards.find((id) => s.cardDefs[s.cards[id]!.defId]?.types.includes('creature')) ?? byValue.at(-1)!]);
   if (p.purpose === 'hideaway') return pick([byValue.findLast((id) => !isLandCard(s, id)) ?? byValue.at(-1)!]);
   // Espers to Magicite: an artifact copy of the best creature card.
   if (p.purpose === 'artifactCopy') return pick(byValue.slice(-1));
   // Yuffie: attach the best Equipment.
   if (p.purpose === 'attachToSource') return pick(byValue.slice(-1));
   // Sin: take every opponent's counters, and our own only when they aren't +1/+1 counters on our creatures.
+  // Devour land: eat about half our lands, so the creature survives and we can still cast spells.
+  if (p.purpose === 'devourOnEntry') return pick(p.cards.slice(0, Math.max(1, Math.floor(p.cards.length / 2))));
   if (p.purpose === 'removeCountersOnEntry') return pick(p.cards.filter((id) => s.cards[id]!.controller !== me || !s.cards[id]!.counters));
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
   const ours = s.cards[p.cards[0]!]!.controller === me;
@@ -739,6 +767,17 @@ export function basicAi(_seed = 0): Bot {
       return legal.find((a) => a.type === 'ChooseColor' && a.color === best?.[0]) ?? legal[0]!;
     }
     // "Choose a card type" (Cloud Key): the type most of its cards in hand and library are.
+    // A Siege's mode: Jeskai (a hasty lifelink Goblin each upkeep) unless you have several attack triggers to double.
+    if (pending.kind === 'chooseOption') {
+      const options = legal.filter((a): a is Extract<Action, { type: 'ChooseOption' }> => a.type === 'ChooseOption');
+      // A creature type to spare (Kindred Judgment): the one most of its own creatures have.
+      if (pending.forResolution === 'creatureType') {
+        const mine = s.players[pending.player]!.battlefield.map((id) => s.cards[id]!).filter((c) => currentDefinition(s, c).types.includes('creature'));
+        const count = (t: string) => mine.filter((c) => (currentDefinition(s, c).subtypes ?? []).includes(t)).length;
+        return [...options].sort((a, b) => count(b.option) - count(a.option))[0] ?? legal[0]!;
+      }
+      return options.find((a) => a.option === 'Jeskai') ?? options[0] ?? legal[0]!;
+    }
     if (pending.kind === 'chooseCardType') {
       const p = s.players[pending.player]!;
       const count = (t: string) => [...p.hand, ...p.library].filter((id) => (def(s, s.cards[id]!).types as string[]).includes(t)).length;

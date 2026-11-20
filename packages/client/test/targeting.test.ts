@@ -29,6 +29,6 @@ describe('targeting presentation',()=>{
   const events=[{type:'StackItemResolved' as const,item:'x',card:'c',fizzled:false}];
   const action={type:'PassPriority' as const,player:'You'};
   for(const pace of ['normal','slow','fast'] as const) expect(actionDelay(events,action,false,pace,true)).toBeGreaterThan(actionDelay(events,action,false,pace));
-  expect(actionDelay(events,action,false,'normal',true)).toBe(3200);
+  expect(actionDelay(events,action,false,'normal',true)).toBe(3600);
  });
 });

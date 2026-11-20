@@ -30,15 +30,17 @@ import typeLists from '../data/types.json' with { type: 'json' };
 /** Official subtype lists for each card type (data/types.json, from Scryfall). */
 const SUBTYPES_BY_TYPE: Partial<Record<CardType, readonly string[]>> = {
   creature: typeLists.creature,
-  artifact: typeLists.artifact,
+  // Heartwood (Reality Fracture's token) isn't in Scryfall's catalog yet.
+  artifact: [...typeLists.artifact, 'Heartwood'],
   enchantment: typeLists.enchantment,
+  planeswalker: typeLists.planeswalker,
   land: typeLists.land,
   instant: typeLists.spell,
   sorcery: typeLists.spell,
 };
 const ALL_SUBTYPES = new Set(Object.values(SUBTYPES_BY_TYPE).flat());
 /** Subtypes of the card types only unbuilt cards may have (a planeswalker's "Tezzeret"). */
-const UNBUILT_SUBTYPES: Record<string, readonly string[]> = { planeswalker: typeLists.planeswalker, battle: typeLists.battle };
+const UNBUILT_SUBTYPES: Record<string, readonly string[]> = { battle: typeLists.battle };
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Effects that need an `amount`. */
@@ -52,6 +54,8 @@ const PLAYER_ONLY_EFFECTS = new Set([
   'Mill',
   'ExileGraveyard',
   'SacrificeGreatestPower',
+  'SacrificeGreatestManaValue',
+  'RevealFromOutsideGame',
   'PutTopCardIfLand',
   'Discard',
   'Sacrifice',
@@ -67,6 +71,8 @@ const PLAYER_TARGETS = new Set([
   'TargetPlayer',
   'DefendingPlayer',
   'PreviousTargetController',
+  // The player chosen by an earlier target ("target opponent sacrifices ..., discards a card, and loses 3 life").
+  'PreviousTarget',
   'ActivePlayer',
   'EachPlayerWhoChose',
   'EachOpponentWhoChose',
@@ -110,6 +116,8 @@ function validateAmount(a: Amount | undefined, err: Err): void {
     const kinds = [
       'previousTargetPower',
       'destroyedThisWay',
+      'exiledThisWay',
+      'lifeGainedInEvent',
       'chosenCount',
       'chosenManaValue',
       'sourceCounterKinds',
@@ -121,16 +129,23 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetManaValue',
       'x',
       'lifeLostThisWay',
+      'drawnThisWay',
+      'previousTargetLoyalty',
       'revealedManaValue',
       'subjectManaValue',
       'previousTargetPowerOverSubject',
       'damageDealt',
+      'excessDamage',
+      'previousTargetLibraryToGraveyardThisTurn',
+      'chosenNonlandCount',
       'subjectManaSpent',
       'dieRoll',
       'chosenCardTypes',
       'previousTargetPlayerMatching',
       'lifeLostInEvent',
       'landsToGraveyardThisWay',
+      'countersAddedInEvent',
+      'chosenCostPower',
       'sacrificedPower',
       'sacrificedManaValue',
     ];
@@ -168,7 +183,7 @@ function validateFilter(f: ObjectFilter | undefined, err: Err): void {
 
 /** Returns a list of problems with one card. Empty means valid. */
 /** Card types the engine doesn't play yet. */
-const UNBUILT_TYPES = ['planeswalker', 'battle'] as const;
+const UNBUILT_TYPES = ['battle'] as const;
 
 export function validateCardDefinition(raw: unknown): string[] {
   const errors: string[] = [];
@@ -202,6 +217,11 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (!isLand && !c.token && !c.uncastable && c.manaCost === undefined && !c.id?.endsWith('-back')) err('nonland cards need a manaCost (use "{0}" for free).');
   if (c.token && c.manaCost !== undefined) err('tokens have no mana cost.');
   validateCost(c.manaCost, err);
+  if (c.prepare) {
+    if (!c.types.includes('creature')) err('only creatures have prepare spells.');
+    if (!Array.isArray(c.prepare.types) || c.prepare.types.length !== 1 || !['instant', 'sorcery'].includes(c.prepare.types[0]!)) err('A prepare spell must be an instant or sorcery.');
+    for (const error of validateCardDefinition({ id: c.id, ...c.prepare })) err(`prepare: ${error}`);
+  }
   if (c.adventure) {
     // Adventurer creatures, and the Final Fantasy Town lands (play the land later from exile).
     if (!c.types.includes('creature') && !c.types.includes('land')) err('Adventure needs a creature or land card.');
@@ -232,8 +252,9 @@ export function validateCardDefinition(raw: unknown): string[] {
   const perCounter = c.manaAbility?.amountPerCounter;
   if (perCounter !== undefined && perCounter !== true) validateCounterKind(perCounter, err);
   for (const color of c.colorIdentity ?? []) if (!['W', 'U', 'B', 'R', 'G'].includes(color)) err(`unknown color "${color}" in colorIdentity.`);
-  if (c.types.includes('creature') && (!isNonNegativeInt(c.power) || !isNonNegativeInt(c.toughness))) {
-    err('creatures need non-negative integer power and toughness.');
+  // A printed power can be negative (Loot, the Anomaly: -2/4); toughness can't.
+  if (c.types.includes('creature') && (!Number.isInteger(c.power) || !isNonNegativeInt(c.toughness))) {
+    err('creatures need integer power and toughness (toughness at least 0; power may be negative).');
   }
   if (c.notBuilt !== undefined && typeof c.notBuilt !== 'boolean') err('notBuilt must be true or false.');
   if (c.uncastable && (!c.notBuilt || c.manaCost !== undefined)) err('an uncastable card is notBuilt and has no manaCost.');
@@ -277,7 +298,7 @@ export function validateCardDefinition(raw: unknown): string[] {
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');
-    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell && !c.costReduction.ifVoid && c.costReduction.ifOpponentsControlCreatures === undefined && !c.costReduction.ifYourTurn && !c.costReduction.ifTargetsBlockingCreature) {
+    if (!c.costReduction.ifTargetsTappedCreature && !c.costReduction.perCount && !c.costReduction.perMatching && c.costReduction.ifOpponentGraveyardAtLeast === undefined && !c.costReduction.ifCastAnotherSpell && !c.costReduction.ifVoid && c.costReduction.ifOpponentsControlCreatures === undefined && !c.costReduction.ifYourTurn && !c.costReduction.ifTargetsBlockingCreature && !c.costReduction.ifYouControl && !c.costReduction.ifCastNoncreatureThisTurn) {
       err('costReduction needs a condition, perCount or perMatching.');
     }
     if (c.costReduction.perCount && !COUNT_KINDS.includes(c.costReduction.perCount)) err(`unknown count "${c.costReduction.perCount}".`);
@@ -315,14 +336,15 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'KeepAndSacrificeRest' && e.amount === undefined && !e.onePerType) err('KeepAndSacrificeRest needs an amount (or onePerType).');
   if (FILTERED_TARGETS.has(e.target) && !e.filter) err(`${e.target} needs a filter saying what qualifies.`);
   if (e.sameNameTokens && e.effect !== 'Exile') err('sameNameTokens only works with Exile.');
-  if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield') && !e.filter) err(`${e.effect} needs a filter.`);
+  if ((e.effect === 'SearchLibraryToHand' || e.effect === 'SearchLibraryToBattlefield' || e.effect === 'SearchLibraryToGraveyard') && !e.filter) err(`${e.effect} needs a filter.`);
   validateFilter(e.filter, err);
   if (e.effect === 'ChooseCounterRecipients' && (e.target !== 'You' || !e.filter || typeof e.amount !== 'number' || !isNonNegativeInt(e.amount))) err('ChooseCounterRecipients needs You, a filter, and a nonnegative whole-number amount.');
   if (e.effect === 'MillAndGrantOneCast' && e.token !== undefined && typeof e.token !== 'string') err('MillAndGrantOneCast token must be a token id.');
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
-  if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
-  if (e.effect !== 'CopyCreature' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyKeywords,e.copyBuffBoth].some(x=>x!==undefined)) err('copy options require CopyCreature.');
+  if (e.effect === 'GrantKeywords' && !e.keywords?.length && !e.chosenKeyword) err('GrantKeywords needs keywords.');
+  if (e.effect === 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyBuffBoth].some(x=>x!==undefined)) err('CreateTokenCopy takes only copyKeywords of the copy options.');
+  if (e.effect !== 'CopyCreature' && e.effect !== 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyKeywords,e.copyBuffBoth].some(x=>x!==undefined)) err('copy options require CopyCreature.');
   for (const k of e.copyKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown copy keyword "${k}".`);
   for (const k of e.keywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown keyword "${k}".`);
   if (e.effect === 'ReflexiveTrigger') {
@@ -350,20 +372,21 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'PutFromHand' && !e.filter) err('PutFromHand needs a filter.');
   if (e.effect === 'RevealUntil' && !e.filter) err('RevealUntil needs a filter.');
   if (e.effect === 'Counter' && e.target !== 'TargetSpell' && e.target !== 'TargetAbility' && e.target !== 'TargetSpellOrAbility') err('Counter needs a TargetSpell, TargetAbility or TargetSpellOrAbility target.');
-  if (e.if !== undefined && !['castFromGraveyard', 'notCastFromGraveyard', 'castFromExile', 'castFromHand', 'kicked', 'notKicked', 'controlChanged'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
+  if (e.if !== undefined && !['castFromGraveyard', 'notCastFromGraveyard', 'castFromExile', 'castFromHand', 'notCastFromHand', 'kicked', 'notKicked', 'controlChanged'].includes(e.if)) err(`unknown condition "${String(e.if)}".`);
   if (e.entireHand && e.effect !== 'Discard') err('entireHand is only for Discard.');
   if (e.whileYouControlSource && e.effect !== 'GrantKeywords' && e.effect !== 'GainControl') err('whileYouControlSource is only for GrantKeywords and GainControl.');
   if (e.effect === 'Fight' && !inAbility && e.damageSource !== 'PreviousTarget') err('Fight in a spell needs damageSource PreviousTarget (a chosen creature fights).');
   if (e.attachToReturnedTarget !== undefined && (e.effect !== 'ReturnToBattlefield' || e.target !== 'TargetCardInGraveyard' || !isNonNegativeInt(e.attachToReturnedTarget))) err('attachToReturnedTarget needs ReturnToBattlefield targeting a graveyard card and a whole target index.');
   if (e.unearth && (e.effect !== 'ReturnToBattlefield' || e.target !== 'This')) err('unearth is only for ReturnToBattlefield on This.');
-  if (e.keep !== undefined && (e.effect !== 'LookAtTopPutInHand' || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
+  if (e.keep !== undefined && ((e.effect !== 'LookAtTopPutInHand' && e.effect !== 'ReturnFromGraveyardTotalManaValue') || !isNonNegativeInt(e.keep) || e.keep === 0)) err('keep is a positive whole number for LookAtTopPutInHand.');
   if (e.free && e.effect !== 'AllowCastFromGraveyard' && e.effect !== 'PlayLinkedExile' && e.effect !== 'ExileTopCardToPlay') err('free is only for AllowCastFromGraveyard, PlayLinkedExile and ExileTopCardToPlay.');
   if (e.effect === 'AllowCastFromGraveyard' && e.target !== 'TargetCardInGraveyard') err('AllowCastFromGraveyard needs a TargetCardInGraveyard target.');
   if (e.effect === 'ChooseAndDestroy' && !e.filter) err('ChooseAndDestroy needs a filter.');
   validateCounterKind(e.counter, err);
   if (e.counter && e.effect !== 'AddCounters' && e.effect !== 'RemoveCounters' && e.effect !== 'ReturnToBattlefield' && !(e.effect === 'KeepAndSacrificeRest' && e.counter === 'vow')) err('"counter" needs AddCounters, ReturnToBattlefield, or a vow on KeepAndSacrificeRest.');
   if ((e.monstrosity || e.ifSourceHasNoCounters) && e.effect !== 'AddCounters') err('monstrosity and ifSourceHasNoCounters are only for AddCounters.');
-  if ((e.anyKind || e.allCounters) && e.effect !== 'MoveCounters') err('anyKind and allCounters are only for MoveCounters.');
+  if (e.allCounters && e.effect !== 'MoveCounters') err('allCounters is only for MoveCounters.');
+  if (e.anyKind && e.effect !== 'MoveCounters' && e.effect !== 'RemoveCounters') err('anyKind is only for MoveCounters and RemoveCounters.');
   if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
   if (e.damageSource && e.effect !== 'DealDamage' && e.effect !== 'Fight') err('damageSource is only for DealDamage and Fight.');
@@ -481,7 +504,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking'].includes(cond)) e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking', 'corrupted', 'threshold', 'opponentDealtNoncombatDamage'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   if (st.grantsMana && (st.affects === 'Self' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types, on EquippedCreature or EachMatching.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);
@@ -513,6 +536,7 @@ export function validateCardList(cards: readonly unknown[]): string[] {
     const effects = [
       ...(c.effects ?? []),
       ...(c.adventure?.effects ?? []),
+      ...(c.prepare?.effects ?? []),
       ...(c.modes ?? []).flat(),
       ...(c.alternativeCost?.effects ?? []),
       ...(c.triggers ?? []).flatMap((t) => [...(t.effects ?? []), ...(t.randomModes ?? []).flat(), ...(t.modes ?? []).flat()]),

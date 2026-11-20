@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { activatedAbilities, applyAction, currentDefinition, getLegalActions, hasFlag, hasKeyword, powerOf, type CardInstance, type GameState } from '@nexus/engine';
+import { viewFor } from '../../engine/src/view.ts';
 
 const hasType = (s: GameState, c: CardInstance, t: string) => (currentDefinition(s, c).types as string[]).includes(t);
 import { act, card, cast, fight, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
@@ -746,6 +747,9 @@ describe('E5: sacrifice payoffs and lands from the graveyard', () => {
     expect(s.pending.kind).toBe('chooseCards');
     if (s.pending.kind !== 'chooseCards') return;
     expect([...s.pending.cards].sort()).toEqual([top[1]!, top[3]!].sort());
+    // The board shows you all four cards (it once hid them, so there was nothing to pick); your opponent sees none.
+    expect(top.every((id) => viewFor(s, 'P1').cards[id])).toBe(true);
+    expect(top.some((id) => viewFor(s, 'P2').cards[id])).toBe(false);
     s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top[3]!] })).state;
     expect(s.cards[top[3]!]!.zone).toBe('hand');
     for (const id of [top[0]!, top[1]!, top[2]!]) expect(s.cards[id]!.zone).toBe('graveyard');
@@ -1972,5 +1976,20 @@ describe('E17: extra combats, dredge, encore and sacrifice-fuelled exile', () =>
     expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: p2copy, defender: 'P3' }, { attacker: p3copy, defender: 'P3' }] })).toMatch(/opponent it was made for/);
     expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [] })).toBeTruthy();
     expect(applyAction(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: p2copy, defender: 'P2' }, { attacker: p3copy, defender: 'P3' }] }).ok).toBe(true);
+  });
+});
+
+describe('Tear Asunder', () => {
+  it('exiles an artifact or enchantment; kicked, any nonland permanent', () => {
+    let s = newGame();
+    const tear = put(s, 'P1', 'tear-asunder', 'hand');
+    const bear = put(s, 'P2', 'meltstrider-eulogist');
+    const ring = put(s, 'P2', 'sol-ring');
+    mana(s, 'P1', { G: 2, B: 2, C: 4 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: tear, targets: [{ kind: 'card', card: bear }] })).toBeTruthy();
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: tear, targets: [{ kind: 'card', card: ring }] }).state;
+    expect(t.cards[ring]!.zone).toBe('exile');
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: tear, kicks: 1, targets: [{ kind: 'card', card: bear }] }).state;
+    expect(t.cards[bear]!.zone).toBe('exile');
   });
 });

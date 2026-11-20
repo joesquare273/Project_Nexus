@@ -3,8 +3,11 @@ import { useEffect, useState } from 'react';
 import { FIN_PRECONS, SCRYFALL, UI_ART, type UiArtKey } from '@nexus/cards';
 import type { GameDeck } from '@nexus/cards/decks';
 import { GameSession, type DeckChoice, type SessionOptions } from './game/session.ts';
-import { ManaCost } from './components/Card.tsx';
+import { ManaCost, ManaText } from './components/Card.tsx';
 import { Game } from './components/Game.tsx';
+import { CreditsPage, LegalFooter } from './components/Credits.tsx';
+import { AdminPage } from './account/AdminPage.tsx';
+import { RequestsPage } from './account/RequestsPage.tsx';
 import { firstLesson, type Lesson } from './tutorial/lesson.ts';
 import { PacksTab } from './packs/PacksTab.tsx';
 import { CraftTab } from './craft/CraftTab.tsx';
@@ -48,7 +51,7 @@ export function App() {
   return <MainApp />;
 }
 
-type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop';
+type Page = 'home' | 'play' | 'collection' | 'decks' | 'craft' | 'shop' | 'requests' | 'credits' | 'admin';
 type PlayMode = 'ai' | 'online' | 'draft';
 type ShopMode = 'packs' | 'store';
 interface Route {
@@ -64,13 +67,15 @@ const PAGES: { id: Page; label: string }[] = [
   { id: 'decks', label: 'Decks' },
   { id: 'craft', label: 'Craft' },
   { id: 'shop', label: 'Shop' },
+  { id: 'requests', label: 'Requests' },
 ];
 
 /** The page from the address bar (#/play/online), so the browser's back button works. */
 function routeFromHash(hash: string): Route {
   const [page, sub] = hash.replace(/^#\/?/, '').split('/');
   const route: Route = { page: 'home', play: 'ai', shop: 'packs' };
-  if (PAGES.some((p) => p.id === page)) route.page = page as Page;
+  // The credits page isn't in the top menu; the link at the foot of every page opens it.
+  if (PAGES.some((p) => p.id === page) || page === 'credits' || page === 'admin') route.page = page as Page;
   if (route.page === 'play' && (sub === 'online' || sub === 'draft' || sub === 'ai')) route.play = sub;
   if (route.page === 'shop' && (sub === 'store' || sub === 'packs')) route.shop = sub;
   return route;
@@ -153,6 +158,12 @@ function MainApp() {
         key={gameNumber}
         session={session}
         onQuit={quit}
+        onContinue={() => {
+          // After a draft game, back to the event (the page you were on); otherwise Home.
+          const draft = session.draftGame;
+          quit();
+          if (!draft) go({ page: 'home' });
+        }}
         {...(lesson
           ? {
               lesson,
@@ -241,7 +252,7 @@ function MainApp() {
           <span className="brand-mark" aria-hidden="true">✦</span> Project Nexus
         </button>
         <nav className="top-nav" aria-label="Main">
-          {PAGES.map((p) => (
+          {[...PAGES, ...(account.kind === 'ready' && account.account.admin ? [{ id: 'admin' as Page, label: 'Admin' }] : [])].map((p) => (
             <button
               key={p.id}
               data-nav={p.id}
@@ -314,7 +325,7 @@ function MainApp() {
                 <OwnCommanderDecks key={format} format={format} onChoose={(d, saved) => (setOwnDeck(d), setSavedDeck(saved))} onBuild={() => go({ page: 'decks' })} />
                 {format === 'commander' && (
                   <p className="fineprint">
-                    Commander rules: 40 life, your commander starts in the command zone (it costs {'{2}'} more each time you cast it from there), and 21 combat
+                    Commander rules: 40 life, your commander starts in the command zone (it costs <ManaText text="{2}" size={14} /> more each time you cast it from there), and 21 combat
                     damage from one commander knocks a player out.
                   </p>
                 )}
@@ -406,7 +417,22 @@ function MainApp() {
             {route.shop === 'packs' ? <PacksTab section="packs" onSection={(s) => go({ page: s === 'packs' ? 'shop' : s })} /> : <StoreTab />}
           </>
         )}
+
+        {route.page === 'requests' && (
+          <>
+            <PageTitle title="Requests" subtitle="Report a problem or send an idea to the admin" art="decks" />
+            <RequestsPage />
+          </>
+        )}
+        {route.page === 'credits' && <CreditsPage />}
+        {route.page === 'admin' && (
+          <>
+            <PageTitle title="Admin" subtitle="Every account's Aether Shards and fragments" art="store" />
+            {account.kind === 'ready' && account.account.admin ? <AdminPage /> : <p className="packs-loading">Only admins can open this page.</p>}
+          </>
+        )}
       </main>
+      <LegalFooter onCredits={() => go({ page: 'credits' })} />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 // balance always comes from the game server (/api/account), which checks the
 // sign-in with Supabase; the browser only displays it.
 
+import { LandingLegal } from '../components/Credits.tsx';
 import { useEffect, useState } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { UI_ART, type UiArtKey } from '@nexus/cards';
@@ -15,6 +16,8 @@ export const supabase: SupabaseClient | null = url && anonKey ? createClient(url
 interface Account {
   name: string;
   shards: number;
+  /** An admin account (set in the database; the server checks it on every admin request). */
+  admin?: boolean;
 }
 
 /** The signed-in player's access token for the game server, or null. */
@@ -89,7 +92,7 @@ export function SignInPage() {
           </article>
         ))}
       </section>
-      <p className="fineprint landing-foot">A personal, non-commercial project. Card images courtesy of Scryfall.</p>
+      <LandingLegal />
     </div>
   );
 }
@@ -106,6 +109,7 @@ export function AccountsSetupPage() {
           <code>npm run server</code>. See HOW-TO-RUN.txt, section 1.
         </p>
       </div>
+      <LandingLegal />
     </div>
   );
 }
@@ -128,10 +132,10 @@ export function useAccount(): Status {
     setStatus({ kind: 'loading' });
     fetch('/api/account', { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
-        const body = (await res.json().catch(() => ({}))) as Partial<Account> & { error?: string };
+        const body = (await res.json().catch(() => ({}))) as Partial<Account> & { error?: string; admin?: boolean };
         if (stale) return;
         if (!res.ok || typeof body.shards !== 'number') setStatus({ kind: 'error', message: body.error ?? 'The game server could not load your account.' });
-        else setStatus({ kind: 'ready', account: { name: body.name ?? 'Player', shards: body.shards } });
+        else setStatus({ kind: 'ready', account: { name: body.name ?? 'Player', shards: body.shards, ...(body.admin ? { admin: true } : {}) } });
       })
       .catch(() => !stale && setStatus({ kind: 'error', message: 'Could not reach the game server. Is it running (npm run server)?' }));
     return () => {

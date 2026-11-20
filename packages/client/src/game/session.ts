@@ -13,6 +13,7 @@ import {
   applyAction,
   castsAtInstantSpeed,
   createGame,
+  decisionMaker,
   currentDefinition,
   spellDefinition,
   filterEventsFor,
@@ -112,6 +113,14 @@ export class GameSession {
   keepPriority = false;
   /** What you earned for this game (games the server ran), once the server says. */
   rewards: { lines: { label: string; amount: number }[]; balance: number | null } | null = null;
+  /** Whether this game can earn rewards (it runs on the game server); local practice games can't. */
+  get earnsRewards(): boolean {
+    return false;
+  }
+  /** A draft event's game: after it, Continue goes back to the event, not Home. */
+  get draftGame(): boolean {
+    return this.options.format === 'limited';
+  }
   /** Cards whose abilities triggered, in order, for the board to show (`key` is unique). */
   readonly triggered: { key: number; card: InstanceId }[] = [];
   /** The mana each player tapped for most recently (one batch of moves), shown under their hand size for a few seconds. */
@@ -120,6 +129,8 @@ export class GameSession {
   readonly casts: { key: number; card: InstanceId; defId: string; printing?: CardDefinition['printing']; player: PlayerId }[] = [];
   /** Cards that changed zones, in order, for the board to animate (only what you may see). */
   readonly moves: CardMove[] = [];
+  /** Damage, life changes and counters, in order, for the board to show where they land (`key` is unique). */
+  readonly impacts: Impact[] = [];
   private nextMoveKey = 1;
   private nextTriggerKey = 1;
   /** Cards the last bot action touched, for highlighting. */
@@ -188,6 +199,22 @@ export class GameSession {
     return viewFor(this.state, YOU);
   }
 
+  /**
+   * The player whose decision you're making right now: you, or the player you control this turn
+   * (The Dominion Bracelet, rule 722). The board offers and submits actions for this player.
+   */
+  actor(): PlayerId {
+    const s = this.state;
+    if (s.pending.kind === 'gameOver') return YOU;
+    return decisionMaker(s, s.pending.player) === YOU ? s.pending.player : YOU;
+  }
+
+  /** Whether the game is waiting on a decision you make (yours, or one for the player you control). */
+  decidesNow(): boolean {
+    const s = this.state;
+    return s.pending.kind !== 'gameOver' && decisionMaker(s, s.pending.player) === YOU;
+  }
+
   legal(): Action[] {
     return getLegalActions(this.state);
   }
@@ -198,7 +225,7 @@ export class GameSession {
    * comes with a suggested set of mana taps that pays for it.
    */
   plays(): CardPlay[] {
-    return playableCards(this.state, YOU);
+    return playableCards(this.state, this.actor());
   }
 
   /**
@@ -220,8 +247,9 @@ export class GameSession {
       }
       const first = p.choices[0]?.action;
       const spell = spellDefinition(def, first?.type === 'CastSpell' && !!first.adventure);
-      const anyTime = c.castPermission?.player === YOU && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
-      return anyTime || castsAtInstantSpeed(s, YOU, c, spell);
+      const me = this.actor();
+      const anyTime = c.castPermission?.player === me && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
+      return anyTime || castsAtInstantSpeed(s, me, c, spell);
     });
   }
 
@@ -243,7 +271,7 @@ export class GameSession {
     this.recent.clear();
     const notices = eventTargetNotices(this.state, result.events);
     this.targetHistory.unshift(...notices.reverse()); this.targetHistory.splice(8);
-    this.presentationDelayMs = notices.length ? actionDelay(result.events, actions.at(-1)!, false, this.aiPace, true) : 0;
+    this.presentationDelayMs = notices.some((n) => n.targets.length > 0) ? actionDelay(result.events, actions.at(-1)!, false, this.aiPace, true) : 0;
     this.narrate(result.events);
     return null;
   }
@@ -256,22 +284,25 @@ export class GameSession {
   advance(): Advance {
     const s = this.state;
     if (s.pending.kind === 'gameOver') return 'over';
-    const bot = s.pending.player !== YOU;
+    // Whoever decides for the waiting player: you (for yourself or a player you control), or a bot.
+    const decider = decisionMaker(s, s.pending.player);
+    const bot = decider !== YOU;
     // You're tapping mana to pay for something: don't pass priority under you.
     if (!bot && this.holdPriority && s.pending.kind === 'priority') return 'you';
-    const action = bot ? this.bots[s.pending.player]!(s, this.legal()) : this.automaticAction();
+    // A bot that controls another player plays that player's turn with its own judgement (it decides as them).
+    const action = bot ? (this.bots[decider] ?? this.bots[s.pending.player])!(s, this.legal()) : this.automaticAction();
     if (!action) return 'you';
     const result = applyAll(s, [action]);
     if ('error' in result) throw new Error(`Automatic action was illegal: ${result.error}`);
     const resolved = result.events.find(e => e.type === 'StackItemResolved');
     const top = resolved?.type === 'StackItemResolved' ? [s.resolving?.item, ...s.stack].find(item => item?.id === resolved.item) : undefined;
-    const resolution = top ? targetNotice(s, top.kind === 'spell' ? top.card : top.source, top.controller, top.targets) : null;
+    const resolution = top ? targetNotice(s, top.kind === 'spell' ? top.card : top.source, top.controller, top.targets, top.kind === 'ability' && top.from === 'trigger' && !top.rule) : null;
     this.state = result.state;
     const notices = eventTargetNotices(this.state, result.events);
     if (resolution) notices.unshift(resolution);
     this.targetHistory.unshift(...notices.reverse()); this.targetHistory.splice(8);
     this.narrate(result.events);
-    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace, notices.length > 0);
+    this.presentationDelayMs = actionDelay(result.events, action, bot, this.aiPace, notices.some((n) => n.targets.length > 0));
     if (this.presentationDelayMs > 0) {
       this.recent = touchedCards(result.events);
       return 'bot';
@@ -291,6 +322,7 @@ export class GameSession {
   protected automaticAction(): Action | null {
     const s = this.state;
     const pending = s.pending;
+    const YOU = this.actor();
     switch (pending.kind) {
       case 'priority':
         if (this.stopEverywhere || this.phaseStops.has(s.step)) return null;
@@ -316,6 +348,7 @@ export class GameSession {
   /** Stop for your main phases, for spells you might answer, and for steps where instants matter. */
   private worthStopping(): boolean {
     const s = this.state;
+    const YOU = this.actor();
     const top = s.stack.at(-1);
     // Your own spell or ability on top: pass for you, unless you're holding priority
     // and could still add something at instant speed (otherwise there's nothing to hold it for).
@@ -328,6 +361,7 @@ export class GameSession {
     const tapped: Record<PlayerId, string> = {};
     for (const e of events) if (e.type === 'ManaAdded') tapped[e.player] = (tapped[e.player] ?? '') + `{${e.mana}}`;
     for (const [pid, mana] of Object.entries(tapped)) this.manaTapped[pid] = { key: this.nextTriggerKey++, mana };
+    this.recordImpacts(events);
     for (const e of events) {
       if (e.type === 'AbilityTriggered') this.triggered.push({ key: this.nextTriggerKey++, card: e.card });
       if (e.type === 'SpellCast') {
@@ -359,6 +393,26 @@ export class GameSession {
     }
     flush();
     if (this.log.length > 400) this.log.splice(0, this.log.length - 400);
+  }
+
+  /** Damage, life gained or lost, and counters put on, for the board to show at the card or player. */
+  private recordImpacts(events: GameEvent[]): void {
+    const add = (i: Omit<Impact, 'key'>) => this.impacts.push({ key: this.nextTriggerKey++, ...i });
+    // Damage to a player already shows as damage, so its life loss isn't shown twice.
+    const damaged = new Set<PlayerId>();
+    for (const e of events) {
+      if (e.type === 'DamageDealt' && e.amount > 0 && e.target.kind !== 'none' && e.target.kind !== 'ability') {
+        if (e.target.kind === 'player') damaged.add(e.target.player);
+        add({ kind: 'damage', ...(e.target.kind === 'card' ? { card: e.target.card } : { player: e.target.player }), text: `-${e.amount}` });
+      } else if (e.type === 'LifeChanged' && e.to !== e.from) {
+        if (e.to > e.from) add({ kind: 'gain', player: e.player, text: `+${e.to - e.from}` });
+        else if (!damaged.has(e.player)) add({ kind: 'loss', player: e.player, text: `-${e.from - e.to}` });
+      } else if (e.type === 'CountersAdded' && e.amount > 0) {
+        const kind = e.counter ?? '+1/+1';
+        add({ kind: 'counter', card: e.card, text: kind === '+1/+1' ? `+${e.amount}/+${e.amount}` : kind === '-1/-1' ? `-${e.amount}/-${e.amount}` : `+${e.amount} ${kind}` });
+      }
+    }
+    if (this.impacts.length > 200) this.impacts.splice(0, this.impacts.length - 200);
   }
 
   /** A zone change for the board to animate. Tokens appearing and leaving the game aren't flights. */
@@ -398,6 +452,15 @@ export class GameSession {
     const clean = text.replace(/^\n/, '').replace(/=====/g, '').trim();
     this.log.push({ id: this.nextLogId++, text: clean, heading });
   }
+}
+
+/** Something that happened to a card or a player, shown where it landed: damage, life gained or lost, counters. */
+export interface Impact {
+  key: number;
+  kind: 'damage' | 'gain' | 'loss' | 'counter';
+  card?: InstanceId;
+  player?: PlayerId;
+  text: string;
 }
 
 export function applyAll(s: GameState, actions: Action[]): { state: GameState; events: GameEvent[] } | { error: string } {

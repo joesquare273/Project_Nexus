@@ -415,6 +415,8 @@ function YourMatch({ v, m, others }: { v: EventView; m: MatchView; others: Match
             </p>
           )}
         </>
+      ) : m.sideboardEndsAt && !m.readyNext.includes(v.you) ? (
+        <Sideboarding v={v} m={m} />
       ) : m.chooser === v.you && !m.nextFirst ? (
         <>
           <p>You lost the last game, so you choose: play first or draw first in game {m.games.length + 1}?</p>
@@ -427,12 +429,90 @@ function YourMatch({ v, m, others }: { v: EventView; m: MatchView; others: Match
         </>
       ) : m.live ? (
         <p>Game {m.games.length + 1} is on. It opens on the board automatically.</p>
+      ) : m.sideboardEndsAt && m.nextFirst ? (
+        <p>You're ready. Waiting for {nameOf(v, them)} to finish sideboarding…</p>
       ) : m.nextFirst || !m.chooser ? (
         <p>Game {m.games.length + 1} is starting…</p>
       ) : (
         <p>Waiting for {nameOf(v, m.chooser)} to choose play or draw…</p>
       )}
     </section>
+  );
+}
+
+/**
+ * Between games of a match: change your deck with cards from your pool (your
+ * sideboard), then say you're ready. The loser of the last game also chooses
+ * play or draw. Every legal version of the deck is saved as you go, so the
+ * last one counts if the clock runs out.
+ */
+function Sideboarding({ v, m }: { v: EventView; m: MatchView }) {
+  const [mods, setMods] = useState<{ draft: DraftModule; limited: Limited } | null>(null);
+  useEffect(() => {
+    void Promise.all([import('@nexus/cards/draft'), import('@nexus/cards/limited')]).then(([draft, limited]) => setMods({ draft, limited }));
+  }, []);
+  const [open, setOpen] = useState(false);
+  const [deck, setDeck] = useState<LimitedDeck | null>(v.deck);
+  const pool = v.draft?.picks ?? [];
+  const next = m.games.length + 1;
+  const them = otherSeat(m, v.you);
+  const now = useNow(true) + eventLink.offset;
+  const left = Math.max(0, (m.sideboardEndsAt ?? 0) - now);
+  const clock = `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')}`;
+  const choosing = m.chooser === v.you && !m.nextFirst;
+  const change = (d: LimitedDeck) => {
+    setDeck(d);
+    if (mods && !mods.limited.deckProblem(d, pool)) eventLink.send({ type: 'eventDeck', deck: d });
+  };
+  const ready = () => {
+    if (deck) eventLink.send({ type: 'eventDeck', deck });
+    eventLink.send({ type: 'eventReadyNext' });
+  };
+  const playDraw = choosing && (
+    <>
+      <p>You lost the last game, so you choose: play first or draw first in game {next}?</p>
+      <div className="format-choices">
+        <button className="primary" onClick={() => eventLink.send({ type: 'eventPlayDraw', play: true })}>
+          Play first
+        </button>
+        <button onClick={() => eventLink.send({ type: 'eventPlayDraw', play: false })}>Draw first</button>
+      </div>
+    </>
+  );
+  if (open && mods && deck) {
+    return (
+      <>
+        {playDraw}
+        <Deckbuilder
+          limited={mods.limited}
+          draft={mods.draft}
+          pool={pool}
+          deck={deck}
+          endsAt={(m.sideboardEndsAt ?? 0) + eventLink.offset}
+          onChange={change}
+          onReady={ready}
+          sideboard={{ readyLabel: `Ready for game ${next}` }}
+        />
+      </>
+    );
+  }
+  return (
+    <>
+      <p>
+        Game {m.games.length} goes to {m.games.at(-1)?.winner === v.you ? 'you' : m.games.at(-1)?.winner ? nameOf(v, them) : 'nobody (a draw)'}. Before game {next} you may sideboard: swap cards between your deck and the rest of your pool.
+        Game {next} starts when you're both ready, or in {clock}.
+      </p>
+      {playDraw}
+      <div className="format-choices">
+        <button disabled={!mods || !deck} onClick={() => setOpen(true)}>
+          Sideboard
+        </button>
+        <button className={choosing ? '' : 'primary'} onClick={ready}>
+          Ready for game {next}
+        </button>
+      </div>
+      {m.readyNext.includes(them ?? '') && <p className="fineprint">{nameOf(v, them)} is ready.</p>}
+    </>
   );
 }
 

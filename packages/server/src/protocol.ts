@@ -50,6 +50,8 @@ export const ClientMessage = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('eventReady'), ready: z.boolean() }),
   /** After losing a game: play first (true) or draw (false) in the next. */
   z.strictObject({ type: z.literal('eventPlayDraw'), play: z.boolean() }),
+  /** Done sideboarding: ready for the next game of your match. */
+  z.strictObject({ type: z.literal('eventReadyNext') }),
   /** Leave an event that hasn't started. */
   z.strictObject({ type: z.literal('eventLeave') }),
   /** Tables (tables.ts): the host makes one with seats for players and for bots, 2-4 in all: Commander, or your own 60-card decks. */
@@ -175,6 +177,9 @@ export interface EventMatchView {
   done: boolean;
   /** A game of this match is being played now. */
   live: boolean;
+  /** Sideboarding before the next game: until when (null: not sideboarding), and who is ready. */
+  sideboardEndsAt: number | null;
+  readyNext: string[];
 }
 
 /** A draft event as one player may see it: their own pack, picks and deck, and everyone's progress and results. */

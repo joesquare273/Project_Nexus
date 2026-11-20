@@ -9,8 +9,8 @@ import { AliasBook, applyAction, getLegalActions, materialize, playerUpdate, HID
 import { CARD_DEFS } from '@nexus/cards';
 import { goTo, newGame, put } from './kit-helpers.ts';
 
-/** Cards whose mana ability needs something this setup doesn't have (a commander, five lands, a chosen color, an untapped artifact). */
-const NEEDS_MORE = new Set(['arcane-signet', 'commanders-sphere', 'temple-of-the-false-god', 'crossroads-village', 'urza-lord-high-artificer']);
+/** Cards whose mana ability needs something this setup doesn't have (a commander, five lands, a chosen color, an untapped artifact, an opponent's lands). */
+const NEEDS_MORE = new Set(['arcane-signet', 'commanders-sphere', 'temple-of-the-false-god', 'crossroads-village', 'room-of-refuge', 'urza-lord-high-artificer', 'fellwar-stone']);
 /** Mana abilities that move a hidden card. */
 const MOVES_HIDDEN = new Set(['millikin']);
 
@@ -33,7 +33,7 @@ describe('mana abilities', () => {
       // Restricted mana (only for Equipment, artifacts or noncreature spells) has its own pools.
       const pool = (st: typeof s) => {
         const p = st.players.P1!;
-        return [p.manaPool, p.equipmentMana, p.artifactMana ?? {}, p.noncreatureSpellMana].flatMap((m) => Object.values(m) as number[]).reduce((x, y) => x + y, 0);
+        return [p.manaPool, p.equipmentMana, p.artifactMana ?? {}, p.noncreatureSpellMana, ...Object.values(p.restrictedMana ?? {})].flatMap((m) => Object.values(m) as number[]).reduce((x, y) => x + y, 0);
       };
       for (const a of ways) {
         const r = applyAction(s, a);

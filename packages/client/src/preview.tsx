@@ -9,6 +9,7 @@ import { FIN_PRECONS } from '@nexus/cards';
 import { basicAi } from '@nexus/bots';
 import { GameSession, YOU } from './game/session.ts';
 import { Game } from './components/Game.tsx';
+import './fonts.ts';
 import './styles.css';
 
 const params = new URLSearchParams(location.search);
@@ -23,6 +24,58 @@ for (let guard = 0; guard < 4000 && session.state.turnNumber <= turns && session
     const error = session.submit([me(s, session.legal())]);
     if (error) break;
   } else session.advance();
+}
+
+// ?crowd=N: N more permanents from each library onto each battlefield (lands and nonlands), to see a full board.
+const crowd = Number(params.get('crowd') ?? 0);
+if (crowd > 0) {
+  const s = session.state;
+  for (const pid of s.turnOrder) {
+    const p = s.players[pid]!;
+    for (const id of p.library.splice(0, crowd)) {
+      const c = s.cards[id]!;
+      c.zone = 'battlefield';
+      c.summoningSick = false;
+      p.battlefield.push(id);
+    }
+  }
+}
+
+// ?tokens=N: you get N ready Soldier tokens and three Treasures (token stacks).
+const tokens = Number(params.get('tokens') ?? 0);
+if (tokens > 0) {
+  const s = session.state;
+  const make = (defId: string) => {
+    const id = `t${s.nextId++}`;
+    s.cards[id] = { id, defId, owner: YOU, controller: YOU, zone: 'battlefield', tapped: false, summoningSick: false, damage: 0, deathtouched: false, isToken: true };
+    s.players[YOU]!.battlefield.push(id);
+  };
+  for (let i = 0; i < tokens; i++) make('soldier-token');
+  for (let i = 0; i < 3; i++) make('treasure-token');
+}
+
+// ?control=1: you control the next opponent's turn (The Dominion Bracelet), to see that board.
+if (params.get('control')) {
+  for (let guard = 0; guard < 400 && session.state.activePlayer === YOU; guard++) {
+    const s = session.state;
+    if ('player' in s.pending && s.pending.player === YOU) session.submit([me(s, session.legal())]);
+    else session.advance();
+  }
+  const s = session.state;
+  s.turnControl = [{ player: s.activePlayer, by: YOU, turn: s.turnNumber }];
+}
+
+// ?over=win|loss|none: the game ends there, to see the reward screen (with sample rewards, or none).
+const over = params.get('over');
+if (over) {
+  const s = session.state;
+  s.winner = over === 'loss' ? s.turnOrder.find((p) => p !== YOU)! : YOU;
+  s.pending = { kind: 'gameOver' } as typeof s.pending;
+  if (over !== 'none') {
+    session.rewards = over === 'win'
+      ? { lines: [{ label: 'Game against the computer', amount: 75 }, { label: 'Win bonus', amount: 50 }, { label: 'Your first win', amount: 500 }, { label: 'Daily quest: Win a game', amount: 300 }], balance: 6025 }
+      : { lines: [{ label: 'Game against the computer', amount: 75 }], balance: 5175 };
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

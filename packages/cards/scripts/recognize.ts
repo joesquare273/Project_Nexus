@@ -90,6 +90,8 @@ export function define(c: MtgjsonCard): { def: CardDefinition; built: boolean; n
     ...(c.power !== undefined ? { power: Number(c.power) || 0, toughness: Number(c.toughness) || 0 } : {}),
     colorIdentity: c.colorIdentity,
     printing: { set: c.setCode.toLowerCase(), number: c.number },
+    // "[This card] can be your commander" (rule 903.3d).
+    ...((c.text ?? '').includes(`${c.name} can be your commander`) ? { canBeCommander: true } : {}),
   };
   const unhandled: string[] = [];
   const keywords: Keyword[] = [];

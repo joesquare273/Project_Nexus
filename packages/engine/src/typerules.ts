@@ -1,3 +1,4 @@
+import type { ManaRestriction } from './types.ts';
 // Rules that come from a card's types (rule 205). Card data says what a card
 // is; the functions here say what that means, so a rule tied to a type is
 // written once instead of on every card. docs/card-types.md lists every type
@@ -45,7 +46,7 @@ export function objectManaValue(s: GameState, c: CardInstance): number {
 }
 
 /** Card types whose cards are permanents: they resolve onto the battlefield and stay (rule 110.4). */
-export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment'];
+export const PERMANENT_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker'];
 
 /** Permanents: lands, creatures, artifacts, enchantments. They stay on the battlefield. */
 export function isPermanentCard(def: CardDefinition): boolean {
@@ -177,7 +178,8 @@ export function canReveal(s: GameState, c: CardInstance, controller: string = c.
   // Shock lands: the choice is paying life (only with that much life).
   const payLife = currentDefinition(s, c).entersTappedUnless?.payLife;
   if (payLife) return s.players[controller]!.life >= payLife;
-  const subtypes = currentDefinition(s, c).entersTappedUnless?.revealSubtypes;
+  const behold = currentDefinition(s, c).entersTappedUnless?.beholdSubtype;
+  const subtypes = currentDefinition(s, c).entersTappedUnless?.revealSubtypes ?? (behold ? [behold] : undefined);
   if (!subtypes) return false;
   const hand = s.players[controller]!.hand.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
   return subtypes.some((t) => hand.some((x) => currentDefinition(s, x).subtypes?.includes(t)));
@@ -223,8 +225,20 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
     return false;
   }
   if (unless.revealSubtypes && reveal !== false && canReveal(s, c)) return false;
+  if (unless.otherLands !== undefined && mine.filter((x) => !x.phasedOut && defOf(x).types.includes('land')).length >= unless.otherLands) return false;
+  if (unless.planeswalker && mine.some((x) => !x.phasedOut && defOf(x).types.includes('planeswalker'))) return false;
+  // Behold: a permanent of that subtype you control counts by itself; otherwise reveal one from your hand.
+  if (unless.beholdSubtype) {
+    if (mine.some((x) => !x.phasedOut && (defOf(x).subtypes ?? []).includes(unless.beholdSubtype!))) return false;
+    if (reveal !== false && canReveal(s, c)) return false;
+  }
   // Shock lands: untapped only when the player chose to pay the life (playLand pays it).
   if (unless.payLife && reveal === true) return false;
+  if (unless.opponentsLands !== undefined) {
+    const theirs = s.turnOrder.filter((p) => p !== c.controller && !s.players[p]!.eliminated)
+      .reduce((n, p) => n + s.players[p]!.battlefield.filter((id) => !s.cards[id]!.phasedOut && defOf(s.cards[id]!).types.includes('land')).length, 0);
+    if (theirs >= unless.opponentsLands) return false;
+  }
   if (unless.yourTurnAtMost !== undefined && s.activePlayer === c.controller && (s.players[c.controller]!.turnsTaken ?? 0) <= unless.yourTurnAtMost) return false;
   return true;
 }
@@ -276,7 +290,7 @@ export function canCastLibraryTop(s: GameState, player: string, c: CardInstance,
   });
 }
 /** Each entry is an ability of the equipped creature, distinct from its printed mana abilities. */
-export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[] }[] {
+export function grantedManaAbilities(s: GameState, c: CardInstance): { source: string; mana: ManaType[]; restricted?: ManaRestriction }[] {
   if (c.zone !== 'battlefield' || c.phasedOut) return [];
   const sources = Object.values(s.cards).filter((source) => source.zone === 'battlefield' && !source.phasedOut);
   // An Equipment's "equipped creature has ..." (Summoning Materia).
@@ -288,6 +302,6 @@ export function grantedManaAbilities(s: GameState, c: CardInstance): { source: s
   const fromStatics = sources.flatMap((source) =>
     (currentDefinition(s, source).statics ?? [])
       .filter((spec) => spec.affects === 'EachMatching' && spec.grantsMana && matchesObject(s, spec.filter, c, { controller: source.controller, source: source.id }))
-      .map((spec) => ({ source: source.id, mana: spec.grantsMana! })));
+      .map((spec) => ({ source: source.id, mana: spec.grantsMana!, ...(spec.grantsManaRestricted ? { restricted: spec.grantsManaRestricted } : {}) })));
   return [...fromEquipment, ...fromStatics];
 }

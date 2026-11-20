@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOSTER_CARDS, COLLECTOR_BOOSTER, EOE_PLAY_BOOSTER, PLAY_BOOSTER, buildEoeSheets, buildSheets, openPack, openSetPack, otherFace, packOdds, setPackOdds } from '../src/boosters.ts';
+import { BOOSTER_CARDS, COLLECTOR_BOOSTER, EOE_PLAY_BOOSTER, FRA_ECHOED_PAIRS, FRA_PLAY_BOOSTER, PLAY_BOOSTER, buildEoeSheets, buildFraSheets, buildSheets, openPack, openSetPack, otherFace, packOdds, setPackOdds } from '../src/boosters.ts';
 
 /** A small seeded generator (mulberry32), so the tests are repeatable. */
 function seeded(seed: number) {
@@ -198,5 +198,69 @@ describe('Edge of Eternities boosters', () => {
   it('Final Fantasy packs are unchanged by the second set', () => {
     expect(openSetPack('fin', 'play', seeded(7))).toEqual(openPack('play', seeded(7)));
     expect(setPackOdds('fin', 'collector')).toEqual(packOdds('collector'));
+  });
+});
+
+describe('Reality Fracture boosters', () => {
+  const sheets = buildFraSheets();
+  const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  const pairOf = new Map<string, string>();
+  for (const list of [...Object.values(sheets.pairs), ...Object.values(sheets.borderlessPairs)]) for (const [a, b] of list) (pairOf.set(a.id, b.id), pairOf.set(b.id, a.id));
+
+  it('sorts the printings into the sheets Wizards describes', () => {
+    expect([sheets.uncommons.length, sheets.rares.length, sheets.mythics.length]).toEqual([43, 50, 20]);
+    expect([sheets.duals.length, sheets.basics.length, sheets.towers.length]).toEqual([10, 10, 15]);
+    // 43 echoed pairs: 66 uncommon, 14 rare and 6 mythic cards; each pair is one rarity; every card of 195-280 is in exactly one pair.
+    expect(FRA_ECHOED_PAIRS).toHaveLength(43);
+    expect(new Set(FRA_ECHOED_PAIRS.flat()).size).toBe(86);
+    expect([sheets.echoed.uncommon.length, sheets.echoed.rare.length, sheets.echoed.mythic.length]).toEqual([66, 14, 6]);
+    expect([sheets.borderlessEchoed.uncommon.length, sheets.borderlessEchoed.rare.length, sheets.borderlessEchoed.mythic.length]).toEqual([10, 14, 6]);
+    for (const list of Object.values(sheets.pairs)) for (const [a, b] of list) expect(a.rarity).toBe(b.rarity);
+    expect([sheets.shattered.rare.length, sheets.shattered.mythic.length]).toEqual([5, 8]);
+    expect([sheets.facetShattered.rare.length, sheets.facetShattered.mythic.length]).toEqual([5, 8]);
+    expect([sheets.stronghold.rare.length, sheets.stronghold.mythic.length]).toEqual([18, 7]);
+    expect([sheets.braintwister.uncommon.length, sheets.braintwister.rare.length, sheets.braintwister.mythic.length]).toEqual([5, 15, 3]);
+    expect([sheets.portal.length, sheets.headliner.length, sheets.japan.length, sheets.fractureJapan.length]).toEqual([5, 1, 10, 10]);
+    expect([sheets.commanderBorderless.length, sheets.commanderExtended.length, sheets.specialGuests.length]).toEqual([2, 16, 10]);
+    expect([sheets.tokens.length, sheets.artCards.length]).toEqual([18, 54]);
+  });
+
+  it('a Play Booster: 14 Magic cards and a token, with two halves of one echoed pair', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = openSetPack('fra', 'play', seeded(seed));
+      expect(pack.set).toBe('fra');
+      expect(pack.cards).toHaveLength(FRA_PLAY_BOOSTER.length);
+      expect(pack.cards.filter((p) => p.card.set !== 'tfra')).toHaveLength(14);
+      for (const p of pack.cards) expect(['fra', 'spg', 'tfra']).toContain(p.card.set);
+      const echoed = pack.cards.filter((p) => /echoed pairs/i.test(p.slot));
+      expect(echoed).toHaveLength(3);
+      expect(pairOf.get(echoed[0]!.card.id)).toBe(echoed[1]!.card.id);
+      expect(echoed[0]!.card.rarity).toBe(echoed[1]!.card.rarity);
+      const commons = pack.cards.slice(0, 6).map((p) => p.card.id);
+      expect(new Set(commons).size).toBe(6);
+    }
+  });
+
+  it('a Collector Booster: 15 Magic cards (a foil echoed pair, a braintwister or Commander card, three Booster Fun cards) and a foil token or art card', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = openSetPack('fra', 'collector', seeded(seed));
+      expect(pack.cards).toHaveLength(16);
+      const echoed = pack.cards.filter((p) => /echoed pairs/i.test(p.slot));
+      expect(pairOf.get(echoed[0]!.card.id)).toBe(echoed[1]!.card.id);
+      expect(pack.cards.filter((p) => p.finish === 'foil' && p.card.set !== 'tfra').length).toBeGreaterThanOrEqual(11);
+    }
+  });
+
+  it("each slot's odds add up to 100%, and the listed numbers are Wizards'", () => {
+    for (const kind of ['play', 'collector'] as const) {
+      for (const slot of setPackOdds('fra', kind)) expect(slot.outcomes.reduce((n, x) => n + x.percent, 0)).toBeCloseTo(100, 5);
+    }
+    const rare = setPackOdds('fra', 'play').find((s) => s.slot === 'Rare')!;
+    expect(rare.outcomes.find((x) => x.label === 'Rare')!.percent).toBeCloseTo(74.4, 5);
+    const land = setPackOdds('fra', 'play').find((s) => s.slot === 'Land')!;
+    expect(land.outcomes.find((x) => x.label === 'Common dual land')!.percent).toBeCloseTo(43.6, 5);
+    const commander = setPackOdds('fra', 'collector').find((s) => s.slot === 'Braintwister or Commander card')!;
+    // Wizards' numbers for this slot add up to 100.1%, so each is scaled very slightly.
+    expect(commander.outcomes.find((x) => x.label === 'Commander extended-art rare')!.percent).toBeCloseTo(47.8, 1);
   });
 });

@@ -4,7 +4,7 @@
 // 'starter', whichever precon they pick): its exact printings go into the
 // collection and it's saved as a Commander deck.
 
-import { EOC_PRECONS, FIN_PRECONS, SCRYFALL_PRINTINGS, type KitCard } from '@nexus/cards';
+import { ALL_PRECONS, EOC_PRECONS, FIN_PRECONS, FRC_PRECONS, SCRYFALL_PRINTINGS, type KitCard } from '@nexus/cards';
 import type { AccountService, AccountUser } from './accounts.ts';
 import type { OwnedCard, SavedDeck } from './collection.ts';
 
@@ -21,6 +21,7 @@ export interface StarterChoice {
 export const STARTER_CHOICES: StarterChoice[] = [
   ...FIN_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Final Fantasy' })),
   ...EOC_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Edge of Eternities' })),
+  ...FRC_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Reality Fracture' })),
 ];
 
 const printingId = (c: KitCard): string => {
@@ -31,12 +32,12 @@ const printingId = (c: KitCard): string => {
 
 /** A precon's cards (one entry per printing, nonfoil) and its commander's printing id: any of the free starters. */
 export function preconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
-  return cardsOf([...FIN_PRECONS, ...EOC_PRECONS].find((p) => p.name === name));
+  return cardsOf(ALL_PRECONS.find((p) => p.name === name));
 }
 
 /** Any precon the Store sells (Final Fantasy or Edge of Eternities): its cards and commander's printing id. */
 export function storePreconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
-  return cardsOf([...FIN_PRECONS, ...EOC_PRECONS].find((p) => p.name === name));
+  return cardsOf(ALL_PRECONS.find((p) => p.name === name));
 }
 
 function cardsOf(precon: (typeof FIN_PRECONS)[number] | undefined): { cards: OwnedCard[]; commander: string } | null {

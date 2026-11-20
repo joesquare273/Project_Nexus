@@ -2,7 +2,7 @@
 // Group M1: cards the engine already had the pieces for.
 
 import { describe, expect, it } from 'vitest';
-import { applyAction, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { applyAction, currentDefinition, decisionMaker, getLegalActions, hasKeyword, powerOf, toughnessOf, viewFor, visibleCards, type GameState } from '@nexus/engine';
 import { canBlock } from '../../engine/src/combat.ts';
 import { CARD_DEFS } from '@nexus/cards';
 import { act, card, cast, goTo, mana, newGame, put, rejected, settle } from './kit-helpers.ts';
@@ -1742,7 +1742,6 @@ describe('M12: Spacecraft, Command Bridge and combat statics', () => {
     let t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ring] })).state;
     expect([zone(t, bridge), t.cards[ring]!.tapped]).toEqual(['battlefield', true]);
     t = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
-    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [bridge] })).state;
     expect(zone(t, bridge)).toBe('graveyard');
   });
 
@@ -1925,5 +1924,776 @@ describe('M13: Planets, new tokens and spells', () => {
     expect([copies.length, hasKeyword(v, v.cards[copies[0]!]!, 'Haste')]).toEqual([2, true]);
     v = goTo(v, 'end');
     expect(v.players.P1!.battlefield.filter((id) => v.cards[id]!.isToken)).toHaveLength(0);
+  });
+});
+
+// Group M14: one-off designs.
+describe('M14: one-off designs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const kill = (s: GameState, id: string, opts: never = {} as never) => {
+    s.cards[id]!.damage = 99;
+    return cast(s, { type: 'PassPriority', player: 'P1' }, opts).state;
+  };
+
+  it('Syr Vondam grows and gains life when another creature of yours dies; dying with power 4 or more, it destroys a nonland permanent', () => {
+    let s = newGame();
+    const syr = put(s, 'P1', 'syr-vondam-sunstar-exemplar');
+    const a = put(s, 'P1', 'meltstrider-eulogist');
+    const b = put(s, 'P1', 'meltstrider-eulogist');
+    const ring = put(s, 'P2', 'sol-ring');
+    s = goTo(s, 'main1');
+    const life = s.players.P1!.life;
+    s = kill(s, a);
+    expect([s.cards[syr]!.counters, s.players.P1!.life]).toEqual([1, life + 1]);
+    // Power 3: nothing happens when it dies.
+    let t = kill(structuredClone(s), syr, pick(ring));
+    t = settle(t, pick(ring)).state;
+    expect(zone(t, ring)).toBe('battlefield');
+    s = kill(s, b);
+    s = kill(s, syr, pick(ring));
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), pick(ring)).state;
+    expect(zone(s, ring)).toBe('graveyard');
+  });
+
+  it('The Endstone draws for lands and spells, and sets your life to half the starting total at your end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'the-endstone');
+    const land = put(s, 'P1', 'forest', 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'PlayLand', player: 'P1', card: land }).state;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state;
+    expect(s.players.P1!.hand.length).toBe(hand);
+    s.players.P1!.life = 3;
+    s = settle(goTo(s, 'end')).state;
+    for (let i = 0; i < 4 && s.stack.length > 0; i++) s = settle(act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player })).state;
+    expect(s.players.P1!.life).toBe(10);
+  });
+
+  it('Memorial Vault exiles one plus the sacrificed artifact’s mana value to play this turn; Territorial Bruntar’s landfall exiles to a nonland card you may cast', () => {
+    let s = newGame();
+    const vault = put(s, 'P1', 'memorial-vault');
+    const ring = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    const top = s.players.P1!.library.slice(0, 2);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: vault, ability: 0, costCards: [ring] }).state;
+    expect(top.map((id) => zone(s, id))).toEqual(['exile', 'exile']);
+    expect(top.every((id) => s.cards[id]!.playableFromExile?.untilTurn === s.turnNumber)).toBe(true);
+
+    let t = newGame();
+    put(t, 'P1', 'territorial-bruntar');
+    const land = put(t, 'P1', 'forest', 'hand');
+    t = goTo(t, 'main1');
+    const spell = put(t, 'P1', 'sol-ring', 'library');
+    const buried = put(t, 'P1', 'forest', 'library');
+    t.players.P1!.library = [buried, spell, ...t.players.P1!.library.filter((id) => id !== spell && id !== buried)];
+    t = cast(t, { type: 'PlayLand', player: 'P1', card: land }).state;
+    expect([zone(t, buried), zone(t, spell)]).toEqual(['exile', 'exile']);
+    expect(rejected(t, { type: 'CastSpell', player: 'P1', card: spell })).toBeTruthy();
+    mana(t, 'P1', { C: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(zone(t, spell)).toBe('battlefield');
+  });
+
+  it('Hardlight Containment exiles an opponent’s creature while it’s on your artifact, which gets ward {1}', () => {
+    let s = newGame();
+    const aura = put(s, 'P1', 'hardlight-containment', 'hand');
+    const ring = put(s, 'P1', 'sol-ring');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(ring)] }, pick(foe)).state;
+    expect([s.cards[aura]!.attachedTo, zone(s, foe)]).toEqual([ring, 'exile']);
+    moveCard({ s, ev: [] }, aura, 'graveyard');
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(zone(s, foe)).toBe('battlefield');
+  });
+
+  it('Terrapact Intimidator: the opponent gives you two Landers, or it gets two +1/+1 counters', () => {
+    let s = newGame();
+    const kavu = put(s, 'P1', 'terrapact-intimidator', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: kavu }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'mark' });
+    let t = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [kavu] })).state;
+    expect([t.players.P1!.battlefield.filter((id) => t.cards[id]!.defId === 'lander-token-eoe').length, t.cards[kavu]!.counters ?? 0]).toEqual([2, 0]);
+    t = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [] })).state;
+    expect([t.players.P1!.battlefield.filter((id) => t.cards[id]!.defId === 'lander-token-eoe').length, t.cards[kavu]!.counters]).toEqual([0, 2]);
+  });
+
+  it('Astelli Reclaimer returns a noncreature permanent card with mana value up to the mana spent; Scout for Survivors returns up to three small creatures with counters', () => {
+    let s = newGame();
+    const angel = put(s, 'P1', 'astelli-reclaimer', 'hand');
+    const cheap = put(s, 'P1', 'sol-ring', 'graveyard');
+    const pricey = put(s, 'P1', 'the-endstone', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: angel, alternative: true });
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'priority' && s.stack.length > 0; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect([zone(s, cheap), zone(s, pricey)]).toEqual(['battlefield', 'graveyard']);
+
+    let t = newGame();
+    const scout = put(t, 'P1', 'scout-for-survivors', 'hand');
+    const a = put(t, 'P1', 'starport-security', 'graveyard');
+    const b = put(t, 'P1', 'starport-security', 'graveyard');
+    const big = put(t, 'P1', 'quantum-riddler', 'graveyard');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, C: 2 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: scout }).state;
+    expect(rejected(t, { type: 'ChooseCards', player: 'P1', cards: [big] })).toBeTruthy();
+    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [a, b] })).state;
+    for (let i = 0; i < 4 && t.pending.kind === 'chooseCards'; i++) t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [] })).state;
+    expect([zone(t, a), zone(t, b), t.cards[a]!.counters, t.cards[b]!.counters]).toEqual(['battlefield', 'battlefield', 1, 1]);
+  });
+});
+
+// Group M15: Auras, affinity and more one-offs.
+describe('M15: Auras, affinity and more one-offs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const atP2 = { targets: (o: { kind: string; player?: string }[][]) => o.find((x) => x[0]?.kind === 'player' && x[0].player === 'P2')! } as never;
+  const charge = (n: number) => ({ namedCounters: { charge: n } }) as never;
+
+  it('Starfield Vocalist: an entering permanent’s trigger happens twice; Sami gives every spell affinity for artifacts', () => {
+    let s = newGame();
+    put(s, 'P1', 'starfield-vocalist');
+    const captain = put(s, 'P1', 'honored-knight-captain', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: captain }).state;
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'human-soldier-token-eoe')).toHaveLength(2);
+
+    let t = newGame();
+    put(t, 'P1', 'sami-wildcat-captain');
+    put(t, 'P1', 'sol-ring');
+    put(t, 'P1', 'sol-ring');
+    const bear = put(t, 'P1', 'meltstrider-eulogist', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { G: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bear }).state;
+    expect(zone(t, bear)).toBe('battlefield');
+  });
+
+  it('Rust Harvester exiles an artifact card to grow and deal damage equal to its power; Gene Pollinator taps another permanent for any color', () => {
+    let s = newGame();
+    const harvester = put(s, 'P1', 'rust-harvester');
+    const scrap = put(s, 'P1', 'sol-ring', 'graveyard');
+    const bug = put(s, 'P1', 'gene-pollinator');
+    const land = put(s, 'P1', 'forest');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 2 });
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: harvester, ability: 0, costCards: [scrap], targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect([zone(s, scrap), s.cards[harvester]!.counters, s.players.P2!.life]).toEqual(['exile', 1, life - 2]);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: bug, ability: 0, costCards: [land] }).state;
+    expect([s.pending.kind, s.cards[land]!.tapped, s.cards[bug]!.tapped]).toEqual(['chooseMana', true, true]);
+  });
+
+  it('Systems Override steals until end of turn; a Spacecraft gets ten charge counters that are removed at the end step', () => {
+    let s = newGame();
+    const override = put(s, 'P1', 'systems-override', 'hand');
+    const ship = put(s, 'P2', 'lumen-class-frigate', 'battlefield', charge(3));
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: override, targets: [card(ship)] }).state;
+    expect([s.cards[ship]!.controller, s.cards[ship]!.namedCounters?.charge, hasKeyword(s, s.cards[ship]!, 'Haste')]).toEqual(['P1', 13, true]);
+    s = goTo(s, 'end');
+    expect(s.cards[ship]!.namedCounters?.charge).toBe(3);
+    s = goTo(s, 'main1');
+    expect(s.cards[ship]!.controller).toBe('P2');
+  });
+
+  it('Terrasymbiosis draws that many cards, once each turn; Adagia (12+) makes a legendary copy', () => {
+    let s = newGame();
+    put(s, 'P1', 'terrasymbiosis');
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    const honor = put(s, 'P1', 'archenemys-charm', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: honor, mode: 2, targets: [card(bear)] } as never, { accept: true }).state;
+    expect([s.cards[bear]!.counters, s.players.P1!.hand.length]).toEqual([2, hand - 1 + 2]);
+
+    let t = newGame();
+    const adagia = put(t, 'P1', 'adagia-windswept-bastion', 'battlefield', charge(12));
+    const ring = put(t, 'P1', 'sol-ring');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1, C: 3 });
+    t = cast(t, { type: 'ActivateAbility', player: 'P1', card: adagia, ability: 0, targets: [card(ring)] }).state;
+    const copy = t.players.P1!.battlefield.find((id) => t.cards[id]!.isToken)!;
+    expect(currentDefinition(t, t.cards[copy]!).supertypes).toContain('Legendary');
+    expect(currentDefinition(t, t.cards[copy]!).name).toBe('Sol Ring');
+  });
+
+  it('Tractor Beam taps and takes the creature, which doesn’t untap; it goes back when the Aura leaves', () => {
+    let s = newGame();
+    const beam = put(s, 'P1', 'tractor-beam', 'hand');
+    const foe = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: beam, targets: [card(foe)] }).state;
+    expect([s.cards[foe]!.controller, s.cards[foe]!.tapped, s.cards[beam]!.attachedTo]).toEqual(['P1', true, foe]);
+    s = goTo(goTo(goTo(goTo(s, 'end'), 'main1'), 'end'), 'main1');
+    expect([s.activePlayer, s.cards[foe]!.tapped]).toEqual(['P1', true]);
+    moveCard({ s, ev: [] }, beam, 'graveyard');
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(s.cards[foe]!.controller).toBe('P2');
+  });
+
+  it('Meltstrider’s Resolve: the enchanted creature fights, gets +0/+2 and can’t be double-blocked; Pain for All passes damage on to each opponent', () => {
+    let s = newGame();
+    const resolve = put(s, 'P1', 'meltstriders-resolve', 'hand');
+    const mine = put(s, 'P1', 'icecave-crasher');
+    const foe = put(s, 'P2', 'meltstrider-eulogist');
+    const b1 = put(s, 'P2', 'starport-security');
+    const b2 = put(s, 'P2', 'starport-security');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: resolve, targets: [card(mine)] }, pick(foe)).state;
+    expect([zone(s, foe), s.cards[mine]!.damage, toughnessOf(s, s.cards[mine]!)]).toEqual(['graveyard', 3, 6]);
+    s = goTo(s, 'declareAttackers');
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: mine, defender: 'P2' }] });
+    for (let i = 0; i < 6 && s.pending.kind !== 'declareBlockers'; i++) s = settle(act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player })).state;
+    expect(rejected(s, { type: 'DeclareBlockers', player: 'P2', blocks: [{ blocker: b1, attacker: mine }, { blocker: b2, attacker: mine }] })).toMatch(/more than one/);
+
+    let t = newGame();
+    const pain = put(t, 'P1', 'pain-for-all', 'hand');
+    const host = put(t, 'P1', 'icecave-crasher');
+    const bolt = put(t, 'P1', 'plasma-bolt', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { R: 2, C: 2 });
+    const life = t.players.P2!.life;
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: pain, targets: [card(host)] }, atP2).state;
+    expect(t.players.P2!.life).toBe(life - 4);
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(host)] }).state;
+    for (let i = 0; i < 4 && t.stack.length > 0 && t.pending.kind === 'priority'; i++) t = settle(act(t, { type: 'PassPriority', player: t.pending.player })).state;
+    expect(t.players.P2!.life).toBe(life - 4 - 2);
+  });
+});
+
+// Group M16: Xu-Ifit, Chorale of the Void and Secluded Starforge.
+describe('M16: three more one-offs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+
+  it('Xu-Ifit returns a creature card as a Skeleton with no abilities', () => {
+    let s = newGame();
+    const xu = put(s, 'P1', 'xu-ifit-osteoharmonist');
+    const dead = put(s, 'P1', 'quantum-riddler', 'graveyard');
+    s = goTo(s, 'main1');
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: xu, ability: 0, targets: [card(dead)] }).state;
+    const def = currentDefinition(s, s.cards[dead]!);
+    expect([zone(s, dead), def.subtypes?.includes('Skeleton'), def.subtypes?.includes('Sphinx'), hasKeyword(s, s.cards[dead]!, 'Flying'), s.players.P1!.hand.length, powerOf(s, s.cards[dead]!)]).toEqual(['battlefield', true, true, false, hand, 4]);
+  });
+
+  it('Chorale of the Void: the enchanted creature’s attack brings a creature from the defender’s graveyard in attacking; without void the Aura is sacrificed', () => {
+    let s = newGame();
+    const chorale = put(s, 'P1', 'chorale-of-the-void', 'hand');
+    const mine = put(s, 'P1', 'icecave-crasher');
+    const theirs = put(s, 'P2', 'meltstrider-eulogist', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: chorale, targets: [card(mine)] }).state;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: mine, defender: 'P2' }] }), pick(theirs)).state;
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), pick(theirs)).state;
+    expect([zone(s, theirs), s.cards[theirs]!.controller, s.cards[theirs]!.tapped, s.combat?.attacks.some((a) => a.attacker === theirs && a.defender === 'P2')]).toEqual(['battlefield', 'P1', true, true]);
+    s = goTo(s, 'end');
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect(zone(s, chorale)).toBe('graveyard');
+  });
+
+  it('Secluded Starforge: tap X artifacts for +X/+0, or pay {5} for a Robot', () => {
+    let s = newGame();
+    const forge = put(s, 'P1', 'secluded-starforge');
+    const rings = [put(s, 'P1', 'sol-ring'), put(s, 'P1', 'sol-ring')];
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: forge, ability: 0, costCards: rings, targets: [card(bear)] }).state;
+    expect([powerOf(s, s.cards[bear]!), rings.every((id) => s.cards[id]!.tapped)]).toEqual([5, true]);
+  });
+});
+
+// Group M17: sweepers and more one-offs.
+describe('M17: sweepers and more one-offs', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const drain = (s: GameState, opts: never = {} as never) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), opts).state;
+    return s;
+  };
+
+  it('Zero Point Ballad destroys by toughness, costs X life, and at X of 6 or more returns one of the creatures under your control', () => {
+    let s = newGame();
+    const ballad = put(s, 'P1', 'zero-point-ballad', 'hand');
+    const small = put(s, 'P2', 'meltstrider-eulogist');
+    const big = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 6 });
+    const life = s.players.P1!.life;
+    let t = cast(s, { type: 'CastSpell', player: 'P1', card: ballad, x: 3 }).state;
+    expect([zone(t, small), zone(t, big), t.players.P1!.life]).toEqual(['graveyard', 'battlefield', life - 3]);
+    t = cast(s, { type: 'CastSpell', player: 'P1', card: ballad, x: 6 }).state;
+    expect(t.pending).toMatchObject({ kind: 'chooseCards', purpose: 'battlefield', min: 1, max: 1 });
+    t = settle(act(t, { type: 'ChooseCards', player: 'P1', cards: [big] })).state;
+    expect([zone(t, small), zone(t, big), t.cards[big]!.controller, t.players.P1!.life]).toEqual(['graveyard', 'battlefield', 'P1', life - 6]);
+  });
+
+  it('Mutinous Massacre destroys the odd (or even) creatures, then takes the rest untapped with haste until end of turn', () => {
+    let s = newGame();
+    const massacre = put(s, 'P1', 'mutinous-massacre', 'hand');
+    const odd = put(s, 'P2', 'meltstrider-eulogist');
+    const even = put(s, 'P2', 'icecave-crasher', 'battlefield', { tapped: true });
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 2, R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: massacre, mode: 0 }).state;
+    expect([zone(s, odd), s.cards[even]!.controller, s.cards[even]!.tapped, hasKeyword(s, s.cards[even]!, 'Haste')]).toEqual(['graveyard', 'P1', false, true]);
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.cards[even]!.controller).toBe('P2');
+  });
+
+  it('Dyadrine enters with counters equal to the mana spent; attacking, two counters buy a card and a Robot', () => {
+    let s = newGame();
+    const dy = put(s, 'P1', 'dyadrine-synthesis-amalgam', 'hand');
+    const other = put(s, 'P1', 'meltstrider-eulogist', 'battlefield', { counters: 1 });
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: dy, x: 2 }).state;
+    expect(s.cards[dy]!.counters).toBe(4);
+    s = goTo(s, 'declareAttackers');
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: other, defender: 'P2' }] }), { accept: true }).state;
+    s = drain(s, { accept: true } as never);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'mark', min: 2, max: 2 });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [dy, other] })).state;
+    expect([s.cards[dy]!.counters, s.cards[other]!.counters ?? 0, s.players.P1!.hand.length, s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe').length]).toEqual([3, 0, hand + 1, 1]);
+  });
+
+  it('Blade of the Swarm: two counters, or an exiled warp card goes to the bottom of its owner’s library', () => {
+    let s = newGame();
+    const blade = put(s, 'P1', 'blade-of-the-swarm', 'hand');
+    const warped = put(s, 'P2', 'quantum-riddler', 'exile');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: blade });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect(s.pending.kind).toBe('chooseModes');
+    const options = getLegalActions(s);
+    let t = settle(act(s, options.find((a) => a.type === 'ChooseModes' && a.modes[0] === 0)!)).state;
+    t = drain(t);
+    expect(t.cards[blade]!.counters).toBe(2);
+    t = settle(act(s, options.find((a) => a.type === 'ChooseModes' && a.modes[0] === 1)!), pick(warped)).state;
+    t = drain(t, pick(warped));
+    expect([zone(t, warped), t.players.P2!.library.at(-1)]).toEqual(['library', warped]);
+  });
+
+  it('Pinnacle Starcage exiles cheap artifacts and creatures; its ability buries them and makes a Robot for each', () => {
+    let s = newGame();
+    const cage = put(s, 'P1', 'pinnacle-starcage', 'hand');
+    const ring = put(s, 'P2', 'sol-ring');
+    const cheap = put(s, 'P2', 'starport-security');
+    const big = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 4, C: 7 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cage }).state;
+    s = drain(s);
+    expect([zone(s, ring), zone(s, cheap), zone(s, big)]).toEqual(['exile', 'exile', 'battlefield']);
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: cage, ability: 0 }).state;
+    s = drain(s);
+    expect([zone(s, ring), zone(s, cheap), zone(s, cage), s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'robot-token-eoe').length]).toEqual(['graveyard', 'graveyard', 'graveyard', 2]);
+  });
+
+  it('Sunset Saboteur: ward makes an opponent discard, and its attack puts a counter on an opponent’s creature', () => {
+    let s = newGame();
+    const sab = put(s, 'P1', 'sunset-saboteur');
+    const foe = put(s, 'P2', 'meltstrider-eulogist');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: sab, defender: 'P2' }] }), pick(foe)).state;
+    s = drain(s, pick(foe));
+    expect(s.cards[foe]!.counters).toBe(1);
+  });
+});
+
+// Group M18: Tannuk, Tapestry Warden and Requiem Monolith.
+describe('M18: granted warp, toughness damage and Requiem Monolith', () => {
+  it('Tannuk, Steadfast Second: other creatures have haste; artifact and red creature cards in hand have warp {2}{R}', () => {
+    let s = newGame();
+    put(s, 'P1', 'tannuk-steadfast-second');
+    const ring = put(s, 'P1', 'the-endstone', 'hand');
+    const green = put(s, 'P1', 'meltstrider-eulogist', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1, C: 2 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: green, alternative: true })).toBeTruthy();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ring, alternative: true }).state;
+    for (let i = 0; i < 4 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    expect([zone(s, ring), s.cards[ring]!.warped]).toEqual(['battlefield', true]);
+    const bear = put(s, 'P1', 'icecave-crasher');
+    expect(hasKeyword(s, s.cards[bear]!, 'Haste')).toBe(true);
+    s = goTo(s, 'end');
+    expect(zone(s, ring)).toBe('exile');
+  });
+
+  it('Tapestry Warden: a creature with more toughness than power deals combat damage equal to its toughness', () => {
+    let s = newGame();
+    const warden = put(s, 'P1', 'tapestry-warden');
+    s = goTo(s, 'declareAttackers');
+    const life = s.players.P2!.life;
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: warden, defender: 'P2' }] });
+    for (let i = 0; i < 40 && s.step !== 'main2'; i++) {
+      const p = s.pending;
+      if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else s = settle(s).state;
+    }
+    expect(s.players.P2!.life).toBe(life - 4);
+  });
+
+  it('Requiem Monolith: the creature’s controller draws and loses life for damage it’s dealt, and may take 1 from the Monolith', () => {
+    let s = newGame();
+    const monolith = put(s, 'P1', 'requiem-monolith');
+    const bear = put(s, 'P1', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    const hand = s.players.P1!.hand.length;
+    const life = s.players.P1!.life;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: monolith, ability: 0, targets: [card(bear)] }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'mark' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [monolith] })).state;
+    expect([s.cards[bear]!.damage, s.players.P1!.hand.length, s.players.P1!.life]).toEqual([1, hand + 1, life - 1]);
+  });
+});
+
+// Group M19: Close Encounter, Terminal Velocity and Sothera.
+describe('M19: Close Encounter, Terminal Velocity and Sothera', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('Close Encounter deals damage equal to the power of a creature you control or a warped creature card in exile', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'close-encounter', 'hand');
+    const mine = put(s, 'P1', 'icecave-crasher');
+    const warped = put(s, 'P1', 'quantum-riddler', 'exile', { warpExiledTurn: 1 });
+    const plain = put(s, 'P1', 'quantum-riddler', 'exile');
+    const foe = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { G: 1, C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)] })).toBeTruthy();
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)], costCards: [plain] })).toBeTruthy();
+    const options = getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === spell).map((a) => (a as { costCards?: string[] }).costCards?.[0]);
+    expect(new Set(options)).toEqual(new Set([mine, warped]));
+    let t = drain(cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(foe)], costCards: [mine] }).state);
+    expect([t.cards[foe]!.damage, zone(t, mine)]).toEqual([4, 'battlefield']);
+    t = drain(cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(mine)], costCards: [warped] }).state);
+    expect([zone(t, mine), zone(t, warped)]).toEqual(['graveyard', 'exile']);
+  });
+
+  it('Terminal Velocity: the permanent has haste, is sacrificed at your end step, and then deals damage equal to its mana value to each creature', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'terminal-velocity', 'hand');
+    const big = put(s, 'P1', 'mouth-of-the-storm', 'hand');
+    const foe = put(s, 'P2', 'quantum-riddler');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'battlefield' });
+    s = drain(settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [big] })).state);
+    expect([zone(s, big), hasKeyword(s, s.cards[big]!, 'Haste')]).toEqual(['battlefield', true]);
+    s = drain(settle(goTo(s, 'end')).state);
+    expect([zone(s, big), zone(s, foe)]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Sothera: when your creature dies, each opponent exiles one of theirs; with a creatureless player at your end step, it trades itself for one of them with two counters', () => {
+    let s = newGame();
+    const sothera = put(s, 'P1', 'sothera-the-supervoid');
+    const mine = put(s, 'P1', 'meltstrider-eulogist');
+    const theirs = put(s, 'P2', 'icecave-crasher');
+    s = goTo(s, 'main1');
+    s.cards[mine]!.damage = 9;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    s = drain(s);
+    if (s.pending.kind === 'chooseCards') s = drain(settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [theirs] })).state);
+    expect([zone(s, theirs), s.cards[theirs]!.exiledWith?.source]).toEqual(['exile', sothera]);
+    s = settle(goTo(s, 'end')).state;
+    s = drain(s);
+    if (s.pending.kind === 'chooseCards') s = drain(settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [theirs] })).state);
+    expect([zone(s, sothera), zone(s, theirs), s.cards[theirs]!.controller, s.cards[theirs]!.counters]).toEqual(['graveyard', 'battlefield', 'P1', 2]);
+  });
+});
+
+// Group M20: Famished Worldsire, Ragost and Weftwalking.
+describe('M20: devour, Foods and Weftwalking', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('Famished Worldsire devours lands for three counters each, then puts lands from the top X cards onto the battlefield tapped', () => {
+    let s = newGame();
+    const sire = put(s, 'P1', 'famished-worldsire', 'hand');
+    const lands = [put(s, 'P1', 'forest'), put(s, 'P1', 'forest')];
+    s = goTo(s, 'main1');
+    const top = put(s, 'P1', 'island', 'library');
+    s.players.P1!.library = [top, ...s.players.P1!.library.filter((id) => id !== top)];
+    mana(s, 'P1', { G: 3, C: 5 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: sire });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'devourOnEntry' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: lands })).state;
+    expect([zone(s, sire), s.cards[sire]!.counters, zone(s, lands[0]!)]).toEqual(['battlefield', 6, 'graveyard']);
+    s = drain(s);
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', purpose: 'lookTop' });
+    expect((s.pending as { cards: string[] }).cards).toContain(top);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [top] })).state;
+    expect([zone(s, top), s.cards[top]!.tapped]).toEqual(['battlefield', true]);
+  });
+
+  it('Ragost: your artifacts are Foods that can be eaten for 3 life, he throws one for 3 damage, and untaps at end step if you gained life', () => {
+    let s = newGame();
+    const ragost = put(s, 'P1', 'ragost-deft-gastronaut');
+    const a = put(s, 'P1', 'sol-ring');
+    const b = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    expect(currentDefinition(s, s.cards[a]!).subtypes).toContain('Food');
+    mana(s, 'P1', { C: 3 });
+    const life = s.players.P1!.life;
+    const foe = s.players.P2!.life;
+    const eat = currentDefinition(s, s.cards[a]!).activated!.length - 1;
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: a, ability: eat }).state);
+    expect([zone(s, a), s.players.P1!.life]).toEqual(['graveyard', life + 3]);
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: ragost, ability: 0, costCards: [b] }).state);
+    expect([zone(s, b), s.players.P2!.life, s.cards[ragost]!.tapped]).toEqual(['graveyard', foe - 3, true]);
+    s = drain(settle(goTo(s, 'end')).state);
+    expect(s.cards[ragost]!.tapped).toBe(false);
+  });
+
+  it('Weftwalking: cast, it refills your hand; the first spell each player casts on their turn is free', () => {
+    let s = newGame();
+    const weft = put(s, 'P1', 'weftwalking', 'hand');
+    put(s, 'P1', 'sol-ring', 'graveyard');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: weft }).state);
+    expect([s.players.P1!.hand.length, s.players.P1!.graveyard.length]).toEqual([7, 0]);
+    // P1 already cast a spell this turn: the next one isn't free. On P2's turn, their first spell is.
+    const mine = put(s, 'P1', 'quantum-riddler', 'hand');
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: mine })).toBeTruthy();
+    moveCard({ s, ev: [] }, mine, 'graveyard');
+    const theirs = put(s, 'P2', 'quantum-riddler', 'hand');
+    const second = put(s, 'P2', 'quantum-riddler', 'hand');
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.activePlayer).toBe('P2');
+    s = drain(cast(s, { type: 'CastSpell', player: 'P2', card: theirs }).state);
+    expect(zone(s, theirs)).toBe('battlefield');
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: second })).toBeTruthy();
+  });
+});
+
+// Group M21: restricted mana, token replacement and exile-to-play.
+describe('M21: restricted mana, Moonlit Meditation and Lightstall Inquisitor', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('Steelswarm Operator: {U} only for artifact spells, or {U}{U} only for abilities of artifacts', () => {
+    let s = newGame();
+    const op = put(s, 'P1', 'steelswarm-operator');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const bear = put(s, 'P1', 'starport-security', 'hand');
+    s = goTo(s, 'main1');
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: op, mana: 'U' });
+    expect([s.players.P1!.manaPool.U, s.players.P1!.restrictedMana?.artifactSpell?.U]).toEqual([0, 1]);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: bear })).toBeTruthy();
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state);
+    expect([zone(s, ring), s.players.P1!.restrictedMana?.artifactSpell?.U ?? 0]).toEqual(['battlefield', 0]);
+
+    let t = newGame();
+    const op2 = put(t, 'P1', 'steelswarm-operator');
+    const block = put(t, 'P1', 'nutrient-block');
+    const ring2 = put(t, 'P1', 'sol-ring', 'hand');
+    t = goTo(t, 'main1');
+    t = drain(cast(t, { type: 'ActivateAbility', player: 'P1', card: op2, ability: 0 }).state);
+    expect(t.players.P1!.restrictedMana?.artifactAbility?.U).toBe(2);
+    expect(rejected(t, { type: 'CastSpell', player: 'P1', card: ring2 })).toBeTruthy();
+    t = drain(cast(t, { type: 'ActivateAbility', player: 'P1', card: block, ability: 0 }).state);
+    expect(zone(t, block)).toBe('graveyard');
+  });
+
+  it('Mmmenon: your artifacts tap for {U} that only pays for spells from outside your hand, like an artifact off the top of your library', () => {
+    let s = newGame();
+    put(s, 'P1', 'mmmenon-the-right-hand');
+    const rock = put(s, 'P1', 'nutrient-block');
+    const inHand = put(s, 'P1', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    const top = put(s, 'P1', 'sol-ring', 'library');
+    s.players.P1!.library = [top, ...s.players.P1!.library.filter((id) => id !== top)];
+    const grant = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === rock && a.grantedBy)!;
+    expect(grant).toBeTruthy();
+    s = act(s, grant);
+    expect(s.players.P1!.restrictedMana?.notFromHand?.U).toBe(1);
+    expect(rejected(s, { type: 'CastSpell', player: 'P1', card: inHand })).toBeTruthy();
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: top }).state);
+    expect(zone(s, top)).toBe('battlefield');
+  });
+
+  it('Moonlit Meditation: the first tokens you create each turn are copies of the enchanted permanent instead', () => {
+    let s = newGame();
+    const aura = put(s, 'P1', 'moonlit-meditation', 'hand');
+    const host = put(s, 'P1', 'icecave-crasher');
+    const knight = put(s, 'P1', 'knight-luminary', 'hand');
+    const captain = put(s, 'P1', 'honored-knight-captain', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { U: 1, W: 3, C: 6 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(host)] }).state);
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: knight }).state);
+    const tokens = () => s.players.P1!.battlefield.filter((id) => s.cards[id]!.isToken).map((id) => currentDefinition(s, s.cards[id]!).name);
+    expect(tokens()).toEqual(['Icecave Crasher']);
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: captain }).state);
+    expect(tokens().sort()).toEqual(['Human Soldier', 'Icecave Crasher']);
+  });
+
+  it('Lightstall Inquisitor: each opponent exiles a card they may still play, a spell for {1} more and a land tapped', () => {
+    let s = newGame();
+    const inq = put(s, 'P1', 'lightstall-inquisitor', 'hand');
+    s.players.P2!.hand = [];
+    const ring = put(s, 'P2', 'sol-ring', 'hand');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { W: 1 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: inq }).state);
+    if (s.pending.kind === 'chooseCards') s = drain(settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [ring] })).state);
+    expect([zone(s, ring), s.cards[ring]!.playableFromExile?.costMore]).toEqual(['exile', 1]);
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect(s.activePlayer).toBe('P2');
+    mana(s, 'P2', { C: 1 });
+    expect(rejected(s, { type: 'CastSpell', player: 'P2', card: ring })).toBeTruthy();
+    mana(s, 'P2', { C: 1 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P2', card: ring }).state);
+    expect(zone(s, ring)).toBe('battlefield');
+
+    let t = newGame();
+    const inq2 = put(t, 'P1', 'lightstall-inquisitor', 'hand');
+    t.players.P2!.hand = [];
+    const land = put(t, 'P2', 'forest', 'hand');
+    t = goTo(t, 'main1');
+    mana(t, 'P1', { W: 1 });
+    t = drain(cast(t, { type: 'CastSpell', player: 'P1', card: inq2 }).state);
+    if (t.pending.kind === 'chooseCards') t = drain(settle(act(t, { type: 'ChooseCards', player: 'P2', cards: [land] })).state);
+    t = goTo(goTo(t, 'end'), 'main1');
+    t = cast(t, { type: 'PlayLand', player: 'P2', card: land }).state;
+    expect([zone(t, land), t.cards[land]!.tapped]).toEqual(['battlefield', true]);
+  });
+});
+
+// Planeswalkers: Tezzeret, Cruel Captain.
+describe('Planeswalkers: Tezzeret, Cruel Captain', () => {
+  const pick = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === id)! }) as never;
+  const drain = (s: GameState, opts: never = {} as never) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player }), opts).state;
+    return s;
+  };
+  const loyalty = (s: GameState, id: string) => s.cards[id]!.namedCounters?.loyalty ?? 0;
+
+  it('enters with 4 loyalty, gains one for each artifact, and uses one loyalty ability a turn at sorcery speed', () => {
+    let s = newGame();
+    const tez = put(s, 'P1', 'tezzeret-cruel-captain', 'hand');
+    const ring = put(s, 'P1', 'sol-ring', 'hand');
+    const robot = put(s, 'P1', 'roving-actuator', 'battlefield', { tapped: true });
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 4 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: tez }).state);
+    expect([zone(s, tez), loyalty(s, tez)]).toEqual(['battlefield', 4]);
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: ring }).state);
+    expect(loyalty(s, tez)).toBe(5);
+    // 0: untap an artifact creature and give it a counter.
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 0, targets: [card(robot)] }).state);
+    expect([s.cards[robot]!.tapped, s.cards[robot]!.counters, loyalty(s, tez)]).toEqual([false, 1, 5]);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 1 })).toMatch(/one loyalty ability/i);
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 2 })).toBeTruthy();
+  });
+
+  it('−3 searches for a cheap artifact; −7 gives an emblem that grows an artifact each combat and animates it', () => {
+    let s = newGame();
+    const tez = put(s, 'P1', 'tezzeret-cruel-captain', 'battlefield', { namedCounters: { loyalty: 7 } } as never);
+    const ring = put(s, 'P1', 'sol-ring');
+    s = goTo(s, 'main1');
+    put(s, 'P1', 'sol-ring', 'library');
+    const hand = s.players.P1!.hand.length;
+    let t = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 1 }).state);
+    expect([loyalty(t, tez), t.players.P1!.hand.length]).toEqual([4, hand + 1]);
+    t = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: tez, ability: 2 }).state);
+    // At 0 loyalty he's put into the graveyard; the emblem stays.
+    expect(zone(t, tez)).toBe('graveyard');
+    t = goTo(t, 'beginCombat', pick(ring));
+    t = drain(settle(t, pick(ring)).state, pick(ring));
+    expect([t.cards[ring]!.counters, powerOf(t, t.cards[ring]!), currentDefinition(t, t.cards[ring]!).types.includes('creature')]).toEqual([3, 3, true]);
+  });
+
+  it('damage removes loyalty: from a spell with any target, and from a creature that attacks him instead of the player', () => {
+    let s = newGame();
+    const tez = put(s, 'P2', 'tezzeret-cruel-captain', 'battlefield', { namedCounters: { loyalty: 4 } } as never);
+    const bolt = put(s, 'P1', 'plasma-bolt', 'hand');
+    const bear = put(s, 'P1', 'meltstrider-eulogist');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { R: 1 });
+    s = drain(cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(tez)] }).state);
+    expect(loyalty(s, tez)).toBe(2);
+    s = goTo(s, 'declareAttackers');
+    const life = s.players.P2!.life;
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2', planeswalker: bear }] })).toBeTruthy();
+    s = act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: bear, defender: 'P2', planeswalker: tez }] });
+    for (let i = 0; i < 40 && s.step !== 'main2'; i++) {
+      const p = s.pending;
+      if (p.kind === 'declareBlockers') s = act(s, { type: 'DeclareBlockers', player: p.player, blocks: [] });
+      else if (p.kind === 'priority') s = act(s, { type: 'PassPriority', player: p.player });
+      else s = settle(s).state;
+    }
+    expect([zone(s, tez), s.players.P2!.life]).toEqual(['graveyard', life]);
+  });
+});
+
+// The Dominion Bracelet: controlling another player's turn (rule 722).
+describe('The Dominion Bracelet', () => {
+  const drain = (s: GameState) => {
+    for (let i = 0; i < 6 && s.stack.length > 0 && s.pending.kind === 'priority'; i++) s = settle(act(s, { type: 'PassPriority', player: s.pending.player })).state;
+    return s;
+  };
+
+  it('costs {15} minus the equipped creature’s power, exiles itself, and gives you their next turn', () => {
+    let s = newGame();
+    const bracelet = put(s, 'P1', 'the-dominion-bracelet');
+    const big = put(s, 'P1', 'icecave-crasher');
+    s.cards[bracelet]!.attachedTo = big;
+    s = goTo(s, 'main1');
+    expect(powerOf(s, s.cards[big]!)).toBe(5);
+    mana(s, 'P1', { C: 9 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: bracelet, ability: 0, targets: [{ kind: 'player', player: 'P2' }] })).toBeTruthy();
+    mana(s, 'P1', { C: 1 });
+    s = drain(cast(s, { type: 'ActivateAbility', player: 'P1', card: bracelet, ability: 0, targets: [{ kind: 'player', player: 'P2' }] }).state);
+    expect([zone(s, bracelet), decisionMaker(s, 'P2')]).toEqual(['exile', 'P2']);
+    // P2's turn: P1 makes every decision for P2, and sees P2's hand.
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect([s.activePlayer, decisionMaker(s, 'P2'), decisionMaker(s, 'P1')]).toEqual(['P2', 'P1', 'P1']);
+    const secret = s.players.P2!.hand[0]!;
+    expect(viewFor(s, 'P1').cards[secret]).toBeTruthy();
+    expect(viewFor(s, 'P1').players.P2!.hand).toEqual(s.players.P2!.hand);
+    expect(visibleCards(s, 'P1').has(secret)).toBe(true);
+    // The next turn it's over.
+    s = goTo(goTo(s, 'end'), 'main1');
+    expect([s.activePlayer, decisionMaker(s, 'P2'), viewFor(s, 'P1').cards[secret] !== undefined && zone(s, secret) === 'hand']).toEqual(['P1', 'P2', false]);
+  });
+
+  it('only works while attached', () => {
+    let s = newGame();
+    const bracelet = put(s, 'P1', 'the-dominion-bracelet');
+    s = goTo(s, 'main1');
+    mana(s, 'P1', { C: 15 });
+    expect(rejected(s, { type: 'ActivateAbility', player: 'P1', card: bracelet, ability: 0, targets: [{ kind: 'player', player: 'P2' }] })).toMatch(/attached/);
   });
 });

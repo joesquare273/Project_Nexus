@@ -100,7 +100,21 @@ the cards they want (user spec, 2026-11-04), in the **Craft** tab.
 | E2 | Bot games on the server, so their results can be rewarded. **Built 2026-11-04:** tables with bot seats run on the server and pay, and the menu's vs-computer games (Commander and 60-card, with your saved deck) are such tables (`client/src/game/serverGame.ts`). A random opponent or a chosen seed stays a local practice game without rewards; the Starter Kit lesson and practice games stay local too. |
 | E3 | Match rewards and daily/weekly quests, with the reward breakdown after each match. **Server built 2026-11-04:** `rewards.ts` records each finished game once per player (`match_results`, migration `20261104210000_rewards.sql`) and pays the match reward, win bonus, quests and first win, each once by its ledger ref; a game counts from round 2 and not for a player who conceded. The server sends `rewards {lines, balance}` after a game; `GET /api/rewards` gives quest progress and one-time rewards. The browser shows what a game earned on the game-over screen, the quests and one-time rewards on Home (`account/Rewards.tsx`), and a notice for the lesson reward. |
 | E4 | **Boosters done (2026-10-30)** in the Packs tab: 1 or 10 (+1 free), shortfall message, opened packs go to the account's collection. **Store tab built (2026-10-30), user requirement:** a separate Store tab, divided by set, where players buy exclusive printings directly: for Final Fantasy, each Chocobo Track foil on its own (Store-only: removed from Collector Boosters, user decision 2026-10-30) and the five Chocobo Track basic lands as one bundle. Prices (proposed by Claude, the user asked for them, 2026-10-30) in `packages/server/src/economy.ts` `storePrices`: legendary creatures 1,200, other cards 800, the land bundle 500 (null shows "Price coming soon"). **Precons (built 2026-10-30, user requirement):** the four FINAL FANTASY Commander precons at 2,000 each (`storePrices.precon`); buying one adds its 100 printings and saves it as a Commander deck. **Secret Lairs (built 2026-10-30):** the three Secret Lair x FINAL FANTASY drops (Game Over, Weapons, Grimoire; June 2025) at 3,500 for the five cards plus the foil bonus card, and all 24 FINAL FANTASY Secret Lair printings as singles at 1,000 (`storePrices.secretLairDrop` / `secretLairSingle`). Data: `cards/scripts/import-secret-lairs.ts` → `data/secret-lair.json`; cards with no other definition live in `data/store-cards.json`. The catalog per set is `packages/server/src/store.ts`; purchases are recorded as `store_purchase` (`supabase/migrations/20261030120000_store.sql`). Bought printings go to the collection in the chosen finish, charged in one server transaction like packs. |
-| E5 | Paid event entry and prizes, with the online draft events (sealed.md, S3). |
+| E5 | Paid event entry and prizes, with the online draft events (sealed.md, S3). **Built.** Draft events live in the server's memory, so a restart (every deploy) loses any that were running. At startup the server gives back each entry with neither a prize nor a refund (`refundLostEntries`, ledger `event_entry` with ref `draft-<event>-refund`, once). |
+| Audit (2026-11-12) | Live database checked. No negative balances. Every account's balance matches its ledger, except the owner's test account (balances set by hand). Fragment balances match the fragment ledger and are kept per account (`fragment_balances` keyed by user). No game had yet been recorded for match rewards (`match_results` empty): only signed-in games against the computer with a saved deck, and online tables, pay; practice games don't. The 4 draft entries on the owner's account had no prize or refund (events lost to deploys); they are refunded on the next server start. |
+
+## Administration (built 2026-11-16)
+
+- **Who:** accounts with `profiles.is_admin` (migration `20261116120000_admin.sql`; the owner's account, Solis). The flag is set in the database only; players can read their own profile row but never change it, and the server checks the flag on every admin request.
+- **The Admin page** (`#/admin`, in the menu only for admins; `client/src/account/AdminPage.tsx`) lists every account with its Aether Shards and fragments (common, uncommon, rare and mythic) and the latest admin changes.
+- **Changing shards:** set a balance, or add or take away an amount, with an optional note. The page shows old → new and asks to confirm. `POST /api/admin/shards` calls `admin_adjust_shards`, which writes an ordinary ledger row (`admin_adjustment`, ref `admin-<request>`), so balances still equal their ledger. It also writes a row in `admin_actions` (who, whom, change, balance after, note). Each request id applies once, a balance can't go below zero, and one change is at most 10,000,000.
+- Fragments are shown, not edited.
+- **Requests (2026-11-16):** players send the admin a request from the Requests page (`#/requests`, `client/src/account/RequestsPage.tsx`).
+  - Each request has a subject (up to 120 characters), up to 30 cards (suggested from every card name), and a description (up to 4,000 characters). The sending account is recorded.
+  - Players see their own requests and their status.
+  - The Admin page's Requests tab lists every request with the account that sent it, filtered by status (open, not started, incomplete, complete, all). The admin sets each one's status or deletes it after asking to confirm.
+  - Table `support_requests` (migration `20261116180000_requests.sql`): only the server reads and writes it.
+  - Endpoints: `GET`/`POST /api/requests` (10 per player per day), `GET /api/admin/requests`, `POST /api/admin/requests/status`, `DELETE /api/admin/requests/<id>`.
 
 ## Hosting (free tiers, checked 2026-10-29)
 
@@ -122,8 +136,8 @@ Manse, Arcbound Ravager, Foundry Inspector; Alien Auroras for World Shaper:
 Reprocess, Aggressive Mining, Sylvan Safekeeper, Crucible of Worlds, Zuran
 Orb; SLD 2102-2111), each drop and each card in galaxy foil (7,000 / 2,000
 Aether Shards), and the two Edge of Eternities Commander precons (2,000
-each, saved as a deck when bought, like the Final Fantasy ones; their cards
-that aren't built yet show as "Not built").
+each, saved as a deck when bought, like the Final Fantasy ones). Every card
+in these drops is built (2026-11-12).
 
 All Secret Lair cards are sold foil (user, 2026-11-05): the Final Fantasy
 drops (5 cards and the bonus card) and singles too, at the same prices.

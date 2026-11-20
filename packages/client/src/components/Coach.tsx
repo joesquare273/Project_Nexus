@@ -1,3 +1,4 @@
+import { ManaText } from './Card.tsx';
 /** A floating panel that explains what's happening: a lesson step, or a tip in the practice game. */
 export function Coach({
   title,
@@ -18,7 +19,7 @@ export function Coach({
         <strong>{title}</strong>
         {progress && <span className="coach-progress">{progress}</span>}
       </div>
-      <p className="coach-text">{text}</p>
+      <p className="coach-text"><ManaText text={text} size={15} /></p>
       {actions.length > 0 && (
         <div className="coach-actions">
           {actions.map((a) => (

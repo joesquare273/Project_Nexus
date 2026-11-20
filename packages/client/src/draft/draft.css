@@ -25,7 +25,7 @@
   margin-bottom: 14px;
 }
 .draft-head strong {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   color: #f0dfb4;
   letter-spacing: 1px;
 }
@@ -176,7 +176,7 @@
   background: rgba(8, 13, 22, 0.92);
 }
 .builder-timer {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-size: 18px;
   color: #f0dfb4;
 }
@@ -241,7 +241,7 @@
 }
 .builder-title {
   margin: 18px 0 8px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-display);
   color: #d6c49b;
   letter-spacing: 1px;
 }

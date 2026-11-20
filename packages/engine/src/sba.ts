@@ -45,6 +45,7 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
   p.equipmentMana = emptyManaPool();
   p.noncreatureSpellMana = emptyManaPool();
   delete p.artifactMana;
+  delete p.restrictedMana;
   if (s.resolving?.item.controller === playerId) {
     const item = s.resolving.item;
     s.resolving = null;
@@ -126,6 +127,15 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
         lethal.push(c.id);
       }
     }
+    // A planeswalker with no loyalty is put into its owner's graveyard (rule 704.5i).
+    for (const c of battlefield(s)) {
+      // Sanctum Lurker: "Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty."
+      const survives = battlefield(s).some((x) => x.controller === c.controller && !x.phasedOut && !!defOf(s, x).statics?.some((st) => st.planeswalkersSurviveZeroLoyalty));
+      if (defOf(s, c).types.includes('planeswalker') && (c.namedCounters?.loyalty ?? 0) <= 0 && !survives) {
+        putIntoGraveyard(ctx, c.id);
+        changed = true;
+      }
+    }
     // Zero toughness isn't destruction, so indestructible doesn't help (rule 704.5f).
     for (const id of zeroToughness) putIntoGraveyard(ctx, id);
     for (const id of lethal) destroy(ctx, id);
@@ -190,7 +200,9 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
             : commanderDamage
               ? 'commanderDamage'
               : null;
-      if (reason) {
+      // Darksteel Angel: "You can't lose the game" (conceding still works, rule 104.3a).
+      const cantLose = reason && reason !== 'conceded' && battlefield(s).some((c) => c.controller === pid && !c.phasedOut && defOf(s, c).statics?.some((st) => st.controllerCantLose));
+      if (reason && !cantLose) {
         eliminatePlayer(ctx, pid, reason);
         eliminatedAny = true;
         changed = true;
@@ -279,7 +291,7 @@ function repairPending(ctx: Ctx): void {
       // A player who left doesn't choose; the spell or ability carries on without them.
       if (pending.purpose === 'handSize') break;
       // The entering spell left the stack, or its controller left the game.
-      if (pending.purpose === 'copyOnEntry' || pending.purpose === 'removeCountersOnEntry') {
+      if (pending.purpose === 'copyOnEntry' || pending.purpose === 'removeCountersOnEntry' || pending.purpose === 'devourOnEntry') {
         if (s.stack.at(-1)?.id !== pending.item || s.players[pending.player]!.eliminated) givePriority(ctx, s.activePlayer);
         break;
       }
@@ -322,6 +334,26 @@ function checkCardTypeChoice(ctx: Ctx): boolean {
   return true;
 }
 
+/** "As this enters, choose Mardu or Jeskai" (a Siege): asks the controller of the first permanent waiting on that choice. */
+function checkOptionChoice(ctx: Ctx): boolean {
+  const s = ctx.s;
+  if (s.pending.kind === 'chooseOption' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseOption';
+  const c = battlefield(s).find((x) => !x.chosenOption && !x.phasedOut && defOf(s, x).chooseOptionAsEnters?.length);
+  if (!c) return false;
+  s.pending = { kind: 'chooseOption', player: c.controller, card: c.id, options: [...defOf(s, c).chooseOptionAsEnters!], resume: s.pending };
+  return true;
+}
+
+export function chooseOption(ctx: Ctx, playerId: PlayerId, option: string): void {
+  const s = ctx.s;
+  const pending = s.pending;
+  if (pending.kind !== 'chooseOption' || pending.player !== playerId) reject('You are not choosing an option right now.');
+  if (!pending.options.includes(option)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  s.cards[pending.card]!.chosenOption = option;
+  ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+  s.pending = pending.resume;
+}
+
 export function chooseCardType(ctx: Ctx, playerId: PlayerId, cardType: CardType): void {
   const s = ctx.s;
   const pending = s.pending;
@@ -344,6 +376,7 @@ function checkLegendRule(ctx: Ctx): boolean {
   const s = ctx.s;
   if (s.pending.kind === 'chooseLegend' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseLegend';
   for (const pid of aliveFromActive(s)) {
+    if (s.players[pid]!.legendRuleOffTurn === s.turnNumber) continue;
     const byName = new Map<string, string[]>();
     for (const id of s.players[pid]!.battlefield) {
       const c = s.cards[id]!;
@@ -443,7 +476,7 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
     detectTriggers(ctx, ctx.ev.slice(scanned));
     scanned = ctx.ev.length;
     // These need a choice; triggers go on the stack after it's made.
-    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx) || checkCardTypeChoice(ctx)) {
+    if (checkCommanderZone(ctx) || checkLegendRule(ctx) || checkColorChoice(ctx) || checkCardTypeChoice(ctx) || checkOptionChoice(ctx)) {
       if (s.cleanupCheck) s.cleanupNeedsPriority = true;
       return;
     }

@@ -28,6 +28,8 @@ import type {
 
 /** One thing that happened that an ability might be waiting for. */
 interface Occurrence {
+  /** BecomesTarget: the spell or ability doing the targeting (for ward). */
+  targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
   lastTypes?: CardType[];
   damageSource?: DamageSourceSnapshot;
   when: TriggerEvent;
@@ -56,6 +58,10 @@ interface Occurrence {
   drawNumber?: number;
   /** SpellCast: how many spells its caster had cast this turn, counting it. */
   spellNumber?: number;
+  /** AbilityActivated: the loyalty ability's cost, when it is one. */
+  loyalty?: number;
+  /** A noncreature spell: its caster's noncreature spells this turn, this one included. */
+  noncreatureSpellNumber?: number;
   /** Attacks: the attacker was the only creature declared as an attacker. */
   alone?: boolean;
   /** YouAttack: how many of the creatures attacked each player. */
@@ -129,11 +135,13 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         out.push({ when: 'Draws', at, drawer: e.player, ...(e.n !== undefined ? { drawNumber: e.n } : {}) });
         break;
       case 'AbilityActivated':
-        out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller });
+        out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller, ...(e.loyalty !== undefined ? { loyalty: e.loyalty } : {}) });
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
+        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller, targetedBy: { kind: 'ability', item: e.item } });
         break;
       case 'AbilityTriggered':
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
+        for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller, targetedBy: { kind: 'ability', item: e.item } });
         break;
       case 'ManaAdded':
         // A mana ability was activated (one occurrence per source in a batch).
@@ -143,7 +151,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'LifeChanged':
         if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player, amount: e.from - e.to });
-        if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player });
+        if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player, amount: e.to - e.from });
         break;
       case 'AttackDeclared': {
         const subjectController = s.cards[e.attacker]!.controller;
@@ -161,7 +169,11 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           subjectController: s.cards[e.card]!.controller,
           ...(e.by ? { by: e.by } : {}),
           ...(e.counter ? { counter: e.counter } : {}),
+          amount: e.amount,
         });
+        break;
+      case 'TurnedFaceUp':
+        out.push({ when: 'TurnedFaceUp', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
         break;
       case 'CardTapped':
         out.push({ when: 'BecomesTapped', at, subject: e.card, subjectController: s.cards[e.card]!.controller });
@@ -180,6 +192,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'SpellCast':
         if (isCrime(s, e.player, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.player });
+        for (const t of e.targets ?? []) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.player, targetedBy: { kind: 'spell', card: e.card } });
         out.push({
           when: 'SpellCast',
           from: e.castFrom,
@@ -189,6 +202,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           manaSpent: e.manaSpent,
           amount: e.manaSpent,
           spellNumber: s.players[e.player]!.spellsCastThisTurn ?? 0,
+          ...(!defOf(s, s.cards[e.card]!).types.includes('creature') ? { noncreatureSpellNumber: s.players[e.player]!.noncreatureSpellsThisTurn ?? 0 } : {}),
         });
         break;
       case 'DamageDealt':
@@ -196,6 +210,8 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           out.push({ when: 'DealtDamage', at, subject: e.target.card, subjectController: s.cards[e.target.card]!.controller, amount: e.amount });
         }
         if (s.cards[e.source]) out.push({ when: 'DealsDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
+        if (!e.combat && e.target.kind === 'player' && e.amount > 0) out.push({ when: 'OpponentDealtNoncombatDamage', at, defender: e.target.player });
+        if (e.combat && e.target.kind === 'player' && e.amount > 0) out.push({ when: 'OpponentsDealtCombatDamageYourTurn', at, defender: e.target.player });
         if (e.combat) {
           out.push({ when: 'CombatDamage', at, subject: e.source, subjectController: e.sourceController ?? s.cards[e.source]!.controller, amount: e.amount });
         }
@@ -268,10 +284,13 @@ function conditionsHold(spec: TriggerSpec, s: GameState, source: InstanceId, con
   const p = s.players[controller]!;
   if (spec.ifYouGainedLifeThisTurn && !((p.lifeGainedThisTurn ?? 0) > 0)) return false;
   if (spec.ifVoid && s.voidTurn !== s.turnNumber) return false;
+  if (spec.ifChosenOption !== undefined && s.cards[source]?.chosenOption !== spec.ifChosenOption) return false;
+  if (spec.ifNotPrepared && s.cards[source]?.prepared) return false;
   if (spec.ifYourGraveyardAtLeast !== undefined && p.graveyard.length < spec.ifYourGraveyardAtLeast) return false;
   if (spec.ifKicked && !(s.cards[source]?.kicksPaid ?? 0)) return false;
   if (spec.ifNotEnteredThisTurn && s.cards[source]?.enteredTurn === s.turnNumber) return false;
   if (spec.ifCardLeftYourGraveyardThisTurn && p.cardLeftGraveyardTurn !== s.turnNumber) return false;
+  if (spec.ifOpponentDealtNoncombatDamageLastTurn && !s.turnOrder.some((pid) => pid !== controller && (s.players[pid]!.noncombatDamageTurn === s.turnNumber - 1 || s.players[pid]!.noncombatDamagePreviousTurn === s.turnNumber - 1))) return false;
   if (spec.ifYouControlNone && battlefield(s).some((c) => c.controller === controller && matchesObject(s, spec.ifYouControlNone, c, { controller, source }))) return false;
   if (spec.ifYouControl) {
     const { filter, atLeast = 1 } = spec.ifYouControl;
@@ -287,9 +306,29 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.fromZone && spec.fromZone !== o.from) return false;
   if (spec.leavesTo && spec.leavesTo !== o.to) return false;
   if (!conditionsHold(spec, s, source, controller)) return false;
+  if (spec.toYou && o.defender !== controller) return false;
+  if (spec.loyaltyAbility && o.loyalty === undefined) return false;
+  if (spec.loyaltyRemovedAtLeast !== undefined && -(o.loyalty ?? 0) < spec.loyaltyRemovedAtLeast) return false;
+  if (spec.ifActivatedLoyaltyThisTurn && s.players[controller]!.loyaltyActivatedTurn !== s.turnNumber) return false;
+  if (spec.whileYouAreMonarch && s.monarch !== controller) return false;
   // Station: a "N+" ability triggers only while its source has N or more charge counters.
   if (spec.stationLevel !== undefined && (s.cards[source]?.namedCounters?.charge ?? 0) < spec.stationLevel) return false;
   if (o.when === 'CoinFlipWon') return o.subjectController === controller;
+  if (spec.targetsOpponentOrTheirCreature && o.when === 'SpellCast' && o.subject) {
+    const item = s.stack.find((i) => i.kind === 'spell' && i.card === o.subject);
+    const hits = !!item && item.targets.some((t) => (t.kind === 'player' && t.player !== controller) || (t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && s.cards[t.card]!.controller !== controller && defOf(s, s.cards[t.card]!).types.includes('creature')));
+    if (!hits) return false;
+  }
+  if (spec.equipmentOrTargetsYourCreature && o.when === 'SpellCast' && o.subject) {
+    const spell = s.cards[o.subject];
+    const item = s.stack.find((i) => i.kind === 'spell' && i.card === o.subject);
+    const equipment = !!spell && (defOf(s, spell).subtypes ?? []).includes('Equipment');
+    const targetsMine = !!item && item.targets.some((t) => t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && s.cards[t.card]!.controller === controller && defOf(s, s.cards[t.card]!).types.includes('creature'));
+    if (!equipment && !targetsMine) return false;
+  }
+  if (o.when === 'BecomesTarget' && spec.byOpponent && o.by === controller) return false;
+  if (o.when === 'OpponentsDealtCombatDamageYourTurn') return o.defender !== undefined && o.defender !== controller && s.activePlayer === controller;
+  if (o.when === 'OpponentDealtNoncombatDamage') return o.defender !== undefined && o.defender !== controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
   // A chapter triggers when a lore counter brings its Saga to that chapter's number (rule 714.2b).
   if (o.when === 'Chapter') {
@@ -327,6 +366,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'BeginCombat' || o.when === 'EndCombat' || o.when === 'Upkeep' || o.when === 'EndStep' || o.when === 'SecondMain' || o.when === 'FirstMain') {
     if (spec.ifPlayerDealtCombatDamageThisTurn !== undefined && !s.turnOrder.some((pid) => (s.players[pid]!.combatDamageThisTurn ?? 0) >= spec.ifPlayerDealtCombatDamageThisTurn!)) return false;
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
+    if (spec.ifYouAreMonarch && s.monarch !== controller) return false;
     if (spec.ifYouPutCounterOnCreatureThisTurn && s.players[controller]!.counterOnCreatureTurn !== s.turnNumber) return false;
     // "If a player lost 4 or more life this turn" (an intervening "if", rule 603.4).
     if (
@@ -345,6 +385,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.toOpponent && (o.defender === undefined || o.defender === controller)) return false;
   if (spec.alone && !o.alone) return false;
   if (spec.plusOneCountersOnly && o.counter !== undefined) return false;
+  if (spec.counterKind && (o.counter ?? '+1/+1') !== spec.counterKind) return false;
   // Evolve: the entering creature has greater power or toughness than this one.
   if (spec.evolve) {
     const me = s.cards[source]!;
@@ -359,6 +400,9 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && defOf(s,c).types.includes('land')).length;
     if (lands(o.subjectController) <= lands(controller)) return false;
   }
+  if (spec.ifLastPowerAtLeast !== undefined && (s.cards[source]!.lastPower ?? 0) < spec.ifLastPowerAtLeast) return false;
+  if (spec.ifCast && s.cards[source]!.manaSpentToCast === undefined) return false;
+  if (spec.ifAPlayerControlsNoCreatures && !Object.keys(s.players).some((pid) => !s.players[pid]!.eliminated && !battlefield(s).some((c) => c.controller === pid && !c.phasedOut && defOf(s, c).types.includes('creature')))) return false;
   if (spec.ifOpponentHasMoreLands) {
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && defOf(s,c).types.includes('land')).length;
     const mine = lands(controller);
@@ -366,6 +410,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   if (spec.duringYourTurn && s.activePlayer !== controller) return false;
   if (spec.nthSpellThisTurn !== undefined && o.spellNumber !== spec.nthSpellThisTurn) return false;
+  if (spec.nthNoncreatureSpellThisTurn !== undefined && o.noncreatureSpellNumber !== spec.nthNoncreatureSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   return matchesFilter(s, spec.what, source, controller, o);
@@ -458,6 +503,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     }
   }
   const batched = new Set<string>();
+  const batchFirst = new Map<string, QueuedTrigger>();
   const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard' | 'command', o: Occurrence) => {
     if (s.players[controller]!.eliminated) return;
     const definition = zone === 'battlefield' && c.zone !== 'battlefield' ? c.lastDefinition ?? defOf(s,c) : defOf(s,c);
@@ -468,7 +514,12 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       const key = `${c.id}#${spec.onceKey ?? ability}`;
       if (spec.oneOrMore) {
         const batchKey=o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key;
-        if (batched.has(batchKey)) return;
+        if (batched.has(batchKey)) {
+          // Collect every object of the batch ("tap those creatures").
+          const first = batchFirst.get(batchKey);
+          if (first && o.subject && !first.subjects!.includes(o.subject)) first.subjects!.push(o.subject);
+          return;
+        }
         batched.add(batchKey);
       }
       if (spec.oncePerTurn) {
@@ -481,7 +532,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         const slots = Math.min(c.xPaid ?? 0, battlefield(s).filter(x => x.id !== c.id && defOf(s,x).types.includes('creature')).length);
         spec = { ...spec, supportX: false, effects: Array.from({ length: slots }, () => ({ effect: 'AddCounters', amount: 1, target: 'TargetCreature', filter: { other: true }, upTo: true, group: 'support' })) };
       }
-      found.push({
+      const queued: QueuedTrigger = {
         spec: structuredClone(spec),
         source: c.id,
         sourceObject: c.zoneChanges ?? 0,
@@ -491,10 +542,16 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         sourceZone: c.zone,
         ...(o.defender ? { defender: o.defender } : {}),
         ...(o.subject ? { subject: o.subject } : {}),
+        ...(o.targetedBy ? { targetedBy: o.targetedBy } : {}),
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
         // "Choose one at random" is decided as it triggers.
         ...(spec.randomModes ? { mode: randomInt(s, spec.randomModes.length) } : {}),
-      });
+      };
+      found.push(queued);
+      if (spec.oneOrMore) {
+        queued.subjects = o.subject ? [o.subject] : [];
+        batchFirst.set(o.when==='CombatDamageToPlayer' ? key+':'+o.defender : key, queued);
+      }
       // "II, III —" is two chapter abilities: lore counters added at once trigger each chapter they pass (rule 714.2b).
       if (o.when === 'Chapter') {
         const crossed = (spec.chapters ?? []).filter((n) => n > (o.loreFrom ?? 0) && n <= (o.loreTo ?? 0)).length;
@@ -533,7 +590,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         sourceZone: 'battlefield',
         ...(o.subjectController ? { subjectController: o.subjectController } : {}),
         ...(o.defender ? { defender: o.defender } : {}),
-        ...(o.subject ? { subject: o.subject } : {}),
+        ...(d.subject ? { subject: d.subject } : o.subject ? { subject: o.subject } : {}),
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
       });
     }
@@ -560,11 +617,12 @@ function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
     for (const st of defOf(s, p).statics ?? []) {
       const more = st.extraTriggers;
       if (!more) continue;
+      if (st.ifChosenOption !== undefined && p.chosenOption !== st.ifChosenOption) continue;
       if (more.selfAndEquipment) {
         const equipped = battlefield(s).some((e) => e.attachedTo === p.id && defOf(s, e).subtypes?.includes('Equipment'));
         if (equipped && (t.source === p.id || source?.attachedTo === p.id)) extra++;
       }
-      if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack')) extra++;
+      if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack' || spec?.when === 'YouAttackPlayer')) extra++;
       if (more.dying && spec?.when === 'Dies') {
         const holder = st.affects === 'EquippedCreature' ? p.attachedTo : p.id;
         if (holder && (t.source === holder || t.emblem)) extra++;
@@ -602,6 +660,8 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     ...(t.modes ? { modes: [...t.modes] } : {}),
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
+    ...(t.targetedBy ? { targetedBy: t.targetedBy } : {}),
+    ...(t.subjects ? { subjects: [...t.subjects] } : {}),
     ...(t.amount !== undefined ? { amount: t.amount } : {}),
     ...(t.mode !== undefined ? { mode: t.mode } : {}),
   };
@@ -685,7 +745,13 @@ export function orderTriggers(ctx: Ctx, playerId: PlayerId, order: number[]): vo
 export function triggerModeOptions(s: GameState, t: QueuedTrigger): number[][] {
   const spec = specOf(s, t);
   if (!spec.modes) return [];
-  const choices = spec.modes.map((_, i) => [i]);
+  const choices: number[][] = [];
+  if (spec.chooseModes) {
+    for (let mask = 1; mask < 1 << spec.modes.length; mask++) {
+      const modes = spec.modes.map((_, i) => i).filter((i) => mask & (1 << i));
+      if (modes.length >= spec.chooseModes.min && modes.length <= spec.chooseModes.max) choices.push(modes);
+    }
+  } else choices.push(...spec.modes.map((_, i) => [i]));
   if (spec.bothIfCommander && battlefield(s).some((c) => c.controller === t.controller && c.isCommander)) choices.push(spec.modes.map((_, i) => i));
   return choices.filter((modes) => triggerTargetOptions(s, { ...t, modes }).every((targets) => targets.length > 0));
 }

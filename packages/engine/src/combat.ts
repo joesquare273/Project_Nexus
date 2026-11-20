@@ -6,7 +6,7 @@ import { continuousSources, currentDefinition } from './cardface.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
-import { hasFlag, powerOf, protectedFrom, staticAffects, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
+import { combatPowerOf, hasFlag, powerOf, protectedFrom, staticAffects, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { battlefield, aliveFromActive,
   alivePlayers,
   dealDamage,
@@ -29,7 +29,7 @@ export function canAttack(s: GameState, c: CardInstance, playerId: PlayerId): bo
   return (
     isCreatureOnBattlefield(s, c) &&
     !cantAttackOrBlock(s, c) &&
-    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfArtifactEntered) && s.players[c.controller]!.artifactEnteredTurn === s.turnNumber)) &&
+    (!hasKeyword(s, c, 'Defender') || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderWithCounters) && totalCounters(c) > 0) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfArtifactEntered) && s.players[c.controller]!.artifactEnteredTurn === s.turnNumber) || (!!currentDefinition(s, c).statics?.some((st) => st.attacksDespiteDefenderIfScried) && s.players[c.controller]!.scriedOrSurveiledTurn === s.turnNumber) || battlefield(s).some((x) => x.controller === c.controller && !x.phasedOut && !!currentDefinition(s, x).statics?.some((st) => st.yourCreaturesAttackDespiteDefender))) &&
     c.controller === playerId &&
     !c.tapped &&
     (!c.summoningSick || hasKeyword(s, c, 'Haste'))
@@ -41,9 +41,11 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   if (!isCreatureOnBattlefield(s, blocker) || blocker.tapped) return false;
   if (hasFlag(s, blocker, 'cantBlock') || cantAttackOrBlock(s, blocker)) return false;
   if (hasFlag(s, attacker, 'cantBeBlocked')) return false;
+  if (hasFlag(s, attacker, 'onlyBlockedByHaste') && !hasKeyword(s, blocker, 'Haste')) return false;
   for (const source of battlefield(s)) {
     for (const spec of currentDefinition(s, source).statics ?? []) {
       if (spec.cantBeBlocked && staticAffects(s, source, spec, attacker)) return false;
+      if (spec.yourSmallCreaturesCantBeBlocked && source.controller === attacker.controller && !source.phasedOut && (powerOf(s, attacker) <= 1 || toughnessOf(s, attacker) <= 1)) return false;
       if (spec.cantBeBlockedByGreaterPower && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) > powerOf(s, attacker)) return false;
       const most = spec.cantBeBlockedByPowerAtMost;
       if (most !== undefined && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) <= most) return false;
@@ -51,6 +53,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   }
   // Drone tokens: "can block only creatures with flying".
   if (currentDefinition(s, blocker).canBlockOnlyFlying && !hasKeyword(s, attacker, 'Flying')) return false;
+  if (currentDefinition(s, blocker).cantBlock) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
   }
@@ -88,7 +91,8 @@ export function canAttackPlayer(s: GameState, c: CardInstance, defender: PlayerI
 
 /** Each continuous goad effect imposes attack and defender requirements, rather than a restriction. */
 export function hasGoad(s: GameState): boolean {
-  return continuousSources(s).some(source=>!source.phasedOut && currentDefinition(s, source).statics?.some(st=>st.goaded));
+  return continuousSources(s).some(source=>!source.phasedOut && currentDefinition(s, source).statics?.some(st=>st.goaded))
+    || battlefield(s).some((c) => !!c.goadedForever?.length);
 }
 
 export function hasAttackRequirements(s: GameState): boolean {
@@ -109,6 +113,8 @@ export function goadedBy(s: GameState, c: CardInstance): PlayerId[] {
       if (spec.goaded && staticAffects(s, source, spec, c)) players.add(source.controller);
     }
   }
+  // "Goaded for the rest of the game" (Dack Fayden), while the goading player is still in the game.
+  for (const p of c.goadedForever ?? []) if (!s.players[p]?.eliminated) players.add(p);
   return [...players];
 }
 
@@ -185,6 +191,16 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     const d = s.players[a.defender];
     if (!d || d.eliminated || a.defender === playerId) reject(`"${a.defender}" is not a valid defending player.`);
     if (!canAttackPlayer(s, c, a.defender)) reject('A vow prevents that creature from attacking this player.');
+    if (a.planeswalker !== undefined) {
+      const pw = s.cards[a.planeswalker];
+      if (!pw || pw.zone !== 'battlefield' || pw.phasedOut || pw.controller !== a.defender || !currentDefinition(s, pw).types.includes('planeswalker')) reject('That is not a planeswalker that player controls.');
+      // Jace, Multiverse Architect: "creatures they control can't attack Jaces you control this turn".
+      const ban = (s.attackBans ?? []).find((b) => b.turn === s.turnNumber && b.attacker === playerId && b.controller === pw.controller && subtypesOf(s, pw).includes(b.subtype));
+      if (ban) reject(`Your creatures can't attack ${ban.subtype} planeswalkers that player controls this turn.`);
+      // Tomik, Orzhov Lawmage: "No more than one creature can attack this planeswalker each combat."
+      const guarded = battlefield(s).some((x) => x.controller === pw.controller && !x.phasedOut && !!currentDefinition(s, x).statics?.some((st) => st.planeswalkersOneAttacker));
+      if (guarded && attacks.filter((b) => b.planeswalker === a.planeswalker).length > 1) reject('No more than one creature can attack that planeswalker each combat.');
+    }
   }
   const required = attackRequirementProblem(s, playerId, attacks);
   if (required) reject(required);
@@ -256,6 +272,9 @@ export function blockProblem(s: GameState, playerId: PlayerId, blocks: Block[]):
   for (const [attackerId, count] of blockersPerAttacker) {
     if (count === 1 && hasKeyword(s, s.cards[attackerId]!, 'Menace')) {
       return `"${attackerId}" has menace and can't be blocked except by two or more creatures.`;
+    }
+    if (count > 1 && battlefield(s).some((src) => (currentDefinition(s, src).statics ?? []).some((spec) => spec.cantBeBlockedByMoreThanOne && staticAffects(s, src, spec, s.cards[attackerId]!)))) {
+      return `"${attackerId}" can't be blocked by more than one creature.`;
     }
     const need = blockersNeeded(s, s.cards[attackerId]!);
     if (count < need) return `"${attackerId}" can't be blocked except by ${need} or more creatures.`;
@@ -330,7 +349,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
   const s = ctx.s;
   const combat = s.combat!;
   const participates = (c: CardInstance | undefined): c is CardInstance =>
-    isCreatureOnBattlefield(s, c) && dealsDamageIn(s, c, pass) && powerOf(s, c) > 0;
+    isCreatureOnBattlefield(s, c) && dealsDamageIn(s, c, pass) && combatPowerOf(s, c) > 0;
 
   const assignments: Assignment[] = [];
   for (const attack of combat.attacks) {
@@ -339,12 +358,15 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
     const declared = combat.blocks.filter((b) => b.attacker === attack.attacker).map((b) => b.blocker);
     const liveBlockers = declared.map((id) => s.cards[id]).filter((c) => isCreatureOnBattlefield(s, c));
     const defenderAlive = !s.players[attack.defender]!.eliminated;
-    const toDefender: Target = { kind: 'player', player: attack.defender };
+    // A creature attacking a planeswalker deals its unblocked damage to it; if it's gone, to nothing (rule 506.4c).
+    const pw = attack.planeswalker ? s.cards[attack.planeswalker] : undefined;
+    const pwThere = !!pw && pw.zone === 'battlefield' && !pw.phasedOut && pw.controller === attack.defender && currentDefinition(s, pw).types.includes('planeswalker');
+    const toDefender: Target = attack.planeswalker ? { kind: 'card', card: attack.planeswalker } : { kind: 'player', player: attack.defender };
 
     if (participates(attacker)) {
-      let remaining = powerOf(s, attacker);
+      let remaining = combatPowerOf(s, attacker);
       if (declared.length === 0 && !combat.blockedAttackers?.includes(attacker.id)) {
-        if (defenderAlive) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
+        if (defenderAlive && (!attack.planeswalker || pwThere)) assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
       } else {
         const trample = hasKeyword(s, attacker, 'Trample');
         liveBlockers.forEach((blocker, i) => {
@@ -354,7 +376,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
           remaining -= amount;
           if (amount > 0) assignments.push({ source: attacker.id, target: { kind: 'card', card: blocker.id }, amount });
         });
-        if (trample && remaining > 0 && defenderAlive) {
+        if (trample && remaining > 0 && defenderAlive && (!attack.planeswalker || pwThere)) {
           assignments.push({ source: attacker.id, target: toDefender, amount: remaining });
         }
       }
@@ -364,7 +386,7 @@ function damagePass(ctx: Ctx, pass: DamagePass): void {
         assignments.push({
           source: blocker.id,
           target: { kind: 'card', card: attacker.id },
-          amount: powerOf(s, blocker),
+          amount: combatPowerOf(s, blocker),
         });
       }
     }

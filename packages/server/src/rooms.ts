@@ -280,6 +280,7 @@ export class Client {
     else if (m.type === 'eventDeck') problem = hub.deck(code, seat, m.deck);
     else if (m.type === 'eventReady') problem = hub.ready(code, seat, m.ready);
     else if (m.type === 'eventPlayDraw') problem = hub.playDraw(code, seat, m.play);
+    else if (m.type === 'eventReadyNext') problem = hub.readyNext(code, seat);
     else if (m.type === 'eventLeave') {
       problem = hub.leave(code, seat);
       if (!problem) this.event = null;

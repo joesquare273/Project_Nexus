@@ -79,6 +79,36 @@ describe('quests', () => {
   });
 });
 
+describe('quests for each account', () => {
+  it("two players share games but not quests: each counts only their own games and is paid their own quest once", async () => {
+    const accounts = await alice();
+    await accounts.ensure({ id: 'bob', name: 'Bob' });
+    const day = new Date('2026-11-10T12:00:00Z');
+    accounts.now = () => day;
+    // Three games together (the same game refs for both): Alice wins the first, Bob the other two.
+    const paid: Record<string, string[]> = { alice: [], bob: [] };
+    for (let i = 0; i < 3; i++) {
+      for (const [who, won] of [['alice', i === 0], ['bob', i > 0]] as const) {
+        const r = await rewardMatch(accounts, who, { ref: `table-${i}`, kind: 'friend', won }, day);
+        paid[who]!.push(...r.lines.map((l) => l.label));
+      }
+    }
+    // Both completed "Play 3 games" and "Win a game", each paid once to each player; the first win once each.
+    for (const who of ['alice', 'bob']) {
+      expect(paid[who]!.filter((l) => l === 'Daily quest: Play 3 games')).toHaveLength(1);
+      expect(paid[who]!.filter((l) => l === 'Daily quest: Win a game')).toHaveLength(1);
+      expect(paid[who]!.filter((l) => l === 'Your first win')).toHaveLength(1);
+    }
+    // Their own progress: 3 games each; Alice 1 win, Bob 2.
+    const weekWins = async (who: string) => (await questProgress(accounts, who, day)).find((q) => q.id === 'weekly-win')!.progress;
+    expect([await weekWins('alice'), await weekWins('bob')]).toEqual([1, 2]);
+    // Games only Bob plays don't move Alice's quests.
+    for (let i = 3; i < 6; i++) await rewardMatch(accounts, 'bob', { ref: `bot-${i}`, kind: 'bot', won: true }, day);
+    const progress = async (who: string) => (await questProgress(accounts, who, day)).find((q) => q.id === 'weekly-play')!.progress;
+    expect([await progress('alice'), await progress('bob')]).toEqual([3, 6]);
+  });
+});
+
 describe('the server', () => {
   it('pays the tutorial reward once, and shows quests and one-time rewards', async () => {
     const accounts = await alice();

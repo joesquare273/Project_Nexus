@@ -220,3 +220,54 @@ come after Final Fantasy testing is complete.
 - **Any card:** when the player owns more than one printing of a card
   (different art or finish), the deck list's Art menu switches copies to
   another owned printing.
+
+## Reality Fracture (packs added 2026-11-16)
+
+The booster page's set choice has Reality Fracture too (same prices; the
+server opens them with `set: 'fra'`). Until photos of the real packs are in
+`packages/client/public/packs/fra-play-booster.png` and
+`fra-collector-booster.png`, the drawn pack shows. The Collection binder's
+Reality Fracture tab groups the main set, Booster Fun, the facet foil shattered
+mirror cards, Commander Booster Fun, the Multiverse Reforged deck, Special
+Guests, and tokens and art cards.
+
+Card data: `npm run scryfall:boosters` saves FRA, FRC, TFRA, AFRA and the ten
+Special Guests (SPG 159-168). Print sheets by collector number
+(`buildFraSheets`): 1-194 the main set apart from the echoed pairs (the 10
+common dual lands on their own sheet), 195-280 the 43 echoed pairs
+(`FRA_ECHOED_PAIRS`, paired as Wizards' "The Legends of Reality Fracture" shows
+them; the five "Way of the ..." pairs follow their planeswalkers), 281-290
+basics, 291-320 borderless echoed pairs, 321-333 shattered mirror (facet foil
+449-461), 334-358 sculptor's stronghold, 359-381 braintwister series, 382-396
+tower basics, 397-401 portal view lands, 402 the serialized headliner, 403-422
+Japan Showcase (fracture foil 413-422), 423-431 extended art; FRC 1-2
+borderless mythics and 88-103 extended-art rares.
+
+Odds follow Wizards' "Collecting Reality Fracture" exactly (`FRA_PLAY_BOOSTER`,
+`FRA_COLLECTOR_BOOSTER`); "less than 1%" outcomes share what each slot's listed
+odds leave over, as noted in the code. Of the three echoed pairs cards in each
+pack, the first two are always the two halves of one pair (same rarity,
+treatment and finish).
+
+| Play Booster slot | Contents |
+|---|---|
+| 5-6 commons | Commons; in 1 of 55 packs a non-foil Special Guests card replaces one |
+| Uncommon | Uncommon 96.2%, braintwister uncommon 3.8% |
+| Common or uncommon | Common 23%, uncommon 74%, braintwister uncommon 3% |
+| 3 echoed pairs | Uncommon 88.9%, rare 6.7%, mythic 1.4%, borderless uncommon 1.7% (rarer borderless rare and mythic) |
+| Rare | Rare 74.4%, mythic 14.8%, sculptor's stronghold 3.8%/1%, braintwister rare 3.1%, shattered mirror rare 1%, portal view land 1% |
+| Foil | Common 49.5%, uncommon 40.5%, rare 6%, mythic 1.2%, Booster Fun 2.8% |
+| Land | Dual land 43.6% (foil 10.9%), tower basic 21.8% (foil 5.5%), basic 14.6% (foil 3.6%) |
+| Token | A counter card or double-sided token |
+
+| Collector Booster slot | Contents |
+|---|---|
+| 4 + 2 | Foil commons (and dual lands) and uncommons (braintwister 10.4%) |
+| 3 echoed pairs | Foil uncommon 86.8%, borderless 13.2% |
+| Tower basic | Foil |
+| Foil rare | Rare 83.1%, mythic 16.9% |
+| Braintwister or Commander | Braintwister rare 44.8% or mythic 4.5%, FRC extended-art rare 47.8%, FRC borderless mythic 3% |
+| 2 Booster Fun | Borderless echoed pairs, shattered mirror, sculptor's stronghold, portal view lands, extended art |
+| Foil Booster Fun | Also Special Guests 6.1%, Japan Showcase 9% (fracture foil 1%), facet foil shattered mirror and the serialized Bloodline Recollector |
+| Token or art card | Foil double-sided token 65%, art card 35% |
+

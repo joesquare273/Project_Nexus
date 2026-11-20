@@ -39,6 +39,14 @@ this repo, not only in local memory.
   `eoc-precons.json`): build their cards in groups next (user, 2026-11-04).
   The Edge of Eternities main set is imported for its packs
   (`import-sets.ts eoe`, `eoe-set.json`; 2026-11-05).
+  Next set (user, 2026-11-16): **Reality Fracture**. Its one Commander precon,
+  Multiverse Reforged (Jace, Multiverse Architect), is imported
+  (`import-precons.ts frc`, `frc.json`, `frc-precons.json`); build its cards
+  in groups R1-R5 (docs/commander.md; all built 2026-11-16).
+  Reality Fracture is also its own main set (FRA, separate from the precon):
+  imported 2026-11-16 (`import-sets.ts fra`, `fra-set.json`, cards 1-290);
+  its packs and Collection tab are in (docs/packs.md); build its cards in
+  groups F1-F13 (docs/reality-fracture.md).
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).
 - **Tokens come from Scryfall too**, matched by the exact token printing each
@@ -78,7 +86,7 @@ this repo, not only in local memory.
   `docs/frontend-roadmap.md`; audit the known rules simplifications rather than
   claiming the engine already implements every rule exactly.
 
-- **Token display:** group six or more identical, unmodified tokens with an upper-right count; tokens with keywords, counters, damage, attachments or individual effects remain separate. Keep individual engine IDs and choices.
+- **Token display (user, 2026-11-19):** two or more tokens with the same name and power/toughness share one card with an upper-right count (same token, controller, keywords, tapped state and summoning sickness). A token with counters, damage, something attached, an effect of its own, or a blocker/blocked role shows on its own. Attacking, blocking, choosing (sacrifice, tap) asks "how many" from a stack; targets, abilities and mana use one token per click. Keep individual engine IDs and choices (`game/tokenStacks.ts`, `onStack` in Game.tsx).
 - **Damage display:** show remaining damage capacity in red until cleanup, while preserving actual MTG toughness and prevention/indestructible behavior.
 
 ## Where things are
@@ -87,6 +95,7 @@ this repo, not only in local memory.
   Add an entry for notable changes.
 - `docs/starter-kits.md`: Starter Kit roadmap (K1–K6, done) and card status.
 - `docs/commander.md`: Commander format and precon roadmap (C1–C5).
+- `docs/reality-fracture.md`: the Reality Fracture main set's card groups (F1-F13).
 - `docs/decisions.md`: design decisions and known rules simplifications.
 - `docs/card-types.md`: card types and categories (permanent, nonpermanent,
   spell), the rules each brings, and whether they are built. Rules tied to a

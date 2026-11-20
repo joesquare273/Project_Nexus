@@ -1,12 +1,21 @@
-import { useState } from 'react';
-import type { CardDefinition, CardFinish } from '@nexus/engine';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { FACE_DOWN_IDS, type CardDefinition, type CardFinish } from '@nexus/engine';
 import { costSymbols, defOf, frameClass, isCreature, meldedPrinting, rulesText, scryfallOf, symbolUrl, typeLine } from '../game/cards.ts';
+
+/** One mana symbol: a gray circle with the number (or X) for generic mana, Scryfall's symbol for the rest (a colored letter if it can't load). */
+function ManaSymbol({ sym, size }: { sym: string; size: number }) {
+  const [failed, setFailed] = useState(false);
+  const circle = { width: size, height: size, fontSize: Math.round(size * (sym.length > 1 ? 0.56 : 0.72)) };
+  if (/^(\d+|X|Y|Z)$/.test(sym)) return <span className="mana-sym generic" style={circle} role="img" aria-label={`{${sym}}`}>{sym}</span>;
+  if (failed) return <span className={`mana-sym letter m-${sym.replace(/[^A-Z]/g, '')}`} style={circle} role="img" aria-label={`{${sym}}`}>{sym.replace('/', '')}</span>;
+  return <img src={symbolUrl(sym)} alt={`{${sym}}`} width={size} height={size} onError={() => setFailed(true)} />;
+}
 
 export function ManaCost({ cost, size = 14 }: { cost: string | undefined; size?: number }) {
   return (
     <span className="mana-cost">
       {costSymbols(cost).map((sym, i) => (
-        <img key={i} src={symbolUrl(sym)} alt={`{${sym}}`} width={size} height={size} />
+        <ManaSymbol key={i} sym={sym} size={size} />
       ))}
     </span>
   );
@@ -22,20 +31,53 @@ export function ManaText({ text, size = 15 }: { text: string; size?: number }) {
   );
 }
 
+/** Smallest share of the title size a long name may shrink to, to stay readable. */
+const MIN_NAME_SCALE = 0.62;
+
+/**
+ * A card name that shrinks just enough to fit its bar (long names on small
+ * cards), refitting when the card changes size; below the minimum it's cut
+ * off with an ellipsis as before.
+ */
+function FittedName({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [scale, setScale] = useState(1);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.fontSize = '';
+      const room = el.clientWidth, need = el.scrollWidth;
+      const next = need > room + 1 && room > 0 ? Math.max(MIN_NAME_SCALE, Math.floor((room / need) * 100) / 100) : 1;
+      el.style.fontSize = next < 1 ? `${next}em` : '';
+      setScale(next);
+    };
+    fit();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
+    observer?.observe(el.parentElement ?? el);
+    return () => observer?.disconnect();
+  }, [name]);
+  return (
+    <span ref={ref} className="drawn-name" style={scale < 1 ? { fontSize: `${scale}em` } : undefined}>
+      {name}
+    </span>
+  );
+}
+
 /** A drawn card frame, for when Scryfall's image can't load (offline, or a card not fetched yet). */
 function DrawnCard({ def }: { def: CardDefinition }) {
   const text = rulesText(def);
   return (
     <div className={`drawn ${frameClass(def)}`}>
       <div className="drawn-title">
-        <span className="drawn-name">{def.name}</span>
+        <FittedName name={def.name} />
         <ManaCost cost={def.manaCost} size={11} />
       </div>
       <div className="drawn-art">
         <span>{def.types.includes('land') ? '⛰' : isCreature(def) ? '⚔' : '✦'}</span>
       </div>
       <div className="drawn-type">{typeLine(def)}</div>
-      <div className="drawn-text">{text}</div>
+      <div className="drawn-text"><ManaText text={text} size={11} /></div>
       {isCreature(def) && (
         <div className="drawn-pt">
           {def.power}/{def.toughness}
@@ -72,6 +114,8 @@ export function CardFace({
   const info = melded ?? scryfallOf(defId,printing);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const src = info && (backFace && !melded ? info.image[size].replace('/front/', '/back/') : info.image[size]);
+  // An opponent's face-down card (morph) shows its back.
+  if (FACE_DOWN_IDS.has(defId)) return <CardBack />;
   const shine = finish && <CardShine finish={finish} />;
   if (!info || !src || failedSrc === src)
     return (

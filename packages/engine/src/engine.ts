@@ -2,8 +2,8 @@
 // The input state is never mutated.
 
 import { declareAttackers, declareBlockers } from './combat.ts';
-import { chooseCardType, chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
-import { chooseCopy, chooseEntryCopy, chooseEntryCounters, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
+import { chooseCardType, chooseOption, chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
+import { chooseCopy, chooseResolutionOption, chooseEntryCopy, chooseEntryCounters, chooseDevour, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -89,6 +89,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
           ...(action.costCards ? { costCards: action.costCards } : {}),
           ...(action.alternative ? { alternative: true } : {}),
           ...(action.adventure ? { adventure: true } : {}),
+          ...(action.faceDown ? { faceDown: true } : {}),
           ...(action.x !== undefined ? { x: action.x } : {}),
           ...(action.convoke ? { convoke: action.convoke } : {}),
           ...(action.improvise ? { improvise: action.improvise } : {}),
@@ -140,6 +141,10 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       case 'ChooseCardType':
         chooseCardType(ctx, action.player, action.cardType);
         break;
+      case 'ChooseOption':
+        if (ctx.s.pending.kind === 'chooseOption' && ctx.s.pending.forResolution) chooseResolutionOption(ctx, action.player, action.option);
+        else chooseOption(ctx, action.player, action.option);
+        break;
       case 'ChooseColor':
         chooseColor(ctx, action.player, action.color);
         break;
@@ -154,6 +159,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'dredge') chooseDredge(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'copyOnEntry') chooseEntryCopy(ctx, action.player, action.cards);
         else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'removeCountersOnEntry') chooseEntryCounters(ctx, action.player, action.cards);
+        else if (s.pending.kind === 'chooseCards' && s.pending.purpose === 'devourOnEntry') chooseDevour(ctx, action.player, action.cards);
         else chooseCards(ctx, action.player, action.cards);
         break;
       case 'BottomCards':
