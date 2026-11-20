@@ -35,7 +35,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F6 | Blue (13) | Done |
 | F7 | Black (17) | Done |
 | F8 | Red (20) | Done |
-| F9 | Green | |
+| F9 | Green (20) | Done |
 | F10 | Multicolor and artifacts | |
 | F11 | Echoed pairs legends, white, blue and black | |
 | F12 | Echoed pairs legends, red, green and multicolor | |
@@ -88,4 +88,10 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 ### F8 (2026-11-20)
 
 - Ajani's Anguish, Artifist Acumen, Awaken the Inferno, Blazing Crescendo, Chandra's Emberling, Command the Stage, Craterclaw Colossus, Curse-Marred Demon, Draconic Visitor, Eardrum Rattler, Essence Burn, Face Yourself, Fulminous Forte, Heartstring Puller, Identity Echo, Master of Barbs, Skilled Battlecarver, Stingcaster Mage, Tether Technician and Wrath of the Bloodmane. The red echoed-pairs legends are F12; Ajani, Unrelenting and Chandra, Torch of Defiance are F13.
-- Engine: flashback granted until end of turn with the card's mana cost as its cost (`GrantFlashback`, `CardInstance.flashbackTurn`); discarding at random (`atRandom`); Draconic Visitor's replacement of artifact tokens with Dragons (`artifactTokensBecome`, checked as each token is created, after copy effects); "whenever one or more opponents are dealt noncombat damage" (`OpponentDealtNoncombatDamage`); "if an opponent was dealt noncombat damage last turn" (`ifOpponentDealtNoncombatDamageLastTurn`, `PlayerState.noncombatDamagePreviousTurn`); token copies of each creature a player controls with haste and the planeswalker end-step sacrifice (`eachCreatureOfTarget`, `copyKeywords`, `copySacrificeUnlessPlaneswalker`); "each other Wizard token" (`exceptCreatedTokens`); a cost reduction while you control a matching permanent (`costReduction.ifYouControl`). The Dragon token (tfra 7).
+- Engine: flashback granted until end of turn with the card's mana cost as its cost (`GrantFlashback`, `CardInstance.flashbackTurn`); discarding at random (`atRandom`); Draconic Visitor's replacement of artifact tokens with Dragons (`artifactTokensBecome`, checked as each token is created, after copy effects); "whenever one or more opponents are dealt noncombat damage" (`OpponentDealtNoncombatDamage`); "if an opponent was dealt noncombat damage last turn" (`ifOpponentDealtNoncombatDamageLastTurn`, `PlayerState.noncombatDamagePreviousTurn`); token copies of each creature a player controls with haste and the planeswalker end-step sacrifice (`eachCreatureOfTarget`, `copyKeywords`, `copySacrificeUnlessPlaneswalker`); a cost reduction while you control a matching permanent (`costReduction.ifYouControl`). The Dragon token (tfra 7).
+
+### F9 (2026-11-20)
+
+- Bestial Incursion, Budding Insurgent, Compel Brutality, Flourishing Grapple, Gardenize, Greenhouse Propagator, Hexhaven Invigorator, Hungering Puppetbeast, Hunter's Axe, Omnipresence, Puppet Crafting, Restore with Empathy, Simulacrum Shaper, Something Worth Saving, Sureshot Sower, Tarmogoyf, Tethermage's Advantage, Verdant Kraken, Vinelasher Adept and Wrecking Gecko. The green echoed-pairs legends are F12; Garruk, Curse-Breaker is F13.
+- Engine: "loses all abilities until end of turn" (`LoseAllAbilities`, `CardInstance.lostAbilitiesTurn`); damage from the spell's first target (`damageFromFirstTarget`) and equal to a planeswalker's loyalty (`previousTargetLoyalty`); "your choice of trample, hexproof, or haste" as an ability resolves (`ChooseKeyword` then GrantKeywords `chosenKeyword`); Omnipresence's free spells from hand (`castFromHandFreeUpToCreatures`: like Weftwalking, the spell is simply free, with X as 0); an Aura that makes the enchanted permanent a creature with base power and toughness (`enchantedBecomesCreature`); Tarmogoyf's card types in all graveyards (`CardTypesInAllGraveyards`, `toughnessFromCountPlus`). The Forest Tentacle token (tfra 9).
+- Hunter's Axe's attack trigger is the Equipment's own ("whenever equipped creature attacks"), with trample or deathtouch chosen as it triggers.

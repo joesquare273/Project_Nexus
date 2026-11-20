@@ -1148,9 +1148,13 @@ export function spellCost(
   // Weftwalking: the first spell a player casts during their own turn is free (X is 0; they can still pay an alternative cost or for X instead).
   const weft = !permission && !alternative && x === 0 && way === null && from !== 'command' && !!payer && s.activePlayer === payer && (s.players[payer]!.spellsCastThisTurn ?? 0) === 0
     && battlefield(s).some((p) => !p.phasedOut && (defOf(s, p).statics ?? []).some((st) => st.firstSpellEachTurnFree));
+  // Omnipresence: a spell from your hand with mana value up to the number of creatures you control is free (X is 0).
+  const omnipresent = !weft && !permission && !alternative && x === 0 && from === 'hand' && !!payer && !!card && !card.faceDown
+    && battlefield(s).some((p) => p.controller === payer && !p.phasedOut && (defOf(s, p).statics ?? []).some((st) => st.castFromHandFreeUpToCreatures))
+    && objectManaValue(s, card) <= battlefield(s).filter((p) => p.controller === payer && !p.phasedOut && hasType(s, p, 'creature')).length;
   const base = card?.faceDown && from === 'hand'
     ? '{3}'
-    : permission?.free || weft
+    : permission?.free || weft || omnipresent
     ? undefined
     : permission?.manaCost
       ? permission.manaCost
@@ -2090,7 +2094,7 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
     case 'AllPermanents': {
       const viewpoint = { controller: item.controller, source: sourceOf(item), ...contextOf(item), x: item.kind === 'spell' ? (item.x ?? 0) : 0 };
       return battlefield(s)
-        .filter((c) => matchesObject(s, effect.filter, c, viewpoint) && !(effect.exceptCreatedTokens && s.resolving?.createdTokens.includes(c.id)))
+        .filter((c) => matchesObject(s, effect.filter, c, viewpoint))
         .map((c) => ({ kind: 'card', card: c.id }));
     }
     default:
@@ -2516,8 +2520,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DealDamage': {
       // "That creature deals damage equal to its power" (Flayer of the Hatebound).
       const subject = item.kind === 'ability' ? item.subject : undefined;
-      const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined;
-      if (effect.damageSource === 'PreviousTarget' && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
+      const first = effect.damageFromFirstTarget ? item.targets?.[0] : undefined;
+      const chosen = effect.damageSource === 'PreviousTarget' && r.previousTarget?.kind === 'card' ? r.previousTarget.card : first?.kind === 'card' ? first.card : undefined;
+      if ((effect.damageSource === 'PreviousTarget' || effect.damageFromFirstTarget) && (!chosen || s.cards[chosen]!.zone !== 'battlefield')) return;
       const host = effect.damageSource === 'EquippedCreature' ? s.cards[source]?.attachedTo : undefined;
       if (effect.damageSource === 'EquippedCreature' && (!host || s.cards[host]?.zone !== 'battlefield')) return;
       const from = host ?? (effect.damageSource === 'TriggeringObject' && subject ? subject : chosen ?? source);
@@ -2525,6 +2530,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // "Deals damage equal to its power": its power now, if it's still on the battlefield (rule 608.2h).
       let damage = host && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'sourcePower' ? Math.max(0, powerOf(s, s.cards[host]!)) : amount;
       if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetPower') damage = Math.max(0, powerOf(s, s.cards[chosen]!)) * (effect.doubleIfKicked && item.kind === 'spell' && (item.kicks ?? 0) > 0 ? 2 : 1);
+      // Compel Brutality: "Target planeswalker you control deals damage equal to its loyalty".
+      if (chosen && s.cards[chosen]!.zone === 'battlefield' && typeof effect.amount === 'object' && effect.amount !== null && 'of' in effect.amount && effect.amount.of === 'previousTargetLoyalty') damage = s.cards[chosen]!.namedCounters?.loyalty ?? 0;
       // Cut Propulsion: "If that creature has flying, it deals twice that much damage to itself instead."
       if (effect.doubleIfPreviousTargetIs && chosen && matchesObject(s, effect.doubleIfPreviousTargetIs, s.cards[chosen]!, { controller: item.controller, source })) damage *= 2;
       for (const t of targets) {
@@ -2771,6 +2778,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (tied.length === 1) sacrifice(ctx, tied[0]!.id);
         else r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'sacrifice', cards: tied.map((c) => c.id), min: 1, max: 1 }];
       }
+      return;
+    case 'LoseAllAbilities':
+      for (const id of onBattlefield) s.cards[id]!.lostAbilitiesTurn = s.turnNumber;
+      return;
+    case 'ChooseKeyword':
+      s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: [...(effect.keywords ?? [])], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'keyword' };
       return;
     case 'GrantFlashback':
       for (const id of cards) if (s.cards[id]?.zone === 'graveyard') s.cards[id]!.flashbackTurn = s.turnNumber;
@@ -3713,6 +3726,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             ? { toughness: (effect.toughness ?? 0) + plusT + (effect.toughnessFromAmount ? (effect.subtractAmount ? -amount : amount) : 0) }
             : {}),
           ...(effect.keywords ? { keywords: [...effect.keywords] } : {}),
+          ...(effect.chosenKeyword && r.chosenKeyword ? { keywords: [r.chosenKeyword] as NonNullable<EffectSpec['keywords']> } : {}),
           ...(effect.flags ? { flags: [...effect.flags] } : {}),
           ...(effect.whileYouControlSource ? { whileControlledBy: item.controller } : {}),
           ...(effect.untilYourNextTurn ? { untilNextTurnOf: item.controller } : {}),
@@ -5280,7 +5294,8 @@ export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: str
   const s = ctx.s, pending = s.pending, r = s.resolving;
   if (pending.kind !== 'chooseOption' || !pending.forResolution || pending.player !== playerId || !r) reject('You are not choosing anything right now.');
   if (!pending.options.includes(option)) reject(`Choose one of: ${pending.options.join(', ')}.`);
-  r.chosenCreatureType = option;
+  if (pending.forResolution === 'keyword') r.chosenKeyword = option;
+  else r.chosenCreatureType = option;
   ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
   s.pending = pending.resume;
   continueResolving(ctx);

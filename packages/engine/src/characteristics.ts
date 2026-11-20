@@ -102,6 +102,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
         const types = def(s, s.cards[id]!).types;
         return !types.includes('creature') && !types.includes('land');
       }).length;
+    case 'CardTypesInAllGraveyards':
+      return new Set(s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.flatMap((id) => def(s, s.cards[id]!).types))).size;
     case 'CreaturesDiedThisTurn':
       return s.creaturesDiedThisTurn;
     case 'OpponentCreaturesDiedThisTurn':
@@ -306,7 +308,10 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
     ward: d.ward ?? 0,
   };
   // "Adeline's power is equal to the number of creatures you control" (rule 604.3: in every zone).
-  if (d.powerFromCount) out.power = countOf(s, d.powerFromCount, c.controller, c.id);
+  if (d.powerFromCount) {
+    out.power = countOf(s, d.powerFromCount, c.controller, c.id);
+    if (d.toughnessFromCountPlus !== undefined) out.toughness = out.power + d.toughnessFromCountPlus;
+  }
   if (d.ptPlusCounts) {
     const n = d.ptPlusCounts.reduce((sum, k) => sum + countOf(s, k, c.controller, c.id), 0);
     out.power += n;

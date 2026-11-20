@@ -823,3 +823,135 @@ describe('F8: red', () => {
     expect([zone(s, rat), zone(s, found)]).toEqual(['exile', 'battlefield']);
   });
 });
+
+describe('F9: green', () => {
+  it('Budding Insurgent: sacrifice it to destroy an artifact or enchantment, drawing if it was a legendary enchantment', () => {
+    let s = newGame();
+    const insurgent = put(s, 'P1', 'budding-insurgent');
+    const anguish = put(s, 'P2', 'ajanis-anguish');
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: insurgent, ability: 0, targets: [card(anguish)] }).state;
+    expect([zone(s, insurgent), zone(s, anguish), s.players.P1!.hand.length]).toEqual(['graveyard', 'graveyard', hand]);
+  });
+
+  it('Compel Brutality: your planeswalker deals damage equal to its loyalty', () => {
+    let s = newGame();
+    const walker = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const witch = put(s, 'P2', 'apex-witchstalker');
+    const spell = put(s, 'P1', 'compel-brutality', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, mode: 1, targets: [card(walker), card(witch)] }).state;
+    expect(zone(s, witch)).toBe('graveyard');
+  });
+
+  it('Flourishing Grapple: the red or white permanent loses its abilities, then your creature deals damage equal to its power to it', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'apex-witchstalker');
+    const theirs = put(s, 'P2', 'skilled-battlecarver');
+    put(s, 'P2', 'rank-rat');
+    const spell = put(s, 'P1', 'flourishing-grapple', 'hand');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(mine), card(theirs)] }).state;
+    expect([zone(s, theirs), s.cards[mine]!.damage]).toEqual(['graveyard', 0]);
+  });
+
+  it('Gardenize gets a charge counter when your creature dies and adds {G} for each at your first main phase', () => {
+    let s = newGame();
+    const garden = put(s, 'P1', 'gardenize');
+    const rat = put(s, 'P1', 'rank-rat');
+    const gasp = put(s, 'P2', 'last-gasp', 'hand');
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: gasp, targets: [card(rat)] }).state;
+    expect(s.cards[garden]!.namedCounters?.charge).toBe(1);
+  });
+
+  it('Hungering Puppetbeast: sacrifice another artifact for a counter and your choice of trample, hexproof or haste', () => {
+    let s = newGame();
+    const beast = put(s, 'P1', 'hungering-puppetbeast', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: beast }).state;
+    const heartwood = Object.values(s.cards).find((c) => c.defId === 'heartwood-token-fra')!.id;
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: beast, ability: 0, targets: [], costCards: [heartwood] }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseOption', forResolution: 'keyword', options: ['Trample', 'Hexproof', 'Haste'] });
+    s = settle(act(s, { type: 'ChooseOption', player: 'P1', option: 'Hexproof' })).state;
+    expect([s.cards[beast]!.counters, hasKeyword(s, s.cards[beast]!, 'Hexproof'), zone(s, heartwood)]).toEqual([1, true, 'void']);
+  });
+
+  it('Omnipresence: spells from your hand with mana value up to your creature count are free', () => {
+    const s = newGame();
+    put(s, 'P1', 'omnipresence');
+    put(s, 'P1', 'rank-rat');
+    put(s, 'P1', 'rank-rat');
+    const cheap = put(s, 'P1', 'last-gasp', 'hand');
+    const dear = put(s, 'P1', 'cast-away-doubt', 'hand');
+    put(s, 'P2', 'rank-rat');
+    const castable = (id: string) => getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === id);
+    expect([castable(cheap), castable(dear)]).toEqual([true, false]);
+  });
+
+  it('Puppet Crafting makes the enchanted artifact a 5/5 Construct creature', () => {
+    let s = newGame();
+    const relic = put(s, 'P1', 'lichs-relic');
+    const aura = put(s, 'P1', 'puppet-crafting', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(relic)] }).state;
+    const def = currentDefinition(s, s.cards[relic]!);
+    expect([def.types.includes('creature'), def.subtypes?.includes('Construct'), powerOf(s, s.cards[relic]!), toughnessOf(s, s.cards[relic]!)]).toEqual([true, true, 5, 5]);
+  });
+
+  it('Something Worth Saving mills four and returns a permanent card milled this way', () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'rank-rat', 'library');
+    const spell = put(s, 'P1', 'something-worth-saving', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [s.pending.cards[0]!] })).state;
+    expect(s.players.P1!.graveyard.filter((id) => s.cards[id]!.defId === 'rank-rat').length).toBe(3);
+    expect(s.players.P1!.life).toBe(21);
+  });
+
+  it('Sureshot Sower can be discarded from hand to destroy a creature with flying', () => {
+    let s = newGame();
+    const sower = put(s, 'P1', 'sureshot-sower', 'hand');
+    const flyer = put(s, 'P2', 'screeching-soulbreaker');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: sower, ability: 0, targets: [card(flyer)] }).state;
+    expect([zone(s, sower), zone(s, flyer)]).toEqual(['graveyard', 'graveyard']);
+  });
+
+  it('Tarmogoyf counts the card types among cards in all graveyards', () => {
+    const s = newGame();
+    const goyf = put(s, 'P1', 'tarmogoyf');
+    expect([powerOf(s, s.cards[goyf]!), toughnessOf(s, s.cards[goyf]!)]).toEqual([0, 1]);
+    put(s, 'P1', 'rank-rat', 'graveyard');
+    put(s, 'P2', 'last-gasp', 'graveyard');
+    put(s, 'P2', 'craterclaw-colossus', 'graveyard'); // artifact creature
+    expect([powerOf(s, s.cards[goyf]!), toughnessOf(s, s.cards[goyf]!)]).toEqual([3, 4]);
+  });
+
+  it('Hexhaven Invigorator: when dealt damage, search for up to that many lands onto the battlefield tapped', () => {
+    let s = newGame();
+    const beast = put(s, 'P1', 'hexhaven-invigorator');
+    const lands = [put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'forest', 'library')];
+    const gasp = put(s, 'P2', 'wrath-of-the-bloodmane', 'hand');
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: gasp, targets: [card(beast)] }).state;
+    // 4 damage: up to four lands, and the library has three.
+    const found = lands.filter((id) => zone(s, id) === 'battlefield');
+    expect(found.length).toBe(3);
+    expect(found.every((id) => s.cards[id]!.tapped)).toBe(true);
+  });
+
+  it("Verdant Kraken makes a Forest Tentacle at each player's upkeep", () => {
+    let s = newGame();
+    put(s, 'P1', 'verdant-kraken');
+    s = goTo(s, 'upkeep');
+    s = settle(s).state;
+    const tentacles = Object.values(s.cards).filter((c) => c.defId === 'forest-tentacle-token-fra');
+    expect(tentacles.length).toBe(1);
+    expect(currentDefinition(s, tentacles[0]!).types).toEqual(['land', 'creature']);
+  });
+});

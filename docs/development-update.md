@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F9: green (2026-11-20)
+
+- 20 green cards (docs/reality-fracture.md), with Tarmogoyf, Omnipresence's free spells, losing all abilities until end of turn, keyword choices as abilities resolve, and Puppet Crafting's animation.
+
 ### Reality Fracture F8: red (2026-11-20)
 
 - 20 red cards (docs/reality-fracture.md), with granted flashback, random discards, Draconic Visitor's Dragon replacement, noncombat-damage triggers and Face Yourself's token copies.

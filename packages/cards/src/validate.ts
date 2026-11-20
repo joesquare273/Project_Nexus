@@ -130,6 +130,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'x',
       'lifeLostThisWay',
       'drawnThisWay',
+      'previousTargetLoyalty',
       'revealedManaValue',
       'subjectManaValue',
       'previousTargetPowerOverSubject',
@@ -341,7 +342,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.effect === 'MillAndGrantOneCast' && e.token !== undefined && typeof e.token !== 'string') err('MillAndGrantOneCast token must be a token id.');
   if (e.effect === 'CreateToken' && typeof e.token !== 'string') err('CreateToken needs a token id.');
   if (e.effect === 'ChooseFate' && (!inAbility || e.target !== 'You')) err('ChooseFate needs You in an ability.');
-  if (e.effect === 'GrantKeywords' && !e.keywords?.length) err('GrantKeywords needs keywords.');
+  if (e.effect === 'GrantKeywords' && !e.keywords?.length && !e.chosenKeyword) err('GrantKeywords needs keywords.');
   if (e.effect === 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyBuffBoth].some(x=>x!==undefined)) err('CreateTokenCopy takes only copyKeywords of the copy options.');
   if (e.effect !== 'CopyCreature' && e.effect !== 'CreateTokenCopy' && [e.copyName,e.copyUntilEndOfTurn,e.copyKeepTrigger,e.copyKeywords,e.copyBuffBoth].some(x=>x!==undefined)) err('copy options require CopyCreature.');
   for (const k of e.copyKeywords ?? []) if (!KEYWORDS.includes(k)) err(`unknown copy keyword "${k}".`);

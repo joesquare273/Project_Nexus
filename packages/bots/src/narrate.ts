@@ -142,6 +142,10 @@ function effectText(e: EffectSpec): string {
       return `exile ${who}${e.sameNameTokens ? ' and all tokens that player controls with the same name' : ''}`;
     case 'ExileGraveyard':
       return e.target === 'EachPlayer' ? 'exile all graveyards' : `exile ${who === 'you' ? 'your' : `${who}'s`} graveyard`;
+    case 'LoseAllAbilities':
+      return `${who} loses all abilities until end of turn`;
+    case 'ChooseKeyword':
+      return `choose ${(e.keywords ?? []).join(', ')}`;
     case 'GrantFlashback':
       return `${who} gains flashback until end of turn`;
     case 'SacrificeGreatestManaValue':

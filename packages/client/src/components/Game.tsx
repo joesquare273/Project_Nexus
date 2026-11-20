@@ -1610,6 +1610,8 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseOption') {
     text = pending.forResolution === 'creatureType'
       ? `${cardName(s, pending.card)}: choose a creature type.`
+      : pending.forResolution === 'keyword'
+      ? `${cardName(s, pending.card)}: choose the ability it gains.`
       : `${cardName(s, pending.card)}: choose ${pending.options.join(' or ')} as it enters.`;
     buttons = pending.options.map((option) => ({ label: option, onClick: () => p.submit([{ type: 'ChooseOption', player: ME, option }]) }));
   } else if (pending.kind === 'orderTriggers') {

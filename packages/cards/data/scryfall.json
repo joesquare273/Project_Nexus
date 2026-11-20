@@ -8253,6 +8253,28 @@
     "scryfallId": "be72862d-d71e-4b18-98a6-59019399f631",
     "relatedTokens": []
   },
+  "forest-tentacle-token-fra": {
+    "name": "Forest Tentacle",
+    "typeLine": "Token Land Creature — Forest Tentacle",
+    "oracleText": "(This token has \"{T}: Add {G}.\" It's affected by summoning sickness until your next turn.)",
+    "set": "tfra",
+    "number": "9",
+    "artist": "Deruchenko Alexander",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762",
+      "normal": "https://cards.scryfall.io/normal/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762",
+      "large": "https://cards.scryfall.io/large/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/c/fc924972-5014-45d1-9676-6a76d862b205.jpg?1789735762"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/9/forest-tentacle?utm_source=api",
+    "scryfallId": "fc924972-5014-45d1-9676-6a76d862b205",
+    "relatedTokens": [
+      {
+        "name": "Forest Tentacle",
+        "scryfallId": "fc924972-5014-45d1-9676-6a76d862b205"
+      }
+    ]
+  },
   "forge-anew": {
     "name": "Forge Anew",
     "typeLine": "Enchantment",

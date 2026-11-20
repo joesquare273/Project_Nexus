@@ -478,6 +478,10 @@ export const EFFECT_KINDS = [
   'SacrificeGreatestManaValue',
   /** The target card gains flashback until end of turn, its flashback cost equal to its mana cost (Stingcaster Mage). */
   'GrantFlashback',
+  /** The targets lose all abilities until end of turn (Flourishing Grapple). */
+  'LoseAllAbilities',
+  /** Choose one of `keywords` as this resolves; a later GrantKeywords with `chosenKeyword` grants it (Hungering Puppetbeast). */
+  'ChooseKeyword',
   /**
    * "You may reveal exactly two cards you own with different names from outside the game. An opponent chooses one of them.
    * You put that card into your hand" (Extrapolate the Impossible): outside the game is the player's sideboard.
@@ -687,6 +691,8 @@ export const COUNT_KINDS = [
   /** Artifact, creature, enchantment, land, planeswalker and battle cards in your graveyard. */
   'PermanentCardsInYourGraveyard',
   'CreaturesDiedThisTurn',
+  /** Card types among cards in all graveyards (Tarmogoyf). */
+  'CardTypesInAllGraveyards',
   /** Every creature on the battlefield, whoever controls it. */
   'CreaturesOnBattlefield',
   'EquippedAttackingCreaturesYouControl',
@@ -818,6 +824,8 @@ export type Amount =
         | 'lifeLostThisWay'
         /** Cards drawn earlier in this resolution ("lose life equal to the number of cards drawn this way"). */
         | 'drawnThisWay'
+        /** DealDamage from the previous target: its loyalty (Compel Brutality). */
+        | 'previousTargetLoyalty'
         /** The mana value of the card found by RevealUntil. */
         | 'revealedManaValue'
         /** The triggering spell's mana value (counting X while it's on the stack). */
@@ -1233,8 +1241,10 @@ export interface EffectSpec {
   copySacrificeUnlessPlaneswalker?: boolean;
   /** CreateTokenCopy with a player target: a copy of each creature that player controls. */
   eachCreatureOfTarget?: boolean;
-  /** AllPermanents: not the tokens created earlier in this resolution ("each other Wizard token you control"). */
-  exceptCreatedTokens?: boolean;
+  /** GrantKeywords: the keyword chosen earlier in this resolution (ChooseKeyword). */
+  chosenKeyword?: boolean;
+  /** DealDamage: the spell's first target deals it ("target creature you control deals damage ... to that permanent"). */
+  damageFromFirstTarget?: boolean;
   /**
    * Targets of effects sharing a `group` are one "up to N target" phrase, so
    * each must be a different object (rule 115.3). With `groupOwnersDiffer`,
@@ -1723,6 +1733,10 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "You may cast spells with mana value less than or equal to the number of creatures you control from your hand without paying their mana costs" (Omnipresence). */
+  castFromHandFreeUpToCreatures?: boolean;
+  /** An Aura: "Enchanted permanent is a [subtypes] creature with base power and toughness P/T in addition to its other types" (Puppet Crafting). */
+  enchantedBecomesCreature?: { power: number; toughness: number; subtypes?: string[] };
   /** "If one or more artifact tokens would be created under your control, that many [token] are created instead" (Draconic Visitor). */
   artifactTokensBecome?: CardDefId;
   /** Station: only applies while the source has at least this many charge counters ("8+ | Flying" is a Self static with keywords). */
@@ -2222,6 +2236,8 @@ export interface CardDefinition {
   creatureOnlyWithDevotion?: { color: 'W' | 'U' | 'B' | 'R' | 'G'; atLeast: number };
   /** Its power is equal to this count, everywhere (a characteristic-defining ability, rule 604.3: Adeline). */
   powerFromCount?: CountKind;
+  /** Its toughness is `powerFromCount` plus this (Tarmogoyf: "that number plus 1"). */
+  toughnessFromCountPlus?: number;
   /** Power and toughness are each its printed values plus the sum of these counts (Multani: lands you control and land cards in your graveyard). */
   ptPlusCounts?: CountKind[];
   /** "This creature enters with a +1/+1 counter for each ...": the count as it enters (Centaur Vinecrasher). */
@@ -2417,6 +2433,8 @@ export interface CardInstance {
   outsideGame?: boolean;
   /** "Gains flashback until end of turn; the flashback cost is equal to its mana cost" (Stingcaster Mage): the turn it was granted. */
   flashbackTurn?: number;
+  /** "Loses all abilities until end of turn" (Flourishing Grapple): the turn. */
+  lostAbilitiesTurn?: number;
   /** A copy of a prepare spell (in exile, then on the stack): the prepared permanent it belongs to. */
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
@@ -2930,6 +2948,8 @@ export interface Resolving {
   revealedManaValue?: number;
   /** The creature type chosen as this resolves (ChooseCreatureType). */
   chosenCreatureType?: string;
+  /** The keyword chosen as this resolves (ChooseKeyword). */
+  chosenKeyword?: string;
   /** Enlightened Confidant: a surveiled card with at most this mana value goes to your hand instead of the graveyard. */
   surveilReturnAtMost?: number;
   /** Excess damage dealt by a DealDamage with `recordExcess`. */
@@ -3102,7 +3122,7 @@ export type Pending =
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /** "As this enters, choose Mardu or Jeskai". */
-  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' }
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.

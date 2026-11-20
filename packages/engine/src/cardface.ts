@@ -55,7 +55,7 @@ export function continuousSources(s: GameState): CardInstance[] {
   const cached = sourceCache.get(s);
   if (cached?.version === version && cached.count === count && cached.defs === s.cardDefs) return cached.sources;
   const sources = s.turnOrder.flatMap(p=>s.players[p]!.battlefield.map(id=>s.cards[id]!)).filter(c=>
-    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.planeswalkersHave || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.noncreatureIfGraveyardBelow !== undefined));
+    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.planeswalkersHave || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.enchantedBecomesCreature || st.noncreatureIfGraveyardBelow !== undefined));
   sourceCache.set(s,{version,count,defs:s.cardDefs,sources});
   return sources;
 }
@@ -127,6 +127,18 @@ function definitionWithEffects(s: GameState, c: CardInstance): CardDefinition {
   }
   // Impending: not a creature while it has a time counter (rule 702.176).
   if (def.alternativeCost?.impending && (c.namedCounters?.time ?? 0) > 0) { change(); out.types = out.types.filter((t) => t !== 'creature'); }
+  // Puppet Crafting: "Enchanted permanent is a Construct creature with base power and toughness 5/5 in addition to its other types."
+  for (const aura of continuousSources(s)) {
+    if (aura.attachedTo !== c.id || aura.phasedOut) continue;
+    for (const st of copiableDefinition(s, aura).statics ?? []) {
+      if (!st.enchantedBecomesCreature) continue;
+      change();
+      out.types = [...new Set([...out.types, 'creature' as const])];
+      out.subtypes = [...new Set([...(out.subtypes ?? []), ...(st.enchantedBecomesCreature.subtypes ?? [])])];
+      out.power = st.enchantedBecomesCreature.power;
+      out.toughness = st.enchantedBecomesCreature.toughness;
+    }
+  }
   // "Becomes a 7/7 Beast creature in addition to its other types" (Ride the Shoopuf).
   if (c.animated) {
     change();
@@ -152,7 +164,7 @@ function definitionWithEffects(s: GameState, c: CardInstance): CardDefinition {
     out.statics = out.statics!.filter((st) => st.ifSourceCountersAtLeast === undefined || n >= st.ifSourceCountersAtLeast);
   }
   // Xu-Ifit: "It ... has no abilities."
-  if (c.lostAbilities) {
+  if (c.lostAbilities || c.lostAbilitiesTurn === s.turnNumber) {
     change();
     const kept: CardDefinition = { id: out.id, name: out.name, types: out.types };
     for (const key of ['supertypes', 'subtypes', 'manaCost', 'colors', 'colorIdentity', 'power', 'toughness', 'printing', 'token'] as const) {
