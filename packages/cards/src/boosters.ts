@@ -10,6 +10,7 @@
 import type { CardFinish } from '@nexus/engine';
 import data from '../data/booster-cards.json' with { type: 'json' };
 import secretLair from '../data/secret-lair.json' with { type: 'json' };
+import sosBoosters from '../data/sos-boosters.json' with { type: 'json' };
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'special' | 'bonus';
 
@@ -130,8 +131,8 @@ export interface Pack {
 }
 
 /** The sets with boosters on the Packs tab. */
-export type BoosterSet = 'fin' | 'eoe' | 'fra';
-export const BOOSTER_SETS: readonly BoosterSet[] = ['fin', 'eoe', 'fra'];
+export type BoosterSet = 'fin' | 'eoe' | 'fra' | 'sos';
+export const BOOSTER_SETS: readonly BoosterSet[] = ['fin', 'eoe', 'fra', 'sos'];
 
 /** A random number in [0, 1). Tests pass a seeded one. */
 export type Rng = () => number;
@@ -699,11 +700,13 @@ export function openEoePack(kind: PackKind, rng: Rng = Math.random, sheets: EoeS
 
 /** Opens one pack of a set's booster. */
 export function openSetPack(set: BoosterSet, kind: PackKind, rng: Rng = Math.random): Pack {
+  if (set === 'sos') return openSheetPack('sos', kind, SOS_BOOSTERS[kind], SOS_POSITIONS[kind], rng);
   return set === 'fra' ? openFraPack(kind, rng) : set === 'eoe' ? openEoePack(kind, rng) : openPack(kind, rng);
 }
 
 /** A set's slots as percentages, for the "Pack odds" screen. */
 export function setPackOdds(set: BoosterSet, kind: PackKind): ReturnType<typeof packOdds> {
+  if (set === 'sos') return sheetPackOdds(SOS_BOOSTERS[kind], SOS_POSITIONS[kind]);
   if (set === 'fra') return oddsOf(kind === 'play' ? FRA_PLAY_BOOSTER : FRA_COLLECTOR_BOOSTER, (cachedFraSheets ??= buildFraSheets()));
   if (set !== 'eoe') return packOdds(kind);
   const sheets = (cachedEoeSheets ??= buildEoeSheets());
@@ -998,3 +1001,136 @@ export function openFraPack(kind: PackKind, rng: Rng = Math.random, sheets: FraS
   return { kind, set: 'fra', cards };
 }
 
+
+// ---------------------------------------------------------------------------
+// Secrets of Strixhaven (MTGJSON's print sheets, 2026)
+// ---------------------------------------------------------------------------
+
+/** A booster saved from MTGJSON (scripts/mtgjson-boosters.ts): weighted pack variants and their print sheets. */
+export interface SheetBooster {
+  variants: { weight: number; contents: Record<string, number> }[];
+  sheets: Record<string, { foil: boolean; cards: [string, number][] }>;
+}
+
+/** One position in a pack: the sheets it can come from, first one the pack's variant still has cards of. */
+interface SheetPosition {
+  name: string;
+  sheets: string[];
+}
+
+const pos = (name: string, sheets: string[], count = 1): SheetPosition[] => Array.from({ length: count }, () => ({ name, sheets }));
+
+/** Secrets of Strixhaven packs, in reveal order (14 cards in a Play Booster, 15 in a Collector Booster). */
+export const SOS_POSITIONS: Record<PackKind, SheetPosition[]> = {
+  play: [
+    ...pos('Common', ['common'], 5),
+    ...pos('Common or Special Guest', ['common', 'specialGuest']),
+    ...pos('Uncommon', ['uncommon'], 3),
+    ...pos('Wildcard', ['wildcard']),
+    ...pos('Rare or mythic', ['rareMythic']),
+    ...pos('Mystical Archive', ['mysticalArchive']),
+    ...pos('Land', ['nonFoilLand', 'foilLand']),
+    ...pos('Foil', ['foil']),
+  ],
+  collector: [
+    ...pos('Foil common', ['foilCommon'], 4),
+    ...pos('Foil uncommon', ['foilUncommon'], 3),
+    ...pos('Foil land', ['foilLand']),
+    ...pos('Mystical Archive uncommon', ['nonFoilUMysticalArchive']),
+    ...pos('Mystical Archive uncommon', ['nonFoilUMysticalArchive', 'foilUMysticalArchive']),
+    ...pos('Mystical Archive rare or mythic', ['nonFoilRMMysticalArchive', 'foilRMMysticalArchive']),
+    ...pos('Booster Fun rare or mythic', ['boosterfun']),
+    ...pos('Foil Booster Fun rare or mythic', ['foilBoosterfun']),
+    ...pos('Foil rare or mythic', ['foilRareMythic']),
+    ...pos('Commander card', ['commander']),
+  ],
+};
+
+export const SOS_BOOSTERS = sosBoosters as unknown as Record<PackKind, SheetBooster>;
+
+let cardsById: Map<string, BoosterCard> | undefined;
+const boosterCard = (id: string) => (cardsById ??= new Map(BOOSTER_CARDS.map((c) => [c.id, c]))).get(id)!;
+
+/** Which sheet each position takes for a variant. Throws if the positions don't use exactly the variant's cards. */
+export function sheetsForVariant(positions: readonly SheetPosition[], contents: Record<string, number>): string[] {
+  const left = { ...contents };
+  const out = positions.map((p) => {
+    const sheet = p.sheets.find((s) => (left[s] ?? 0) > 0);
+    if (!sheet) throw new Error(`No sheet left for "${p.name}" in ${JSON.stringify(contents)}.`);
+    left[sheet]!--;
+    return sheet;
+  });
+  const extra = Object.entries(left).filter(([, n]) => n > 0);
+  if (extra.length) throw new Error(`Cards left over: ${JSON.stringify(Object.fromEntries(extra))}.`);
+  return out;
+}
+
+/** What a card is, for the odds screen and the reveal: its rarity, or the Mystical Archive or a Special Guest. */
+function sheetCardLabel(card: BoosterCard, foil: boolean): string {
+  const rarity = card.rarity === 'mythic' ? 'mythic' : card.rarity === 'rare' ? 'rare' : card.rarity === 'uncommon' ? 'uncommon' : 'common';
+  const base = card.set === 'spg' ? 'Special Guest' : card.set === 'soa' ? `Mystical Archive ${rarity}` : card.set === 'soc' ? `Commander ${rarity}` : rarity[0]!.toUpperCase() + rarity.slice(1);
+  return foil ? `${base} (foil)` : base;
+}
+
+function sheetCardHype(card: BoosterCard, position: string): Pull['hype'] {
+  if (card.set === 'spg') return 3;
+  const base = card.rarity === 'mythic' ? 2 : card.rarity === 'rare' ? 1 : 0;
+  const special = card.set === 'soa' || /Booster Fun/.test(position) ? 1 : 0;
+  return Math.min(3, base + special) as Pull['hype'];
+}
+
+function weighted<T>(rng: Rng, items: readonly T[], weight: (t: T) => number): T {
+  const total = items.reduce((n, x) => n + weight(x), 0);
+  let roll = rng() * total;
+  return items.find((x) => (roll -= weight(x)) < 0) ?? items.at(-1)!;
+}
+
+/** Opens a pack from saved print sheets: a variant by weight, then each position's card by weight, never repeating a card from the same sheet. */
+export function openSheetPack(set: BoosterSet, kind: PackKind, booster: SheetBooster, positions: readonly SheetPosition[], rng: Rng = Math.random): Pack {
+  const variant = weighted(rng, booster.variants, (v) => v.weight);
+  const taken = new Map<string, Set<string>>();
+  const cards = sheetsForVariant(positions, variant.contents).map((name, i): Pull => {
+    const sheet = booster.sheets[name]!;
+    const used = taken.get(name) ?? new Set<string>();
+    taken.set(name, used);
+    const open = sheet.cards.filter(([id]) => !used.has(id));
+    const [id] = weighted(rng, open.length ? open : sheet.cards, ([, w]) => w);
+    used.add(id);
+    const card = boosterCard(id);
+    return { card, finish: sheet.foil ? 'foil' : 'nonfoil', slot: sheetCardLabel(card, sheet.foil), hype: sheetCardHype(card, positions[i]!.name) };
+  });
+  return { kind, set, cards };
+}
+
+/** Each position's chances, for the "Pack odds" screen: which sheet the variants give it, split by what the cards are. */
+export function sheetPackOdds(booster: SheetBooster, positions: readonly SheetPosition[]): ReturnType<typeof packOdds> {
+  const total = booster.variants.reduce((n, v) => n + v.weight, 0);
+  const assigned = booster.variants.map((v) => ({ weight: v.weight, sheets: sheetsForVariant(positions, v.contents) }));
+  const out: ReturnType<typeof packOdds> = [];
+  positions.forEach((p, i) => {
+    const groups = new Map<string, { percent: number; cards: number }>();
+    for (const v of assigned) {
+      const sheet = booster.sheets[v.sheets[i]!]!;
+      const sheetTotal = sheet.cards.reduce((n, [, w]) => n + w, 0);
+      const byLabel = new Map<string, { weight: number; cards: number }>();
+      for (const [id, w] of sheet.cards) {
+        const label = sheetCardLabel(boosterCard(id), sheet.foil);
+        const g = byLabel.get(label) ?? { weight: 0, cards: 0 };
+        g.weight += w;
+        g.cards++;
+        byLabel.set(label, g);
+      }
+      for (const [label, g] of byLabel) {
+        const now = groups.get(label) ?? { percent: 0, cards: 0 };
+        now.percent += (100 * v.weight * g.weight) / (total * sheetTotal);
+        now.cards = Math.max(now.cards, g.cards);
+        groups.set(label, now);
+      }
+    }
+    const outcomes = [...groups].map(([label, g]) => ({ label, percent: g.percent, cards: g.cards }));
+    const last = out.at(-1);
+    if (last && last.slot === p.name && JSON.stringify(last.outcomes) === JSON.stringify(outcomes)) last.count++;
+    else out.push({ slot: p.name, count: 1, outcomes });
+  });
+  return out;
+}

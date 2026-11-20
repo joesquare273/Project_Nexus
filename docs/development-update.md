@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven packs (2026-11-20)
+
+- Play and Collector Boosters on the Packs tab and a Collection binder tab. They're drawn from MTGJSON's print sheets (`scripts/mtgjson-boosters.ts` -> `sos-boosters.json`; `openSheetPack`, `sheetPackOdds`), a general opener a later set can reuse. The cards packs can hold (Mystical Archive, Special Guests SPG 149-158, Commander cards SOC 1-108) are imported as `notBuilt` too. The importer now also skips cards the Store defines, and a card with no mana cost (Living End) is imported as uncastable.
+
 ### Secrets of Strixhaven: the main set imported (2026-11-20)
 
 - The user's next set. SOS 1-281 imported from MTGJSON (`import-sets.ts sos` -> `sos-set.json`): 264 new definitions, 2 built automatically (Rearing Embermare, Noxious Newt), the rest `notBuilt` for now. Card data and images cached; the six token kinds its cards make are in pending-tokens.json. Plan: docs/strixhaven.md.

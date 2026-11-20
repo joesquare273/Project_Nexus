@@ -9,9 +9,50 @@ basics, were defined already). `npm run scryfall` caches its card data and
 images. Cards not built yet are `notBuilt`: they show everywhere with their
 real images but can't be played.
 
-The wider release, still to import: the Commander decks (SOC, 426 printings),
-the Mystical Archive (SOA, 195), tokens (TSOS, TSOC), promos (PSOS) and the
-Art Series (ASOS).
+The same import also defines the cards that come in packs: the Mystical
+Archive (SOA), the ten Special Guests (SPG 149-158) and the Collector
+Boosters' Commander cards (SOC 1-108), 129 more `notBuilt` definitions (the
+four SOC cycling dual lands were built automatically). Still to import: the
+Commander decks themselves (SOC, 426 printings), the other tokens (TSOC) and
+promos (PSOS).
+
+## Packs (2026-11-20)
+
+Unlike the earlier sets, whose odds come from Wizards' "Collecting ..."
+articles, Strixhaven's packs follow MTGJSON's print sheets:
+`node packages/cards/scripts/mtgjson-boosters.ts sos` saves
+`packages/cards/data/sos-boosters.json` (each pack kind's weighted layouts and
+its sheets, each card by Scryfall id with its weight). `openSheetPack` picks a
+layout by weight, then each position's card by weight, never twice from one
+sheet; `SOS_POSITIONS` puts the sheets in reveal order and the test checks it
+uses every layout card for card. The card data is in booster-cards.json
+(`npm run scryfall:boosters`: SOS, SOA, SOC, TSOS, ASOS, SPG 149-158).
+
+| Play Booster (14 cards) | Sheet |
+|---|---|
+| 5 commons | Common |
+| Common or Special Guest | A Special Guest in 5 of 275 packs |
+| 3 uncommons | Uncommon |
+| Wildcard | Any rarity of the main set |
+| Rare or mythic | Rare or mythic |
+| Mystical Archive | Uncommon, rare or mythic |
+| Land | Common dual land; foil in 1 of 5 packs |
+| Foil | Any card, Mystical Archive too |
+
+| Collector Booster (15 cards) | Sheet |
+|---|---|
+| 4 + 3 | Foil commons and uncommons |
+| Foil land | Foil dual land |
+| 3 Mystical Archive | Two uncommons and a rare or mythic, some foil |
+| Booster Fun | Non-foil Booster Fun rare or mythic |
+| Foil Booster Fun | Also Mystical Archive and Special Guests |
+| Foil rare or mythic | Main set |
+| Commander card | SOC 1-10, 61-108 |
+
+MTGJSON lists no token or art card slot, so none is added. The pack photos
+would be `packages/client/public/packs/sos-play-booster.png`,
+`sos-collector-booster.png` and `sos-showcase.jpg`; until they're there the
+drawn pack shows.
 
 ## Mechanics
 
@@ -38,7 +79,7 @@ Art Series (ASOS).
 | Step | What | Status |
 |---|---|---|
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
-| Packs | Play and Collector Boosters, Packs tab, Collection binder | |
+| Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC) | |
 | SOS1 | Lands (13) | |
 | SOS2 | Prepared (74, in color batches) | |

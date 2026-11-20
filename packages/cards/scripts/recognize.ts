@@ -160,6 +160,11 @@ export function define(c: MtgjsonCard): { def: CardDefinition; built: boolean; n
     def.uncastable = true;
     built = false;
   }
+  // No mana cost at all (Living End, cast only by suspend): it can't be cast from hand.
+  if (!c.manaCost && !types.includes('land')) {
+    def.uncastable = true;
+    built = false;
+  }
   // Instants and sorceries need their effects; permanents with nothing recognized have nothing to build from.
   if (types.includes('instant') || types.includes('sorcery')) built = false;
   // Variable power/toughness ("*") needs abilities that count things.

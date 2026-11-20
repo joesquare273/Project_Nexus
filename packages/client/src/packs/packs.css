@@ -24,6 +24,9 @@
 .packs.set-fra {
   --set-showcase: url('/packs/fra-showcase.jpg');
 }
+.packs.set-sos {
+  --set-showcase: url('/packs/sos-showcase.jpg');
+}
 /* The set choice above the boosters. */
 .pack-sets {
   display: inline-flex;

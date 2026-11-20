@@ -1758,5 +1758,398 @@
       }
     ],
     "colors": []
+  },
+  "63ae4f9c-ad6e-4d6a-89f1-653916bf5373": {
+    "name": "Rabbit",
+    "typeLine": "Token Creature — Rabbit",
+    "oracleText": "",
+    "set": "tfdn",
+    "number": "5",
+    "artist": "Gina Matarazzo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/3/63ae4f9c-ad6e-4d6a-89f1-653916bf5373.jpg?1783908592",
+      "normal": "https://cards.scryfall.io/normal/front/6/3/63ae4f9c-ad6e-4d6a-89f1-653916bf5373.jpg?1783908592",
+      "large": "https://cards.scryfall.io/large/front/6/3/63ae4f9c-ad6e-4d6a-89f1-653916bf5373.jpg?1783908592",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/3/63ae4f9c-ad6e-4d6a-89f1-653916bf5373.jpg?1783908592"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfdn/5/rabbit?utm_source=api",
+    "scryfallId": "63ae4f9c-ad6e-4d6a-89f1-653916bf5373",
+    "relatedTokens": [
+      {
+        "name": "Rabbit",
+        "scryfallId": "63ae4f9c-ad6e-4d6a-89f1-653916bf5373"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "W"
+    ]
+  },
+  "24c80ef6-747d-47b7-8e1f-148f5dfacc32": {
+    "name": "Clue",
+    "typeLine": "Token Artifact — Clue",
+    "oracleText": "{2}, Sacrifice this token: Draw a card.",
+    "set": "ttrk",
+    "number": "22",
+    "artist": "Flavio Greco Paglia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/4/24c80ef6-747d-47b7-8e1f-148f5dfacc32.jpg?1793364960",
+      "normal": "https://cards.scryfall.io/normal/front/2/4/24c80ef6-747d-47b7-8e1f-148f5dfacc32.jpg?1793364960",
+      "large": "https://cards.scryfall.io/large/front/2/4/24c80ef6-747d-47b7-8e1f-148f5dfacc32.jpg?1793364960",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/4/24c80ef6-747d-47b7-8e1f-148f5dfacc32.jpg?1793364960"
+    },
+    "scryfallUri": "https://scryfall.com/card/ttrk/22/clue?utm_source=api",
+    "scryfallId": "24c80ef6-747d-47b7-8e1f-148f5dfacc32",
+    "relatedTokens": [
+      {
+        "name": "Clue",
+        "scryfallId": "24c80ef6-747d-47b7-8e1f-148f5dfacc32"
+      }
+    ],
+    "colors": []
+  },
+  "9fc2b0f6-f126-47a2-8316-febf92e90006": {
+    "name": "Ape",
+    "typeLine": "Token Creature — Ape",
+    "oracleText": "",
+    "set": "ttrc",
+    "number": "10",
+    "artist": "Brooklyn Smith",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/f/9fc2b0f6-f126-47a2-8316-febf92e90006.jpg?1793363555",
+      "normal": "https://cards.scryfall.io/normal/front/9/f/9fc2b0f6-f126-47a2-8316-febf92e90006.jpg?1793363555",
+      "large": "https://cards.scryfall.io/large/front/9/f/9fc2b0f6-f126-47a2-8316-febf92e90006.jpg?1793363555",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/f/9fc2b0f6-f126-47a2-8316-febf92e90006.jpg?1793363555"
+    },
+    "scryfallUri": "https://scryfall.com/card/ttrc/10/ape?utm_source=api",
+    "scryfallId": "9fc2b0f6-f126-47a2-8316-febf92e90006",
+    "relatedTokens": [
+      {
+        "name": "Ape",
+        "scryfallId": "9fc2b0f6-f126-47a2-8316-febf92e90006"
+      }
+    ],
+    "power": "3",
+    "toughness": "3",
+    "colors": [
+      "G"
+    ]
+  },
+  "6b8a810b-8538-41c3-a792-dbd1a1845faa": {
+    "name": "Monster // Sorcerer",
+    "typeLine": "Token Enchantment — Aura Role // Token Enchantment — Aura Role",
+    "oracleText": "Monster\nEnchant creature\nEnchanted creature gets +1/+1 and has trample.\n\n//\n\nSorcerer\nEnchant creature\nEnchanted creature gets +1/+1 and has \"Whenever this creature attacks, scry 1.\"",
+    "set": "twoe",
+    "number": "15",
+    "artist": "Rovina Cai",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/b/6b8a810b-8538-41c3-a792-dbd1a1845faa.jpg?1783914994",
+      "normal": "https://cards.scryfall.io/normal/front/6/b/6b8a810b-8538-41c3-a792-dbd1a1845faa.jpg?1783914994",
+      "large": "https://cards.scryfall.io/large/front/6/b/6b8a810b-8538-41c3-a792-dbd1a1845faa.jpg?1783914994",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/b/6b8a810b-8538-41c3-a792-dbd1a1845faa.jpg?1783914994"
+    },
+    "scryfallUri": "https://scryfall.com/card/twoe/15/monster-sorcerer?utm_source=api",
+    "scryfallId": "6b8a810b-8538-41c3-a792-dbd1a1845faa",
+    "relatedTokens": [
+      {
+        "name": "Monster // Sorcerer",
+        "scryfallId": "6b8a810b-8538-41c3-a792-dbd1a1845faa"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Monster",
+        "typeLine": "Token Enchantment — Aura Role",
+        "oracleText": "Enchant creature\nEnchanted creature gets +1/+1 and has trample."
+      },
+      {
+        "name": "Sorcerer",
+        "typeLine": "Token Enchantment — Aura Role",
+        "oracleText": "Enchant creature\nEnchanted creature gets +1/+1 and has \"Whenever this creature attacks, scry 1.\""
+      }
+    ],
+    "colors": []
+  },
+  "70345006-5cde-44f8-ab66-9d8163d4c4f6": {
+    "name": "Lizard",
+    "typeLine": "Token Creature — Lizard",
+    "oracleText": "",
+    "set": "tcn2",
+    "number": "9",
+    "artist": "Filip Burburan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/7/0/70345006-5cde-44f8-ab66-9d8163d4c4f6.jpg?1783937275",
+      "normal": "https://cards.scryfall.io/normal/front/7/0/70345006-5cde-44f8-ab66-9d8163d4c4f6.jpg?1783937275",
+      "large": "https://cards.scryfall.io/large/front/7/0/70345006-5cde-44f8-ab66-9d8163d4c4f6.jpg?1783937275",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/7/0/70345006-5cde-44f8-ab66-9d8163d4c4f6.jpg?1783937275"
+    },
+    "scryfallUri": "https://scryfall.com/card/tcn2/9/lizard?utm_source=api",
+    "scryfallId": "70345006-5cde-44f8-ab66-9d8163d4c4f6",
+    "relatedTokens": [
+      {
+        "name": "Lizard",
+        "scryfallId": "70345006-5cde-44f8-ab66-9d8163d4c4f6"
+      }
+    ],
+    "power": "8",
+    "toughness": "8",
+    "colors": [
+      "R"
+    ]
+  },
+  "107be8ee-ee22-4d37-94f1-2a5b438fbe05": {
+    "name": "Forest Dryad",
+    "typeLine": "Token Land Creature — Forest Dryad",
+    "oracleText": "(This creature is affected by summoning sickness, and it has \"{T}: Add {G}.\")",
+    "set": "tm3c",
+    "number": "19",
+    "artist": "Donato Giancola",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/1/0/107be8ee-ee22-4d37-94f1-2a5b438fbe05.jpg?1783911122",
+      "normal": "https://cards.scryfall.io/normal/front/1/0/107be8ee-ee22-4d37-94f1-2a5b438fbe05.jpg?1783911122",
+      "large": "https://cards.scryfall.io/large/front/1/0/107be8ee-ee22-4d37-94f1-2a5b438fbe05.jpg?1783911122",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/1/0/107be8ee-ee22-4d37-94f1-2a5b438fbe05.jpg?1783911122"
+    },
+    "scryfallUri": "https://scryfall.com/card/tm3c/19/forest-dryad?utm_source=api",
+    "scryfallId": "107be8ee-ee22-4d37-94f1-2a5b438fbe05",
+    "relatedTokens": [
+      {
+        "name": "Forest Dryad",
+        "scryfallId": "107be8ee-ee22-4d37-94f1-2a5b438fbe05"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "G"
+    ]
+  },
+  "cff8ef48-2988-4d21-837e-01f1459e07c5": {
+    "name": "Royal // Young Hero",
+    "typeLine": "Token Enchantment — Aura Role // Token Enchantment — Aura Role",
+    "oracleText": "Royal\nEnchant creature\nEnchanted creature gets +1/+1 and has ward {1}. (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {1}.)\n\n//\n\nYoung Hero\nEnchant creature\nEnchanted creature has \"Whenever this creature attacks, if its toughness is 3 or less, put a +1/+1 counter on it.\"",
+    "set": "twoe",
+    "number": "16",
+    "artist": "Rovina Cai",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/f/cff8ef48-2988-4d21-837e-01f1459e07c5.jpg?1783914992",
+      "normal": "https://cards.scryfall.io/normal/front/c/f/cff8ef48-2988-4d21-837e-01f1459e07c5.jpg?1783914992",
+      "large": "https://cards.scryfall.io/large/front/c/f/cff8ef48-2988-4d21-837e-01f1459e07c5.jpg?1783914992",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/f/cff8ef48-2988-4d21-837e-01f1459e07c5.jpg?1783914992"
+    },
+    "scryfallUri": "https://scryfall.com/card/twoe/16/royal-young-hero?utm_source=api",
+    "scryfallId": "cff8ef48-2988-4d21-837e-01f1459e07c5",
+    "relatedTokens": [
+      {
+        "name": "Royal // Young Hero",
+        "scryfallId": "cff8ef48-2988-4d21-837e-01f1459e07c5"
+      }
+    ],
+    "faces": [
+      {
+        "name": "Royal",
+        "typeLine": "Token Enchantment — Aura Role",
+        "oracleText": "Enchant creature\nEnchanted creature gets +1/+1 and has ward {1}. (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {1}.)"
+      },
+      {
+        "name": "Young Hero",
+        "typeLine": "Token Enchantment — Aura Role",
+        "oracleText": "Enchant creature\nEnchanted creature has \"Whenever this creature attacks, if its toughness is 3 or less, put a +1/+1 counter on it.\""
+      }
+    ],
+    "colors": []
+  },
+  "95970f74-0f28-4d81-9fbd-cb49f5d5eebc": {
+    "name": "Bird Illusion",
+    "typeLine": "Token Creature — Bird Illusion",
+    "oracleText": "Flying",
+    "set": "totc",
+    "number": "4",
+    "artist": "James Paick",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/9/5/95970f74-0f28-4d81-9fbd-cb49f5d5eebc.jpg?1783911685",
+      "normal": "https://cards.scryfall.io/normal/front/9/5/95970f74-0f28-4d81-9fbd-cb49f5d5eebc.jpg?1783911685",
+      "large": "https://cards.scryfall.io/large/front/9/5/95970f74-0f28-4d81-9fbd-cb49f5d5eebc.jpg?1783911685",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/9/5/95970f74-0f28-4d81-9fbd-cb49f5d5eebc.jpg?1783911685"
+    },
+    "scryfallUri": "https://scryfall.com/card/totc/4/bird-illusion?utm_source=api",
+    "scryfallId": "95970f74-0f28-4d81-9fbd-cb49f5d5eebc",
+    "relatedTokens": [
+      {
+        "name": "Bird Illusion",
+        "scryfallId": "95970f74-0f28-4d81-9fbd-cb49f5d5eebc"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "U"
+    ]
+  },
+  "5a9c5b21-c770-4fc0-b205-d96862e6be3e": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "25",
+    "artist": "Flavio Greco Paglia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567",
+      "normal": "https://cards.scryfall.io/normal/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567",
+      "large": "https://cards.scryfall.io/large/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/25/spirit?utm_source=api",
+    "scryfallId": "5a9c5b21-c770-4fc0-b205-d96862e6be3e",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "5a9c5b21-c770-4fc0-b205-d96862e6be3e"
+      }
+    ],
+    "power": "3",
+    "toughness": "2",
+    "colors": [
+      "R",
+      "W"
+    ]
+  },
+  "fe42cba4-e00f-4e34-8e26-99721727dced": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "Flying, haste",
+    "set": "tsoc",
+    "number": "19",
+    "artist": "Andrew Mar",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569",
+      "normal": "https://cards.scryfall.io/normal/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569",
+      "large": "https://cards.scryfall.io/large/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/19/elemental?utm_source=api",
+    "scryfallId": "fe42cba4-e00f-4e34-8e26-99721727dced",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "fe42cba4-e00f-4e34-8e26-99721727dced"
+      }
+    ],
+    "power": "*",
+    "toughness": "*",
+    "colors": [
+      "R",
+      "U"
+    ]
+  },
+  "4c5e0caa-a043-41de-acbf-cdf3a6b6ab18": {
+    "name": "Contract",
+    "typeLine": "Token Enchantment — Aura",
+    "oracleText": "Enchant creature\nWhenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its controller loses 2 life.",
+    "set": "tsoc",
+    "number": "3",
+    "artist": "Brian Valeza",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/c/4c5e0caa-a043-41de-acbf-cdf3a6b6ab18.jpg?1783903575",
+      "normal": "https://cards.scryfall.io/normal/front/4/c/4c5e0caa-a043-41de-acbf-cdf3a6b6ab18.jpg?1783903575",
+      "large": "https://cards.scryfall.io/large/front/4/c/4c5e0caa-a043-41de-acbf-cdf3a6b6ab18.jpg?1783903575",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/c/4c5e0caa-a043-41de-acbf-cdf3a6b6ab18.jpg?1783903575"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/3/contract?utm_source=api",
+    "scryfallId": "4c5e0caa-a043-41de-acbf-cdf3a6b6ab18",
+    "relatedTokens": [
+      {
+        "name": "Contract",
+        "scryfallId": "4c5e0caa-a043-41de-acbf-cdf3a6b6ab18"
+      }
+    ],
+    "colors": [
+      "W"
+    ]
+  },
+  "b2ef67fc-b544-4fb3-8362-a29d4533fdd7": {
+    "name": "Inkling",
+    "typeLine": "Token Creature — Inkling",
+    "oracleText": "Flying",
+    "set": "tsoc",
+    "number": "22",
+    "artist": "Nia Kovalevski",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/2/b2ef67fc-b544-4fb3-8362-a29d4533fdd7.jpg?1783903569",
+      "normal": "https://cards.scryfall.io/normal/front/b/2/b2ef67fc-b544-4fb3-8362-a29d4533fdd7.jpg?1783903569",
+      "large": "https://cards.scryfall.io/large/front/b/2/b2ef67fc-b544-4fb3-8362-a29d4533fdd7.jpg?1783903569",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/2/b2ef67fc-b544-4fb3-8362-a29d4533fdd7.jpg?1783903569"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/22/inkling?utm_source=api",
+    "scryfallId": "b2ef67fc-b544-4fb3-8362-a29d4533fdd7",
+    "relatedTokens": [
+      {
+        "name": "Inkling",
+        "scryfallId": "b2ef67fc-b544-4fb3-8362-a29d4533fdd7"
+      }
+    ],
+    "power": "2",
+    "toughness": "1",
+    "colors": [
+      "B",
+      "W"
+    ]
+  },
+  "222b8394-20e7-4808-8eec-cb048f548055": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "21",
+    "artist": "Bram Sels",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569",
+      "normal": "https://cards.scryfall.io/normal/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569",
+      "large": "https://cards.scryfall.io/large/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/21/elemental?utm_source=api",
+    "scryfallId": "222b8394-20e7-4808-8eec-cb048f548055",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "222b8394-20e7-4808-8eec-cb048f548055"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "R",
+      "U"
+    ]
+  },
+  "c72ceae7-72d6-41dc-82cc-b86e845d7aa6": {
+    "name": "Pest",
+    "typeLine": "Token Creature — Pest",
+    "oracleText": "When this creature dies, you gain 1 life.",
+    "set": "tsoc",
+    "number": "23",
+    "artist": "Nino Vecia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/7/c72ceae7-72d6-41dc-82cc-b86e845d7aa6.jpg?1783903568",
+      "normal": "https://cards.scryfall.io/normal/front/c/7/c72ceae7-72d6-41dc-82cc-b86e845d7aa6.jpg?1783903568",
+      "large": "https://cards.scryfall.io/large/front/c/7/c72ceae7-72d6-41dc-82cc-b86e845d7aa6.jpg?1783903568",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/7/c72ceae7-72d6-41dc-82cc-b86e845d7aa6.jpg?1783903568"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/23/pest?utm_source=api",
+    "scryfallId": "c72ceae7-72d6-41dc-82cc-b86e845d7aa6",
+    "relatedTokens": [
+      {
+        "name": "Pest",
+        "scryfallId": "c72ceae7-72d6-41dc-82cc-b86e845d7aa6"
+      }
+    ],
+    "power": "1",
+    "toughness": "1",
+    "colors": [
+      "B",
+      "G"
+    ]
   }
 }

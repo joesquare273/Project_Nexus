@@ -49,8 +49,10 @@ this repo, not only in local memory.
   groups F1-F13 (docs/reality-fracture.md; all built 2026-11-20); its Secret
   Lair Bundle cards (FRA 438-448) are in the Store.
   Next set (user, 2026-11-20): **Secrets of Strixhaven** (SOS). Its main set
-  is imported (`import-sets.ts sos`, `sos-set.json`, cards 1-281); its packs,
-  Commander decks (SOC) and card groups are planned in docs/strixhaven.md.
+  is imported (`import-sets.ts sos`, `sos-set.json`, cards 1-281, plus the
+  pack-only SOA/SPG/SOC cards); its packs are in (MTGJSON print sheets,
+  `sos-boosters.json`); its Commander decks (SOC) and card groups are planned
+  in docs/strixhaven.md.
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).
 - **Tokens come from Scryfall too**, matched by the exact token printing each

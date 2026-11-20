@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOSTER_CARDS, COLLECTOR_BOOSTER, EOE_PLAY_BOOSTER, FRA_ECHOED_PAIRS, FRA_PLAY_BOOSTER, PLAY_BOOSTER, buildEoeSheets, buildFraSheets, buildSheets, openPack, openSetPack, otherFace, packOdds, setPackOdds } from '../src/boosters.ts';
+import { BOOSTER_CARDS, COLLECTOR_BOOSTER, EOE_PLAY_BOOSTER, FRA_ECHOED_PAIRS, FRA_PLAY_BOOSTER, PLAY_BOOSTER, buildEoeSheets, buildFraSheets, buildSheets, openPack, openSetPack, SOS_BOOSTERS, SOS_POSITIONS, sheetsForVariant, otherFace, packOdds, setPackOdds } from '../src/boosters.ts';
 
 /** A small seeded generator (mulberry32), so the tests are repeatable. */
 function seeded(seed: number) {
@@ -262,5 +262,50 @@ describe('Reality Fracture boosters', () => {
     const commander = setPackOdds('fra', 'collector').find((s) => s.slot === 'Braintwister or Commander card')!;
     // Wizards' numbers for this slot add up to 100.1%, so each is scaled very slightly.
     expect(commander.outcomes.find((x) => x.label === 'Commander extended-art rare')!.percent).toBeCloseTo(47.8, 1);
+  });
+});
+
+describe('Secrets of Strixhaven boosters', () => {
+  it("every pack layout fills each position from MTGJSON's sheets, card for card", () => {
+    for (const kind of ['play', 'collector'] as const) {
+      for (const v of SOS_BOOSTERS[kind].variants) expect(sheetsForVariant(SOS_POSITIONS[kind], v.contents)).toHaveLength(kind === 'play' ? 14 : 15);
+    }
+    const ids = new Set(BOOSTER_CARDS.map((c) => c.id));
+    for (const kind of ['play', 'collector'] as const) for (const sheet of Object.values(SOS_BOOSTERS[kind].sheets)) for (const [id] of sheet.cards) expect(ids.has(id)).toBe(true);
+  });
+
+  it('opens Play Boosters: 14 cards, a rare or mythic, a Mystical Archive card and one foil', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = openSetPack('sos', 'play', seeded(seed));
+      expect(pack.set).toBe('sos');
+      expect(pack.cards).toHaveLength(14);
+      for (const p of pack.cards) expect(['sos', 'soa', 'spg']).toContain(p.card.set);
+      expect(pack.cards[10]!.card.rarity).toMatch(/rare|mythic/);
+      expect(pack.cards[11]!.card.set).toBe('soa');
+      expect(pack.cards.at(-1)!.finish).toBe('foil');
+      const commons = pack.cards.slice(0, 5).map((p) => p.card.id);
+      expect(new Set(commons).size).toBe(5);
+    }
+  });
+
+  it('opens Collector Boosters: 15 cards, 10+ foils, three Mystical Archive cards (more from Booster Fun) and a Commander card', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = openSetPack('sos', 'collector', seeded(seed));
+      expect(pack.cards).toHaveLength(15);
+      expect(pack.cards.filter((p) => p.finish === 'foil').length).toBeGreaterThanOrEqual(10);
+      expect(pack.cards.slice(8, 11).every((p) => p.card.set === 'soa')).toBe(true);
+      expect(pack.cards.at(-1)!.card.set).toBe('soc');
+    }
+  });
+
+  it("each position's odds add up to 100%", () => {
+    for (const kind of ['play', 'collector'] as const) {
+      for (const slot of setPackOdds('sos', kind)) expect(slot.outcomes.reduce((n, x) => n + x.percent, 0)).toBeCloseTo(100, 5);
+    }
+    const play = setPackOdds('sos', 'play');
+    expect(play.find((s) => s.slot === 'Common')!.count).toBe(5);
+    // 5 of 275 packs have a Special Guest.
+    const guest = play.find((s) => s.slot === 'Common or Special Guest')!;
+    expect(guest.outcomes.find((x) => x.label === 'Special Guest')!.percent).toBeCloseTo((100 * 5) / 275, 5);
   });
 });

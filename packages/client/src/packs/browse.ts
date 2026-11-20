@@ -19,12 +19,14 @@ export const SORTS: { by: SortBy; label: string }[] = [
 ];
 
 /** Sets in the collection; ones that aren't finished show greyed out as Coming soon. */
-export type BinderSet = 'fin' | 'eoe' | 'fra';
+export type BinderSet = 'fin' | 'eoe' | 'fra' | 'sos';
 export const SETS: { code: BinderSet; name: string; ready: boolean }[] = [
   { code: 'fin', name: 'Final Fantasy', ready: true },
   { code: 'eoe', name: 'Edge of Eternities', ready: true },
   // The main set (FRA) with its boosters, and the Multiverse Reforged precon (FRC).
   { code: 'fra', name: 'Reality Fracture', ready: true },
+  // The main set (SOS) with its Mystical Archive, Special Guests and Collector Booster Commander cards.
+  { code: 'sos', name: 'Secrets of Strixhaven', ready: true },
 ];
 
 /** Every printing the game knows (precons, Starter Kits), shown like booster cards. */

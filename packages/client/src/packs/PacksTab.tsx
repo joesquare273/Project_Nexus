@@ -21,6 +21,7 @@ const PACK_PHOTOS: Record<BoosterSet, Record<PackKind, string>> = {
   fin: { play: '/packs/ff-play-booster.png', collector: '/packs/ff-collector-booster.png' },
   eoe: { play: '/packs/eoe-play-booster.png', collector: '/packs/eoe-collector-booster.png' },
   fra: { play: '/packs/fra-play-booster.png', collector: '/packs/fra-collector-booster.png' },
+  sos: { play: '/packs/sos-play-booster.png', collector: '/packs/sos-collector-booster.png' },
 };
 
 /** Each set's name on the shop's set choice and on the drawn pack. */
@@ -28,6 +29,7 @@ const SET_NAMES: Record<BoosterSet, { name: string; brand: string }> = {
   fin: { name: 'Final Fantasy', brand: 'FINAL FANTASY' },
   eoe: { name: 'Edge of Eternities', brand: 'EDGE OF ETERNITIES' },
   fra: { name: 'Reality Fracture', brand: 'REALITY FRACTURE' },
+  sos: { name: 'Secrets of Strixhaven', brand: 'SECRETS OF STRIXHAVEN' },
 };
 
 const PRICES: Record<PackKind, number> = { play: ECONOMY.playBoosterPrice, collector: ECONOMY.collectorBoosterPrice };
@@ -80,6 +82,22 @@ const PACKS: Record<BoosterSet, PackInfo[]> = {
       title: 'Collector Booster',
       blurb: '15 cards and a foil token or art card: 11+ foils, a foil echoed pair, braintwister and Commander cards, shattered mirror, Japan Showcase and the serialized Bloodline Recollector.',
       art: 'Emrakul, the Exigent Doom',
+      ready: true,
+    },
+  ],
+  sos: [
+    {
+      kind: 'play',
+      title: 'Play Booster',
+      blurb: '14 cards: one rare or mythic, a wildcard, one foil, a Mystical Archive card in every pack, and a chance at Special Guests.',
+      art: 'Lorehold, the Historian',
+      ready: true,
+    },
+    {
+      kind: 'collector',
+      title: 'Collector Booster',
+      blurb: '15 cards: 10+ foils, three Mystical Archive cards, Booster Fun rares and mythics, and a Commander card.',
+      art: 'Quandrix, the Proof',
       ready: true,
     },
   ],
@@ -324,7 +342,11 @@ function Odds({ mod, set, kind, onClose }: { mod: Boosters; set: BoosterSet; kin
           </div>
         ))}
         <p className="fineprint">
-          {set === 'fra' ? (
+          {set === 'sos' ? (
+            <>
+              Odds follow the set's print sheets as MTGJSON lists them: each pack is one of a few layouts, chosen by weight, and each card by its weight on its sheet. A pack never has the same card twice from one sheet.
+            </>
+          ) : set === 'fra' ? (
             <>
               Odds follow Wizards of the Coast's "Collecting Reality Fracture" article. Where it says "less than 1%", those outcomes share what the slot's other odds leave over. Two of the three echoed pairs cards are always the two halves of one pair. Japan Showcase cards are in English here.
             </>
@@ -623,7 +645,17 @@ const FRA_GROUPS: Group[] = [
   { name: 'Special Guests', test: (c) => c.set === 'spg' && n(c) >= 159 && n(c) <= 168 },
   { name: 'Tokens and art cards', test: (c) => c.set === 'tfra' || c.set === 'afra' },
 ];
-const GROUPS_BY_SET: Record<BinderSet, Group[]> = { fin: GROUPS, eoe: EOE_GROUPS, fra: FRA_GROUPS };
+/** Secrets of Strixhaven, sheet by sheet (data/sos-boosters.json). */
+const SOS_GROUPS: Group[] = [
+  { name: 'Main set', test: (c) => c.set === 'sos' && n(c) <= 281 },
+  { name: 'Booster Fun', test: (c) => c.set === 'sos' && n(c) >= 282 },
+  { name: 'Mystical Archive', test: (c) => c.set === 'soa' },
+  // The Commander cards in Collector Boosters (SOC 1-10 and 61-108).
+  { name: 'Commander cards', test: (c) => c.set === 'soc' && (n(c) <= 10 || (n(c) >= 61 && n(c) <= 108)) },
+  { name: 'Special Guests', test: (c) => c.set === 'spg' && n(c) >= 149 && n(c) <= 158 },
+  { name: 'Tokens and art cards', test: (c) => c.set === 'tsos' || c.set === 'asos' },
+];
+const GROUPS_BY_SET: Record<BinderSet, Group[]> = { fin: GROUPS, eoe: EOE_GROUPS, fra: FRA_GROUPS, sos: SOS_GROUPS };
 
 const SHOWS: { show: Show; label: string }[] = [
   { show: 'all', label: 'All' },

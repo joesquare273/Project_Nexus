@@ -22,6 +22,7 @@ import fic from '../data/fic.json' with { type: 'json' };
 import fin from '../data/fin.json' with { type: 'json' };
 import frc from '../data/frc.json' with { type: 'json' };
 import lands from '../data/lands.json' with { type: 'json' };
+import storeCards from '../data/store-cards.json' with { type: 'json' };
 import tokens from '../data/tokens.json' with { type: 'json' };
 
 /** Each import: its sets, which collector numbers are the set's own cards (not showcase variants), and the output file. */
@@ -32,11 +33,13 @@ const IMPORTS = {
   // 1-290: the main set with its basics (281-290); 291+ are borderless and other variants.
   fra: { sets: [{ code: 'FRA', maxNumber: 290 }], file: 'fra-set.json' },
   // 1-281: the main set with its basics; 282+ are borderless and other variants.
-  sos: { sets: [{ code: 'SOS', maxNumber: 281 }], file: 'sos-set.json' },
+  // SOA: the Mystical Archive; SPG 149-158: the set's Special Guests; SOC 1-108:
+  // the Commander cards in Collector Boosters. All of them can come in packs.
+  sos: { sets: [{ code: 'SOS', maxNumber: 281 }, { code: 'SOA', maxNumber: 999 }, { code: 'SPG', minNumber: 149, maxNumber: 158 }, { code: 'SOC', maxNumber: 108 }], file: 'sos-set.json' },
 } as const;
 const which = (process.argv[2] ?? 'fin') as keyof typeof IMPORTS;
 if (!IMPORTS[which]) throw new Error(`Unknown import "${which}"; use ${Object.keys(IMPORTS).join(' or ')}.`);
-const SETS = IMPORTS[which].sets;
+const SETS: readonly { code: string; minNumber?: number; maxNumber: number }[] = IMPORTS[which].sets;
 const OUT = new URL(`../data/${IMPORTS[which].file}`, import.meta.url);
 
 /** Sets imported before this one (earlier in IMPORTS): a card they already define (a reprint) isn't defined again. */
@@ -49,7 +52,7 @@ const otherSets = order
   .flatMap((u) => JSON.parse(readFileSync(u, 'utf8')) as CardDefinition[]);
 
 /** Cards defined elsewhere keep their definitions; this set's file only adds what's missing. */
-const OTHER = [...lands, ...fin, ...fic, ...eoc, ...frc, ...tokens, ...otherSets] as CardDefinition[];
+const OTHER = [...lands, ...fin, ...fic, ...eoc, ...frc, ...storeCards, ...tokens, ...otherSets] as CardDefinition[];
 const definedNames = new Set(OTHER.map((c) => c.name));
 const usedIds = new Set(OTHER.map((c) => c.id));
 
@@ -68,10 +71,10 @@ async function fetchSet(code: string): Promise<MtgjsonCard[]> {
 const defs: CardDefinition[] = [];
 const seen = new Set<string>();
 let built = 0;
-for (const { code, maxNumber } of SETS) {
+for (const { code, minNumber = 1, maxNumber } of SETS) {
   const cards = (await fetchSet(code))
     // The set's own numbers (variants share names), front faces only.
-    .filter((c) => /^\d+$/.test(c.number) && Number(c.number) <= maxNumber && (!c.side || c.side === 'a'))
+    .filter((c) => /^\d+$/.test(c.number) && Number(c.number) >= minNumber && Number(c.number) <= maxNumber && (!c.side || c.side === 'a'))
     .sort((a, b) => Number(a.number) - Number(b.number));
   let added = 0;
   for (const card of cards) {

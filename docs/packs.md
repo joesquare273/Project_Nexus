@@ -285,3 +285,11 @@ treatment and finish).
 | Foil Booster Fun | Also Special Guests 6.1%, Japan Showcase 9% (fracture foil 1%), facet foil shattered mirror and the serialized Bloodline Recollector |
 | Token or art card | Foil double-sided token 65%, art card 35% |
 
+
+## Secrets of Strixhaven (packs added 2026-11-20)
+
+The set choice has Secrets of Strixhaven too (same prices; `set: 'sos'`).
+Its packs come from MTGJSON's print sheets rather than a hand-written slot
+table: see [strixhaven.md](strixhaven.md#packs-2026-11-20). The Collection
+binder's tab groups the main set, Booster Fun, the Mystical Archive, the
+Collector Boosters' Commander cards, Special Guests, and tokens and art cards.
