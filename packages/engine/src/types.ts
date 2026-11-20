@@ -36,7 +36,7 @@ export interface Animation {
   untilEndOfTurn?: boolean;
 }
 
-export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][] } & Partial<Record<ManaType, number>>;
+export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][]; /** Monocolored hybrid ({2/W}): each is paid with that color or with two generic mana (rule 107.4e); mana value 2. */ monoHybrid?: ManaType[] } & Partial<Record<ManaType, number>>;
 
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
 export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell';
@@ -721,6 +721,12 @@ export const COUNT_KINDS = [
   'CardsInYourHand',
   /** Cards in your library ("if your library has no cards in it"). */
   'CardsInYourLibrary',
+  /** The greatest mana value among cards in your graveyard (Hapatra, the Desert Fang). */
+  'GreatestManaValueInYourGraveyard',
+  /** Colors among the other artifacts you control (Karn, Gilded Guardian). */
+  'ColorsAmongYourOtherArtifacts',
+  /** Planeswalker types among planeswalkers you control (Tam, the Possibility). */
+  'PlaneswalkerTypesAmongYourPlaneswalkers',
   /** Basic land types among lands you control (domain). */
   'BasicLandTypesAmongYourLands',
   /** Spells you've cast this turn. */
@@ -1775,6 +1781,8 @@ export interface ActivatedSpec {
 
 /** A continuous effect from a static ability (rule 604, 611.3). */
 export interface StaticSpec {
+  /** "Artifacts and creatures entering the battlefield don't cause abilities to trigger" (Karn, Argent Defender; rule 603.2g). */
+  enteringArtifactsAndCreaturesDontTrigger?: boolean;
   /** "If a source you control would deal noncombat damage to an opponent or a permanent an opponent controls, it deals that much damage plus 1 instead" (Tomik, Izzet Sparkmage). */
   noncombatDamageToOpponentsPlusOne?: boolean;
   /** "Instant and sorcery spells you control have split second" (Samut, Tyrant of Naktamun; rule 702.61). */

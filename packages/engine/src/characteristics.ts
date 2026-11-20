@@ -198,6 +198,15 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return new Set(yours().filter((x) => def(s, x).types.includes('land')).flatMap((x) => subtypesOf(s, x).filter((t) => ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(t)))).size;
     case 'SpellsYouCastThisTurn':
       return s.players[player]!.spellsCastThisTurn ?? 0;
+    case 'GreatestManaValueInYourGraveyard':
+      return Math.max(0, ...s.players[player]!.graveyard.map((id) => objectManaValue(s, s.cards[id]!)));
+    case 'ColorsAmongYourOtherArtifacts': {
+      const colors = new Set<string>();
+      for (const c of yours()) if (c.id !== source && def(s, c).types.includes('artifact')) for (const k of colorsOf(def(s, c))) colors.add(k);
+      return colors.size;
+    }
+    case 'PlaneswalkerTypesAmongYourPlaneswalkers':
+      return new Set(yours().filter((c) => def(s, c).types.includes('planeswalker')).flatMap((c) => subtypesOf(s, c))).size;
     case 'CardsInYourLibrary':
       return s.players[player]!.library.length;
     case 'CardsYouDrewThisTurn':

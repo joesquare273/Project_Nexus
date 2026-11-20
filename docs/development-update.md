@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Reality Fracture F12c: multicolor and colorless legends (2026-11-20)
+
+- The last 10 echoed-pairs legends (docs/reality-fracture.md). New: monocolored hybrid mana ({2/W}), Karn, Argent Defender's entry-trigger lock, Tam's proliferate count, and the Sculpture Treasure token.
+
 ### Reality Fracture F12b: green legends (2026-11-20)
 
 - The 10 green echoed-pairs legends (docs/reality-fracture.md). New: Loot's mana for each different power, Ruric Thar's hexproof until it deals combat damage, domain, and the Mowu token.

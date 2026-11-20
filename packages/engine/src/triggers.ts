@@ -560,7 +560,13 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     });
   };
 
+  // Karn, Argent Defender: an artifact or creature entering doesn't cause abilities to trigger.
+  const entryBlocked = battlefield(s).some((x) => !x.phasedOut && (defOf(s, x).statics ?? []).some((st) => st.enteringArtifactsAndCreaturesDontTrigger));
   for (const o of occurrences) {
+    if (entryBlocked && o.when === 'EntersBattlefield' && o.subject && s.cards[o.subject]) {
+      const types = defOf(s, s.cards[o.subject]!).types;
+      if (types.includes('artifact') || types.includes('creature')) continue;
+    }
     for (const c of onBattlefield) {
       // Skip permanents that entered after this happened.
       const m = moved.get(c.id);

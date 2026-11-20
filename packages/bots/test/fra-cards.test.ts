@@ -5,6 +5,7 @@ import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, t
 import { act, cast, fight, goTo, mana, newGame, put, settle } from './kit-helpers.ts';
 import { canAttack, canBlock } from '../../engine/src/combat.ts';
 import { combatPowerOf } from '../../engine/src/characteristics.ts';
+import { objectManaValue } from '../../engine/src/typerules.ts';
 
 const zone = (s: GameState, id: string) => s.cards[id]!.zone;
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -1662,5 +1663,82 @@ describe('F12b: green echoed-pairs legends', () => {
     mana(s, 'P1', { G: 1, C: 1 });
     s = cast(s, { type: 'CastSpell', player: 'P1', card: yoshi, }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === witch && t[1]?.kind === 'card')! }).state;
     expect([zone(s, rat), s.cards[witch]!.damage]).toEqual(['graveyard', 1]);
+  });
+});
+
+describe('F12c: multicolor and colorless echoed-pairs legends', () => {
+  it('Karn, Gilded Guardian: monocolored hybrid {2/W}{2/U}{2/B}{2/R}{2/G} (mana value 10) can be paid with colors or two generic each', () => {
+    const s = newGame();
+    const karn = put(s, 'P1', 'karn-gilded-guardian', 'hand');
+    expect(objectManaValue(s, s.cards[karn]!)).toBe(10);
+    mana(s, 'P1', { W: 1, U: 1, B: 1, R: 1, C: 2 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === karn)).toBe(true);
+    const u = newGame();
+    const other = put(u, 'P1', 'karn-gilded-guardian', 'hand');
+    mana(u, 'P1', { W: 1, U: 1, B: 1, R: 1, C: 1 });
+    expect(getLegalActions(u).some((a) => a.type === 'CastSpell' && a.card === other)).toBe(false);
+  });
+
+  it('Karn, Gilded Guardian draws for each color among your other artifacts', () => {
+    let s = newGame();
+    put(s, 'P1', 'solitary-cell'); // a red and white artifact
+    const karn = put(s, 'P1', 'karn-gilded-guardian', 'hand');
+    mana(s, 'P1', { C: 10 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === karn)!).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 2);
+  });
+
+  it("Hapatra, the Desert Fang puts -1/-1 counters equal to your graveyard's greatest mana value", () => {
+    let s = newGame();
+    const witch = put(s, 'P2', 'apex-witchstalker');
+    put(s, 'P1', 'craterclaw-colossus', 'graveyard'); // mana value 7
+    const hapatra = put(s, 'P1', 'hapatra-the-desert-fang', 'hand');
+    mana(s, 'P1', { B: 2, G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: hapatra }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === witch)! }).state;
+    expect(zone(s, witch)).toBe('graveyard');
+  });
+
+  it('Karn, Argent Defender: artifacts and creatures entering cause no triggers', () => {
+    let s = newGame();
+    put(s, 'P1', 'karn-argent-defender');
+    put(s, 'P1', 'greenhouse-propagator');
+    const rat = put(s, 'P1', 'rank-rat', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const hand = s.players.P2!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rat }).state;
+    expect([s.players.P1!.life, s.players.P2!.hand.length]).toEqual([20, hand]);
+  });
+
+  it('Traxos, Scourge Eternal untaps when you cast an artifact or creature spell, and not in your untap step', () => {
+    let s = newGame();
+    const traxos = put(s, 'P1', 'traxos-scourge-eternal', 'battlefield', { tapped: true });
+    const rat = put(s, 'P1', 'rank-rat', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rat }).state;
+    expect(s.cards[traxos]!.tapped).toBe(false);
+  });
+
+  it('Vraska, Soul of Stone: a Sculpture Treasure for each noncreature spell, and vigilance for your artifact creatures only', () => {
+    let s = newGame();
+    put(s, 'P1', 'vraska-soul-of-stone');
+    const rat = put(s, 'P1', 'rank-rat');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    const target = put(s, 'P2', 'rank-rat');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(target)] }).state;
+    const sculpture = Object.values(s.cards).find((c) => c.defId === 'sculpture-treasure-token-fra')!;
+    expect([hasKeyword(s, sculpture, 'Vigilance'), hasKeyword(s, s.cards[rat]!, 'Vigilance')]).toEqual([true, false]);
+  });
+
+  it('Vraska, the Cutting Glare destroys an opponent\'s permanent with six lands, and they get a Treasure', () => {
+    let s = newGame();
+    for (let i = 0; i < 6; i++) put(s, 'P1', 'forest');
+    const rat = put(s, 'P2', 'rank-rat');
+    const vraska = put(s, 'P1', 'vraska-the-cutting-glare', 'hand');
+    mana(s, 'P1', { B: 2, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: vraska }, { targets: (options) => options.find((t) => t[0]?.kind === 'card' && t[0].card === rat)! }).state;
+    expect(zone(s, rat)).toBe('graveyard');
+    expect(Object.values(s.cards).some((c) => c.defId === 'treasure-token-fra' && c.controller === 'P2')).toBe(true);
   });
 });

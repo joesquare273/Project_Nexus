@@ -43,7 +43,7 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 | F11c | Echoed pairs legends, black (11) | Done |
 | F12a | Echoed pairs legends, red (11) | Done |
 | F12b | Echoed pairs legends, green (10) | Done |
-| F12c | Echoed pairs legends, multicolor and colorless (10) | |
+| F12c | Echoed pairs legends, multicolor and colorless (10) | Done |
 | F13 | Planeswalkers and the rest (Emrakul, The Theorist, Uldaros Theorix, Chandras, Garruks, Ajanis, Jace, Reality Sculptor) | |
 
 ### F1 (2026-11-16)
@@ -139,3 +139,8 @@ Tests: `packages/bots/test/fra-cards.test.ts`.
 
 - Edgar, Moonlit Sovereign; Fblthp, Knows the Way; Ghalta, the Unstoppable; Jiang Yanggu, Never Alone; Loot, the Nexus; Marwyn, the Preserver; Pia, Aether Ascetic; Ruric Thar, Magecrusher; Titanbones, Towering Heart; Yoshimaru, Scrappy Stray.
 - Engine: a mana ability adding one mana for each different power among your creatures (`manaAbility.amountDifferentPowers`); hexproof until it has dealt combat damage (`hexproofUntilCombatDamage`, `CardInstance.dealtCombatDamage`); domain (`BasicLandTypesAmongYourLands`) and spells you cast this turn as counts. The Mowu token (tfra 10).
+
+### F12c (2026-11-20)
+
+- Edgar, Ancient Bloodlord; Hapatra, the Desert Fang; Karn, Gilded Guardian; Mabel, Valley Hero; Saheeli, Jewel of Avishkar; Tam, the Possibility; Vraska, Soul of Stone; Vraska, the Cutting Glare; Karn, Argent Defender; Traxos, Scourge Eternal. Every echoed-pairs legend is now built.
+- Engine: **monocolored hybrid mana** (`{2/W}`: that color or two generic, mana value 2; `ManaCost.monoHybrid`), so Karn, Gilded Guardian gets its real cost; "artifacts and creatures entering the battlefield don't cause abilities to trigger" (`enteringArtifactsAndCreaturesDontTrigger`); the greatest mana value in your graveyard, colors among your other artifacts, and planeswalker types among your planeswalkers as counts. The Sculpture Treasure token (tfra 13).

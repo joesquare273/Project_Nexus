@@ -19637,6 +19637,28 @@
       }
     ]
   },
+  "sculpture-treasure-token-fra": {
+    "name": "Sculpture Treasure",
+    "typeLine": "Token Artifact Creature — Sculpture Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tfra",
+    "number": "13",
+    "artist": "Raluca Marinescu",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148",
+      "normal": "https://cards.scryfall.io/normal/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148",
+      "large": "https://cards.scryfall.io/large/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/a/0/a0fec445-c6fb-4ca2-b63f-1d608c418a22.jpg?1789735148"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/13/sculpture-treasure?utm_source=api",
+    "scryfallId": "a0fec445-c6fb-4ca2-b63f-1d608c418a22",
+    "relatedTokens": [
+      {
+        "name": "Sculpture Treasure",
+        "scryfallId": "a0fec445-c6fb-4ca2-b63f-1d608c418a22"
+      }
+    ]
+  },
   "seam-rip": {
     "name": "Seam Rip",
     "typeLine": "Enchantment",
