@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS2b: black and red prepared creatures (2026-11-20)
+
+- 13 cards, with "Ward—Pay N life", "the first time you gain life each turn" and the Spirit token. docs/strixhaven.md.
+
 ### Secrets of Strixhaven SOS2a: white and blue prepared creatures (2026-11-20)
 
 - 14 cards, with `TapOrUntap`, an opponents-with-more-cards count and three Strixhaven tokens. docs/strixhaven.md.

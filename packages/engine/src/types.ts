@@ -1590,6 +1590,8 @@ export interface TriggerSpec {
   blockingMatching?: ObjectFilter;
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
+  /** LifeGained: only the first time you gain life each turn (Leech Collector). */
+  firstTimeEachTurn?: boolean;
   /** Intervening "if this creature isn't prepared". */
   ifNotPrepared?: boolean;
   /** CountersAdded: only counters of this kind ("whenever you put one or more loyalty counters on a planeswalker"). */
@@ -2348,6 +2350,8 @@ export interface CardDefinition {
   winsWhenRivalLoses?: boolean;
   /** "Ward—Pay life equal to this creature's power" (Raubahn): opponents targeting it pay that life. */
   wardLifeEqualsPower?: boolean;
+  /** "Ward—Pay N life" (Strife Scholar): opponents targeting it pay that life. */
+  wardLife?: number;
   /** "Ward—Discard a card at random" (Alpharael): opponents targeting it discard a card at random. */
   wardDiscardRandom?: boolean;
   /** "As long as your devotion to [color] is less than N, this isn't a creature" (Purphoros). */

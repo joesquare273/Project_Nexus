@@ -107,7 +107,7 @@ drawn pack shows.
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
 | SOC1-SOC5 | The decks' cards, one group per deck | |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
-| SOS2 | Prepared (37, in color batches): SOS2a white and blue (14) done 2026-11-20 | In progress |
+| SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13) done 2026-11-20 | In progress |
 | SOS3 | Increment and Opus | |
 | SOS4 | Repartee and Infusion | |
 | SOS5 | Paradigm and Converge | |
@@ -148,3 +148,17 @@ New: `TapOrUntap` (Rejoinder's "you may tap or untap target creature":
 tapping a tapped creature or untapping an untapped one does nothing, so it
 toggles, and "you may" is the choice), the `OpponentsWithMoreCardsInHand`
 count, and the Inkling, Elemental and Fractal tokens (TSOS 7, 3, 5).
+
+## SOS2b: black and red prepared creatures (built 2026-11-20)
+
+Adventurous Eater (Have a Bite), Cheerful Osteomancer (Raise Dead), Emeritus
+of Woe (Demonic Tutor), Grave Researcher (Reanimate), Leech Collector
+(Bloodletting), Scathing Shadelock (Venomous Words), Scheming Silvertongue
+(Sign in Blood), Blazing Firesinger (Seething Song), Emeritus of Conflict
+(Lightning Bolt), Goblin Glasswright (Craft with Pride), Maelstrom Artisan
+(Rocket Volley), Pigment Wrangler (Striking Palette) and Strife Scholar
+(Awaken the Ages).
+
+New: "Ward—Pay N life" (`wardLife`), a LifeGained trigger's
+`firstTimeEachTurn` (the gain is all the life gained this turn), and the
+red-white Spirit and Treasure tokens (TSOS 11, 12).

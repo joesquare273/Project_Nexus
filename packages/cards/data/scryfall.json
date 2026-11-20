@@ -31213,6 +31213,28 @@
       }
     ]
   },
+  "spirit-token-sos": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "",
+    "set": "tsos",
+    "number": "11",
+    "artist": "Filipe Pagliuso",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562",
+      "normal": "https://cards.scryfall.io/normal/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562",
+      "large": "https://cards.scryfall.io/large/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/0/d0f3bd3d-08cf-4783-ae31-03770c8be69c.jpg?1783903562"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/11/spirit?utm_source=api",
+    "scryfallId": "d0f3bd3d-08cf-4783-ae31-03770c8be69c",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "d0f3bd3d-08cf-4783-ae31-03770c8be69c"
+      }
+    ]
+  },
   "spiritcall-enthusiast-scrollboost": {
     "name": "Spiritcall Enthusiast // Scrollboost",
     "typeLine": "Creature — Cat Cleric // Sorcery",
@@ -36563,6 +36585,40 @@
       {
         "name": "Treasure",
         "scryfallId": "03992f88-7a15-4234-9bed-b7617d7ff09c"
+      },
+      {
+        "name": "Goblin Shaman",
+        "scryfallId": "0d9461c3-f545-4efb-926e-759961db0495"
+      },
+      {
+        "name": "Smoke Blessing",
+        "scryfallId": "5eb01bef-8989-4b38-a303-0aafab1b33e5"
+      }
+    ]
+  },
+  "treasure-token-sos": {
+    "name": "Treasure",
+    "typeLine": "Token Artifact — Treasure",
+    "oracleText": "{T}, Sacrifice this token: Add one mana of any color.",
+    "set": "tsos",
+    "number": "12",
+    "artist": "Joseph Meehan",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560",
+      "normal": "https://cards.scryfall.io/normal/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560",
+      "large": "https://cards.scryfall.io/large/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/b/4/b4f61b5e-9c53-40b1-b93e-3ffa351ff052.jpg?1783903560"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/12/treasure?utm_source=api",
+    "scryfallId": "b4f61b5e-9c53-40b1-b93e-3ffa351ff052",
+    "relatedTokens": [
+      {
+        "name": "Smaug",
+        "scryfallId": "bb4ac08f-f6a5-49d6-91e9-38c4f217932b"
+      },
+      {
+        "name": "Treasure",
+        "scryfallId": "b4f61b5e-9c53-40b1-b93e-3ffa351ff052"
       },
       {
         "name": "Goblin Shaman",

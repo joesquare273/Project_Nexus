@@ -1027,6 +1027,7 @@ export function wardLife(s: GameState, targets: readonly Target[], playerId: Pla
     seen.add(t.card);
     const c = s.cards[t.card];
     if (c?.zone === 'battlefield' && c.controller !== playerId && defOf(s, c).wardLifeEqualsPower) total += Math.max(0, powerOf(s, c));
+    if (c?.zone === 'battlefield' && c.controller !== playerId) total += defOf(s, c).wardLife ?? 0;
   }
   return total;
 }

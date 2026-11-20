@@ -338,7 +338,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // "Whenever one or more opponents lose life".
   if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
   if (o.when === 'OpponentCommitsCrime') return o.subjectController !== undefined && o.subjectController !== controller;
-  if (o.when === 'LifeGained') return o.subjectController === controller;
+  // "For the first time each turn": this gain is all the life gained this turn.
+  if (o.when === 'LifeGained') return o.subjectController === controller && (!spec.firstTimeEachTurn || (s.players[controller]!.lifeGainedThisTurn ?? 0) === o.amount);
   if (o.when === 'ScryOrSurveil') return o.subjectController === controller;
   // "Whenever an opponent gains control of a permanent from you".
   if (o.when === 'OpponentGainsControlFromYou') return o.defender === controller && o.subjectController !== controller;

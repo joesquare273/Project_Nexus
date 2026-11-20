@@ -280,3 +280,164 @@ describe('SOS2a: white and blue prepared creatures', () => {
     expect(s.players.P1!.hand.length).toBe(hand);
   });
 });
+
+describe('SOS2b: black and red prepared creatures', () => {
+  const copyOf = (s: GameState, creature: string) => Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === creature);
+  const castCopy = (s: GameState, creature: string) => getLegalActions(s).filter((a): a is Extract<typeof a, { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === copyOf(s, creature)?.id);
+  const at = (a: { targets?: { kind: string; card?: string; player?: string }[] }, id: string) => a.targets?.[0]?.card === id || a.targets?.[0]?.player === id;
+  const enter = (s: GameState, id: string, pool: Parameters<typeof mana>[2]) => {
+    mana(s, 'P1', pool);
+    return cast(s, { type: 'CastSpell', player: 'P1', card: id }).state;
+  };
+
+  it('Adventurous Eater, Cheerful Osteomancer: Have a Bite, Raise Dead', () => {
+    let s = newGame();
+    const eater = put(s, 'P1', 'adventurous-eater-have-a-bite', 'hand');
+    s = enter(s, eater, { B: 1, C: 2 });
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, eater).find((a) => at(a, eater))!).state;
+    expect([s.cards[eater]!.counters, s.players.P1!.life]).toEqual([1, 21]);
+    const osteo = put(s, 'P1', 'cheerful-osteomancer-raise-dead', 'hand');
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    s = enter(s, osteo, { B: 1, C: 3 });
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, osteo).find((a) => at(a, dead))!).state;
+    expect(s.cards[dead]!.zone).toBe('hand');
+  });
+
+  it('Emeritus of Woe becomes prepared at your end step if two creatures died this turn', () => {
+    let s = newGame();
+    const woe = put(s, 'P1', 'emeritus-of-woe-demonic-tutor');
+    s.creaturesDiedThisTurn = 2;
+    s = settle(goTo(s, 'end')).state;
+    expect(s.cards[woe]!.prepared).toBe(true);
+    let u = newGame();
+    const woe2 = put(u, 'P1', 'emeritus-of-woe-demonic-tutor');
+    u.creaturesDiedThisTurn = 1;
+    u = settle(goTo(u, 'end')).state;
+    expect(u.cards[woe2]!.prepared).toBeUndefined();
+  });
+
+  it('Grave Researcher surveils at upkeep, then is prepared with three creature cards in your graveyard; Reanimate', () => {
+    let s = newGame();
+    const researcher = put(s, 'P1', 'grave-researcher-reanimate');
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'rank-rat', 'graveyard');
+    s.turnNumber = 2;
+    s.activePlayer = 'P2';
+    s = settle(goTo(s, 'upkeep')).state;
+    for (let i = 0; i < 3 && s.activePlayer !== 'P1'; i++) s = settle(goTo(s, 'upkeep')).state;
+    expect(s.cards[researcher]!.prepared).toBe(true);
+  });
+
+  it('Leech Collector becomes prepared the first time you gain life each turn; Bloodletting', () => {
+    let s = newGame();
+    const leech = put(s, 'P1', 'leech-collector-bloodletting');
+    const eater = put(s, 'P1', 'adventurous-eater-have-a-bite', 'hand');
+    s = enter(s, eater, { B: 1, C: 2 });
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, eater).find((a) => at(a, eater))!).state;
+    expect(s.cards[leech]!.prepared).toBe(true);
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, leech)[0]!).state;
+    expect(s.players.P2!.life).toBe(18);
+    // Gaining life again this turn doesn't prepare it again.
+    const eater2 = put(s, 'P1', 'adventurous-eater-have-a-bite', 'hand');
+    s = enter(s, eater2, { B: 1, C: 2 });
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, eater2).find((a) => at(a, eater2))!).state;
+    expect([s.players.P1!.life, s.cards[leech]!.prepared]).toEqual([22, undefined]);
+  });
+
+  it('Scathing Shadelock becomes prepared in your first main phase; Venomous Words', () => {
+    let s = newGame();
+    const shade = put(s, 'P1', 'scathing-shadelock-venomous-words');
+    // Its controller's next turn: first the opponent's (no trigger), then P1's.
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    expect([s.activePlayer, s.cards[shade]!.prepared]).toEqual(['P2', undefined]);
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    expect([s.activePlayer, s.cards[shade]!.prepared]).toEqual(['P1', true]);
+    // Venomous Words: +2/+0 and deathtouch for a creature you control.
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, shade).find((a) => at(a, shade))!).state;
+    expect([powerOf(s, s.cards[shade]!), hasKeyword(s, s.cards[shade]!, 'Deathtouch')]).toEqual([6, true]);
+  });
+
+  it('Scheming Silvertongue: ward-free flier; prepared in your second main phase after gaining 2 life; Sign in Blood', () => {
+    let s = newGame();
+    const tongue = put(s, 'P1', 'scheming-silvertongue-sign-in-blood');
+    s.players.P1!.lifeGainedThisTurn = 2;
+    s = settle(goTo(s, 'main2')).state;
+    expect(s.cards[tongue]!.prepared).toBe(true);
+    mana(s, 'P1', { B: 2 });
+    const hand = s.players.P2!.hand.length;
+    s = cast(s, castCopy(s, tongue).find((a) => at(a, 'P2'))!).state;
+    expect([s.players.P2!.hand.length, s.players.P2!.life]).toEqual([hand + 2, 18]);
+  });
+
+  it('Blazing Firesinger: Seething Song adds five red', () => {
+    let s = newGame();
+    const singer = put(s, 'P1', 'blazing-firesinger-seething-song', 'hand');
+    s = enter(s, singer, { R: 1, C: 2 });
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = settle(act(s, castCopy(s, singer)[0]!)).state;
+    expect(s.players.P1!.manaPool.R).toBe(5);
+  });
+
+  it('Emeritus of Conflict becomes prepared on your third spell each turn; Lightning Bolt', () => {
+    let s = newGame();
+    const conflict = put(s, 'P1', 'emeritus-of-conflict-lightning-bolt');
+    for (let i = 0; i < 3; i++) {
+      expect(s.cards[conflict]!.prepared).toBeUndefined();
+      const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+      mana(s, 'P1', { R: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    }
+    expect(s.cards[conflict]!.prepared).toBe(true);
+  });
+
+  it('Goblin Glasswright, Maelstrom Artisan: a Treasure; destroy a nonbasic land', () => {
+    let s = newGame();
+    const goblin = put(s, 'P1', 'goblin-glasswright-craft-with-pride', 'hand');
+    s = enter(s, goblin, { R: 1, C: 1 });
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, castCopy(s, goblin)[0]!).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token-sos')).toBe(true);
+    const artisan = put(s, 'P1', 'maelstrom-artisan-rocket-volley', 'hand');
+    const basic = put(s, 'P2', 'island');
+    const fen = put(s, 'P2', 'turbulent-fen');
+    s = enter(s, artisan, { R: 2, C: 1 });
+    mana(s, 'P1', { R: 1, C: 1 });
+    expect(castCopy(s, artisan).some((a) => at(a, basic))).toBe(false);
+    s = cast(s, castCopy(s, artisan).find((a) => at(a, fen))!).state;
+    expect(s.cards[fen]!.zone).toBe('graveyard');
+  });
+
+  it('Pigment Wrangler: Striking Palette copies your next instant or sorcery this turn', () => {
+    let s = newGame();
+    const wrangler = put(s, 'P1', 'pigment-wrangler-striking-palette', 'hand');
+    s = enter(s, wrangler, { R: 1, C: 4 });
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, castCopy(s, wrangler)[0]!).state;
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P2!.life).toBe(14);
+  });
+
+  it('Strife Scholar: ward—pay 2 life; Awaken the Ages makes two 2/2 Spirits', () => {
+    let s = newGame();
+    const scholar = put(s, 'P1', 'strife-scholar-awaken-the-ages', 'hand');
+    s = enter(s, scholar, { R: 1, C: 2 });
+    mana(s, 'P1', { R: 1, C: 5 });
+    s = cast(s, castCopy(s, scholar)[0]!).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'spirit-token-sos')).toHaveLength(2);
+    // An opponent's Lightning Bolt at it costs 2 life more.
+    const bolt = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.players.P2!.manaPool.R = 1;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s = act(s, { type: 'CastSpell', player: 'P2', card: bolt, targets: [{ kind: 'card', card: scholar }] });
+    expect(s.players.P2!.life).toBe(18);
+  });
+});
