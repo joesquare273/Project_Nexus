@@ -65,6 +65,8 @@ export const KEYWORDS = [
   'FirstStrike',
   'DoubleStrike',
   'Menace',
+  /** Prowess (rule 702.108): "Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn" (added to its triggers by currentDefinition). */
+  'Prowess',
   'Lifelink',
   'Trample',
   'Deathtouch',
@@ -1133,7 +1135,7 @@ export interface EffectSpec {
   toBattlefieldIfBehindOnLands?: boolean;
   /** Only happens if this is true ("if this spell was cast from a graveyard", "... from exile"). */
   /** `controlChanged`: only if an earlier GainControl of the same ability changed a permanent's controller ("if they do"). */
-  if?: 'castFromGraveyard' | 'notCastFromGraveyard' | 'castFromExile' | 'castFromHand' | 'kicked' | 'notKicked' | 'controlChanged';
+  if?: 'castFromGraveyard' | 'notCastFromGraveyard' | 'castFromExile' | 'castFromHand' | 'notCastFromHand' | 'kicked' | 'notKicked' | 'controlChanged';
   /** AddMana without manaType: the colors the player may choose from (default any color). */
   manaTypes?: Color[];
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
@@ -1235,6 +1237,12 @@ export interface EffectSpec {
   ifSacrificed?: boolean;
   /** "Up to one target": the target may be left out. */
   upTo?: boolean;
+  /** Only if you've (true) or you haven't (false) scried or surveilled this turn (Desperate Futurescribe). */
+  ifScriedOrSurveiledThisTurn?: boolean;
+  /** PutIntoLibrary: its owner chooses top or bottom; if they put it on top, the source deals this much damage to them (Clash of Elements). */
+  damageIfTop?: number;
+  /** Discard (chooser You): the chosen card is exiled instead; you may cast it while you have threshold, spending mana as though it were any type (Null Summoner). */
+  exileToCastWithThreshold?: boolean;
   /** Discard: at random (Curse-Marred Demon). */
   atRandom?: boolean;
   /** CreateTokenCopy: "At the beginning of the end step, if you don't control a planeswalker, sacrifice this token" (Face Yourself; `copyKeywords` gives it haste). */
@@ -1628,6 +1636,8 @@ export interface TriggerSpec {
   /** Modal trigger: choose one as it goes on the stack; choose both if you control a commander. */
   modes?: EffectSpec[][];
   bothIfCommander?: boolean;
+  /** "Choose two" (Craftwork Crusher): how many modes, chosen as it triggers. */
+  chooseModes?: { min: number; max: number };
   effects: EffectSpec[];
 }
 
@@ -1704,6 +1714,10 @@ export interface ActivatedSpec {
   sorcerySpeed?: boolean;
   /** "Activate only if you control a creature with power 4 or greater." */
   ifYouControl?: ObjectFilter;
+  /** "Activate only if an opponent has been dealt noncombat damage this turn" (Grim Repriser). */
+  ifOpponentDealtNoncombatDamageThisTurn?: boolean;
+  /** "Activate only if you've scried or surveilled this turn" (Proctor of Potential). */
+  ifScriedOrSurveiledThisTurn?: boolean;
   /** Only while this Equipment is attached to a creature (The Dominion Bracelet). */
   ifAttached?: boolean;
   /** An equip ability: its cost can be reduced by the target (`equipDiscount`), and restricted mana can pay for it. */
@@ -2501,7 +2515,7 @@ export interface CardInstance {
    * was made at), or until the end of their next turn (`throughTurn`: their
    * turn count); otherwise while they control the source.
    */
-  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean; /** Possibility Technician: for as long as it stays exiled, while you control a permanent with this subtype. */ whileYouControlSubtype?: string; /** Lightstall Inquisitor: a spell cast this way costs this much more. */ costMore?: number; /** ... and a land played this way enters tapped. */ landEntersTapped?: boolean };
+  playableFromExile?: { player: PlayerId; source: InstanceId; /** Only right away (see castPermission.immediate). */ immediate?: boolean; /** "You may cast that card": lands can't be played this way (Ragavan). */ castOnly?: boolean; /** Summon: Brynhildr: only during a turn a lore counter was put on the source (the last such turn). */ loreTurn?: number; untilTurn?: number; untilReplaced?: boolean; whileExiled?: boolean; endSteps?: number; throughTurn?: number; anyManaType?: boolean; /** Evendo Brushrazer: only during your turn, after you've sacrificed a nontoken permanent this turn (and while you control the source). */ whileSacrificedNontoken?: boolean; /** Possibility Technician: for as long as it stays exiled, while you control a permanent with this subtype. */ whileYouControlSubtype?: string; /** Lightstall Inquisitor: a spell cast this way costs this much more. */ costMore?: number; /** Null Summoner: for as long as it stays exiled, while its player has seven or more cards in their graveyard. */ whileThreshold?: boolean; /** ... and a land played this way enters tapped. */ landEntersTapped?: boolean };
   /** It was cast from a graveyard (for "entered from a graveyard or was cast from a graveyard"). */
   castFromGraveyard?: boolean;
   /** Its power as it last left the battlefield ("where X is this creature's power", after it died). */
@@ -3002,6 +3016,10 @@ export interface CardChoice {
   /** payToAvoidCounter: if they don't pay, their creatures can't attack this subtype of planeswalkers `protectFor` controls this turn. */
   protectSubtype?: string;
   protectFor?: PlayerId;
+  /** library: if its owner puts it on top, the spell deals this much damage to them (Clash of Elements). */
+  damageIfTop?: number;
+  /** discard: exile the card instead; the chooser may cast it while they have threshold (Null Summoner). */
+  exileToCastWithThreshold?: boolean;
   /** handToTop: on the bottom instead. */
   toBottom?: boolean;
   amassType?: string;

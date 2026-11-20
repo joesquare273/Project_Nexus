@@ -13853,6 +13853,28 @@
     "scryfallId": "6d9d7979-97af-4c85-86f5-1b3704f74e8b",
     "relatedTokens": []
   },
+  "lotus-token-fra": {
+    "name": "Lotus",
+    "typeLine": "Token Artifact",
+    "oracleText": "{T}, Sacrifice this token: Add three mana of any one color.",
+    "set": "tfra",
+    "number": "12",
+    "artist": "Alex V. Ngo",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772",
+      "normal": "https://cards.scryfall.io/normal/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772",
+      "large": "https://cards.scryfall.io/large/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/5/c59b7223-00a9-4c0d-896d-1cd463860c40.jpg?1789734772"
+    },
+    "scryfallUri": "https://scryfall.com/card/tfra/12/lotus?utm_source=api",
+    "scryfallId": "c59b7223-00a9-4c0d-896d-1cd463860c40",
+    "relatedTokens": [
+      {
+        "name": "Lotus",
+        "scryfallId": "c59b7223-00a9-4c0d-896d-1cd463860c40"
+      }
+    ]
+  },
   "louisoixs-sacrifice": {
     "name": "Louisoix's Sacrifice",
     "typeLine": "Instant",

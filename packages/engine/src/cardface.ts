@@ -1,7 +1,7 @@
 // Adventurer cards use their normal characteristics everywhere except while
 // being cast as an Adventure and on the stack (rule 715).
 import { CREATURE_SUBTYPES } from './subtypes.ts';
-import type { CardDefId, CardDefinition, CardInstance, GameState, StaticSpec } from './types.ts';
+import type { CardDefId, CardDefinition, CardInstance, GameState, StaticSpec, TriggerSpec } from './types.ts';
 
 export function spellDefinition(def: CardDefinition, adventure = false): CardDefinition {
   if (!adventure || !def.adventure) return def;
@@ -98,8 +98,12 @@ export function copyLook(s: GameState, c: CardInstance): { defId: CardDefId; art
   return { defId: c.defId, artDefId: c.copy?.artDefId ?? c.defId, ...(printing ? { printing } : {}) };
 }
 
+/** Prowess (rule 702.108a): the triggered ability the keyword stands for. */
+const PROWESS_TRIGGER: TriggerSpec = { when: 'SpellCast', what: { nonTypes: ['creature'], controller: 'You' }, effects: [{ effect: 'ModifyPT', power: 1, toughness: 1, target: 'This' }] };
+
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
   let out = definitionWithEffects(s, c);
+  if (out.keywords?.includes('Prowess')) out = { ...out, triggers: [...(out.triggers ?? []), PROWESS_TRIGGER] };
   // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.
   if (c.zone === 'battlefield' && out.types.includes('planeswalker')) {
     const granted = continuousSources(s).flatMap((src) => (src.controller === c.controller && !src.phasedOut ? (copiableDefinition(s, src).statics ?? []).flatMap((st) => st.planeswalkersHave ?? []) : []));

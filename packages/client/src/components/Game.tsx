@@ -1652,7 +1652,14 @@ function PromptBar(p: PromptProps) {
     const labels = modeLabels(s.cards[t.source]!.defId, spec.modes);
     text = `${cardName(s, t.source)}: choose its modes before it goes on the stack.`;
     buttons = getLegalActions(s).flatMap((action) => action.type === 'ChooseModes'
-      ? [{ label: action.modes.length > 1 ? 'Both modes' : labels[action.modes[0]!] ?? `Mode ${action.modes[0]! + 1}`, onClick: () => p.submit([action]), primary: action.modes.length > 1 }]
+      ? [{
+          // "Choose two" (Craftwork Crusher) lists each pair; "both" for a commander's bonus mode.
+          label: spec.chooseModes
+            ? action.modes.map((m) => labels[m] ?? `Mode ${m + 1}`).join(' + ')
+            : action.modes.length > 1 ? 'Both modes' : labels[action.modes[0]!] ?? `Mode ${action.modes[0]! + 1}`,
+          onClick: () => p.submit([action]),
+          primary: !spec.chooseModes && action.modes.length > 1,
+        }]
       : []);
   } else if (pending.kind === 'bottomCards') {
     const n = pending.count;

@@ -723,7 +723,13 @@ export function orderTriggers(ctx: Ctx, playerId: PlayerId, order: number[]): vo
 export function triggerModeOptions(s: GameState, t: QueuedTrigger): number[][] {
   const spec = specOf(s, t);
   if (!spec.modes) return [];
-  const choices = spec.modes.map((_, i) => [i]);
+  const choices: number[][] = [];
+  if (spec.chooseModes) {
+    for (let mask = 1; mask < 1 << spec.modes.length; mask++) {
+      const modes = spec.modes.map((_, i) => i).filter((i) => mask & (1 << i));
+      if (modes.length >= spec.chooseModes.min && modes.length <= spec.chooseModes.max) choices.push(modes);
+    }
+  } else choices.push(...spec.modes.map((_, i) => [i]));
   if (spec.bothIfCommander && battlefield(s).some((c) => c.controller === t.controller && c.isCommander)) choices.push(spec.modes.map((_, i) => i));
   return choices.filter((modes) => triggerTargetOptions(s, { ...t, modes }).every((targets) => targets.length > 0));
 }

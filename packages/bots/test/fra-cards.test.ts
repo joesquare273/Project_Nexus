@@ -955,3 +955,149 @@ describe('F9: green', () => {
     expect(currentDefinition(s, tentacles[0]!).types).toEqual(['land', 'creature']);
   });
 });
+
+describe('F10a: multicolor', () => {
+  it('Prowess: +1/+1 until end of turn whenever you cast a noncreature spell (Grim Repriser)', () => {
+    let s = newGame();
+    const repriser = put(s, 'P1', 'grim-repriser');
+    const gasp = put(s, 'P1', 'last-gasp', 'hand');
+    const rat = put(s, 'P2', 'rank-rat');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gasp, targets: [card(rat)] }).state;
+    expect([powerOf(s, s.cards[repriser]!), toughnessOf(s, s.cards[repriser]!)]).toEqual([3, 3]);
+  });
+
+  it('Grim Repriser returns from the graveyard with a finality counter only after an opponent was dealt noncombat damage', () => {
+    let s = newGame();
+    const repriser = put(s, 'P1', 'grim-repriser', 'graveyard');
+    mana(s, 'P1', { B: 1, R: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === repriser)).toBe(false);
+    s.players.P2!.noncombatDamageTurn = s.turnNumber;
+    s = cast(s, { type: 'ActivateAbility', player: 'P1', card: repriser, ability: 0, targets: [] }).state;
+    expect([zone(s, repriser), s.cards[repriser]!.namedCounters?.finality]).toEqual(['battlefield', 1]);
+  });
+
+  it('Clash of Elements: the owner chooses; on top of their library they take 2 damage, otherwise it goes on the bottom', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const spell = put(s, 'P1', 'clash-of-elements', 'hand');
+    mana(s, 'P1', { U: 1, R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [card(rat)] }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P2', purpose: 'library' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [] })).state;
+    expect([s.players.P2!.library[0], s.players.P2!.life]).toEqual([rat, 18]);
+    let u = newGame();
+    const other = put(u, 'P2', 'rank-rat');
+    const again = put(u, 'P1', 'clash-of-elements', 'hand');
+    mana(u, 'P1', { U: 1, R: 1, C: 1 });
+    u = cast(u, { type: 'CastSpell', player: 'P1', card: again, targets: [card(other)] }).state;
+    u = settle(act(u, { type: 'ChooseCards', player: 'P2', cards: [other] })).state;
+    expect([u.players.P2!.library.at(-1), u.players.P2!.life]).toEqual([other, 20]);
+  });
+
+  it('Craftwork Crusher chooses two of its three modes', () => {
+    let s = newGame();
+    const crusher = put(s, 'P1', 'craftwork-crusher', 'hand');
+    mana(s, 'P1', { R: 2, G: 2, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: crusher });
+    s = settle(s).state;
+    for (let i = 0; i < 5 && s.pending.kind !== 'chooseModes'; i++) s = act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player });
+    const options = getLegalActions(s).filter((a) => a.type === 'ChooseModes').map((a) => (a as { modes: number[] }).modes);
+    // Any two of the three (the damage can only target the Crusher itself here).
+    expect(options).toEqual([[0, 1], [0, 2], [1, 2]]);
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'ChooseModes', player: 'P1', modes: [1, 2] })).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    expect(Object.values(s.cards).some((c) => c.defId === 'cadet-token-fra')).toBe(true);
+  });
+
+  it('Desperate Futurescribe: +1/+1 until end of turn, or a +1/+1 counter if you scried or surveilled this turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'desperate-futurescribe');
+    const rat = put(s, 'P1', 'rank-rat');
+    s = goTo(s, 'beginCombat');
+    s = settle(s).state;
+    expect([powerOf(s, s.cards[rat]!), s.cards[rat]!.counters ?? 0]).toEqual([2, 0]);
+    let u = newGame();
+    put(u, 'P1', 'desperate-futurescribe');
+    const other = put(u, 'P1', 'rank-rat');
+    u.players.P1!.scriedOrSurveiledTurn = u.turnNumber;
+    u = goTo(u, 'beginCombat');
+    u = settle(u).state;
+    expect(u.cards[other]!.counters).toBe(1);
+  });
+
+  it('Entrust the Spark: sacrifice a planeswalker to search for one and put it onto the battlefield', () => {
+    let s = newGame();
+    const old = put(s, 'P1', 'elspeth-suns-champion', 'battlefield', { namedCounters: { loyalty: 4 } });
+    const next = put(s, 'P1', 'jace-multiverse-architect', 'library');
+    const spell = put(s, 'P1', 'entrust-the-spark', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [old] })).state;
+    expect([zone(s, old), zone(s, next)]).toEqual(['graveyard', 'battlefield']);
+  });
+
+  it('Ferocity of the Hunt returns the enchanted creature tapped when it dies', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const aura = put(s, 'P1', 'ferocity-of-the-hunt', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aura, targets: [card(rat)] }).state;
+    expect([powerOf(s, s.cards[rat]!), hasKeyword(s, s.cards[rat]!, 'Deathtouch')]).toEqual([2, true]);
+    const gasp = put(s, 'P2', 'last-gasp', 'hand');
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 };
+    mana(s, 'P2', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P2', card: gasp, targets: [card(rat)] }).state;
+    expect([zone(s, rat), s.cards[rat]!.tapped]).toEqual(['battlefield', true]);
+  });
+
+  it('Kwia, Vigorbloom makes one Lotus the first time you gain life each turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'kwia-vigorbloom');
+    for (let i = 0; i < 2; i++) {
+      const spell = put(s, 'P1', 'restore-with-empathy', 'hand');
+      put(s, 'P1', 'rank-rat', 'graveyard');
+      mana(s, 'P1', { G: 1, C: 2 });
+      s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === spell)!).state;
+    }
+    expect(Object.values(s.cards).filter((c) => c.defId === 'lotus-token-fra').length).toBe(1);
+  });
+
+  it('Mind Meanderer has vigilance while you control a Jace planeswalker', () => {
+    const s = newGame();
+    const bird = put(s, 'P1', 'mind-meanderer');
+    expect(hasKeyword(s, s.cards[bird]!, 'Vigilance')).toBe(false);
+    put(s, 'P1', 'jace-multiverse-architect', 'battlefield', { namedCounters: { loyalty: 4 } });
+    expect(hasKeyword(s, s.cards[bird]!, 'Vigilance')).toBe(true);
+  });
+
+  it('Null Summoner exiles a nonland card from the opponent\'s hand, castable while you have threshold', () => {
+    let s = newGame();
+    const theirs = put(s, 'P2', 'last-gasp', 'hand');
+    const summoner = put(s, 'P1', 'null-summoner', 'hand');
+    mana(s, 'P1', { U: 1, B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: summoner }, { targets: (options) => options.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.pending).toMatchObject({ kind: 'chooseCards', player: 'P1', purpose: 'discard' });
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [theirs] })).state;
+    expect(zone(s, theirs)).toBe('exile');
+    put(s, 'P2', 'rank-rat');
+    mana(s, 'P1', { G: 2 });
+    const castable = () => getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === theirs);
+    expect(castable()).toBe(false);
+    for (let i = 0; i < 7; i++) put(s, 'P1', 'island', 'graveyard');
+    expect(castable()).toBe(true);
+  });
+
+  it('Recursive Recruitment: two Cadets, with counters for every three cards in your graveyard when cast with flashback', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'recursive-recruitment', 'graveyard');
+    for (let i = 0; i < 6; i++) put(s, 'P1', 'island', 'graveyard');
+    mana(s, 'P1', { U: 1, B: 1, C: 6 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell }).state;
+    const cadets = Object.values(s.cards).filter((c) => c.defId === 'cadet-token-fra');
+    // Six islands in the graveyard as it resolves (the spell itself is on the stack): two counters each.
+    expect(cadets.map((c) => c.counters)).toEqual([2, 2]);
+    expect(zone(s, spell)).toBe('exile');
+  });
+});

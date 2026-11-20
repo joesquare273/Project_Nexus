@@ -916,6 +916,8 @@ export function playableZone(
     }
     // "Until you exile another card with this enchantment" (Furious Rise).
     if (p.untilReplaced) return 'exile';
+    // Null Summoner: "As long as there are seven or more cards in your graveyard, you may cast the exiled card."
+    if (p.whileThreshold) return s.players[playerId]!.graveyard.length >= 7 ? 'exile' : null;
     // "For as long as that card remains exiled, you may play it" (Praetor's Grasp).
     if (p.whileExiled) return 'exile';
     // Evendo Brushrazer: "During your turn, as long as you've sacrificed a nontoken permanent this turn".
@@ -1623,6 +1625,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
     return 'That can only be activated in your main phase with an empty stack.';
   }
   if (spec.ifAttached && !c.attachedTo) return 'That only works while it’s attached to a creature.';
+  if (spec.ifOpponentDealtNoncombatDamageThisTurn && !s.turnOrder.some((pid) => pid !== playerId && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return 'That can be activated only if an opponent has been dealt noncombat damage this turn.';
+  if (spec.ifScriedOrSurveiledThisTurn && s.players[playerId]!.scriedOrSurveiledTurn !== s.turnNumber) return "That can be activated only if you've scried or surveilled this turn.";
   if (spec.ifYouControl) {
     const meets = (x: CardInstance) => x.controller === playerId && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
     if (!battlefield(s).some(meets)) return "You don't meet the condition to activate that.";
@@ -2204,7 +2208,7 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
       // "Reveals their hand. You choose a nonland card from it" (Grief).
       const able = s.players[pid]!.hand.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: pid }));
       const n = Math.min(Math.max(1, amount), able.length);
-      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: r.item.controller, purpose: 'discard', cards: able, min: n, max: n }];
+      if (n > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: r.item.controller, purpose: 'discard', cards: able, min: n, max: n, ...(effect.exileToCastWithThreshold ? { exileToCastWithThreshold: true } : {}) }];
       continue;
     }
     if (effect.effect === 'Discard') {
@@ -2512,7 +2516,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of cards) if (s.cards[id]!.zone === 'graveyard') s.cards[id]!.adventureGraveyard = { player: item.controller, grantedTurn: s.turnNumber };
       return;
     case 'PutIntoLibrary':
-      r.choiceQueue = cards.map((id) => ({ player: s.cards[id]!.owner, purpose: 'library', cards: [id], min: 0, max: 1 }));
+      r.choiceQueue = cards.map((id) => ({ player: s.cards[id]!.owner, purpose: 'library', cards: [id], min: 0, max: 1, ...(effect.damageIfTop ? { damageIfTop: effect.damageIfTop } : {}) }));
       return;
     case 'OfferDrawOrMillDamage':
       r.choiceQueue = targetPlayers(targets).map((pid) => ({ player: pid, purpose: 'offerDraw', cards: [source], min: 0, max: 1 }));
@@ -4310,6 +4314,9 @@ function continueResolving(ctx: Ctx): void {
     if (effect.if === 'notCastFromGraveyard' && item.kind === 'spell' && item.castFrom === 'graveyard') continue;
     if (effect.if === 'castFromExile' && !(item.kind === 'spell' && item.castFrom === 'exile')) continue;
     if (effect.if === 'castFromHand' && !(item.kind === 'spell' && item.castFrom === 'hand')) continue;
+    if (effect.if === 'notCastFromHand' && item.kind === 'spell' && item.castFrom === 'hand') continue;
+    // "If you've scried or surveilled this turn" (true), or "if you haven't" (false).
+    if (effect.ifScriedOrSurveiledThisTurn !== undefined && (s.players[item.controller]!.scriedOrSurveiledTurn === s.turnNumber) !== effect.ifScriedOrSurveiledThisTurn) continue;
     if (effect.if === 'controlChanged' && !r.controlChanged) continue;
     const kicked = item.kind === 'spell' && (item.kicks ?? 0) > 0;
     if ((effect.if === 'kicked' && !kicked) || (effect.if === 'notKicked' && kicked)) continue;
@@ -4645,6 +4652,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const library = player(s, c.owner).library;
       library.splice(library.indexOf(id), 1);
       library.unshift(id);
+      if (pending.damageIfTop) dealDamage(ctx, sourceOf(r.item), { kind: 'player', player: c.owner }, pending.damageIfTop, false);
     }
   } else if (pending.purpose === 'offerDraw') {
     if (cards.length > 0) drawCards(ctx, r.item.controller, 3);
@@ -4653,6 +4661,11 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const damage = milled.reduce((sum, id) => sum + manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost)), 0);
       for (const id of milled) moveCard(ctx, id, 'graveyard');
       dealDamage(ctx, sourceOf(r.item), { kind: 'player', player: pending.player }, damage, false);
+    }
+  } else if (pending.purpose === 'discard' && pending.exileToCastWithThreshold) {
+    for (const id of cards) {
+      moveCard(ctx, id, 'exile');
+      if (s.cards[id]?.zone === 'exile') s.cards[id]!.playableFromExile = { player: pending.player, source: sourceOf(r.item), whileThreshold: true, castOnly: true, anyManaType: true };
     }
   } else if (pending.purpose === 'discard' && pending.exileToPlayTaxed) {
     for (const id of cards) {
