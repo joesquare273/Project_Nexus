@@ -1,4 +1,16 @@
-# Card audit (2026-11-04; rerun 2026-11-12)
+# Card audit (2026-11-04; rerun 2026-11-12 and 2026-11-20)
+
+## 2026-11-20: with Reality Fracture
+
+The script now checks 1,456 built cards (adding the Reality Fracture main set
+and its precon). Its Reality Fracture flags were read by hand: they are the
+known false positives (targets inside modes, prepare spells, reflexive and
+delayed triggers, loyalty abilities and emblems, a second "up to" target) or
+simplifications already noted in docs/reality-fracture.md (Seasoned
+Cryomancer, Sphinx's Approach). One tidy-up: six cards built before the engine
+had prowess wrote it as a trigger (Cryotheory Adept, Variable Chaser, Pompous
+Battlemage, Pyre Rhymer, Queen Brahne, Lyse Hext); they now have the Prowess
+keyword, which works the same and shows on the card.
 
 ## 2026-11-12: every set, statically and by playing each card
 

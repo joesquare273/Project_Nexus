@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Card audit with Reality Fracture; prowess as a keyword (2026-11-20)
+
+- The card audit reran over all 1,456 built cards (docs/card-audit.md); nothing wrong in Reality Fracture. Six cards with prowess written as a trigger now use the Prowess keyword.
+
 ### Reality Fracture Secret Lair Bundle in the Store (2026-11-20)
 
 - The Store's Reality Fracture tab sells the Secret Lair Bundle's eleven borderless foils (FRA 438-448): all together at the Secret Lair drop price (3,500), or each at the single price (1,000). The Collection binder has a Secret Lair Bundle group for them (docs/packs.md).
