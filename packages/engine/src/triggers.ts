@@ -6,7 +6,7 @@
 
 import { checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
 import { randomInt } from './rng.ts';
-import { characteristics, countOf } from './characteristics.ts';
+import { characteristics, countOf, manaSpentOverPowerOrToughness } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
 import { givePriority } from './turn.ts';
@@ -415,6 +415,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.nthNoncreatureSpellThisTurn !== undefined && o.noncreatureSpellNumber !== spec.nthNoncreatureSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
+  if (spec.ifManaSpentOverPowerOrToughness && !manaSpentOverPowerOrToughness(s, source, o.manaSpent ?? 0)) return false;
   return matchesFilter(s, spec.what, source, controller, o);
 }
 

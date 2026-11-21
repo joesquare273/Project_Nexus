@@ -683,3 +683,97 @@ describe('SOS3a: Opus', () => {
     expect(s.cards[top]!.zone).toBe('exile');
   });
 });
+
+describe('SOS3b: Increment', () => {
+  const bolt = (s: GameState) => {
+    const b = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: b, targets: [{ kind: 'player', player: 'P2' }] }).state;
+  };
+  const big = (s: GameState) => {
+    const blessing = put(s, 'P1', 'lifestreams-blessing', 'hand');
+    mana(s, 'P1', { G: 2, C: 4 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: blessing }, { targets: (o) => o[0]! }).state;
+  };
+
+  it('Increment: a counter when the mana spent is greater than its power or toughness', () => {
+    let s = newGame();
+    const graffalon = put(s, 'P1', 'hungry-graffalon'); // 3/4
+    s = bolt(s);
+    expect(s.cards[graffalon]!.counters ?? 0).toBe(0);
+    s = big(s);
+    expect(s.cards[graffalon]!.counters).toBe(1);
+    // A 1/1 grows from a one-mana spell? No: 1 is not greater than 1.
+    const colony = put(s, 'P1', 'cuboid-colony');
+    s = bolt(s);
+    expect(s.cards[colony]!.counters ?? 0).toBe(0);
+    // Two mana is greater than 1.
+    const healer = put(s, 'P1', 'infirmary-healer-stream-of-life', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: healer }).state;
+    expect(s.cards[colony]!.counters).toBe(1);
+  });
+
+  it('Pensive Professor draws when it gets +1/+1 counters; Textbook Tabulator surveils 2', () => {
+    let s = newGame();
+    const prof = put(s, 'P1', 'pensive-professor'); // 0/2
+    const hand = s.players.P1!.hand.length;
+    s = bolt(s);
+    expect([s.cards[prof]!.counters, s.players.P1!.hand.length]).toEqual([1, hand + 1]);
+    const tab = put(s, 'P1', 'textbook-tabulator', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tab }, { surveilToGraveyard: true }).state;
+    expect(s.players.P1!.graveyard.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('Ambitious Augmenter: when it dies with counters, a Fractal gets them', () => {
+    let s = newGame();
+    const aug = put(s, 'P1', 'ambitious-augmenter', 'battlefield', { counters: 2 });
+    const kill = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.players.P2!.manaPool.R = 1;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: kill, targets: [{ kind: 'card', card: aug }] })).state;
+    expect(s.cards[aug]!.zone).toBe('graveyard');
+    const fractal = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'fractal-token-sos')!;
+    expect([powerOf(s, fractal), toughnessOf(s, fractal)]).toEqual([2, 2]);
+    // Without counters: no Fractal.
+    let u = newGame();
+    const a2 = put(u, 'P1', 'ambitious-augmenter');
+    const k2 = put(u, 'P2', 'lightning-bolt', 'hand');
+    u.players.P2!.manaPool.R = 1;
+    u.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    u = settle(act(u, { type: 'CastSpell', player: 'P2', card: k2, targets: [{ kind: 'card', card: a2 }] })).state;
+    expect(u.players.P1!.battlefield.some((id) => u.cards[id]!.defId === 'fractal-token-sos')).toBe(false);
+  });
+
+  it('Topiary Lecturer taps for {G} equal to its power', () => {
+    const s = newGame();
+    const lecturer = put(s, 'P1', 'topiary-lecturer', 'battlefield', { counters: 2, summoningSick: false });
+    const t = act(s, { type: 'ActivateManaAbility', player: 'P1', card: lecturer, mana: 'G' });
+    expect(t.players.P1!.manaPool.G).toBe(3);
+  });
+
+  it('Berta adds a mana when it gets counters, and makes a Fractal with X counters', () => {
+    let s = newGame();
+    const berta = put(s, 'P1', 'berta-wise-extrapolator', 'battlefield', { summoningSick: false }); // 1/4
+    s = big(s);
+    expect(s.cards[berta]!.counters).toBe(1);
+    while (s.pending.kind === 'chooseMana') s = settle(act(s, { type: 'ChooseMana', player: 'P1', mana: 'G' })).state;
+    expect(s.players.P1!.manaPool.G).toBeGreaterThanOrEqual(1);
+    mana(s, 'P1', { C: 3 });
+    const x3 = getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === berta && (a as { x?: number }).x === 3)!;
+    s = cast(s, x3).state;
+    const fractal = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'fractal-token-sos')!;
+    expect(fractal.counters).toBe(3);
+  });
+
+  it('Fractal Tender makes a 3/3 Fractal at an end step if it got a counter this turn', () => {
+    let s = newGame();
+    const tender = put(s, 'P1', 'fractal-tender'); // 3/3
+    s = big(s);
+    expect(s.cards[tender]!.counters).toBe(1);
+    s = settle(goTo(s, 'end')).state;
+    const fractal = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'fractal-token-sos')!;
+    expect(fractal.counters).toBe(3);
+  });
+});

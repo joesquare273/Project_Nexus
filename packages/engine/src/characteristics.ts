@@ -468,3 +468,10 @@ export function effectLasts(s: GameState, e: TemporaryEffect): boolean {
 export function corrupted(s: GameState, player: PlayerId): boolean {
   return s.turnOrder.some((pid) => pid !== player && !s.players[pid]!.eliminated && (s.players[pid]!.poison ?? 0) >= 3);
 }
+
+/** Increment: the mana spent is greater than the creature's power or its toughness. */
+export function manaSpentOverPowerOrToughness(s: GameState, source: InstanceId, spent: number): boolean {
+  const c = s.cards[source];
+  if (!c || c.zone !== 'battlefield') return false;
+  return spent > powerOf(s, c) || spent > toughnessOf(s, c);
+}

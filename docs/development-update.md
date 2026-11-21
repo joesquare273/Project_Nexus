@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS3b: Increment (2026-11-21)
+
+- The Increment keyword and 8 of its 9 cards (Tester of the Tangential needs an {X} trigger cost). Opus now reuses the existing mana-spent condition. docs/strixhaven.md.
+
 ### Secrets of Strixhaven SOS3a: Opus (2026-11-21)
 
 - 10 Opus creatures, with effect conditions on the triggering spell's mana spent. docs/strixhaven.md.

@@ -117,6 +117,7 @@ export function manaAbilityAmount(c: CardInstance, def: CardDefinition, s?: Game
   const ability = def.manaAbility;
   if (ability?.amountDifferentPowers && s) return new Set(s.turnOrder.flatMap((p) => s.players[p]!.battlefield.map((id) => s.cards[id]!)).filter((x) => x.controller === c.controller && !x.phasedOut && currentDefinition(s, x).types.includes('creature')).map((x) => powerOf(s, x))).size;
   if (ability?.removeCounter) return 1;
+  if (ability?.amountEqualsPower && s) return Math.max(0, powerOf(s, c));
   if (ability?.amountPerCounter) {
     const kind = ability.amountPerCounter === true ? undefined : ability.amountPerCounter;
     // Empowered Autogenerator: the counter it adds first counts too.

@@ -71,6 +71,8 @@ export const KEYWORDS = [
   'Menace',
   /** Prowess (rule 702.108): "Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn" (added to its triggers by currentDefinition). */
   'Prowess',
+  /** Increment: "Whenever you cast a spell, if the amount of mana you spent to cast it is greater than this creature's power or toughness, put a +1/+1 counter on this creature" (added to its triggers by currentDefinition). */
+  'Increment',
   'Lifelink',
   'Trample',
   'Deathtouch',
@@ -526,6 +528,8 @@ export const EFFECT_KINDS = [
    * (`anyKind`), or all of them (`allCounters`).
    */
   'MoveCounters',
+  /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
+  'PutSubjectCounters',
   /** Put the counters the source (or, with `countersOf`, the triggering card) had as it left the battlefield on the target (Zack Fair). */
   'PutLastCounters',
   /** Attach an Equipment that was attached to the source as it left the battlefield to the target (Zack Fair). */
@@ -1140,9 +1144,6 @@ export interface EffectSpec {
   ifYourTurn?: boolean;
   /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number; not?: boolean };
-  /** Opus (a SpellCast trigger): only if at least this much mana was spent to cast the triggering spell; `unlessManaSpentAtLeast`: only if less ("... instead"). */
-  ifManaSpentAtLeast?: number;
-  unlessManaSpentAtLeast?: number;
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
   lookTo?: 'hand' | 'battlefield';
   /** LookAtTopPutMatching onto the battlefield: tapped (Ignis), or tapped and attacking with indestructible until end of turn (Winota). */
@@ -1197,6 +1198,12 @@ export interface EffectSpec {
   sourceCounterKind?: AnyCounter;
   /** SpellCast triggers: only happens if at least this much mana was spent on the triggering spell ("if four or more mana was spent"). */
   ifSubjectManaSpentAtLeast?: number;
+  /** Increment's intervening "if": the triggering spell's mana spent is greater than the source's power or toughness. */
+  ifSubjectManaSpentOverSourcePowerOrToughness?: boolean;
+  /** Only if the triggering object had (or has) one or more counters on it ("if it had one or more counters on it": Ambitious Augmenter). */
+  ifSubjectHadCounters?: boolean;
+  /** SpellCast triggers: only happens if less than this much mana was spent ("if five or more mana was spent, ... instead": Opus). */
+  unlessSubjectManaSpentAtLeast?: number;
   /** Converge: only targets with mana value at most the colors spent on this spell (Prismatic Ending). */
   ifTargetManaValueAtMostColorsSpent?: boolean;
   /** CreateToken in an attack trigger: tapped and attacking the player the triggering creature attacked (Najeela). */
@@ -1647,6 +1654,8 @@ export interface TriggerSpec {
   /** Intervening "if": "if a card left your graveyard this turn". */
   ifCardLeftYourGraveyardThisTurn?: boolean;
   /** Intervening "if": "if a counter was put on this creature this turn". */
+  /** Increment: only if the triggering spell's mana spent is greater than this creature's power or toughness (checked again as it resolves). */
+  ifManaSpentOverPowerOrToughness?: boolean;
   ifSourceGotCountersThisTurn?: boolean;
   /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
   ifYouAreMonarch?: boolean;
@@ -2145,6 +2154,8 @@ export interface CardDefinition {
     amount?: number;
     /** "Add one mana of that color for each different power among creatures you control" (Loot, the Nexus). */
     amountDifferentPowers?: boolean;
+    /** "Add an amount of {G} equal to this creature's power" (Topiary Lecturer). */
+    amountEqualsPower?: boolean;
     /** Producing one of these deals 1 damage to you (pain lands, Talismans). */
     painFor?: ManaType[];
     /** "Add one mana of any color in your commander's color identity." */

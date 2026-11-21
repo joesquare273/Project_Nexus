@@ -4,7 +4,7 @@ import type { ManaRestriction } from './types.ts';
 // stack (PRD 7.2).
 
 import { copiableDefinition, copyLook, currentDefinition, faceDownCharacteristics, spellDefinition } from './cardface.ts';
-import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, powerOf, protectedFrom, protectedFromType, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
+import { allCounters, amountOf, characteristics, combatPowerOf, countOf, countersOf, isEquipment, manaSpentOverPowerOrToughness, powerOf, protectedFrom, protectedFromType, subtypesOf, toughnessOf, totalCounters } from './characteristics.ts';
 import { parseManaCost, planPayment, reduceGeneric, totalMana, manaValue } from './cost.ts';
 import { matchesObject } from './filters.ts';
 import { randomInt, shuffleInPlace } from './rng.ts';
@@ -4276,6 +4276,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'ChooseTarget':
       return;
+    case 'PutSubjectCounters': {
+      const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+      if (!c) return;
+      const counters: Record<string, number> = c.zone === 'battlefield' ? { '+1/+1': c.counters ?? 0, ...(c.namedCounters ?? {}) } : { ...(c.lastCounters ?? {}) };
+      for (const id of onBattlefield) for (const [kind, n] of Object.entries(counters)) if (n > 0) addCounters(ctx, id, n, item.controller, kind as never);
+      return;
+    }
     case 'MoveCounters': {
       const t = effect.from !== undefined ? item.targets[effect.from] : undefined;
       const fromCard = t?.kind === 'card' ? s.cards[t.card] : undefined;
@@ -4513,9 +4520,10 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x) ?? 0) < effect.ifXAtLeast) continue;
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
+    if (effect.ifSubjectManaSpentOverSourcePowerOrToughness && (item.kind !== 'ability' || !manaSpentOverPowerOrToughness(s, item.source, item.amount ?? 0))) continue;
+    if (effect.ifSubjectHadCounters && subjectAmount(s, item, 'subjectCounters') === 0) continue;
     // Opus: the triggering spell's mana spent is the ability's amount.
-    if (effect.ifManaSpentAtLeast !== undefined && (item.kind !== 'ability' || (item.amount ?? 0) < effect.ifManaSpentAtLeast)) continue;
-    if (effect.unlessManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessManaSpentAtLeast) continue;
+    if (effect.unlessSubjectManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessSubjectManaSpentAtLeast) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
     if (effect.ifNthResolutionThisTurn !== undefined) {
       // Counted once per resolution: this effect is reached once each time the ability resolves.

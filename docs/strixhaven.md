@@ -108,7 +108,7 @@ drawn pack shows.
 | SOC1-SOC5 | The decks' cards, one group per deck | |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
-| SOS3 | Increment and Opus (19): SOS3a Opus (10) done 2026-11-21; SOS3b Increment (9) | In progress |
+| SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
 | SOS4 | Repartee and Infusion | |
 | SOS5 | Paradigm and Converge | |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
@@ -185,6 +185,26 @@ Deluge Virtuoso, Exhibition Tidecaller, Muse Seeker, Expressive Firedancer,
 Molten-Core Maestro, Tackle Artist, Thunderdrum Soloist, Colorstorm Stallion,
 Elemental Mascot and Spectacular Skywhale. Opus is a SpellCast trigger on your
 instants and sorceries; its "if five or more mana was spent to cast that
-spell" parts use the effect conditions `ifManaSpentAtLeast` and (for
-"... instead") `unlessManaSpentAtLeast`, read from the triggering spell's
+spell" parts use the effect conditions `ifSubjectManaSpentAtLeast` (it was there already, for Tellah) and (for
+"... instead") the new `unlessSubjectManaSpentAtLeast`, read from the triggering spell's
 mana spent.
+
+## SOS3b: Increment (built 2026-11-21)
+
+Pensive Professor, Textbook Tabulator, Ambitious Augmenter, Hungry
+Graffalon, Topiary Lecturer, Berta, Wise Extrapolator, Cuboid Colony and
+Fractal Tender. Increment is a keyword (`Increment`) whose trigger
+`currentDefinition` adds, like prowess: whenever you cast a spell, if the
+mana spent on it is greater than the creature's power or its toughness
+(checked as it triggers and again as it resolves), a +1/+1 counter.
+
+New: `PutSubjectCounters` (every kind of counter the dying creature had,
+onto the Fractal: Ambitious Augmenter) with the `ifSubjectHadCounters`
+condition, and `manaAbility.amountEqualsPower` (Topiary Lecturer).
+
+Not yet: **Tester of the Tangential** ("you may pay {X}. When you do, move X
++1/+1 counters ..."): a trigger's optional cost can't have an {X} yet.
+
+SOS3a's mana-spent conditions now reuse the engine's existing
+`ifSubjectManaSpentAtLeast` (Tellah, Shantotto) instead of a second copy;
+the "... instead" half is `unlessSubjectManaSpentAtLeast`.
