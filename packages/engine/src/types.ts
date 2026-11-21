@@ -1140,6 +1140,9 @@ export interface EffectSpec {
   ifYourTurn?: boolean;
   /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number; not?: boolean };
+  /** Opus (a SpellCast trigger): only if at least this much mana was spent to cast the triggering spell; `unlessManaSpentAtLeast`: only if less ("... instead"). */
+  ifManaSpentAtLeast?: number;
+  unlessManaSpentAtLeast?: number;
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
   lookTo?: 'hand' | 'battlefield';
   /** LookAtTopPutMatching onto the battlefield: tapped (Ignis), or tapped and attacking with indestructible until end of turn (Winota). */

@@ -108,7 +108,7 @@ drawn pack shows.
 | SOC1-SOC5 | The decks' cards, one group per deck | |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
-| SOS3 | Increment and Opus | |
+| SOS3 | Increment and Opus (19): SOS3a Opus (10) done 2026-11-21; SOS3b Increment (9) | In progress |
 | SOS4 | Repartee and Infusion | |
 | SOS5 | Paradigm and Converge | |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
@@ -178,3 +178,13 @@ this way onto the battlefield), the activation condition
 `ifCastInstantOrSorceryThisTurn` with a per-turn count of each player's
 instant and sorcery spells (`instantOrSorcerySpellsThisTurn`, public), and
 the Pest token (TSOS 9).
+
+## SOS3a: Opus (built 2026-11-21)
+
+Deluge Virtuoso, Exhibition Tidecaller, Muse Seeker, Expressive Firedancer,
+Molten-Core Maestro, Tackle Artist, Thunderdrum Soloist, Colorstorm Stallion,
+Elemental Mascot and Spectacular Skywhale. Opus is a SpellCast trigger on your
+instants and sorceries; its "if five or more mana was spent to cast that
+spell" parts use the effect conditions `ifManaSpentAtLeast` and (for
+"... instead") `unlessManaSpentAtLeast`, read from the triggering spell's
+mana spent.

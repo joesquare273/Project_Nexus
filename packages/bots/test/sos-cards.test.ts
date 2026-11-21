@@ -578,3 +578,108 @@ describe('SOS2c: green, multicolor and colorless prepared cards', () => {
     expect(s.cards[tam]!.prepared).toBe(true);
   });
 });
+
+describe('SOS3a: Opus', () => {
+  /** Casts a cheap instant (1 mana) or a big sorcery (6 mana) for P1. */
+  const small = (s: GameState) => {
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2') ?? o[0]! }).state;
+  };
+  const big = (s: GameState) => {
+    const blessing = put(s, 'P1', 'lifestreams-blessing', 'hand');
+    mana(s, 'P1', { G: 2, C: 4 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: blessing }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2') ?? o[0]! }).state;
+  };
+  const pt = (s: GameState, id: string) => [powerOf(s, s.cards[id]!), toughnessOf(s, s.cards[id]!)];
+
+  it('Deluge Virtuoso taps and stuns an opponent’s creature as it enters; +1/+1, or +2/+2 with five mana spent', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const virtuoso = put(s, 'P1', 'deluge-virtuoso', 'hand');
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: virtuoso }).state;
+    expect([s.cards[rat]!.tapped, s.cards[rat]!.namedCounters?.stun]).toEqual([true, 1]);
+    s = small(s);
+    expect(pt(s, virtuoso)).toEqual([3, 3]);
+    s = big(s);
+    expect(pt(s, virtuoso)).toEqual([5, 5]);
+  });
+
+  it('Exhibition Tidecaller: target player mills three, or ten', () => {
+    let s = newGame();
+    put(s, 'P1', 'exhibition-tidecaller');
+    const before = s.players.P2!.library.length;
+    s = small(s);
+    expect(s.players.P2!.library.length).toBe(before - 3);
+    s = big(s);
+    expect(s.players.P2!.library.length).toBe(before - 13);
+  });
+
+  it('Muse Seeker draws, then discards unless five mana was spent', () => {
+    let s = newGame();
+    put(s, 'P1', 'muse-seeker');
+    const hand = s.players.P1!.hand.length;
+    s = small(s);
+    while (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: (s.pending as { cards: string[] }).cards.slice(0, 1) })).state;
+    expect(s.players.P1!.hand.length).toBe(hand);
+    s = big(s);
+    expect(s.players.P1!.hand.length).toBeGreaterThan(hand);
+  });
+
+  it('Expressive Firedancer gets +1/+1, and double strike with five mana spent', () => {
+    let s = newGame();
+    const dancer = put(s, 'P1', 'expressive-firedancer');
+    s = small(s);
+    expect([...pt(s, dancer), hasKeyword(s, s.cards[dancer]!, 'DoubleStrike')]).toEqual([3, 3, false]);
+    s = big(s);
+    expect([...pt(s, dancer), hasKeyword(s, s.cards[dancer]!, 'DoubleStrike')]).toEqual([4, 4, true]);
+  });
+
+  it('Molten-Core Maestro gets a counter; with five mana spent, red mana equal to its power', () => {
+    let s = newGame();
+    const maestro = put(s, 'P1', 'molten-core-maestro');
+    s = small(s);
+    expect([s.cards[maestro]!.counters, s.players.P1!.manaPool.R]).toEqual([1, 0]);
+    s = big(s);
+    expect([s.cards[maestro]!.counters, s.players.P1!.manaPool.R]).toEqual([2, 4]);
+  });
+
+  it('Tackle Artist, Spectacular Skywhale: one or two counters; +3/+0 or three counters', () => {
+    let s = newGame();
+    const artist = put(s, 'P1', 'tackle-artist');
+    const whale = put(s, 'P1', 'spectacular-skywhale');
+    s = small(s);
+    expect([s.cards[artist]!.counters, ...pt(s, whale)]).toEqual([1, 4, 4]);
+    s = big(s);
+    expect([s.cards[artist]!.counters, s.cards[whale]!.counters]).toEqual([3, 3]);
+  });
+
+  it('Thunderdrum Soloist deals 1, or 3, to each opponent', () => {
+    let s = newGame();
+    put(s, 'P1', 'thunderdrum-soloist');
+    s = small(s);
+    expect(s.players.P2!.life).toBe(16);
+    s = big(s);
+    expect(s.players.P2!.life).toBe(13);
+  });
+
+  it('Colorstorm Stallion makes a token copy of itself with five mana spent', () => {
+    let s = newGame();
+    const horse = put(s, 'P1', 'colorstorm-stallion');
+    s = big(s);
+    const copies = s.players.P1!.battlefield.filter((id) => id !== horse && s.cards[id]!.defId === 'colorstorm-stallion');
+    expect(copies).toHaveLength(1);
+    expect(s.cards[copies[0]!]!.isToken).toBe(true);
+  });
+
+  it('Elemental Mascot exiles the top card to play with five mana spent', () => {
+    let s = newGame();
+    const mascot = put(s, 'P1', 'elemental-mascot');
+    const top = s.players.P1!.library[0]!;
+    s = small(s);
+    expect([powerOf(s, s.cards[mascot]!), s.cards[top]!.zone]).toEqual([2, 'library']);
+    s = big(s);
+    expect(s.cards[top]!.zone).toBe('exile');
+  });
+});

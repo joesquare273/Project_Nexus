@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS3a: Opus (2026-11-21)
+
+- 10 Opus creatures, with effect conditions on the triggering spell's mana spent. docs/strixhaven.md.
+
 ### Secrets of Strixhaven SOS2c: the last prepared cards (2026-11-21)
 
 - 10 cards; every prepared card in the set is built. New: choosing a milled creature card for the battlefield, "if you've cast an instant or sorcery spell this turn", the Pest token. docs/strixhaven.md.

@@ -4513,6 +4513,9 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x) ?? 0) < effect.ifXAtLeast) continue;
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
+    // Opus: the triggering spell's mana spent is the ability's amount.
+    if (effect.ifManaSpentAtLeast !== undefined && (item.kind !== 'ability' || (item.amount ?? 0) < effect.ifManaSpentAtLeast)) continue;
+    if (effect.unlessManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessManaSpentAtLeast) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
     if (effect.ifNthResolutionThisTurn !== undefined) {
       // Counted once per resolution: this effect is reached once each time the ability resolves.
