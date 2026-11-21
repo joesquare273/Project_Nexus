@@ -1009,6 +1009,8 @@ export interface EffectSpec {
   noncreatureOnly?: boolean;
   /** ExileTopCardToPlay: from the damaged player's library, with no permission yet (AllowPlayExiledThisWay grants it). */
   fromDefendersLibrary?: boolean;
+  /** Exile: "return that card to the battlefield under its owner's control at the beginning of the next end step" (Conciliator's Duelist). */
+  returnAtNextEndStep?: boolean;
   /** ReturnToBattlefield: the returned creatures gain haste and go back to their owner's hand at the next end step (Random Encounter). */
   returnToHandAtEndStep?: boolean;
   /** GainControl: only until end of turn (it goes back at cleanup). AttachEquipmentTo: the Equipment is unattached then too. */
@@ -1656,6 +1658,8 @@ export interface TriggerSpec {
   /** Intervening "if": "if a counter was put on this creature this turn". */
   /** Increment: only if the triggering spell's mana spent is greater than this creature's power or toughness (checked again as it resolves). */
   ifManaSpentOverPowerOrToughness?: boolean;
+  /** SpellCast, Repartee: only a spell that targets a creature (checked as it's cast). */
+  ifSpellTargetsCreature?: boolean;
   ifSourceGotCountersThisTurn?: boolean;
   /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
   ifYouAreMonarch?: boolean;
@@ -2719,6 +2723,8 @@ export interface CardInstance {
   /** Sacrificed at the beginning of the next end step (a creature cast with Strago and Relm's permission). */
   /** Return it to its owner's hand at the beginning of the next end step (Random Encounter). */
   returnToHandAtEndStep?: boolean;
+  /** Exiled until the beginning of the next end step, then returned to the battlefield under its owner's control (Conciliator's Duelist). */
+  returnFromExileAtEndStep?: boolean;
   /** Cast for its warp cost: exiled at the beginning of the next end step. */
   warped?: boolean;
   /** Exiled by warp on this turn: its owner may cast it from exile on a later turn, for as long as it stays exiled. */

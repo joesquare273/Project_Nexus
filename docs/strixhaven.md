@@ -109,7 +109,7 @@ drawn pack shows.
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
-| SOS4 | Repartee and Infusion | |
+| SOS4 | Repartee and Infusion (24): SOS4a Repartee (12) done 2026-11-21; SOS4b Infusion (12) | In progress |
 | SOS5 | Paradigm and Converge | |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
 
@@ -208,3 +208,17 @@ Not yet: **Tester of the Tangential** ("you may pay {X}. When you do, move X
 SOS3a's mana-spent conditions now reuse the engine's existing
 `ifSubjectManaSpentAtLeast` (Tellah, Shantotto) instead of a second copy;
 the "... instead" half is `unlessSubjectManaSpentAtLeast`.
+
+## SOS4a: Repartee (built 2026-11-21)
+
+Graduation Day, Informed Inkwright, Inkshape Demonstrator, Rehearsed
+Debater, Stirring Hopesinger, Forum Necroscribe, Lecturing Scornmage,
+Melancholic Poet, Conciliator's Duelist, Inkling Mascot, Scolding
+Administrator and Snooping Page. Repartee is a SpellCast trigger on your
+instants and sorceries with `ifSpellTargetsCreature` (the spell on the stack
+has a creature on the battlefield among its targets).
+
+New: Exile `returnAtNextEndStep` (Conciliator's Duelist: the card comes back
+under its owner's control as the next end step begins; the
+`returnFromExileAtEndStep` card field, public). "Ward—Discard a card" uses the
+ward trigger built for Reality Fracture (`CounterUnlessDiscard`).

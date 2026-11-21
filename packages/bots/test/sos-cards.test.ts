@@ -777,3 +777,98 @@ describe('SOS3b: Increment', () => {
     expect(fractal.counters).toBe(3);
   });
 });
+
+describe('SOS4a: Repartee', () => {
+  /** P1 casts Lightning Bolt at a creature (or at P2 when `at` is omitted). */
+  const boltAt = (s: GameState, at?: string, opts: Parameters<typeof cast>[2] = {}) => {
+    const b = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    return cast(s, { type: 'CastSpell', player: 'P1', card: b, targets: [at ? { kind: 'card', card: at } : { kind: 'player', player: 'P2' }] }, opts).state;
+  };
+
+  it('triggers only on an instant or sorcery that targets a creature', () => {
+    let s = newGame();
+    const scorn = put(s, 'P1', 'lecturing-scornmage');
+    s = boltAt(s);
+    expect(s.cards[scorn]!.counters ?? 0).toBe(0);
+    const rat = put(s, 'P2', 'rank-rat');
+    s = boltAt(s, rat);
+    expect(s.cards[scorn]!.counters).toBe(1);
+  });
+
+  it('Graduation Day, Stirring Hopesinger: counters on your creatures', () => {
+    let s = newGame();
+    put(s, 'P1', 'graduation-day');
+    const singer = put(s, 'P1', 'stirring-hopesinger');
+    const mine = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'rank-rat');
+    s = boltAt(s, theirs, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === mine) ?? o[0]! });
+    expect([s.cards[singer]!.counters, s.cards[mine]!.counters]).toEqual([1, 2]);
+  });
+
+  it('Informed Inkwright makes an Inkling; Rehearsed Debater and Inkshape Demonstrator pump', () => {
+    let s = newGame();
+    put(s, 'P1', 'informed-inkwright');
+    const debater = put(s, 'P1', 'rehearsed-debater');
+    const demo = put(s, 'P1', 'inkshape-demonstrator');
+    s = boltAt(s, put(s, 'P2', 'rank-rat'));
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'inkling-token-sos')).toBe(true);
+    expect([powerOf(s, s.cards[debater]!), powerOf(s, s.cards[demo]!), hasKeyword(s, s.cards[demo]!, 'Lifelink')]).toEqual([4, 4, true]);
+  });
+
+  it('Forum Necroscribe returns a creature card from your graveyard; ward—discard a card', () => {
+    let s = newGame();
+    const scribe = put(s, 'P1', 'forum-necroscribe');
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    s = boltAt(s, put(s, 'P2', 'rank-rat'), { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === dead) ?? o[0]! });
+    expect(s.cards[dead]!.zone).toBe('battlefield');
+    expect(s.cards[scribe]!.zone).toBe('battlefield');
+  });
+
+  it("Melancholic Poet drains 1; Inkling Mascot flies and surveils", () => {
+    let s = newGame();
+    put(s, 'P1', 'melancholic-poet');
+    const mascot = put(s, 'P1', 'inkling-mascot');
+    s = boltAt(s, put(s, 'P2', 'rank-rat'));
+    expect([s.players.P2!.life, s.players.P1!.life, hasKeyword(s, s.cards[mascot]!, 'Flying')]).toEqual([19, 21, true]);
+  });
+
+  it("Conciliator's Duelist: draw and everyone loses 1; exile a creature until the next end step", () => {
+    let s = newGame();
+    const duelist = put(s, 'P1', 'conciliators-duelist', 'hand');
+    mana(s, 'P1', { W: 2, B: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: duelist }).state;
+    expect([s.players.P1!.life, s.players.P2!.life]).toEqual([19, 19]);
+    const big = put(s, 'P2', 'hungry-graffalon');
+    const rat = put(s, 'P2', 'rank-rat');
+    s = boltAt(s, rat, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === big) ?? o[0]! });
+    expect(s.cards[big]!.zone).toBe('exile');
+    s = settle(goTo(s, 'end')).state;
+    expect([s.cards[big]!.zone, s.cards[big]!.controller]).toEqual(['battlefield', 'P2']);
+  });
+
+  it('Scolding Administrator grows, and moves its counters when it dies', () => {
+    let s = newGame();
+    const admin = put(s, 'P1', 'scolding-administrator');
+    const friend = put(s, 'P1', 'hungry-graffalon');
+    s = boltAt(s, put(s, 'P2', 'rank-rat'));
+    expect(s.cards[admin]!.counters).toBe(1);
+    // An opponent's Bolt (P1's own would trigger Repartee and grow it to 4/4 first).
+    const kill = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.players.P2!.manaPool.R = 1;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: kill, targets: [{ kind: 'card', card: admin }] }), { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === friend) ?? o[0]! }).state;
+    expect([s.cards[admin]!.zone, s.cards[friend]!.counters]).toEqual(['graveyard', 1]);
+  });
+
+  it("Snooping Page can't be blocked this turn, and draws when it hits a player", () => {
+    let s = newGame();
+    const page = put(s, 'P1', 'snooping-page', 'battlefield', { summoningSick: false });
+    const blocker = put(s, 'P2', 'hungry-graffalon');
+    s = boltAt(s, put(s, 'P2', 'rank-rat'));
+    const hand = s.players.P1!.hand.length;
+    expect(() => fight(s, [{ attacker: page, defender: 'P2' }], { P2: [{ blocker, attacker: page }] })).toThrow(/can't block/);
+    s = fight(s, [{ attacker: page, defender: 'P2' }]).state;
+    expect([s.players.P2!.life, s.players.P1!.hand.length, s.players.P1!.life]).toEqual([18, hand + 1, 19]);
+  });
+});

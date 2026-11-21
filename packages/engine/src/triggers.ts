@@ -415,6 +415,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.nthNoncreatureSpellThisTurn !== undefined && o.noncreatureSpellNumber !== spec.nthNoncreatureSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
+  if (spec.ifSpellTargetsCreature && !spellTargetsCreature(s, o.subject)) return false;
   if (spec.ifManaSpentOverPowerOrToughness && !manaSpentOverPowerOrToughness(s, source, o.manaSpent ?? 0)) return false;
   return matchesFilter(s, spec.what, source, controller, o);
 }
@@ -793,4 +794,11 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   s.triggerQueue.shift();
   pushAbility(ctx, t, targets);
   givePriority(ctx, pending.then);
+}
+
+/** Repartee: the spell (on the stack) targets a creature. */
+function spellTargetsCreature(s: GameState, spell: InstanceId | undefined): boolean {
+  const item = s.stack.find((x) => x.kind === 'spell' && x.card === spell);
+  if (!item) return false;
+  return (item.targets ?? []).some((t) => t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && defOf(s, s.cards[t.card]!).types.includes('creature'));
 }

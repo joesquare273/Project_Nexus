@@ -213,6 +213,7 @@ const CARD_FIELDS = {
   faceDownWard: 'copy',
   tokenSize: 'copy',
   returnToHandAtEndStep: 'copy',
+  returnFromExileAtEndStep: 'copy',
   warped: 'copy',
   warpExiledTurn: 'copy',
   milledBy: 'refs',

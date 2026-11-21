@@ -134,6 +134,13 @@ export function enterStep(ctx: Ctx, step: Step): void {
       const p = s.players[s.activePlayer]!;
       p.endStepsBegun = (p.endStepsBegun ?? 0) + 1;
     }
+      // "Return that card to the battlefield at the beginning of the next end step" (Conciliator's Duelist).
+      for (const c of Object.values(s.cards)) {
+        if (c.zone === 'exile' && c.returnFromExileAtEndStep) {
+          delete c.returnFromExileAtEndStep;
+          moveCard(ctx, c.id, 'battlefield');
+        }
+      }
       // Blitz and unearth: "at the beginning of the next end step" (done as the step begins, without using the stack).
       for (const c of battlefield(s)) {
         if (c.removeCountersAtEndStep) {

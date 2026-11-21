@@ -2792,6 +2792,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const { name } = defOf(s, c);
         const controller = c.controller;
         moveCard(ctx, id, 'exile');
+        if (effect.returnAtNextEndStep && s.cards[id]?.zone === 'exile') s.cards[id]!.returnFromExileAtEndStep = true;
         // "Incubate X, where X is the number of creatures exiled this way" (Sunfall).
         r.exiledCount = (r.exiledCount ?? 0) + 1;
         if (s.cards[id]?.zone === 'exile') r.exiledCards = [...(r.exiledCards ?? []), id];
