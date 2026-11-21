@@ -293,6 +293,7 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
   if (spec.conditions?.includes('corrupted') && !corrupted(s, source.controller)) return false;
   // Threshold: seven or more cards in your graveyard.
   if (spec.conditions?.includes('threshold') && s.players[source.controller]!.graveyard.length < 7) return false;
+  if (spec.conditions?.includes('gainedLifeThisTurn') && !s.players[source.controller]!.lifeGainedThisTurn) return false;
   if (spec.conditions?.includes('opponentDealtNoncombatDamage') && !s.turnOrder.some((pid) => pid !== source.controller && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return false;
   // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
   if (spec.ifYouControlSubtype) {
@@ -324,6 +325,7 @@ function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): In
     if (condition === 'legendary' && !def(s, s.cards[affected]!).supertypes?.includes('Legendary')) return null;
     if (condition === 'twoSpellsThisTurn' && (s.players[source.controller]!.spellsCastThisTurn ?? 0) < 2) return null;
     if (condition === 'twoNoncreatureSpellsThisTurn' && (s.players[source.controller]!.noncreatureSpellsThisTurn ?? 0) < 2) return null;
+    if (condition === 'gainedLifeThisTurn' && !s.players[source.controller]!.lifeGainedThisTurn) return null;
   }
   return affected;
 }

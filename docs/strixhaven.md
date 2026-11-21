@@ -109,7 +109,7 @@ drawn pack shows.
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
-| SOS4 | Repartee and Infusion (24): SOS4a Repartee (12) done 2026-11-21; SOS4b Infusion (12) | In progress |
+| SOS4 | Repartee and Infusion (24): SOS4a Repartee (12), SOS4b Infusion (12) | Done (2026-11-21) |
 | SOS5 | Paradigm and Converge | |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
 
@@ -222,3 +222,19 @@ New: Exile `returnAtNextEndStep` (Conciliator's Duelist: the card comes back
 under its owner's control as the next end step begins; the
 `returnFromExileAtEndStep` card field, public). "Ward—Discard a card" uses the
 ward trigger built for Reality Fracture (`CounterUnlessDiscard`).
+
+## SOS4b: Infusion (built 2026-11-21)
+
+Foolish Fate, Moseo, Vein's New Dean, Poisoner's Apprentice, Tragedy Feaster,
+Ulna Alley Shopkeep, Withering Curse, Efflorescence, Follow the Lumarets,
+Lumaret's Favor, Tenured Concocter, Thornfist Striker and Old-Growth
+Educator. "If you gained life this turn" is the `LifeGainedThisTurn` count
+(an effect's `ifCount`, with `not` for "unless").
+
+New: the static condition `gainedLifeThisTurn` ("as long as you gained life
+this turn"), the filter `manaValueAtMostLifeGained` (Moseo) and
+LookAtTopPutMatching `takeIfGainedLife` (Follow the Lumarets). Lumaret's
+Favor copies itself with a "when you cast this spell" trigger. Its copy was
+the first spell copy the card sweep saw cease to exist, so the test
+invariants now allow spell copies in the void as well as tokens (rule
+707.10a).

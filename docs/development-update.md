@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS4b: Infusion (2026-11-21)
+
+- 12 Infusion cards, with a "gained life this turn" static condition, a mana value filter for Moseo and a two-card look for Follow the Lumarets. docs/strixhaven.md.
+
 ### Secrets of Strixhaven SOS4a: Repartee (2026-11-21)
 
 - 12 Repartee cards: a trigger condition for spells that target a creature, and exile until the next end step. docs/strixhaven.md.

@@ -83,9 +83,9 @@ export function checkInvariants(s: GameState): string[] {
   }
   for (const c of Object.values(s.cards)) {
     const n = seen.get(c.id) ?? 0;
-    // Tokens that left the battlefield ceased to exist and aren't in any zone.
+    // Tokens that left the battlefield, and copies of spells that left the stack (rule 707.10a), ceased to exist and aren't in any zone.
     if (c.zone === 'void') {
-      if (!c.isToken) problems.push(`card ${c.id} is in the void; only tokens cease to exist`);
+      if (!c.isToken && !c.spellCopy) problems.push(`card ${c.id} is in the void; only tokens and spell copies cease to exist`);
       if (n !== 0) problems.push(`${c.id} ceased to exist but is still listed`);
       continue;
     }

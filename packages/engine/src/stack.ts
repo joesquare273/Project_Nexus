@@ -3811,7 +3811,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const defender = item.kind === 'ability' ? item.defender : undefined;
       const attacking = effect.lookAttacking && defender && s.combat ? { lookAttacking: true, attackDefender: defender } : {};
       // Atraxa: one card for each card type.
-      const max = effect.anyNumber ? matching.length : effect.onePerType ? Math.min(effect.onePerType.length, matching.length) : Math.min(1, matching.length);
+      const max = effect.anyNumber ? matching.length : effect.onePerType ? Math.min(effect.onePerType.length, matching.length) : Math.min(effect.takeIfGainedLife && s.players[item.controller]!.lifeGainedThisTurn ? effect.takeIfGainedLife : 1, matching.length);
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max, looked: top, ...(effect.onePerType ? { onePerType: effect.onePerType } : {}), ...(effect.lookEntersTapped || effect.lookAttacking ? { lookTapped: true } : {}), ...attacking, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
       return;
     }

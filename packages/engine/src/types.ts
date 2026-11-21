@@ -1041,6 +1041,8 @@ export interface EffectSpec {
   lifeLostThisTurn?: boolean;
   /** RevealUntil: from the target player's library; the card found enters the battlefield under your control, and you lose life equal to its mana value (Jhoira). */
   fromTargetPlayer?: boolean;
+  /** LookAtTopPutMatching: up to this many instead of one if you gained life this turn (Follow the Lumarets). */
+  takeIfGainedLife?: number;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
   /** CreateDelayedTrigger: you get an emblem with this ability instead; it lasts the rest of the game (Sephiroth). */
@@ -1530,6 +1532,8 @@ export interface ObjectFilter {
   manaValueAtLeast?: number;
   /** Mana value X or less, X being the spell's ("each nonland permanent with mana value X or less": Gaze of Granite). */
   manaValueAtMostX?: boolean;
+  /** Mana value at most the life its controller gained this turn (Moseo, Vein's New Dean). */
+  manaValueAtMostLifeGained?: boolean;
   /** Toughness X or less, X being the spell's (Zero Point Ballad). */
   toughnessAtMostX?: boolean;
   /** Odd or even mana value (Mutinous Massacre; zero is even). */
@@ -2056,7 +2060,7 @@ export interface StaticSpec {
   /** `twoSpellsThisTurn`: "as long as you've cast two or more spells this turn". */
   /** `corrupted`: as long as an opponent has three or more poison counters. */
   /** `threshold`: seven or more cards in your graveyard. `opponentDealtNoncombatDamage`: an opponent was dealt noncombat damage this turn. */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage')[];
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage' | /** Infusion: "as long as you gained life this turn". */ 'gainedLifeThisTurn')[];
   /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Mardu"). */
   ifChosenOption?: string;
   /** "Planeswalkers you control have '[−2]: ...'": loyalty abilities this gives each planeswalker its controller controls (the "Way of the ..." enchantments). */

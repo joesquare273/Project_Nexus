@@ -872,3 +872,125 @@ describe('SOS4a: Repartee', () => {
     expect([s.players.P2!.life, s.players.P1!.hand.length, s.players.P1!.life]).toEqual([18, hand + 1, 19]);
   });
 });
+
+describe('SOS4b: Infusion', () => {
+  const gained = (s: GameState, n = 1) => { s.players.P1!.lifeGainedThisTurn = n; };
+
+  it('Foolish Fate destroys a creature; with life gained, its controller loses 3', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    let fate = put(s, 'P1', 'foolish-fate', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fate, targets: [{ kind: 'card', card: rat }] }).state;
+    expect([s.cards[rat]!.zone, s.players.P2!.life]).toEqual(['graveyard', 20]);
+    const rat2 = put(s, 'P2', 'rank-rat');
+    fate = put(s, 'P1', 'foolish-fate', 'hand');
+    gained(s);
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fate, targets: [{ kind: 'card', card: rat2 }] }).state;
+    expect(s.players.P2!.life).toBe(17);
+  });
+
+  it('Moseo makes a Pest, and returns a creature card with mana value up to the life you gained', () => {
+    let s = newGame();
+    const moseo = put(s, 'P1', 'moseo-veins-new-dean', 'hand');
+    const cheap = put(s, 'P1', 'rank-rat', 'graveyard');
+    const pricey = put(s, 'P1', 'hungry-graffalon', 'graveyard');
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: moseo }).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'pest-token-sos')).toBe(true);
+    gained(s, 2);
+    s = goTo(s, 'end');
+    expect(getLegalActions(s).some((a) => a.type === 'ChooseTargets' && a.targets.some((t) => t.kind === 'card' && t.card === pricey))).toBe(false);
+    s = settle(s, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === cheap)! }).state;
+    expect(s.cards[cheap]!.zone).toBe('battlefield');
+  });
+
+  it("Poisoner's Apprentice gives -4/-4 only if you gained life", () => {
+    let s = newGame();
+    const big = put(s, 'P2', 'hungry-graffalon');
+    const app = put(s, 'P1', 'poisoners-apprentice', 'hand');
+    gained(s);
+    mana(s, 'P1', { B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: app }).state;
+    expect(s.cards[big]!.zone).toBe('graveyard');
+  });
+
+  it('Tragedy Feaster: sacrifice a permanent at your end step unless you gained life', () => {
+    let s = newGame();
+    put(s, 'P1', 'tragedy-feaster');
+    put(s, 'P1', 'forest');
+    const before = s.players.P1!.battlefield.length;
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    while (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: (s.pending as { cards: string[] }).cards.slice(0, 1) })).state;
+    expect(s.players.P1!.battlefield.length).toBe(before - 1);
+    let u = newGame();
+    put(u, 'P1', 'tragedy-feaster');
+    const n = u.players.P1!.battlefield.length;
+    gained(u);
+    u = settle(goTo(u, 'end')).state;
+    expect(u.players.P1!.battlefield.length).toBe(n);
+  });
+
+  it('Ulna Alley Shopkeep, Tenured Concocter, Thornfist Striker: bigger while you have gained life this turn', () => {
+    const s = newGame();
+    const ulna = put(s, 'P1', 'ulna-alley-shopkeep');
+    const tenured = put(s, 'P1', 'tenured-concocter');
+    put(s, 'P1', 'thornfist-striker');
+    const rat = put(s, 'P1', 'rank-rat');
+    expect([powerOf(s, s.cards[ulna]!), powerOf(s, s.cards[tenured]!), powerOf(s, s.cards[rat]!), hasKeyword(s, s.cards[rat]!, 'Trample')]).toEqual([2, 4, 1, false]);
+    gained(s);
+    expect([powerOf(s, s.cards[ulna]!), powerOf(s, s.cards[tenured]!), powerOf(s, s.cards[rat]!), hasKeyword(s, s.cards[rat]!, 'Trample')]).toEqual([5, 7, 2, true]);
+  });
+
+  it('Withering Curse: -2/-2, or destroy all creatures with life gained', () => {
+    let s = newGame();
+    const big = put(s, 'P2', 'hungry-graffalon');
+    let curse = put(s, 'P1', 'withering-curse', 'hand');
+    mana(s, 'P1', { B: 2, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: curse }).state;
+    expect([s.cards[big]!.zone, powerOf(s, s.cards[big]!)]).toEqual(['battlefield', 1]);
+    curse = put(s, 'P1', 'withering-curse', 'hand');
+    gained(s);
+    mana(s, 'P1', { B: 2, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: curse }).state;
+    expect(s.cards[big]!.zone).toBe('graveyard');
+  });
+
+  it('Efflorescence: two counters, and trample and indestructible with life gained; Old-Growth Educator', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const eff = put(s, 'P1', 'efflorescence', 'hand');
+    gained(s);
+    mana(s, 'P1', { G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: eff, targets: [{ kind: 'card', card: rat }] }).state;
+    expect([s.cards[rat]!.counters, hasKeyword(s, s.cards[rat]!, 'Trample'), hasKeyword(s, s.cards[rat]!, 'Indestructible')]).toEqual([2, true, true]);
+    const tree = put(s, 'P1', 'old-growth-educator', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tree }).state;
+    expect(s.cards[tree]!.counters).toBe(2);
+  });
+
+  it('Follow the Lumarets takes one creature or land card, or two with life gained', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'forest', 'library');
+    const follow = put(s, 'P1', 'follow-the-lumarets', 'hand');
+    gained(s);
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: follow })).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    expect((s.pending as { max: number }).max).toBe(2);
+  });
+
+  it("Lumaret's Favor copies itself if you gained life", () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const favor = put(s, 'P1', 'lumarets-favor', 'hand');
+    gained(s);
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: favor, targets: [{ kind: 'card', card: rat }] }).state;
+    expect([powerOf(s, s.cards[rat]!), toughnessOf(s, s.cards[rat]!)]).toEqual([5, 9]);
+  });
+});
