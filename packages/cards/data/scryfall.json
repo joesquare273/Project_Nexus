@@ -23785,6 +23785,28 @@
       }
     ]
   },
+  "pest-token-sos": {
+    "name": "Pest",
+    "typeLine": "Token Creature — Pest",
+    "oracleText": "Whenever this token attacks, you gain 1 life.",
+    "set": "tsos",
+    "number": "9",
+    "artist": "Nino Vecia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561",
+      "normal": "https://cards.scryfall.io/normal/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561",
+      "large": "https://cards.scryfall.io/large/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/0/40b22872-7b7b-4a6d-a343-4152e552b00a.jpg?1783903561"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsos/9/pest?utm_source=api",
+    "scryfallId": "40b22872-7b7b-4a6d-a343-4152e552b00a",
+    "relatedTokens": [
+      {
+        "name": "Pest",
+        "scryfallId": "40b22872-7b7b-4a6d-a343-4152e552b00a"
+      }
+    ]
+  },
   "pestbrood-sloth": {
     "name": "Pestbrood Sloth",
     "typeLine": "Creature — Plant Sloth",

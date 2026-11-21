@@ -308,6 +308,7 @@ const PLAYER_FIELDS = {
   endStepsBegun: 'copy',
   coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',
+  instantOrSorcerySpellsThisTurn: 'copy',
   legendaryCreatureSpellsThisTurn: 'copy',
   nonartifactSpellsThisTurn: 'copy',
   nextCreatureHasteTurn: 'copy',

@@ -107,7 +107,7 @@ drawn pack shows.
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
 | SOC1-SOC5 | The decks' cards, one group per deck | |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
-| SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13) done 2026-11-20 | In progress |
+| SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus | |
 | SOS4 | Repartee and Infusion | |
 | SOS5 | Paradigm and Converge | |
@@ -162,3 +162,19 @@ of Woe (Demonic Tutor), Grave Researcher (Reanimate), Leech Collector
 New: "Ward—Pay N life" (`wardLife`), a LifeGained trigger's
 `firstTimeEachTurn` (the gain is all the life gained this turn), and the
 red-white Spirit and Treasure tokens (TSOS 11, 12).
+
+## SOS2c: green, multicolor and colorless prepared cards (built 2026-11-21)
+
+Emeritus of Abundance (Regrowth), Infirmary Healer (Stream of Life),
+Studious First-Year (Rampant Growth), Vastlands Scavenger (Bind to Life),
+Abigale, Poet Laureate (Heroic Stanza), Kirol, History Buff (Pack a Punch),
+Lluwen, Exchange Student (Pest Friend), Sanar, Unfinished Genius (Wild Idea),
+Tam, Observant Sequencer (Deep Sight) and Biblioplex Tomekeeper (prepare or
+unprepare up to one creature as it enters). Every prepared card in the set
+is now built.
+
+New: ChooseGraveyardCards `byYou` (Bind to Life puts a creature card milled
+this way onto the battlefield), the activation condition
+`ifCastInstantOrSorceryThisTurn` with a per-turn count of each player's
+instant and sorcery spells (`instantOrSorcerySpellsThisTurn`, public), and
+the Pest token (TSOS 9).

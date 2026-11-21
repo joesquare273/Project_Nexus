@@ -1507,6 +1507,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
   if (!def.types.includes('artifact')) caster.nonartifactSpellsThisTurn = (caster.nonartifactSpellsThisTurn ?? 0) + 1;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
+  if (def.types.includes('instant') || def.types.includes('sorcery')) caster.instantOrSorcerySpellsThisTurn = (caster.instantOrSorcerySpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
   if (hasteNext !== undefined && def.types.includes('creature')) {
@@ -1698,6 +1699,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (!spec.turnFaceUp && combatLocked(s)) return "Players can't activate abilities during combat.";
   if (spec.ifOpponentDealtNoncombatDamageThisTurn && !s.turnOrder.some((pid) => pid !== playerId && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return 'That can be activated only if an opponent has been dealt noncombat damage this turn.';
   if (spec.ifScriedOrSurveiledThisTurn && s.players[playerId]!.scriedOrSurveiledTurn !== s.turnNumber) return "That can be activated only if you've scried or surveilled this turn.";
+  if (spec.ifCastInstantOrSorceryThisTurn && !s.players[playerId]!.instantOrSorcerySpellsThisTurn) return "That can be activated only if you've cast an instant or sorcery spell this turn.";
   if (spec.ifYouControl) {
     const meets = (x: CardInstance) => x.controller === playerId && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
     if (!battlefield(s).some(meets)) return "You don't meet the condition to activate that.";
@@ -2568,7 +2570,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const order = alivePlayers(s);
       const start = order.indexOf(item.controller);
       const opponents = [...order.slice(start + 1), ...order.slice(0, start)];
-      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }));
+      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
+      // "Put a creature card from among them onto the battlefield" (Bind to Life): you choose.
+      if (effect.byYou) {
+        if (candidates.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'reanimate', cards: candidates, min: 1, max: 1 }];
+        return;
+      }
       r.choiceQueue = opponents.map((pid) => ({ player: pid, purpose: 'reanimate', cards: [...candidates], min: 1, max: 1 }));
       return;
     }

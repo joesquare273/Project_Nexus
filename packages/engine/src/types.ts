@@ -1039,6 +1039,8 @@ export interface EffectSpec {
   restStayOnTop?: boolean;
   /** CreateDelayedTrigger: you get an emblem with this ability instead; it lasts the rest of the game (Sephiroth). */
   emblem?: boolean;
+  /** ChooseGraveyardCards: you choose the card instead of each opponent (Bind to Life, with `milledThisWay`). */
+  byYou?: boolean;
   /** Only on the Nth time this ability resolves this turn ("if this is the fourth time this ability has resolved this turn"). */
   ifNthResolutionThisTurn?: number;
   /** GrantKeywords/GrantFlags/ModifyPT: until your next turn instead of until end of turn (Hydaelyn). */
@@ -1781,6 +1783,8 @@ export interface ActivatedSpec {
   /** "Activate only if an opponent has been dealt noncombat damage this turn" (Grim Repriser). */
   ifOpponentDealtNoncombatDamageThisTurn?: boolean;
   /** "Activate only if you've scried or surveilled this turn" (Proctor of Potential). */
+  /** "Activate only if you've cast an instant or sorcery spell this turn" (Sanar, Unfinished Genius). */
+  ifCastInstantOrSorceryThisTurn?: boolean;
   ifScriedOrSurveiledThisTurn?: boolean;
   /** Exhaust (rule 702.177): activate only once for as long as the permanent stays (`CardInstance.exhausted`). */
   exhaust?: boolean;
@@ -2833,6 +2837,8 @@ export interface PlayerState {
   coinHeadsTurn?: number;
   /** Noncreature spells this player cast this turn. Reset as each turn begins. */
   noncreatureSpellsThisTurn?: number;
+  /** Instant and sorcery spells this player has cast this turn. */
+  instantOrSorcerySpellsThisTurn?: number;
   /** Summon: Brynhildr: "when you next cast a creature spell this turn, it gains haste until end of turn" (the turn). */
   nextCreatureHasteTurn?: number;
   /** Legendary creature spells cast this turn (Serah Farron's discount). */

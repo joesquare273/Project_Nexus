@@ -441,3 +441,140 @@ describe('SOS2b: black and red prepared creatures', () => {
     expect(s.players.P2!.life).toBe(18);
   });
 });
+
+describe('SOS2c: green, multicolor and colorless prepared cards', () => {
+  const copyOf = (s: GameState, creature: string) => Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === creature);
+  const castCopy = (s: GameState, creature: string) => getLegalActions(s).filter((a): a is Extract<typeof a, { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === copyOf(s, creature)?.id);
+  const at = (a: { targets?: { kind: string; card?: string; player?: string }[] }, id: string) => a.targets?.[0]?.card === id || a.targets?.[0]?.player === id;
+  const enter = (s: GameState, id: string, pool: Parameters<typeof mana>[2]) => {
+    mana(s, 'P1', pool);
+    return cast(s, { type: 'CastSpell', player: 'P1', card: id }).state;
+  };
+
+  it('Emeritus of Abundance: prepared again as it attacks with eight lands; Regrowth', () => {
+    let s = newGame();
+    const emeritus = put(s, 'P1', 'emeritus-of-abundance-regrowth', 'battlefield', { summoningSick: false });
+    for (let i = 0; i < 8; i++) put(s, 'P1', 'forest');
+    s = fight(s, [{ attacker: emeritus, defender: 'P2' }]).state;
+    expect(s.cards[emeritus]!.prepared).toBe(true);
+    let u = newGame();
+    const e2 = put(u, 'P1', 'emeritus-of-abundance-regrowth', 'battlefield', { summoningSick: false });
+    for (let i = 0; i < 7; i++) put(u, 'P1', 'forest');
+    u = fight(u, [{ attacker: e2, defender: 'P2' }]).state;
+    expect(u.cards[e2]!.prepared).toBeUndefined();
+    const gone = put(s, 'P1', 'island', 'graveyard');
+    s = settle(goTo(s, 'main2')).state;
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, castCopy(s, emeritus).find((a) => at(a, gone))!).state;
+    expect(s.cards[gone]!.zone).toBe('hand');
+  });
+
+  it('Infirmary Healer: Stream of Life gains X life', () => {
+    let s = newGame();
+    const healer = put(s, 'P1', 'infirmary-healer-stream-of-life', 'hand');
+    s = enter(s, healer, { G: 1, C: 1 });
+    mana(s, 'P1', { G: 1, C: 4 });
+    s = cast(s, castCopy(s, healer).find((a) => at(a, 'P1') && (a as { x?: number }).x === 4)!).state;
+    expect(s.players.P1!.life).toBe(24);
+  });
+
+  it('Studious First-Year: Rampant Growth puts a basic land onto the battlefield tapped', () => {
+    let s = newGame();
+    const bear = put(s, 'P1', 'studious-first-year-rampant-growth', 'hand');
+    const forest = put(s, 'P1', 'forest', 'library');
+    s = enter(s, bear, { G: 1 });
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, castCopy(s, bear)[0]!).state;
+    const land = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'forest')!;
+    expect([land.tapped, forest !== undefined]).toEqual([true, true]);
+  });
+
+  it('Vastlands Scavenger: Bind to Life mills seven and puts a creature card from among them onto the battlefield', () => {
+    let s = newGame();
+    const scav = put(s, 'P1', 'vastlands-scavenger-bind-to-life', 'hand');
+    const older = put(s, 'P1', 'rank-rat', 'graveyard');
+    s.players.P1!.library = [];
+    for (let i = 0; i < 6; i++) put(s, 'P1', 'island', 'library');
+    const rat = put(s, 'P1', 'rank-rat', 'library');
+    s = enter(s, scav, { G: 2, C: 1 });
+    mana(s, 'P1', { G: 1, C: 4 });
+    s = settle(act(s, castCopy(s, scav)[0]!)).state;
+    // Only the milled creature card, not the one already there.
+    expect(s.pending.kind).toBe('chooseCards');
+    expect((s.pending as { cards: string[] }).cards).toEqual([rat]);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [rat] })).state;
+    expect([s.cards[rat]!.zone, s.cards[older]!.zone]).toEqual(['battlefield', 'graveyard']);
+  });
+
+  it('Abigale becomes prepared when you cast a creature spell; Heroic Stanza', () => {
+    let s = newGame();
+    const abigale = put(s, 'P1', 'abigale-poet-laureate-heroic-stanza');
+    const rat = put(s, 'P1', 'rank-rat', 'hand');
+    s = enter(s, rat, { B: 1, C: 1 });
+    expect(s.cards[abigale]!.prepared).toBe(true);
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = cast(s, castCopy(s, abigale).find((a) => at(a, abigale))!).state;
+    expect(s.cards[abigale]!.counters).toBe(1);
+  });
+
+  it('Kirol becomes prepared when cards leave your graveyard; Pack a Punch', () => {
+    let s = newGame();
+    const kirol = put(s, 'P1', 'kirol-history-buff-pack-a-punch');
+    const osteo = put(s, 'P1', 'cheerful-osteomancer-raise-dead', 'hand');
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    s = enter(s, osteo, { B: 1, C: 3 });
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, osteo).find((a) => at(a, dead))!).state;
+    expect(s.cards[kirol]!.prepared).toBe(true);
+    mana(s, 'P1', { R: 1, W: 1, C: 1 });
+    s = cast(s, castCopy(s, kirol).find((a) => at(a, kirol))!).state;
+    expect([s.cards[kirol]!.counters, hasKeyword(s, s.cards[kirol]!, 'Trample'), s.players.P1!.graveyard.length]).toEqual([2, true, 1]);
+  });
+
+  it('Lluwen: exile a creature card from your graveyard to become prepared; Pest Friend', () => {
+    let s = newGame();
+    const lluwen = put(s, 'P1', 'lluwen-exchange-student-pest-friend', 'hand');
+    s = enter(s, lluwen, { B: 1, G: 1, C: 2 });
+    mana(s, 'P1', { B: 1 });
+    s = cast(s, castCopy(s, lluwen)[0]!).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'pest-token-sos')).toBe(true);
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === lluwen)).toBe(false);
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === lluwen)!).state;
+    expect([s.cards[lluwen]!.prepared, s.cards[dead]!.zone]).toEqual([true, 'exile']);
+  });
+
+  it('Sanar: a Treasure only after an instant or sorcery this turn; Wild Idea finds one', () => {
+    let s = newGame();
+    const sanar = put(s, 'P1', 'sanar-unfinished-genius-wild-idea', 'battlefield', { summoningSick: false });
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateAbility' && a.card === sanar)).toBe(false);
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === sanar)!).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token-sos')).toBe(true);
+  });
+
+  it('Tam becomes prepared on landfall; Deep Sight', () => {
+    let s = newGame();
+    const tam = put(s, 'P1', 'tam-observant-sequencer-deep-sight');
+    const land = put(s, 'P1', 'forest', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(s.cards[tam]!.prepared).toBe(true);
+    mana(s, 'P1', { G: 1, U: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, castCopy(s, tam)[0]!).state;
+    expect([s.players.P1!.hand.length, s.players.P1!.life]).toEqual([hand + 1, 21]);
+  });
+
+  it('Biblioplex Tomekeeper prepares or unprepares up to one creature as it enters', () => {
+    let s = newGame();
+    const tam = put(s, 'P1', 'tam-observant-sequencer-deep-sight');
+    const keeper = put(s, 'P1', 'biblioplex-tomekeeper', 'hand');
+    mana(s, 'P1', { C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: keeper });
+    s = settle(s).state;
+    if (s.pending.kind === 'chooseModes') s = settle(act(s, { type: 'ChooseModes', player: 'P1', modes: [0] }), { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === tam)! }).state;
+    expect(s.cards[tam]!.prepared).toBe(true);
+  });
+});
