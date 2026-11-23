@@ -1238,6 +1238,8 @@ export interface EffectSpec {
   ifManaValueX?: boolean;
   /** EachMatchingDealsDamage: each creature deals the damage to its own controller instead of to the targets (Rakdos Charm: `amount` 1; without `amount`, its power). */
   toController?: boolean;
+  /** EachMatchingDealsDamage: each creature deals damage to itself equal to its power (Wave of Reckoning). */
+  toItself?: boolean;
   /** Discard: "discard `amount` cards unless you discard a card matching this" (Thirst for Knowledge: an artifact card). */
   orOneMatching?: ObjectFilter;
   /** AllowCastFromGraveyard: the card isn't exiled afterwards (Emry, Lurker of the Loch). */
@@ -1811,6 +1813,8 @@ export interface ActivatedSpec {
   /** "Activate only as a sorcery" (equip always is). */
   sorcerySpeed?: boolean;
   /** "Activate only if you control a creature with power 4 or greater." */
+  /** With `ifYouControl`: at least this many ("Activate only if you control two or more white permanents": Mistveil Plains). */
+  ifYouControlAtLeast?: number;
   ifYouControl?: ObjectFilter;
   /** "Activate only if an opponent has been dealt noncombat damage this turn" (Grim Repriser). */
   ifOpponentDealtNoncombatDamageThisTurn?: boolean;
@@ -1966,6 +1970,8 @@ export interface StaticSpec {
    * attached to, or each permanent matching `filter` ("each creature you
    * control with a +1/+1 counter on it").
    */
+  /** "Untap all creatures you control during each other player's untap step" (Drumbellower). */
+  untapCreaturesInOthersUntapSteps?: boolean;
   affects: 'Self' | 'EquippedCreature' | 'EachMatching';
   /** For EachMatching, from the point of view of this card's controller. */
   filter?: ObjectFilter;

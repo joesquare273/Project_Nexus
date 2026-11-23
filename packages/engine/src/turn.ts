@@ -50,6 +50,13 @@ export function enterStep(ctx: Ctx, step: Step): void {
         c.summoningSick = false;
       }
       if (untapped.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: s.activePlayer, cards: untapped });
+      // Drumbellower: its controller's creatures untap during each other player's untap step too.
+      for (const pid of s.turnOrder) {
+        if (pid === s.activePlayer || s.players[pid]!.eliminated) continue;
+        if (!battlefield(s).some((x) => x.controller === pid && !x.phasedOut && (currentDefinition(s, x).statics ?? []).some((st) => st.untapCreaturesInOthersUntapSteps))) continue;
+        const theirs = battlefield(s).filter((x) => x.controller === pid && !x.phasedOut && hasType(s, x, 'creature') && !staticRule(s, x, 'doesntUntap') && untap(ctx, x)).map((x) => x.id);
+        if (theirs.length > 0) ctx.ev.push({ type: 'CardsUntapped', player: pid, cards: theirs });
+      }
       player(s, s.activePlayer).landsPlayedThisTurn = 0;
       // Nobody gets priority during the untap step.
       enterStep(ctx, 'upkeep');

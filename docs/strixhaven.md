@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck | |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -269,3 +269,16 @@ New: CreateTokenCopy `from` (Echocasting Symposium: the copy goes to the
 player chosen for that target) and `ExileUntilManaValueCastFree`
 (Improvisation Capstone: the spells among the exiled cards are castable free
 right away, before passing priority).
+
+## SOC1a: Lorehold Spirit, part one (built 2026-11-23)
+
+Lorehold Spirit has 53 cards still to build, in three parts. Part one: Lotus
+Field, Lorehold Campus, Emeria, the Sky Ruin, Mistveil Plains, Wave of
+Reckoning, Squee, Goblin Nabob, Drumbellower, Monologue Tax, White Orchid
+Phantom, Seize the Spoils, Faithless Looting, Rip Apart, Lorehold Charm,
+Kami of Ancient Law, Selfless Spirit and Remorseful Cleric.
+
+New: EachMatchingDealsDamage `toItself` (Wave of Reckoning), the static
+`untapCreaturesInOthersUntapSteps` (Drumbellower) and the activation
+condition `ifYouControlAtLeast` with `ifYouControl` (Mistveil Plains: two or
+more white permanents). Tests: `packages/bots/test/soc-cards.test.ts`.

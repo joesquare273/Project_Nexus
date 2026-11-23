@@ -1703,8 +1703,8 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.ifScriedOrSurveiledThisTurn && s.players[playerId]!.scriedOrSurveiledTurn !== s.turnNumber) return "That can be activated only if you've scried or surveilled this turn.";
   if (spec.ifCastInstantOrSorceryThisTurn && !s.players[playerId]!.instantOrSorcerySpellsThisTurn) return "That can be activated only if you've cast an instant or sorcery spell this turn.";
   if (spec.ifYouControl) {
-    const meets = (x: CardInstance) => x.controller === playerId && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
-    if (!battlefield(s).some(meets)) return "You don't meet the condition to activate that.";
+    const meets = (x: CardInstance) => x.controller === playerId && !x.phasedOut && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
+    if (battlefield(s).filter(meets).length < (spec.ifYouControlAtLeast ?? 1)) return "You don't meet the condition to activate that.";
   }
   if (spec.cost.tap) {
     if (c.tapped) return 'That permanent is already tapped.';
@@ -3804,6 +3804,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const c of battlefield(s)) {
           if (c.phasedOut || !hasType(s, c, 'creature') || !matchesObject(s, effect.filter, c, { controller: item.controller, source })) continue;
           dealDamage(ctx, c.id, { kind: 'player', player: c.controller }, effect.amount !== undefined ? amount : powerOf(s, c), false);
+        }
+        return;
+      }
+      // "Each creature deals damage to itself equal to its power" (Wave of Reckoning).
+      if (effect.toItself) {
+        for (const c of battlefield(s)) {
+          if (c.phasedOut || !hasType(s, c, 'creature') || !matchesObject(s, effect.filter, c, { controller: item.controller, source })) continue;
+          const power = powerOf(s, c);
+          if (power > 0) dealDamage(ctx, c.id, { kind: 'card', card: c.id }, power, false);
         }
         return;
       }
