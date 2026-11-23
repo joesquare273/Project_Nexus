@@ -629,6 +629,8 @@ export const EFFECT_KINDS = [
   'ShuffleGraveyardIntoLibrary',
   /** "You may play the exiled card this turn" for the cards ExileTopCardToPlay exiled earlier in this ability (`anyManaType`: any type of mana can be spent). */
   'AllowPlayExiledThisWay',
+  /** The target card (exiled with the source) may be cast this turn without paying its mana cost; if that spell would go to a graveyard, it goes on the bottom of its owner's library instead (Quintorius Loremaster). */
+  'AllowCastFreeThisTurnThenBottom',
   /** Each target player shuffles their library. */
   'ShuffleLibrary',
   /** Counter the target spell unless its controller pays `amount` generic mana (`exileCountered`: exile it instead, Syncopate). */
@@ -2777,6 +2779,8 @@ export interface CardInstance {
     manaCost?: string;
     /** Uldaros Theorix: a copy is cast (a permanent spell becomes a token; the card stays in exile). */
     asCopy?: boolean;
+    /** Quintorius Loremaster: as it resolves, the spell goes on the bottom of its owner's library instead of into a graveyard. */
+    bottomAfter?: boolean;
     /** Uldaros Theorix: spells cast with this permission share a total mana value budget (`GameState.castBudgets`). */
     budget?: string;
     /** A card in hand (Buster Sword: "cast a spell from your hand ... without paying its mana cost"). */
@@ -3036,6 +3040,8 @@ export interface SpellItem {
   kicks?: number;
   /** Exiled instead of going to the graveyard (cast with a permission that says so). */
   exileAfter?: boolean;
+  /** Quintorius Loremaster: on resolving, the card goes on the bottom of its owner's library instead of into a graveyard. */
+  bottomAfter?: boolean;
   /** A copy of the card was cast (Uldaros Theorix): a permanent becomes a token, and the card returns to exile. */
   asTokenCopy?: boolean;
   /** The permanent enters tapped (Edgar). */

@@ -502,3 +502,46 @@ describe('SOC1e: Lorehold Spirit (Warsinger, Sevinne, Ao, Skyclave)', () => {
     expect([powerOf(s, illusion), s.cards[victim]!.zone]).toEqual([4, 'exile']);
   });
 });
+
+describe('SOC1f: Lorehold Spirit (Bitterthorn, Excava, Quintorius Loremaster)', () => {
+  it("Bitterthorn: living weapon (a 0/0 Germ, equipped, is 1/1); the equipped creature's attack fetches a basic land", () => {
+    let s = newGame();
+    const thorn = put(s, 'P1', 'bitterthorn-nissas-animus', 'hand');
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: thorn }).state;
+    const germ = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'germ-token-soc')!;
+    expect([germ.zone, s.cards[thorn]!.attachedTo, powerOf(s, germ)]).toEqual(['battlefield', germ.id, 1]);
+    put(s, 'P1', 'forest', 'library');
+    s.cards[germ.id]!.summoningSick = false;
+    s = fight(s, [{ attacker: germ.id, defender: 'P2' }], {}, { accept: true }).state;
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'forest' && s.cards[id]!.tapped)).toBe(true);
+  });
+
+  it('Excava returns a cheap card as a 1/1 flying Spirit with a finality counter', () => {
+    let s = newGame();
+    const excava = put(s, 'P1', 'excava-the-risen-past', 'battlefield', { summoningSick: false });
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    s = fight(s, [{ attacker: excava, defender: 'P2' }], {}, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === dead) ?? o[0]! }).state;
+    const back = s.cards[dead]!;
+    expect([back.zone, back.namedCounters?.finality, powerOf(s, back), hasKeyword(s, back, 'Flying')]).toEqual(['battlefield', 1, 1, true]);
+  });
+
+  it('Quintorius Loremaster exiles a noncreature card at your end step and makes a Spirit; sacrifice a Spirit to cast that card free, then it goes to the bottom', () => {
+    let s = newGame();
+    const q = put(s, 'P1', 'quintorius-loremaster', 'battlefield', { summoningSick: false });
+    const bolt = put(s, 'P1', 'lightning-bolt', 'graveyard');
+    s = settle(goTo(s, 'end'), { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === bolt) ?? o[0]! }).state;
+    expect(s.cards[bolt]!.zone).toBe('exile');
+    const spirit = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'spirit-token-soc')!;
+    expect(spirit).toBeDefined();
+    s = settle(goTo(s, 'main1')).state;
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    mana(s, 'P1', { R: 1, W: 1, C: 1 });
+    const activate = getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === q)!;
+    s = cast(s, activate).state;
+    const life = s.players.P2!.life;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === bolt && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P2')!).state;
+    expect([s.players.P2!.life, s.cards[bolt]!.zone, s.players.P1!.library.at(-1)]).toEqual([life - 3, 'library', bolt]);
+  });
+});

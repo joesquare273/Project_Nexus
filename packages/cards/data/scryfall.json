@@ -13202,6 +13202,32 @@
     "scryfallId": "d504caa5-e557-4e69-8899-44760b88f076",
     "relatedTokens": []
   },
+  "germ-token-soc": {
+    "name": "Phyrexian Germ",
+    "typeLine": "Token Creature — Phyrexian Germ",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "9",
+    "artist": "Igor Kieryluk",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574",
+      "normal": "https://cards.scryfall.io/normal/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574",
+      "large": "https://cards.scryfall.io/large/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/6/5/65c65445-1016-4fd3-963e-1c9eb252d4a6.jpg?1783903574"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/9/phyrexian-germ?utm_source=api",
+    "scryfallId": "65c65445-1016-4fd3-963e-1c9eb252d4a6",
+    "relatedTokens": [
+      {
+        "name": "Phyrexian Germ",
+        "scryfallId": "65c65445-1016-4fd3-963e-1c9eb252d4a6"
+      },
+      {
+        "name": "Germ",
+        "scryfallId": "377d9749-3d78-4a33-93d1-2e673f6e2e28"
+      }
+    ]
+  },
   "germinate-recruits": {
     "name": "Germinate Recruits",
     "typeLine": "Instant",

@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -364,6 +364,22 @@ Fixed for every card that copies a spell: a copy whose target is no longer
 legal now gets to choose the one legal target left. Before, it was only asked
 when there were two or more choices, so it kept its old target and fizzled.
 
-Still to build in Lorehold Spirit (11): Excava, Augusta, Advanced
-Reconstruction, Fateful Tempest, Spirit of Resilience, Guardian Scalelord,
-Serra Paragon, Hofri, Quintorius Loremaster, Bitterthorn and Study Hall.
+Still to build in Lorehold Spirit after SOC1e (11); SOC1f took three of them.
+
+## SOC1f: Lorehold Spirit, part six (built 2026-11-23)
+
+Bitterthorn, Nissa's Animus, Excava, the Risen Past and Quintorius
+Loremaster, with the Phyrexian Germ token (TSOC 9).
+
+- **Bitterthorn:** living weapon is an enters trigger that creates the Germ
+  and attaches the Equipment to it (Attach `CreatedTokens`).
+- **Excava:** returns the card, then gives it a finality counter and makes
+  it a 1/1 flying Spirit (BecomeCreature on the previous target).
+
+New: `AllowCastFreeThisTurnThenBottom` and the spell flag `bottomAfter`: a
+spell cast that way goes to the bottom of its owner's library as it resolves
+(Quintorius Loremaster).
+
+Still to build in Lorehold Spirit (8): Augusta, Advanced Reconstruction,
+Fateful Tempest, Spirit of Resilience, Guardian Scalelord, Serra Paragon,
+Hofri and Study Hall.

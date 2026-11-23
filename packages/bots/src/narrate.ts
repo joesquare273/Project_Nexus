@@ -180,6 +180,8 @@ function effectText(e: EffectSpec): string {
       return `exile cards from the top of your library until their total mana value is ${n} or more; cast any of the spells free`;
     case 'SpellEntersWithCounters':
       return `that creature enters with ${n} more +1/+1 counters`;
+    case 'AllowCastFreeThisTurnThenBottom':
+      return `you may cast ${who} this turn without paying its mana cost`;
     case 'ExileSubjectToPlay':
       return 'exile that card; you may play it this turn';
     case 'ShuffleChosenFromGraveyard':

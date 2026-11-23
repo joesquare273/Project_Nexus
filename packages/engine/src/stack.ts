@@ -1553,6 +1553,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(kicks > 0 ? { kicks } : {}),
     ...(permission?.exileAfter || group?.exileAfter ? { exileAfter: true } : {}),
     ...(permission?.asCopy ? { asTokenCopy: true } : {}),
+    ...(permission?.bottomAfter ? { bottomAfter: true } : {}),
     ...((() => {
       // Uldaros Theorix: the spell's mana value comes out of the shared budget.
       const budget = permission?.budget ? (s.castBudgets ?? []).find((b) => b.id === permission.budget) : undefined;
@@ -4325,6 +4326,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (spell && amount > 0) spell.extraEntryCounters = (spell.extraEntryCounters ?? 0) + amount;
       return;
     }
+    case 'AllowCastFreeThisTurnThenBottom':
+      for (const id of cards) {
+        const c = s.cards[id]!;
+        if (c.zone === 'exile' && isSpellCard(defOf(s, c))) c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, bottomAfter: true };
+      }
+      return;
     case 'ExileSubjectToPlay': {
       const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
       if (!c || c.zone !== 'graveyard') return;
@@ -4495,6 +4502,11 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
       const p = s.players[item.controller]!;
       const name = defOf(s, c).name;
       if (c.zone === 'exile' && !(p.paradigms ?? []).some((id) => s.cards[id] && defOf(s, s.cards[id]!).name === name)) p.paradigms = [...(p.paradigms ?? []), item.card];
+    } else if (item.bottomAfter) {
+      moveCard(ctx, item.card, 'library');
+      const library = player(s, c.owner).library;
+      library.splice(library.indexOf(item.card), 1);
+      library.push(item.card);
     } else if (item.flashback || item.exileAfter || defOf(s, c).exileOnResolve) moveCard(ctx, item.card, 'exile');
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.

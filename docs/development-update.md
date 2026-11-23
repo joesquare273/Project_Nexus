@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC1f: Lorehold Spirit, part six (2026-11-23)
+
+- Bitterthorn (living weapon), Excava, Quintorius Loremaster. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC1e: Lorehold Spirit, part five (2026-11-23)
 
 - 4 cards. Fixed: a spell copy whose target became illegal now gets to pick the one legal target left (it used to fizzle). docs/strixhaven.md.
