@@ -16162,6 +16162,28 @@
       }
     ]
   },
+  "illusion-token-soc": {
+    "name": "Illusion",
+    "typeLine": "Token Creature — Illusion",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "7",
+    "artist": "Jason A. Engle",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575",
+      "normal": "https://cards.scryfall.io/normal/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575",
+      "large": "https://cards.scryfall.io/large/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/6/f6469938-5af9-4f0a-9f2e-603c833e48ba.jpg?1783903575"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/7/illusion?utm_source=api",
+    "scryfallId": "f6469938-5af9-4f0a-9f2e-603c833e48ba",
+    "relatedTokens": [
+      {
+        "name": "Illusion",
+        "scryfallId": "f6469938-5af9-4f0a-9f2e-603c833e48ba"
+      }
+    ]
+  },
   "illvoi-galeblade": {
     "name": "Illvoi Galeblade",
     "typeLine": "Creature — Jellyfish Warrior",

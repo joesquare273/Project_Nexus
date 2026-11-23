@@ -294,7 +294,7 @@ function spellEffectsBase(def: CardDefinition, choice: SpellChoice): EffectSpec[
 /** How a stack item's targets are judged: a trigger's defending player and subject. */
 function itemTargetContext(item: StackItem): TargetContext {
   if (item.kind !== 'ability') return item.x !== undefined ? { x: item.x } : {};
-  return { ...(item.x !== undefined ? { x: item.x } : {}), ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}) };
+  return { ...(item.x !== undefined ? { x: item.x } : {}), ...(item.defender ? { defender: item.defender } : {}), ...(item.subject ? { subject: item.subject } : {}), ...(item.from === 'trigger' ? { triggered: true } : {}), ...(item.amount !== undefined ? { amount: item.amount } : {}) };
 }
 
 /** Each target slot's legal choices for a copy on the stack ("you may choose new targets for the copy"). */
@@ -306,8 +306,10 @@ export function copyTargetOptions(s: GameState, item: StackItem): Target[][] {
 function askCopyTargets(s: GameState, r: Resolving, copies: string[]): void {
   const queue = copies.filter((id) => {
     const item = s.stack.find((x) => x.id === id);
-    // Only when there's another legal choice for some target.
-    return !!item && copyTargetOptions(s, item).some((options) => options.length > 1);
+    // Only when there's another legal choice for some target, or its current target is no longer legal but another is.
+    if (!item) return false;
+    const current = item.targets ?? [];
+    return copyTargetOptions(s, item).some((options, i) => options.length > 1 || (options.length === 1 && JSON.stringify(options[0]) !== JSON.stringify(current[i])));
   });
   if (!queue.length) return;
   r.copyTargetQueue = queue;
@@ -416,6 +418,8 @@ export interface TargetContext {
   subject?: InstanceId;
   /** The X chosen for the spell or ability ("each with mana value X or less": Dance of the Manse). */
   x?: number;
+  /** For a triggered ability: the event's amount (combat damage dealt). */
+  amount?: number;
 }
 
 export function isLegalTarget(
@@ -458,6 +462,7 @@ export function isLegalTarget(
     ...(context.defender ? { defender: context.defender } : {}),
     ...(context.subject ? { subject: context.subject } : {}),
     ...(context.x !== undefined ? { x: context.x } : {}),
+    ...(context.amount !== undefined ? { amount: context.amount } : {}),
   };
   if (kind === 'TargetSpellPermanentOrGraveyardCard') {
     if (c.zone === 'graveyard') return !effect.spellOrPermanent && !s.players[c.owner]!.eliminated;
@@ -579,6 +584,7 @@ function contextOf(item: StackItem): TargetContext {
     ...(item.defender ? { defender: item.defender } : {}),
     ...(item.from === 'trigger' ? { triggered: true } : {}),
     ...(item.subject ? { subject: item.subject } : {}),
+    ...(item.amount !== undefined ? { amount: item.amount } : {}),
   };
 }
 
@@ -2803,6 +2809,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const controller = c.controller;
         moveCard(ctx, id, 'exile');
         if (effect.returnAtNextEndStep && s.cards[id]?.zone === 'exile') s.cards[id]!.returnFromExileAtEndStep = true;
+        // Skyclave Apparition: a permanent exiled with this.
+        if (effect.exileLinked && s.cards[id]?.zone === 'exile') s.cards[id]!.exiledWith = { source, sourceObject: item.kind === 'ability' ? (item.sourceObject ?? 0) : (s.cards[source]?.zoneChanges ?? 0) };
         // "Incubate X, where X is the number of creatures exiled this way" (Sunfall).
         r.exiledCount = (r.exiledCount ?? 0) + 1;
         if (s.cards[id]?.zone === 'exile') r.exiledCards = [...(r.exiledCards ?? []), id];
@@ -3165,7 +3173,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'CopySpell': {
       // The targeted spell (Venser), or the triggering spell, while it's still on the stack.
       const subject = effect.target === 'TargetSpell' ? cards[0] : item.kind === 'ability' ? item.subject : undefined;
-      const original = subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === subject) : undefined;
+      // Sevinne's Reclamation: "you may copy this spell" (not again for the copy).
+      const self = effect.copySelf && item.kind === 'spell' && !s.cards[item.card]?.spellCopy ? item : undefined;
+      const original = self ?? (subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === subject) : undefined);
       if (!original) return;
       const from = s.cards[original.card]!;
       const copies: string[] = [];
@@ -3842,7 +3852,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const attacking = effect.lookAttacking && defender && s.combat ? { lookAttacking: true, attackDefender: defender } : {};
       // Atraxa: one card for each card type.
       const max = effect.anyNumber ? matching.length : effect.onePerType ? Math.min(effect.onePerType.length, matching.length) : Math.min(effect.takeIfGainedLife && s.players[item.controller]!.lifeGainedThisTurn ? effect.takeIfGainedLife : 1, matching.length);
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max, looked: top, ...(effect.onePerType ? { onePerType: effect.onePerType } : {}), ...(effect.lookEntersTapped || effect.lookAttacking ? { lookTapped: true } : {}), ...attacking, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max, ...(effect.maxTotalManaValue !== undefined ? { maxTotalManaValue: effect.maxTotalManaValue } : {}), looked: top, ...(effect.onePerType ? { onePerType: effect.onePerType } : {}), ...(effect.lookEntersTapped || effect.lookAttacking ? { lookTapped: true } : {}), ...attacking, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
       return;
     }
     case 'DestroyAttachedEquipment': {
@@ -4325,6 +4335,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'ShuffleChosenFromGraveyard': {
       const yard = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
       if (yard.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'shuffleIntoLibrary', cards: yard, min: 0, max: yard.length }];
+      return;
+    }
+    case 'ExiledCardOwnersCreateSizedToken': {
+      // A "leaves the battlefield" ability sees the source as its new object: the cards were exiled by the one before.
+      const now = item.kind === 'ability' ? (item.sourceObject ?? 0) : (s.cards[source]?.zoneChanges ?? 0);
+      const object = s.cards[source]?.zone === 'battlefield' ? now : now - 1;
+      for (const c of Object.values(s.cards)) {
+        if (c.zone !== 'exile' || c.exiledWith?.source !== source || c.exiledWith.sourceObject !== object) continue;
+        const token = createToken(ctx, effect.token!, c.owner);
+        s.cards[token]!.tokenSize = objectManaValue(s, c);
+        r.createdTokens.push(token);
+      }
       return;
     }
     case 'ClearEcho':

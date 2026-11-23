@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
-import { act, cast, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
+import { act, cast, fight, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
 const activate = (s: GameState, id: string) => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === id);
@@ -441,5 +441,64 @@ describe('SOC1d: Lorehold Spirit (discard, exile and graveyard tricks)', () => {
     mana(s, 'P1', { W: 2, C: 3 });
     s = cast(s, { type: 'CastSpell', player: 'P1', card: cleric }, { accept: true }).state;
     expect(s.cards[vanguard]!.zone).toBe('battlefield');
+  });
+});
+
+describe('SOC1e: Lorehold Spirit (Warsinger, Sevinne, Ao, Skyclave)', () => {
+  it('Venerable Warsinger returns a creature card with mana value up to the damage it dealt', () => {
+    let s = newGame();
+    const singer = put(s, 'P1', 'venerable-warsinger', 'battlefield', { summoningSick: false }); // 3/3
+    const cheap = put(s, 'P1', 'rank-rat', 'graveyard'); // MV 2
+    const pricey = put(s, 'P1', 'hungry-graffalon', 'graveyard'); // MV 4
+    let offered: string[] = [];
+    s = fight(s, [{ attacker: singer, defender: 'P2' }], {}, {
+      accept: true,
+      targets: (o) => {
+        offered = o.flat().flatMap((t) => (t.kind === 'card' ? [t.card] : []));
+        return o.find((t) => t[0]?.kind === 'card' && t[0].card === cheap)!;
+      },
+    }).state;
+    // Only the cheap card was a legal target (the 4-mana one wasn't), so it was chosen without asking.
+    expect(offered).not.toContain(pricey);
+    expect(s.cards[pricey]!.zone).toBe('graveyard');
+    expect(s.cards[cheap]!.zone).toBe('battlefield');
+  });
+
+  it("Sevinne's Reclamation: cast from the graveyard (flashback), it may copy itself once", () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat', 'graveyard');
+    const b = put(s, 'P1', 'remorseful-cleric', 'graveyard');
+    const spell = put(s, 'P1', 'sevinnes-reclamation', 'graveyard');
+    mana(s, 'P1', { W: 1, C: 4 });
+    const flashback = getLegalActions(s).find((x) => x.type === 'CastSpell' && x.card === spell && x.targets?.[0]?.kind === 'card' && x.targets[0].card === a)!;
+    s = cast(s, flashback, { accept: true, copyTargets: (o) => o.map((opts) => opts.find((t) => t.kind === 'card' && t.card === b) ?? opts[0]!) }).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone, s.cards[spell]!.zone]).toEqual(['battlefield', 'battlefield', 'exile']);
+  });
+
+  it('Ao, the Dawn Sky: when it dies, two +1/+1 counters on each of your creatures (or dig for permanents)', () => {
+    let s = newGame();
+    const ao = put(s, 'P1', 'ao-the-dawn-sky');
+    const rat = put(s, 'P1', 'hungry-graffalon');
+    const wave = put(s, 'P1', 'wave-of-reckoning', 'hand');
+    mana(s, 'P1', { W: 1, C: 4 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: wave })).state;
+    if (s.pending.kind === 'chooseModes') s = settle(act(s, { type: 'ChooseModes', player: 'P1', modes: [1] })).state;
+    // The Graffalon (3/4) survives the Wave; it also has Increment, which the Wave spell grew it with.
+    expect([s.cards[ao]!.zone, s.cards[rat]!.counters]).toEqual(['graveyard', 3]);
+  });
+
+  it("Skyclave Apparition exiles a permanent; when it leaves, that card's owner gets an X/X Illusion", () => {
+    let s = newGame();
+    const victim = put(s, 'P2', 'hungry-graffalon'); // MV 4
+    const sky = put(s, 'P1', 'skyclave-apparition', 'hand');
+    mana(s, 'P1', { W: 2, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: sky }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === victim)! }).state;
+    expect(s.cards[victim]!.zone).toBe('exile');
+    const kill = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.players.P2!.manaPool.R = 1;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: kill, targets: [{ kind: 'card', card: sky }] })).state;
+    const illusion = s.players.P2!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'illusion-token-soc')!;
+    expect([powerOf(s, illusion), s.cards[victim]!.zone]).toEqual([4, 'exile']);
   });
 });

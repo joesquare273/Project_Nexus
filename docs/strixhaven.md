@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -342,7 +342,28 @@ Simplifications:
 - Conspiracy Theorist's "exile one of them" takes the first nonland card of
   the discarded batch.
 
-Still to build in Lorehold Spirit (15): Excava, Augusta, Advanced
-Reconstruction, Fateful Tempest, Spirit of Resilience, Ao, Guardian
-Scalelord, Serra Paragon, Sevinne's Reclamation, Skyclave Apparition, Hofri,
-Quintorius Loremaster, Venerable Warsinger, Bitterthorn and Study Hall.
+Still to build in Lorehold Spirit after SOC1d (15); SOC1e took four of them.
+
+## SOC1e: Lorehold Spirit, part five (built 2026-11-23)
+
+Venerable Warsinger, Sevinne's Reclamation, Ao, the Dawn Sky and Skyclave
+Apparition, with the X/X Illusion token (TSOC 7).
+
+New:
+- A triggered ability's targets can depend on its event's amount: the filter
+  `manaValueAtMostTriggerAmount`, with the amount in the target context as
+  it's chosen and as it's checked again on resolution (Warsinger).
+- CopySpell `copySelf`: Sevinne's Reclamation cast from a graveyard copies
+  itself; a copy never copies itself again.
+- LookAtTopPutMatching `maxTotalManaValue` (Ao).
+- Exile `exileLinked` now also links permanents exiled from the battlefield,
+  and `ExiledCardOwnersCreateSizedToken` gives those cards' owners an X/X
+  token (Skyclave Apparition).
+
+Fixed for every card that copies a spell: a copy whose target is no longer
+legal now gets to choose the one legal target left. Before, it was only asked
+when there were two or more choices, so it kept its old target and fizzled.
+
+Still to build in Lorehold Spirit (11): Excava, Augusta, Advanced
+Reconstruction, Fateful Tempest, Spirit of Resilience, Guardian Scalelord,
+Serra Paragon, Hofri, Quintorius Loremaster, Bitterthorn and Study Hall.

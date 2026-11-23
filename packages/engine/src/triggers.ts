@@ -685,7 +685,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 
 /** Legal choices for each target of a queued trigger, in effect order. */
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
-  const context = { ...(t.defender ? { defender: t.defender } : {}), ...(t.subject ? { subject: t.subject } : {}), triggered: true };
+  const context = { ...(t.defender ? { defender: t.defender } : {}), ...(t.subject ? { subject: t.subject } : {}), ...(t.amount !== undefined ? { amount: t.amount } : {}), triggered: true };
   return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source, context));
 }
 

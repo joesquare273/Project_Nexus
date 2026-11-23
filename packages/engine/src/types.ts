@@ -532,6 +532,8 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** Each card exiled with this source (Exile `exileLinked`): its owner creates the `token`, an X/X where X is that card's mana value (Skyclave Apparition). */
+  'ExiledCardOwnersCreateSizedToken',
   /** Exile the triggering card from its graveyard; its owner may play it this turn (`castOnly`: only cast it). Containment Construct, Conspiracy Theorist. */
   'ExileSubjectToPlay',
   /** Shuffle any number of cards chosen from your graveyard into your library (Perpetual Timepiece). */
@@ -1067,6 +1069,8 @@ export interface EffectSpec {
   fromTargetPlayer?: boolean;
   /** LookAtTopPutMatching: up to this many instead of one if you gained life this turn (Follow the Lumarets). */
   takeIfGainedLife?: number;
+  /** LookAtTopPutMatching: the cards taken have total mana value at most this (Ao, the Dawn Sky). */
+  maxTotalManaValue?: number;
   /** LookAtTopPutMatching: cards not taken stay on top of the library, in order ("look at the top card ... you may put it into your hand"). */
   restStayOnTop?: boolean;
   /** CreateDelayedTrigger: you get an emblem with this ability instead; it lasts the rest of the game (Sephiroth). */
@@ -1105,6 +1109,8 @@ export interface EffectSpec {
   fromProliferated?: boolean;
   /** AllowPlayExiledThisWay: "you may cast" rather than "play" (no lands). */
   castOnly?: boolean;
+  /** CopySpell: a copy of this spell itself (Sevinne's Reclamation); a copy doesn't copy itself again. */
+  copySelf?: boolean;
   /** DivideDamage: among this ability's chosen targets (each gets at least 1), not chosen as it resolves (Fury). */
   amongTargets?: boolean;
   /** AddSubtypes: the subtypes gained. */
@@ -1568,6 +1574,8 @@ export interface ObjectFilter {
   manaValueAtMostX?: boolean;
   /** Mana value at most the life its controller gained this turn (Moseo, Vein's New Dean). */
   manaValueAtMostLifeGained?: boolean;
+  /** Mana value at most the triggering event's amount ("where X is the amount of damage this creature dealt to that player": Venerable Warsinger). */
+  manaValueAtMostTriggerAmount?: boolean;
   /** Mana value at most the colors of mana spent to cast the source (Sundering Archaic). */
   manaValueAtMostSourceColorsSpent?: boolean;
   /** Has the creature type chosen as the source entered (its chosen option: Patchwork Banner). */
