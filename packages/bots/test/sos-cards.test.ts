@@ -994,3 +994,101 @@ describe('SOS4b: Infusion', () => {
     expect([powerOf(s, s.cards[rat]!), toughnessOf(s, s.cards[rat]!)]).toEqual([5, 9]);
   });
 });
+
+describe('SOS5a: Converge', () => {
+  const five = { W: 1, U: 1, B: 1, R: 1, G: 1 } as const;
+
+  it('Rancorous Archaic enters with a counter for each color spent', () => {
+    let s = newGame();
+    const archaic = put(s, 'P1', 'rancorous-archaic', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: archaic }).state;
+    expect(s.cards[archaic]!.counters).toBe(3);
+  });
+
+  it('Sundering Archaic exiles a nonland permanent with mana value up to the colors spent', () => {
+    let s = newGame();
+    const cheap = put(s, 'P2', 'rank-rat'); // mana value 2
+    const big = put(s, 'P2', 'hungry-graffalon'); // mana value 4
+    const archaic = put(s, 'P1', 'sundering-archaic', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: archaic });
+    s = settle(s, { targets: (o) => { expect(o.some((t) => t[0]?.kind === 'card' && t[0].card === big)).toBe(false); return o.find((t) => t[0]?.kind === 'card' && t[0].card === cheap)!; } }).state;
+    expect([s.cards[cheap]!.zone, s.cards[big]!.zone]).toEqual(['exile', 'battlefield']);
+  });
+
+  it('Together as One: draw, damage and life equal to the colors spent', () => {
+    let s = newGame();
+    const spell = put(s, 'P1', 'together-as-one', 'hand');
+    mana(s, 'P1', { ...five, C: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P1' }, { kind: 'player', player: 'P2' }] }).state;
+    expect([s.players.P1!.hand.length, s.players.P2!.life, s.players.P1!.life]).toEqual([hand - 1 + 5, 15, 25]);
+  });
+
+  it('Transcendent Archaic may draw X, then discards two if it drew', () => {
+    let s = newGame();
+    const archaic = put(s, 'P1', 'transcendent-archaic', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, B: 1, C: 4 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: archaic }, { accept: true }).state;
+    while (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: (s.pending as { cards: string[] }).cards.slice(0, 2) })).state;
+    expect(s.players.P1!.hand.length).toBe(hand - 1 + 3 - 2);
+  });
+
+  it('Arcane Omens: target player discards X', () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P2', 'island', 'hand');
+    const omens = put(s, 'P1', 'arcane-omens', 'hand');
+    mana(s, 'P1', { B: 1, R: 1, C: 3 });
+    const hand = s.players.P2!.hand.length;
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: omens, targets: [{ kind: 'player', player: 'P2' }] })).state;
+    while (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: (s.pending as { player: string }).player, cards: (s.pending as { cards: string[] }).cards.slice(0, 2) })).state;
+    expect(s.players.P2!.hand.length).toBe(hand - 2);
+  });
+
+  it("Archaic's Agony deals X to a creature and exiles cards equal to the excess to play", () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat'); // 1/1
+    const agony = put(s, 'P1', 'archaics-agony', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, R: 1, C: 2 });
+    const top = s.players.P1!.library.slice(0, 3);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: agony, targets: [{ kind: 'card', card: rat }] }).state;
+    expect(s.cards[rat]!.zone).toBe('graveyard');
+    expect(top.map((id) => s.cards[id]!.zone)).toEqual(['exile', 'exile', 'library']);
+  });
+
+  it('Snarl Song: two Fractals with X counters each, and X life', () => {
+    let s = newGame();
+    const song = put(s, 'P1', 'snarl-song', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: song }).state;
+    const fractals = s.players.P1!.battlefield.map((id) => s.cards[id]!).filter((c) => c.defId === 'fractal-token-sos');
+    expect([fractals.map((c) => c.counters), s.players.P1!.life]).toEqual([[2, 2], 22]);
+  });
+
+  it('Magmablood Archaic: {2/R} costs; your creatures get +1/+0 per color of your instants and sorceries', () => {
+    let s = newGame();
+    const archaic = put(s, 'P1', 'magmablood-archaic', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: archaic }).state;
+    expect([s.cards[archaic]!.zone, s.cards[archaic]!.counters]).toEqual(['battlefield', 1]);
+    const rat = put(s, 'P1', 'rank-rat');
+    const spell = put(s, 'P1', 'together-as-one', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spell, targets: [{ kind: 'player', player: 'P1' }, { kind: 'player', player: 'P2' }] }).state;
+    expect(powerOf(s, s.cards[rat]!)).toBe(3);
+  });
+
+  it('Wildgrowth Archaic: your creature spells enter with a counter per color spent', () => {
+    let s = newGame();
+    const archaic = put(s, 'P1', 'wildgrowth-archaic', 'hand');
+    mana(s, 'P1', { G: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: archaic }).state;
+    expect(s.cards[archaic]!.counters).toBe(1);
+    const rancor = put(s, 'P1', 'rancorous-archaic', 'hand');
+    mana(s, 'P1', { W: 1, U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rancor }).state;
+    expect(s.cards[rancor]!.counters).toBe(4);
+  });
+});

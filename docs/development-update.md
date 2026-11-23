@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS5a: Converge (2026-11-23)
+
+- 9 Converge cards; every spell now records the colors spent to cast it. docs/strixhaven.md.
+
 ### Bots play randomly chosen decks (2026-11-23)
 
 - User request. Commander bots get different fully built precons at random (any set); 60-card bots against your own deck get a random Starter Kit. See decisions.md.

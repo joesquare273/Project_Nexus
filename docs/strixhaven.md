@@ -110,7 +110,7 @@ drawn pack shows.
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
 | SOS4 | Repartee and Infusion (24): SOS4a Repartee (12), SOS4b Infusion (12) | Done (2026-11-21) |
-| SOS5 | Paradigm and Converge | |
+| SOS5 | Paradigm and Converge (14): SOS5a Converge (9) done 2026-11-23; SOS5b Paradigm (5) | In progress |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
 
 ## SOS1: lands (built 2026-11-20)
@@ -238,3 +238,19 @@ Favor copies itself with a "when you cast this spell" trigger. Its copy was
 the first spell copy the card sweep saw cease to exist, so the test
 invariants now allow spell copies in the void as well as tokens (rule
 707.10a).
+
+## SOS5a: Converge (built 2026-11-23)
+
+Rancorous Archaic, Sundering Archaic, Together as One, Transcendent Archaic,
+Arcane Omens, Archaic's Agony, Magmablood Archaic, Snarl Song and Wildgrowth
+Archaic. Converge counts the colors of mana spent to cast the card
+(`converge: true` pays generic with new colors first).
+
+New: every spell now records its colors spent (the stack item's
+`colorsSpent`, and the card's `colorsSpentToCast`, kept as a permanent and
+public), the amounts `colorsSpent` and `subjectColorsSpent`,
+`convergeCounters` (enters with a +1/+1 counter per color), the filter
+`manaValueAtMostSourceColorsSpent`, the effect condition `ifDrewThisWay`, and
+`SpellEntersWithCounters` (Wildgrowth Archaic gives the triggering creature
+spell extra counters). Magmablood and Wildgrowth Archaic use monocolored
+hybrid costs ({2/R}, {2/G}).

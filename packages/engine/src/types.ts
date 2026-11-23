@@ -530,6 +530,8 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** "That creature enters with `amount` additional +1/+1 counters on it": the triggering spell, still on the stack (Wildgrowth Archaic). */
+  'SpellEntersWithCounters',
   /** Put the counters the source (or, with `countersOf`, the triggering card) had as it left the battlefield on the target (Zack Fair). */
   'PutLastCounters',
   /** Attach an Equipment that was attached to the source as it left the battlefield to the target (Zack Fair). */
@@ -874,6 +876,10 @@ export type Amount =
         | 'lifeLostThisWay'
         /** Cards drawn earlier in this resolution ("lose life equal to the number of cards drawn this way"). */
         | 'drawnThisWay'
+        /** Converge: the colors of mana spent to cast this spell, or to cast the permanent whose ability this is. */
+        | 'colorsSpent'
+        /** The colors of mana spent to cast the triggering spell (Magmablood Archaic). */
+        | 'subjectColorsSpent'
         /** Opponents who didn't discard two nonland cards to this (Garruk, Veiled Butcher). */
         | 'opponentsWhoDidntDiscardTwoNonland'
         /** DealDamage from the previous target: its loyalty (Compel Brutality). */
@@ -1206,6 +1212,8 @@ export interface EffectSpec {
   ifSubjectManaSpentOverSourcePowerOrToughness?: boolean;
   /** Only if the triggering object had (or has) one or more counters on it ("if it had one or more counters on it": Ambitious Augmenter). */
   ifSubjectHadCounters?: boolean;
+  /** Only if this spell or ability has drawn one or more cards so far ("If you draw one or more cards this way": Transcendent Archaic). */
+  ifDrewThisWay?: boolean;
   /** SpellCast triggers: only happens if less than this much mana was spent ("if five or more mana was spent, ... instead": Opus). */
   unlessSubjectManaSpentAtLeast?: number;
   /** Converge: only targets with mana value at most the colors spent on this spell (Prismatic Ending). */
@@ -1534,6 +1542,8 @@ export interface ObjectFilter {
   manaValueAtMostX?: boolean;
   /** Mana value at most the life its controller gained this turn (Moseo, Vein's New Dean). */
   manaValueAtMostLifeGained?: boolean;
+  /** Mana value at most the colors of mana spent to cast the source (Sundering Archaic). */
+  manaValueAtMostSourceColorsSpent?: boolean;
   /** Toughness X or less, X being the spell's (Zero Point Ballad). */
   toughnessAtMostX?: boolean;
   /** Odd or even mana value (Mutinous Massacre; zero is even). */
@@ -2436,6 +2446,8 @@ export interface CardDefinition {
    * pool allows.
    */
   converge?: boolean;
+  /** Converge: "This creature enters with a +1/+1 counter on it for each color of mana spent to cast it" (the Archaics). */
+  convergeCounters?: boolean;
   /**
    * Sunburst (rule 702.44): it enters with a counter for each color of mana
    * spent to cast it: +1/+1 counters if it's a creature, charge counters
@@ -2674,6 +2686,8 @@ export interface CardInstance {
   xPaid?: number;
   /** The mana spent to cast it, while it's on the battlefield from that spell (Astelli Reclaimer). */
   manaSpentToCast?: number;
+  /** The colors of mana spent to cast it (on the stack, and as a permanent): Converge. */
+  colorsSpentToCast?: number;
   /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
   kicksPaid?: number;
   /** A card in a hand that was revealed ("reveal it and put it into your hand"): every player sees it until it leaves the hand. */
@@ -2930,6 +2944,8 @@ export interface SpellItem {
   targetObjects?: (number | null)[];
   /** entersRemovingCounters: the +1/+1 counters it enters with, once the counters are removed. */
   entryCounters?: number;
+  /** "That creature enters with N additional +1/+1 counters on it" (Wildgrowth Archaic), from SpellEntersWithCounters. */
+  extraEntryCounters?: number;
   /** entersAsCopy: the creature chosen to copy as it resolves (null: none). */
   entryCopy?: { card: InstanceId; object: number } | null;
   /** One target per effect that requires a choice, in effect order. */

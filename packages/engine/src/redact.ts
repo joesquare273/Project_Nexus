@@ -233,6 +233,7 @@ const CARD_FIELDS = {
   linkedExile: 'refs',
   xPaid: 'copy',
   manaSpentToCast: 'copy',
+  colorsSpentToCast: 'copy',
   kicksPaid: 'copy',
   revealedInHand: 'copy',
   isCommander: 'copy',

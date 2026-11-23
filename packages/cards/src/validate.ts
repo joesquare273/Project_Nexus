@@ -130,6 +130,8 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'x',
       'lifeLostThisWay',
       'drawnThisWay',
+      'colorsSpent',
+      'subjectColorsSpent',
       'opponentsWhoDidntDiscardTwoNonland',
       'previousTargetLoyalty',
       'revealedManaValue',

@@ -1537,7 +1537,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     castFrom: from,
     ...(way === 'flashback' ? { flashback: true } : {}),
     manaSpent,
-    ...(def.converge || def.sunburst || grantedSunburst ? { colorsSpent } : {}),
+    // Recorded for every spell: Converge counts its own colors, and Magmablood Archaic counts any instant's or sorcery's.
+    colorsSpent,
     ...(grantedSunburst ? { sunburst: true } : {}),
     ...(x > 0 ? { x } : {}),
     ...(convoked.length > 0 ? { convoked: convoked.map((k) => k.id) } : {}),
@@ -1570,6 +1571,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
       ctx.ev.push({ type: 'Unprepared', card: perm.id, controller: perm.controller });
     }
   }
+  s.cards[id]!.colorsSpentToCast = colorsSpent;
   ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
     ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
   });
@@ -2219,6 +2221,10 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? countersOf(s.cards[sourceOf(r.item)]!, a.counter ?? '+1/+1')
               : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
+              : a.of === 'colorsSpent'
+              ? (r.item.kind === 'spell' ? (r.item.colorsSpent ?? 0) : (s.cards[sourceOf(r.item)]?.colorsSpentToCast ?? 0))
+              : a.of === 'subjectColorsSpent'
+              ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.colorsSpentToCast ?? 0) : 0)
               : a.of === 'previousTargetManaValue'
                 ? previousManaValue(s, r)
                 : a.of === 'x'
@@ -4277,6 +4283,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'ChooseTarget':
       return;
+    case 'SpellEntersWithCounters': {
+      const spell = item.kind === 'ability' && item.subject ? s.stack.find((x): x is Extract<typeof x, { kind: 'spell' }> => x.kind === 'spell' && x.card === item.subject) : undefined;
+      if (spell && amount > 0) spell.extraEntryCounters = (spell.extraEntryCounters ?? 0) + amount;
+      return;
+    }
     case 'PutSubjectCounters': {
       const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
       if (!c) return;
@@ -4523,6 +4534,7 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifSubjectManaSpentOverSourcePowerOrToughness && (item.kind !== 'ability' || !manaSpentOverPowerOrToughness(s, item.source, item.amount ?? 0))) continue;
     if (effect.ifSubjectHadCounters && subjectAmount(s, item, 'subjectCounters') === 0) continue;
+    if (effect.ifDrewThisWay && !r.drawnThisWay) continue;
     // Opus: the triggering spell's mana spent is the ability's amount.
     if (effect.unlessSubjectManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessSubjectManaSpentAtLeast) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
@@ -4665,13 +4677,16 @@ export function resolveTop(ctx: Ctx): void {
       if (haste) s.temporaryEffects.push({ source: c.id, affected: c.id, keywords: ['Haste'] });
       if (item.entryCopy) enterAsCopy(ctx, c, item.entryCopy);
       if (item.entryCounters) addCounters(ctx, c.id, item.entryCounters, item.controller);
+      if (item.extraEntryCounters) addCounters(ctx, c.id, item.extraEntryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
       c.manaSpentToCast = item.manaSpent;
+      c.colorsSpentToCast = item.colorsSpent ?? 0;
       if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
       if (def.entersWithCountersFromManaSpent) addCounters(ctx, c.id, item.manaSpent, item.controller);
       if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
       // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.
+      if (def.convergeCounters && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller);
       if ((def.sunburst || item.sunburst) && item.colorsSpent) addCounters(ctx, c.id, item.colorsSpent, item.controller, hasType(s, c, 'creature') ? undefined : 'charge');
       if (def.entersWithCountersPerKick) addCounters(ctx, c.id, item.kicks ?? 0, item.controller, def.entersWithCountersPerKick);
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;

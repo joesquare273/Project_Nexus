@@ -176,6 +176,8 @@ function effectText(e: EffectSpec): string {
       const what = subjectText({ ...e.filter, controller: undefined }, 'permanent');
       return `${you ? (e.optional ? 'you may sacrifice' : 'sacrifice') : `${who} ${e.optional ? 'may sacrifice' : 'sacrifices'}`} a ${what}`;
     }
+    case 'SpellEntersWithCounters':
+      return `that creature enters with ${n} more +1/+1 counters`;
     case 'PutSubjectCounters':
       return `put its counters on ${who}`;
     case 'MoveCounters':
