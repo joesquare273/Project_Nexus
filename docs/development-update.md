@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC1b: Lorehold Spirit, part two (2026-11-23)
+
+- 12 cards; Echo and declined-cost effects on triggers. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC1a: Lorehold Spirit, part one (2026-11-23)
 
 - 16 of the deck's 53 unbuilt cards (lands, spells, sacrifice creatures). docs/strixhaven.md.

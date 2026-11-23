@@ -234,6 +234,7 @@ const CARD_FIELDS = {
   xPaid: 'copy',
   manaSpentToCast: 'copy',
   colorsSpentToCast: 'copy',
+  echoDue: 'copy',
   kicksPaid: 'copy',
   revealedInHand: 'copy',
   isCommander: 'copy',

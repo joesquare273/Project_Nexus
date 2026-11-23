@@ -31235,6 +31235,28 @@
       }
     ]
   },
+  "spirit-token-soc": {
+    "name": "Spirit",
+    "typeLine": "Token Creature — Spirit",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "25",
+    "artist": "Flavio Greco Paglia",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567",
+      "normal": "https://cards.scryfall.io/normal/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567",
+      "large": "https://cards.scryfall.io/large/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/5/a/5a9c5b21-c770-4fc0-b205-d96862e6be3e.jpg?1783903567"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/25/spirit?utm_source=api",
+    "scryfallId": "5a9c5b21-c770-4fc0-b205-d96862e6be3e",
+    "relatedTokens": [
+      {
+        "name": "Spirit",
+        "scryfallId": "5a9c5b21-c770-4fc0-b205-d96862e6be3e"
+      }
+    ]
+  },
   "spirit-token-sos": {
     "name": "Spirit",
     "typeLine": "Token Creature — Spirit",

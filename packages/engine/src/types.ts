@@ -532,6 +532,8 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** Echo was paid: it's no longer due. */
+  'ClearEcho',
   /** "That creature enters with `amount` additional +1/+1 counters on it": the triggering spell, still on the stack (Wildgrowth Archaic). */
   'SpellEntersWithCounters',
   /** Put the counters the source (or, with `countersOf`, the triggering card) had as it left the battlefield on the target (Zack Fair). */
@@ -809,6 +811,8 @@ export const COUNT_KINDS = [
   'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
   'OpponentsWithMoreCreatures',
+  /** Opponents who control more lands than you (Claim Jumper). */
+  'OpponentsWithMoreLands',
   /** Opponents who have more cards in hand than you (Joined Researchers). */
   'OpponentsWithMoreCardsInHand',
   'ArtifactsYouControl',
@@ -882,6 +886,8 @@ export type Amount =
         | 'colorsSpent'
         /** The colors of mana spent to cast the triggering spell (Magmablood Archaic). */
         | 'subjectColorsSpent'
+        /** Nontoken creatures you owned that this spell destroyed (Ceaseless Conflict). */
+        | 'nontokenCreaturesOfYoursDestroyedThisWay'
         /** Opponents who didn't discard two nonland cards to this (Garruk, Veiled Butcher). */
         | 'opponentsWhoDidntDiscardTwoNonland'
         /** DealDamage from the previous target: its loyalty (Compel Brutality). */
@@ -1703,6 +1709,10 @@ export interface TriggerSpec {
   /** Intervening "if": some player controls no creatures (Sothera). */
   ifAPlayerControlsNoCreatures?: boolean;
   /** Intervening "if": an opponent controls more lands than you (Sunstar Expansionist). */
+  /** With `optional` or `cost`: what happens instead if its controller declines (Echo: "sacrifice it unless you pay"). */
+  ifDeclined?: EffectSpec[];
+  /** Echo: only while the echo cost is due (it came under its controller's control since their last upkeep). */
+  ifEchoDue?: boolean;
   ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
   /** `stack`: "When you cast this spell" (SpellCast only), from the spell itself. */
@@ -2464,6 +2474,8 @@ export interface CardDefinition {
   sunburst?: boolean;
   /** Rebound (rule 702.88): cast from your hand, it's exiled as it resolves and can be cast free during your next turn. */
   rebound?: boolean;
+  /** Echo (rule 702.30): at the beginning of your upkeep, if it came under your control since your last upkeep, sacrifice it unless you pay this. */
+  echo?: string;
   /**
    * Paradigm (Secrets of Strixhaven): as it resolves, the spell is exiled. After its controller first
    * resolves a spell with this name, they may cast a copy of it from exile without paying its mana
@@ -2702,6 +2714,8 @@ export interface CardInstance {
   manaSpentToCast?: number;
   /** The colors of mana spent to cast it (on the stack, and as a permanent): Converge. */
   colorsSpentToCast?: number;
+  /** Echo: its echo cost is due at its controller's next upkeep. */
+  echoDue?: boolean;
   /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
   kicksPaid?: number;
   /** A card in a hand that was revealed ("reveal it and put it into your hand"): every player sees it until it leaves the hand. */

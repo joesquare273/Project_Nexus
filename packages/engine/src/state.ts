@@ -322,6 +322,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.blitzed;
     delete c.evoked;
   }
+  // Echo: due at its controller's next upkeep.
+  if (to === 'battlefield' && s.cardDefs[c.defId]?.echo) c.echoDue = true;
+  else if (from === 'battlefield') delete c.echoDue;
   if (from === 'battlefield') { delete c.sacrificeAtEndStep; delete c.sacrificeAtEndStepOf; delete c.sacrificeAfterTurn; }
   if (from === 'battlefield') { delete c.exileAtEndOfCombat; delete c.sacrificeAtEndOfCombat; delete c.removeCountersAtEndStep; }
   if (from === 'battlefield') c.lastPower = lastPower;

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
-import { act, cast, goTo, mana, newGame, put, settle } from './kit-helpers.ts';
+import { act, cast, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
 const activate = (s: GameState, id: string) => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === id);
@@ -143,5 +143,143 @@ describe('SOC1a: Lorehold Spirit (lands, spells and sacrifice creatures)', () =>
     const gone = put(s, 'P2', 'rank-rat', 'graveyard');
     s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === cleric && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P2')!).state;
     expect([s.cards[cleric]!.zone, s.cards[gone]!.zone]).toEqual(['graveyard', 'exile']);
+  });
+});
+
+describe('SOC1b: Lorehold Spirit (recursion and creatures)', () => {
+  /** Passes to P1's next upkeep (through P2's turn). */
+  const nextUpkeep = (s: GameState) => {
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state;
+    s = settle(goTo(s, 'end')).state;
+    // Step by hand into P1's upkeep, stopping with its triggers on the stack.
+    while (!(s.activePlayer === 'P1' && s.step === 'upkeep')) s = nextStep(s);
+    return s;
+  };
+
+  it('Karmic Guide returns a creature card; echo: pay at your next upkeep or sacrifice it', () => {
+    let s = newGame();
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    const guide = put(s, 'P1', 'karmic-guide', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: guide }).state;
+    expect([s.cards[dead]!.zone, s.cards[guide]!.echoDue, hasKeyword(s, s.cards[guide]!, 'ProtectionFromBlack')]).toEqual(['battlefield', true, true]);
+    // Declined: sacrificed.
+    let u = nextUpkeep(structuredClone(s));
+    u = settle(u, { accept: false }).state;
+    expect(u.cards[guide]!.zone).toBe('graveyard');
+    // Paid: it stays, and isn't due again.
+    let v = nextUpkeep(structuredClone(s));
+    mana(v, 'P1', { W: 2, C: 3 });
+    v = settle(v, { accept: true }).state;
+    expect([v.cards[guide]!.zone, v.cards[guide]!.echoDue]).toEqual(['battlefield', undefined]);
+  });
+
+  it('Angel of Indemnity returns a permanent card with mana value 4 or less', () => {
+    let s = newGame();
+    const big = put(s, 'P1', 'hungry-graffalon', 'graveyard');
+    const angel = put(s, 'P1', 'angel-of-indemnity', 'hand');
+    mana(s, 'P1', { W: 1, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: angel }).state;
+    expect(s.cards[big]!.zone).toBe('battlefield');
+  });
+
+  it('Teshar returns a cheap creature card when you cast a historic spell', () => {
+    let s = newGame();
+    put(s, 'P1', 'teshar-ancestors-apostle');
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    const legend = put(s, 'P1', 'quintorius-field-historian', 'hand');
+    mana(s, 'P1', { R: 1, W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: legend }).state;
+    expect(s.cards[dead]!.zone).toBe('battlefield');
+  });
+
+  it('Primary Research returns a card and draws at your end step if a card left your graveyard', () => {
+    let s = newGame();
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard');
+    const research = put(s, 'P1', 'primary-research', 'hand');
+    put(s, 'P1', 'relic-retriever');
+    mana(s, 'P1', { W: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: research }).state;
+    expect(s.cards[dead]!.zone).toBe('battlefield');
+    const hand = s.players.P1!.hand.length;
+    s = settle(goTo(s, 'end')).state;
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+    expect(s.players.P1!.battlefield.some((id) => s.cards[id]!.defId === 'treasure-token-sos')).toBe(true);
+  });
+
+  it('Guardian of Faith phases out any number of your other creatures', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const guardian = put(s, 'P1', 'guardian-of-faith', 'hand');
+    mana(s, 'P1', { W: 2, C: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: guardian })).state;
+    while (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [rat] })).state;
+    expect(s.cards[rat]!.phasedOut).toBe(true);
+  });
+
+  it('Moonshaker Cavalry: your creatures fly and get +X/+X for each creature you control', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const horse = put(s, 'P1', 'moonshaker-cavalry', 'hand');
+    mana(s, 'P1', { W: 3, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: horse }).state;
+    expect([powerOf(s, s.cards[rat]!), hasKeyword(s, s.cards[rat]!, 'Flying')]).toEqual([3, true]);
+  });
+
+  it("Tocasia's Welcome draws once each turn for cheap creatures", () => {
+    let s = newGame();
+    put(s, 'P1', 'tocasias-welcome');
+    const hand = s.players.P1!.hand.length;
+    for (let i = 0; i < 2; i++) {
+      const rat = put(s, 'P1', 'rank-rat', 'hand');
+      mana(s, 'P1', { B: 1, C: 1 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: rat }).state;
+    }
+    expect(s.players.P1!.hand.length).toBe(hand + 1);
+  });
+
+  it('Ceaseless Conflict destroys all creatures and makes a Spirit for each nontoken creature of yours', () => {
+    let s = newGame();
+    put(s, 'P1', 'rank-rat');
+    put(s, 'P1', 'hungry-graffalon');
+    put(s, 'P2', 'rank-rat');
+    const conflict = put(s, 'P1', 'ceaseless-conflict', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: conflict }).state;
+    const spirits = s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'spirit-token-soc');
+    expect([spirits.length, s.players.P2!.battlefield.filter((id) => s.cards[id]!.defId === 'rank-rat').length]).toEqual([2, 0]);
+  });
+
+  it('Atsushi: when it dies, three Treasures (or exile two cards to play)', () => {
+    let s = newGame();
+    const atsushi = put(s, 'P1', 'atsushi-the-blazing-sky');
+    const wave = put(s, 'P1', 'wave-of-reckoning', 'hand');
+    mana(s, 'P1', { W: 1, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: wave });
+    s = settle(s).state;
+    if (s.pending.kind === 'chooseModes') s = settle(act(s, { type: 'ChooseModes', player: 'P1', modes: [1] })).state;
+    expect([s.cards[atsushi]!.zone, s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'treasure-token-sos').length]).toEqual(['graveyard', 3]);
+  });
+
+  it('Quintorius, Field Historian: a 3/2 Spirit when cards leave your graveyard; Spirits get +1/+0', () => {
+    let s = newGame();
+    put(s, 'P1', 'quintorius-field-historian');
+    put(s, 'P1', 'rank-rat', 'graveyard');
+    const cleric = put(s, 'P1', 'remorseful-cleric');
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === cleric && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P1')!).state;
+    const spirit = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.defId === 'spirit-token-soc')!;
+    expect(powerOf(s, spirit)).toBe(4);
+  });
+
+  it('Claim Jumper fetches up to two Plains while an opponent has more lands', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) put(s, 'P2', 'forest');
+    put(s, 'P1', 'plains', 'library');
+    put(s, 'P1', 'plains', 'library');
+    const jumper = put(s, 'P1', 'claim-jumper', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: jumper }, { accept: true }).state;
+    expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'plains')).toHaveLength(2);
   });
 });

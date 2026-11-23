@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -282,3 +282,24 @@ New: EachMatchingDealsDamage `toItself` (Wave of Reckoning), the static
 `untapCreaturesInOthersUntapSteps` (Drumbellower) and the activation
 condition `ifYouControlAtLeast` with `ifYouControl` (Mistveil Plains: two or
 more white permanents). Tests: `packages/bots/test/soc-cards.test.ts`.
+
+## SOC1b: Lorehold Spirit, part two (built 2026-11-23)
+
+Karmic Guide, Angel of Indemnity, Teshar, Ancestor's Apostle, Primary
+Research, Relic Retriever, Guardian of Faith, Moonshaker Cavalry, Tocasia's
+Welcome, Ceaseless Conflict, Atsushi, the Blazing Sky, Quintorius, Field
+Historian and Claim Jumper, with the 3/2 Spirit token (TSOC 25).
+
+New:
+- **Echo** (rule 702.30): `echo` on the card; entering the battlefield makes
+  it due (`echoDue`, public), and `currentDefinition` adds the upkeep trigger
+  "sacrifice it unless you pay".
+- A trigger's `ifDeclined` effects happen instead when its controller
+  declines its optional cost.
+- The `OpponentsWithMoreLands` count (Claim Jumper).
+- The amount `nontokenCreaturesOfYoursDestroyedThisWay` (Ceaseless
+  Conflict). It counts the cards you own, so a stolen creature counts for
+  its owner.
+
+Guardian of Faith's "any number of other target creatures" is chosen as the
+trigger resolves rather than targeted.

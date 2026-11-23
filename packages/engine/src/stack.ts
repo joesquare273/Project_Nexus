@@ -341,6 +341,8 @@ export function chooseCopyTargets(ctx: Ctx, playerId: PlayerId, targets: Target[
 export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
   if (item.kind === 'ability') {
     const spec = abilitySpec(s, item);
+    // "Sacrifice it unless you pay": declined, its other effects happen instead.
+    if (item.accepted === false && item.from === 'trigger' && (spec as TriggerSpec).ifDeclined) return (spec as TriggerSpec).ifDeclined!;
     const cost = item.from === 'trigger' ? (spec as TriggerSpec).cost : undefined;
     const paid: EffectSpec[] = [
       ...(cost?.discard ? [{ effect: 'Discard', target: 'You', amount: cost.discard } as EffectSpec] : []),
@@ -2221,6 +2223,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? countersOf(s.cards[sourceOf(r.item)]!, a.counter ?? '+1/+1')
               : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
+              : a.of === 'nontokenCreaturesOfYoursDestroyedThisWay'
+              ? (r.destroyedCards ?? []).filter((id) => { const c = s.cards[id]; return !!c && !c.isToken && c.owner === r.item.controller && defOf(s, c).types.includes('creature'); }).length
               : a.of === 'colorsSpent'
               ? (r.item.kind === 'spell' ? (r.item.colorsSpent ?? 0) : (s.cards[sourceOf(r.item)]?.colorsSpentToCast ?? 0))
               : a.of === 'subjectColorsSpent'
@@ -4311,6 +4315,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (spell && amount > 0) spell.extraEntryCounters = (spell.extraEntryCounters ?? 0) + amount;
       return;
     }
+    case 'ClearEcho':
+      for (const id of onBattlefield) delete s.cards[id]!.echoDue;
+      return;
     case 'PutSubjectCounters': {
       const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
       if (!c) return;
@@ -4759,7 +4766,7 @@ export function resolveTop(ctx: Ctx): void {
   }
   s.stack.pop();
   ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: item.source, fizzled });
-  startResolving(ctx, item, !fizzled && item.accepted !== false);
+  startResolving(ctx, item, !fizzled && (item.accepted !== false || !!trigger?.ifDeclined));
 }
 
 /** Answers the pending "you may" for the ability on top of the stack, paying its cost if accepted. */

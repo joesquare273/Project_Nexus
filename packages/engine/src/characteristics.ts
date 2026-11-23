@@ -183,6 +183,11 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = creatures(player);
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
     }
+    case 'OpponentsWithMoreLands': {
+      const lands = (pid: PlayerId) => battlefieldCards(s).filter((c) => c.controller === pid && def(s, c).types.includes('land')).length;
+      const mine = lands(player);
+      return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && lands(pid) > mine).length;
+    }
     case 'OpponentsWithMoreCardsInHand': {
       const mine = s.players[player]!.hand.length;
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && s.players[pid]!.hand.length > mine).length;

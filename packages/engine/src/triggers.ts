@@ -405,6 +405,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.ifLastPowerAtLeast !== undefined && (s.cards[source]!.lastPower ?? 0) < spec.ifLastPowerAtLeast) return false;
   if (spec.ifCast && s.cards[source]!.manaSpentToCast === undefined) return false;
   if (spec.ifAPlayerControlsNoCreatures && !Object.keys(s.players).some((pid) => !s.players[pid]!.eliminated && !battlefield(s).some((c) => c.controller === pid && !c.phasedOut && defOf(s, c).types.includes('creature')))) return false;
+  if (spec.ifEchoDue && !s.cards[source]?.echoDue) return false;
   if (spec.ifOpponentHasMoreLands) {
     const lands = (pid: PlayerId) => battlefield(s).filter((c) => c.controller === pid && defOf(s,c).types.includes('land')).length;
     const mine = lands(controller);

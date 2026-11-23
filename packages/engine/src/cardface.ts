@@ -108,6 +108,8 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   // Each instance of prowess triggers separately (Ruric Thar: "Prowess, prowess").
   const prowess = out.keywords?.filter((k) => k === 'Prowess').length ?? 0;
   if (prowess) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(prowess).fill(PROWESS_TRIGGER)] };
+  // Echo (rule 702.30): "At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay [cost]."
+  if (out.echo) out = { ...out, triggers: [...(out.triggers ?? []), { when: 'Upkeep', ifEchoDue: true, cost: { mana: out.echo }, effects: [{ effect: 'ClearEcho', target: 'This' }], ifDeclined: [{ effect: 'Sacrifice', target: 'You', amount: 1, filter: { self: true }, noChoice: true }] }] };
   const increment = out.keywords?.filter((k) => k === 'Increment').length ?? 0;
   if (increment) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(increment).fill(INCREMENT_TRIGGER)] };
   // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.
