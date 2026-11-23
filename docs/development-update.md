@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Bots play randomly chosen decks (2026-11-23)
+
+- User request. Commander bots get different fully built precons at random (any set); 60-card bots against your own deck get a random Starter Kit. See decisions.md.
+
 ### Secrets of Strixhaven SOS4b: Infusion (2026-11-21)
 
 - 12 Infusion cards, with a "gained life this turn" static condition, a mana value filter for Moseo and a two-card look for Follow the Lumarets. docs/strixhaven.md.

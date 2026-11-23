@@ -665,3 +665,15 @@ options are the basic lands and the land cards in public zones (battlefield,
 graveyards, exile, command zone): everyone sees the options, so cards in
 hands and libraries aren't offered, even the chooser's own. The real card can
 name any land in Magic; one that isn't in the game would do nothing yet.
+
+## 2026-11-23: Computer opponents' decks are chosen at random
+
+User request: the AI bots play randomly chosen decks. In Commander (local
+games and online tables), each bot gets a different precon chosen at random
+from the ones whose every card is built (`randomPrecons`, `preconFullyBuilt`
+in packages/cards), never the one you're playing; the Final Fantasy,
+Edge of Eternities and Reality Fracture precons today, and the Strixhaven
+decks once their cards are built. In 60-card games with your own deck, each
+bot gets one of the two Starter Kits at random. The Starter Kit practice game
+and the tutorial keep their fixed decks. Local games choose from the game's
+seed (a separate stream); online tables from crypto.randomBytes.

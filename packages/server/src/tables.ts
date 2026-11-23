@@ -12,7 +12,7 @@
 
 import { COMMANDER, CONSTRUCTED_DUEL, FREE_FOR_ALL, seedFromBytes, validateCommander, validateDeck, type GameSetup } from '@nexus/engine';
 import { basicAi, type Bot } from '@nexus/bots';
-import { CARD_DEFS, FIN_PRECONS, preconDeck, starterKitDeck } from '@nexus/cards';
+import { CARD_DEFS, preconDeck, randomPrecons, starterKitDeck } from '@nexus/cards';
 import { gameDeck, type GameDeck } from '@nexus/cards/decks';
 import type { AccountService, AccountUser } from './accounts.ts';
 import { deckProblem } from './collection.ts';
@@ -191,6 +191,12 @@ export class TableHub {
     t.seats.sort((a, b) => SEAT_IDS.indexOf(a.id) - SEAT_IDS.indexOf(b.id));
     const bots: Partial<Record<Seat, Bot>> = {};
     const botSeed = this.opts.randomBytes(1)[0]!;
+    // Each bot's deck, chosen at random (user, 2026-11-23): a different fully built precon in Commander, a Starter Kit otherwise.
+    const deckBytes = this.opts.randomBytes(8);
+    let pick = 0;
+    const random = () => deckBytes[pick++ % deckBytes.length]! / 256;
+    const humanPrecons = t.seats.flatMap((s) => (s.bot || !s.deck ? [] : [s.deck.name]));
+    const botPrecons = randomPrecons(t.seats.filter((s) => s.bot).length, random, humanPrecons);
     const setup: GameSetup = {
       format: t.format === 'constructed' ? (t.seats.length === 2 ? CONSTRUCTED_DUEL : FREE_FOR_ALL) : COMMANDER,
       cardDefs: CARD_DEFS,
@@ -200,8 +206,8 @@ export class TableHub {
       players: t.seats.map((s, i) => {
         if (s.bot) {
           bots[s.id] = basicAi(botSeed + i);
-          if (t.format === 'constructed') return { id: s.id, deck: starterKitDeck(BOT_NAMES.indexOf(s.name) % 2 ? 'UB' : 'RW') };
-          return { id: s.id, ...preconDeck(FIN_PRECONS[BOT_NAMES.indexOf(s.name) % FIN_PRECONS.length]!.name) };
+          if (t.format === 'constructed') return { id: s.id, deck: starterKitDeck(random() < 0.5 ? 'RW' : 'UB') };
+          return { id: s.id, ...preconDeck(botPrecons.shift()!.name) };
         }
         return { id: s.id, ...s.deck!.game, ordersTriggers: true };
       }),

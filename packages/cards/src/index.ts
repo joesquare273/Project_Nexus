@@ -130,6 +130,32 @@ export const SOC_PRECONS = socPrecons.decks as PreconDeck[];
 /** Every Commander precon the game knows, for looking one up by name. */
 export const ALL_PRECONS = [...FIN_PRECONS, ...EOC_PRECONS, ...FRC_PRECONS, ...SOC_PRECONS];
 
+/** Whether every card of a precon is built, so a computer opponent can play all of it. */
+export function preconFullyBuilt(deck: PreconDeck): boolean {
+  return [deck.commander, ...deck.cards].every((c) => {
+    const id = CARD_IDS_BY_NAME[c.name];
+    return !!id && !CARD_DEFS[id]!.notBuilt;
+  });
+}
+
+/**
+ * Precons for computer opponents, chosen at random (user, 2026-11-23): `count`
+ * different fully built precons, leaving out `exclude` (by name); if there
+ * aren't enough, some repeat. `rng` returns a number in [0, 1).
+ */
+export function randomPrecons(count: number, rng: () => number, exclude: readonly string[] = []): PreconDeck[] {
+  const built = ALL_PRECONS.filter(preconFullyBuilt);
+  const pool = built.filter((d) => !exclude.includes(d.name));
+  const from = pool.length ? pool : built;
+  const left = [...from];
+  const out: PreconDeck[] = [];
+  for (let i = 0; i < count; i++) {
+    if (left.length === 0) left.push(...from);
+    out.push(left.splice(Math.floor(rng() * left.length), 1)[0]!);
+  }
+  return out;
+}
+
 /** Card ids by exact card name, for turning decklists into decks. */
 export const CARD_IDS_BY_NAME: Record<string, CardDefId> = Object.fromEntries(CARDS.map((c) => [c.name, c.id]));
 

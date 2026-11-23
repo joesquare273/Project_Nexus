@@ -22,6 +22,8 @@ import {
   triggerSpec,
   viewFor,
   type Action,
+  nextRandom,
+  seedToState,
   type CardDefId,
   type CardDefinition,
   type GameEvent,
@@ -31,7 +33,7 @@ import {
   type PlayerId,
   type Step,
 } from '@nexus/engine';
-import { CARD_DEFS, FIN_PRECONS, preconDeck, preconDeckWithCommander, starterKitDeck } from '@nexus/cards';
+import { CARD_DEFS, FIN_PRECONS, preconDeck, preconDeckWithCommander, randomPrecons, starterKitDeck } from '@nexus/cards';
 import type { GameDeck } from '@nexus/cards/decks';
 import { basicAi, planTaps, playableCards, randomBot, type Bot, type CardPlay } from '@nexus/bots';
 import type { CardMove } from '../components/Flights.tsx';
@@ -51,7 +53,7 @@ export interface SessionOptions {
   opponentNames?: string[];
   /** Starter Kit deck. */
   deck: DeckChoice;
-  /** Commander: your precon's name. Opponents get the others. */
+  /** Commander: your precon's name. Each opponent gets a different fully built precon, chosen at random from the seed. */
   precon?: string;
   /** Commander or constructed: your own saved deck (only decks the player owns, user rule 2026-10-30); opponents play the precons or the Starter Kits. */
   ownDeck?: GameDeck;
@@ -166,7 +168,7 @@ export class GameSession {
     }
     if (options.format === 'commander') {
       const mine = FIN_PRECONS.find((p) => p.name === options.precon) ?? FIN_PRECONS[0]!;
-      const others = options.ownDeck ? FIN_PRECONS : FIN_PRECONS.filter((p) => p !== mine);
+      const others = randomPrecons(this.opponents.length, seededRandom(options.seed), options.ownDeck ? [] : [mine.name]);
       const decks = [options.ownDeck ?? preconDeckWithCommander(mine.name, options.commander), ...others.map((p) => preconDeck(p.name))];
       const created = createGame({
         format: COMMANDER,
@@ -179,10 +181,13 @@ export class GameSession {
       this.narrate(created.events);
       return;
     }
-    // Constructed: your own 60-card deck against the Starter Kits.
-    const decks: Record<PlayerId, ReturnType<typeof starterKitDeck>> = { [YOU]: options.format === 'constructed' && options.ownDeck ? options.ownDeck.deck : starterKitDeck(options.deck) };
+    // Constructed: your own 60-card deck against the Starter Kits, each opponent's chosen at random;
+    // the Starter Kit practice game keeps the kit you didn't pick for the first opponent.
+    const ownDeck = options.format === 'constructed' && options.ownDeck;
+    const decks: Record<PlayerId, ReturnType<typeof starterKitDeck>> = { [YOU]: ownDeck ? ownDeck.deck : starterKitDeck(options.deck) };
+    const rng = seededRandom(options.seed);
     this.opponents.forEach((id, i) => {
-      decks[id] = starterKitDeck((options.deck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');
+      decks[id] = starterKitDeck(ownDeck ? (rng() < 0.5 ? 'RW' : 'UB') : (options.deck === 'RW') === (i % 2 === 0) ? 'UB' : 'RW');
     });
     const created = createGame({
       format: FREE_FOR_ALL,
@@ -491,4 +496,14 @@ export function touchedCards(events: GameEvent[]): Set<InstanceId> {
     }
   }
   return ids;
+}
+
+/** A seeded number generator in [0, 1) for choosing computer opponents' decks (a different stream from the game's own). */
+function seededRandom(seed: number): () => number {
+  let state = seedToState(seed + 0x5eed);
+  return () => {
+    const [n, next] = nextRandom(state);
+    state = next;
+    return n;
+  };
 }
