@@ -4315,6 +4315,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (spell && amount > 0) spell.extraEntryCounters = (spell.extraEntryCounters ?? 0) + amount;
       return;
     }
+    case 'ExileSubjectToPlay': {
+      const c = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+      if (!c || c.zone !== 'graveyard') return;
+      moveCard(ctx, c.id, 'exile');
+      if ((c.zone as string) === 'exile') c.playableFromExile = { player: c.owner, source, untilTurn: s.turnNumber, ...(effect.castOnly ? { castOnly: true } : {}) };
+      return;
+    }
+    case 'ShuffleChosenFromGraveyard': {
+      const yard = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
+      if (yard.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'shuffleIntoLibrary', cards: yard, min: 0, max: yard.length }];
+      return;
+    }
     case 'ClearEcho':
       for (const id of onBattlefield) delete s.cards[id]!.echoDue;
       return;
@@ -4884,6 +4896,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   } else if (pending.purpose === 'reanimate') {
     // Reserve the card until all opponents have chosen; all enter together afterwards.
+  } else if (pending.purpose === 'shuffleIntoLibrary') {
+    // Perpetual Timepiece: the chosen cards go into their owner's library, which is shuffled.
+    for (const id of cards) moveCard(ctx, id, 'library');
+    if (cards.length) shuffleInPlace(s, player(s, pending.player).library);
   } else if (pending.purpose === 'library') {
     const id = pending.cards[0]!;
     const c = s.cards[id]!;

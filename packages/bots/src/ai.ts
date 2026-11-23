@@ -585,6 +585,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   // Enter as a copy of the best creature on the battlefield, whoever controls it.
   if (p.purpose === 'copyOnEntry') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'library') return pick([]);
+  // Perpetual Timepiece: put everything back.
+  if (p.purpose === 'shuffleIntoLibrary') return pick([...p.cards]);
   // Buster Sword: the best free spell. Garnet: keep our Sagas' progress.
   if (p.purpose === 'castFree') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'removeLore') return pick([]);

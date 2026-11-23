@@ -180,6 +180,10 @@ function effectText(e: EffectSpec): string {
       return `exile cards from the top of your library until their total mana value is ${n} or more; cast any of the spells free`;
     case 'SpellEntersWithCounters':
       return `that creature enters with ${n} more +1/+1 counters`;
+    case 'ExileSubjectToPlay':
+      return 'exile that card; you may play it this turn';
+    case 'ShuffleChosenFromGraveyard':
+      return 'shuffle any number of cards from your graveyard into your library';
     case 'ClearEcho':
       return 'pay its echo';
     case 'PutSubjectCounters':
@@ -624,6 +628,7 @@ function triggerCondition(t: TriggerSpec): string {
     Draws: '',
     Discards: 'a player discards a card',
     LeavesGraveyard: 'leaves your graveyard',
+    ExiledFromLibraryOrGraveyard: 'cards are put into exile from your library or graveyard',
     PutIntoGraveyard: 'is put into a graveyard from anywhere but the battlefield',
     PutIntoGraveyardAnywhere: 'is put into a graveyard from anywhere',
     Blocks: 'blocks',

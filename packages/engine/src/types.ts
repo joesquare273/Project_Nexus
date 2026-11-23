@@ -532,6 +532,10 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** Exile the triggering card from its graveyard; its owner may play it this turn (`castOnly`: only cast it). Containment Construct, Conspiracy Theorist. */
+  'ExileSubjectToPlay',
+  /** Shuffle any number of cards chosen from your graveyard into your library (Perpetual Timepiece). */
+  'ShuffleChosenFromGraveyard',
   /** Echo was paid: it's no longer due. */
   'ClearEcho',
   /** "That creature enters with `amount` additional +1/+1 counters on it": the triggering spell, still on the stack (Wildgrowth Archaic). */
@@ -815,6 +819,8 @@ export const COUNT_KINDS = [
   'PlayersWithOneOrFewerCardsInHand',
   /** Artifact and/or creature cards in your graveyard (Lorehold Archivist). */
   'ArtifactOrCreatureCardsInYourGraveyard',
+  /** Times you've cast your commanders from the command zone this game (Vanguard of the Restless). */
+  'CommanderCastsFromCommandZone',
   /** Opponents who control more lands than you (Claim Jumper). */
   'OpponentsWithMoreLands',
   /** Opponents who have more cards in hand than you (Joined Researchers). */
@@ -1444,6 +1450,8 @@ export const TRIGGER_EVENTS = [
   'Discards',
   /** A card left a graveyard (subject: the card; its owner's graveyard). */
   'LeavesGraveyard',
+  /** A card is put into exile from your library or graveyard (Laelia, the Blade Reforged). */
+  'ExiledFromLibraryOrGraveyard',
   /** A card was put into a graveyard from anywhere other than the battlefield (subject: the card). */
   'PutIntoGraveyard',
   /** A card was put into a graveyard from anywhere, the battlefield included (subject: the card; Gitrog, Centaur Vinecrasher). */
@@ -3227,7 +3235,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

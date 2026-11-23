@@ -373,3 +373,73 @@ describe('SOC1c: Lorehold Spirit (Quintorius and friends)', () => {
     expect(powerOf(s, s.cards[rat]!)).toBe(2);
   });
 });
+
+describe('SOC1d: Lorehold Spirit (discard, exile and graveyard tricks)', () => {
+  /** P1 casts Faithless Looting and discards the first two cards it's offered. */
+  const loot = (s: GameState, discard: string[]) => {
+    const looting = put(s, 'P1', 'faithless-looting', 'hand');
+    mana(s, 'P1', { R: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: looting })).state;
+    while (s.pending.kind === 'chooseCards' && (s.pending as { purpose: string }).purpose === 'discard') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: discard }), { accept: true }).state;
+    return s;
+  };
+
+  it('Containment Construct: a discarded card may be exiled and played this turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'containment-construct');
+    const land = put(s, 'P1', 'forest', 'hand');
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    s = loot(s, [land, bolt]);
+    expect([s.cards[land]!.zone, s.cards[bolt]!.zone]).toEqual(['exile', 'exile']);
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === land)).toBe(true);
+  });
+
+  it('Conspiracy Theorist: pay {1} and discard as it attacks to draw; a discarded nonland card may be cast this turn', () => {
+    let s = newGame();
+    const theorist = put(s, 'P1', 'conspiracy-theorist', 'battlefield', { summoningSick: false });
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    s = goTo(s, 'declareAttackers');
+    mana(s, 'P1', { C: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: theorist, defender: 'P2' }] }), { accept: true }).state;
+    while (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [bolt] }), { accept: true }).state;
+    expect([s.players.P1!.hand.length, s.cards[bolt]!.zone]).toEqual([hand, 'exile']);
+    mana(s, 'P1', { R: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === bolt)).toBe(true);
+  });
+
+  it('Perpetual Timepiece mills two, and shuffles chosen graveyard cards back', () => {
+    let s = newGame();
+    const piece = put(s, 'P1', 'perpetual-timepiece');
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === piece && (a as { ability: number }).ability === 0)!).state;
+    const milled = [...s.players.P1!.graveyard];
+    expect(milled).toHaveLength(2);
+    mana(s, 'P1', { C: 2 });
+    s = settle(act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === piece && (a as { ability: number }).ability === 1)!)).state;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: milled })).state;
+    expect([s.cards[piece]!.zone, ...milled.map((id) => s.cards[id]!.zone)]).toEqual(['exile', 'library', 'library']);
+  });
+
+  it('Laelia exiles the top card to play as it attacks, and grows when cards are exiled from your library or graveyard', () => {
+    let s = newGame();
+    const laelia = put(s, 'P1', 'laelia-the-blade-reforged', 'battlefield', { summoningSick: false });
+    const top = s.players.P1!.library[0]!;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: laelia, defender: 'P2' }] })).state;
+    expect([s.cards[top]!.zone, s.cards[laelia]!.counters]).toEqual(['exile', 1]);
+  });
+
+  it('Vanguard of the Restless: Spirits get +1/+1 per commander cast; returns from your graveyard when a Spirit enters', () => {
+    const t = newGame();
+    put(t, 'P1', 'vanguard-of-the-restless');
+    const spirit = put(t, 'P1', 'spirit-token-soc');
+    t.players.P1!.commanderCasts = { someCommander: 2 };
+    expect(powerOf(t, t.cards[spirit]!)).toBe(5);
+    let s = newGame();
+    const vanguard = put(s, 'P1', 'vanguard-of-the-restless', 'graveyard');
+    const cleric = put(s, 'P1', 'remorseful-cleric', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cleric }, { accept: true }).state;
+    expect(s.cards[vanguard]!.zone).toBe('battlefield');
+  });
+});

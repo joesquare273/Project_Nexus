@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -322,9 +322,27 @@ New:
   zones.
 - "Target player or planeswalker" is AnyTarget with a planeswalker filter.
 
-Still to build in Lorehold Spirit (20): Excava, Augusta, Vanguard of the
-Restless, Advanced Reconstruction, Fateful Tempest, Spirit of Resilience, Ao,
-Guardian Scalelord, Serra Paragon, Sevinne's Reclamation, Skyclave
-Apparition, Conspiracy Theorist, Laelia, Hofri, Quintorius Loremaster,
-Venerable Warsinger, Bitterthorn, Containment Construct, Perpetual Timepiece
-and Study Hall.
+Still to build in Lorehold Spirit after SOC1c (20); SOC1d took five of them.
+
+## SOC1d: Lorehold Spirit, part four (built 2026-11-23)
+
+Containment Construct, Conspiracy Theorist, Perpetual Timepiece, Laelia, the
+Blade Reforged and Vanguard of the Restless.
+
+New:
+- The trigger `ExiledFromLibraryOrGraveyard` (Laelia).
+- `ExileSubjectToPlay`: the discarded card, playable this turn; with
+  `castOnly`, castable only.
+- `ShuffleChosenFromGraveyard`, with the `shuffleIntoLibrary` choice
+  (Perpetual Timepiece).
+- The count `CommanderCastsFromCommandZone` (Vanguard of the Restless).
+
+Simplifications:
+- Perpetual Timepiece's "target cards" are chosen as it resolves.
+- Conspiracy Theorist's "exile one of them" takes the first nonland card of
+  the discarded batch.
+
+Still to build in Lorehold Spirit (15): Excava, Augusta, Advanced
+Reconstruction, Fateful Tempest, Spirit of Resilience, Ao, Guardian
+Scalelord, Serra Paragon, Sevinne's Reclamation, Skyclave Apparition, Hofri,
+Quintorius Loremaster, Venerable Warsinger, Bitterthorn and Study Hall.

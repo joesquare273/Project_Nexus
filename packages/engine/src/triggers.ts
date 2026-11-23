@@ -117,6 +117,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         if (e.from === 'battlefield') out.push({ when: 'LeavesBattlefield', at, subject: e.card, subjectController: e.controller ?? e.owner, to: e.to });
         if (e.sacrificed) out.push({ when: 'Sacrificed', at, subject: e.card, subjectController: e.controller ?? e.owner });
         if (e.from === 'graveyard') out.push({ when: 'LeavesGraveyard', at, subject: e.card, subjectController: e.owner });
+        if (e.to === 'exile' && (e.from === 'library' || e.from === 'graveyard')) out.push({ when: 'ExiledFromLibraryOrGraveyard', at, subject: e.card, subjectController: e.owner });
         // "A card is put into a graveyard from anywhere other than the battlefield" (Syr Konrad).
         if (e.to === 'graveyard' && e.from !== 'battlefield' && e.from !== 'graveyard') out.push({ when: 'PutIntoGraveyard', at, subject: e.card, subjectController: e.owner, from: e.from });
         if (e.to === 'graveyard' && e.from !== 'graveyard') out.push({ when: 'PutIntoGraveyardAnywhere', at, subject: e.card, subjectController: e.owner, from: e.from });

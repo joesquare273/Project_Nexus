@@ -183,6 +183,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = creatures(player);
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
     }
+    case 'CommanderCastsFromCommandZone':
+      return Object.values(s.players[player]!.commanderCasts ?? {}).reduce((n, k) => n + k, 0);
     case 'PlayersWithOneOrFewerCardsInHand':
       return s.turnOrder.filter((pid) => !s.players[pid]!.eliminated && s.players[pid]!.hand.length <= 1).length;
     case 'ArtifactOrCreatureCardsInYourGraveyard':
