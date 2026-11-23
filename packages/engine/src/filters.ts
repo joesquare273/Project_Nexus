@@ -3,7 +3,7 @@
 // controls") and searches ("a Plains card").
 
 import { currentDefinition } from './cardface.ts';
-import { characteristics, subtypesOf, isEquipped, isModified, totalCounters } from './characteristics.ts';
+import { characteristics, powerOf, subtypesOf, isEquipped, isModified, totalCounters } from './characteristics.ts';
 import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
 import type { CardDefinition, CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
@@ -115,6 +115,7 @@ export function matchesObject(
   if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
   if (f.subtypeIsSourceChosenOption && !(from.source && s.cards[from.source]?.chosenOption && subtypesOf(s, obj).includes(s.cards[from.source]!.chosenOption!))) return false;
   if (f.manaValueAtMostSourceColorsSpent && objectManaValue(s, obj) > ((from.source ? s.cards[from.source]?.colorsSpentToCast : undefined) ?? 0)) return false;
+  if (f.manaValueAtMostSourcePower && objectManaValue(s, obj) > (from.source && s.cards[from.source]?.zone === 'battlefield' ? powerOf(s, s.cards[from.source]!) : 0)) return false;
   if (f.manaValueAtMostTriggerAmount && objectManaValue(s, obj) > (from.amount ?? 0)) return false;
   if (f.manaValueAtMostLifeGained && objectManaValue(s, obj) > (s.players[from.controller ?? '']?.lifeGainedThisTurn ?? 0)) return false;
   if (f.toughnessAtMostX && characteristics(s, obj).toughness > (from.x ?? 0)) return false;

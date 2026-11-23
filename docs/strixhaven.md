@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -380,6 +380,28 @@ New: `AllowCastFreeThisTurnThenBottom` and the spell flag `bottomAfter`: a
 spell cast that way goes to the bottom of its owner's library as it resolves
 (Quintorius Loremaster).
 
-Still to build in Lorehold Spirit (8): Augusta, Advanced Reconstruction,
-Fateful Tempest, Spirit of Resilience, Guardian Scalelord, Serra Paragon,
-Hofri and Study Hall.
+Still to build in Lorehold Spirit after SOC1f (8); SOC1g took three of them.
+
+## SOC1g: Lorehold Spirit, part seven (built 2026-11-23)
+
+Hofri, Ghostforge, Guardian Scalelord and Study Hall.
+
+- **Hofri:** exiles the dying card (`TriggeringCard`) and makes a token copy
+  of it. That target now also finds the card in exile, for `copyOfCard`. The
+  token is a Spirit as well (`copyAddSubtypes`) and has "when this token
+  leaves the battlefield, return the exiled card to its owner's graveyard"
+  (`copyReturnsExiledCard`, the token's `returnsExiledCard`,
+  `ReturnLinkedExiledCard`).
+- **Guardian Scalelord:** backup 1 is its enters trigger. It puts a counter
+  on the target; if that's another creature (`ifPreviousTargetNotSource`), the
+  creature gains flying and the attack trigger until end of turn. Granted
+  "whenever this creature attacks" triggers now work (GrantTrigger), and the
+  new filter `manaValueAtMostSourcePower` serves the attack trigger.
+- **Study Hall:** {C}, or {1}, {T} for any color. That colored mana, spent to
+  cast your commander, scries X, the times you've cast commanders from the
+  command zone (`scryOnCommanderCast`; the same mechanism as the
+  commander-type scry mana).
+
+Still to build in Lorehold Spirit (5): Augusta, Order Returned, Advanced
+Reconstruction (a Class), Fateful Tempest (council's dilemma voting), Spirit
+of Resilience (becomes a copy) and Serra Paragon.

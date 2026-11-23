@@ -545,3 +545,53 @@ describe('SOC1f: Lorehold Spirit (Bitterthorn, Excava, Quintorius Loremaster)', 
     expect([s.players.P2!.life, s.cards[bolt]!.zone, s.players.P1!.library.at(-1)]).toEqual([life - 3, 'library', bolt]);
   });
 });
+
+describe('SOC1g: Lorehold Spirit (Hofri, Guardian Scalelord, Study Hall)', () => {
+  it('Hofri: your dying nontoken creatures come back as Spirit token copies; when the token leaves, the card goes to the graveyard', () => {
+    let s = newGame();
+    put(s, 'P1', 'hofri-ghostforge');
+    const big = put(s, 'P1', 'hungry-graffalon'); // 3/4 Giraffe
+    const kill = put(s, 'P2', 'lightning-bolt', 'hand');
+    const kill2 = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.players.P2!.manaPool.R = 1;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s.cards[big]!.damage = 2;
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: kill, targets: [{ kind: 'card', card: big }] })).state;
+    expect(s.cards[big]!.zone).toBe('exile');
+    const token = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.isToken && c.defId !== 'spirit-token-soc')!;
+    expect(token).toBeDefined();
+    const d = s.cards[token.id]!;
+    expect([powerOf(s, d), hasKeyword(s, d, 'Trample'), hasKeyword(s, d, 'Haste')]).toEqual([4, true, true]);
+    // The token leaves: the card goes to its owner's graveyard.
+    s.players.P2!.manaPool.R = 1;
+    s.cards[token.id]!.damage = 3;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: kill2, targets: [{ kind: 'card', card: token.id }] })).state;
+    expect(s.cards[big]!.zone).toBe('graveyard');
+  });
+
+  it('Guardian Scalelord: backup 1 gives another creature a counter, flying and its attack trigger; returns permanents with mana value up to its power', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'hungry-graffalon', 'battlefield', { summoningSick: false }); // 3/4
+    const lord = put(s, 'P1', 'guardian-scalelord', 'hand');
+    const dead = put(s, 'P1', 'rank-rat', 'graveyard'); // MV 2
+    mana(s, 'P1', { W: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: lord }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === rat) ?? o[0]! }).state;
+    // Two counters: backup's, and Increment's (five mana spent on Scalelord is more than its power).
+    expect([s.cards[rat]!.counters, hasKeyword(s, s.cards[rat]!, 'Flying'), hasKeyword(s, s.cards[lord]!, 'Flying')]).toEqual([2, true, true]);
+    s = fight(s, [{ attacker: rat, defender: 'P2' }], {}, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === dead) ?? o[0]! }).state;
+    expect(s.cards[dead]!.zone).toBe('battlefield');
+  });
+
+  it('Study Hall: {C}, or {1} for any color; spent on your commander, scry X', () => {
+    let s = newGame();
+    const hall = put(s, 'P1', 'study-hall');
+    expect(getLegalActions(s).some((a) => a.type === 'ActivateManaAbility' && a.card === hall && (a as { mana: string }).mana === 'C')).toBe(true);
+    mana(s, 'P1', { C: 1 });
+    const paid = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === hall && (a as { output?: number }).output === 0);
+    expect(paid).toBeDefined();
+    s = act(s, paid!);
+    expect(s.players.P1!.manaPool.W).toBe(1);
+    expect(s.players.P1!.creatureScryMana?.[0]?.forCommander).toBe(true);
+  });
+});

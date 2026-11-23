@@ -490,7 +490,9 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       for (const unit of e.scryMana ?? []) {
         found.push({ source: unit.source, sourceObject: unit.sourceObject, controller: e.player,
           sourceZone: 'battlefield', ability: -1,
-          spec: { when: 'SpellCast', what: { controller: 'You', types: ['creature'] }, effects: [{ effect: 'Scry', target: 'You', amount: 1 }] },
+          spec: unit.forCommander
+            ? { when: 'SpellCast', what: { controller: 'You' }, effects: [{ effect: 'Scry', target: 'You', amount: { count: ['CommanderCastsFromCommandZone'] } }] }
+            : { when: 'SpellCast', what: { controller: 'You', types: ['creature'] }, effects: [{ effect: 'Scry', target: 'You', amount: 1 }] },
           subject: e.card });
       }
     }
@@ -578,6 +580,16 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       const m = moved.get(c.id);
       if (m?.entered !== undefined && m.entered > o.at) continue;
       consider(c, c.controller, 'battlefield', o);
+    }
+    // "Until end of turn, it gains 'Whenever this creature attacks, ...'" (backup: Guardian Scalelord).
+    if (o.when === 'Attacks') {
+      for (const t of s.temporaryEffects) {
+        if (t.trigger?.when !== 'Attacks') continue;
+        const c = s.cards[t.affected];
+        if (!c || c.zone !== 'battlefield' || c.phasedOut || s.players[c.controller]!.eliminated || !triggersOn(t.trigger, o, s, c.id, c.controller)) continue;
+        found.push({ spec: structuredClone(t.trigger), source: c.id, sourceObject: c.zoneChanges ?? 0, ability: -1, controller: c.controller, sourceZone: 'battlefield',
+          ...(o.defender ? { defender: o.defender } : {}), ...(o.subject ? { subject: o.subject } : {}) });
+      }
     }
     for (const c of leftBattlefield) {
       const m = moved.get(c.id)!;

@@ -188,6 +188,8 @@ function effectText(e: EffectSpec): string {
       return 'shuffle any number of cards from your graveyard into your library';
     case 'ExiledCardOwnersCreateSizedToken':
       return "the exiled card's owner creates an X/X token";
+    case 'ReturnLinkedExiledCard':
+      return "return the exiled card to its owner's graveyard";
     case 'ClearEcho':
       return 'pay its echo';
     case 'PutSubjectCounters':

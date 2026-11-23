@@ -879,6 +879,10 @@ export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: In
     if (defOf(ctx.s, c).manaAbility?.scryOnCommanderType) {
       p.creatureScryMana = [...(p.creatureScryMana ?? []), { mana, source, sourceObject: c.zoneChanges ?? 0 }];
     }
+    // Study Hall's "{1}, {T}: Add one mana of any color" (its {C} has no rider).
+    if (defOf(ctx.s, c).manaAbility?.scryOnCommanderCast && mana !== 'C') {
+      p.creatureScryMana = [...(p.creatureScryMana ?? []), { mana, source, sourceObject: c.zoneChanges ?? 0, forCommander: true }];
+    }
   }
   ctx.ev.push({ type: 'ManaAdded', player: playerId, mana, source });
 }

@@ -1582,7 +1582,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
   s.cards[id]!.colorsSpentToCast = colorsSpent;
   ctx.ev.push({ type: 'SpellCast', castFrom: from, player: playerId, card: id, defId: c.defId, targets, manaSpent, ...(c.faceDown ? { faceDown: faceDownCharacteristics(c).id } : {}),
-    ...(sharesCommanderType && spentScryMana.length ? { scryMana: spentScryMana } : {}),
+    ...((() => {
+      const units = [...(sharesCommanderType ? spentScryMana.filter((u) => !u.forCommander) : []), ...(c.isCommander ? spentScryMana.filter((u) => u.forCommander) : [])];
+      return units.length ? { scryMana: units } : {};
+    })()),
   });
   ctx.ev.push({ type: 'StackItemAdded', item: item.id, card: id });
 }
@@ -2128,7 +2131,9 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
         .map((id) => ({ kind: 'card' as const, card: id }));
     case 'TriggeringCard': {
       const subject = item.kind === 'ability' ? item.subject : undefined;
-      return subject && s.cards[subject]?.zone === 'graveyard' ? [{ kind: 'card', card: subject }] : [];
+      // A token copy of it once it's exiled (Hofri: "exile it. If you do, create a token that's a copy").
+      const zone = subject ? s.cards[subject]?.zone : undefined;
+      return subject && (zone === 'graveyard' || (effect.copyOfCard && zone === 'exile')) ? [{ kind: 'card', card: subject }] : [];
     }
     case 'ChosenCards':
       return (r.chosen?.at(-1)?.cards ?? []).filter((id) => s.cards[id]?.zone === 'battlefield').map((id) => ({ kind: 'card', card: id }));
@@ -3877,10 +3882,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           const token = createTokenCopy(ctx, id, tokenController, effect.equipCostsLess, effect.copyLegendary, (d) => {
             // Face Yourself: "except it has haste and 'At the beginning of the end step, if you don't control a planeswalker, sacrifice this token.'"
             if (effect.copyKeywords) d.keywords = [...new Set([...(d.keywords ?? []), ...effect.copyKeywords])];
+            if (effect.copyAddSubtypes) d.subtypes = [...new Set([...(d.subtypes ?? []), ...effect.copyAddSubtypes])];
+            if (effect.copyReturnsExiledCard) d.triggers = [...(d.triggers ?? []), { when: 'LeavesBattlefield', what: { self: true }, effects: [{ effect: 'ReturnLinkedExiledCard', target: 'You' }] }];
             if (effect.copySacrificeUnlessPlaneswalker) {
               d.triggers = [...(d.triggers ?? []), { when: 'EndStep', turn: 'Each', ifYouControlNone: { types: ['planeswalker'] }, effects: [{ effect: 'Sacrifice', target: 'You', amount: 1, filter: { self: true }, noChoice: true }] }];
             }
           });
+          if (effect.copyReturnsExiledCard && s.cards[id]?.zone === 'exile') s.cards[token]!.returnsExiledCard = id;
           if (effect.sacrificeAtEndStep) s.cards[token]!.sacrificeAtEndStep = true;
           // "At the beginning of your next end step": only the controller's.
           if (effect.sacrificeAtEndStep && effect.atYourEndStep) s.cards[token]!.sacrificeAtEndStepOf = item.controller;
@@ -4356,6 +4364,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'ReturnLinkedExiledCard': {
+      const linked = s.cards[source]?.returnsExiledCard;
+      if (linked && s.cards[linked]?.zone === 'exile') moveCard(ctx, linked, 'graveyard');
+      return;
+    }
     case 'ClearEcho':
       for (const id of onBattlefield) delete s.cards[id]!.echoDue;
       return;
@@ -4618,6 +4631,7 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifSubjectHadCounters && subjectAmount(s, item, 'subjectCounters') === 0) continue;
     if (effect.ifDrewThisWay && !r.drawnThisWay) continue;
     if (effect.ifDiscardedThisWay && !r.discardedThisWay) continue;
+    if (effect.ifPreviousTargetNotSource && (r.previousTarget?.kind !== 'card' || r.previousTarget.card === sourceOf(item))) continue;
     // Opus: the triggering spell's mana spent is the ability's amount.
     if (effect.unlessSubjectManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessSubjectManaSpentAtLeast) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;

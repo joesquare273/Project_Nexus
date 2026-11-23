@@ -363,7 +363,8 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
     if (!e.trigger) err('GrantTrigger needs a trigger.');
     else {
       validateTrigger(e.trigger, err);
-      if (!['CombatDamageToPlayer', 'Dies'].includes(e.trigger.when) || e.trigger.what) err('GrantTrigger supports self combat damage to a player, and "when this creature dies".');
+      const selfAttacks = e.trigger.when === 'Attacks' && e.trigger.what?.self && Object.keys(e.trigger.what).length === 1;
+      if (!selfAttacks && (!['CombatDamageToPlayer', 'Dies'].includes(e.trigger.when) || e.trigger.what)) err('GrantTrigger supports self combat damage to a player, "when this creature dies" and "whenever this creature attacks".');
     }
   }
   if (e.effect === 'GrantFlags' && !e.flags?.length) err('GrantFlags needs flags.');

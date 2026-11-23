@@ -532,6 +532,8 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** The card this token was copied from (`returnsExiledCard`) goes from exile to its owner's graveyard (Hofri's tokens). */
+  'ReturnLinkedExiledCard',
   /** Each card exiled with this source (Exile `exileLinked`): its owner creates the `token`, an X/X where X is that card's mana value (Skyclave Apparition). */
   'ExiledCardOwnersCreateSizedToken',
   /** Exile the triggering card from its graveyard; its owner may play it this turn (`castOnly`: only cast it). Containment Construct, Conspiracy Theorist. */
@@ -1242,6 +1244,8 @@ export interface EffectSpec {
   ifDrewThisWay?: boolean;
   /** Only if this spell or ability made you discard a card so far ("You may discard a card. If you do, ...": Quintorius, History Chaser). */
   ifDiscardedThisWay?: boolean;
+  /** Only if the previous target is another permanent, not the source (backup: "If that's another creature, it gains ..."). */
+  ifPreviousTargetNotSource?: boolean;
   /** CreateTokenCopy: of a card (in exile or a graveyard), not a permanent (Restore Relic: "Create a token that's a copy of it"). */
   copyOfCard?: boolean;
   /** SpellCast triggers: only happens if less than this much mana was spent ("if five or more mana was spent, ... instead": Opus). */
@@ -1353,6 +1357,10 @@ export interface EffectSpec {
   atRandom?: boolean;
   /** CreateTokenCopy: "At the beginning of the end step, if you don't control a planeswalker, sacrifice this token" (Face Yourself; `copyKeywords` gives it haste). */
   copySacrificeUnlessPlaneswalker?: boolean;
+  /** CreateTokenCopy: "except it's a [subtype] in addition to its other types" (Hofri: Spirit). */
+  copyAddSubtypes?: string[];
+  /** CreateTokenCopy of an exiled card: the token has "When this token leaves the battlefield, return the exiled card to its owner's graveyard" (Hofri). */
+  copyReturnsExiledCard?: boolean;
   /** CreateTokenCopy with a player target: a copy of each creature that player controls. */
   eachCreatureOfTarget?: boolean;
   /** GrantKeywords: the keyword chosen earlier in this resolution (ChooseKeyword). */
@@ -1578,6 +1586,8 @@ export interface ObjectFilter {
   manaValueAtMostLifeGained?: boolean;
   /** Mana value at most the triggering event's amount ("where X is the amount of damage this creature dealt to that player": Venerable Warsinger). */
   manaValueAtMostTriggerAmount?: boolean;
+  /** Mana value at most the source's power (Guardian Scalelord). */
+  manaValueAtMostSourcePower?: boolean;
   /** Mana value at most the colors of mana spent to cast the source (Sundering Archaic). */
   manaValueAtMostSourceColorsSpent?: boolean;
   /** Has the creature type chosen as the source entered (its chosen option: Patchwork Banner). */
@@ -2226,6 +2236,8 @@ export interface CardDefinition {
     commanderIdentity?: boolean;
     /** Spending this mana on a creature sharing a type with your commander causes scry 1. */
     scryOnCommanderType?: boolean;
+    /** Study Hall: colored mana from it, spent to cast your commander, scries X (times cast from the command zone). */
+    scryOnCommanderCast?: boolean;
     /** "Add one mana of any color that a land an opponent controls could produce." */
     opponentLandColors?: boolean;
     /** "Add one mana of any type that a land you control could produce." */
@@ -2746,6 +2758,8 @@ export interface CardInstance {
   colorsSpentToCast?: number;
   /** Echo: its echo cost is due at its controller's next upkeep. */
   echoDue?: boolean;
+  /** Hofri's token: the exiled card it was copied from, returned to its owner's graveyard when the token leaves. */
+  returnsExiledCard?: InstanceId;
   /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
   kicksPaid?: number;
   /** A card in a hand that was revealed ("reveal it and put it into your hand"): every player sees it until it leaves the hand. */
@@ -2839,6 +2853,8 @@ export interface CreatureScryMana {
   mana: ManaType;
   source: InstanceId;
   sourceObject: number;
+  /** Study Hall: spending it to cast your commander scries X (casts from the command zone), not the creature-type scry. */
+  forCommander?: true;
 }
 
 export interface PlayerState {
