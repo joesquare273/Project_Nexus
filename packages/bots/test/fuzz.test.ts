@@ -8,8 +8,9 @@ import { checkInvariants } from '../src/invariants.ts';
 // Kept small for everyday test runs; `npm run fuzz` plays thousands.
 const GAMES_PER_SIZE = 12;
 // Random bots take a while now that there are more choices (X values, foretell, mana while attacking);
-// twelve 4-player games take about five minutes on a slower machine, so the limit leaves room.
-const TIMEOUT_MS = 600_000;
+// twelve 4-player games took about ten minutes on the cloud machine (2026-11-23: 26-88 s each, the same
+// before and after that day's cards), so the limit leaves room.
+const TIMEOUT_MS = 1_200_000;
 
 function setup(players: number, seed: number, rngSeed: Seed = seed): GameSetup {
   return {

@@ -114,6 +114,11 @@ export function enterStep(ctx: Ctx, step: Step): void {
       for (const c of battlefield(s)) {
         if (c.controller === s.activePlayer && currentDefinition(s, c).saga) addCounters(ctx, c.id, 1, s.activePlayer, 'lore');
       }
+      // Paradigm: a copy of each paradigm card in exile may be cast free this turn (simplified from "at the beginning of your first main phase").
+      for (const id of s.players[s.activePlayer]!.paradigms ?? []) {
+        const c = s.cards[id];
+        if (c?.zone === 'exile') c.castPermission = { player: s.activePlayer, turn: s.turnNumber, free: true, exileAfter: true, asCopy: true };
+      }
       givePriority(ctx, s.activePlayer);
       return;
     case 'upkeep':

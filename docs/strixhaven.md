@@ -110,7 +110,7 @@ drawn pack shows.
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
 | SOS4 | Repartee and Infusion (24): SOS4a Repartee (12), SOS4b Infusion (12) | Done (2026-11-21) |
-| SOS5 | Paradigm and Converge (14): SOS5a Converge (9) done 2026-11-23; SOS5b Paradigm (5) | In progress |
+| SOS5 | Paradigm and Converge (14): SOS5a Converge (9), SOS5b Paradigm (5) | Done (2026-11-23) |
 | SOS6+ | The rest, by color, then multicolor, artifacts and legends | |
 
 ## SOS1: lands (built 2026-11-20)
@@ -254,3 +254,18 @@ public), the amounts `colorsSpent` and `subjectColorsSpent`,
 `SpellEntersWithCounters` (Wildgrowth Archaic gives the triggering creature
 spell extra counters). Magmablood and Wildgrowth Archaic use monocolored
 hybrid costs ({2/R}, {2/G}).
+
+## SOS5b: Paradigm (built 2026-11-23)
+
+Restoration Seminar, Echocasting Symposium, Decorum Dissertation,
+Improvisation Capstone and Germination Practicum. A `paradigm` spell is
+exiled as it resolves; the first one of each name its controller resolves is
+recorded (`PlayerState.paradigms`, public), and at the beginning of each of
+their first main phases that card may be cast as a copy, free
+(`castPermission` with `asCopy` and `exileAfter`: the card stays in exile).
+See decisions.md for the timing simplification.
+
+New: CreateTokenCopy `from` (Echocasting Symposium: the copy goes to the
+player chosen for that target) and `ExileUntilManaValueCastFree`
+(Improvisation Capstone: the spells among the exiled cards are castable free
+right away, before passing priority).

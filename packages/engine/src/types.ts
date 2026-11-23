@@ -323,6 +323,8 @@ export const EFFECT_KINDS = [
   'CreateToken',
   /** Create a token that's a copy of the target permanent. */
   'CreateTokenCopy',
+  /** "Exile cards from the top of your library until you exile cards with total mana value `amount` or greater. You may cast any number of spells from among them without paying their mana costs" (Improvisation Capstone): cast right away, before passing priority. */
+  'ExileUntilManaValueCastFree',
   /**
    * Myriad (rule 702.116): for each opponent other than the defending player, a
    * token copy of the attacking creature enters tapped and attacking that player,
@@ -2456,6 +2458,12 @@ export interface CardDefinition {
   sunburst?: boolean;
   /** Rebound (rule 702.88): cast from your hand, it's exiled as it resolves and can be cast free during your next turn. */
   rebound?: boolean;
+  /**
+   * Paradigm (Secrets of Strixhaven): as it resolves, the spell is exiled. After its controller first
+   * resolves a spell with this name, they may cast a copy of it from exile without paying its mana
+   * cost at the beginning of each of their first main phases (`PlayerState.paradigms`).
+   */
+  paradigm?: boolean;
   /** Unearth cost (rule 702.84): an ability that works from the graveyard. */
   unearth?: string;
   /** "This creature enters with N +1/+1 counters on it." */
@@ -2877,6 +2885,8 @@ export interface PlayerState {
   noncreatureSpellsThisTurn?: number;
   /** Instant and sorcery spells this player has cast this turn. */
   instantOrSorcerySpellsThisTurn?: number;
+  /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */
+  paradigms?: InstanceId[];
   /** Summon: Brynhildr: "when you next cast a creature spell this turn, it gains haste until end of turn" (the turn). */
   nextCreatureHasteTurn?: number;
   /** Legendary creature spells cast this turn (Serah Farron's discount). */

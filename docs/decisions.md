@@ -677,3 +677,13 @@ decks once their cards are built. In 60-card games with your own deck, each
 bot gets one of the two Starter Kits at random. The Starter Kit practice game
 and the tutorial keep their fixed decks. Local games choose from the game's
 seed (a separate stream); online tables from crypto.randomBytes.
+
+## 2026-11-23: Paradigm's copy (simplified timing)
+
+Paradigm says "you may cast a copy of it from exile without paying its mana
+cost at the beginning of each of your first main phases": a trigger, with the
+copy cast as it resolves. Here, as your first main phase begins, the exiled
+card gets a free cast-as-copy permission that lasts the turn at sorcery
+timing (the same simplification as rebound): you can cast it in either main
+phase, once, and the card stays in exile. Copies of a Paradigm spell aren't
+recorded again.

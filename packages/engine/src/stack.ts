@@ -2911,6 +2911,17 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of library.slice(0, Math.max(0, library.length - 1))) moveCard(ctx, id, 'exile');
       }
       return;
+    case 'ExileUntilManaValueCastFree': {
+      let total = 0;
+      for (const id of [...player(s, item.controller).library]) {
+        if (total >= amount) break;
+        moveCard(ctx, id, 'exile');
+        const c = s.cards[id]!;
+        total += objectManaValue(s, c);
+        if (c.zone === 'exile' && isSpellCard(defOf(s, c))) c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true };
+      }
+      return;
+    }
     case 'ExileToCastCopyWithBudget':
       for (const id of cards) {
         if (s.cards[id]?.zone !== 'graveyard') continue;
@@ -3836,7 +3847,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // "For each creature target player controls, create a token that's a copy of that creature" (Face Yourself).
       for (const id of effect.eachCreatureOfTarget ? battlefield(s).filter((c) => !c.phasedOut && targetPlayers(targets).includes(c.controller) && isCreatureOnBattlefield(s, c)).map((c) => c.id) : onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
-          const token = createTokenCopy(ctx, id, item.controller, effect.equipCostsLess, effect.copyLegendary, (d) => {
+          // "Target player creates a token that's a copy of ..." (Echocasting Symposium): the player chosen for target `from`.
+          const fromPlayer = effect.from !== undefined ? item.targets[effect.from] : undefined;
+          const tokenController = fromPlayer?.kind === 'player' ? fromPlayer.player : item.controller;
+          const token = createTokenCopy(ctx, id, tokenController, effect.equipCostsLess, effect.copyLegendary, (d) => {
             // Face Yourself: "except it has haste and 'At the beginning of the end step, if you don't control a planeswalker, sacrifice this token.'"
             if (effect.copyKeywords) d.keywords = [...new Set([...(d.keywords ?? []), ...effect.copyKeywords])];
             if (effect.copySacrificeUnlessPlaneswalker) {
@@ -4425,6 +4439,12 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
     if (item.adventure && resolved) {
       moveCard(ctx, item.card, 'exile');
       c.adventurer = item.controller;
+    } else if (defOf(s, c).paradigm && resolved && !item.asTokenCopy && !item.exileAfter) {
+      // Paradigm: exiled; the first card with this name gives its controller a copy each first main phase.
+      moveCard(ctx, item.card, 'exile');
+      const p = s.players[item.controller]!;
+      const name = defOf(s, c).name;
+      if (c.zone === 'exile' && !(p.paradigms ?? []).some((id) => s.cards[id] && defOf(s, s.cards[id]!).name === name)) p.paradigms = [...(p.paradigms ?? []), item.card];
     } else if (item.flashback || item.exileAfter || defOf(s, c).exileOnResolve) moveCard(ctx, item.card, 'exile');
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.

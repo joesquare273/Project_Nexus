@@ -1092,3 +1092,83 @@ describe('SOS5a: Converge', () => {
     expect(s.cards[rancor]!.counters).toBe(4);
   });
 });
+
+describe('SOS5b: Paradigm', () => {
+  /** Ends P1's turn and P2's, stopping in P1's next first main phase. */
+  const nextOwnMain = (s: GameState) => {
+    for (let i = 0; i < 2; i++) {
+      s = settle(goTo(s, 'end')).state;
+      s = settle(goTo(s, 'main1')).state;
+    }
+    expect(s.activePlayer).toBe('P1');
+    return s;
+  };
+
+  it('Germination Practicum is exiled; a free copy each of your first main phases, and the card stays in exile', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const lesson = put(s, 'P1', 'germination-practicum', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: lesson }).state;
+    expect([s.cards[rat]!.counters, s.cards[lesson]!.zone, s.players.P1!.paradigms]).toEqual([2, 'exile', [lesson]]);
+    // Not castable again this turn.
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === lesson)).toBe(false);
+    s = nextOwnMain(s);
+    const copy = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === lesson)!;
+    expect(copy).toBeDefined();
+    s = cast(s, copy).state;
+    expect([s.cards[rat]!.counters, s.cards[lesson]!.zone]).toEqual([4, 'exile']);
+    // Once per first main phase.
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === lesson)).toBe(false);
+    s = nextOwnMain(s);
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === lesson)!).state;
+    expect(s.cards[rat]!.counters).toBe(6);
+  });
+
+  it('a second card with the same name is exiled too, but gives no second copy', () => {
+    let s = newGame();
+    const first = put(s, 'P1', 'germination-practicum', 'hand');
+    const second = put(s, 'P1', 'germination-practicum', 'hand');
+    for (const id of [first, second]) {
+      mana(s, 'P1', { G: 2, C: 3 });
+      s = cast(s, { type: 'CastSpell', player: 'P1', card: id }).state;
+    }
+    expect([s.cards[second]!.zone, s.players.P1!.paradigms]).toEqual(['exile', [first]]);
+  });
+
+  it('Restoration Seminar, Decorum Dissertation, Echocasting Symposium', () => {
+    let s = newGame();
+    const dead = put(s, 'P1', 'hungry-graffalon', 'graveyard');
+    const seminar = put(s, 'P1', 'restoration-seminar', 'hand');
+    mana(s, 'P1', { W: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: seminar, targets: [{ kind: 'card', card: dead }] }).state;
+    expect(s.cards[dead]!.zone).toBe('battlefield');
+    const diss = put(s, 'P1', 'decorum-dissertation', 'hand');
+    mana(s, 'P1', { B: 2, C: 3 });
+    const hand = s.players.P2!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: diss, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect([s.players.P2!.hand.length, s.players.P2!.life]).toEqual([hand + 2, 18]);
+    const echo = put(s, 'P1', 'echocasting-symposium', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: echo, targets: [{ kind: 'player', player: 'P2' }, { kind: 'card', card: dead }] }).state;
+    const copies = s.players.P2!.battlefield.map((id) => s.cards[id]!).filter((c) => c.defId === 'hungry-graffalon');
+    expect(copies.map((c) => [c.isToken, c.controller])).toEqual([[true, 'P2']]);
+  });
+
+  it('Improvisation Capstone exiles until total mana value 4 and lets you cast those spells free', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    // Each card put into the library goes on top: the last one is the top card.
+    const left = put(s, 'P1', 'island', 'library');
+    const graff = put(s, 'P1', 'hungry-graffalon', 'library');
+    const rat = put(s, 'P1', 'rank-rat', 'library');
+    const land = put(s, 'P1', 'forest', 'library');
+    const capstone = put(s, 'P1', 'improvisation-capstone', 'hand');
+    mana(s, 'P1', { R: 2, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: capstone }).state;
+    expect([land, rat, graff, left].map((id) => s.cards[id]!.zone)).toEqual(['exile', 'exile', 'exile', 'library']);
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === land)).toBe(false);
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === graff)!).state;
+    expect(s.cards[graff]!.zone).toBe('battlefield');
+  });
+});

@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Secrets of Strixhaven SOS5b: Paradigm (2026-11-23)
+
+- The Paradigm mechanic and its 5 Lessons; see decisions.md for the timing. docs/strixhaven.md.
+- The 4-player random-bot fuzz test passed its 10-minute limit (about 617 s alone; the same games took as long before these cards), so its limit is now 20 minutes.
+
 ### Secrets of Strixhaven SOS5a: Converge (2026-11-23)
 
 - 9 Converge cards; every spell now records the colors spent to cast it. docs/strixhaven.md.
