@@ -3858,7 +3858,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'CreateTokenCopy':
       // "For each creature target player controls, create a token that's a copy of that creature" (Face Yourself).
-      for (const id of effect.eachCreatureOfTarget ? battlefield(s).filter((c) => !c.phasedOut && targetPlayers(targets).includes(c.controller) && isCreatureOnBattlefield(s, c)).map((c) => c.id) : onBattlefield) {
+      for (const id of effect.copyOfCard ? cards : effect.eachCreatureOfTarget ? battlefield(s).filter((c) => !c.phasedOut && targetPlayers(targets).includes(c.controller) && isCreatureOnBattlefield(s, c)).map((c) => c.id) : onBattlefield) {
         for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
           // "Target player creates a token that's a copy of ..." (Echocasting Symposium): the player chosen for target `from`.
           const fromPlayer = effect.from !== undefined ? item.targets[effect.from] : undefined;
@@ -4571,6 +4571,7 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifSubjectManaSpentOverSourcePowerOrToughness && (item.kind !== 'ability' || !manaSpentOverPowerOrToughness(s, item.source, item.amount ?? 0))) continue;
     if (effect.ifSubjectHadCounters && subjectAmount(s, item, 'subjectCounters') === 0) continue;
     if (effect.ifDrewThisWay && !r.drawnThisWay) continue;
+    if (effect.ifDiscardedThisWay && !r.discardedThisWay) continue;
     // Opus: the triggering spell's mana spent is the ability's amount.
     if (effect.unlessSubjectManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessSubjectManaSpentAtLeast) continue;
     if (effect.ifLifeAtMostHalfStarting && s.players[item.controller]!.life > s.format.startingLife / 2) continue;
@@ -4914,6 +4915,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   } else if (pending.purpose === 'discard') {
     const nonland = cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
+    r.discardedThisWay = (r.discardedThisWay ?? 0) + cards.length;
     r.nonlandDiscarded = { ...r.nonlandDiscarded, [pending.player]: (r.nonlandDiscarded?.[pending.player] ?? 0) + nonland };
     for (const id of cards) discard(ctx, id);
     if (r.conniving) {

@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -303,3 +303,28 @@ New:
 
 Guardian of Faith's "any number of other target creatures" is chosen as the
 trigger resolves rather than targeted.
+
+## SOC1c: Lorehold Spirit, part three (built 2026-11-23)
+
+Quintorius, History Chaser (the deck's commander, a planeswalker), Naktamun
+Lorespinner (Wheel of Fortune), Lorehold Archivist (Restore Relic), Balefire
+Liege ({R/W} hybrid) and Patchwork Banner.
+
+New:
+- `ifDiscardedThisWay`, with the resolution's discard count: "You may
+  discard a card. If you do, ...".
+- The counts `PlayersWithOneOrFewerCardsInHand` and
+  `ArtifactOrCreatureCardsInYourGraveyard`.
+- CreateTokenCopy `copyOfCard`: a copy of a card in exile, for Restore
+  Relic.
+- `chooseCreatureTypeAsEnters` with the filter `subtypeIsSourceChosenOption`
+  (Patchwork Banner). The options are the creature types of cards in public
+  zones.
+- "Target player or planeswalker" is AnyTarget with a planeswalker filter.
+
+Still to build in Lorehold Spirit (20): Excava, Augusta, Vanguard of the
+Restless, Advanced Reconstruction, Fateful Tempest, Spirit of Resilience, Ao,
+Guardian Scalelord, Serra Paragon, Sevinne's Reclamation, Skyclave
+Apparition, Conspiracy Theorist, Laelia, Hofri, Quintorius Loremaster,
+Venerable Warsinger, Bitterthorn, Containment Construct, Perpetual Timepiece
+and Study Hall.

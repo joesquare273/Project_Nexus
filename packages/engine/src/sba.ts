@@ -338,9 +338,9 @@ function checkCardTypeChoice(ctx: Ctx): boolean {
 function checkOptionChoice(ctx: Ctx): boolean {
   const s = ctx.s;
   if (s.pending.kind === 'chooseOption' || s.pending.kind === 'gameOver') return s.pending.kind === 'chooseOption';
-  const c = battlefield(s).find((x) => !x.chosenOption && !x.phasedOut && (defOf(s, x).chooseOptionAsEnters?.length || defOf(s, x).chooseLandNameAsEnters));
+  const c = battlefield(s).find((x) => !x.chosenOption && !x.phasedOut && (defOf(s, x).chooseOptionAsEnters?.length || defOf(s, x).chooseLandNameAsEnters || defOf(s, x).chooseCreatureTypeAsEnters));
   if (!c) return false;
-  const options = defOf(s, c).chooseOptionAsEnters ?? landNames(s);
+  const options = defOf(s, c).chooseOptionAsEnters ?? (defOf(s, c).chooseCreatureTypeAsEnters ? publicCreatureTypes(s) : landNames(s));
   s.pending = { kind: 'chooseOption', player: c.controller, card: c.id, options: [...options], resume: s.pending };
   return true;
 }
@@ -513,4 +513,18 @@ export function stabilize(ctx: Ctx, opts: { holdTriggers?: boolean } = {}): void
     return;
   }
   throw new Error('stabilize did not settle');
+}
+
+/**
+ * Creature types to choose from (Patchwork Banner): those of the cards in public zones (commanders included),
+ * so the choice shows no hidden cards; Human when there are none.
+ */
+function publicCreatureTypes(s: GameState): string[] {
+  const types = new Set<string>();
+  for (const c of Object.values(s.cards)) {
+    if (!['battlefield', 'graveyard', 'exile', 'command'].includes(c.zone) || c.faceDown) continue;
+    const def = defOf(s, c);
+    if (def.types.includes('creature')) for (const t of def.subtypes ?? []) types.add(t);
+  }
+  return types.size ? [...types].sort() : ['Human'];
 }

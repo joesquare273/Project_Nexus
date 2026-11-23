@@ -183,6 +183,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = creatures(player);
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && creatures(pid) > mine).length;
     }
+    case 'PlayersWithOneOrFewerCardsInHand':
+      return s.turnOrder.filter((pid) => !s.players[pid]!.eliminated && s.players[pid]!.hand.length <= 1).length;
+    case 'ArtifactOrCreatureCardsInYourGraveyard':
+      return s.players[player]!.graveyard.filter((id) => { const t = def(s, s.cards[id]!).types; return t.includes('artifact') || t.includes('creature'); }).length;
     case 'OpponentsWithMoreLands': {
       const lands = (pid: PlayerId) => battlefieldCards(s).filter((c) => c.controller === pid && def(s, c).types.includes('land')).length;
       const mine = lands(player);

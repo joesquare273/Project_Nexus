@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC1c: Lorehold Spirit, part three (2026-11-23)
+
+- 5 cards including the commander, Quintorius, History Chaser. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC1b: Lorehold Spirit, part two (2026-11-23)
 
 - 12 cards; Echo and declined-cost effects on triggers. docs/strixhaven.md.

@@ -283,3 +283,93 @@ describe('SOC1b: Lorehold Spirit (recursion and creatures)', () => {
     expect(s.players.P1!.battlefield.filter((id) => s.cards[id]!.defId === 'plains')).toHaveLength(2);
   });
 });
+
+describe('SOC1c: Lorehold Spirit (Quintorius and friends)', () => {
+  const copyOf = (s: GameState, creature: string) => Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === creature);
+
+  it('Quintorius, History Chaser: Spirits when cards leave your graveyard; +1 discards to draw two; −4 Spirits get double strike', () => {
+    let s = newGame();
+    const q = put(s, 'P1', 'quintorius-history-chaser', 'hand');
+    mana(s, 'P1', { R: 1, W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: q }).state;
+    expect(s.cards[q]!.namedCounters?.loyalty).toBe(5);
+    // +1: discarding draws two and mills one; declining does nothing else.
+    const fodder = put(s, 'P1', 'island', 'hand');
+    const hand = s.players.P1!.hand.length;
+    s = settle(act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === q && (a as { ability: number }).ability === 0)!)).state;
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [fodder] })).state;
+    expect([s.players.P1!.hand.length, s.cards[fodder]!.zone, s.cards[q]!.namedCounters?.loyalty]).toEqual([hand + 1, 'graveyard', 6]);
+    // A card leaving your graveyard: a 3/2 Spirit.
+    const cleric = put(s, 'P1', 'remorseful-cleric');
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === cleric && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P1')!).state;
+    const spirit = s.players.P1!.battlefield.find((id) => s.cards[id]!.defId === 'spirit-token-soc')!;
+    expect(spirit).toBeDefined();
+    let u = newGame();
+    const q2 = put(u, 'P1', 'quintorius-history-chaser', 'battlefield', { namedCounters: { loyalty: 5 } });
+    const sp = put(u, 'P1', 'remorseful-cleric');
+    u = cast(u, getLegalActions(u).find((a) => a.type === 'ActivateAbility' && a.card === q2 && (a as { ability: number }).ability === 1)!).state;
+    expect([hasKeyword(u, u.cards[sp]!, 'DoubleStrike'), hasKeyword(u, u.cards[sp]!, 'Vigilance')]).toEqual([true, true]);
+  });
+
+  it('Naktamun Lorespinner: prepared at upkeep if a player has one or fewer cards; Wheel of Fortune', () => {
+    let s = newGame();
+    const nak = put(s, 'P1', 'naktamun-lorespinner-wheel-of-fortune');
+    s.players.P2!.hand = [];
+    for (let i = 0; i < 2; i++) put(s, 'P1', 'island', 'hand');
+    s = settle(goTo(s, 'end')).state;
+    while (!(s.activePlayer === 'P1' && s.step === 'upkeep')) s = nextStep(s);
+    s.players.P2!.hand = [];
+    s = settle(s).state;
+    expect(s.cards[nak]!.prepared).toBe(true);
+    s = settle(goTo(s, 'main1')).state;
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === copyOf(s, nak)?.id)!).state;
+    expect([s.players.P1!.hand.length, s.players.P2!.hand.length]).toEqual([7, 7]);
+  });
+
+  it('Lorehold Archivist: Restore Relic exiles an artifact or creature card and makes a token copy of it', () => {
+    let s = newGame();
+    const arch = put(s, 'P1', 'lorehold-archivist-restore-relic');
+    const dead = put(s, 'P1', 'hungry-graffalon', 'graveyard');
+    // Prepared by its own rule: three or more artifact and/or creature cards at upkeep.
+    put(s, 'P1', 'rank-rat', 'graveyard');
+    put(s, 'P1', 'rank-rat', 'graveyard');
+    s = settle(goTo(s, 'end')).state;
+    while (!(s.activePlayer === 'P1' && s.step === 'upkeep')) s = nextStep(s);
+    s = settle(s).state;
+    expect(s.cards[arch]!.prepared).toBe(true);
+    s = settle(goTo(s, 'main1')).state;
+    mana(s, 'P1', { R: 1, W: 1, C: 2 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === copyOf(s, arch)?.id && a.targets?.[0]?.kind === 'card' && a.targets[0].card === dead)!).state;
+    const token = s.players.P1!.battlefield.map((id) => s.cards[id]!).find((c) => c.isToken && c.defId !== 'spirit-token-soc');
+    expect([s.cards[dead]!.zone, token && powerOf(s, token)]).toEqual(['exile', 3]);
+  });
+
+  it('Balefire Liege: hybrid cost; pumps your other red and white creatures; red spells shock, white spells gain life', () => {
+    let s = newGame();
+    const liege = put(s, 'P1', 'balefire-liege', 'hand');
+    mana(s, 'P1', { R: 2, W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: liege }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2') ?? o[0]! }).state;
+    expect(s.cards[liege]!.zone).toBe('battlefield');
+    const rw = put(s, 'P1', 'spirit-token-soc');
+    expect(powerOf(s, s.cards[rw]!)).toBe(5);
+    const bolt = put(s, 'P1', 'lightning-bolt', 'hand');
+    mana(s, 'P1', { R: 1 });
+    const life = s.players.P2!.life;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [{ kind: 'player', player: 'P2' }] }, { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2')! }).state;
+    expect(s.players.P2!.life).toBe(life - 6);
+  });
+
+  it('Patchwork Banner: choose a creature type; those creatures you control get +1/+1; taps for any color', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const banner = put(s, 'P1', 'patchwork-banner', 'hand');
+    mana(s, 'P1', { C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: banner });
+    s = settle(s).state;
+    expect(s.pending.kind).toBe('chooseOption');
+    expect((s.pending as { options: string[] }).options).toContain('Rat');
+    s = act(s, { type: 'ChooseOption', player: 'P1', option: 'Rat' });
+    expect(powerOf(s, s.cards[rat]!)).toBe(2);
+  });
+});

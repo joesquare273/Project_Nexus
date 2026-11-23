@@ -811,6 +811,10 @@ export const COUNT_KINDS = [
   'NontokenCreaturesYouControlThatEnteredThisTurn',
   /** Opponents who control more creatures than you. */
   'OpponentsWithMoreCreatures',
+  /** Players (you included) with one or fewer cards in hand (Naktamun Lorespinner). */
+  'PlayersWithOneOrFewerCardsInHand',
+  /** Artifact and/or creature cards in your graveyard (Lorehold Archivist). */
+  'ArtifactOrCreatureCardsInYourGraveyard',
   /** Opponents who control more lands than you (Claim Jumper). */
   'OpponentsWithMoreLands',
   /** Opponents who have more cards in hand than you (Joined Researchers). */
@@ -1222,6 +1226,10 @@ export interface EffectSpec {
   ifSubjectHadCounters?: boolean;
   /** Only if this spell or ability has drawn one or more cards so far ("If you draw one or more cards this way": Transcendent Archaic). */
   ifDrewThisWay?: boolean;
+  /** Only if this spell or ability made you discard a card so far ("You may discard a card. If you do, ...": Quintorius, History Chaser). */
+  ifDiscardedThisWay?: boolean;
+  /** CreateTokenCopy: of a card (in exile or a graveyard), not a permanent (Restore Relic: "Create a token that's a copy of it"). */
+  copyOfCard?: boolean;
   /** SpellCast triggers: only happens if less than this much mana was spent ("if five or more mana was spent, ... instead": Opus). */
   unlessSubjectManaSpentAtLeast?: number;
   /** Converge: only targets with mana value at most the colors spent on this spell (Prismatic Ending). */
@@ -1554,6 +1562,8 @@ export interface ObjectFilter {
   manaValueAtMostLifeGained?: boolean;
   /** Mana value at most the colors of mana spent to cast the source (Sundering Archaic). */
   manaValueAtMostSourceColorsSpent?: boolean;
+  /** Has the creature type chosen as the source entered (its chosen option: Patchwork Banner). */
+  subtypeIsSourceChosenOption?: boolean;
   /** Toughness X or less, X being the spell's (Zero Point Ballad). */
   toughnessAtMostX?: boolean;
   /** Odd or even mana value (Mutinous Massacre; zero is even). */
@@ -2440,6 +2450,8 @@ export interface CardDefinition {
   chooseOptionAsEnters?: string[];
   /** "Choose a land card name" as this enters (Petrified Hamlet): the name is its chosen option. Offered: the basic land names and the land cards in public zones (everyone sees the options, so not hands or libraries). */
   chooseLandNameAsEnters?: boolean;
+  /** "As this enters, choose a creature type" (Patchwork Banner): its chosen option; the creature types on the battlefield and in the deck's cards, or any other. */
+  chooseCreatureTypeAsEnters?: boolean;
   /** entersAsCopy: the copy lasts until end of turn, and it has haste (Cursed Mirror). */
   entersAsCopyUntilEndOfTurn?: boolean;
   /** Kicker cost (rule 702.33): pay it once as you cast the spell for an extra effect (`if: 'kicked'`). */
@@ -3172,6 +3184,8 @@ export interface Resolving {
   /** Life players lost to this spell or ability's effects so far. */
   lifeLostThisWay?: number;
   drawnThisWay?: number;
+  /** Cards discarded to this spell or ability so far. */
+  discardedThisWay?: number;
   /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
   castBudget?: string;
   /** The mana value of the card RevealUntil found. */
