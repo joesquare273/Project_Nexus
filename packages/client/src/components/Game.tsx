@@ -1575,6 +1575,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'amass' ? 'to amass onto (it gets the +1/+1 counters)'
                   : c.purpose === 'exiledToGraveyard' ? "to put into its owner's graveyard"
                   : c.purpose === 'shuffleIntoLibrary' ? 'to shuffle into your library'
+                  : c.purpose === 'copyCard' ? 'for it to become a copy of until end of turn (or none)'
                   : c.purpose === 'manifestDread' ? 'to manifest (put onto the battlefield face down as a 2/2); the other goes into your graveyard'
                   : c.purpose === 'hideaway' ? 'to exile face down (hideaway); the rest go on the bottom of your library in a random order'
                   : c.purpose === 'keepVow' ? 'to keep with a vow counter; the others are sacrificed'

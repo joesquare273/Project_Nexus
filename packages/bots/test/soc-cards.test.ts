@@ -1,7 +1,7 @@
 // The Secrets of Strixhaven Commander decks (SOC), built deck by deck (docs/strixhaven.md).
 
 import { describe, expect, it } from 'vitest';
-import { getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
+import { currentDefinition, getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -595,3 +595,56 @@ describe('SOC1g: Lorehold Spirit (Hofri, Guardian Scalelord, Study Hall)', () =>
     expect(s.players.P1!.creatureScryMana?.[0]?.forCommander).toBe(true);
   });
 });
+
+describe('SOC1h: Lorehold Spirit (Augusta, Spirit of Resilience, Serra Paragon)', () => {
+  it('Augusta: each player exiles a graveyard card; counters on an attacking creature for each nonland card exiled', () => {
+    let s = newGame();
+    const augusta = put(s, 'P1', 'augusta-order-returned', 'battlefield', { summoningSick: false });
+    const mine = put(s, 'P1', 'rank-rat', 'graveyard');
+    const theirs = put(s, 'P2', 'lightning-bolt', 'graveyard');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: augusta, defender: 'P2' }] })).state;
+    for (let i = 0; i < 4 && s.pending.kind === 'chooseCards'; i++) {
+      const p = s.pending as { player: string; cards: string[] };
+      s = settle(act(s, { type: 'ChooseCards', player: p.player as 'P1', cards: [p.cards[0]!] })).state;
+    }
+    expect([s.cards[mine]!.zone, s.cards[theirs]!.zone, s.cards[augusta]!.counters]).toEqual(['exile', 'exile', 2]);
+  });
+
+  it('Spirit of Resilience grows when cards leave your graveyard, and may become a copy of one of them until end of turn', () => {
+    let s = newGame();
+    const spirit = put(s, 'P1', 'spirit-of-resilience');
+    const big = put(s, 'P1', 'hungry-graffalon', 'graveyard');
+    const cleric = put(s, 'P1', 'remorseful-cleric');
+    s = settle(act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === cleric && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P1')!)).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [big] })).state;
+    const now = s.cards[spirit]!;
+    expect([now.counters, defOfName(s, spirit), hasKeyword(s, now, 'Reach')]).toEqual([1, 'Hungry Graffalon', true]);
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state;
+    expect(defOfName(s, spirit)).toBe('Spirit of Resilience');
+  });
+
+  it('Serra Paragon: once each turn, a land or a cheap permanent from your graveyard, which is exiled with 2 life when it dies', () => {
+    let s = newGame();
+    put(s, 'P1', 'serra-paragon');
+    const land = put(s, 'P1', 'forest', 'graveyard');
+    const rat = put(s, 'P1', 'rank-rat', 'graveyard');
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === land)).toBe(true);
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === rat)!).state;
+    expect([s.cards[rat]!.zone, s.cards[rat]!.paragonRider]).toEqual(['battlefield', true]);
+    // Used for this turn: no land from the graveyard now.
+    expect(getLegalActions(s).some((a) => a.type === 'PlayLand' && a.card === land)).toBe(false);
+    const kill = put(s, 'P2', 'lightning-bolt', 'hand');
+    s.players.P2!.manaPool.R = 1;
+    s.pending = { kind: 'priority', player: 'P2', passes: 0 } as never;
+    s = settle(act(s, { type: 'CastSpell', player: 'P2', card: kill, targets: [{ kind: 'card', card: rat }] })).state;
+    expect([s.cards[rat]!.zone, s.players.P1!.life]).toEqual(['exile', 22]);
+  });
+});
+
+function defOfName(s: GameState, id: string): string {
+  return currentDefinition(s, s.cards[id]!).name;
+}

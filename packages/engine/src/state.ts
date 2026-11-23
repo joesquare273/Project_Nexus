@@ -322,6 +322,8 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
     delete c.blitzed;
     delete c.evoked;
   }
+  // Serra Paragon's rider lasts while it's a permanent, and until its leave trigger has looked at it.
+  if (from === 'graveyard' || from === 'exile' || from === 'hand' || from === 'library') delete c.paragonRider;
   // Echo: due at its controller's next upkeep.
   if (to === 'battlefield' && s.cardDefs[c.defId]?.echo) c.echoDue = true;
   else if (from === 'battlefield') delete c.echoDue;

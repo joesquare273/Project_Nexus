@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3) done 2026-11-23 | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -402,6 +402,26 @@ Hofri, Ghostforge, Guardian Scalelord and Study Hall.
   command zone (`scryOnCommanderCast`; the same mechanism as the
   commander-type scry mana).
 
-Still to build in Lorehold Spirit (5): Augusta, Order Returned, Advanced
-Reconstruction (a Class), Fateful Tempest (council's dilemma voting), Spirit
-of Resilience (becomes a copy) and Serra Paragon.
+Still to build in Lorehold Spirit after SOC1g (5); SOC1h took three of them.
+
+## SOC1h: Lorehold Spirit, part eight (built 2026-11-23)
+
+Augusta, Order Returned, Spirit of Resilience and Serra Paragon.
+
+- **Augusta:** `EachPlayerExilesFromGraveyard` asks each player to exile a
+  card from their graveyard and counts the nonland ones. A reflexive trigger
+  (with `ifNonlandExiledThisWay`) then puts that many +1/+1 counters on
+  target attacking creature. The number is fixed as the reflexive trigger is
+  created.
+- **Spirit of Resilience:** `BecomeCopyOfSubjectCardUntilEndOfTurn` offers
+  the artifact and creature cards among those that left your graveyard (the
+  `copyCard` choice, with prompt text and an AI answer). The copy lasts until
+  end of turn.
+- **Serra Paragon:** `castFromGraveyard.paragon` with
+  `playLandsFromGraveyard` allows one land or one permanent spell with mana
+  value 3 or less each turn between them. A permanent cast or played that way
+  gets `paragonRider`, and `currentDefinition` adds the trigger "when this is
+  put into a graveyard from the battlefield, exile it and you gain 2 life".
+
+Still to build in Lorehold Spirit (2): Advanced Reconstruction (a Class with
+levels) and Fateful Tempest (council's dilemma voting).

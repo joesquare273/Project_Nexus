@@ -587,6 +587,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'library') return pick([]);
   // Perpetual Timepiece: put everything back.
   if (p.purpose === 'shuffleIntoLibrary') return pick([...p.cards]);
+  // Spirit of Resilience: become the biggest creature card among them, if any.
+  if (p.purpose === 'copyCard') return pick([...p.cards].filter((id) => def(s, s.cards[id]!).types.includes('creature')).sort((a, b) => (def(s, s.cards[b]!).power ?? 0) - (def(s, s.cards[a]!).power ?? 0)).slice(0, 1));
   // Buster Sword: the best free spell. Garnet: keep our Sagas' progress.
   if (p.purpose === 'castFree') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'removeLore') return pick([]);

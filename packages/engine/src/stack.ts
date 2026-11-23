@@ -992,7 +992,9 @@ function markPermanentTypeUsed(s: GameState, source: CardInstance, def: CardDefi
 /** A permanent letting this player play this land card from their graveyard now (Hades; Muldrotha once each turn). */
 export function graveyardLandSource(s: GameState, playerId: PlayerId, c: CardInstance): CardInstance | undefined {
   return battlefield(s).find((x) => x.controller === playerId && !x.phasedOut && (defOf(s, x).statics ?? []).some((st) =>
-    st.playLandsFromGraveyard && (!st.castFromGraveyard?.perPermanentType || unusedPermanentTypes(s, x, defOf(s, c)).includes('land'))));
+    st.playLandsFromGraveyard && (!st.castFromGraveyard?.perPermanentType || unusedPermanentTypes(s, x, defOf(s, c)).includes('land')) &&
+    // Serra Paragon: a land or a permanent spell, once each turn between them.
+    !(st.castFromGraveyard?.paragon && x.graveyardCastTurn === s.turnNumber)));
 }
 
 /** Each independent permanent granting a once-per-turn graveyard permission. */
@@ -1122,13 +1124,19 @@ export function playLand(ctx: Ctx, playerId: PlayerId, id: InstanceId, reveal?: 
   if (reveal && !canReveal(s, c, playerId)) reject(payLife ? `You need ${payLife} life to pay for that land.` : 'You have no card to reveal for that land.');
   if (reveal && payLife) changeLife(ctx, playerId, -payLife);
   p.landsPlayedThisTurn += 1;
+  let paragonLand = false;
   if (from === 'graveyard') {
     const source = graveyardLandSource(s, playerId, c);
     if (source && (defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.perPermanentType)) markPermanentTypeUsed(s, source, { ...defOf(s, c), types: ['land'] });
+    if (source && (defOf(s, source).statics ?? []).some((st) => st.castFromGraveyard?.paragon)) {
+      source.graveyardCastTurn = s.turnNumber;
+      paragonLand = true;
+    }
   }
   const exileTapped = from === 'exile' && !!c.playableFromExile?.landEntersTapped;
   ctx.ev.push({ type: 'LandPlayed', player: playerId, card: id, from });
   moveCard(ctx, id, 'battlefield');
+  if (paragonLand) c.paragonRider = true;
   if (exileTapped) c.tapped = true;
   c.controller = playerId;
   c.summoningSick = true;
@@ -1554,6 +1562,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(permission?.exileAfter || group?.exileAfter ? { exileAfter: true } : {}),
     ...(permission?.asCopy ? { asTokenCopy: true } : {}),
     ...(permission?.bottomAfter ? { bottomAfter: true } : {}),
+    ...(edgar?.paragon ? { paragonRider: true } : {}),
     ...((() => {
       // Uldaros Theorix: the spell's mana value comes out of the shared budget.
       const budget = permission?.budget ? (s.castBudgets ?? []).find((b) => b.id === permission.budget) : undefined;
@@ -3869,7 +3878,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'ReflexiveTrigger': {
       const c=s.cards[source]!;
-      s.triggerQueue.push({source,ability:-1,controller:item.controller,sourceZone:item.kind==='ability'?item.sourceZone:'stack',sourceObject:item.kind==='ability'?item.sourceObject:c.zoneChanges,spec:structuredClone(effect.trigger!)});
+      const spec = structuredClone(effect.trigger!);
+      // "Put that many counters": the number is fixed as the reflexive trigger is created.
+      for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'nonlandExiledThisWay') e.amount = r.nonlandExiledThisWay ?? 0;
+      s.triggerQueue.push({source,ability:-1,controller:item.controller,sourceZone:item.kind==='ability'?item.sourceZone:'stack',sourceObject:item.kind==='ability'?item.sourceObject:c.zoneChanges,spec});
       return;
     }
     case 'CreateTokenCopy':
@@ -4369,6 +4381,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (linked && s.cards[linked]?.zone === 'exile') moveCard(ctx, linked, 'graveyard');
       return;
     }
+    case 'BecomeCopyOfSubjectCardUntilEndOfTurn': {
+      const subjects = item.kind === 'ability' ? (item.subjects ?? (item.subject ? [item.subject] : [])) : [];
+      const options = subjects.filter((id) => s.cards[id] && matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
+      if (options.length && s.cards[source]?.zone === 'battlefield') r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'copyCard', cards: options, min: 0, max: 1 }];
+      return;
+    }
+    case 'EachPlayerExilesFromGraveyard':
+      for (const pid of alivePlayers(s)) {
+        const yard = [...s.players[pid]!.graveyard];
+        if (yard.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: pid, purpose: 'exileFromGraveyard', cards: yard, min: 1, max: 1 }];
+      }
+      return;
     case 'ClearEcho':
       for (const id of onBattlefield) delete s.cards[id]!.echoDue;
       return;
@@ -4631,6 +4655,7 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifSubjectHadCounters && subjectAmount(s, item, 'subjectCounters') === 0) continue;
     if (effect.ifDrewThisWay && !r.drawnThisWay) continue;
     if (effect.ifDiscardedThisWay && !r.discardedThisWay) continue;
+    if (effect.ifNonlandExiledThisWay && !r.nonlandExiledThisWay) continue;
     if (effect.ifPreviousTargetNotSource && (r.previousTarget?.kind !== 'card' || r.previousTarget.card === sourceOf(item))) continue;
     // Opus: the triggering spell's mana spent is the ability's amount.
     if (effect.unlessSubjectManaSpentAtLeast !== undefined && item.kind === 'ability' && (item.amount ?? 0) >= effect.unlessSubjectManaSpentAtLeast) continue;
@@ -4777,6 +4802,7 @@ export function resolveTop(ctx: Ctx): void {
       if (item.extraEntryCounters) addCounters(ctx, c.id, item.extraEntryCounters, item.controller);
       if (item.x) c.xPaid = item.x;
       c.manaSpentToCast = item.manaSpent;
+      if (item.paragonRider) c.paragonRider = true;
       c.colorsSpentToCast = item.colorsSpent ?? 0;
       if (item.kicks) c.kicksPaid = item.kicks;
       if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
@@ -5204,7 +5230,11 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
     const src = s.cards[sourceOf(r.item)]!;
     if (removed > 0 && src.zone === 'battlefield') addCounters(ctx, src.id, removed, pending.player);
+  } else if (pending.purpose === 'copyCard') {
+    const source = sourceOf(r.item), src = s.cards[source];
+    if (cards[0] && src?.zone === 'battlefield') becomeCopy(ctx, { kind: 'copyCreature', player: pending.player, source, target: cards[0], sourceObject: src.zoneChanges ?? 0, targetObject: s.cards[cards[0]]!.zoneChanges ?? 0, effect: { effect: 'CopyCreature', target: 'You', copyUntilEndOfTurn: true } }, r);
   } else if (pending.purpose === 'exileFromGraveyard') {
+    r.nonlandExiledThisWay = (r.nonlandExiledThisWay ?? 0) + cards.filter((id) => !hasType(s, s.cards[id]!, 'land')).length;
     for (const id of cards) moveCard(ctx, id, 'exile');
   } else if (pending.purpose === 'payHalfLife') {
     // The first player who pays counters the spell; nobody else is asked.

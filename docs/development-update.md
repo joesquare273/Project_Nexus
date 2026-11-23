@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC1h: Lorehold Spirit, part eight (2026-11-23)
+
+- Augusta, Spirit of Resilience, Serra Paragon. Two Lorehold cards left (a Class and a voting card). docs/strixhaven.md.
+
 ### Strixhaven Commander SOC1g: Lorehold Spirit, part seven (2026-11-23)
 
 - Hofri, Guardian Scalelord (backup, granted attack triggers), Study Hall (commander scry mana). docs/strixhaven.md.

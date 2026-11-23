@@ -532,6 +532,10 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** You may have this permanent become a copy of an artifact or creature card (`filter`) among the triggering cards until end of turn (Spirit of Resilience). */
+  'BecomeCopyOfSubjectCardUntilEndOfTurn',
+  /** Each player exiles a card of their choice from their graveyard (Augusta, Order Returned); nonland cards exiled this way are counted. */
+  'EachPlayerExilesFromGraveyard',
   /** The card this token was copied from (`returnsExiledCard`) goes from exile to its owner's graveyard (Hofri's tokens). */
   'ReturnLinkedExiledCard',
   /** Each card exiled with this source (Exile `exileLinked`): its owner creates the `token`, an X/X where X is that card's mana value (Skyclave Apparition). */
@@ -904,6 +908,8 @@ export type Amount =
         | 'subjectColorsSpent'
         /** Nontoken creatures you owned that this spell destroyed (Ceaseless Conflict). */
         | 'nontokenCreaturesOfYoursDestroyedThisWay'
+        /** Nonland cards exiled by EachPlayerExilesFromGraveyard (fixed in a reflexive trigger as it's created). */
+        | 'nonlandExiledThisWay'
         /** Opponents who didn't discard two nonland cards to this (Garruk, Veiled Butcher). */
         | 'opponentsWhoDidntDiscardTwoNonland'
         /** DealDamage from the previous target: its loyalty (Compel Brutality). */
@@ -1244,6 +1250,8 @@ export interface EffectSpec {
   ifDrewThisWay?: boolean;
   /** Only if this spell or ability made you discard a card so far ("You may discard a card. If you do, ...": Quintorius, History Chaser). */
   ifDiscardedThisWay?: boolean;
+  /** Only if this spell or ability exiled one or more nonland cards so far (Augusta's reflexive trigger). */
+  ifNonlandExiledThisWay?: boolean;
   /** Only if the previous target is another permanent, not the source (backup: "If that's another creature, it gains ..."). */
   ifPreviousTargetNotSource?: boolean;
   /** CreateTokenCopy: of a card (in exile or a graveyard), not a permanent (Restore Relic: "Create a token that's a copy of it"). */
@@ -2073,7 +2081,7 @@ export interface StaticSpec {
    * from your graveyard. If you cast a spell this way, that artifact enters tapped."
    */
   /** `unlimited`: any number of times, whenever you could cast it (Noctis), not once on your turn (Edgar); `payLife` extra; `finality`: it enters with a finality counter. */
-  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean; /** Muldrotha: one permanent spell of each permanent type each turn (and one land, with `playLandsFromGraveyard`). */ perPermanentType?: boolean; /** Exploration Broodship: sacrifice a land in addition to the spell's other costs. */ sacrificeLand?: boolean };
+  castFromGraveyard?: { filter: ObjectFilter; entersTapped?: boolean; unlimited?: boolean; payLife?: number; finality?: boolean; /** Muldrotha: one permanent spell of each permanent type each turn (and one land, with `playLandsFromGraveyard`). */ perPermanentType?: boolean; /** Exploration Broodship: sacrifice a land in addition to the spell's other costs. */ sacrificeLand?: boolean; /** Serra Paragon: one land played or permanent spell cast from the graveyard each turn between them, and the permanent gains "when this is put into a graveyard from the battlefield, exile it and you gain 2 life". */ paragon?: boolean };
   /** Metalcraft (Puresteel Paladin): equip abilities of Equipment you control cost `mana` while you control `ifArtifactsAtLeast` artifacts. */
   equipCost?: { mana: string; ifArtifactsAtLeast: number };
   /** Works while the card is in this zone instead of on the battlefield (Anger, from the graveyard). */
@@ -2758,6 +2766,8 @@ export interface CardInstance {
   colorsSpentToCast?: number;
   /** Echo: its echo cost is due at its controller's next upkeep. */
   echoDue?: boolean;
+  /** Played or cast with Serra Paragon: "When this permanent is put into a graveyard from the battlefield, exile it and you gain 2 life." */
+  paragonRider?: boolean;
   /** Hofri's token: the exiled card it was copied from, returned to its owner's graveyard when the token leaves. */
   returnsExiledCard?: InstanceId;
   /** Times this permanent's spell was kicked ("when this creature enters, if it was kicked"). */
@@ -3058,6 +3068,8 @@ export interface SpellItem {
   exileAfter?: boolean;
   /** Quintorius Loremaster: on resolving, the card goes on the bottom of its owner's library instead of into a graveyard. */
   bottomAfter?: boolean;
+  /** Cast with Serra Paragon: the permanent it becomes has Paragon's rider (`paragonRider`). */
+  paragonRider?: boolean;
   /** A copy of the card was cast (Uldaros Theorix): a permanent becomes a token, and the card returns to exile. */
   asTokenCopy?: boolean;
   /** The permanent enters tapped (Edgar). */
@@ -3224,6 +3236,8 @@ export interface Resolving {
   drawnThisWay?: number;
   /** Cards discarded to this spell or ability so far. */
   discardedThisWay?: number;
+  /** EachPlayerExilesFromGraveyard: nonland cards exiled so far. */
+  nonlandExiledThisWay?: number;
   /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
   castBudget?: string;
   /** The mana value of the card RevealUntil found. */
@@ -3265,7 +3279,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

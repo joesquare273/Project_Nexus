@@ -190,6 +190,10 @@ function effectText(e: EffectSpec): string {
       return "the exiled card's owner creates an X/X token";
     case 'ReturnLinkedExiledCard':
       return "return the exiled card to its owner's graveyard";
+    case 'BecomeCopyOfSubjectCardUntilEndOfTurn':
+      return 'you may have it become a copy of one of those cards until end of turn';
+    case 'EachPlayerExilesFromGraveyard':
+      return 'each player exiles a card from their graveyard';
     case 'ClearEcho':
       return 'pay its echo';
     case 'PutSubjectCounters':

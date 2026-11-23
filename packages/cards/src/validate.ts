@@ -133,6 +133,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'colorsSpent',
       'subjectColorsSpent',
       'nontokenCreaturesOfYoursDestroyedThisWay',
+      'nonlandExiledThisWay',
       'opponentsWhoDidntDiscardTwoNonland',
       'previousTargetLoyalty',
       'revealedManaValue',

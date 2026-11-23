@@ -108,6 +108,8 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   // Each instance of prowess triggers separately (Ruric Thar: "Prowess, prowess").
   const prowess = out.keywords?.filter((k) => k === 'Prowess').length ?? 0;
   if (prowess) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(prowess).fill(PROWESS_TRIGGER)] };
+  // Serra Paragon: "When this permanent is put into a graveyard from the battlefield, exile it and you gain 2 life."
+  if (c.paragonRider) out = { ...out, triggers: [...(out.triggers ?? []), { when: 'LeavesBattlefield', what: { self: true }, leavesTo: 'graveyard', effects: [{ effect: 'Exile', target: 'TriggeringCard' }, { effect: 'GainLife', amount: 2, target: 'You' }] }] };
   // Echo (rule 702.30): "At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay [cost]."
   if (out.echo) out = { ...out, triggers: [...(out.triggers ?? []), { when: 'Upkeep', ifEchoDue: true, cost: { mana: out.echo }, effects: [{ effect: 'ClearEcho', target: 'This' }], ifDeclined: [{ effect: 'Sacrifice', target: 'You', amount: 1, filter: { self: true }, noChoice: true }] }] };
   const increment = out.keywords?.filter((k) => k === 'Increment').length ?? 0;
