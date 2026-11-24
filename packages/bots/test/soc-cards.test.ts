@@ -1064,3 +1064,67 @@ describe('SOC2d: Prismari Artistry (trigger doubling, Goldspan, Expressive Itera
     expect(hasKeyword(s, token, 'Haste')).toBe(true);
   });
 });
+
+describe('SOC2e: Prismari Artistry (Rootha, Stormsinger, Furygale Flocking, Twinflame)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Rootha, Mastering the Moment: at combat, an X/X flier for the biggest instant or sorcery cast this turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'rootha-mastering-the-moment');
+    s = settle(goTo(s, 'beginCombat')).state;
+    expect(onField(s, 'elemental-x-token-soc').length).toBe(0);
+    let t = newGame();
+    put(t, 'P1', 'rootha-mastering-the-moment');
+    const geyser = put(t, 'P1', 'mana-geyser', 'hand');
+    mana(t, 'P1', { R: 2, C: 3 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: geyser }).state;
+    t = settle(goTo(t, 'beginCombat')).state;
+    const token = onField(t, 'elemental-x-token-soc')[0]!;
+    expect([powerOf(t, token), hasKeyword(t, token, 'Flying'), hasKeyword(t, token, 'Haste')]).toEqual([5, true, true]);
+  });
+
+  it('Redoubled Stormsinger copies tokens that entered this turn, tapped and attacking', () => {
+    let s = newGame();
+    const singer = put(s, 'P1', 'redoubled-stormsinger');
+    const token = put(s, 'P1', 'elemental-1-1-token-soc');
+    s.cards[token]!.isToken = true;
+    s.cards[token]!.enteredTurn = s.turnNumber;
+    const old = put(s, 'P1', 'elemental-4-4-token-soc');
+    s.cards[old]!.isToken = true;
+    s.cards[old]!.enteredTurn = s.turnNumber - 1;
+    s = settle(goTo(s, 'declareAttackers')).state;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: singer, defender: 'P2' }] })).state;
+    const copies = onField(s, 'elemental-1-1-token-soc').filter((c) => c.id !== token);
+    expect(copies.length).toBe(1);
+    expect(s.combat?.attacks.some((a) => a.attacker === copies[0]!.id && a.defender === 'P2')).toBe(true);
+    expect(onField(s, 'elemental-4-4-token-soc').length).toBe(1);
+  });
+
+  it('Furygale Flocking costs less per instant and sorcery card in your graveyard; two hasty fliers per opponent that must attack it', () => {
+    let s = newGame(3);
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'abrade', 'graveyard');
+    const flock = put(s, 'P1', 'furygale-flocking', 'hand');
+    mana(s, 'P1', { R: 2, C: 4 }); // {8}{R}{R} less {4}
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: flock }).state;
+    const birds = onField(s, 'elemental-token-sos');
+    expect(birds.length).toBe(4);
+    expect(birds.map((b) => b.mustAttackPlayer?.player).sort()).toEqual(['P2', 'P2', 'P3', 'P3']);
+    expect(hasKeyword(s, birds[0]!, 'Haste')).toBe(true);
+  });
+
+  it('Twinflame: strive costs {2}{R} more per extra target; hasty copies exiled at the end step', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'hungry-graffalon');
+    const twin = put(s, 'P1', 'twinflame', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    const both = (x: GameState) => getLegalActions(x).find((act) => act.type === 'CastSpell' && act.card === twin && act.targets?.filter((t) => t.kind === 'card').length === 2);
+    expect(both(s)).toBeUndefined();
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = cast(s, both(s)!).state;
+    expect([onField(s, 'rank-rat').length, onField(s, 'hungry-graffalon').length]).toEqual([2, 2]);
+    s = settle(goTo(s, 'end')).state;
+    expect([onField(s, 'rank-rat').length, onField(s, 'hungry-graffalon').length]).toEqual([1, 1]);
+    void a; void b;
+  });
+});

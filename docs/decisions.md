@@ -696,3 +696,4 @@ recorded again.
 - **Cascade and Creative Technique:** a found card you don't cast stays in
   exile instead of going to the bottom of your library with the rest (as
   Jodah's and discover's search already worked).
+- **Strive (Twinflame):** "any number of target creatures" offers up to four targets, to keep the list of choices short.

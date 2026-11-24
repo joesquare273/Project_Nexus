@@ -9484,6 +9484,28 @@
       }
     ]
   },
+  "elemental-x-token-soc": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "Flying, haste",
+    "set": "tsoc",
+    "number": "19",
+    "artist": "Andrew Mar",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569",
+      "normal": "https://cards.scryfall.io/normal/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569",
+      "large": "https://cards.scryfall.io/large/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/f/e/fe42cba4-e00f-4e34-8e26-99721727dced.jpg?1783903569"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/19/elemental?utm_source=api",
+    "scryfallId": "fe42cba4-e00f-4e34-8e26-99721727dced",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "fe42cba4-e00f-4e34-8e26-99721727dced"
+      }
+    ]
+  },
   "elementalists-palette": {
     "name": "Elementalist's Palette",
     "typeLine": "Artifact",

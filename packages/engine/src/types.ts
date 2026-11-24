@@ -843,6 +843,8 @@ export const COUNT_KINDS = [
   'ArtifactOrCreatureCardsInYourGraveyard',
   /** Times you've cast your commanders from the command zone this game (Vanguard of the Restless). */
   'CommanderCastsFromCommandZone',
+  /** The greatest mana value among instant and sorcery spells you've cast this turn (Rootha, Mastering the Moment). */
+  'GreatestInstantOrSorceryManaValueYouCastThisTurn',
   /** Instant and sorcery spells you've cast this turn (Rionya). */
   'InstantOrSorcerySpellsYouCastThisTurn',
   /** The total power of creatures you control (Volcanic Salvo). */
@@ -1296,6 +1298,8 @@ export interface EffectSpec {
   ifTargetManaValueAtMostColorsSpent?: boolean;
   /** CreateToken in an attack trigger: tapped and attacking the player the triggering creature attacked (Najeela). */
   attackingLikeSubject?: boolean;
+  /** CreateToken: for each opponent, `amount` tokens that attack that opponent this turn if able (Furygale Flocking). */
+  eachOpponentMustAttack?: boolean;
   /** ReturnToBattlefield on This: enter attacking; choose a defending player during resolution. */
   attacking?: boolean;
   /** PutFromHand in an attack trigger: a chosen enchantment card enters tapped and attacking the player the triggering creature attacked (Summoner's Grimoire). */
@@ -2405,6 +2409,8 @@ export interface CardDefinition {
   flashbackDiscard?: number;
   /** "Flashback—[cost], Pay N life" (Deep Analysis). */
   flashbackLife?: number;
+  /** Strive (Twinflame): the spell costs this much more for each target beyond the first. */
+  strive?: string;
   /** "Threshold — You can't cast this spell unless there are seven or more cards in your graveyard" (Proft, Sinister Mastermind). */
   castOnlyWithThreshold?: boolean;
   /** "Has hexproof as long as it hasn't dealt combat damage yet" (Ruric Thar, Magecrusher; `CardInstance.dealtCombatDamage`). */
@@ -3021,6 +3027,8 @@ export interface PlayerState {
   noncreatureSpellsThisTurn?: number;
   /** Instant and sorcery spells this player has cast this turn. */
   instantOrSorcerySpellsThisTurn?: number;
+  /** The greatest mana value among instant and sorcery spells cast this turn (Rootha, Mastering the Moment). */
+  greatestInstantOrSorceryManaValueThisTurn?: number;
   /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */
   paradigms?: InstanceId[];
   /** Summon: Brynhildr: "when you next cast a creature spell this turn, it gains haste until end of turn" (the turn). */

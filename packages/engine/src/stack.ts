@@ -1240,6 +1240,11 @@ export function spellCost(
     const n = battlefield(s).filter((c) => c.controller === payer && !c.phasedOut && matchesObject(s, f, c, { controller: payer! })).length;
     cost = reduceGeneric(cost, def.costReduction.generic * n);
   }
+  // Strive: "This spell costs {2}{R} more to cast for each target beyond the first."
+  if (def.strive) {
+    const extra = Math.max(0, targets.filter((t) => t.kind !== 'none').length - 1);
+    for (let i = 0; i < extra; i++) cost = addCosts(cost, parseManaCost(def.strive));
+  }
   if (def.costReduction?.perCount && card) {
     cost = reduceGeneric(cost, def.costReduction.generic * countOf(s, def.costReduction.perCount, payer!));
   }
@@ -1531,6 +1536,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   }
   if (!def.types.includes('artifact')) caster.nonartifactSpellsThisTurn = (caster.nonartifactSpellsThisTurn ?? 0) + 1;
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
+  if (def.types.includes('instant') || def.types.includes('sorcery')) caster.greatestInstantOrSorceryManaValueThisTurn = Math.max(caster.greatestInstantOrSorceryManaValueThisTurn ?? 0, s.cards[id] ? objectManaValue(s, s.cards[id]!) : 0);
   if (def.types.includes('instant') || def.types.includes('sorcery')) caster.instantOrSorcerySpellsThisTurn = (caster.instantOrSorcerySpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
@@ -3620,6 +3626,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (amount > 0) quinaFrogs(ctx, item.controller, r);
         return;
       }
+      // Furygale Flocking: for each opponent, tokens that attack that opponent this turn if able.
+      if (effect.eachOpponentMustAttack) {
+        for (const opp of alivePlayers(s).filter((p) => p !== item.controller)) {
+          for (let i = 0; i < amount; i++) {
+            const id = createToken(ctx, effect.token!, item.controller);
+            s.cards[id]!.mustAttackPlayer = { player: opp, turn: s.turnNumber };
+            r.createdTokens.push(id);
+          }
+        }
+        if (amount > 0) quinaFrogs(ctx, item.controller, r);
+        return;
+      }
       const size = effect.tokenSizeFromCount ? countOf(s, effect.tokenSizeFromCount, item.controller, source) : effect.tokenSizeFromAmount !== undefined ? resolvedAmount(s, { ...effect, amount: effect.tokenSizeFromAmount }, r) : undefined;
       for (const pid of players.length > 0 ? players : [item.controller]) {
         for (let i = 0; i < amount; i++) {
@@ -3927,6 +3945,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           if (effect.sacrificeAtNextUpkeep) s.cards[token]!.sacrificeAtNextUpkeep = true;
           if (effect.exileAtEndStep) s.cards[token]!.exileAtEndStep = true;
           if (effect.entersTapped) s.cards[token]!.tapped = true;
+          // Redoubled Stormsinger: "tapped and attacking" (the player the triggering creature attacks).
+          const attackTarget = effect.attackingLikeSubject && item.kind === 'ability' ? item.defender : undefined;
+          if (attackTarget && s.combat && !s.players[attackTarget]!.eliminated) {
+            s.cards[token]!.tapped = true;
+            s.combat.attacks.push({ attacker: token, defender: attackTarget });
+            ctx.ev.push({ type: 'CreatureEnteredAttacking', card: token, defender: attackTarget });
+          }
           r.createdTokens.push(token);
         }
       }

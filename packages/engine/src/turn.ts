@@ -366,6 +366,7 @@ export function startNextTurn(ctx: Ctx): void {
     p.lifeGainedThisTurn = 0;
     p.noncreatureSpellsThisTurn = 0;
     p.instantOrSorcerySpellsThisTurn = 0;
+    delete p.greatestInstantOrSorceryManaValueThisTurn;
     p.legendaryCreatureSpellsThisTurn = 0;
     p.nonartifactSpellsThisTurn = 0;
     p.cardsDrawnThisTurn = 0;

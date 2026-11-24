@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -523,4 +523,23 @@ Iteration, Dirgur Focusmage and Inspired Skypainter.
 - Dirgur Focusmage uses SpellCast `fromZone: 'hand'`; both are prepared
   cards like the main set's.
 
-Still to build in Prismari Artistry after SOC2d: 11 cards.
+Still to build in Prismari Artistry after SOC2d: 12 cards and the commander (13); SOC2e took 4.
+
+## SOC2e: Prismari Artistry, part five (built 2026-11-24)
+
+Rootha, Mastering the Moment (the commander), Redoubled Stormsinger,
+Furygale Flocking and Twinflame.
+
+- The count `GreatestInstantOrSorceryManaValueYouCastThisTurn`
+  (PlayerState `greatestInstantOrSorceryManaValueThisTurn`, public, reset
+  each turn) sizes Rootha's X/X Elemental (tsoc 19).
+- CreateTokenCopy `attackingLikeSubject`: copies enter tapped and attacking
+  the player the triggering creature attacks (Redoubled Stormsinger).
+- CreateToken `eachOpponentMustAttack`: tokens for each opponent that must
+  attack that opponent this turn (the encore rule, Furygale Flocking).
+- **Strive** (`def.strive`): the cost rises for each target beyond the first.
+  Twinflame offers up to four targets (a simplification for "any number").
+
+Still to build in Prismari Artistry after SOC2e: 9 cards (Muddle, Abstract
+Performance, Dance with Calamity, Mirrorwing Dragon, Plargg and Nassari,
+Rousing Refrain, Surge to Victory, Brudiclad, Magma Opus).

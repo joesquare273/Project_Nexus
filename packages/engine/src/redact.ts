@@ -315,6 +315,7 @@ const PLAYER_FIELDS = {
   coinHeadsTurn: 'copy',
   noncreatureSpellsThisTurn: 'copy',
   instantOrSorcerySpellsThisTurn: 'copy',
+  greatestInstantOrSorceryManaValueThisTurn: 'copy',
   paradigms: 'refs',
   legendaryCreatureSpellsThisTurn: 'copy',
   nonartifactSpellsThisTurn: 'copy',
