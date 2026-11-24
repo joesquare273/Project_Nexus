@@ -403,6 +403,16 @@ function effectText(e: EffectSpec): string {
     case 'Manifest':
       if (e.target === 'PreviousTargetController') return 'its controller manifests the top card of their library';
       return `${e.cloak ? 'cloak' : 'manifest'} the top ${e.amount === 1 || e.amount === undefined ? 'card' : `${amountText(e.amount)} cards`} of your library`;
+    case 'TwoPilesOpponentChooses':
+      return `exile the top ${amountText(e.amount)} cards of your library in a face-down pile, then the top ${amountText(e.amount)} in a face-up pile; an opponent chooses one of those piles, which goes into your graveyard; you may cast a spell from among the other pile without paying its mana cost, and put the rest into your hand`;
+    case 'EachExilesUntilNonlandCastOthers':
+      return `each player exiles cards from the top of their library until they exile a nonland card; an opponent chooses a nonland card exiled this way; you may cast up to ${amountText(e.amount)} spells from among the other cards exiled this way without paying their mana costs`;
+    case 'ExileThisSuspended':
+      return `exile this with ${amountText(e.amount)} time counters on it`;
+    case 'RemoveTimeCounter':
+      return 'remove a time counter from it';
+    case 'CastSuspendedFree':
+      return 'you may cast it without paying its mana cost';
     case 'CopySpellForEachOtherCreature':
       return 'that player copies that spell for each other creature they control that the spell could target; each copy targets a different one of those creatures';
     case 'ExileTopAsManyAsYouChoose':
@@ -636,6 +646,7 @@ function triggerCondition(t: TriggerSpec): string {
     CoinFlipWon: '',
     Reflexive: '',
     AttackersUnblocked: '',
+    LastTimeCounterRemoved: 'has its last time counter removed',
     EntersBattlefield: 'enters',
     Dies: 'dies',
     Attacks: 'attacks',

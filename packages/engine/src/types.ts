@@ -621,6 +621,16 @@ export const EFFECT_KINDS = [
   'PutExiledWithThisIntoGraveyard',
   /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
   'ManifestDread',
+  /** Abstract Performance: exile `amount` cards face down, then `amount` face up; an opponent chooses a pile for your graveyard; you may cast a spell from the other free, and the rest go to your hand. */
+  'TwoPilesOpponentChooses',
+  /** Plargg and Nassari: each player exiles until a nonland card; an opponent chooses one of those; you may cast up to `amount` spells from among the others free. */
+  'EachExilesUntilNonlandCastOthers',
+  /** Rousing Refrain: "Exile [this spell] with N time counters on it" (`amount`). */
+  'ExileThisSuspended',
+  /** Suspend: remove a time counter from this exiled card. */
+  'RemoveTimeCounter',
+  /** Suspend: "you may cast it without paying its mana cost" (rule 702.62a). */
+  'CastSuspendedFree',
   /** Mirrorwing Dragon: the triggering spell's controller copies it for each other creature they control it could target, each copy targeting a different one. */
   'CopySpellForEachOtherCreature',
   /** Dance with Calamity: exile the top card of your library as many times as you choose; if their total mana value is `amount` or less, you may cast any number of spells among them free. */
@@ -924,6 +934,8 @@ export type Amount =
         | 'subjectPlusOneCounters'
         /** The previous target's mana value ("you lose life equal to that card's mana value"). */
         | 'previousTargetManaValue'
+        /** The number of cards in the previous target player's hand (Rousing Refrain). */
+        | 'previousTargetHandSize'
         /** The value chosen for {X} (for a permanent's abilities, the X it was cast with). */
         | 'x'
         /** Life lost to earlier effects of the same spell ("you gain life equal to the life lost this way"). */
@@ -1071,6 +1083,8 @@ export interface EffectSpec {
   spellOrPermanent?: boolean;
   /** AddMana with `manaType`: the mana is restricted (Steelswarm Operator's second ability). */
   manaRestricted?: ManaRestriction | 'noncreatureSpell';
+  /** AddMana: "Until end of turn, you don't lose this mana as steps and phases end" (Rousing Refrain). */
+  manaUntilEndOfTurn?: boolean;
   /** Discard: the card is exiled instead, and its owner may play it for as long as it stays exiled; spells cast this way cost {1} more and lands enter tapped (Lightstall Inquisitor). */
   exileToPlayTaxed?: boolean;
   /** ShuffleGraveyardIntoLibrary: your hand too (Weftwalking). */
@@ -1496,6 +1510,8 @@ export const TRIGGER_EVENTS = [
   'OpponentDealtNoncombatDamage',
   /** The subject becomes the target of a spell or ability (`byOpponent`: one an opponent controls; Ruric Thar). */
   'BecomesTarget',
+  /** The last time counter was removed from this card while it's exiled (suspend, rule 702.62a). */
+  'LastTimeCounterRemoved',
   /** One or more of your opponents are dealt combat damage during your turn (Fblthp, Impossibly Lost; with `oneOrMore`). */
   'OpponentsDealtCombatDamageYourTurn',
   /** A token was created (subject: the token; use with `oneOrMore` for "whenever you create one or more creature tokens"). */
@@ -1828,7 +1844,7 @@ export interface TriggerSpec {
   ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
   /** `stack`: "When you cast this spell" (SpellCast only), from the spell itself. */
-  zone?: 'battlefield' | 'graveyard' | 'stack';
+  zone?: 'battlefield' | 'graveyard' | 'stack' | 'exile';
   /** "Whenever one or more ...": triggers once per batch of simultaneous events. */
   oneOrMore?: boolean;
   /** "This ability triggers only once each turn." */
@@ -2456,6 +2472,8 @@ export interface CardDefinition {
    * card from your hand face down; cast it on a later turn for this cost.
    */
   foretell?: string;
+  /** Suspend N—[cost] (rule 702.62): exile it from your hand with N time counters, any time you could cast it. */
+  suspend?: { count: number; cost: string };
   /**
    * "This spell costs {N} less to cast if it targets a tapped creature", or
    * "costs {N} less for each [count]" (Vanquish the Horde).
@@ -2934,6 +2952,8 @@ export interface CardInstance {
   sacrificeAtEndOfCombat?: boolean;
   /** Rebound: exiled by its own rebound, waiting for its owner's next upkeep. */
   rebounding?: boolean;
+  /** Suspended (rule 702.62): exiled with time counters; one comes off each upkeep, and with the last you may cast it free. */
+  suspended?: boolean;
   /** Only on the stack: use the Adventure's characteristics instead of the creature's. */
   adventureSpell?: boolean;
   /** The controller of a resolved Adventure may cast its creature while it stays in exile. */
@@ -3047,6 +3067,8 @@ export interface PlayerState {
   noncreatureSpellsThisTurn?: number;
   /** Instant and sorcery spells this player has cast this turn. */
   instantOrSorcerySpellsThisTurn?: number;
+  /** Mana that isn't lost as steps and phases end this turn (Rousing Refrain): at most this much of each type is kept. */
+  keptMana?: { turn: number; pool: Partial<Record<ManaType, number>> };
   /** The greatest mana value among instant and sorcery spells cast this turn (Rootha, Mastering the Moment). */
   greatestInstantOrSorceryManaValueThisTurn?: number;
   /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */
@@ -3154,6 +3176,8 @@ export interface SpellItem {
   exileAfter?: boolean;
   /** Quintorius Loremaster: on resolving, the card goes on the bottom of its owner's library instead of into a graveyard. */
   bottomAfter?: boolean;
+  /** Rousing Refrain: "Exile [this] with three time counters on it" as it resolves (suspended, as it has suspend). */
+  suspendOnResolve?: number;
   /** Cast with Serra Paragon: the permanent it becomes has Paragon's rider (`paragonRider`). */
   paragonRider?: boolean;
   /** A copy of the card was cast (Uldaros Theorix): a permanent becomes a token, and the card returns to exile. */
@@ -3331,6 +3355,10 @@ export interface Resolving {
   milledManaValue?: number;
   /** Dance with Calamity: the cards exiled so far and their total mana value. */
   exiledAsChosen?: { cards: InstanceId[]; total: number; limit: number };
+  /** Abstract Performance: the face-down and face-up piles, then the one not chosen. */
+  piles?: { down: InstanceId[]; up: InstanceId[]; other?: InstanceId[] };
+  /** Plargg and Nassari: the cards exiled, and how many spells may be cast from among the rest. */
+  denyPool?: { cards: InstanceId[]; spells: number };
   /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
   castBudget?: string;
   /** The mana value of the card RevealUntil found. */
@@ -3372,7 +3400,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom' | 'tokenModel';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom' | 'tokenModel' | 'castOneFree' | 'denyCast';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3485,7 +3513,7 @@ export type Pending =
   | { kind: 'copyCreature'; player: PlayerId; source: InstanceId; target: InstanceId; sourceObject: number; targetObject: number; effect: EffectSpec }
   | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[] }
   /** `purpose`: who decides the Fate card (default), who picks with you for Memories Returning, or Shinryu's rival. */
-  | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[]; purpose?: 'fate' | 'memories' | 'rival' }
+  | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[]; purpose?: 'fate' | 'memories' | 'rival' | 'piles' | 'deny' }
   /** `entered`: the creature is already on the battlefield (Winota's Human); choosing only adds it to combat. */
   | { kind: 'chooseDefender'; player: PlayerId; card: InstanceId; defenders: PlayerId[]; entered?: boolean }
   | { kind: 'chooseModes'; player: PlayerId; then: PlayerId }
@@ -3518,7 +3546,7 @@ export type Pending =
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /** "As this enters, choose Mardu or Jeskai". */
-  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' | 'exileMore' }
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' | 'exileMore' | 'pile' }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
@@ -3548,6 +3576,10 @@ export interface CastGroup {
   exileAfter?: boolean;
   /** Only right away (see castPermission.immediate). */
   immediate?: boolean;
+  /** Without paying their mana costs (Plargg and Nassari). */
+  free?: boolean;
+  /** How many spells it allows (default one): "up to two spells from among them". */
+  remaining?: number;
 }
 
 export interface GameState {
@@ -3696,6 +3728,8 @@ export type Action =
   | { type: 'ActivateAbility'; player: PlayerId; card: InstanceId; ability: number; targets?: Target[]; costCards?: InstanceId[]; x?: number }
   /** Foretell: pay {2} and exile a card from your hand face down (a special action during your turn). */
   | { type: 'Foretell'; player: PlayerId; card: InstanceId }
+  /** Suspend: pay the suspend cost and exile the card from your hand with time counters (a special action, rule 116.2f). */
+  | { type: 'Suspend'; player: PlayerId; card: InstanceId }
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }

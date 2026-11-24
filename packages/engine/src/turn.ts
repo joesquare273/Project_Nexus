@@ -312,6 +312,8 @@ export function cleanupDamage(ctx: Ctx): void {
   ctx.s.temporaryEffects = ctx.s.temporaryEffects.filter((e) => (e.whileControlledBy && effectLasts(ctx.s, e)) || e.untilNextTurnOf);
   if (ctx.s.delayedTriggers?.length) ctx.s.delayedTriggers = ctx.s.delayedTriggers.filter((d) => d.emblem || d.turn > ctx.s.turnNumber);
   ctx.s.combat = null;
+  // "Until end of turn" mana (Rousing Refrain) is lost now too.
+  for (const pid of ctx.s.turnOrder) delete ctx.s.players[pid]!.keptMana;
   emptyAllManaPools(ctx.s);
 }
 

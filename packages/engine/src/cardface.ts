@@ -106,6 +106,12 @@ const INCREMENT_TRIGGER: TriggerSpec = { when: 'SpellCast', what: { controller: 
 /** Cascade (rule 702.85a): the triggered ability the keyword stands for. */
 const CASCADE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, effects: [{ effect: 'ExileUntilFound', target: 'You', filter: { nonTypes: ['land'] }, lesserThanSubject: true, restToBottom: true }] };
 
+/** Suspend (rule 702.62a): a time counter comes off at its owner's upkeep; with the last, they may cast it free. */
+const SUSPEND_TRIGGERS: TriggerSpec[] = [
+  { when: 'Upkeep', zone: 'exile', effects: [{ effect: 'RemoveTimeCounter', target: 'You' }] },
+  { when: 'LastTimeCounterRemoved', zone: 'exile', what: { self: true }, effects: [{ effect: 'CastSuspendedFree', target: 'You' }] },
+];
+
 /** Demonstrate (rule 702.144a): you may copy the spell; then an opponent copies it too. */
 const DEMONSTRATE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, optional: true, effects: [{ effect: 'CopySpell', target: 'You', demonstrate: true }] };
 
@@ -122,6 +128,8 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   const cascade = out.keywords?.filter((k) => k === 'Cascade').length ?? 0;
   if (cascade) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(cascade).fill(CASCADE_TRIGGER)] };
   if (out.keywords?.includes('Demonstrate')) out = { ...out, triggers: [...(out.triggers ?? []), DEMONSTRATE_TRIGGER] };
+  // Suspend (rule 702.62a): while it's exiled with time counters, its two triggered abilities.
+  if (c.suspended && c.zone === 'exile') out = { ...out, triggers: [...(out.triggers ?? []), ...SUSPEND_TRIGGERS] };
   const increment = out.keywords?.filter((k) => k === 'Increment').length ?? 0;
   if (increment) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(increment).fill(INCREMENT_TRIGGER)] };
   // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.

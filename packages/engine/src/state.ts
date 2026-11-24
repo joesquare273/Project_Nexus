@@ -288,6 +288,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.kicksPaid;
   delete c.revealedInHand;
   delete c.foretoldTurn;
+  delete c.suspended;
   delete c.linkedExile;
   delete c.exiledWith;
   delete c.crewed;
@@ -897,6 +898,7 @@ export function emptyAllManaPools(s: GameState): void {
     const keeps = battlefield(s).some((c) => c.controller === id && !c.phasedOut && defOf(s, c).statics?.some((st) => st.unspentManaBecomesColorless));
     const p = s.players[id]!;
     const sum = (pool?: Partial<Record<string, number>>) => Object.values(pool ?? {}).reduce((n: number, k) => n + (k ?? 0), 0);
+    const before = { ...p.manaPool };
     const kept = keeps ? sum(p.manaPool) + sum(p.equipmentMana) + sum(p.noncreatureSpellMana) + sum(p.artifactMana) + Object.values(p.restrictedMana ?? {}).reduce((n, pool) => n + sum(pool), 0) : 0;
     s.players[id]!.manaPool = emptyManaPool();
     delete s.players[id]!.creatureScryMana;
@@ -905,6 +907,9 @@ export function emptyAllManaPools(s: GameState): void {
     delete s.players[id]!.artifactMana;
     delete s.players[id]!.restrictedMana;
     if (kept > 0) s.players[id]!.manaPool.C = kept;
+    // Rousing Refrain: that mana stays until end of turn (as much of it as is still unspent).
+    const lasting = p.keptMana?.turn === s.turnNumber ? p.keptMana.pool : undefined;
+    if (lasting) for (const t of Object.keys(lasting) as (keyof typeof lasting)[]) s.players[id]!.manaPool[t] += Math.min(lasting[t] ?? 0, before[t] ?? 0);
   }
 }
 

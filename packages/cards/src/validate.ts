@@ -127,6 +127,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectCounters',
       'subjectPlusOneCounters',
       'previousTargetManaValue',
+      'previousTargetHandSize',
       'x',
       'lifeLostThisWay',
       'drawnThisWay',

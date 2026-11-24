@@ -6,7 +6,7 @@
 
 import { checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
 import { randomInt } from './rng.ts';
-import { characteristics, countOf, manaSpentOverPowerOrToughness } from './characteristics.ts';
+import { characteristics, countOf, countersOf, manaSpentOverPowerOrToughness } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
 import { givePriority } from './turn.ts';
@@ -192,6 +192,10 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'LandPlayed':
         out.push({ when: 'LandPlayed', at, subject: e.card, subjectController: e.player, from: e.from });
+        break;
+      case 'CountersRemoved':
+        // Suspend: the last time counter came off an exiled card.
+        if (e.counter === 'time' && s.cards[e.card]?.zone === 'exile' && countersOf(s.cards[e.card]!, 'time') === 0) out.push({ when: 'LastTimeCounterRemoved', at, subject: e.card });
         break;
       case 'SpellCopied':
         // Magecraft: "whenever you cast or copy an instant or sorcery spell".
@@ -480,6 +484,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     .map(([id]) => s.cards[id]!)
     .filter(c=>(c.lastDefinition??defOf(s,c)).triggers?.length);
   const inGraveyards = s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.map((id) => s.cards[id]!)).filter(withTriggers);
+  // Suspended cards' time-counter abilities work from exile.
+  const suspendedCards = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.suspended).filter(withTriggers);
   const inCommand = s.turnOrder.flatMap((pid) => s.players[pid]!.command.map((id) => s.cards[id]!)).filter((c) => defOf(s, c).triggers?.some((t) => t.eminence));
 
   const found: QueuedTrigger[] = [];
@@ -527,7 +533,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
   }
   const batched = new Set<string>();
   const batchFirst = new Map<string, QueuedTrigger>();
-  const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard' | 'command', o: Occurrence) => {
+  const consider = (c: CardInstance, controller: PlayerId, zone: 'battlefield' | 'graveyard' | 'command' | 'exile', o: Occurrence) => {
     if (s.players[controller]!.eliminated) return;
     const definition = zone === 'battlefield' && c.zone !== 'battlefield' ? c.lastDefinition ?? defOf(s,c) : defOf(s,c);
     definition.triggers!.forEach((original, ability) => {
@@ -613,6 +619,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       if (sawIt) consider(c, m.controller ?? c.owner, 'battlefield', o);
     }
     for (const c of inGraveyards) consider(c, c.owner, 'graveyard', o);
+    for (const c of suspendedCards) consider(c, c.owner, 'exile', o);
     for (const c of inCommand) consider(c, c.owner, 'command', o);
     // Delayed triggers work even after their source has left (rule 603.7).
     for (const d of s.delayedTriggers ?? []) {

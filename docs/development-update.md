@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC2i: Prismari Artistry complete (2026-11-24)
+
+- Suspend (Rousing Refrain, with mana kept until end of turn), Abstract Performance's opponent-chosen piles, and Plargg and Nassari's denied card and two free casts. Prismari Artistry is the second complete Strixhaven deck: a free starter choice and a deck the bots can play. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC2h: Magma Opus, Mirrorwing Dragon (2026-11-24)
 
 - Divided damage can go to players and planeswalkers (Magma Opus; Fury's planeswalkers too). Mirrorwing Dragon copies a spell aimed at it for each other creature its caster controls. 3 Prismari cards left. docs/strixhaven.md.

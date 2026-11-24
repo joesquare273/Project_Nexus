@@ -587,6 +587,8 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'library') return pick([]);
   // Perpetual Timepiece: put everything back.
   if (p.purpose === 'shuffleIntoLibrary') return pick([...p.cards]);
+  // Abstract Performance: cast the best spell; Plargg and Nassari (as the opponent): deny the best one.
+  if (p.purpose === 'castOneFree' || p.purpose === 'denyCast') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   // Brudiclad: copy the best token, if there's more than one kind.
   if (p.purpose === 'tokenModel') {
     const best = [...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!))[0];
@@ -793,6 +795,12 @@ export function basicAi(_seed = 0): Bot {
         const mine = s.players[pending.player]!.battlefield.map((id) => s.cards[id]!).filter((c) => currentDefinition(s, c).types.includes('creature'));
         const count = (t: string) => mine.filter((c) => (currentDefinition(s, c).subtypes ?? []).includes(t)).length;
         return [...options].sort((a, b) => count(b.option) - count(a.option))[0] ?? legal[0]!;
+      }
+      // Abstract Performance (as the opponent): bin the face-up pile if it holds spells worth more than a blind guess.
+      if (pending.forResolution === 'pile') {
+        const up = s.resolving?.piles?.up ?? [];
+        const worth = up.reduce((n, id) => n + (s.cards[id] ? value(s, s.cards[id]!) : 0), 0);
+        return options.find((a) => a.option === (worth >= up.length * 2 ? 'Face-up pile' : 'Face-down pile')) ?? options[0] ?? legal[0]!;
       }
       // Dance with Calamity: keep exiling while the total is comfortably under 13.
       if (pending.forResolution === 'exileMore') {

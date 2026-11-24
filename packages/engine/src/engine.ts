@@ -3,7 +3,7 @@
 
 import { declareAttackers, declareBlockers } from './combat.ts';
 import { chooseCardType, chooseOption, chooseCommanderZone, chooseColor, chooseLegend, stabilize } from './sba.ts';
-import { chooseCopy, chooseResolutionOption, chooseEntryCopy, chooseEntryCounters, chooseDevour, activateAbility, activateManaAbility, castSpell, decide, foretell, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
+import { chooseCopy, chooseResolutionOption, chooseEntryCopy, chooseEntryCounters, chooseDevour, activateAbility, activateManaAbility, castSpell, decide, foretell, suspend, playLand, chooseMana, exileTop, surveil, chooseCards, chooseDefender, chooseOpponent, chooseCopyTargets } from './stack.ts';
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
@@ -117,6 +117,11 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         }
         requirePriority(s, action.player);
         activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy, action.sacrifice);
+        s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      case 'Suspend':
+        requirePriority(s, action.player);
+        suspend(ctx, action.player, action.card);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
       case 'Foretell':

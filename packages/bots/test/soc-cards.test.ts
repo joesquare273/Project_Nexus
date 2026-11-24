@@ -1248,3 +1248,77 @@ describe('SOC2h: Mirrorwing Dragon', () => {
     expect([s.cards[mine]!.zone, s.cards[mine2]!.damage, s.cards[theirRat]!.zone]).toEqual(['graveyard', 3, 'battlefield']);
   });
 });
+
+describe('SOC2i: Rousing Refrain (suspend)', () => {
+  it('adds {R} per card in the target opponent\'s hand, kept until end of turn; exiled with three time counters; cast free when the last comes off', () => {
+    let s = newGame();
+    for (let i = 0; i < 4; i++) put(s, 'P2', 'rank-rat', 'hand');
+    const refrain = put(s, 'P1', 'rousing-refrain', 'hand');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: refrain, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.players.P1!.manaPool.R).toBe(4);
+    expect([s.cards[refrain]!.zone, s.cards[refrain]!.suspended, s.cards[refrain]!.namedCounters?.time]).toEqual(['exile', true, 3]);
+    // The mana stays as steps end this turn.
+    s = settle(nextStep(s)).state;
+    expect(s.players.P1!.manaPool.R).toBe(4);
+    // Three of P1's upkeeps: a time counter comes off each; with the last, it may be cast free.
+    for (let turn = 0; turn < 3; turn++) {
+      s = settle(goTo(s, 'end')).state;
+      s = settle(goTo(s, 'upkeep')).state;
+      if (s.activePlayer !== 'P1') { s = settle(goTo(s, 'end')).state; s = settle(goTo(s, 'upkeep')).state; }
+    }
+    expect([s.activePlayer, s.cards[refrain]!.namedCounters?.time ?? 0, s.cards[refrain]!.castPermission?.free]).toEqual(['P1', 0, true]);
+    expect(s.players.P1!.manaPool.R).toBe(0);
+  });
+
+  it('suspend is a special action from your hand: pay {1}{R} and exile it with three time counters', () => {
+    let s = newGame();
+    const refrain = put(s, 'P1', 'rousing-refrain', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'Suspend' && a.card === refrain)).toBe(true);
+    s = act(s, { type: 'Suspend', player: 'P1', card: refrain });
+    expect([s.cards[refrain]!.zone, s.cards[refrain]!.namedCounters?.time, s.players.P1!.manaPool.R]).toEqual(['exile', 3, 0]);
+  });
+});
+
+describe('SOC2i: Abstract Performance, Plargg and Nassari', () => {
+  it('Abstract Performance: an opponent bins a pile; cast a spell from the other free; the rest to hand', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    const ids = Array.from({ length: 8 }, (_, i) => put(s, 'P1', i % 2 ? 'rank-rat' : 'island', 'library'));
+    s.players.P1!.library = [...ids];
+    const ap = put(s, 'P1', 'abstract-performance', 'hand');
+    mana(s, 'P1', { U: 1, C: 5 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: ap })).state;
+    expect([s.pending.kind, (s.pending as { player?: string }).player, (s.pending as { forResolution?: string }).forResolution]).toEqual(['chooseOption', 'P2', 'pile']);
+    // Face down (the first four) is hidden from P2 until chosen.
+    expect(s.cards[ids[0]!]!.linkedExile?.lookers).toEqual([]);
+    s = act(s, { type: 'ChooseOption', player: 'P2', option: 'Face-up pile' });
+    expect(ids.slice(4).every((id) => s.cards[id]!.zone === 'graveyard')).toBe(true);
+    expect((s.pending as { purpose?: string }).purpose).toBe('castOneFree');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [ids[1]!] })).state;
+    expect([s.cards[ids[1]!]!.castPermission?.free, s.cards[ids[0]!]!.zone, s.cards[ids[3]!]!.zone]).toEqual([true, 'hand', 'hand']);
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: ids[1]! })).state;
+    expect(s.cards[ids[1]!]!.zone).toBe('battlefield');
+  });
+
+  it('Plargg and Nassari: each player exiles until nonland; an opponent denies one; cast up to two others free', () => {
+    let s = newGame();
+    put(s, 'P1', 'plargg-and-nassari');
+    s.players.P1!.library = []; s.players.P2!.library = [];
+    const mine = put(s, 'P1', 'rank-rat', 'library');
+    put(s, 'P1', 'island', 'library');
+    const theirs = put(s, 'P2', 'hungry-graffalon', 'library');
+    put(s, 'P2', 'plains', 'library'); // P2 draws this on their turn
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    s = settle(goTo(s, 'end')).state;
+    s = goTo(s, 'upkeep');
+    for (let i = 0; i < 4 && !(s.pending.kind === 'chooseCards' && s.pending.purpose === 'denyCast'); i++) s = act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player });
+    expect([s.pending.kind, (s.pending as { player?: string }).player]).toEqual(['chooseCards', 'P2']);
+    s = act(s, { type: 'ChooseCards', player: 'P2', cards: [theirs] });
+    const cast = getLegalActions(s).filter((a) => a.type === 'CastSpell');
+    expect(cast.some((a) => a.type === 'CastSpell' && a.card === mine)).toBe(true);
+    expect(cast.some((a) => a.type === 'CastSpell' && a.card === theirs)).toBe(false);
+  });
+});

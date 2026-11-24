@@ -397,7 +397,8 @@ export function Game({
   const pay = (choice: PlayChoice, title: string) => {
     const { action } = choice;
     if (action.type !== 'CastSpell' && action.type !== 'ActivateAbility') {
-      submit([action]);
+      // Foretell and suspend: their lands are tapped with them.
+      submit([...choice.taps, action]);
       return;
     }
     const cost = costText(s, action);
@@ -1603,6 +1604,8 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'exiledToGraveyard' ? "to put into its owner's graveyard"
                   : c.purpose === 'shuffleIntoLibrary' ? 'to shuffle into your library'
                   : c.purpose === 'iterateHand' ? 'to put into your hand'
+                  : c.purpose === 'castOneFree' ? 'to cast without paying its mana cost (or none); the rest go into your hand'
+                  : c.purpose === 'denyCast' ? 'that the caster can’t cast; they may cast up to two of the others free'
                   : c.purpose === 'tokenModel' ? 'for each other token you control to become a copy of (or none)'
                   : c.purpose === 'iterateBottom' ? 'to put on the bottom of your library; the other is exiled, and you may play it this turn'
                   : c.purpose === 'copyCard' ? 'for it to become a copy of until end of turn (or none)'
@@ -1627,6 +1630,8 @@ function PromptBar(p: PromptProps) {
   } else if (pending.kind === 'chooseOpponent') {
     text = pending.purpose === 'memories' ? 'Memories Returning: choose the opponent who takes turns choosing with you.'
       : pending.purpose === 'rival' ? 'Shinryu: choose an opponent. When they lose the game, you win.'
+      : pending.purpose === 'piles' ? 'Abstract Performance: choose the opponent who picks a pile.'
+      : pending.purpose === 'deny' ? 'Plargg and Nassari: choose the opponent who picks the card you can’t cast.'
       : 'Choose the opponent who will decide which exiled card goes on the bottom of your library.';
     buttons = pending.opponents.filter(id => !s.players[id]!.eliminated).map(opponent => ({
       label: opponent, onClick: () => p.submit([{ type: 'ChooseOpponent', player: ME, opponent }]),
@@ -1652,6 +1657,8 @@ function PromptBar(p: PromptProps) {
       ? `${cardName(s, pending.card)}: choose a creature type.`
       : pending.forResolution === 'keyword'
       ? `${cardName(s, pending.card)}: choose the ability it gains.`
+      : pending.forResolution === 'pile'
+      ? `${cardName(s, pending.card)}: choose the pile that goes into its caster’s graveyard. They may cast a spell from the other pile free and keep the rest.`
       : pending.forResolution === 'exileMore'
       ? `${cardName(s, pending.card)}: exile the top card of your library, or stop? (Total mana value so far: ${s.resolving?.exiledAsChosen?.total ?? 0}; ${s.resolving?.exiledAsChosen?.limit ?? 13} or less lets you cast the spells free.)`
       : pending.options.length > 3

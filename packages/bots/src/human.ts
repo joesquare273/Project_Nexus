@@ -4,6 +4,7 @@
 
 import {
   FORETELL_COST,
+  parseManaCost,
   abilityOptions,
   currentDefinition,
   activatedAbilities,
@@ -157,6 +158,18 @@ export function playableCards(s: GameState, player: PlayerId): CardPlay[] {
     if (!taps) continue;
     const action: Action = { type: 'Foretell', player, card: id };
     plays.push({ card: id, kind: 'ability', label: `Foretell ({2}; cast later for ${def.foretell})`, choices: [{ taps: tapActions(player, taps), action, targets: [] }] });
+  }
+  // Suspend (a special action): any time you could cast the card, pay its suspend cost and exile it with time counters.
+  for (const id of s.players[player]!.hand) {
+    const c = s.cards[id]!;
+    const def = currentDefinition(s, c);
+    if (!def.suspend) continue;
+    const sorcery = !def.types.includes('instant') && !def.keywords?.includes('Flash');
+    if (sorcery && (s.activePlayer !== player || (s.step !== 'main1' && s.step !== 'main2') || s.stack.length > 0)) continue;
+    const taps = planTaps(s, player, parseManaCost(def.suspend.cost));
+    if (!taps) continue;
+    const action: Action = { type: 'Suspend', player, card: id };
+    plays.push({ card: id, kind: 'ability', label: `Suspend ${def.suspend.count} (${def.suspend.cost})`, choices: [{ taps: tapActions(player, taps), action, targets: [] }] });
   }
   return plays;
 }

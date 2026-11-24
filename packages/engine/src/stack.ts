@@ -36,6 +36,7 @@ import {
   player,
   reject,
   removeCounters,
+  setCounters,
   sacrifice,
   tap,
   untap,
@@ -1181,7 +1182,7 @@ export function spellCost(
     && objectManaValue(s, card) <= battlefield(s).filter((p) => p.controller === payer && !p.phasedOut && hasType(s, p, 'creature')).length;
   const base = card?.faceDown && from === 'hand'
     ? '{3}'
-    : permission?.free || weft || omnipresent
+    : permission?.free || weft || omnipresent || (extra.castGroup && s.castGroups?.find((g) => g.id === extra.castGroup)?.free)
     ? undefined
     : permission?.manaCost
       ? permission.manaCost
@@ -1376,7 +1377,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!canEverCast(def)) reject(`${def.name} isn't built yet, so it can't be cast.`);
   if (def.castOnlyWithThreshold && player(s, playerId).graveyard.length < 7) reject(`You can't cast ${def.name} unless there are seven or more cards in your graveyard.`);
   const anyTime = (from === 'exile' || from === 'graveyard' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.ignoreTiming;
-  if (!castsAtInstantSpeed(s, playerId, c, def) && !canActAtSorcerySpeed(s, playerId) && !anyTime) {
+  if (!castsAtInstantSpeed(s, playerId, c, def) && !canActAtSorcerySpeed(s, playerId) && !anyTime && !group?.immediate) {
     reject('This card can only be cast in your main phase with an empty stack.');
   }
   const modes = modeProblem(def, choice, s, playerId);
@@ -1527,7 +1528,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     casts[id] = (casts[id] ?? 0) + 1;
   }
 
-  if (group) s.castGroups = s.castGroups!.filter(g=>g.id!==group.id);
+  // A group that allows more than one spell (Plargg and Nassari: up to two) loses this card and one use.
+  if (group) s.castGroups = (group.remaining ?? 1) > 1
+    ? s.castGroups!.map((g) => (g.id === group.id ? { ...g, remaining: (g.remaining ?? 1) - 1, cards: g.cards.filter((ref) => ref.card !== id) } : g))
+    : s.castGroups!.filter(g=>g.id!==group.id);
   // Kefka: "each player who owns a spell you cast this way loses life equal to its mana value".
   if (permission?.ownerLosesLife) changeLife(ctx, c.owner, -manaValue(parseManaCost(def.manaCost)));
   const sacrificeLater = !!permission?.hasteSacrifice && def.types.includes('creature');
@@ -1629,6 +1633,52 @@ export function foretellProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (s.activePlayer !== playerId) return 'You can only foretell during your turn.';
   if (!canPayFromPool(s, playerId, FORETELL_COST)) return 'Foretelling costs {2}. Add the mana first.';
   return null;
+}
+
+/** Abstract Performance: the chosen opponent picks the pile that goes to the graveyard. */
+function askPile(s: GameState, r: Resolving, opponent: PlayerId, source: InstanceId): void {
+  s.pending = { kind: 'chooseOption', player: opponent, card: source, options: ['Face-down pile', 'Face-up pile'], resume: { kind: 'priority', player: r.item.controller, passes: 0 }, forResolution: 'pile' };
+}
+
+/** Plargg and Nassari: the chosen opponent picks a nonland card exiled this way (it can't be cast). */
+function askDeny(s: GameState, r: Resolving, opponent: PlayerId, caster: PlayerId, ctx: Ctx): void {
+  const pool = r.denyPool!;
+  const nonland = pool.cards.filter((id) => s.cards[id]?.zone === 'exile' && !hasType(s, s.cards[id]!, 'land'));
+  if (nonland.length) r.choiceQueue = [{ player: opponent, purpose: 'denyCast', cards: nonland, min: 1, max: 1 }, ...(r.choiceQueue ?? [])];
+  else grantDenyPool(ctx, r, caster, []);
+}
+
+/** "You may cast up to two spells from among the other cards exiled this way without paying their mana costs." */
+function grantDenyPool(ctx: Ctx, r: Resolving, caster: PlayerId, denied: InstanceId[]): void {
+  const s = ctx.s;
+  const pool = r.denyPool!;
+  const cards = pool.cards.filter((id) => !denied.includes(id) && s.cards[id]?.zone === 'exile' && isSpellCard(defOf(s, s.cards[id]!)));
+  if (cards.length) s.castGroups = [...(s.castGroups ?? []), { id: newId(s, 'cast'), source: sourceOf(r.item), player: caster, turn: s.turnNumber, cards: cards.map((id) => ({ card: id, object: s.cards[id]!.zoneChanges ?? 0, zone: 'exile' as const })), free: true, immediate: true, remaining: pool.spells }];
+  delete r.denyPool;
+}
+
+/** Why the player can't suspend this card now (rule 702.62a: any time they could cast it). */
+export function suspendProblem(s: GameState, playerId: PlayerId, c: CardInstance): string | null {
+  const def = defOf(s, c);
+  if (c.owner !== playerId || c.zone !== 'hand') return 'That card is not in your hand.';
+  if (!def.suspend) return `${def.name} doesn't have suspend.`;
+  const instantSpeed = castsAtInstantSpeed(s, playerId, c, def);
+  if (!instantSpeed && (s.activePlayer !== playerId || (s.step !== 'main1' && s.step !== 'main2') || s.stack.length > 0)) return 'You can suspend it only when you could cast it.';
+  if (!canPayFromPool(s, playerId, parseManaCost(def.suspend.cost))) return `Suspending costs ${def.suspend.cost}. Add the mana first.`;
+  return null;
+}
+
+/** Suspend: pay its suspend cost and exile it with time counters (a special action, rule 116.2f). */
+export function suspend(ctx: Ctx, playerId: PlayerId, id: InstanceId): void {
+  const s = ctx.s;
+  const c = card(s, id);
+  const problem = suspendProblem(s, playerId, c);
+  if (problem) reject(problem);
+  const def = defOf(s, c);
+  payMana(ctx, playerId, parseManaCost(def.suspend!.cost));
+  moveCard(ctx, id, 'exile');
+  setCounters(c, 'time', def.suspend!.count);
+  c.suspended = true;
 }
 
 /** Foretell: pay {2} and exile the card face down (a special action, rule 116.2h). */
@@ -2276,6 +2326,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? (r.item.kind === 'spell' ? (r.item.colorsSpent ?? 0) : (s.cards[sourceOf(r.item)]?.colorsSpentToCast ?? 0))
               : a.of === 'subjectColorsSpent'
               ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.colorsSpentToCast ?? 0) : 0)
+              : a.of === 'previousTargetHandSize'
+              ? (r.previousTarget?.kind === 'player' ? (s.players[r.previousTarget.player]?.hand.length ?? 0) : 0)
               : a.of === 'previousTargetManaValue'
                 ? previousManaValue(s, r)
                 : a.of === 'x'
@@ -4078,6 +4130,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // "Add {R} for each lore counter": no color to choose.
       if (effect.manaType) {
         if (recipient?.kind === 'player') for (let i = 0; i < amount; i++) addMana(ctx, recipient.player, effect.manaType, source, effect.manaRestricted);
+        // Rousing Refrain: this mana isn't lost as steps and phases end this turn.
+        if (effect.manaUntilEndOfTurn && recipient?.kind === 'player' && amount > 0) {
+          const p = player(s, recipient.player);
+          const pool = p.keptMana?.turn === s.turnNumber ? p.keptMana.pool : {};
+          pool[effect.manaType] = (pool[effect.manaType] ?? 0) + amount;
+          p.keptMana = { turn: s.turnNumber, pool };
+        }
         return;
       }
       if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(effect.manaTypes ? { options: [...effect.manaTypes] } : {}) };
@@ -4285,6 +4344,56 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, pid, amount)) manifest(ctx, id, pid, !!effect.cloak);
       }
       return;
+    case 'TwoPilesOpponentChooses': {
+      const object = item.kind === 'spell' ? (s.cards[source]?.zoneChanges ?? 0) : (item.sourceObject ?? 0);
+      const down = topOfLibrary(s, item.controller, amount);
+      for (const id of down) {
+        moveCard(ctx, id, 'exile', { silent: true });
+        // Face down: nobody may look at them yet.
+        s.cards[id]!.linkedExile = { source, sourceObject: object, lookers: [] };
+      }
+      const up = topOfLibrary(s, item.controller, amount);
+      for (const id of up) moveCard(ctx, id, 'exile');
+      r.piles = { down, up };
+      const opponents = alivePlayers(s).filter((p) => p !== item.controller);
+      if (opponents.length > 1) s.pending = { kind: 'chooseOpponent', player: item.controller, opponents, purpose: 'piles' };
+      else if (opponents[0]) askPile(s, r, opponents[0], source);
+      return;
+    }
+    case 'EachExilesUntilNonlandCastOthers': {
+      const exiled: InstanceId[] = [];
+      for (const pid of aliveFromActive(s)) {
+        const library = s.players[pid]!.library;
+        while (library.length > 0) {
+          const top = library[0]!;
+          moveCard(ctx, top, 'exile');
+          exiled.push(top);
+          if (!hasType(s, s.cards[top]!, 'land')) break;
+        }
+      }
+      r.denyPool = { cards: exiled, spells: amount };
+      const opponents = alivePlayers(s).filter((p) => p !== item.controller);
+      if (opponents.length > 1) s.pending = { kind: 'chooseOpponent', player: item.controller, opponents, purpose: 'deny' };
+      else if (opponents[0]) askDeny(s, r, opponents[0], item.controller, ctx);
+      return;
+    }
+    case 'ExileThisSuspended':
+      if (item.kind === 'spell') {
+        (item as SpellItem).exileAfter = true;
+        (item as SpellItem).suspendOnResolve = amount;
+      }
+      return;
+    case 'RemoveTimeCounter': {
+      const c = s.cards[source];
+      if (c?.zone === 'exile' && c.suspended) removeCounters(ctx, c.id, 'time', 1);
+      return;
+    }
+    case 'CastSuspendedFree': {
+      // "If it's exiled, you may cast it without paying its mana cost" (rule 702.62a).
+      const c = s.cards[source];
+      if (c?.zone === 'exile' && c.suspended && isSpellCard(defOf(s, c))) c.castPermission = { player: c.owner, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true };
+      return;
+    }
     case 'CopySpellForEachOtherCreature': {
       // Mirrorwing Dragon: each copy targets a different other creature the spell's controller controls that it could target.
       const spellCard = item.kind === 'ability' ? item.subject : undefined;
@@ -4682,7 +4791,14 @@ function finishResolving(ctx: Ctx, item: StackItem, resolved = true): void {
       const library = player(s, c.owner).library;
       library.splice(library.indexOf(item.card), 1);
       library.push(item.card);
-    } else if (item.flashback || item.exileAfter || defOf(s, c).exileOnResolve) moveCard(ctx, item.card, 'exile');
+    } else if (item.flashback || item.exileAfter || defOf(s, c).exileOnResolve) {
+      moveCard(ctx, item.card, 'exile');
+      // Rousing Refrain: exiled with time counters, which suspends it (it has suspend).
+      if (item.suspendOnResolve && !c.spellCopy && c.zone === 'exile') {
+        setCounters(c, 'time', item.suspendOnResolve);
+        if (defOf(s, c).suspend) c.suspended = true;
+      }
+    }
     else if (defOf(s, c).rebound && item.castFrom === 'hand') {
       // Rebound (rule 702.88a): exiled, to be cast again during its owner's next upkeep.
       moveCard(ctx, item.card, 'exile');
@@ -5051,6 +5167,14 @@ export function chooseOpponent(ctx: Ctx, playerId: PlayerId, opponent: PlayerId)
     r.choiceQueue = [{ player: playerId, purpose: 'memories', cards: [...r.memories.pool], min: 1, max: 1 }, ...(r.choiceQueue ?? [])];
   } else if (pending.purpose === 'rival') {
     s.cards[sourceOf(r.item)]!.rival = opponent;
+  } else if (pending.purpose === 'piles') {
+    askPile(s, r, opponent, sourceOf(r.item));
+    return;
+  } else if (pending.purpose === 'deny') {
+    s.pending = { kind: 'priority', player: playerId, passes: 0 };
+    askDeny(s, r, opponent, playerId, ctx);
+    continueResolving(ctx);
+    return;
   } else queueFateChoice(s, r, opponent);
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   continueResolving(ctx);
@@ -5444,6 +5568,17 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       const token = land ? pending.landToken : pending.nonlandToken;
       if (token) r.createdTokens.push(createToken(ctx, token, pending.player));
     }
+  } else if (pending.purpose === 'castOneFree') {
+    // Abstract Performance: the chosen spell may be cast free right away (or it goes to the hand); the rest go to the hand.
+    const other = r.piles?.other ?? [];
+    for (const id of other) {
+      const c = s.cards[id];
+      if (!c || c.zone !== 'exile') continue;
+      if (cards.includes(id)) c.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, orHand: true };
+      else moveCard(ctx, id, 'hand');
+    }
+  } else if (pending.purpose === 'denyCast') {
+    if (r.denyPool) grantDenyPool(ctx, r, r.item.controller, cards);
   } else if (pending.purpose === 'tokenModel') {
     // Brudiclad: each other token you control becomes a copy of the chosen one (with no duration).
     const model = cards[0];
@@ -5837,6 +5972,22 @@ export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: str
       s.pending = { ...pending, player: next };
       return;
     }
+    s.pending = pending.resume;
+    continueResolving(ctx);
+    return;
+  }
+  if (pending.forResolution === 'pile' && r.piles) {
+    // The chosen pile goes into the graveyard; the caster looks at the other.
+    const caster = r.item.controller;
+    const toGraveyard = option === 'Face-down pile' ? r.piles.down : r.piles.up;
+    const other = option === 'Face-down pile' ? r.piles.up : r.piles.down;
+    ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+    for (const id of toGraveyard) if (s.cards[id]?.zone === 'exile') moveCard(ctx, id, 'graveyard');
+    for (const id of other) if (s.cards[id]?.linkedExile) s.cards[id]!.linkedExile!.lookers = [caster];
+    r.piles.other = other.filter((id) => s.cards[id]?.zone === 'exile');
+    const spells = r.piles.other.filter((id) => isSpellCard(defOf(s, s.cards[id]!)));
+    if (spells.length) r.choiceQueue = [{ player: caster, purpose: 'castOneFree', cards: spells, min: 0, max: 1 }, ...(r.choiceQueue ?? [])];
+    else for (const id of r.piles.other) moveCard(ctx, id, 'hand');
     s.pending = pending.resume;
     continueResolving(ctx);
     return;
