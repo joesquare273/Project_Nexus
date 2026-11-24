@@ -428,6 +428,11 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'SpellCast' && o.copied && !spec.orCopied) return false;
   if (spec.ifSourceUntapped && s.cards[source]?.tapped) return false;
   if (spec.ifSpellTargetsCreature && !spellTargetsCreature(s, o.subject)) return false;
+  if (spec.ifSpellTargetsOnlySource) {
+    const item = s.stack.find((x) => x.kind === 'spell' && x.card === o.subject);
+    const chosen = (item?.targets ?? []).filter((t) => t.kind !== 'none');
+    if (!chosen.length || !chosen.every((t) => t.kind === 'card' && t.card === source)) return false;
+  }
   if (spec.ifManaSpentOverPowerOrToughness && !manaSpentOverPowerOrToughness(s, source, o.manaSpent ?? 0)) return false;
   return matchesFilter(s, spec.what, source, controller, o);
 }

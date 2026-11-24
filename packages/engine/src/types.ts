@@ -621,6 +621,8 @@ export const EFFECT_KINDS = [
   'PutExiledWithThisIntoGraveyard',
   /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
   'ManifestDread',
+  /** Mirrorwing Dragon: the triggering spell's controller copies it for each other creature they control it could target, each copy targeting a different one. */
+  'CopySpellForEachOtherCreature',
   /** Dance with Calamity: exile the top card of your library as many times as you choose; if their total mana value is `amount` or less, you may cast any number of spells among them free. */
   'ExileTopAsManyAsYouChoose',
   /** Surge to Victory: copy the triggering card (in exile); you may cast the copy without paying its mana cost. */
@@ -1177,6 +1179,8 @@ export interface EffectSpec {
   /** "The 'legend rule' doesn't apply to permanents you control this turn" (Hall of Echoes). */
   legendRuleOffThisTurn?: boolean;
   copyKeepTrigger?: boolean;
+  /** DivideDamage with `amongTargets`: only among the targets of the slots with this `group`. */
+  amongGroup?: string;
   /** CopyCreature: it becomes the copy at once, with no "may" (Muddle: "becomes a copy of up to one target"). */
   copyAtOnce?: boolean;
   /** CopyCreature: the copy also has these triggered abilities (Muddle: "except it has myriad"). */
@@ -1784,6 +1788,8 @@ export interface TriggerSpec {
   ifManaSpentOverPowerOrToughness?: boolean;
   /** SpellCast, Repartee: only a spell that targets a creature (checked as it's cast). */
   ifSpellTargetsCreature?: boolean;
+  /** SpellCast: only if the spell targets only this permanent (Mirrorwing Dragon). */
+  ifSpellTargetsOnlySource?: boolean;
   ifSourceGotCountersThisTurn?: boolean;
   /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
   ifYouAreMonarch?: boolean;

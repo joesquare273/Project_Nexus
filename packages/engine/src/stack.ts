@@ -2392,7 +2392,9 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
 
 /** Why a set of chosen cards doesn't fit a choice, or null if it does. */
 export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceId[]): string | null {
-  if ((choice.purpose === 'distributeCounter' || choice.purpose === 'divideDamage') && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
+  if (choice.purpose === 'distributeCounter' && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
+  // Divided damage: a creature or planeswalker still on the battlefield, or a player still in the game.
+  if (choice.purpose === 'divideDamage' && cards.some((id) => (s.players[id] ? s.players[id]!.eliminated : !(s.cards[id]?.zone === 'battlefield' && (isCreatureOnBattlefield(s, s.cards[id]) || hasType(s, s.cards[id]!, 'planeswalker')))))) return 'Choose a creature, planeswalker or player still in the game.';
   if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
   if (choice.allOrNothing) return cards.length === 0 || cards.length === choice.cards.length ? null : 'Choose all of them or none.';
   if (choice.orOneMatching && cards.length < choice.max) {
@@ -2566,12 +2568,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'DivideDamage': {
       // Fury: "divided as you choose among any number of target creatures": among this ability's targets, each getting at least 1.
       if (effect.amongTargets) {
-        const picked = [...new Set(item.targets.flatMap((t) => (t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]) ? [t.card] : [])))];
+        // Its targets still legal: creatures and planeswalkers on the battlefield, and players (Magma Opus: "any number of targets").
+        // With `amongGroup`, only the targets from that phrase (Magma Opus also taps two target permanents).
+        const slots = choosingEffects(effectsOf(s, item));
+        const picked = [...new Set(item.targets.flatMap((t, i) => {
+          if (effect.amongGroup && slots[i]?.group !== effect.amongGroup) return [];
+          if (t.kind === 'player') return s.players[t.player] && !s.players[t.player]!.eliminated ? [t.player] : [];
+          const c = t.kind === 'card' ? s.cards[t.card] : undefined;
+          return c && c.zone === 'battlefield' && (isCreatureOnBattlefield(s, c) || hasType(s, c, 'planeswalker')) ? [c.id] : [];
+        }))];
         if (!picked.length || amount <= 0) return;
         const assigned = Object.fromEntries(picked.map((id) => [id, 1]));
         const remaining = amount - picked.length;
+        const to = (id: string): Target => (s.players[id] ? { kind: 'player', player: id } : { kind: 'card', card: id });
         if (remaining <= 0 || picked.length === 1) {
-          for (const id of picked) dealDamage(ctx, source, { kind: 'card', card: id }, picked.length === 1 ? amount : 1, false);
+          for (const id of picked) dealDamage(ctx, source, to(id), picked.length === 1 ? amount : 1, false);
           return;
         }
         r.distribution = { source, remaining, assigned, damage: true };
@@ -4274,6 +4285,27 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, pid, amount)) manifest(ctx, id, pid, !!effect.cloak);
       }
       return;
+    case 'CopySpellForEachOtherCreature': {
+      // Mirrorwing Dragon: each copy targets a different other creature the spell's controller controls that it could target.
+      const spellCard = item.kind === 'ability' ? item.subject : undefined;
+      const original = s.stack.find((x): x is SpellItem => x.kind === 'spell' && x.card === spellCard);
+      if (!original) return;
+      const copier = original.controller;
+      const from = s.cards[original.card]!;
+      const slots = choosingEffects(effectsOf(s, original));
+      const others = battlefield(s).filter((c) => c.controller === copier && c.id !== source && !c.phasedOut && isCreatureOnBattlefield(s, c)
+        && original.targets.every((t, i) => t.kind !== 'card' || t.card !== source || isLegalTarget(s, slots[i]!, { kind: 'card', card: c.id }, copier, original.card)));
+      for (const other of others) {
+        const id = `${original.card}c${(s.nextCopyId = (s.nextCopyId ?? 0) + 1)}`;
+        s.cards[id] = { ...structuredClone(from), id, owner: copier, controller: copier, spellCopy: true, zone: 'stack', zoneChanges: 0 };
+        const targetsFor: Target[] = original.targets.map((t) => (t.kind === 'card' && t.card === source ? { kind: 'card', card: other.id } : t));
+        const copy = { ...structuredClone(original), id: `${original.id}c${s.nextCopyId}`, card: id, controller: copier, manaSpent: 0, targets: targetsFor };
+        delete copy.flashback;
+        s.stack.push(copy);
+        ctx.ev.push({ type: 'SpellCopied', card: id, original: original.card, player: copier, defId: from.defId });
+      }
+      return;
+    }
     case 'ExileTopAsManyAsYouChoose': {
       r.exiledAsChosen = { cards: [], total: 0, limit: amount };
       if (player(s, item.controller).library.length === 0) return;
@@ -5035,6 +5067,8 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   const r = s.resolving;
   r.choiceQueue = (r.choiceQueue ?? []).slice(1);
   for (const id of cards) {
+    // Divided damage may go to a player.
+    if (!s.cards[id]) continue;
     const c = s.cards[id]!;
     r.chosenManaValue = (r.chosenManaValue ?? 0) + manaValue(parseManaCost(defOf(s, c).manaCost));
     const kinds = r.chosenTypes ?? { creature: false, noncreature: false };
@@ -5071,7 +5105,10 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     r.distribution = { ...distribution, assigned, remaining };
     if (recipient && remaining > 0) r.choiceQueue = [{ ...pending, cards: [...pending.cards], min: 1, counterCount: remaining }, ...(r.choiceQueue ?? [])];
     else {
-      for (const [to, n] of Object.entries(assigned)) if (s.cards[to]!.zone === 'battlefield') dealDamage(ctx, distribution.source, { kind: 'card', card: to }, n, false);
+      for (const [to, n] of Object.entries(assigned)) {
+        if (s.players[to]) { if (!s.players[to]!.eliminated) dealDamage(ctx, distribution.source, { kind: 'player', player: to }, n, false); }
+        else if (s.cards[to]!.zone === 'battlefield') dealDamage(ctx, distribution.source, { kind: 'card', card: to }, n, false);
+      }
       delete r.distribution;
     }
   } else if (pending.purpose === 'reanimate') {
@@ -5519,7 +5556,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     for (const id of pending.cards) if (!cards.includes(id) && s.cards[id]!.zone === 'battlefield') sacrifice(ctx, id);
   }
   // Whose cards they were: the chooser's own, except when the spell's controller chose for everyone.
-  const owner = cards.length ? s.cards[cards[0]!]!.owner : pending.player;
+  const owner = cards.length && s.cards[cards[0]!] ? s.cards[cards[0]!]!.owner : pending.player;
   r.chosen = [...(r.chosen ?? []), { player: pending.purpose === 'keep' ? owner : pending.player, cards }];
   if (enteredAttacker) {
     s.pending = { kind: 'chooseDefender', player: pending.player, card: enteredAttacker.card, defenders: enteredAttacker.defenders, entered: true };

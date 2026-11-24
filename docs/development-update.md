@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC2h: Magma Opus, Mirrorwing Dragon (2026-11-24)
+
+- Divided damage can go to players and planeswalkers (Magma Opus; Fury's planeswalkers too). Mirrorwing Dragon copies a spell aimed at it for each other creature its caster controls. 3 Prismari cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC2g: Muddle, Surge to Victory, Dance with Calamity (2026-11-24)
 
 - Muddle becomes a copy with myriad, Surge to Victory copies its exiled card on each combat hit, and Dance with Calamity exiles as many cards as you choose. 5 Prismari cards left. docs/strixhaven.md.

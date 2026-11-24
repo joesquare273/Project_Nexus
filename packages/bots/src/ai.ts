@@ -626,10 +626,12 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
     // Opponents' creatures first: the best one the damage assigned so far doesn't already kill.
     const assigned = s.resolving?.distribution?.assigned ?? {};
     const alive = (id: string) => toughness(s, s.cards[id]!) - s.cards[id]!.damage - (assigned[id] ?? 0) > 0;
-    const theirs = p.cards.filter((id) => s.cards[id]!.controller !== me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));
-    const target = theirs.find(alive) ?? theirs[0];
+    const theirs = p.cards.filter((id) => s.cards[id] && s.cards[id]!.controller !== me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));
+    // Then an opponent (Magma Opus can hit players).
+    const opponent = p.cards.find((id) => !s.cards[id] && id !== me);
+    const target = theirs.find(alive) ?? opponent ?? theirs[0];
     if (target) return pick([target]);
-    return pick(p.min === 0 ? [] : [...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
+    return pick(p.min === 0 ? [] : [...p.cards].sort((a, b) => (s.cards[a] ? value(s, s.cards[a]!) : 99) - (s.cards[b] ? value(s, s.cards[b]!) : 99)).slice(0, 1));
   }
   if (p.purpose === 'distributeCounter') {
     const recipients = p.cards.filter((id) => s.cards[id]!.controller === me).sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));

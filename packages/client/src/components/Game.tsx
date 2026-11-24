@@ -1613,6 +1613,8 @@ function PromptBar(p: PromptProps) {
       const problem = choiceProblem(s, c, picks);
       text = `${c.purpose === 'handSize' ? 'Cleanup: ' : ''}Choose ${how} card${c.max === 1 ? '' : 's'} ${verb}. ${c.cards.every((id) => ['hand', 'battlefield', 'command'].includes(s.cards[id]?.zone ?? '')) ? 'Click the glowing cards' : 'Click a card to choose it, again to unchoose it'} (${picks.length} chosen)${problem && picks.length ? `: ${problem}` : '.'}`;
       buttons = [
+        // Divided damage may go to a player (Magma Opus): one button each.
+        ...(c.purpose === 'divideDamage' ? c.cards.filter((id) => !s.cards[id] && s.players[id]).map((pid) => ({ label: `1 damage to ${pid === ME ? 'you' : pid}`, onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: [pid] }]) })) : []),
         ...(picks.length > 0 ? [{ label: 'Clear', onClick: () => p.setBottomPicks([]) }] : []),
         ...(!problem
           ? [{ label: c.purpose === 'distributeCounter' ? (picks.length ? 'Assign counter' : 'Finish distributing') : c.purpose === 'divideDamage' ? (picks.length ? 'Assign 1 damage' : 'Deal no damage') : (picks.length ? 'Confirm' : 'Choose none'), onClick: () => p.submit([{ type: 'ChooseCards', player: ME, cards: picks }]), primary: true }]

@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -580,3 +580,20 @@ Muddle, the Ever-Changing, Surge to Victory and Dance with Calamity.
 Still to build in Prismari Artistry after SOC2g: 5 cards (Abstract
 Performance, Mirrorwing Dragon, Plargg and Nassari, Rousing Refrain, Magma
 Opus).
+
+## SOC2h: Magma Opus and Mirrorwing Dragon (built 2026-11-24)
+
+- **Divided damage** (`DivideDamage` with `amongTargets`) now includes
+  players and planeswalkers among the targets (it was creatures only, which
+  also left out Fury's planeswalkers), and `amongGroup` limits it to one
+  phrase's targets. A player is offered as a button while dividing.
+- **Magma Opus:** 4 damage divided among one to four targets, tap two target
+  permanents, a 4/4 Elemental, draw two; from your hand, {U/R}{U/R} and
+  discard it for a Treasure.
+- **Mirrorwing Dragon:** SpellCast `ifSpellTargetsOnlySource`, and
+  `CopySpellForEachOtherCreature`: the spell's controller copies it for each
+  other creature they control it could target, each copy targeting a
+  different one.
+
+Still to build in Prismari Artistry after SOC2h: 3 cards (Abstract
+Performance, Plargg and Nassari, Rousing Refrain).

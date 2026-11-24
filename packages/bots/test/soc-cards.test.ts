@@ -1205,3 +1205,46 @@ describe('SOC2g: Prismari Artistry (Muddle, Surge to Victory, Dance with Calamit
     expect(exiled.every((c) => c.castPermission?.free && c.castPermission.immediate)).toBe(true);
   });
 });
+
+describe('SOC2h: Prismari Artistry (Magma Opus)', () => {
+  it('Magma Opus divides 4 damage among any targets, players included; taps two; a 4/4 Elemental; draws two', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const land1 = put(s, 'P2', 'mountain');
+    const land2 = put(s, 'P2', 'island');
+    const opus = put(s, 'P1', 'magma-opus', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1, R: 1, C: 6 });
+    const none = { kind: 'none' } as const;
+    s = act(s, { type: 'CastSpell', player: 'P1', card: opus, targets: [card(rat), { kind: 'player', player: 'P2' }, none, none, card(land1), card(land2)] });
+    s = settle(s).state;
+    // One point each is assigned; the other two are divided one at a time.
+    while (s.pending.kind === 'chooseCards' && s.pending.purpose === 'divideDamage') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: ['P2'] })).state;
+    expect([s.cards[rat]!.zone, s.players.P2!.life, s.cards[land1]!.tapped, s.cards[land2]!.tapped]).toEqual(['graveyard', 17, true, true]);
+    expect(Object.values(s.cards).some((c) => c.zone === 'battlefield' && c.defId === 'elemental-4-4-token-soc')).toBe(true);
+    expect(s.players.P1!.hand.length - hand).toBe(1); // two drawn, Magma Opus cast
+  });
+
+  it('Magma Opus: {U/R}{U/R}, discard it from your hand: a Treasure', () => {
+    let s = newGame();
+    const opus = put(s, 'P1', 'magma-opus', 'hand');
+    mana(s, 'P1', { U: 1, R: 1 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === opus)!).state;
+    expect([s.cards[opus]!.zone, Object.values(s.cards).some((c) => c.zone === 'battlefield' && c.defId === 'treasure-token-sos')]).toEqual(['graveyard', true]);
+  });
+});
+
+describe('SOC2h: Mirrorwing Dragon', () => {
+  it('a spell that targets only it is copied for each other creature its caster controls, one copy each', () => {
+    let s = newGame();
+    const dragon = put(s, 'P2', 'mirrorwing-dragon');
+    const theirRat = put(s, 'P2', 'rank-rat');
+    const mine = put(s, 'P1', 'rank-rat');
+    const mine2 = put(s, 'P1', 'hungry-graffalon');
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: abrade, mode: 0, targets: [card(dragon)] }).state;
+    // The caster's own creatures are each dealt 3 damage by a copy; the other player's aren't.
+    expect([s.cards[mine]!.zone, s.cards[mine2]!.damage, s.cards[theirRat]!.zone]).toEqual(['graveyard', 3, 'battlefield']);
+  });
+});
