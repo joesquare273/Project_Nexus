@@ -24055,6 +24055,32 @@
       }
     ]
   },
+  "phyrexian-myr-token-soc": {
+    "name": "Phyrexian Myr",
+    "typeLine": "Token Artifact Creature — Phyrexian Myr",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "8",
+    "artist": "Samuel Perin",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574",
+      "normal": "https://cards.scryfall.io/normal/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574",
+      "large": "https://cards.scryfall.io/large/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/a/ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4.jpg?1783903574"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/8/phyrexian-myr?utm_source=api",
+    "scryfallId": "ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4",
+    "relatedTokens": [
+      {
+        "name": "Myr",
+        "scryfallId": "483c8cd6-288c-49d7-ac28-642132f85259"
+      },
+      {
+        "name": "Phyrexian Myr",
+        "scryfallId": "ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4"
+      }
+    ]
+  },
   "pia-aether-ascetic": {
     "name": "Pia, Aether Ascetic",
     "typeLine": "Legendary Creature — Human Druid",

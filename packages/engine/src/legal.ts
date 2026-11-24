@@ -91,11 +91,36 @@ function combine(options: Target[][], valid: (partial: Target[]) => boolean = ()
 }
 
 function targetCombos(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string, x?: number): Target[][] {
+  return targetCombosWithSlots(s, effects, playerId, source, x).combos;
+}
+
+/**
+ * The target combinations, and each slot's options when the list had to be
+ * cut short (more than MAX_TARGET_COMBOS): a player may then pick any legal
+ * combination slot by slot (Twinflame, Aether Gale on a big board).
+ */
+function targetCombosWithSlots(s: GameState, effects: EffectSpec[], playerId: PlayerId, source: string, x?: number): { combos: Target[][]; slots?: Target[][] } {
   const needs = choosingEffects(effects);
-  return combine(
-    needs.map((e) => targetOptions(s, e, playerId, source, x !== undefined ? { x } : {})),
-    (ts) => !groupProblem(s, needs, ts),
-  );
+  const options = needs.map((e) => targetOptions(s, e, playerId, source, x !== undefined ? { x } : {}));
+  const valid = (ts: Target[]) => !groupProblem(s, needs, ts);
+  let combos: Target[][] = [[]];
+  let truncated = false;
+  for (const choices of options) {
+    const all = combos.flatMap((combo) => choices.map((t) => [...combo, t])).filter(valid);
+    if (all.length > MAX_TARGET_COMBOS) truncated = true;
+    combos = all.slice(0, MAX_TARGET_COMBOS);
+  }
+  return truncated ? { combos, slots: options } : { combos };
+}
+
+/** For a spell with "any number of target ...": every target count it could have (0 up to the legal targets). */
+function targetCountChoices(s: GameState, def: CardDefinition, choice: SpellChoice, playerId: PlayerId, source: string): (number | undefined)[] {
+  const base = spellEffects(def, choice);
+  const any = [...(def.effects ?? []), ...(def.modes ?? []).flat()].find((e) => e.anyNumberOfTargets);
+  if (!any) return [undefined];
+  const fixed = choosingEffects(base).length;
+  const most = targetOptions(s, { ...any, anyNumberOfTargets: false }, playerId, source).filter((t) => t.kind !== 'none').length;
+  return Array.from({ length: most + 1 }, (_, n) => fixed + n);
 }
 
 /** A spell or ability someone could use now if they had the mana, with what it would cost. */
@@ -218,7 +243,9 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
           : def.additionalCost?.sacrifice || def.kickerSacrifice
             ? spellSacrificeChoices(s, playerId, def, c.id, kicks)
             : discard > 0 ? subsets(discardCandidates(s, playerId, c.id, retrace ? RETRACE_DISCARD : undefined), discard, discard) : [[]];
-        for (const targets of targetCombos(s, spellEffects(def, choice), playerId, c.id, x)) {
+        for (const count of targetCountChoices(s, def, choice, playerId, c.id)) {
+        const found = targetCombosWithSlots(s, spellEffects(def, choice, count), playerId, c.id, x);
+        for (const targets of found.combos) {
           const baseCost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
             // "Or pay {2}": the extra mana when nothing is sacrificed.
@@ -228,7 +255,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
             if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
             for (const pay of payments.get(paymentKey)!) {
               out.push({
-                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra },
+                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra, ...(found.slots ? { targetSlots: found.slots } : {}) },
                 cost: pay.cost,
                 forEquipment: isEquipment(s, c),
                 forNoncreatureSpell: !def.types.includes('creature'),
@@ -237,6 +264,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
               });
             }
           }
+        }
         }
         }
        }

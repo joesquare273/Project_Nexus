@@ -116,7 +116,7 @@ export function castsAtInstantSpeed(s: GameState, playerId: PlayerId, c: CardIns
 export function targetSlotEffects(s: GameState, action: Action): EffectSpec[] {
   if (action.type === 'CastSpell') {
     const c = s.cards[action.card];
-    return c ? choosingEffects(spellEffects(defOf(s, c), action)) : [];
+    return c ? choosingEffects(spellEffects(defOf(s, c), action, action.targets?.length)) : [];
   }
   if (action.type === 'ActivateAbility') {
     const c = s.cards[action.card];
@@ -273,8 +273,14 @@ export interface SpellChoice {
  * A spell's effects for the way it's cast: an alternative cost's own effects
  * (overload), the chosen modes in printed order (rule 700.2), or its effects.
  */
-export function spellEffects(def: CardDefinition, choice: SpellChoice = {}): EffectSpec[] {
-  const effects = spellEffectsBase(def, choice);
+export function spellEffects(def: CardDefinition, choice: SpellChoice = {}, targetCount?: number): EffectSpec[] {
+  let effects = spellEffectsBase(def, choice);
+  // "Any number of target creatures" (Twinflame): one slot for each target chosen, all different objects.
+  if (effects.some((e) => e.anyNumberOfTargets)) {
+    const fixed = choosingEffects(effects.filter((e) => !e.anyNumberOfTargets)).length;
+    const n = Math.max(0, (targetCount ?? fixed) - fixed);
+    effects = effects.flatMap((e) => (e.anyNumberOfTargets ? Array.from({ length: n }, () => ({ ...e, anyNumberOfTargets: false, group: e.group ?? 'any' })) : [e]));
+  }
   if (!effects.some((e) => e.repeatX)) return effects;
   // "Up to X targets": one "up to one" target per X.
   return effects.flatMap((e) => (e.repeatX ? Array.from({ length: choice.x ?? 0 }, () => ({ ...e, repeatX: false, upTo: true, group: e.group ?? 'x' })) : [e]));
@@ -352,7 +358,7 @@ export function effectsOf(s: GameState, item: StackItem): EffectSpec[] {
     ];
     return paid.length ? [...paid, ...spec.effects] : spec.effects;
   }
-  return spellEffects(defOf(s, s.cards[item.card]!), item);
+  return spellEffects(defOf(s, s.cards[item.card]!), item, item.targets?.length);
 }
 
 /** The most modes a player may choose for a spell: more if they control a commander (Akroma's Will). */
@@ -1389,7 +1395,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
-  checkTargets(s, spellEffects(def, choice), targets, playerId, id, choice.x !== undefined ? { x: choice.x } : {});
+  checkTargets(s, spellEffects(def, choice, targets.length), targets, playerId, id, choice.x !== undefined ? { x: choice.x } : {});
   const costCards = choice.costCards ?? [];
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
   if (exileCost) {
@@ -4267,6 +4273,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, pid, amount)) manifest(ctx, id, pid, !!effect.cloak);
       }
       return;
+    case 'OtherTokensBecomeCopy': {
+      const tokens = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && c.isToken).map((c) => c.id);
+      if (tokens.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'tokenModel', cards: tokens, min: 0, max: 1 }];
+      return;
+    }
     case 'LookTopHandBottomExile': {
       const looked = topOfLibrary(s, item.controller, 3);
       if (looked.length > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'iterateHand', cards: looked, min: 1, max: 1 }];
@@ -5380,6 +5391,16 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       moveCard(ctx, id, 'graveyard');
       const token = land ? pending.landToken : pending.nonlandToken;
       if (token) r.createdTokens.push(createToken(ctx, token, pending.player));
+    }
+  } else if (pending.purpose === 'tokenModel') {
+    // Brudiclad: each other token you control becomes a copy of the chosen one (with no duration).
+    const model = cards[0];
+    if (model && s.cards[model]?.zone === 'battlefield') {
+      for (const id of pending.cards) {
+        const c = s.cards[id];
+        if (id === model || !c || c.zone !== 'battlefield' || c.controller !== pending.player) continue;
+        becomeCopy(ctx, { kind: 'copyCreature', player: pending.player, source: id, target: model, sourceObject: c.zoneChanges ?? 0, targetObject: s.cards[model]!.zoneChanges ?? 0, effect: { effect: 'CopyCreature', target: 'You' } }, r);
+      }
     }
   } else if (pending.purpose === 'iterateHand' || pending.purpose === 'iterateBottom') {
     // Expressive Iteration: one into your hand, one on the bottom, and the last exiled to play this turn.

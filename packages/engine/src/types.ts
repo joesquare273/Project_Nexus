@@ -621,6 +621,8 @@ export const EFFECT_KINDS = [
   'PutExiledWithThisIntoGraveyard',
   /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
   'ManifestDread',
+  /** Brudiclad: "you may choose a token you control. If you do, each other token you control becomes a copy of that token." */
+  'OtherTokensBecomeCopy',
   /** Expressive Iteration: look at the top three cards; one into your hand, one on the bottom, and exile the last, which you may play this turn. */
   'LookTopHandBottomExile',
   /** The target players win the game: every other player loses. */
@@ -1044,6 +1046,8 @@ export interface EffectSpec {
   attackingEachOpponent?: boolean;
   /** "Up to X targets" (Pest Infestation): the effect is repeated once per X chosen, each an "up to one" target of one group. */
   repeatX?: boolean;
+  /** "Any number of target ..." (Twinflame): the caster chooses how many targets; this effect stands for one slot per target chosen (`spellEffects` with the target count). */
+  anyNumberOfTargets?: boolean;
   /** Sacrifice: only permanents sharing a card type with the cards chosen in the last choice (Braids). */
   sharesTypeWithChosen?: boolean;
   /**
@@ -3350,7 +3354,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom' | 'tokenModel';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3660,6 +3664,12 @@ export type Action =
       kicks?: number;
       /** Escalate: untapped creatures you control to tap, one per mode beyond the first. */
       tapCreatures?: InstanceId[];
+      /**
+       * Only in legal actions: each target slot's legal choices, when there were too many
+       * combinations to list them all. Any legal combination may be submitted (the engine
+       * checks it); this field is ignored on submitted actions.
+       */
+      targetSlots?: Target[][];
     }
   /** With `output` (and `payWith`): the card's paid mana ability, adding `manaAbility.paid.outputs[output]`. */
   | { type: 'ActivateManaAbility'; player: PlayerId; card: InstanceId; mana: ManaType; output?: number; payWith?: number; tapCreature?: InstanceId; grantedBy?: InstanceId; sacrifice?: InstanceId }

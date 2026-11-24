@@ -587,6 +587,11 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'library') return pick([]);
   // Perpetual Timepiece: put everything back.
   if (p.purpose === 'shuffleIntoLibrary') return pick([...p.cards]);
+  // Brudiclad: copy the best token, if there's more than one kind.
+  if (p.purpose === 'tokenModel') {
+    const best = [...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!))[0];
+    return pick(best && p.cards.some((id) => s.cards[id]!.defId !== s.cards[best]!.defId) ? [best] : []);
+  }
   // Expressive Iteration: the best card to hand, the worst to the bottom.
   if (p.purpose === 'iterateHand' || p.purpose === 'iterateBottom') {
     const sorted = [...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!));

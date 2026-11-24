@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC2f: any number of targets; Brudiclad (2026-11-24)
+
+- User request: stay true to the card text. Twinflame takes any number of targets (no cap); spells with more target combinations than the list holds let you pick each target in the browser. Brudiclad is built. 8 Prismari cards left. docs/strixhaven.md, docs/decisions.md.
+
 ### Strixhaven Commander SOC2e: Prismari Artistry, part five (2026-11-24)
 
 - The deck's commander, Rootha, Mastering the Moment, plus Redoubled Stormsinger, Furygale Flocking and Twinflame (strive, up to four targets). 9 Prismari cards left. docs/strixhaven.md.

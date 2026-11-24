@@ -403,6 +403,8 @@ function effectText(e: EffectSpec): string {
     case 'Manifest':
       if (e.target === 'PreviousTargetController') return 'its controller manifests the top card of their library';
       return `${e.cloak ? 'cloak' : 'manifest'} the top ${e.amount === 1 || e.amount === undefined ? 'card' : `${amountText(e.amount)} cards`} of your library`;
+    case 'OtherTokensBecomeCopy':
+      return 'you may choose a token you control; each other token you control becomes a copy of it';
     case 'LookTopHandBottomExile':
       return 'look at the top three cards of your library; put one into your hand, one on the bottom, and exile one (you may play it this turn)';
     case 'ManifestDread':

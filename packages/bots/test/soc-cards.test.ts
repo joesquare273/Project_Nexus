@@ -1127,4 +1127,33 @@ describe('SOC2e: Prismari Artistry (Rootha, Stormsinger, Furygale Flocking, Twin
     expect([onField(s, 'rank-rat').length, onField(s, 'hungry-graffalon').length]).toEqual([1, 1]);
     void a; void b;
   });
+
+  it('Twinflame takes any number of targets: every creature you control, past the listed combinations', () => {
+    let s = newGame();
+    const mine = Array.from({ length: 9 }, () => put(s, 'P1', 'rank-rat'));
+    const twin = put(s, 'P1', 'twinflame', 'hand');
+    mana(s, 'P1', { R: 9, C: 17 }); // {1}{R} plus {2}{R} for each of 8 more targets
+    const nine = getLegalActions(s).find((x) => x.type === 'CastSpell' && x.card === twin && x.targets?.length === 9);
+    expect(nine).toBeDefined();
+    // Too many combinations of fewer targets to list: each slot's options come along.
+    const four = getLegalActions(s).find((x) => x.type === 'CastSpell' && x.card === twin && x.targets?.length === 4);
+    expect(four?.type === 'CastSpell' && four.targetSlots?.length).toBe(4);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: twin, targets: mine.map(card) }).state;
+    expect(onField(s, 'rank-rat').length).toBe(18);
+  });
+});
+
+describe('SOC2f: Prismari Artistry (Brudiclad)', () => {
+  it('Brudiclad: creature tokens have haste; at combat a 2/1 Myr, then each other token may become a copy of one', () => {
+    let s = newGame();
+    put(s, 'P1', 'brudiclad-telchor-engineer');
+    const big = put(s, 'P1', 'elemental-4-4-token-soc');
+    s.cards[big]!.isToken = true;
+    s = goTo(s, 'beginCombat');
+    s = settle(s).state;
+    expect((s.pending as { purpose?: string }).purpose).toBe('tokenModel');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [big] })).state;
+    const myr = Object.values(s.cards).find((c) => c.zone === 'battlefield' && c.defId === 'phyrexian-myr-token-soc')!;
+    expect([powerOf(s, myr), currentDefinition(s, myr).name, hasKeyword(s, myr, 'Haste')]).toEqual([4, 'Elemental', true]);
+  });
 });

@@ -78,6 +78,12 @@ interface Targeting {
   chosen: Target[];
   /** What each target slot asks for, in order ("target Equipment you control"). */
   slots?: string[];
+  /**
+   * Each slot's legal choices, when there were too many combinations to list
+   * (Twinflame, Aether Gale on a big board): any choice per slot may be picked,
+   * the same object only once, and `choices[0]` is the play they go with.
+   */
+  slotOptions?: Target[][];
 }
 
 /** A small menu in the prompt bar: which ability, or which mode. */
@@ -339,7 +345,11 @@ export function Game({
     ? activeTargeting.targets.map((ts, i) => ({ ts, i })).filter(({ ts }) => chosen.every((c, j) => sameTarget(c, ts[j]!)))
     : [];
   const nextOptions: Target[] = [];
-  for (const { ts } of remaining) {
+  const slotOptions = activeTargeting?.slotOptions;
+  if (slotOptions) {
+    // Slot by slot: anything legal for this slot that isn't already picked (a "none" may repeat).
+    for (const t of slotOptions[chosen.length] ?? []) if (t.kind === 'none' || !chosen.some((c) => sameTarget(c, t))) nextOptions.push(t);
+  } else for (const { ts } of remaining) {
     const t = ts[chosen.length];
     if (t && !nextOptions.some((o) => sameTarget(o, t))) nextOptions.push(t);
   }
@@ -351,7 +361,9 @@ export function Game({
   const pickTarget = (t: Target) => {
     if (!activeTargeting || confirmingTargets !== null) return;
     const next = [...chosen, t];
-    const done = remaining.find(({ ts }) => ts.length === next.length && ts.every((x, j) => sameTarget(x, next[j]!)));
+    const done = activeTargeting.slotOptions
+      ? (next.length === activeTargeting.slotOptions.length ? { i: 0 } : undefined)
+      : remaining.find(({ ts }) => ts.length === next.length && ts.every((x, j) => sameTarget(x, next[j]!)));
     if (targeting) setTargeting({ ...targeting, chosen: next });
     else setTriggerChosen(next);
     // Every target is picked: show them and wait for Confirm.
@@ -359,9 +371,12 @@ export function Game({
   };
   const confirmTargets = () => {
     if (!activeTargeting || confirmingTargets === null) return;
-    const actions = activeTargeting.choices[confirmingTargets]!;
-    const action = actions.at(-1)!;
+    const listed = activeTargeting.choices[confirmingTargets]!;
     const picked = chosen;
+    // The picked targets go on the play (they may be a combination that wasn't listed).
+    const { targetSlots: _slots, ...base } = listed.at(-1)! as Action & { targetSlots?: unknown };
+    const action = ('targets' in base ? { ...base, targets: picked } : base) as Action;
+    const actions = [...listed.slice(0, -1), action];
     setConfirmingTargets(null);
     setTargeting(null);
     // A spell or ability you're playing still needs paying for; a trigger's targets are just submitted.
@@ -481,7 +496,7 @@ export function Game({
    * Starts doing one play: choose its mode or modes if there's a choice, then
    * targets if needed. `modeKey` is the chosen modes joined with "+".
    */
-  const startPlay = (play: CardPlay, modeKey?: string, costKey?: string) => {
+  const startPlay = (play: CardPlay, modeKey?: string, costKey?: string, countKey?: number) => {
     const first = play.choices[0]?.action;
     const def = spellDefinition(defOf(s.cards[play.card]!.defId), first?.type === 'CastSpell' && first.adventure);
     const keyOf = (c: PlayChoice) => c.modes?.join('+');
@@ -535,19 +550,31 @@ export function Game({
       });
       return;
     }
+    const forCost = forMode.filter((c) => costKey === undefined || costOf(c) === costKey);
+    // "Any number of target creatures" (Twinflame): how many targets first.
+    const counts = [...new Set(forCost.map((c) => c.targets.length))].sort((a, b) => a - b);
+    if (countKey === undefined && counts.length > 1 && [...(def.effects ?? []), ...(def.modes ?? []).flat()].some((e) => e.anyNumberOfTargets)) {
+      setMenu({
+        title: `${def.name}: how many targets?`,
+        options: counts.map((n) => ({ label: n === 1 ? '1 target' : `${n} targets`, pick: () => startPlay(play, modeKey, costKey, n) })),
+      });
+      return;
+    }
     setMenu(null);
-    const choices = forMode.filter((c) => costKey === undefined || costOf(c) === costKey);
+    const choices = forCost.filter((c) => countKey === undefined || c.targets.length === countKey);
     const only = choices.length === 1 ? choices[0]! : null;
     if (only && only.targets.length === 0) {
       pay(only, play.kind === 'ability' ? `${def.name}: ${play.label}` : def.name);
       return;
     }
+    const open = choices.find((c) => c.action.type === 'CastSpell' && c.action.targetSlots)?.action;
     setTargeting({
       title: `${play.kind === 'ability' ? play.label : def.name}: choose a target`,
-      choices: choices.map((c) => [...c.taps, c.action]),
+      choices: open ? [[...choices.find((c) => c.action === open)!.taps, open]] : choices.map((c) => [...c.taps, c.action]),
       targets: choices.map((c) => c.targets),
       chosen: [],
       ...(choices[0] ? { slots: targetSlotEffects(s, choices[0].action).map(targetDescription) } : {}),
+      ...(open?.type === 'CastSpell' && open.targetSlots ? { slotOptions: open.targetSlots } : {}),
     });
   };
 
@@ -1576,6 +1603,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'exiledToGraveyard' ? "to put into its owner's graveyard"
                   : c.purpose === 'shuffleIntoLibrary' ? 'to shuffle into your library'
                   : c.purpose === 'iterateHand' ? 'to put into your hand'
+                  : c.purpose === 'tokenModel' ? 'for each other token you control to become a copy of (or none)'
                   : c.purpose === 'iterateBottom' ? 'to put on the bottom of your library; the other is exiled, and you may play it this turn'
                   : c.purpose === 'copyCard' ? 'for it to become a copy of until end of turn (or none)'
                   : c.purpose === 'manifestDread' ? 'to manifest (put onto the battlefield face down as a 2/2); the other goes into your graveyard'

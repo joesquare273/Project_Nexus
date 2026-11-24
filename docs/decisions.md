@@ -696,4 +696,17 @@ recorded again.
 - **Cascade and Creative Technique:** a found card you don't cast stays in
   exile instead of going to the bottom of your library with the rest (as
   Jodah's and discover's search already worked).
-- **Strive (Twinflame):** "any number of target creatures" offers up to four targets, to keep the list of choices short.
+- **Strive (Twinflame):** no longer simplified (user, 2026-11-24: stay true
+  to the card text). "Any number of target creatures" takes every count from
+  zero up to the creatures you control; see below.
+
+## 2026-11-24: Any number of targets, and choosing targets slot by slot
+
+- An effect with `anyNumberOfTargets` stands for one target slot per target
+  the caster chooses (`spellEffects` takes the target count; the stack item
+  keeps it as the length of its targets).
+- Legal actions list at most 96 target combinations per way of casting. When
+  there are more (Twinflame, Aether Gale on a big board), those actions also
+  carry `targetSlots`, each slot's legal choices; the browser then lets the
+  player pick any legal combination slot by slot (the engine checks it). The
+  computer opponents still choose from the listed combinations.
