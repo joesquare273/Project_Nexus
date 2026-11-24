@@ -5,6 +5,7 @@
 import { currentDefinition } from './cardface.ts';
 import { characteristics, powerOf, subtypesOf, isEquipped, isModified, totalCounters } from './characteristics.ts';
 import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
+import { parseManaCost } from './cost.ts';
 import type { CardDefinition, CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
 
 /** Who is asking: the controller of the spell or ability, and its source card if any. */
@@ -113,6 +114,7 @@ export function matchesObject(
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
   if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
+  if (f.hasXInManaCost && !((parseManaCost(currentDefinition(s, obj).manaCost).x ?? 0) > 0)) return false;
   if (f.manaValueIsX && objectManaValue(s, obj) !== (from.x ?? 0)) return false;
   if (f.subtypeIsSourceChosenOption && !(from.source && s.cards[from.source]?.chosenOption && subtypesOf(s, obj).includes(s.cards[from.source]!.chosenOption!))) return false;
   if (f.manaValueAtMostSourceColorsSpent && objectManaValue(s, obj) > ((from.source ? s.cards[from.source]?.colorsSpentToCast : undefined) ?? 0)) return false;

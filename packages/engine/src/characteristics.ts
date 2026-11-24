@@ -191,6 +191,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.players[player]!.graveyard.filter((id) => { const t = def(s, s.cards[id]!).types; return t.includes('artifact') || t.includes('creature'); }).length;
     case 'GreatestInstantOrSorceryManaValueYouCastThisTurn':
       return s.players[player]!.greatestInstantOrSorceryManaValueThisTurn ?? 0;
+    case 'PlusOneCountersOnThis':
+      return source && s.cards[source] ? (s.cards[source]!.counters ?? 0) : 0;
     case 'InstantOrSorcerySpellsYouCastThisTurn':
       return s.players[player]!.instantOrSorcerySpellsThisTurn ?? 0;
     case 'TotalPowerOfCreaturesYouControl':

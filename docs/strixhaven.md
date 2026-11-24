@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -644,3 +644,22 @@ Curse of the Swine and Entrancing Melody.
 - Tokens: Frog Lizard (tsoc 16), Boar (tsoc 15).
 
 Still to build in Quandrix Unlimited after SOC3a: 33 cards.
+
+## SOC3b: Quandrix Unlimited, part two (built 2026-11-24)
+
+Zimone, Infinite Analyst (the commander), Owlin Spiralmancer, Nev, Lattice
+Library, Expansion Algorithm, Deekah, Fractal Harness, Ingenious Prodigy and
+The Goose Mother.
+
+- **"Your first spell with {X} in its mana cost each turn":** PlayerState
+  `xSpellsThisTurn` (public, reset each turn); SpellCast `firstXSpellThisTurn`
+  (copies don't count); spellCostReduction `firstXSpell`; filter
+  `hasXInManaCost`; the amount `subjectX` (that spell's X) and the count
+  `PlusOneCountersOnThis`.
+- **A copy of a permanent spell becomes a token** as it resolves (rule
+  707.10a); before, it ceased to exist (Owlin Spiralmancer).
+- Study counters (Lattice Library). Skulk is the existing
+  `cantBeBlockedByGreaterPower` static (Ingenious Prodigy).
+- Food token (tsoc 27).
+
+Still to build in Quandrix Unlimited after SOC3b: 24 cards.

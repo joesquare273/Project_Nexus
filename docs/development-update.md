@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC3b: Quandrix Unlimited, part two (2026-11-24)
+
+- The commander Zimone and the "first spell with {X} each turn" cards; Fractal makers; a copy of a permanent spell now becomes a token. 24 Quandrix cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC3a: Quandrix Unlimited, part one (2026-11-24)
 
 - 23 cards: hydras and other {X} creatures, counter doublers, and {X} spells. 33 Quandrix cards left. docs/strixhaven.md.

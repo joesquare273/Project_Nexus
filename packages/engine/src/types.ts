@@ -119,7 +119,7 @@ export type CardFinish = (typeof CARD_FINISHES)[number];
  * shield counter prevents damage or destruction once; a stun counter stops
  * the next untap; a flying counter grants flying.
  */
-export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling', 'loyalty', 'time'] as const;
+export const COUNTER_KINDS = ['shield', 'stun', 'flying', 'indestructible', 'page', 'soul', 'lore', 'charge', 'vow', 'cell', 'finality', 'story', '-1/-1', 'point', 'blight', 'hatchling', 'loyalty', 'time', 'study'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 /** Any counter: '+1/+1' or a named kind. */
 export type AnyCounter = '+1/+1' | CounterKind;
@@ -863,6 +863,8 @@ export const COUNT_KINDS = [
   'CommanderCastsFromCommandZone',
   /** The greatest mana value among instant and sorcery spells you've cast this turn (Rootha, Mastering the Moment). */
   'GreatestInstantOrSorceryManaValueYouCastThisTurn',
+  /** +1/+1 counters on the ability's source (Zimone, Infinite Analyst). */
+  'PlusOneCountersOnThis',
   /** Instant and sorcery spells you've cast this turn (Rionya). */
   'InstantOrSorcerySpellsYouCastThisTurn',
   /** The total power of creatures you control (Volcanic Salvo). */
@@ -936,6 +938,8 @@ export type Amount =
         | 'previousTargetManaValue'
         /** The number of cards in the previous target player's hand (Rousing Refrain). */
         | 'previousTargetHandSize'
+        /** The X of the triggering spell (Nev: "put X +1/+1 counters"). */
+        | 'subjectX'
         /** How many times the previous target player has cast a commander from the command zone (Commander's Insight). */
         | 'previousTargetCommanderCasts'
         /** The value chosen for {X} (for a permanent's abilities, the X it was cast with). */
@@ -1670,6 +1674,8 @@ export interface ObjectFilter {
   manaValueAtMostX?: boolean;
   /** Mana value exactly the value chosen for {X} (Entrancing Melody). */
   manaValueIsX?: boolean;
+  /** Has {X} in its mana cost. */
+  hasXInManaCost?: boolean;
   /** Mana value at most the life its controller gained this turn (Moseo, Vein's New Dean). */
   manaValueAtMostLifeGained?: boolean;
   /** Mana value at most the triggering event's amount ("where X is the amount of damage this creature dealt to that player": Venerable Warsinger). */
@@ -1762,6 +1768,8 @@ export interface TriggerSpec {
   counterKind?: CounterKind;
   /** SpellCast: only your Nth noncreature spell this turn ("whenever you cast your first noncreature spell each turn"). */
   nthNoncreatureSpellThisTurn?: number;
+  /** SpellCast: only for the controller's first spell with {X} in its mana cost this turn (Zimone, Owlin Spiralmancer). */
+  firstXSpellThisTurn?: boolean;
   /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you; BecomesTarget: only a spell or ability an opponent controls. */
   byOpponent?: boolean;
   /** BecomesTarget: only when a spell targets it, not an ability (Goldspan Dragon). */
@@ -2142,7 +2150,7 @@ export interface StaticSpec {
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
    * turn ("the second spell you cast each turn costs {2} less").
    */
-  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean; /** Spells cast from anywhere other than your hand (Advanced Reconstruction). */ notFromHand?: boolean };
+  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean; /** Only the first spell with {X} in its mana cost you cast each turn (Zimone, Infinite Analyst). */ firstXSpell?: boolean; /** Spells cast from anywhere other than your hand (Advanced Reconstruction). */ notFromHand?: boolean };
   /**
    * "... triggers an additional time": a triggered ability of a permanent
    * this one's controller controls triggers once more. `selfAndEquipment`:
@@ -3077,6 +3085,8 @@ export interface PlayerState {
   noncreatureSpellsThisTurn?: number;
   /** Instant and sorcery spells this player has cast this turn. */
   instantOrSorcerySpellsThisTurn?: number;
+  /** Spells with {X} in their mana costs cast this turn ("your first spell with {X} each turn"). */
+  xSpellsThisTurn?: number;
   /** Mana that isn't lost as steps and phases end this turn (Rousing Refrain): at most this much of each type is kept. */
   keptMana?: { turn: number; pool: Partial<Record<ManaType, number>> };
   /** The greatest mana value among instant and sorcery spells cast this turn (Rootha, Mastering the Moment). */

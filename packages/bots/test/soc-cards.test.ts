@@ -1409,3 +1409,93 @@ describe('SOC3a: Quandrix Unlimited ({X} creatures, counters, spells)', () => {
     expect(s.players.P1!.hand.length - hand).toBe(2); // X=1 plus 2, less the spell itself
   });
 });
+
+describe('SOC3b: Quandrix Unlimited (first {X} spell each turn, Fractals)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Zimone: the first {X} spell each turn costs {1} less per +1/+1 counter, and Zimone gets two counters; Nev gets X counters; only the first spell counts', () => {
+    let s = newGame();
+    const zimone = put(s, 'P1', 'zimone-infinite-analyst');
+    s.cards[zimone]!.counters = 2;
+    const nev = put(s, 'P1', 'nev-the-practical-dean');
+    const stroke = put(s, 'P1', 'stroke-of-genius', 'hand');
+    // {X}{2}{U} with X = 2 is five mana, less {2}.
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: stroke, x: 2, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect([s.cards[zimone]!.counters, s.cards[nev]!.counters]).toEqual([4, 2]);
+    expect(hasKeyword(s, s.cards[nev]!, 'Trample')).toBe(true);
+    const again = put(s, 'P1', 'stroke-of-genius', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: again, x: 1, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect([s.cards[zimone]!.counters, s.cards[nev]!.counters]).toEqual([4, 2]);
+  });
+
+  it('Owlin Spiralmancer copies the first {X} spell; a copy of a permanent spell becomes a token', () => {
+    let s = newGame();
+    put(s, 'P1', 'owlin-spiralmancer');
+    const hydra = put(s, 'P1', 'stonecoil-serpent', 'hand');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: hydra, x: 2 }).state;
+    const serpents = onField(s, 'stonecoil-serpent');
+    expect(serpents.length).toBe(2);
+    expect(serpents.filter((c) => c.isToken).length).toBe(1);
+    expect(serpents.every((c) => c.counters === 2)).toBe(true);
+  });
+
+  it('Lattice Library enters with X study counters and makes a Fractal with that many counters, again on the first {X} spell', () => {
+    let s = newGame();
+    const lib = put(s, 'P1', 'lattice-library', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: lib, x: 3 }).state;
+    expect(s.cards[lib]!.namedCounters?.study).toBe(3);
+    expect(onField(s, 'fractal-token-sos').map((c) => c.counters)).toEqual([3]);
+    // The Library itself was this turn's first {X} spell, so the next one doesn't trigger it.
+    const stroke = put(s, 'P1', 'stroke-of-genius', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: stroke, x: 1, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect(onField(s, 'fractal-token-sos').length).toBe(1);
+  });
+
+  it('Fractal Harness: a Fractal with X counters, equipped; attacking doubles its counters. Deekah makes Fractals sized by mana value', () => {
+    let s = newGame();
+    const harness = put(s, 'P1', 'fractal-harness', 'hand');
+    mana(s, 'P1', { G: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: harness, x: 2 }).state;
+    const fractal = onField(s, 'fractal-token-sos')[0]!;
+    expect([fractal.counters, s.cards[harness]!.attachedTo]).toEqual([2, fractal.id]);
+    s.cards[fractal.id]!.summoningSick = false;
+    s = fight(s, [{ attacker: fractal.id, defender: 'P2' }]).state;
+    expect(s.cards[fractal.id]!.counters).toBe(4);
+    put(s, 'P1', 'deekah-fractal-theorist');
+    const rat = put(s, 'P2', 'rank-rat');
+    s = settle(goTo(s, 'main2')).state;
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: abrade, mode: 0, targets: [card(rat)] }).state;
+    expect(onField(s, 'fractal-token-sos').map((c) => c.counters).sort()).toEqual([2, 4]);
+  });
+
+  it('The Goose Mother: half X Food rounded up; sacrifice a Food when it attacks to draw. Ingenious Prodigy: skulk, and trades a counter for a card each upkeep', () => {
+    let s = newGame();
+    const goose = put(s, 'P1', 'the-goose-mother', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: goose, x: 3 }).state;
+    expect([onField(s, 'food-token-soc').length, s.cards[goose]!.counters]).toEqual([2, 3]);
+    s.cards[goose]!.summoningSick = false;
+    const hand = s.players.P1!.hand.length;
+    s = settle(goTo(s, 'declareAttackers')).state;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: goose, defender: 'P2' }] })).state;
+    expect([s.pending.kind, (s.pending as { purpose?: string }).purpose]).toEqual(['chooseCards', 'sacrifice']);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [onField(s, 'food-token-soc')[0]!.id] })).state;
+    expect([onField(s, 'food-token-soc').length, s.players.P1!.hand.length - hand]).toEqual([1, 1]);
+    s = settle(goTo(s, 'main2')).state;
+    const prodigy = put(s, 'P1', 'ingenious-prodigy');
+    s.cards[prodigy]!.counters = 2;
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state;
+    s = settle(goTo(s, 'end')).state;
+    const before = s.players.P1!.hand.length;
+    s = settle(goTo(s, 'upkeep')).state;
+    expect([s.activePlayer, s.cards[prodigy]!.counters, s.players.P1!.hand.length - before]).toEqual(['P1', 1, 1]);
+  });
+});

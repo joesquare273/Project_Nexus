@@ -6,6 +6,7 @@
 
 import { checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
 import { randomInt } from './rng.ts';
+import { parseManaCost } from './cost.ts';
 import { characteristics, countOf, countersOf, manaSpentOverPowerOrToughness } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { aliveFromActive, battlefield, defOf, newId, reject, type Ctx } from './state.ts';
@@ -64,6 +65,8 @@ interface Occurrence {
   loyalty?: number;
   /** A noncreature spell: its caster's noncreature spells this turn, this one included. */
   noncreatureSpellNumber?: number;
+  /** SpellCast: how many spells with {X} in their mana costs its caster had cast this turn, this one included (0 if it has none). */
+  xSpellNumber?: number;
   /** Attacks: the attacker was the only creature declared as an attacker. */
   alone?: boolean;
   /** YouAttack: how many of the creatures attacked each player. */
@@ -214,6 +217,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
           amount: e.manaSpent,
           spellNumber: s.players[e.player]!.spellsCastThisTurn ?? 0,
           ...(!defOf(s, s.cards[e.card]!).types.includes('creature') ? { noncreatureSpellNumber: s.players[e.player]!.noncreatureSpellsThisTurn ?? 0 } : {}),
+          xSpellNumber: (parseManaCost(defOf(s, s.cards[e.card]!).manaCost).x ?? 0) > 0 ? (s.players[e.player]!.xSpellsThisTurn ?? 0) : 0,
         });
         break;
       case 'DamageDealt':
@@ -427,6 +431,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.duringYourTurn && s.activePlayer !== controller) return false;
   if (spec.nthSpellThisTurn !== undefined && o.spellNumber !== spec.nthSpellThisTurn) return false;
   if (spec.nthNoncreatureSpellThisTurn !== undefined && o.noncreatureSpellNumber !== spec.nthNoncreatureSpellThisTurn) return false;
+  if (spec.firstXSpellThisTurn && (o.when !== 'SpellCast' || o.copied || o.xSpellNumber !== 1)) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
   if (o.when === 'SpellCast' && o.copied && !spec.orCopied) return false;

@@ -196,7 +196,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
   // A copy of a spell ceases to exist when it leaves the stack (rule 707.10a).
-  if (c.spellCopy && from === 'stack' && to !== 'stack') {
+  // A copy of a permanent spell becomes a token as it resolves (rule 707.10a, 111.12).
+  if (c.spellCopy && from === 'stack' && to === 'battlefield') {
+    delete c.spellCopy;
+    c.isToken = true;
+  } else if (c.spellCopy && from === 'stack' && to !== 'stack') {
     to = 'void';
     opts = { ...opts, silent: true };
   }

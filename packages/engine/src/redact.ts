@@ -296,6 +296,7 @@ const PLAYER_FIELDS = {
   counterOnCreatureTurn: 'copy',
   lifeGainedThisTurn: 'copy',
   keptMana: 'copy',
+  xSpellsThisTurn: 'copy',
   cardLeftGraveyardTurn: 'copy',
   permanentLeftTurn: 'copy',
   artifactEnteredTurn: 'copy',

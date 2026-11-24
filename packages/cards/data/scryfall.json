@@ -12100,6 +12100,32 @@
     "scryfallId": "4853f6f5-476d-4109-a1c6-f98f4d332db3",
     "relatedTokens": []
   },
+  "food-token-soc": {
+    "name": "Food",
+    "typeLine": "Token Artifact — Food",
+    "oracleText": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+    "set": "tsoc",
+    "number": "27",
+    "artist": "Steve Prescott",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567",
+      "normal": "https://cards.scryfall.io/normal/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567",
+      "large": "https://cards.scryfall.io/large/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/d/a/da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37.jpg?1783903567"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/27/food?utm_source=api",
+    "scryfallId": "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37",
+    "relatedTokens": [
+      {
+        "name": "Food",
+        "scryfallId": "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37"
+      },
+      {
+        "name": "Boar",
+        "scryfallId": "365b2234-c29d-42db-a8e0-80685a4b6434"
+      }
+    ]
+  },
   "foolish-fate": {
     "name": "Foolish Fate",
     "typeLine": "Instant",

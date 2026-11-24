@@ -1270,6 +1270,7 @@ export function spellCost(
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
+        if (r.firstXSpell && (!((parseManaCost(def.manaCost).x ?? 0) > 0) || (s.players[payer!]!.xSpellsThisTurn ?? 0) > 0)) continue;
         cost = reduceGeneric(cost, r.generic * (r.perCount ? countOf(s, r.perCount, source.controller, source.id) : 1));
       }
     }
@@ -1548,6 +1549,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (!def.types.includes('creature')) caster.noncreatureSpellsThisTurn = (caster.noncreatureSpellsThisTurn ?? 0) + 1;
   if (def.types.includes('instant') || def.types.includes('sorcery')) caster.greatestInstantOrSorceryManaValueThisTurn = Math.max(caster.greatestInstantOrSorceryManaValueThisTurn ?? 0, s.cards[id] ? objectManaValue(s, s.cards[id]!) : 0);
   if (def.types.includes('instant') || def.types.includes('sorcery')) caster.instantOrSorcerySpellsThisTurn = (caster.instantOrSorcerySpellsThisTurn ?? 0) + 1;
+  if ((parseManaCost(def.manaCost).x ?? 0) > 0) caster.xSpellsThisTurn = (caster.xSpellsThisTurn ?? 0) + 1;
   else if (def.supertypes?.includes('Legendary')) caster.legendaryCreatureSpellsThisTurn = (caster.legendaryCreatureSpellsThisTurn ?? 0) + 1;
   const hasteNext = player(s, playerId).nextCreatureHasteTurn;
   if (hasteNext !== undefined && def.types.includes('creature')) {
@@ -2326,6 +2328,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? (r.item.kind === 'spell' ? (r.item.colorsSpent ?? 0) : (s.cards[sourceOf(r.item)]?.colorsSpentToCast ?? 0))
               : a.of === 'subjectColorsSpent'
               ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.colorsSpentToCast ?? 0) : 0)
+              : a.of === 'subjectX'
+              ? (r.item.kind === 'ability' && r.item.subject ? (s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === (r.item as AbilityItem).subject)?.x ?? s.cards[r.item.subject]?.xPaid ?? 0) : 0)
               : a.of === 'previousTargetCommanderCasts'
               ? (r.previousTarget?.kind === 'player' ? Object.values(s.players[r.previousTarget.player]?.commanderCasts ?? {}).reduce((n, k) => n + k, 0) : 0)
               : a.of === 'previousTargetHandSize'
