@@ -1205,6 +1205,24 @@ body:has(.set-showcase) {
 .deck-arts-chip {
   top: 5px;
 }
+/* The collection's "N arts" button opens the art picker. */
+.deck-arts-chip.clickable {
+  cursor: pointer;
+  border: 1px solid rgba(231, 197, 121, 0.55);
+  color: #f1dfae;
+}
+.deck-arts-chip.clickable:hover,
+.deck-arts-chip.clickable:focus-visible {
+  background: rgba(231, 197, 121, 0.9);
+  color: #10141c;
+}
+.deck-pool-card[aria-disabled='true'] .deck-pic {
+  opacity: 0.45;
+}
+.deck-art-tag.in-use {
+  position: static;
+  margin-left: 6px;
+}
 .deck-used-chip {
   bottom: 5px;
   color: #f1dfae;

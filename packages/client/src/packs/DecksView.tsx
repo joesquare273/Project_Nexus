@@ -36,6 +36,8 @@ import {
   section,
   SECTIONS,
   setArtCount,
+  addInArt,
+  useArt,
   type CardGroup,
   type Owned,
 } from './deckbuild.ts';
@@ -388,10 +390,10 @@ function DeckEditor({
           ) : (
             <p className="deck-help">
               {deck.format === 'commander'
-                ? `Click a card to add it: one of each card (basic lands excepted), up to ${COMMANDER_DECK_SIZE} cards with your commander. Click a card in your deck to choose its art or remove it.`
+                ? `Click a card to add it: one of each card (basic lands excepted), up to ${COMMANDER_DECK_SIZE} cards with your commander. Click a card in your deck, or a card's \u201carts\u201d button (or right-click it) here, to choose its art.`
                 : deck.format === 'constructed'
-                  ? 'Click a card to add a copy (up to four of each). Click a card in your deck to choose its art or remove it.'
-                  : 'Click a card to add a copy. Click a card in your deck to choose its art or remove it.'}
+                  ? 'Click a card to add a copy (up to four of each). Click a card in your deck, or a card\u2019s \u201carts\u201d button (or right-click it) here, to choose its art.'
+                  : 'Click a card to add a copy. Click a card in your deck, or a card\u2019s \u201carts\u201d button (or right-click it) here, to choose its art.'}
             </p>
           )}
           {groups.length === 0 && <p className="fineprint">Your collection is empty. Open some packs first.</p>}
@@ -413,14 +415,31 @@ function DeckEditor({
                 <button
                   key={g.name}
                   className={`deck-pool-card ${addable ? '' : 'used-up'} ${used ? 'in-deck' : ''}`}
-                  disabled={!addable}
+                  aria-disabled={!addable}
                   title={`${g.name}: you own ${g.total}, ${free} not in this deck${g.arts.length > 1 ? ` · ${g.arts.length} arts` : ''}${!addable && free > 0 ? ' · Commander decks have one of each card' : ''}`}
-                  onClick={() => onChange(addOne(deck, g, identity))}
+                  onClick={() => (addable ? onChange(addOne(deck, g, identity)) : g.arts.length > 1 && setModal({ kind: 'art', name: g.name }))}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setModal({ kind: 'art', name: g.name });
+                  }}
                   onMouseEnter={() => onPreview(face.card)}
                   onMouseLeave={() => onPreview(null)}
                 >
                   <CardPic o={face} badge={deck.format === 'commander' ? undefined : `${deck.format === 'constructed' ? Math.max(0, Math.min(free, MAX_COPIES - used)) : free} left`} />
-                  {g.arts.length > 1 && <span className="deck-arts-chip">{g.arts.length} arts</span>}
+                  {g.arts.length > 1 && (
+                    <span
+                      className="deck-arts-chip clickable"
+                      role="button"
+                      aria-label={`Choose ${g.name}'s art`}
+                      title="Choose which art to use"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModal({ kind: 'art', name: g.name });
+                      }}
+                    >
+                      {g.arts.length} arts ▸
+                    </span>
+                  )}
                   {used > 0 && <span className="deck-used-chip">{deck.format === 'commander' ? 'In deck' : `${used} in deck`}</span>}
                   {isUnbuilt(face.card) && <span className="binder-unbuilt">Not built</span>}
                 </button>
@@ -492,6 +511,7 @@ function DeckEditor({
                       onMouseLeave={() => onPreview(null)}
                     >
                       <CardPic o={deckFace(g)} badge={copiesInDeck(deck, g) > 1 ? `×${copiesInDeck(deck, g)}` : undefined} />
+                      {g.arts.length > 1 && <span className="deck-arts-chip">{g.arts.length} arts ▸</span>}
                       <span
                         className="deck-card-remove"
                         role="button"
@@ -542,7 +562,7 @@ function DeckEditor({
       </div>
 
       {modal?.kind === 'art' && byName.get(modal.name) && (
-        <ArtPicker deck={deck} g={byName.get(modal.name)!} onChange={onChange} onPreview={onPreview} onClose={() => setModal(null)} />
+        <ArtPicker deck={deck} g={byName.get(modal.name)!} identity={identity} onChange={onChange} onPreview={onPreview} onClose={() => setModal(null)} />
       )}
       {modal?.kind === 'commander' && (
         <CommanderPicker
@@ -614,33 +634,39 @@ function DeckModal({ title, onClose, children }: { title: string; onClose: () =>
   );
 }
 
-/** Every art you own of one card, as pictures: choose how many copies use each one. */
-function ArtPicker({ deck, g, onChange, onPreview, onClose }: { deck: DeckDraft; g: CardGroup; onChange: (d: DeckDraft) => void; onPreview: (c: BoosterCard | null) => void; onClose: () => void }) {
+/**
+ * Every art you own of one card, as pictures. Click one to use it for every
+ * copy (or to add the card in that art); + and − set how many copies use each.
+ * Opened from a card in the deck, or the "arts" button (or right-click) on a
+ * card in the collection.
+ */
+function ArtPicker({ deck, g, identity, onChange, onPreview, onClose }: { deck: DeckDraft; g: CardGroup; identity: readonly string[] | null; onChange: (d: DeckDraft) => void; onPreview: (c: BoosterCard | null) => void; onClose: () => void }) {
   const total = copiesInDeck(deck, g);
+  const room = canAdd(deck, g, identity);
   return (
-    <DeckModal title={`${g.name} · ${total} in deck`} onClose={onClose}>
-      <p className="deck-help">Each picture is an art and finish you own. Use + and − to choose how many copies use it.</p>
+    <DeckModal title={`${g.name} · ${total ? `${total} in deck` : 'not in deck'}`} onClose={onClose}>
+      <p className="deck-help">
+        {total
+          ? 'Click an art to use it for every copy. Use + and − to mix arts.'
+          : room
+            ? 'Click an art to add the card in that art.'
+            : "This card can't go in this deck right now."}{' '}
+        You own {g.arts.length} {g.arts.length === 1 ? 'art' : 'arts'} of it.
+      </p>
       <div className="deck-art-grid">
         {g.arts.map((o) => {
           const n = inDeck(deck, o);
           const commander = deck.commander === o.id && n > 0;
+          const usesAll = total > 0 && n === total;
           return (
             <div key={`${o.id}|${o.finish}`} className={`deck-art-option ${n ? 'chosen' : ''}`} onMouseEnter={() => onPreview(o.card)} onMouseLeave={() => onPreview(null)}>
-              <button
-                className="deck-art-image"
-                title="Use this art"
-                onClick={() => {
-                  // One tap: move every copy of this card to this art (as many as you own of it).
-                  let next = deck;
-                  for (const other of g.arts) if (other !== o) next = setArtCount(next, other, 0);
-                  next = setArtCount(next, o, Math.min(o.count, Math.max(1, total)));
-                  if (deck.commander && g.arts.some((a) => a.id === deck.commander)) next = { ...next, commander: o.id, cards: [...next.cards.filter((c) => c.id === o.id && c.finish === o.finish), ...next.cards.filter((c) => !(c.id === o.id && c.finish === o.finish))] };
-                  onChange(next);
-                }}
-              >
+              <button className="deck-art-image" title={total ? 'Use this art for every copy' : 'Add the card in this art'} disabled={!total && !room} onClick={() => onChange(useArt(deck, g, o, identity))}>
                 <CardPic o={o} size="normal" badge={n ? `×${n}` : undefined} />
               </button>
-              <div className="deck-art-label">{artAndFinish(o)}</div>
+              <div className="deck-art-label">
+                {artAndFinish(o)}
+                {usesAll && g.arts.length > 1 && <span className="deck-art-tag in-use">In use</span>}
+              </div>
               <div className="deck-stepper">
                 <button aria-label="One fewer" disabled={!n || (commander && n === 1)} onClick={() => onChange(setArtCount(deck, o, n - 1))}>
                   −
@@ -648,7 +674,7 @@ function ArtPicker({ deck, g, onChange, onPreview, onClose }: { deck: DeckDraft;
                 <span>
                   {n} / {o.count}
                 </span>
-                <button aria-label="One more" disabled={n >= o.count} onClick={() => onChange(setArtCount(deck, o, n + 1))}>
+                <button aria-label="One more" disabled={n >= o.count || !room} onClick={() => onChange(addInArt(deck, g, o, identity))}>
                   +
                 </button>
               </div>

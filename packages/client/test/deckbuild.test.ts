@@ -1,7 +1,7 @@
 // The deck editor's rules (owned arts only, user decision 2026-11-03).
 import { describe, expect, it } from 'vitest';
 import { BOOSTER_CARDS, type BoosterCard } from '@nexus/cards/boosters';
-import { addOne, artLabel, basicAllowed, canAdd, deckTotal, removeOffColor, setBasics, chooseCommander, commanderIdentity, copiesInDeck, curve, groupCollection, inDeck, offColor, removeOne, section, setArtCount } from '../src/packs/deckbuild.ts';
+import { addInArt, addOne, artLabel, useArt, basicAllowed, canAdd, deckTotal, removeOffColor, setBasics, chooseCommander, commanderIdentity, copiesInDeck, curve, groupCollection, inDeck, offColor, removeOne, section, setArtCount } from '../src/packs/deckbuild.ts';
 import type { Collection, DeckDraft } from '../src/packs/collection.ts';
 
 const fin = (n: string) => BOOSTER_CARDS.find((c) => c.set === 'fin' && c.number === n)!;
@@ -42,6 +42,28 @@ describe('deckbuilding', () => {
     expect(canAdd(d, fangGroup)).toBe(false);
     d = removeOne(d, fangGroup);
     expect(copiesInDeck(d, fangGroup)).toBe(4);
+  });
+
+  it('the art picker: one click puts every copy in that art, or adds the card in it; + stays within the rules', () => {
+    // Not in the deck yet: clicking an art adds one copy in it.
+    let d = useArt(empty(), fangGroup, fangGroup.arts[2]!);
+    expect([inDeck(d, fangGroup.arts[2]!), copiesInDeck(d, fangGroup)]).toEqual([1, 1]);
+    // Two copies (two arts): one click moves both to the regular art, which you own two of.
+    d = addOne(d, fangGroup);
+    d = useArt(d, fangGroup, fangGroup.arts[0]!);
+    expect([inDeck(d, fangGroup.arts[0]!), inDeck(d, fangGroup.arts[2]!), copiesInDeck(d, fangGroup)]).toEqual([2, 0, 2]);
+    // Three copies, and you own only one foil: it takes one, and the deck keeps all three.
+    d = setArtCount(d, fangGroup.arts[3]!, 1);
+    d = useArt(d, fangGroup, fangGroup.arts[1]!);
+    expect([inDeck(d, fangGroup.arts[1]!), copiesInDeck(d, fangGroup)]).toEqual([1, 3]);
+    // + respects the four-copy limit and what you own.
+    let e = empty();
+    for (let i = 0; i < 6; i++) e = addInArt(e, fangGroup, fangGroup.arts[i % 4]!);
+    expect(copiesInDeck(e, fangGroup)).toBe(4);
+    // Commander decks: one copy only, even from the picker.
+    let c = addInArt(empty('commander'), boltGroup, boltGroup.arts[0]!);
+    c = addInArt(c, boltGroup, boltGroup.arts[0]!);
+    expect(copiesInDeck(c, boltGroup)).toBe(1);
   });
 
   it('Commander decks take one of each card; the chosen commander art goes first', () => {

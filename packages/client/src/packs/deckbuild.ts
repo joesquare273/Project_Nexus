@@ -157,6 +157,37 @@ export function canAdd(deck: DeckDraft, g: CardGroup, identity?: readonly string
   return g.total - copiesInDeck(deck, g) > 0;
 }
 
+/**
+ * Uses one art for every copy of a card (the art picker's main click): with no
+ * copies in the deck yet it adds one in that art, if the deck can take it.
+ */
+export function useArt(deck: DeckDraft, g: CardGroup, o: Owned, identity?: readonly string[] | null): DeckDraft {
+  const total = copiesInDeck(deck, g);
+  if (total === 0) return canAdd(deck, g, identity) ? setArtCount(deck, o, 1) : deck;
+  // As many copies as you own of this art move to it; any more stay in the arts they had, so the deck keeps its size.
+  const moved = Math.min(o.count, total);
+  let left = total - moved;
+  let next = deck;
+  for (const other of g.arts) {
+    if (other === o) continue;
+    const keep = Math.min(inDeck(deck, other), left);
+    left -= keep;
+    next = setArtCount(next, other, keep);
+  }
+  next = setArtCount(next, o, moved);
+  // The commander follows its card into the new art (and stays first in the list).
+  if (deck.commander && g.arts.some((a) => a.id === deck.commander)) {
+    next = { ...next, commander: o.id, cards: [...next.cards.filter((c) => c.id === o.id && c.finish === o.finish), ...next.cards.filter((c) => !(c.id === o.id && c.finish === o.finish))] };
+  }
+  return next;
+}
+
+/** One more copy in this art, within the deck's rules (four of a card, one in Commander, the commander's colors). */
+export function addInArt(deck: DeckDraft, g: CardGroup, o: Owned, identity?: readonly string[] | null): DeckDraft {
+  if (!canAdd(deck, g, identity) || inDeck(deck, o) >= o.count) return deck;
+  return setArtCount(deck, o, inDeck(deck, o) + 1);
+}
+
 /** Basic lands of a color can go in a Commander deck only if the commander has that color. */
 export function basicAllowed(deck: DeckDraft, color: string, identity: readonly string[] | null): boolean {
   return deck.format !== 'commander' || (!!identity && identity.includes(color));

@@ -218,8 +218,16 @@ come after Final Fantasy testing is complete.
   the player owns it and that it really is that basic land
   (`basics.printings` in a saved deck).
 - **Any card:** when the player owns more than one printing of a card
-  (different art or finish), the deck list's Art menu switches copies to
-  another owned printing.
+  (different art or finish), the art picker switches copies to another owned
+  printing. It opens from a card in the deck (click it), or from a card in
+  the collection: its "N arts ▸" button, or a right-click. Every owned art
+  and finish is shown as a picture (user request, 2026-11-24):
+  - Clicking one puts every copy in that art. Copies beyond what you own of
+    it stay in their other arts, so the deck keeps its size.
+  - If the card isn't in the deck yet, clicking an art adds it in that art.
+  - + and − mix arts, within the deck's rules: four of a card in 60-card
+    decks, one in Commander, the commander's colors (`useArt`, `addInArt` in
+    deckbuild.ts).
 
 ## Reality Fracture (packs added 2026-11-16)
 

@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Deck editor: choose a card's art from the collection or the deck (2026-11-24)
+
+- User request. Each collection card with more than one owned art has an "N arts ▸" button (or right-click it) that opens the art picker, as clicking a card in the deck does. One click on an art uses it for every copy (or adds the card in that art); + and − now keep to the deck's copy limits (the picker's + could go past one copy in Commander before). docs/packs.md.
+
 ### Strixhaven Commander SOC1i: Lorehold Spirit complete (2026-11-24)
 
 - Classes and council's dilemma voting in the engine; Advanced Reconstruction and Fateful Tempest. Lorehold Spirit is the first complete Strixhaven deck: a free starter choice, and a deck the bots can play. docs/strixhaven.md.
