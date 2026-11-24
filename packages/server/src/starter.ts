@@ -4,7 +4,7 @@
 // 'starter', whichever precon they pick): its exact printings go into the
 // collection and it's saved as a Commander deck.
 
-import { ALL_PRECONS, EOC_PRECONS, FIN_PRECONS, FRC_PRECONS, SCRYFALL_PRINTINGS, type KitCard } from '@nexus/cards';
+import { ALL_PRECONS, EOC_PRECONS, FIN_PRECONS, FRC_PRECONS, SCRYFALL_PRINTINGS, SOC_PRECONS, preconFullyBuilt, type KitCard } from '@nexus/cards';
 import type { AccountService, AccountUser } from './accounts.ts';
 import type { OwnedCard, SavedDeck } from './collection.ts';
 
@@ -22,6 +22,8 @@ export const STARTER_CHOICES: StarterChoice[] = [
   ...FIN_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Final Fantasy' })),
   ...EOC_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Edge of Eternities' })),
   ...FRC_PRECONS.map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Reality Fracture' })),
+  // Secrets of Strixhaven: each deck joins once every card in it is built (Lorehold Spirit first, 2026-11-24).
+  ...SOC_PRECONS.filter(preconFullyBuilt).map((p) => ({ name: p.name, commander: p.commander.name, colorIdentity: p.colorIdentity, set: 'Secrets of Strixhaven' })),
 ];
 
 const printingId = (c: KitCard): string => {
@@ -30,7 +32,7 @@ const printingId = (c: KitCard): string => {
   return id;
 };
 
-/** A precon's cards (one entry per printing, nonfoil) and its commander's printing id: only the free starters (not Secrets of Strixhaven's decks yet). */
+/** A precon's cards (one entry per printing, nonfoil) and its commander's printing id: only the free starters (Strixhaven decks once they're fully built). */
 export function preconCards(name: string): { cards: OwnedCard[]; commander: string } | null {
   if (!STARTER_CHOICES.some((c) => c.name === name)) return null;
   return cardsOf(ALL_PRECONS.find((p) => p.name === name));

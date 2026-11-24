@@ -35,9 +35,9 @@ cached their data, images and each deck's own printings.
 
 284 of the decks' 391 distinct cards still need building. The decks are sold
 in the Store's Secrets of Strixhaven tab (precon price, saved as a deck) and
-shown in the Collection's Secrets of Strixhaven tab. They aren't offered as a
-free starter yet: a new player's first deck should be playable, so they join
-the starter choice once their cards are built. Ohran Frostfang brought the
+shown in the Collection's Secrets of Strixhaven tab. Each joins the free starter
+choice once all of its cards are built (`preconFullyBuilt`), as Lorehold
+Spirit did on 2026-11-24; computer opponents use the finished ones too. Ohran Frostfang brought the
 Snow supertype into the engine's list (no snow rules yet).
 
 ## Packs (2026-11-20)
@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3) done 2026-11-23 | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)** | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -423,5 +423,22 @@ Augusta, Order Returned, Spirit of Resilience and Serra Paragon.
   gets `paragonRider`, and `currentDefinition` adds the trigger "when this is
   put into a graveyard from the battlefield, exile it and you gain 2 life".
 
-Still to build in Lorehold Spirit (2): Advanced Reconstruction (a Class with
-levels) and Fateful Tempest (council's dilemma voting).
+Still to build in Lorehold Spirit after SOC1h (2); SOC1i finished it.
+
+## SOC1i: Lorehold Spirit, done (built 2026-11-24)
+
+Advanced Reconstruction and Fateful Tempest finish Lorehold Spirit, the first
+Strixhaven deck to be complete. It's now a free starter choice and one of the
+decks computer opponents can get.
+
+- **Classes (rule 716):** a Class starts at level 1 (`classLevel`, public).
+  Its level-up abilities (`classLevelTo`, `GainClassLevel`) work only from
+  the level just below. Abilities with `ifClassLevelAtLeast` (triggers,
+  statics and cost reductions) apply from that level. Spell cost reductions
+  can be `notFromHand`.
+- **Advanced Reconstruction:** `ExileRandomFromYourGraveyardToPlay`.
+- **Council's dilemma voting:** `Vote` with `voteOptions` asks each player in
+  turn order, starting with the caster (a `chooseOption` pending with
+  `forResolution: 'vote'`). Later effects read the amount `votesFor` (with
+  `vote`), and Fateful Tempest's damage reads `manaValueMilledThisWay`.
+- ExileTopCardToPlay with a counted amount of zero exiles nothing.

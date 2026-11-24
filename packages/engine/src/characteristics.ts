@@ -305,6 +305,7 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
   // Threshold: seven or more cards in your graveyard.
   if (spec.conditions?.includes('threshold') && s.players[source.controller]!.graveyard.length < 7) return false;
   if (spec.conditions?.includes('gainedLifeThisTurn') && !s.players[source.controller]!.lifeGainedThisTurn) return false;
+  if (spec.ifClassLevelAtLeast !== undefined && (source.classLevel ?? 1) < spec.ifClassLevelAtLeast) return false;
   if (spec.conditions?.includes('opponentDealtNoncombatDamage') && !s.turnOrder.some((pid) => pid !== source.controller && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return false;
   // "As long as you control a Mountain" (printed subtypes, so this never asks for characteristics).
   if (spec.ifYouControlSubtype) {

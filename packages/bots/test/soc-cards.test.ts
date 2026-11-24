@@ -648,3 +648,58 @@ describe('SOC1h: Lorehold Spirit (Augusta, Spirit of Resilience, Serra Paragon)'
 function defOfName(s: GameState, id: string): string {
   return currentDefinition(s, s.cards[id]!).name;
 }
+
+describe('SOC1i: Lorehold Spirit (Classes and voting)', () => {
+  it('Advanced Reconstruction: level 1 mills and exiles a random graveyard card to play; level 2 shocks on graveyard leaves; level 3 cheapens spells cast from elsewhere', () => {
+    let s = newGame();
+    const cls = put(s, 'P1', 'advanced-reconstruction');
+    expect(s.cards[cls]!.classLevel ?? 1).toBe(1);
+    // Level 3 can't come before level 2.
+    mana(s, 'P1', { R: 2, C: 2 });
+    const levels = getLegalActions(s).filter((a) => a.type === 'ActivateAbility' && a.card === cls);
+    expect(levels.map((a) => (a as { ability: number }).ability)).toEqual([0]);
+    s = cast(s, levels[0]!).state;
+    expect(s.cards[cls]!.classLevel).toBe(2);
+    // Level 2: a card leaving your graveyard deals 2 to each opponent.
+    put(s, 'P1', 'rank-rat', 'graveyard');
+    const cleric = put(s, 'P1', 'remorseful-cleric');
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === cleric && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P1')!).state;
+    expect(s.players.P2!.life).toBe(18);
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === cls)!).state;
+    expect(s.cards[cls]!.classLevel).toBe(3);
+    // Level 3: Faithless Looting's flashback ({2}{R}) costs only {R}.
+    const loot = put(s, 'P1', 'faithless-looting', 'graveyard');
+    s.players.P1!.manaPool = { W: 0, U: 0, B: 0, R: 1, G: 0, C: 0 };
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === loot)).toBe(true);
+  });
+
+  it('Advanced Reconstruction level 1: at your first main phase, mill one and exile a random graveyard card you may play this turn', () => {
+    let s = newGame();
+    put(s, 'P1', 'advanced-reconstruction');
+    s.players.P1!.graveyard = [];
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    expect(s.activePlayer).toBe('P1');
+    const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.playableFromExile?.player === 'P1');
+    expect(exiled).toHaveLength(1);
+  });
+
+  it('Fateful Tempest: each player votes; mill per past vote and deal the milled mana value; exile per present vote to play', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'hungry-graffalon', 'library'); // mana value 4 each
+    const tempest = put(s, 'P1', 'fateful-tempest', 'hand');
+    mana(s, 'P1', { R: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: tempest });
+    s = settle(s).state;
+    expect([s.pending.kind, (s.pending as { player: string }).player]).toEqual(['chooseOption', 'P1']);
+    s = act(s, { type: 'ChooseOption', player: 'P1', option: 'past' });
+    expect((s.pending as { player: string }).player).toBe('P2');
+    s = settle(act(s, { type: 'ChooseOption', player: 'P2', option: 'present' })).state;
+    expect([s.players.P1!.graveyard.filter((id) => s.cards[id]!.defId === 'hungry-graffalon').length, s.players.P2!.life]).toEqual([1, 16]);
+    const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.playableFromExile?.player === 'P1');
+    expect(exiled).toHaveLength(1);
+  });
+});

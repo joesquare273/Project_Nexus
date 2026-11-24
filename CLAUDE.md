@@ -52,8 +52,8 @@ this repo, not only in local memory.
   is imported (`import-sets.ts sos`, `sos-set.json`, cards 1-281, plus the
   pack-only SOA/SPG/SOC cards); its packs are in (MTGJSON print sheets,
   `sos-boosters.json`); its five Commander decks are imported
-  (`import-precons.ts soc`, `soc.json`, `soc-precons.json`; in the Store, not
-  yet a free starter); their cards and the main set's card groups are planned
+  (`import-precons.ts soc`, `soc.json`, `soc-precons.json`; in the Store; each
+  becomes a free starter once fully built: Lorehold Spirit is, 2026-11-24); their cards and the main set's card groups are planned
   in docs/strixhaven.md.
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).

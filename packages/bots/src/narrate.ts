@@ -192,6 +192,12 @@ function effectText(e: EffectSpec): string {
       return "return the exiled card to its owner's graveyard";
     case 'BecomeCopyOfSubjectCardUntilEndOfTurn':
       return 'you may have it become a copy of one of those cards until end of turn';
+    case 'Vote':
+      return `each player votes for ${(e.voteOptions ?? []).join(' or ')}`;
+    case 'GainClassLevel':
+      return `it becomes level ${n}`;
+    case 'ExileRandomFromYourGraveyardToPlay':
+      return 'exile a card from your graveyard at random; you may play it this turn';
     case 'EachPlayerExilesFromGraveyard':
       return 'each player exiles a card from their graveyard';
     case 'ClearEcho':

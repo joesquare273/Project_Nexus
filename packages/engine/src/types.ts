@@ -532,6 +532,12 @@ export const EFFECT_KINDS = [
   'MoveCounters',
   /** "Put this creature's counters on that token" (Ambitious Augmenter): each kind of counter the triggering object last had, onto this effect's targets. */
   'PutSubjectCounters',
+  /** Council's dilemma: starting with you, each player votes for one of `voteOptions` (Fateful Tempest); later effects use `votesFor`. */
+  'Vote',
+  /** A Class's level up: it becomes this level (`amount`). */
+  'GainClassLevel',
+  /** "Exile a card from your graveyard at random. You may play the exiled card this turn" (Advanced Reconstruction). */
+  'ExileRandomFromYourGraveyardToPlay',
   /** You may have this permanent become a copy of an artifact or creature card (`filter`) among the triggering cards until end of turn (Spirit of Resilience). */
   'BecomeCopyOfSubjectCardUntilEndOfTurn',
   /** Each player exiles a card of their choice from their graveyard (Augusta, Order Returned); nonland cards exiled this way are counted. */
@@ -946,7 +952,13 @@ export type Amount =
         /** The power of the creature or card chosen as the spell's additional cost (Close Encounter). */
         | 'chosenCostPower'
         | 'sacrificedPower'
-        | 'sacrificedManaValue';
+        | 'sacrificedManaValue'
+        /** Votes cast for `vote` (council's dilemma: Fateful Tempest). */
+        | 'votesFor'
+        /** The total mana value of cards this spell or ability milled (Fateful Tempest). */
+        | 'manaValueMilledThisWay';
+      /** For `votesFor`: which option. */
+      vote?: string;
       plus?: number;
       /** Multiplies the result ("twice X"). */
       times?: number;
@@ -1252,6 +1264,8 @@ export interface EffectSpec {
   ifDiscardedThisWay?: boolean;
   /** Only if this spell or ability exiled one or more nonland cards so far (Augusta's reflexive trigger). */
   ifNonlandExiledThisWay?: boolean;
+  /** Vote: the options, in order. */
+  voteOptions?: string[];
   /** Only if the previous target is another permanent, not the source (backup: "If that's another creature, it gains ..."). */
   ifPreviousTargetNotSource?: boolean;
   /** CreateTokenCopy: of a card (in exile or a graveyard), not a permanent (Restore Relic: "Create a token that's a copy of it"). */
@@ -1758,6 +1772,8 @@ export interface TriggerSpec {
   /** With `optional` or `cost`: what happens instead if its controller declines (Echo: "sacrifice it unless you pay"). */
   ifDeclined?: EffectSpec[];
   /** Echo: only while the echo cost is due (it came under its controller's control since their last upkeep). */
+  /** A Class's ability: only at this level or higher. */
+  ifClassLevelAtLeast?: number;
   ifEchoDue?: boolean;
   ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
@@ -1876,6 +1892,8 @@ export interface ActivatedSpec {
   ifOpponentDealtNoncombatDamageThisTurn?: boolean;
   /** "Activate only if you've scried or surveilled this turn" (Proctor of Potential). */
   /** "Activate only if you've cast an instant or sorcery spell this turn" (Sanar, Unfinished Genius). */
+  /** A Class's level-up ability: to this level, from the level just below it. */
+  classLevelTo?: number;
   ifCastInstantOrSorceryThisTurn?: boolean;
   ifScriedOrSurveiledThisTurn?: boolean;
   /** Exhaust (rule 702.177): activate only once for as long as the permanent stays (`CardInstance.exhausted`). */
@@ -2027,6 +2045,8 @@ export interface StaticSpec {
    * control with a +1/+1 counter on it").
    */
   /** "Untap all creatures you control during each other player's untap step" (Drumbellower). */
+  /** A Class's ability: only at this level or higher. */
+  ifClassLevelAtLeast?: number;
   untapCreaturesInOthersUntapSteps?: boolean;
   affects: 'Self' | 'EquippedCreature' | 'EachMatching';
   /** For EachMatching, from the point of view of this card's controller. */
@@ -2042,7 +2062,7 @@ export interface StaticSpec {
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
    * turn ("the second spell you cast each turn costs {2} less").
    */
-  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean };
+  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean; /** Spells cast from anywhere other than your hand (Advanced Reconstruction). */ notFromHand?: boolean };
   /**
    * "... triggers an additional time": a triggered ability of a permanent
    * this one's controller controls triggers once more. `selfAndEquipment`:
@@ -2766,6 +2786,8 @@ export interface CardInstance {
   colorsSpentToCast?: number;
   /** Echo: its echo cost is due at its controller's next upkeep. */
   echoDue?: boolean;
+  /** A Class's level (rule 716): 1 as it enters, raised by its level-up abilities. */
+  classLevel?: number;
   /** Played or cast with Serra Paragon: "When this permanent is put into a graveyard from the battlefield, exile it and you gain 2 life." */
   paragonRider?: boolean;
   /** Hofri's token: the exiled card it was copied from, returned to its owner's graveyard when the token leaves. */
@@ -3238,6 +3260,11 @@ export interface Resolving {
   discardedThisWay?: number;
   /** EachPlayerExilesFromGraveyard: nonland cards exiled so far. */
   nonlandExiledThisWay?: number;
+  /** Vote: the votes cast so far, and who votes next. */
+  votes?: Record<string, number>;
+  voteQueue?: PlayerId[];
+  /** Mill: the total mana value of the cards milled so far. */
+  milledManaValue?: number;
   /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
   castBudget?: string;
   /** The mana value of the card RevealUntil found. */
@@ -3425,7 +3452,7 @@ export type Pending =
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /** "As this enters, choose Mardu or Jeskai". */
-  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' }
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.

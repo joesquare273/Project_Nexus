@@ -1252,6 +1252,8 @@ export function spellCost(
         if (!r || !matchesObject(s, r.filter, card, { controller: source.controller, source: source.id }, payer!, def)) continue;
         // "Spells you cast from your graveyard cost {2} less" (Emet-Selch).
         if (r.fromGraveyard && from !== 'graveyard') continue;
+        if (r.notFromHand && from === 'hand') continue;
+        if (spec.ifClassLevelAtLeast !== undefined && (source.classLevel ?? 1) < spec.ifClassLevelAtLeast) continue;
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
@@ -1722,6 +1724,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (!spec.turnFaceUp && combatLocked(s)) return "Players can't activate abilities during combat.";
   if (spec.ifOpponentDealtNoncombatDamageThisTurn && !s.turnOrder.some((pid) => pid !== playerId && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return 'That can be activated only if an opponent has been dealt noncombat damage this turn.';
   if (spec.ifScriedOrSurveiledThisTurn && s.players[playerId]!.scriedOrSurveiledTurn !== s.turnNumber) return "That can be activated only if you've scried or surveilled this turn.";
+  if (spec.classLevelTo !== undefined && (c.classLevel ?? 1) !== spec.classLevelTo - 1) return `That needs it to be level ${spec.classLevelTo - 1}.`;
   if (spec.ifCastInstantOrSorceryThisTurn && !s.players[playerId]!.instantOrSorcerySpellsThisTurn) return "That can be activated only if you've cast an instant or sorcery spell this turn.";
   if (spec.ifYouControl) {
     const meets = (x: CardInstance) => x.controller === playerId && !x.phasedOut && matchesObject(s, spec.ifYouControl, x, { controller: playerId, source: c.id });
@@ -2244,6 +2247,10 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? countersOf(s.cards[sourceOf(r.item)]!, a.counter ?? '+1/+1')
               : a.of === 'sourcePower'
               ? sourcePower(s, r.item)
+              : a.of === 'votesFor'
+              ? (r.votes?.[a.vote ?? ''] ?? 0)
+              : a.of === 'manaValueMilledThisWay'
+              ? (r.milledManaValue ?? 0)
               : a.of === 'nontokenCreaturesOfYoursDestroyedThisWay'
               ? (r.destroyedCards ?? []).filter((id) => { const c = s.cards[id]; return !!c && !c.isToken && c.owner === r.item.controller && defOf(s, c).types.includes('creature'); }).length
               : a.of === 'colorsSpent'
@@ -3975,6 +3982,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'ExileTopCardToPlay': {
+      // "Exile the top card for each present vote": none when the count is zero.
+      if (typeof effect.amount === 'object' && amount <= 0) return;
       // "Until you exile another card with this": the earlier card can't be played any more.
       if (effect.untilNextFromSource) {
         for (const c of Object.values(s.cards)) {
@@ -4061,6 +4070,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, t.player, count + extra)) {
           moveCard(ctx, id, 'graveyard');
           s.cards[id]!.milledBy = { source, turn: s.turnNumber };
+          r.milledManaValue = (r.milledManaValue ?? 0) + objectManaValue(s, s.cards[id]!);
         }
       }
       return;
@@ -4385,6 +4395,27 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const subjects = item.kind === 'ability' ? (item.subjects ?? (item.subject ? [item.subject] : [])) : [];
       const options = subjects.filter((id) => s.cards[id] && matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
       if (options.length && s.cards[source]?.zone === 'battlefield') r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'copyCard', cards: options, min: 0, max: 1 }];
+      return;
+    }
+    case 'GainClassLevel':
+      for (const id of onBattlefield) s.cards[id]!.classLevel = Math.max(s.cards[id]!.classLevel ?? 1, amount);
+      return;
+    case 'ExileRandomFromYourGraveyardToPlay': {
+      const yard = s.players[item.controller]!.graveyard;
+      if (!yard.length) return;
+      const picked = yard[randomInt(s, yard.length)]!;
+      moveCard(ctx, picked, 'exile');
+      if (s.cards[picked]!.zone === 'exile') s.cards[picked]!.playableFromExile = { player: item.controller, source, untilTurn: s.turnNumber };
+      return;
+    }
+    case 'Vote': {
+      const options = effect.voteOptions ?? [];
+      const order = alivePlayers(s);
+      const start = order.indexOf(item.controller);
+      r.votes = Object.fromEntries(options.map((o) => [o, 0]));
+      r.voteQueue = [...order.slice(start), ...order.slice(0, start)];
+      const first = r.voteQueue.shift()!;
+      s.pending = { kind: 'chooseOption', player: first, card: source, options: [...options], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'vote' };
       return;
     }
     case 'EachPlayerExilesFromGraveyard':
@@ -5656,6 +5687,19 @@ export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: str
   const s = ctx.s, pending = s.pending, r = s.resolving;
   if (pending.kind !== 'chooseOption' || !pending.forResolution || pending.player !== playerId || !r) reject('You are not choosing anything right now.');
   if (!pending.options.includes(option)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  if (pending.forResolution === 'vote') {
+    r.votes = { ...r.votes, [option]: (r.votes?.[option] ?? 0) + 1 };
+    ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+    // The next player votes; once everyone has, the spell goes on resolving.
+    const next = r.voteQueue?.shift();
+    if (next) {
+      s.pending = { ...pending, player: next };
+      return;
+    }
+    s.pending = pending.resume;
+    continueResolving(ctx);
+    return;
+  }
   if (pending.forResolution === 'keyword') r.chosenKeyword = option;
   else r.chosenCreatureType = option;
   ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });

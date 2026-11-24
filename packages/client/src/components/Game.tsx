@@ -1614,7 +1614,9 @@ function PromptBar(p: PromptProps) {
     text = `${cardName(s, pending.card)}: choose a card type as it enters.`;
     buttons = pending.options.map((cardType) => ({ label: cardType[0]!.toUpperCase() + cardType.slice(1), onClick: () => p.submit([{ type: 'ChooseCardType', player: ME, cardType }]) }));
   } else if (pending.kind === 'chooseOption') {
-    text = pending.forResolution === 'creatureType'
+    text = pending.forResolution === 'vote'
+      ? `${cardName(s, pending.card)}: vote for ${pending.options.join(' or ')}.`
+      : pending.forResolution === 'creatureType'
       ? `${cardName(s, pending.card)}: choose a creature type.`
       : pending.forResolution === 'keyword'
       ? `${cardName(s, pending.card)}: choose the ability it gains.`

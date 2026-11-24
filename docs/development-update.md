@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC1i: Lorehold Spirit complete (2026-11-24)
+
+- Classes and council's dilemma voting in the engine; Advanced Reconstruction and Fateful Tempest. Lorehold Spirit is the first complete Strixhaven deck: a free starter choice, and a deck the bots can play. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC1h: Lorehold Spirit, part eight (2026-11-23)
 
 - Augusta, Spirit of Resilience, Serra Paragon. Two Lorehold cards left (a Class and a voting card). docs/strixhaven.md.

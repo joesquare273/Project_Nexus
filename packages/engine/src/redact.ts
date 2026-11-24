@@ -235,6 +235,7 @@ const CARD_FIELDS = {
   manaSpentToCast: 'copy',
   colorsSpentToCast: 'copy',
   echoDue: 'copy',
+  classLevel: 'copy',
   paragonRider: 'copy',
   returnsExiledCard: 'refs',
   kicksPaid: 'copy',
