@@ -106,6 +106,9 @@ const INCREMENT_TRIGGER: TriggerSpec = { when: 'SpellCast', what: { controller: 
 /** Cascade (rule 702.85a): the triggered ability the keyword stands for. */
 const CASCADE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, effects: [{ effect: 'ExileUntilFound', target: 'You', filter: { nonTypes: ['land'] }, lesserThanSubject: true, restToBottom: true }] };
 
+/** Demonstrate (rule 702.144a): you may copy the spell; then an opponent copies it too. */
+const DEMONSTRATE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, optional: true, effects: [{ effect: 'CopySpell', target: 'You', demonstrate: true }] };
+
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
   let out = definitionWithEffects(s, c);
   // Each instance of prowess triggers separately (Ruric Thar: "Prowess, prowess").
@@ -118,6 +121,7 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   // Cascade: each instance triggers separately; the found card must cost less than this spell (lesserThanSubject).
   const cascade = out.keywords?.filter((k) => k === 'Cascade').length ?? 0;
   if (cascade) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(cascade).fill(CASCADE_TRIGGER)] };
+  if (out.keywords?.includes('Demonstrate')) out = { ...out, triggers: [...(out.triggers ?? []), DEMONSTRATE_TRIGGER] };
   const increment = out.keywords?.filter((k) => k === 'Increment').length ?? 0;
   if (increment) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(increment).fill(INCREMENT_TRIGGER)] };
   // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.

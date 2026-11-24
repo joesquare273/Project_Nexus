@@ -75,6 +75,8 @@ export const KEYWORDS = [
   'Increment',
   /** Cascade (rule 702.85): "When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order" (added to its triggers by currentDefinition). */
   'Cascade',
+  /** Demonstrate (rule 702.144): "When you cast this spell, you may copy it. If you do, choose an opponent to also copy it" (added to its triggers by currentDefinition). */
+  'Demonstrate',
   'Lifelink',
   'Trample',
   'Deathtouch',
@@ -839,6 +841,8 @@ export const COUNT_KINDS = [
   'ArtifactOrCreatureCardsInYourGraveyard',
   /** Times you've cast your commanders from the command zone this game (Vanguard of the Restless). */
   'CommanderCastsFromCommandZone',
+  /** Instant and sorcery spells you've cast this turn (Rionya). */
+  'InstantOrSorcerySpellsYouCastThisTurn',
   /** The total power of creatures you control (Volcanic Salvo). */
   'TotalPowerOfCreaturesYouControl',
   /** Tapped lands your opponents control (Mana Geyser). */
@@ -1139,6 +1143,14 @@ export interface EffectSpec {
   castOnly?: boolean;
   /** CopySpell: a copy of this spell itself (Sevinne's Reclamation); a copy doesn't copy itself again. */
   copySelf?: boolean;
+  /** CopySpell: demonstrate; an opponent also copies the spell (the next opponent in turn order). */
+  demonstrate?: boolean;
+  /** ExileUntilFound: the found card may be cast free right away, as this resolves (Creative Technique). */
+  castNow?: boolean;
+  /** CreateDelayedTrigger: it waits for the next turn ("at the beginning of the next turn's upkeep": Arcane Denial). */
+  nextTurn?: boolean;
+  /** CreateDelayedTrigger: the delayed trigger is controlled by the previous target's controller (Arcane Denial: "Its controller may draw"). */
+  forPreviousTargetController?: boolean;
   /** DivideDamage: among this ability's chosen targets (each gets at least 1), not chosen as it resolves (Fury). */
   amongTargets?: boolean;
   /** AddSubtypes: the subtypes gained. */
@@ -1857,6 +1869,8 @@ export interface ActivatedSpec {
     discardThis?: boolean;
     /** Exile this permanent (Phoenix Down). */
     exileThis?: boolean;
+    /** "Return this to its owner's hand" (Rootha). */
+    returnThisToHand?: boolean;
     /** Sacrifice this permanent. */
     sacrificeThis?: boolean;
     /** "Discard a card": the cards are chosen with the action (`costCards`). */

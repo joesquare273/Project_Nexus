@@ -687,3 +687,12 @@ card gets a free cast-as-copy permission that lasts the turn at sorcery
 timing (the same simplification as rebound): you can cast it in either main
 phase, once, and the card stays in exile. Copies of a Paradigm spell aren't
 recorded again.
+
+## 2026-11-24: Demonstrate and cascade (simplifications)
+
+- **Demonstrate:** the opponent who also copies the spell is the next one in
+  turn order after the caster; the caster doesn't choose among opponents yet
+  (in a two-player game it's the same).
+- **Cascade and Creative Technique:** a found card you don't cast stays in
+  exile instead of going to the bottom of your library with the rest (as
+  Jodah's and discover's search already worked).

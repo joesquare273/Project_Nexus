@@ -189,6 +189,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       return s.turnOrder.filter((pid) => !s.players[pid]!.eliminated && s.players[pid]!.hand.length <= 1).length;
     case 'ArtifactOrCreatureCardsInYourGraveyard':
       return s.players[player]!.graveyard.filter((id) => { const t = def(s, s.cards[id]!).types; return t.includes('artifact') || t.includes('creature'); }).length;
+    case 'InstantOrSorcerySpellsYouCastThisTurn':
+      return s.players[player]!.instantOrSorcerySpellsThisTurn ?? 0;
     case 'TotalPowerOfCreaturesYouControl':
       return battlefieldCards(s).filter((c) => c.controller === player && !c.phasedOut && def(s, c).types.includes('creature')).reduce((n, c) => n + Math.max(0, powerOf(s, c)), 0);
     case 'TappedLandsOpponentsControl':

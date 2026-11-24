@@ -2058,6 +2058,7 @@ export function activateAbility(
   if (spec.cost.sacrificeThis) sacrifice(ctx, id);
   if (spec.cost.discardThis) moveCard(ctx, id, 'graveyard');
   if (spec.cost.exileThis) moveCard(ctx, id, 'exile');
+  if (spec.cost.returnThisToHand) moveCard(ctx, id, 'hand');
   // Morph: turning it face up is a special action; it doesn't use the stack (rule 702.37e).
   if (spec.turnFaceUp) {
     turnFaceUp(ctx, id, playerId);
@@ -3206,14 +3207,18 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if (!original) return;
       const from = s.cards[original.card]!;
       const copies: string[] = [];
-      for (let i = 0; i < (effect.amount === undefined ? 1 : amount); i++) {
+      // Demonstrate: you copy it, then an opponent does (the next one in turn order).
+      const order = aliveFromActive(s);
+      const opponent = effect.demonstrate ? [...order.slice(order.indexOf(item.controller) + 1), ...order.slice(0, order.indexOf(item.controller))].find((p) => p !== item.controller) : undefined;
+      const copiers = [...Array<PlayerId>(effect.amount === undefined ? 1 : amount).fill(item.controller), ...(opponent ? [opponent] : [])];
+      for (const copier of copiers) {
         const id = `${original.card}c${(s.nextCopyId = (s.nextCopyId ?? 0) + 1)}`;
-        s.cards[id] = { ...structuredClone(from), id, owner: item.controller, controller: item.controller, spellCopy: true, zone: 'stack', zoneChanges: 0 };
-        const copy = { ...structuredClone(original), id: `${original.id}c${s.nextCopyId}`, card: id, controller: item.controller, manaSpent: 0 };
+        s.cards[id] = { ...structuredClone(from), id, owner: copier, controller: copier, spellCopy: true, zone: 'stack', zoneChanges: 0 };
+        const copy = { ...structuredClone(original), id: `${original.id}c${s.nextCopyId}`, card: id, controller: copier, manaSpent: 0 };
         delete copy.flashback;
         s.stack.push(copy);
         copies.push(copy.id);
-        ctx.ev.push({ type: 'SpellCopied', card: id, original: original.card, player: item.controller, defId: from.defId });
+        ctx.ev.push({ type: 'SpellCopied', card: id, original: original.card, player: copier, defId: from.defId });
       }
       // "You may choose new targets for the copy."
       askCopyTargets(s, r, copies);
@@ -4136,7 +4141,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const spec = structuredClone(effect.trigger!);
       for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'exiledThisWay') e.amount = r.exiledCount ?? 0;
       const kept = effect.keepSubject && item.kind === 'ability' ? item.subject : undefined;
-      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: item.controller, turn: s.turnNumber, spec, ...(kept ? { subject: kept } : {}), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}), ...(effect.untilYourNextTurn ? { untilYourNextTurn: true } : {}) }];
+      // Arcane Denial: the countered spell's controller.
+      const prev = effect.forPreviousTargetController && r.previousTarget?.kind === 'card' ? s.cards[r.previousTarget.card] : undefined;
+      if (effect.forPreviousTargetController && !prev) return;
+      s.delayedTriggers = [...(s.delayedTriggers ?? []), { source, sourceObject: object, controller: prev ? prev.controller : item.controller, turn: s.turnNumber + (effect.nextTurn ? 1 : 0), spec, ...(kept ? { subject: kept } : {}), ...(effect.next ? { next: true } : {}), ...(effect.emblem ? { emblem: true } : {}), ...(effect.untilYourNextTurn ? { untilYourNextTurn: true } : {}) }];
       return;
     }
     case 'ExileAndCopyToCast':
@@ -4166,7 +4174,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             ...(effect.payCost ? {} : { free: true }),
             ...(effect.hasteSacrifice ? { hasteSacrifice: true } : {}),
             // Jodah: cast as the trigger resolves, so timing doesn't apply, and only right away.
-            ...(effect.lesserThanSubject || effect.discover ? { ignoreTiming: true, immediate: true } : {}),
+            ...(effect.lesserThanSubject || effect.discover || effect.castNow ? { ignoreTiming: true, immediate: true } : {}),
             // Discover: or put it into your hand.
             ...(effect.discover ? { orHand: true } : {}),
           };

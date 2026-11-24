@@ -893,3 +893,91 @@ describe('SOC2b: Prismari Artistry (cascade, spell-cast creatures, manifest)', (
     expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === salvo)).toBe(true);
   });
 });
+
+describe('SOC2c: Prismari Artistry (token copies, demonstrate, copying spells)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Rionya: at the beginning of combat, one plus the instants and sorceries cast this turn hasty copies, exiled at the end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'rionya-fire-dancer');
+    const rat = put(s, 'P1', 'rank-rat');
+    s.players.P1!.instantOrSorcerySpellsThisTurn = 2;
+    s = settle(goTo(s, 'beginCombat'), { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === rat)! }).state;
+    const copies = onField(s, 'rank-rat').filter((c) => c.id !== rat);
+    expect(copies.length).toBe(3);
+    expect(hasKeyword(s, copies[0]!, 'Haste')).toBe(true);
+    s = settle(goTo(s, 'end')).state;
+    expect(onField(s, 'rank-rat').length).toBe(1);
+  });
+
+  it('Determined Iteration populates a hasty token copy that is sacrificed at the end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'determined-iteration');
+    s.cards[put(s, 'P1', 'elemental-1-1-token-soc')]!.isToken = true;
+    s = settle(goTo(s, 'beginCombat')).state;
+    expect(onField(s, 'elemental-1-1-token-soc').length).toBe(2);
+    s = settle(goTo(s, 'end')).state;
+    expect(onField(s, 'elemental-1-1-token-soc').length).toBe(1);
+  });
+
+  it('Replication Technique (demonstrate): you copy it and an opponent copies it too', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    put(s, 'P2', 'hungry-graffalon');
+    const rep = put(s, 'P1', 'replication-technique', 'hand');
+    mana(s, 'P1', { U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: rep, targets: [card(rat)] }).state;
+    expect(onField(s, 'rank-rat').length).toBe(3);
+    expect(onField(s, 'hungry-graffalon', 'P2').length).toBe(2);
+  });
+
+  it('Creative Technique shuffles, then exiles until a nonland card you may cast free right away', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'island', 'library');
+    const rat = put(s, 'P1', 'rank-rat', 'library');
+    const ct = put(s, 'P1', 'creative-technique', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: ct });
+    // Decline demonstrate.
+    for (let i = 0; i < 8 && s.cards[rat]!.zone !== 'exile'; i++) {
+      if (s.pending.kind === 'decide') s = act(s, { type: 'Decide', player: s.pending.player, accept: false });
+      else s = act(s, { type: 'PassPriority', player: (s.pending as { player: string }).player });
+    }
+    expect(s.cards[rat]!.castPermission).toMatchObject({ free: true, immediate: true });
+    expect(s.players.P1!.library.length).toBe(4);
+  });
+
+  it('Rootha returns to hand to copy your instant; Thunderclap Drake copies your next one per commander cast', () => {
+    let s = newGame();
+    const rootha = put(s, 'P1', 'rootha-mercurial-artist');
+    const drake = put(s, 'P1', 'thunderclap-drake');
+    s.players.P1!.commanderCasts = { [drake]: 2 } as never;
+    const rat = put(s, 'P2', 'hungry-graffalon');
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    mana(s, 'P1', { R: 1 }); // {1} less from the Drake
+    s = act(s, { type: 'CastSpell', player: 'P1', card: abrade, mode: 0, targets: [card(rat)] });
+    mana(s, 'P1', { C: 2 });
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === rootha)!);
+    expect(s.cards[rootha]!.zone).toBe('hand');
+    s = settle(s).state;
+    expect(s.cards[rat]!.zone).toBe('graveyard');
+  });
+
+  it('Arcane Denial counters; at the next upkeep its controller may draw two and you draw one', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat', 'hand');
+    const denial = put(s, 'P2', 'arcane-denial', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    mana(s, 'P2', { U: 1, C: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: rat });
+    s = act(s, { type: 'PassPriority', player: 'P1' });
+    s = act(s, { type: 'CastSpell', player: 'P2', card: denial, targets: [card(rat)] });
+    s = settle(s).state;
+    expect(s.cards[rat]!.zone).toBe('graveyard');
+    const [h1, h2] = [s.players.P1!.hand.length, s.players.P2!.hand.length];
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state;
+    expect([s.players.P1!.hand.length - h1, s.players.P2!.hand.length - h2]).toEqual([2, 1]);
+  });
+});
