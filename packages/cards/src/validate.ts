@@ -266,7 +266,8 @@ export function validateCardDefinition(raw: unknown): string[] {
   if (c.notBuilt !== undefined && typeof c.notBuilt !== 'boolean') err('notBuilt must be true or false.');
   if (c.uncastable && (!c.notBuilt || c.manaCost !== undefined)) err('an uncastable card is notBuilt and has no manaCost.');
   const hasEffects = !!(c.effects?.length || c.modes?.length);
-  if (isSpell && !c.notBuilt && !hasEffects) err('instants and sorceries need at least one effect (or modes).');
+  // Throes of Chaos: a spell whose only ability is cascade.
+  if (isSpell && !c.notBuilt && !hasEffects && !c.keywords?.includes('Cascade')) err('instants and sorceries need at least one effect (or modes).');
   if (c.notBuilt && (hasEffects || c.triggers?.length || c.activated?.length || c.statics?.length)) {
     err('a card marked notBuilt has no abilities yet.');
   }

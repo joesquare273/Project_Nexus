@@ -103,6 +103,9 @@ const PROWESS_TRIGGER: TriggerSpec = { when: 'SpellCast', what: { nonTypes: ['cr
 /** Increment (Secrets of Strixhaven): the triggered ability the keyword stands for. */
 const INCREMENT_TRIGGER: TriggerSpec = { when: 'SpellCast', what: { controller: 'You' }, ifManaSpentOverPowerOrToughness: true, effects: [{ effect: 'AddCounters', amount: 1, target: 'This', ifSubjectManaSpentOverSourcePowerOrToughness: true }] };
 
+/** Cascade (rule 702.85a): the triggered ability the keyword stands for. */
+const CASCADE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, effects: [{ effect: 'ExileUntilFound', target: 'You', filter: { nonTypes: ['land'] }, lesserThanSubject: true, restToBottom: true }] };
+
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
   let out = definitionWithEffects(s, c);
   // Each instance of prowess triggers separately (Ruric Thar: "Prowess, prowess").
@@ -112,6 +115,9 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   if (c.paragonRider) out = { ...out, triggers: [...(out.triggers ?? []), { when: 'LeavesBattlefield', what: { self: true }, leavesTo: 'graveyard', effects: [{ effect: 'Exile', target: 'TriggeringCard' }, { effect: 'GainLife', amount: 2, target: 'You' }] }] };
   // Echo (rule 702.30): "At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay [cost]."
   if (out.echo) out = { ...out, triggers: [...(out.triggers ?? []), { when: 'Upkeep', ifEchoDue: true, cost: { mana: out.echo }, effects: [{ effect: 'ClearEcho', target: 'This' }], ifDeclined: [{ effect: 'Sacrifice', target: 'You', amount: 1, filter: { self: true }, noChoice: true }] }] };
+  // Cascade: each instance triggers separately; the found card must cost less than this spell (lesserThanSubject).
+  const cascade = out.keywords?.filter((k) => k === 'Cascade').length ?? 0;
+  if (cascade) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(cascade).fill(CASCADE_TRIGGER)] };
   const increment = out.keywords?.filter((k) => k === 'Increment').length ?? 0;
   if (increment) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(increment).fill(INCREMENT_TRIGGER)] };
   // "Planeswalkers you control have '[−2]: ...'" (the "Way of the ..." enchantments): after its own abilities.

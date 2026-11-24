@@ -3622,6 +3622,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
           if (effect.entersTapped) s.cards[id]!.tapped = true;
           if (effect.sacrificeAtEndOfCombat) s.cards[id]!.sacrificeAtEndOfCombat = true;
           // Kav Landseeker: "At the beginning of the end step on your next turn, sacrifice that token."
+          // Manaform Hellkite: "Exile that token at the beginning of the next end step."
+          if (effect.exileAtEndStep) s.cards[id]!.exileAtEndStep = true;
           if (effect.sacrificeAtEndStep) {
             s.cards[id]!.sacrificeAtEndStep = true;
             if (effect.atYourEndStep) s.cards[id]!.sacrificeAtEndStepOf = item.controller;
@@ -4226,7 +4228,10 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const id of onBattlefield) if (!s.cards[id]!.phasedOut) turnFaceDown(ctx, id);
       return;
     case 'Manifest':
-      for (const id of topOfLibrary(s, item.controller, amount)) manifest(ctx, id, item.controller, !!effect.cloak);
+      // "Its controller manifests the top card of their library" (Reality Shift): each target player, else you.
+      for (const pid of targetPlayers(targets).length > 0 ? targetPlayers(targets) : [item.controller]) {
+        for (const id of topOfLibrary(s, pid, amount)) manifest(ctx, id, pid, !!effect.cloak);
+      }
       return;
     case 'ManifestDread': {
       const looked = topOfLibrary(s, item.controller, 2);

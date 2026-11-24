@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC2b: Prismari Artistry, part two (2026-11-24)
+
+- 11 cards: cascade (a keyword, Throes of Chaos and Volcanic Torrent), creatures that react to instants and sorceries, Reality Shift's manifest for another player, Galazeth's instant-and-sorcery mana on artifacts, and Volcanic Salvo's cost by total power. 25 Prismari cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC2a: Prismari Artistry, part one (2026-11-24)
 
 - 16 cards: lands, spells, and magecraft (a trigger on casting or copying an instant or sorcery). Mystic Sanctuary's enters-untapped condition, flashback with a life cost, and a tapped-lands count for Mana Geyser. 36 Prismari cards left. docs/strixhaven.md.

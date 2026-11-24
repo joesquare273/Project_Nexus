@@ -8580,6 +8580,28 @@
       }
     ]
   },
+  "dragon-illusion-token-soc": {
+    "name": "Dragon Illusion",
+    "typeLine": "Token Creature — Dragon Illusion",
+    "oracleText": "Flying, haste",
+    "set": "tsoc",
+    "number": "13",
+    "artist": "Andrew Mar",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573",
+      "normal": "https://cards.scryfall.io/normal/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573",
+      "large": "https://cards.scryfall.io/large/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/4/44b7c73d-80a0-4a27-b0a2-317164362449.jpg?1783903573"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/13/dragon-illusion?utm_source=api",
+    "scryfallId": "44b7c73d-80a0-4a27-b0a2-317164362449",
+    "relatedTokens": [
+      {
+        "name": "Dragon Illusion",
+        "scryfallId": "44b7c73d-80a0-4a27-b0a2-317164362449"
+      }
+    ]
+  },
   "dragon-token-fra": {
     "name": "Dragon",
     "typeLine": "Token Creature — Dragon",
@@ -9315,6 +9337,28 @@
       {
         "name": "Robot",
         "scryfallId": "c46f9a07-005c-44b7-8057-b2f00b274dd6"
+      }
+    ]
+  },
+  "elemental-1-1-token-soc": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "21",
+    "artist": "Bram Sels",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569",
+      "normal": "https://cards.scryfall.io/normal/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569",
+      "large": "https://cards.scryfall.io/large/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/2/2/222b8394-20e7-4808-8eec-cb048f548055.jpg?1783903569"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/21/elemental?utm_source=api",
+    "scryfallId": "222b8394-20e7-4808-8eec-cb048f548055",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "222b8394-20e7-4808-8eec-cb048f548055"
       }
     ]
   },

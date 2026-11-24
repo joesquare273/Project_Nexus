@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -461,4 +461,26 @@ Mastermind and Storm-Kiln Artist.
 - **Mana Geyser:** the count `TappedLandsOpponentsControl`.
 - Token: Elemental 4/4 (tsoc 20) for Resculpt.
 
-Still to build in Prismari Artistry after SOC2a: 36 cards.
+Still to build in Prismari Artistry after SOC2a: 36 cards; SOC2b took 11.
+
+## SOC2b: Prismari Artistry, part two (built 2026-11-24)
+
+Throes of Chaos, Volcanic Torrent, Prismari Pianist, Leitmotif Composer,
+Brazen Borrower, Reality Shift, Galazeth Prismari, Hall of Oracles, Manaform
+Hellkite, Renegade Bull and Volcanic Salvo.
+
+- **Cascade (rule 702.85):** the keyword `Cascade` adds its trigger in
+  `currentDefinition` (each instance separately): ExileUntilFound for a
+  nonland card with lesser mana value, cast free right away, the rest on the
+  bottom in a random order. A spell whose only ability is cascade passes the
+  validator.
+- **Manifest** takes a target player: Reality Shift's "its controller
+  manifests the top card of their library" (`PreviousTargetController`).
+- **CreateToken `exileAtEndStep`** (Manaform Hellkite's X/X Dragon Illusion,
+  sized by the mana spent on the spell).
+- The count `TotalPowerOfCreaturesYouControl` (Volcanic Salvo's cost).
+- Galazeth's granted mana uses the existing `grantsMana` static with the
+  `instantOrSorcerySpell` restriction.
+- Tokens: Elemental 1/1 (tsoc 21), Dragon Illusion (tsoc 13).
+
+Still to build in Prismari Artistry after SOC2b: 25 cards.

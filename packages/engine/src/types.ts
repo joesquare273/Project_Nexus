@@ -73,6 +73,8 @@ export const KEYWORDS = [
   'Prowess',
   /** Increment: "Whenever you cast a spell, if the amount of mana you spent to cast it is greater than this creature's power or toughness, put a +1/+1 counter on this creature" (added to its triggers by currentDefinition). */
   'Increment',
+  /** Cascade (rule 702.85): "When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order" (added to its triggers by currentDefinition). */
+  'Cascade',
   'Lifelink',
   'Trample',
   'Deathtouch',
@@ -837,6 +839,8 @@ export const COUNT_KINDS = [
   'ArtifactOrCreatureCardsInYourGraveyard',
   /** Times you've cast your commanders from the command zone this game (Vanguard of the Restless). */
   'CommanderCastsFromCommandZone',
+  /** The total power of creatures you control (Volcanic Salvo). */
+  'TotalPowerOfCreaturesYouControl',
   /** Tapped lands your opponents control (Mana Geyser). */
   'TappedLandsOpponentsControl',
   /** Opponents who control more lands than you (Claim Jumper). */
@@ -1116,7 +1120,7 @@ export interface EffectSpec {
   restToBottom?: boolean;
   /** ExileUntilFound: discover (rule 701.57): cast the card free right away, or it goes to your hand. */
   discover?: boolean;
-  /** CreateTokenCopy: the copy is exiled at the beginning of the next end step (Inalla); ReturnToBattlefield: the card is (Vindictive Triumph). */
+  /** CreateTokenCopy (or CreateToken: Manaform Hellkite): the token is exiled at the beginning of the next end step (Inalla); ReturnToBattlefield: the card is (Vindictive Triumph). */
   exileAtEndStep?: boolean;
   /** CreateTokenCopy with `sacrificeAtEndStep`: at your next end step, not just the next one. */
   atYourEndStep?: boolean;

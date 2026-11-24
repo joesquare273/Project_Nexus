@@ -401,6 +401,7 @@ function effectText(e: EffectSpec): string {
     case 'TurnFaceDown':
       return `turn ${who} face down`;
     case 'Manifest':
+      if (e.target === 'PreviousTargetController') return 'its controller manifests the top card of their library';
       return `${e.cloak ? 'cloak' : 'manifest'} the top ${e.amount === 1 || e.amount === undefined ? 'card' : `${amountText(e.amount)} cards`} of your library`;
     case 'ManifestDread':
       return 'manifest dread (look at the top two cards of your library; manifest one and put the other into your graveyard)';

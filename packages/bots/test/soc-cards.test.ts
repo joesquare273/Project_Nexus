@@ -787,3 +787,109 @@ describe('SOC2a: Prismari Artistry (lands, spells and magecraft)', () => {
     expect(six.every((id) => s.cards[id]!.zone === 'hand')).toBe(true);
   });
 });
+
+describe('SOC2b: Prismari Artistry (cascade, spell-cast creatures, manifest)', () => {
+  const tokens = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Throes of Chaos cascades into a cheaper nonland card, cast free; the rest go to the bottom', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    const bottom = put(s, 'P1', 'island', 'library');
+    const rat = put(s, 'P1', 'rank-rat', 'library');
+    const big = put(s, 'P1', 'hungry-graffalon', 'library'); // mana value 4: not less than Throes
+    const land = put(s, 'P1', 'mountain', 'library');
+    const throes = put(s, 'P1', 'throes-of-chaos', 'hand');
+    mana(s, 'P1', { R: 1, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: throes });
+    for (let i = 0; i < 6 && s.stack.at(-1)?.kind === 'ability' && s.pending.kind === 'priority'; i++) s = act(s, { type: 'PassPriority', player: s.pending.player });
+    expect(s.cards[rat]!.castPermission).toMatchObject({ free: true, immediate: true });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: rat })).state;
+    expect([s.cards[rat]!.zone, s.cards[throes]!.zone]).toEqual(['battlefield', 'graveyard']);
+    expect(s.players.P1!.library.slice(-2).sort()).toEqual([big, land].sort());
+    expect(s.players.P1!.library[0]).toBe(bottom);
+    expect(currentDefinition(s, s.cards[throes]!).retrace).toBe(true);
+  });
+
+  it('Volcanic Torrent deals damage equal to the spells you cast this turn to opposing creatures', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    for (let i = 0; i < 3; i++) put(s, 'P1', 'mountain', 'library');
+    const theirs = put(s, 'P2', 'rank-rat');
+    const mine = put(s, 'P1', 'rank-rat');
+    const torrent = put(s, 'P1', 'volcanic-torrent', 'hand');
+    mana(s, 'P1', { R: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: torrent }).state;
+    expect([s.cards[theirs]!.zone, s.cards[mine]!.zone]).toEqual(['graveyard', 'battlefield']);
+  });
+
+  it('Prismari Pianist and Leitmotif Composer react to instants and sorceries by mana value; Renegade Bull and Manaform Hellkite grow', () => {
+    let s = newGame();
+    put(s, 'P1', 'prismari-pianist');
+    const composer = put(s, 'P1', 'leitmotif-composer');
+    const bull = put(s, 'P1', 'renegade-bull');
+    put(s, 'P1', 'manaform-hellkite');
+    const rat = put(s, 'P2', 'rank-rat');
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: abrade, mode: 0, targets: [card(rat)] }).state;
+    const dragons = tokens(s, 'dragon-illusion-token-soc');
+    expect([tokens(s, 'elemental-1-1-token-soc').length, powerOf(s, s.cards[bull]!), dragons.length, dragons[0] && powerOf(s, dragons[0])]).toEqual([1, 2, 1, 2]);
+    const geyser = put(s, 'P1', 'mana-geyser', 'hand');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: geyser }).state;
+    expect(tokens(s, 'elemental-1-1-token-soc').length).toBe(4);
+    const composers = Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.defId === 'leitmotif-composer');
+    expect(composers.length).toBe(2);
+    mana(s, 'P1', { U: 1, C: 2 });
+    s = cast(s, activate(s, composer)!).state;
+    expect(composers.every((c) => s.temporaryEffects.some((e) => e.affected === c.id && e.flags?.includes('cantBeBlocked')))).toBe(true);
+    s = settle(goTo(s, 'end')).state;
+    expect(tokens(s, 'dragon-illusion-token-soc').length).toBe(0);
+  });
+
+  it('Brazen Borrower: Petty Theft bounces an opponent\'s nonland permanent; Reality Shift exiles and its controller manifests', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const borrower = put(s, 'P1', 'brazen-borrower-petty-theft', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: borrower, adventure: true, targets: [card(rat)] }).state;
+    expect([s.cards[rat]!.zone, s.cards[borrower]!.zone]).toEqual(['hand', 'exile']);
+    expect(currentDefinition(s, s.cards[borrower]!).canBlockOnlyFlying).toBe(true);
+    const other = put(s, 'P2', 'rank-rat');
+    const shift = put(s, 'P1', 'reality-shift', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: shift, targets: [card(other)] }).state;
+    const faceDown = Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === 'P2' && c.faceDown);
+    expect([s.cards[other]!.zone, faceDown.length]).toEqual(['exile', 1]);
+  });
+
+  it('Galazeth Prismari makes a Treasure and its artifacts tap for instant and sorcery mana; Hall of Oracles needs a spell first; Volcanic Salvo costs less per power', () => {
+    let s = newGame();
+    const galazeth = put(s, 'P1', 'galazeth-prismari', 'hand');
+    mana(s, 'P1', { U: 1, R: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: galazeth }).state;
+    const treasure = tokens(s, 'treasure-token-sos')[0]!;
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    put(s, 'P2', 'rank-rat');
+    // The Treasure taps (granted ability, no sacrifice) plus one more mana: Abrade is castable.
+    mana(s, 'P1', { R: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === abrade)).toBe(false);
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === treasure.id && a.grantedBy === galazeth && a.mana === 'C' || (a.type === 'ActivateManaAbility' && a.card === treasure.id && a.grantedBy === galazeth && a.mana === 'U'))!);
+    expect([s.cards[treasure.id]!.zone, s.cards[treasure.id]!.tapped]).toEqual(['battlefield', true]);
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === abrade)).toBe(true);
+    expect(s.players.P1!.restrictedMana?.instantOrSorcerySpell?.U).toBe(1);
+    s.players.P1!.manaPool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    delete s.players.P1!.restrictedMana;
+    const hall = put(s, 'P1', 'hall-of-oracles');
+    const counterAbility = () => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === hall && (a.targets?.length ?? 0) > 0);
+    expect(counterAbility()).toBeUndefined();
+    s.players.P1!.instantOrSorcerySpellsThisTurn = 1;
+    expect(counterAbility()).toBeDefined();
+    const salvo = put(s, 'P1', 'volcanic-salvo', 'hand');
+    s.cards[hall]!.tapped = true;
+    mana(s, 'P1', { R: 2, C: 6 }); // 12 less Galazeth's 3 power: {7}{R}{R} needs more
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === salvo)).toBe(false);
+    put(s, 'P1', 'hungry-graffalon');
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === salvo)).toBe(true);
+  });
+});
