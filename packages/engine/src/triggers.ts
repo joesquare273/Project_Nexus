@@ -28,6 +28,8 @@ import type {
 
 /** One thing that happened that an ability might be waiting for. */
 interface Occurrence {
+  /** SpellCast: a copy of a spell was made, not cast (magecraft triggers on both). */
+  copied?: boolean;
   /** BecomesTarget: the spell or ability doing the targeting (for ward). */
   targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
   lastTypes?: CardType[];
@@ -190,6 +192,10 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'LandPlayed':
         out.push({ when: 'LandPlayed', at, subject: e.card, subjectController: e.player, from: e.from });
+        break;
+      case 'SpellCopied':
+        // Magecraft: "whenever you cast or copy an instant or sorcery spell".
+        out.push({ when: 'SpellCast', at, subject: e.card, subjectController: e.player, copied: true });
         break;
       case 'SpellCast':
         if (isCrime(s, e.player, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.player });
@@ -418,6 +424,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (spec.nthNoncreatureSpellThisTurn !== undefined && o.noncreatureSpellNumber !== spec.nthNoncreatureSpellThisTurn) return false;
   // Intervening "if" (rule 603.4).
   if (spec.ifManaSpentAtLeast !== undefined && (o.manaSpent ?? 0) < spec.ifManaSpentAtLeast) return false;
+  if (o.when === 'SpellCast' && o.copied && !spec.orCopied) return false;
+  if (spec.ifSourceUntapped && s.cards[source]?.tapped) return false;
   if (spec.ifSpellTargetsCreature && !spellTargetsCreature(s, o.subject)) return false;
   if (spec.ifManaSpentOverPowerOrToughness && !manaSpentOverPowerOrToughness(s, source, o.manaSpent ?? 0)) return false;
   return matchesFilter(s, spec.what, source, controller, o);

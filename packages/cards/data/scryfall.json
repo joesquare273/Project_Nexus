@@ -9318,6 +9318,28 @@
       }
     ]
   },
+  "elemental-4-4-token-soc": {
+    "name": "Elemental",
+    "typeLine": "Token Creature — Elemental",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "20",
+    "artist": "Mila Pesic",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570",
+      "normal": "https://cards.scryfall.io/normal/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570",
+      "large": "https://cards.scryfall.io/large/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/8/b/8ba20bb4-a476-448d-bb39-23f8dd59e5a8.jpg?1783903570"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/20/elemental?utm_source=api",
+    "scryfallId": "8ba20bb4-a476-448d-bb39-23f8dd59e5a8",
+    "relatedTokens": [
+      {
+        "name": "Elemental",
+        "scryfallId": "8ba20bb4-a476-448d-bb39-23f8dd59e5a8"
+      }
+    ]
+  },
   "elemental-5-3-token-eoc": {
     "name": "Elemental",
     "typeLine": "Token Creature — Elemental",

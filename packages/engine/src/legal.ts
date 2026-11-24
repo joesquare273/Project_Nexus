@@ -204,6 +204,8 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
           ...(kicks > 0 ? { kicks } : {}),
           ...(extraModes > 0 ? { tapCreatures } : {}),
         };
+        // Deep Analysis: "Flashback—{1}{U}, Pay 3 life" needs that much life.
+        if (way === 'flashback' && def.flashbackLife && s.players[playerId]!.life < def.flashbackLife) continue;
         // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
         const retrace = way === 'retrace';
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (retrace ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);

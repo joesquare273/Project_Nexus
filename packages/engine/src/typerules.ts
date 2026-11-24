@@ -223,6 +223,7 @@ export function entersTapped(s: GameState, c: CardInstance, reveal?: boolean): b
   const defOf = (x: CardInstance) => currentDefinition(s, x);
   const mine = s.players[c.controller]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.id !== c.id);
   if (unless.controlsSubtypes?.some((t) => mine.some((x) => defOf(x).subtypes?.includes(t)))) return false;
+  if (unless.otherSubtypeAtLeast && mine.filter((x) => !x.phasedOut && (defOf(x).subtypes ?? []).includes(unless.otherSubtypeAtLeast!.subtype)).length >= unless.otherSubtypeAtLeast.count) return false;
   if (unless.basicLands !== undefined && mine.filter((x) => isBasicLand(defOf(x))).length >= unless.basicLands) {
     return false;
   }

@@ -703,3 +703,87 @@ describe('SOC1i: Lorehold Spirit (Classes and voting)', () => {
     expect(exiled).toHaveLength(1);
   });
 });
+
+describe('SOC2a: Prismari Artistry (lands, spells and magecraft)', () => {
+  it('Storm-Kiln Artist: magecraft makes a Treasure on a cast and on a copy; +1/+0 per artifact', () => {
+    let s = newGame();
+    const artist = put(s, 'P1', 'storm-kiln-artist');
+    const rat = put(s, 'P1', 'rank-rat');
+    const favor = put(s, 'P1', 'lumarets-favor', 'hand');
+    s.players.P1!.lifeGainedThisTurn = 1;
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: favor, targets: [card(rat)] }).state;
+    const treasures = Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.defId === 'treasure-token-sos');
+    expect([treasures.length, powerOf(s, s.cards[artist]!)]).toEqual([2, 4]);
+  });
+
+  it('Mystic Sanctuary: untapped with three other Islands puts an instant from your graveyard on top; tapped otherwise', () => {
+    let s = newGame();
+    for (let i = 0; i < 2; i++) put(s, 'P1', 'island');
+    const bolt = put(s, 'P1', 'abrade', 'graveyard');
+    const first = put(s, 'P1', 'mystic-sanctuary', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: first })).state;
+    expect([s.cards[first]!.tapped, s.cards[bolt]!.zone]).toEqual([true, 'graveyard']);
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'main1')).state;
+    put(s, 'P1', 'island');
+    const second = put(s, 'P1', 'mystic-sanctuary', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: second }), { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === bolt)! }).state;
+    expect([s.cards[second]!.tapped, s.players.P1!.library[0]]).toEqual([false, bolt]);
+  });
+
+  it('Deep Analysis: target player draws two; flashback costs {1}{U} and 3 life', () => {
+    let s = newGame();
+    const da = put(s, 'P1', 'deep-analysis', 'graveyard');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1, C: 1 });
+    s.players.P1!.life = 2;
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === da)).toBe(false);
+    s.players.P1!.life = 20;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === da && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P1')!).state;
+    expect([s.players.P1!.life, s.players.P1!.hand.length - hand, s.cards[da]!.zone]).toEqual([17, 2, 'exile']);
+  });
+
+  it('Mana Geyser adds {R} for each tapped land your opponents control; Treasure Cruise delves', () => {
+    let s = newGame();
+    for (let i = 0; i < 3; i++) s.cards[put(s, 'P2', 'mountain')]!.tapped = true;
+    put(s, 'P2', 'mountain');
+    const geyser = put(s, 'P1', 'mana-geyser', 'hand');
+    mana(s, 'P1', { R: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: geyser }).state;
+    expect(s.players.P1!.manaPool.R).toBe(3);
+    expect(currentDefinition(s, s.cards[put(s, 'P1', 'treasure-cruise', 'hand')]!).delve).toBe(true);
+  });
+
+  it('Prismari Command: target player draws two then discards two, and that player creates a Treasure; Faerie Mastermind draws on their second draw', () => {
+    let s = newGame();
+    put(s, 'P1', 'faerie-mastermind');
+    const cmd = put(s, 'P1', 'prismari-command', 'hand');
+    const p1hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1, R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cmd, modes: [1, 2], targets: [{ kind: 'player', player: 'P2' }, { kind: 'player', player: 'P2' }] }).state;
+    expect(s.pending.kind).toBe('chooseCards');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [...s.players.P2!.hand] })).state;
+    const p2treasure = Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === 'P2' && c.defId === 'treasure-token-sos');
+    expect([s.players.P2!.hand.length, s.cards[cmd]!.zone]).toEqual([0, 'graveyard']);
+    // The spell left P1's hand; Faerie Mastermind drew one when P2 drew their second card.
+    expect([p2treasure.length, s.players.P1!.hand.length - p1hand]).toEqual([1, 0]);
+  });
+
+  it('Resculpt exiles a creature and its controller gets a 4/4 Elemental; Aether Gale bounces six', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const re = put(s, 'P1', 'resculpt', 'hand');
+    mana(s, 'P1', { U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: re, targets: [card(rat)] }).state;
+    const elemental = Object.values(s.cards).find((c) => c.zone === 'battlefield' && c.defId === 'elemental-4-4-token-soc');
+    expect([s.cards[rat]!.zone, elemental?.controller]).toEqual(['exile', 'P2']);
+    const six = Array.from({ length: 6 }, () => put(s, 'P2', 'rank-rat'));
+    const gale = put(s, 'P1', 'aether-gale', 'hand');
+    mana(s, 'P1', { U: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: gale, targets: six.map(card) }).state;
+    expect(six.every((id) => s.cards[id]!.zone === 'hand')).toBe(true);
+  });
+});

@@ -1469,6 +1469,11 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const manaSpent = payMana(ctx, playerId, cost, use, spentScryMana);
   const colorsSpent = COLORS.filter((color) => (use.spentOut![color] ?? 0) > 0).length;
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
+  // "Flashback—{1}{U}, Pay 3 life" (Deep Analysis).
+  if (way === 'flashback' && def.flashbackLife) {
+    if (player(s, playerId).life < def.flashbackLife) reject("You don't have enough life to pay for its flashback.");
+    changeLife(ctx, playerId, -def.flashbackLife);
+  }
   // "As an additional cost, pay X life" (Toxic Deluge).
   if (def.additionalCost?.lifeX && x > 0) changeLife(ctx, playerId, -x);
   for (const paid of costCards) {

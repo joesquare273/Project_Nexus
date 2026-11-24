@@ -837,6 +837,8 @@ export const COUNT_KINDS = [
   'ArtifactOrCreatureCardsInYourGraveyard',
   /** Times you've cast your commanders from the command zone this game (Vanguard of the Restless). */
   'CommanderCastsFromCommandZone',
+  /** Tapped lands your opponents control (Mana Geyser). */
+  'TappedLandsOpponentsControl',
   /** Opponents who control more lands than you (Claim Jumper). */
   'OpponentsWithMoreLands',
   /** Opponents who have more cards in hand than you (Joined Researchers). */
@@ -1774,6 +1776,10 @@ export interface TriggerSpec {
   /** Echo: only while the echo cost is due (it came under its controller's control since their last upkeep). */
   /** A Class's ability: only at this level or higher. */
   ifClassLevelAtLeast?: number;
+  /** Magecraft: "whenever you cast or copy" (SpellCast also triggers on copies of spells). */
+  orCopied?: boolean;
+  /** EntersBattlefield: only if it entered untapped ("When this land enters untapped": Mystic Sanctuary). */
+  ifSourceUntapped?: boolean;
   ifEchoDue?: boolean;
   ifOpponentHasMoreLands?: boolean;
   /** Where the card must be for the ability to work. Defaults to the battlefield. */
@@ -2310,6 +2316,8 @@ export interface CardDefinition {
   entersTappedUnless?: {
     /** "unless you control a Plains or an Island". */
     controlsSubtypes?: string[];
+    /** "unless you control three or more other Islands" (Mystic Sanctuary). */
+    otherSubtypeAtLeast?: { subtype: string; count: number };
     /** "unless you control two or more basic lands". */
     basicLands?: number;
     /** "unless you control two or more other lands" (the portal view lands). */
@@ -2369,6 +2377,8 @@ export interface CardDefinition {
   flashback?: string;
   /** "Flashback—[cost], Discard a card" (Twinned Vision): cards to discard when cast with flashback. */
   flashbackDiscard?: number;
+  /** "Flashback—[cost], Pay N life" (Deep Analysis). */
+  flashbackLife?: number;
   /** "Threshold — You can't cast this spell unless there are seven or more cards in your graveyard" (Proft, Sinister Mastermind). */
   castOnlyWithThreshold?: boolean;
   /** "Has hexproof as long as it hasn't dealt combat damage yet" (Ruric Thar, Magecrusher; `CardInstance.dealtCombatDamage`). */

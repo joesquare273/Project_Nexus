@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)** | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -442,3 +442,23 @@ decks computer opponents can get.
   `forResolution: 'vote'`). Later effects read the amount `votesFor` (with
   `vote`), and Fateful Tempest's damage reads `manaValueMilledThisWay`.
 - ExileTopCardToPlay with a counted amount of zero exiles nothing.
+
+## SOC2a: Prismari Artistry, part one (built 2026-11-24)
+
+Ferrous Lake, Prismari Campus, Reliquary Tower, Mystic Sanctuary, Prismari
+Charm, Prismari Command, Abrade, Deep Analysis, Resculpt, Treasure Cruise,
+Stormcatch Mentor, Curiosity Crafter, Mana Geyser, Aether Gale, Faerie
+Mastermind and Storm-Kiln Artist.
+
+- **Magecraft:** a SpellCast trigger with `orCopied` also triggers when a
+  copy of a spell is made (the `SpellCopied` event). Other SpellCast
+  triggers still ignore copies, which aren't cast.
+- **Mystic Sanctuary:** `entersTappedUnless.otherSubtypeAtLeast` ("three or
+  more other Islands") and an EntersBattlefield trigger with
+  `ifSourceUntapped`.
+- **Deep Analysis:** `flashbackLife`, life paid with the flashback cost (not
+  offered with less life than that).
+- **Mana Geyser:** the count `TappedLandsOpponentsControl`.
+- Token: Elemental 4/4 (tsoc 20) for Resculpt.
+
+Still to build in Prismari Artistry after SOC2a: 36 cards.
