@@ -981,3 +981,86 @@ describe('SOC2c: Prismari Artistry (token copies, demonstrate, copying spells)',
     expect([s.players.P1!.hand.length - h1, s.players.P2!.hand.length - h2]).toEqual([2, 1]);
   });
 });
+
+describe('SOC2d: Prismari Artistry (trigger doubling, Goldspan, Expressive Iteration, prepared)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+  const copyOf = (s: GameState, creature: string) => Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === creature);
+
+  it('Veyran doubles magecraft and other cast triggers of your permanents; Harmonic Prodigy doubles a Wizard\'s triggers', () => {
+    let s = newGame();
+    put(s, 'P1', 'veyran-voice-of-duality');
+    put(s, 'P1', 'storm-kiln-artist');
+    const rat = put(s, 'P2', 'rank-rat');
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: abrade, mode: 0, targets: [card(rat)] }).state;
+    expect(onField(s, 'treasure-token-sos').length).toBe(2);
+
+    let t = newGame();
+    put(t, 'P1', 'harmonic-prodigy');
+    const mentor = put(t, 'P1', 'stormcatch-mentor'); // a Wizard with prowess
+    const rat2 = put(t, 'P2', 'rank-rat');
+    const abrade2 = put(t, 'P1', 'abrade', 'hand');
+    mana(t, 'P1', { R: 1 });
+    t = cast(t, { type: 'CastSpell', player: 'P1', card: abrade2, mode: 0, targets: [card(rat2)] }).state;
+    expect(powerOf(t, t.cards[mentor]!)).toBe(3);
+  });
+
+  it('Goldspan Dragon: a Treasure when it attacks or a spell targets it; Treasures add two mana of one color', () => {
+    let s = newGame();
+    const dragon = put(s, 'P1', 'goldspan-dragon');
+    const aid = put(s, 'P1', 'lumarets-favor', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aid, targets: [card(dragon)] }).state;
+    const treasure = onField(s, 'treasure-token-sos')[0]!;
+    expect(treasure).toBeDefined();
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === treasure.id && a.grantedBy === dragon && a.mana === 'R')!);
+    expect([s.players.P1!.manaPool.R, s.cards[treasure.id]?.zone === 'battlefield']).toEqual([2, false]);
+  });
+
+  it('Expressive Iteration: one card to hand, one to the bottom, one exiled to play this turn', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    const c = put(s, 'P1', 'island', 'library');
+    const b = put(s, 'P1', 'mountain', 'library');
+    const a = put(s, 'P1', 'rank-rat', 'library');
+    const deep = put(s, 'P1', 'plains', 'library');
+    s.players.P1!.library = [a, b, c, deep];
+    const ei = put(s, 'P1', 'expressive-iteration', 'hand');
+    mana(s, 'P1', { U: 1, R: 1 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: ei })).state;
+    expect((s.pending as { purpose?: string }).purpose).toBe('iterateHand');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [a] })).state;
+    expect((s.pending as { purpose?: string }).purpose).toBe('iterateBottom');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [b] })).state;
+    expect([s.cards[a]!.zone, s.players.P1!.library.at(-1), s.cards[c]!.zone, s.cards[c]!.playableFromExile?.player]).toEqual(['hand', b, 'exile', 'P1']);
+  });
+
+  it('Dirgur Focusmage: cheaper instants and sorceries; prepared by a big one from hand; Braingeyser draws X', () => {
+    let s = newGame();
+    const mage = put(s, 'P1', 'dirgur-focusmage-braingeyser');
+    const geyser = put(s, 'P1', 'mana-geyser', 'hand');
+    mana(s, 'P1', { R: 2, C: 2 }); // {3}{R}{R} less {1}
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: geyser }).state;
+    expect(s.cards[mage]!.prepared).toBe(true);
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 2, C: 2 });
+    const copy = copyOf(s, mage)!;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === copy.id && a.x === 2 && a.targets?.[0]?.kind === 'player' && a.targets[0].player === 'P1')!).state;
+    expect(s.players.P1!.hand.length - hand).toBe(2);
+  });
+
+  it('Inspired Skypainter: prepared as it enters; Maestro\'s Gift makes a hasty token copy', () => {
+    let s = newGame();
+    const painter = put(s, 'P1', 'inspired-skypainter-maestros-gift', 'hand');
+    const rat = put(s, 'P1', 'rank-rat');
+    mana(s, 'P1', { U: 1, R: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: painter }).state;
+    expect(s.cards[painter]!.prepared).toBe(true);
+    mana(s, 'P1', { U: 1, R: 1, C: 3 });
+    const copy = copyOf(s, painter)!;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === copy.id && a.targets?.[0]?.kind === 'card' && a.targets[0].card === rat)!).state;
+    const token = onField(s, 'rank-rat').find((c) => c.id !== rat)!;
+    expect(hasKeyword(s, token, 'Haste')).toBe(true);
+  });
+});

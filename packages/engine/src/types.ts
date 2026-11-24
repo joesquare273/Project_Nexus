@@ -621,6 +621,8 @@ export const EFFECT_KINDS = [
   'PutExiledWithThisIntoGraveyard',
   /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
   'ManifestDread',
+  /** Expressive Iteration: look at the top three cards; one into your hand, one on the bottom, and exile the last, which you may play this turn. */
+  'LookTopHandBottomExile',
   /** The target players win the game: every other player loses. */
   'WinGame',
   /** "Until your next turn, damage dealt to that player or a permanent they control is doubled" (Lightning, Army of One). */
@@ -1716,6 +1718,8 @@ export interface TriggerSpec {
   nthNoncreatureSpellThisTurn?: number;
   /** YouAttack: an opponent attacked, with at least `attackingYouAtLeast` creatures attacking you; BecomesTarget: only a spell or ability an opponent controls. */
   byOpponent?: boolean;
+  /** BecomesTarget: only when a spell targets it, not an ability (Goldspan Dragon). */
+  bySpell?: boolean;
   attackingYouAtLeast?: number;
   /** Attacks: only a creature attacking alone. */
   alone?: boolean;
@@ -1995,6 +1999,10 @@ export interface StaticSpec {
   grantsManaRestricted?: ManaRestriction;
   /** With `grantsMana` (EachMatching): only permanents with the name chosen as this entered ("Lands with the chosen name have '{T}: Add {C}'": Petrified Hamlet). */
   grantsManaToChosenName?: boolean;
+  /** With `grantsMana`: the ability adds this much mana of the one chosen type (Goldspan Dragon: two). */
+  grantsManaAmount?: number;
+  /** With `grantsMana`: the ability also sacrifices the permanent ("{T}, Sacrifice this artifact": Goldspan Dragon's Treasures). */
+  grantsManaSacrifice?: boolean;
   /** "Activated abilities of sources with the chosen name can't be activated unless they're mana abilities" (Petrified Hamlet; the name is this permanent's chosen option). */
   chosenNameCantActivate?: boolean;
   /** "Prevent all combat damage that would be dealt to this creature" (Diamond Weapon). */
@@ -2095,7 +2103,7 @@ export interface StaticSpec {
    * a permanent matching this filter entering (Traveling Chocobo: a land or
    * Bird you control).
    */
-  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter; /** Isshin: abilities triggered by a creature attacking. */ attacking?: true; /** The Masamune: dying-creature triggers of the equipped creature (or this permanent) and of your emblems. */ dying?: true };
+  extraTriggers?: { selfAndEquipment?: true; entering?: ObjectFilter; /** Isshin: abilities triggered by a creature attacking. */ attacking?: true; /** Harmonic Prodigy: triggered abilities of your permanents matching this ("a Shaman or another Wizard"). */ ofSourceMatching?: ObjectFilter; /** Veyran: abilities of your permanents triggered by casting or copying an instant or sorcery spell. */ byInstantOrSorcery?: true; /** The Masamune: dying-creature triggers of the equipped creature (or this permanent) and of your emblems. */ dying?: true };
   /** Ward (rule 702.21): each affected permanent has ward with this cost (Bronze Guardian). */
   ward?: number;
   /** "Has base power and toughness 7/7" (rule 613.4b): replaces the printed numbers; other changes still apply. */
@@ -3334,7 +3342,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard';
+  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;

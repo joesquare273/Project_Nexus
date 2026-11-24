@@ -797,6 +797,7 @@ export function activateManaAbility(
     const granted = grantedManaAbilities(s, c).find((ability) => ability.source === grantedBy && ability.mana.includes(mana));
     for (let i = 0; i < (granted?.amount ?? 1); i++) addMana(ctx, playerId, mana, id, granted?.restricted);
     kinnanBonus(ctx, playerId, c, mana);
+    if (granted?.sacrifice) sacrifice(ctx, id);
     return;
   }
   if (tapCreature !== undefined) {
@@ -4241,6 +4242,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, pid, amount)) manifest(ctx, id, pid, !!effect.cloak);
       }
       return;
+    case 'LookTopHandBottomExile': {
+      const looked = topOfLibrary(s, item.controller, 3);
+      if (looked.length > 0) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'iterateHand', cards: looked, min: 1, max: 1 }];
+      return;
+    }
     case 'ManifestDread': {
       const looked = topOfLibrary(s, item.controller, 2);
       if (looked.length === 1) manifest(ctx, looked[0]!, item.controller);
@@ -5349,6 +5355,24 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       moveCard(ctx, id, 'graveyard');
       const token = land ? pending.landToken : pending.nonlandToken;
       if (token) r.createdTokens.push(createToken(ctx, token, pending.player));
+    }
+  } else if (pending.purpose === 'iterateHand' || pending.purpose === 'iterateBottom') {
+    // Expressive Iteration: one into your hand, one on the bottom, and the last exiled to play this turn.
+    const library = player(s, pending.player).library;
+    for (const id of cards) {
+      if (pending.purpose === 'iterateHand') moveCard(ctx, id, 'hand');
+      else {
+        library.splice(library.indexOf(id), 1);
+        library.push(id);
+      }
+    }
+    const rest = pending.cards.filter((id) => !cards.includes(id) && s.cards[id]?.zone === 'library');
+    if (pending.purpose === 'iterateHand' && rest.length > 1) r.choiceQueue = [{ player: pending.player, purpose: 'iterateBottom', cards: rest, min: 1, max: 1 }, ...(r.choiceQueue ?? [])];
+    else {
+      for (const id of rest) {
+        moveCard(ctx, id, 'exile');
+        s.cards[id]!.playableFromExile = { player: pending.player, source: sourceOf(r.item), untilTurn: s.turnNumber };
+      }
     }
   } else if (pending.purpose === 'manifestDread') {
     // Manifest the chosen card; the other goes into the graveyard (rule 701.62a).

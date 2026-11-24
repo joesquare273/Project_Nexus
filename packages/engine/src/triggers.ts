@@ -335,6 +335,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     if (!equipment && !targetsMine) return false;
   }
   if (o.when === 'BecomesTarget' && spec.byOpponent && o.by === controller) return false;
+  if (o.when === 'BecomesTarget' && spec.bySpell && o.targetedBy?.kind !== 'spell') return false;
   if (o.when === 'OpponentsDealtCombatDamageYourTurn') return o.defender !== undefined && o.defender !== controller && s.activePlayer === controller;
   if (o.when === 'OpponentDealtNoncombatDamage') return o.defender !== undefined && o.defender !== controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
@@ -655,6 +656,13 @@ function extraTriggerCount(s: GameState, t: QueuedTrigger): number {
       if (more.selfAndEquipment) {
         const equipped = battlefield(s).some((e) => e.attachedTo === p.id && defOf(s, e).subtypes?.includes('Equipment'));
         if (equipped && (t.source === p.id || source?.attachedTo === p.id)) extra++;
+      }
+      // Harmonic Prodigy: "a triggered ability of a Shaman or another Wizard you control".
+      if (more.ofSourceMatching && source && source.zone === 'battlefield' && source.controller === p.controller && matchesObject(s, more.ofSourceMatching, source, { controller: p.controller, source: p.id })) extra++;
+      // Veyran: casting or copying an instant or sorcery spell triggers an ability of a permanent you control.
+      if (more.byInstantOrSorcery && spec?.when === 'SpellCast' && source?.zone === 'battlefield' && source.controller === p.controller && t.subject && s.cards[t.subject]) {
+        const types = defOf(s, s.cards[t.subject]!).types;
+        if (types.includes('instant') || types.includes('sorcery')) extra++;
       }
       if (more.attacking && (spec?.when === 'Attacks' || spec?.when === 'YouAttack' || spec?.when === 'YouAttackPlayer')) extra++;
       if (more.dying && spec?.when === 'Dies') {
