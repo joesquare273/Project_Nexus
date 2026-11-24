@@ -4081,7 +4081,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       if(src?.zone==='battlefield' && !src.phasedOut && target && isCreatureOnBattlefield(s,target)) {
         const pending={kind:'copyCreature' as const,player:item.controller,source,target:target.id,sourceObject:src.zoneChanges??0,targetObject:target.zoneChanges??0,effect:structuredClone(effect)};
         // "This land becomes a copy" (no "may"): done right away.
-        if(effect.legendRuleOffThisTurn) { becomeCopy(ctx,pending,r); break; }
+        if(effect.legendRuleOffThisTurn || effect.copyAtOnce) { becomeCopy(ctx,pending,r); break; }
         s.pending=pending;
       }
       break;
@@ -4172,7 +4172,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // Amounts counted in this resolution ("that many": Synthetic Destiny) are fixed now.
       const spec = structuredClone(effect.trigger!);
       for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'exiledThisWay') e.amount = r.exiledCount ?? 0;
-      const kept = effect.keepSubject && item.kind === 'ability' ? item.subject : undefined;
+      const kept = effect.keepPreviousTarget ? (r.previousTarget?.kind === 'card' ? r.previousTarget.card : undefined) : effect.keepSubject && item.kind === 'ability' ? item.subject : undefined;
+      if (effect.keepPreviousTarget && !kept) return;
       // Arcane Denial: the countered spell's controller.
       const prev = effect.forPreviousTargetController && r.previousTarget?.kind === 'card' ? s.cards[r.previousTarget.card] : undefined;
       if (effect.forPreviousTargetController && !prev) return;
@@ -4273,6 +4274,20 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of topOfLibrary(s, pid, amount)) manifest(ctx, id, pid, !!effect.cloak);
       }
       return;
+    case 'ExileTopAsManyAsYouChoose': {
+      r.exiledAsChosen = { cards: [], total: 0, limit: amount };
+      if (player(s, item.controller).library.length === 0) return;
+      s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: ['Exile the top card', 'Stop'], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'exileMore' };
+      return;
+    }
+    case 'CastCopyOfTriggeringCardFree': {
+      // Surge to Victory: the exiled card stays in exile; a copy of it is cast.
+      const subject = item.kind === 'ability' ? item.subject : undefined;
+      const c = subject ? s.cards[subject] : undefined;
+      if (!c || c.zone !== 'exile' || !isSpellCard(defOf(s, c))) return;
+      c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, asCopy: true };
+      return;
+    }
     case 'OtherTokensBecomeCopy': {
       const tokens = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && c.isToken).map((c) => c.id);
       if (tokens.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'tokenModel', cards: tokens, min: 0, max: 1 }];
@@ -5710,6 +5725,7 @@ function becomeCopy(ctx: Ctx, p: Extract<GameState['pending'],{kind:'copyCreatur
     delete definition.token;
     definition.keywords=[...new Set([...(definition.keywords??[]),...(effect.copyKeywords??[])])];
     if(effect.copyKeepTrigger && r.item.kind==='ability' && r.item.spec) definition.triggers=[...(definition.triggers??[]),structuredClone(r.item.spec)];
+    if(effect.copyAddTriggers) definition.triggers=[...(definition.triggers??[]),...structuredClone(effect.copyAddTriggers)];
     const look=copyLook(s,target);
     source.copy={definition,artDefId:look.artDefId,copiedName:original.name,...(look.printing?{printing:structuredClone(look.printing)}:{}),...(effect.copyUntilEndOfTurn?{untilTurn:s.turnNumber,...(source.copy?{previous:structuredClone(source.copy)}:{})}:{})};
     newTimestamp(s);
@@ -5783,6 +5799,29 @@ export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: str
     if (next) {
       s.pending = { ...pending, player: next };
       return;
+    }
+    s.pending = pending.resume;
+    continueResolving(ctx);
+    return;
+  }
+  if (pending.forResolution === 'exileMore') {
+    // Dance with Calamity: exile the top card, or stop; then the free casts if the total is low enough.
+    const done = r.exiledAsChosen ?? { cards: [], total: 0, limit: 13 };
+    const library = player(s, playerId).library;
+    if (option !== 'Stop' && library[0]) {
+      const top = library[0];
+      moveCard(ctx, top, 'exile');
+      done.cards.push(top);
+      done.total += objectManaValue(s, s.cards[top]!);
+      r.exiledAsChosen = done;
+      ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option: `${option} (total mana value ${done.total})` });
+      if (library.length > 0) return;
+    }
+    if (done.total <= done.limit) {
+      for (const id of done.cards) {
+        const c = s.cards[id]!;
+        if (c.zone === 'exile' && isSpellCard(defOf(s, c))) c.castPermission = { player: playerId, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true };
+      }
     }
     s.pending = pending.resume;
     continueResolving(ctx);

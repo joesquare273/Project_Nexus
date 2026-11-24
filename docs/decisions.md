@@ -710,3 +710,10 @@ recorded again.
   carry `targetSlots`, each slot's legal choices; the browser then lets the
   player pick any legal combination slot by slot (the engine checks it). The
   computer opponents still choose from the listed combinations.
+
+## 2026-11-24: Myriad (known simplification)
+
+- Myriad (rule 702.116) makes a token copy attacking each other opponent
+  without asking, and only attacking the player, not a planeswalker they
+  control. The card says "you may" and "that player or a planeswalker they
+  control"; this is still to do (Muddle and the Equipment that grant it).

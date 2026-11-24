@@ -792,6 +792,11 @@ export function basicAi(_seed = 0): Bot {
         const count = (t: string) => mine.filter((c) => (currentDefinition(s, c).subtypes ?? []).includes(t)).length;
         return [...options].sort((a, b) => count(b.option) - count(a.option))[0] ?? legal[0]!;
       }
+      // Dance with Calamity: keep exiling while the total is comfortably under 13.
+      if (pending.forResolution === 'exileMore') {
+        const total = s.resolving?.exiledAsChosen?.total ?? 0;
+        return options.find((a) => a.option === (total <= 8 ? 'Exile the top card' : 'Stop')) ?? options[0] ?? legal[0]!;
+      }
       return options.find((a) => a.option === 'Jeskai') ?? options[0] ?? legal[0]!;
     }
     if (pending.kind === 'chooseCardType') {

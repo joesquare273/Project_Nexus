@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC2g: Muddle, Surge to Victory, Dance with Calamity (2026-11-24)
+
+- Muddle becomes a copy with myriad, Surge to Victory copies its exiled card on each combat hit, and Dance with Calamity exiles as many cards as you choose. 5 Prismari cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC2f: any number of targets; Brudiclad (2026-11-24)
 
 - User request: stay true to the card text. Twinflame takes any number of targets (no cap); spells with more target combinations than the list holds let you pick each target in the browser. Brudiclad is built. 8 Prismari cards left. docs/strixhaven.md, docs/decisions.md.

@@ -1650,6 +1650,8 @@ function PromptBar(p: PromptProps) {
       ? `${cardName(s, pending.card)}: choose a creature type.`
       : pending.forResolution === 'keyword'
       ? `${cardName(s, pending.card)}: choose the ability it gains.`
+      : pending.forResolution === 'exileMore'
+      ? `${cardName(s, pending.card)}: exile the top card of your library, or stop? (Total mana value so far: ${s.resolving?.exiledAsChosen?.total ?? 0}; ${s.resolving?.exiledAsChosen?.limit ?? 13} or less lets you cast the spells free.)`
       : pending.options.length > 3
       ? `${cardName(s, pending.card)}: choose one as it enters.`
       : `${cardName(s, pending.card)}: choose ${pending.options.join(' or ')} as it enters.`;

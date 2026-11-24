@@ -1157,3 +1157,51 @@ describe('SOC2f: Prismari Artistry (Brudiclad)', () => {
     expect([powerOf(s, myr), currentDefinition(s, myr).name, hasKeyword(s, myr, 'Haste')]).toEqual([4, 'Elemental', true]);
   });
 });
+
+describe('SOC2g: Prismari Artistry (Muddle, Surge to Victory, Dance with Calamity)', () => {
+  it('Muddle becomes a copy of up to one target nonlegendary creature you control until end of turn, with myriad', () => {
+    let s = newGame();
+    const muddle = put(s, 'P1', 'muddle-the-ever-changing');
+    const big = put(s, 'P1', 'hungry-graffalon');
+    const rat = put(s, 'P2', 'rank-rat');
+    const abrade = put(s, 'P1', 'abrade', 'hand');
+    mana(s, 'P1', { R: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: abrade, mode: 0, targets: [card(rat)] }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === big)! }).state;
+    const d = currentDefinition(s, s.cards[muddle]!);
+    expect([d.name, powerOf(s, s.cards[muddle]!), d.triggers?.some((t) => t.when === 'Attacks' && t.effects.some((e) => e.effect === 'Myriad'))]).toEqual(['Hungry Graffalon', 3, true]);
+    s = settle(goTo(s, 'end')).state;
+    s = settle(nextStep(s)).state;
+    expect(currentDefinition(s, s.cards[muddle]!).name).toBe('Muddle, the Ever-Changing');
+  });
+
+  it('Surge to Victory: exile an instant or sorcery card; creatures get +X/+0; each combat damage to a player lets you cast a copy free', () => {
+    let s = newGame();
+    const big = put(s, 'P1', 'hungry-graffalon');
+    s.cards[big]!.summoningSick = false;
+    const geyser = put(s, 'P1', 'mana-geyser', 'graveyard');
+    const surge = put(s, 'P1', 'surge-to-victory', 'hand');
+    mana(s, 'P1', { R: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: surge, targets: [card(geyser)] }).state;
+    // 3, a +1/+1 counter from increment (six mana spent), and +5 for the exiled card.
+    expect([s.cards[geyser]!.zone, powerOf(s, s.cards[big]!)]).toEqual(['exile', 9]);
+    s = fight(s, [{ attacker: big, defender: 'P2' }]).state;
+    expect(s.players.P2!.life).toBe(11);
+    expect(s.cards[geyser]!.castPermission).toMatchObject({ free: true, asCopy: true });
+  });
+
+  it('Dance with Calamity: exile the top card as many times as you choose; 13 or less total lets you cast them free', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    for (let i = 0; i < 5; i++) put(s, 'P1', 'rank-rat', 'library');
+    const dance = put(s, 'P1', 'dance-with-calamity', 'hand');
+    mana(s, 'P1', { R: 1, C: 7 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: dance })).state;
+    expect([s.pending.kind, (s.pending as { forResolution?: string }).forResolution]).toEqual(['chooseOption', 'exileMore']);
+    s = act(s, { type: 'ChooseOption', player: 'P1', option: 'Exile the top card' });
+    s = act(s, { type: 'ChooseOption', player: 'P1', option: 'Exile the top card' });
+    s = settle(act(s, { type: 'ChooseOption', player: 'P1', option: 'Stop' })).state;
+    const exiled = Object.values(s.cards).filter((c) => c.zone === 'exile' && c.defId === 'rank-rat');
+    expect(exiled.length).toBe(2);
+    expect(exiled.every((c) => c.castPermission?.free && c.castPermission.immediate)).toBe(true);
+  });
+});

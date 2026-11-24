@@ -403,6 +403,10 @@ function effectText(e: EffectSpec): string {
     case 'Manifest':
       if (e.target === 'PreviousTargetController') return 'its controller manifests the top card of their library';
       return `${e.cloak ? 'cloak' : 'manifest'} the top ${e.amount === 1 || e.amount === undefined ? 'card' : `${amountText(e.amount)} cards`} of your library`;
+    case 'ExileTopAsManyAsYouChoose':
+      return `exile the top card of your library as many times as you choose; if their total mana value is ${amountText(e.amount)} or less, you may cast any number of spells from among them without paying their mana costs`;
+    case 'CastCopyOfTriggeringCardFree':
+      return 'copy the exiled card; you may cast the copy without paying its mana cost';
     case 'OtherTokensBecomeCopy':
       return 'you may choose a token you control; each other token you control becomes a copy of it';
     case 'LookTopHandBottomExile':

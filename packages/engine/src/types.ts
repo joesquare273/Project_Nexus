@@ -621,6 +621,10 @@ export const EFFECT_KINDS = [
   'PutExiledWithThisIntoGraveyard',
   /** Manifest dread (rule 701.62): look at the top two cards of your library, manifest one and put the other into your graveyard. */
   'ManifestDread',
+  /** Dance with Calamity: exile the top card of your library as many times as you choose; if their total mana value is `amount` or less, you may cast any number of spells among them free. */
+  'ExileTopAsManyAsYouChoose',
+  /** Surge to Victory: copy the triggering card (in exile); you may cast the copy without paying its mana cost. */
+  'CastCopyOfTriggeringCardFree',
   /** Brudiclad: "you may choose a token you control. If you do, each other token you control becomes a copy of that token." */
   'OtherTokensBecomeCopy',
   /** Expressive Iteration: look at the top three cards; one into your hand, one on the bottom, and exile the last, which you may play this turn. */
@@ -1173,6 +1177,12 @@ export interface EffectSpec {
   /** "The 'legend rule' doesn't apply to permanents you control this turn" (Hall of Echoes). */
   legendRuleOffThisTurn?: boolean;
   copyKeepTrigger?: boolean;
+  /** CopyCreature: it becomes the copy at once, with no "may" (Muddle: "becomes a copy of up to one target"). */
+  copyAtOnce?: boolean;
+  /** CopyCreature: the copy also has these triggered abilities (Muddle: "except it has myriad"). */
+  copyAddTriggers?: TriggerSpec[];
+  /** CreateDelayedTrigger: the delayed trigger acts on the previous target (its triggering card: Surge to Victory's exiled card). */
+  keepPreviousTarget?: boolean;
   copyKeywords?: Keyword[];
   copyBuffBoth?: boolean;
   /** GrantTrigger: the combat damage ability to grant until cleanup. */
@@ -3313,6 +3323,8 @@ export interface Resolving {
   voteQueue?: PlayerId[];
   /** Mill: the total mana value of the cards milled so far. */
   milledManaValue?: number;
+  /** Dance with Calamity: the cards exiled so far and their total mana value. */
+  exiledAsChosen?: { cards: InstanceId[]; total: number; limit: number };
   /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
   castBudget?: string;
   /** The mana value of the card RevealUntil found. */
@@ -3500,7 +3512,7 @@ export type Pending =
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /** "As this enters, choose Mardu or Jeskai". */
-  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' }
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' | 'exileMore' }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.
