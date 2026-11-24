@@ -2326,6 +2326,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? (r.item.kind === 'spell' ? (r.item.colorsSpent ?? 0) : (s.cards[sourceOf(r.item)]?.colorsSpentToCast ?? 0))
               : a.of === 'subjectColorsSpent'
               ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.colorsSpentToCast ?? 0) : 0)
+              : a.of === 'previousTargetCommanderCasts'
+              ? (r.previousTarget?.kind === 'player' ? Object.values(s.players[r.previousTarget.player]?.commanderCasts ?? {}).reduce((n, k) => n + k, 0) : 0)
               : a.of === 'previousTargetHandSize'
               ? (r.previousTarget?.kind === 'player' ? (s.players[r.previousTarget.player]?.hand.length ?? 0) : 0)
               : a.of === 'previousTargetManaValue'
@@ -2333,7 +2335,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
                 : a.of === 'x'
                   ? r.item.kind === 'spell'
                     ? (r.item.x ?? 0)
-                    : (r.item.x ?? s.cards[r.item.source]!.xPaid ?? 0)
+                    // "When you cast this spell" (Hydroid Krasis): the X of the spell on the stack.
+                    : (r.item.x ?? (s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === (r.item as AbilityItem).source)?.x) ?? s.cards[r.item.source]!.xPaid ?? 0)
                   : a.of === 'lifeLostThisWay'
                     ? (r.lifeLostThisWay ?? 0)
                   : a.of === 'drawnThisWay'
@@ -2355,7 +2358,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               : a.of === 'subjectPower' || a.of === 'subjectCounters' || a.of === 'subjectPlusOneCounters'
                 ? subjectAmount(s, r.item, a.of)
                 : (r.chosenManaValue ?? 0);
-    return (base + (a.plus ?? 0)) * (a.times ?? 1);
+    const total = (base + (a.plus ?? 0)) * (a.times ?? 1);
+    return a.half === 'up' ? Math.ceil(total / 2) : a.half === 'down' ? Math.floor(total / 2) : total;
   }
   return amountOf(s, a, r.item.controller, sourceOf(r.item));
 }
@@ -2918,6 +2922,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         // "Incubate X, where X is the number of creatures exiled this way" (Sunfall).
         r.exiledCount = (r.exiledCount ?? 0) + 1;
         if (s.cards[id]?.zone === 'exile') r.exiledCards = [...(r.exiledCards ?? []), id];
+        // Curse of the Swine: "For each creature exiled this way, its controller creates a 2/2 green Boar."
+        if (effect.controllerCreatesToken && s.cards[id]?.zone === 'exile' && !s.players[controller]!.eliminated) r.createdTokens.push(createToken(ctx, effect.controllerCreatesToken, controller));
         if (!effect.sameNameTokens) continue;
         for (const other of battlefield(s)) {
           if (other.isToken && other.controller === controller && defOf(s, other).name === name) moveCard(ctx, other.id, 'exile');
@@ -4050,7 +4056,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const timestamp = newTimestamp(s);
       // PuPu UFO: "base power becomes equal to" a number; its base toughness stays the printed one.
       for (const id of onBattlefield) {
-        const pt: [number, number] = effect.powerFromAmount ? [amount, defOf(s, s.cards[id]!).toughness ?? 0] : [effect.power!, effect.toughness!];
+        // Biomass Mutation: "base power and toughness X/X" (both from the amount).
+        const pt: [number, number] = effect.powerFromAmount ? [amount, effect.toughnessFromAmount ? amount : defOf(s, s.cards[id]!).toughness ?? 0] : [effect.power!, effect.toughness!];
         s.temporaryEffects.push({ source, affected: id, basePowerToughness: pt, timestamp });
       }
       return;

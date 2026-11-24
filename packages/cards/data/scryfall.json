@@ -3667,6 +3667,28 @@
       }
     ]
   },
+  "boar-token-soc": {
+    "name": "Boar",
+    "typeLine": "Token Creature — Boar",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "15",
+    "artist": "James Ryman",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571",
+      "normal": "https://cards.scryfall.io/normal/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571",
+      "large": "https://cards.scryfall.io/large/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/3/2/32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc.jpg?1783903571"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/15/boar?utm_source=api",
+    "scryfallId": "32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc",
+    "relatedTokens": [
+      {
+        "name": "Boar",
+        "scryfallId": "32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc"
+      }
+    ]
+  },
   "bogwater-lumaret": {
     "name": "Bogwater Lumaret",
     "typeLine": "Creature — Spirit Frog",
@@ -12520,6 +12542,28 @@
     "scryfallUri": "https://scryfall.com/card/fin/138/freya-crescent?utm_source=api",
     "scryfallId": "9921f646-e893-44db-ac89-0633c1009788",
     "relatedTokens": []
+  },
+  "frog-lizard-token-soc": {
+    "name": "Frog Lizard",
+    "typeLine": "Token Creature — Frog Lizard",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "16",
+    "artist": "Jack Wang",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571",
+      "normal": "https://cards.scryfall.io/normal/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571",
+      "large": "https://cards.scryfall.io/large/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/4/2/42e98a20-325e-476f-8297-cbe8e09d85b2.jpg?1783903571"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/16/frog-lizard?utm_source=api",
+    "scryfallId": "42e98a20-325e-476f-8297-cbe8e09d85b2",
+    "relatedTokens": [
+      {
+        "name": "Frog Lizard",
+        "scryfallId": "42e98a20-325e-476f-8297-cbe8e09d85b2"
+      }
+    ]
   },
   "frog-token": {
     "name": "Frog",

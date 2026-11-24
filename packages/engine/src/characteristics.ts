@@ -462,6 +462,7 @@ export function protectedFrom(s: GameState, c: CardInstance, source: CardInstanc
   const fromTypes = currentDefinition(s, c).protectionFromSubtypes;
   if (fromTypes && source.zone === 'battlefield' && fromTypes.some((t) => subtypesOf(s, source).includes(t))) return true;
   if (fromTypes && source.zone !== 'battlefield' && fromTypes.some((t) => currentDefinition(s, source).subtypes?.includes(t))) return true;
+  if (currentDefinition(s, c).protectionFromMulticolored && colorsOf(currentDefinition(s, source)).length >= 2) return true;
   return colorsOf(currentDefinition(s, source)).some((color) => hasKeyword(s, c, PROTECTION[color]));
 }
 

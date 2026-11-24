@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC3a: Quandrix Unlimited, part one (2026-11-24)
+
+- 23 cards: hydras and other {X} creatures, counter doublers, and {X} spells. 33 Quandrix cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC2i: Prismari Artistry complete (2026-11-24)
 
 - Suspend (Rousing Refrain, with mana kept until end of turn), Abstract Performance's opponent-chosen piles, and Plargg and Nassari's denied card and two free casts. Prismari Artistry is the second complete Strixhaven deck: a free starter choice and a deck the bots can play. docs/strixhaven.md.

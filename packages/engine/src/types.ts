@@ -936,6 +936,8 @@ export type Amount =
         | 'previousTargetManaValue'
         /** The number of cards in the previous target player's hand (Rousing Refrain). */
         | 'previousTargetHandSize'
+        /** How many times the previous target player has cast a commander from the command zone (Commander's Insight). */
+        | 'previousTargetCommanderCasts'
         /** The value chosen for {X} (for a permanent's abilities, the X it was cast with). */
         | 'x'
         /** Life lost to earlier effects of the same spell ("you gain life equal to the life lost this way"). */
@@ -996,6 +998,8 @@ export type Amount =
       plus?: number;
       /** Multiplies the result ("twice X"). */
       times?: number;
+      /** "Half X, rounded down" (or up): halves the result last (Hydroid Krasis, The Goose Mother). */
+      half?: 'down' | 'up';
       /** For `sourceCounters`: which kind. */
       counter?: AnyCounter;
     };
@@ -1193,6 +1197,8 @@ export interface EffectSpec {
   /** "The 'legend rule' doesn't apply to permanents you control this turn" (Hall of Echoes). */
   legendRuleOffThisTurn?: boolean;
   copyKeepTrigger?: boolean;
+  /** Exile: each exiled creature's controller creates this token (Curse of the Swine: a 2/2 Boar). */
+  controllerCreatesToken?: CardDefId;
   /** DivideDamage with `amongTargets`: only among the targets of the slots with this `group`. */
   amongGroup?: string;
   /** CopyCreature: it becomes the copy at once, with no "may" (Muddle: "becomes a copy of up to one target"). */
@@ -1662,6 +1668,8 @@ export interface ObjectFilter {
   manaValueAtLeast?: number;
   /** Mana value X or less, X being the spell's ("each nonland permanent with mana value X or less": Gaze of Granite). */
   manaValueAtMostX?: boolean;
+  /** Mana value exactly the value chosen for {X} (Entrancing Melody). */
+  manaValueIsX?: boolean;
   /** Mana value at most the life its controller gained this turn (Moseo, Vein's New Dean). */
   manaValueAtMostLifeGained?: boolean;
   /** Mana value at most the triggering event's amount ("where X is the amount of damage this creature dealt to that player": Venerable Warsinger). */
@@ -2539,6 +2547,8 @@ export interface CardDefinition {
   additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string; /** "Behold a Jace or pay {1}": a permanent with this subtype you control, or a card with it in your hand (chosen with `costCards`), or `orMana`. */ behold?: string; /** "Choose a creature you control or a warped creature card you own in exile" (Close Encounter): chosen with `costCards`; nothing happens to it. */ chooseCreatureOrWarped?: boolean };
   /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
   kickerSacrifice?: ObjectFilter;
+  /** Protection from multicolored (Stonecoil Serpent): from sources with two or more colors. */
+  protectionFromMulticolored?: boolean;
   /** "Protection from Humans" (rule 702.16): protection from sources with these subtypes. */
   protectionFromSubtypes?: string[];
   /** The kicker permanent chosen with `kickerSacrifice` returns to its owner's hand instead of being sacrificed (Chocobo Kick). */

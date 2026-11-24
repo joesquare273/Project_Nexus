@@ -128,6 +128,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'subjectPlusOneCounters',
       'previousTargetManaValue',
       'previousTargetHandSize',
+      'previousTargetCommanderCasts',
       'x',
       'lifeLostThisWay',
       'drawnThisWay',
@@ -403,7 +404,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
   if (e.damageSource && e.effect !== 'DealDamage' && e.effect !== 'Fight') err('damageSource is only for DealDamage and Fight.');
   if (e.ifYouControl) validateFilter(e.ifYouControl.filter, err);
-  if (e.toughnessFromAmount && (e.effect !== 'ModifyPT' || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT with an amount.');
+  if (e.toughnessFromAmount && ((e.effect !== 'ModifyPT' && e.effect !== 'SetBasePT') || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT or SetBasePT with an amount.');
   if (e.powerFromAmount && ((e.effect !== 'ModifyPT' && e.effect !== 'SetBasePT') || e.amount === undefined)) err('powerFromAmount is only for ModifyPT or SetBasePT with an amount.');
   if (e.toBattlefieldIfBehindOnLands && e.effect !== 'SearchLibraryToHand') err('toBattlefieldIfBehindOnLands is only for SearchLibraryToHand.');
   if ((e.countersOf || e.damageSource === 'TriggeringObject') && !inAbility) err('countersOf and a TriggeringObject damage source are only for abilities.');

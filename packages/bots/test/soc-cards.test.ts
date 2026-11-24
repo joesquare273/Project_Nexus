@@ -1,7 +1,7 @@
 // The Secrets of Strixhaven Commander decks (SOC), built deck by deck (docs/strixhaven.md).
 
 import { describe, expect, it } from 'vitest';
-import { currentDefinition, getLegalActions, hasKeyword, powerOf, type GameState } from '@nexus/engine';
+import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -1320,5 +1320,92 @@ describe('SOC2i: Abstract Performance, Plargg and Nassari', () => {
     const cast = getLegalActions(s).filter((a) => a.type === 'CastSpell');
     expect(cast.some((a) => a.type === 'CastSpell' && a.card === mine)).toBe(true);
     expect(cast.some((a) => a.type === 'CastSpell' && a.card === theirs)).toBe(false);
+  });
+});
+
+describe('SOC3a: Quandrix Unlimited ({X} creatures, counters, spells)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Benevolent Hydra enters with X counters and adds one more to counters on your other creatures; Kami of Whispered Hopes taps for its power', () => {
+    let s = newGame();
+    const hydra = put(s, 'P1', 'benevolent-hydra', 'hand');
+    const rat = put(s, 'P1', 'rank-rat');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: hydra, x: 3 }).state;
+    expect(s.cards[hydra]!.counters).toBe(3);
+    s.cards[hydra]!.summoningSick = false;
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === hydra && a.targets?.[0]?.kind === 'card' && a.targets[0].card === rat)!).state;
+    expect([s.cards[hydra]!.counters, s.cards[rat]!.counters]).toEqual([2, 2]);
+    const kami = put(s, 'P1', 'kami-of-whispered-hopes');
+    s.cards[kami]!.summoningSick = false;
+    s.cards[kami]!.counters = 2;
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: kami, mana: 'U' });
+    expect(s.players.P1!.manaPool.U).toBe(3);
+  });
+
+  it('Hydroid Krasis: when cast, gain half X life and draw half X cards; Stonecoil Serpent has protection from multicolored', () => {
+    let s = newGame();
+    const krasis = put(s, 'P1', 'hydroid-krasis', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { G: 1, U: 1, C: 5 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: krasis, x: 5 }).state;
+    expect([s.players.P1!.life, s.players.P1!.hand.length - hand, s.cards[krasis]!.counters]).toEqual([22, 1, 5]);
+    const serpent = put(s, 'P1', 'stonecoil-serpent');
+    const charm = put(s, 'P2', 'quandrix-charm', 'hand');
+    expect(getLegalActions({ ...s, pending: { kind: 'priority', player: 'P2', passes: 0 } } as GameState).some((a) => a.type === 'CastSpell' && a.card === charm && a.targets?.some((t) => t.kind === 'card' && t.card === serpent))).toBe(false);
+  });
+
+  it('Primordial Hydra doubles its counters each upkeep and has trample with ten or more; Goldvein Hydra leaves tapped Treasures equal to its power', () => {
+    let s = newGame();
+    const hydra = put(s, 'P1', 'primordial-hydra');
+    s.cards[hydra]!.counters = 5;
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state; // P2's
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state; // P1's
+    expect([s.activePlayer, s.cards[hydra]!.counters, hasKeyword(s, s.cards[hydra]!, 'Trample')]).toEqual(['P1', 10, true]);
+    const gold = put(s, 'P2', 'goldvein-hydra');
+    s.cards[gold]!.counters = 3;
+    const bolt = put(s, 'P1', 'rapid-hybridization', 'hand');
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bolt, targets: [card(gold)] }).state;
+    const treasures = onField(s, 'treasure-token-sos', 'P2');
+    expect([treasures.length, treasures.every((t) => t.tapped), onField(s, 'frog-lizard-token-soc', 'P2').length]).toEqual([3, true, 1]);
+  });
+
+  it('Curse of the Swine exiles X creatures and each controller gets a Boar; Entrancing Melody takes a creature with mana value X', () => {
+    let s = newGame();
+    const a = put(s, 'P2', 'rank-rat');
+    const b = put(s, 'P2', 'hungry-graffalon');
+    const curse = put(s, 'P1', 'curse-of-the-swine', 'hand');
+    mana(s, 'P1', { U: 2, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: curse, x: 2, targets: [card(a), card(b)] }).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone, onField(s, 'boar-token-soc', 'P2').length]).toEqual(['exile', 'exile', 2]);
+    const big = put(s, 'P2', 'hungry-graffalon');
+    const melody = put(s, 'P1', 'entrancing-melody', 'hand');
+    mana(s, 'P1', { U: 2, C: 4 });
+    expect(getLegalActions(s).some((x) => x.type === 'CastSpell' && x.card === melody && x.x === 3 && x.targets?.[0]?.kind === 'card' && x.targets[0].card === big)).toBe(false);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: melody, x: 4, targets: [card(big)] }).state;
+    expect(s.cards[big]!.controller).toBe('P1');
+  });
+
+  it('Biomass Mutation sets your creatures to X/X; Primal Might pumps and fights; Commander\'s Insight draws X plus commander casts', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'hungry-graffalon');
+    const bio = put(s, 'P1', 'biomass-mutation', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bio, x: 4 }).state;
+    expect([powerOf(s, s.cards[rat]!), toughnessOf(s, s.cards[rat]!)]).toEqual([4, 4]);
+    const might = put(s, 'P1', 'primal-might', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: might, x: 1, targets: [card(rat), card(theirs)] }).state;
+    expect(s.cards[theirs]!.zone).toBe('graveyard');
+    s.players.P1!.commanderCasts = { [rat]: 2 } as never;
+    const insight = put(s, 'P1', 'commanders-insight', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 3, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: insight, x: 1, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect(s.players.P1!.hand.length - hand).toBe(2); // X=1 plus 2, less the spell itself
   });
 });
