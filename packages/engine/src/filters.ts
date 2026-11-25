@@ -3,7 +3,7 @@
 // controls") and searches ("a Plains card").
 
 import { currentDefinition } from './cardface.ts';
-import { characteristics, powerOf, subtypesOf, isEquipped, isModified, totalCounters } from './characteristics.ts';
+import { characteristics, powerOf, subtypesOf, isEquipped, isEnchanted, isModified, totalCounters } from './characteristics.ts';
 import { categoriesOf, colorsOf, objectManaValue } from './typerules.ts';
 import { parseManaCost } from './cost.ts';
 import type { CardDefinition, CardInstance, GameState, InstanceId, ObjectFilter, PlayerId } from './types.ts';
@@ -95,6 +95,8 @@ export function matchesObject(
   if (f.enteredThisTurn !== undefined && (obj.zone === 'battlefield' && obj.enteredTurn === s.turnNumber) !== f.enteredThisTurn) return false;
   if (f.attackingYou && !s.combat?.attacks.some((a) => a.attacker === obj.id && a.defender === from.controller)) return false;
   if (f.equipped !== undefined && isEquipped(s, obj) !== f.equipped) return false;
+  if (f.enchanted !== undefined && isEnchanted(s, obj) !== f.enchanted) return false;
+  if (f.monocolored && colorsOf(def).length !== 1) return false;
   if (f.equippedBySource && (!from.source || s.cards[from.source]?.attachedTo !== obj.id)) return false;
   if (f.equippedBySource === false && from.source && s.cards[from.source]?.attachedTo === obj.id) return false;
   if (f.colors || f.nonColors) {

@@ -103,6 +103,8 @@ export const KEYWORDS = [
   'ProtectionFromBlack',
   'ProtectionFromRed',
   'ProtectionFromGreen',
+  /** Protection from creatures (Spirit Mantle). */
+  'ProtectionFromCreatures',
 ] as const;
 export type Keyword = (typeof KEYWORDS)[number];
 
@@ -413,6 +415,8 @@ export const EFFECT_KINDS = [
   'Surveil',
   /** Look at the top `amount` cards and put any on the bottom of your library (asks the player). */
   'Scry',
+  /** Arcane Lighthouse: until end of turn, creatures your opponents control lose hexproof and shroud and can't have them. */
+  'OpponentsCreaturesLoseHexproof',
   /** Search your library for a card matching `filter`, put it onto the battlefield (tapped if `entersTapped`), then shuffle. */
   'SearchLibraryToBattlefield',
   /** Return the target card from a graveyard to the battlefield, with `counters` +1/+1 counters. */
@@ -833,6 +837,10 @@ export const COUNT_KINDS = [
   'LifeGainedThisTurn',
   /** Tapped creatures controlled by the controller of the creature this Aura enchants (Observed Stasis). */
   'TappedCreaturesOfEnchantedController',
+  /** Auras attached to the source (Kor Spiritdancer). */
+  'AurasAttachedToThis',
+  /** Auras you control (Herald of Amity, Eriette). */
+  'AurasYouControl',
   'SoldiersYouControl',
   /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
   'OpponentsWithPower4Creature',
@@ -1693,6 +1701,10 @@ export interface ObjectFilter {
   historic?: boolean;
   /** Has an Equipment attached. */
   equipped?: boolean;
+  /** Enchanted: an Aura is attached to it (Winds of Rath: "creatures that aren't enchanted"). */
+  enchanted?: boolean;
+  /** Exactly one color (Vanishing Verse). */
+  monocolored?: boolean;
   /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
   equippedBySource?: boolean;
   /** Is at least one of these colors. */
@@ -1967,6 +1979,8 @@ export interface ActivatedSpec {
     exileGraveyard?: { amount: number; filter: ObjectFilter };
     /** "Return two lands you control to their owner's hand" (Multani): `count` permanents you control matching `filter`, chosen with `costCards`. */
     returnToHand?: { count: number; filter: ObjectFilter };
+    /** "Pay life equal to the number of colors in your commanders' color identity" (War Room). */
+    lifeCommanderColors?: boolean;
     mana?: string;
     tap?: boolean;
     /** Discard this card (cycling, landcycling). */
@@ -2194,7 +2208,7 @@ export interface StaticSpec {
    * `filter` cost this much less; with `nthSpell`, only your Nth spell each
    * turn ("the second spell you cast each turn costs {2} less").
    */
-  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean; /** Only the first spell with {X} in its mana cost you cast each turn (Zimone, Infinite Analyst). */ firstXSpell?: boolean; /** Spells cast from anywhere other than your hand (Advanced Reconstruction). */ notFromHand?: boolean };
+  spellCostReduction?: { generic: number; /** Times this count (Sami: affinity for artifacts on every spell). */ perCount?: CountKind; filter?: ObjectFilter; nthSpell?: number; fromGraveyard?: boolean; /** Only the first legendary creature spell you cast each turn (Serah Farron). */ firstLegendaryCreature?: boolean; /** Only the first spell with {X} in its mana cost you cast each turn (Zimone, Infinite Analyst). */ firstXSpell?: boolean; /** Only spells that target a creature (Killian, Ink Duelist). */ ifTargetsCreature?: boolean; /** Spells cast from anywhere other than your hand (Advanced Reconstruction). */ notFromHand?: boolean };
   /**
    * "... triggers an additional time": a triggered ability of a permanent
    * this one's controller controls triggers once more. `selfAndEquipment`:
@@ -2588,6 +2602,8 @@ export interface CardDefinition {
     warp?: boolean;
     /** "You may cast this card from your graveyard using its blitz ability" (Sabin): this way only. */
     fromGraveyard?: boolean;
+    /** Raffine's Guidance: only from your graveyard ("you may cast this card from your graveyard by paying ..."), never from your hand. */
+    onlyFromGraveyard?: boolean;
     /** "Exile a white card from your hand": another card in hand matching this, chosen with the action (`costCards`). */
     exileFromHand?: ObjectFilter;
     /** Evoke (rule 702.74): the permanent remembers it was evoked (`ifEvoked` triggers sacrifice it). */
@@ -3149,6 +3165,8 @@ export interface PlayerState {
   flashTurn?: number;
   /** Channel (Yavimaya Bloomsage): this turn, any time they could activate a mana ability, they may pay 1 life for {C}. */
   lifeManaTurn?: number;
+  /** Arcane Lighthouse: the turn this player's opponents' creatures lose hexproof and shroud. */
+  lighthouseTurn?: number;
   /** Opal Palace's mana still in the pool this step, by type. */
   opalMana?: Partial<Record<ManaType, number>>;
   /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */

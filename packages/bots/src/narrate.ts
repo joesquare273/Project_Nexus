@@ -452,6 +452,8 @@ function effectText(e: EffectSpec): string {
       return `surveil ${n}`;
     case 'Scry':
       return `scry ${n}`;
+    case 'OpponentsCreaturesLoseHexproof':
+      return "until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud";
     case 'SearchLibraryToBattlefield':
       if (e.target === 'PreviousTargetController') {
         return `its controller searches their library for a basic land card and puts it onto the battlefield${e.entersTapped ? ' tapped' : ''}`;

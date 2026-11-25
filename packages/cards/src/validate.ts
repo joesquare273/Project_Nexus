@@ -306,7 +306,8 @@ export function validateCardDefinition(raw: unknown): string[] {
     for (const e of alt.effects ?? []) validateEffect(e, false, (m) => err(`alternativeCost: ${m}`));
     if (alt.discard !== undefined && (!isNonNegativeInt(alt.discard) || alt.discard === 0)) err('alternativeCost discard must be positive.');
     if (alt.blitz && !c.types.includes('creature')) err('only creatures have blitz.');
-    if (alt.fromGraveyard && !alt.blitz && !alt.warp) err('alternativeCost fromGraveyard is only for blitz or warp.');
+    if (alt.fromGraveyard && !alt.blitz && !alt.warp && !alt.onlyFromGraveyard) err('alternativeCost fromGraveyard is only for blitz, warp or a graveyard-only cost.');
+    if (alt.onlyFromGraveyard && !alt.fromGraveyard) err('alternativeCost onlyFromGraveyard needs fromGraveyard.');
   }
   if (c.costReduction) {
     if (!isNonNegativeInt(c.costReduction.generic)) err('costReduction needs a whole-number generic amount.');

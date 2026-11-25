@@ -725,3 +725,10 @@ recorded again.
   cost. With Opal Palace's mana in the pool, casting a commander spends it
   first and anything else spends other mana first, which is what its
   controller would choose.
+
+## 2026-11-25: Regeneration (not in the engine)
+
+The engine has no regeneration shields yet (rule 701.19), so "can't be
+regenerated" changes nothing (Winds of Rath, Damn, Pongify, Putrefy, Rapid
+Hybridization, Snuff Out). No built card makes a regeneration shield; when
+one does, these clauses need building with it.

@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC4a: Silverquill Influence, part one (2026-11-25)
+
+- 14 Silverquill cards: removal (Fracture, Vanishing Verse, Anguished Unmaking, Winds of Rath), lands (Silverquill Campus, War Room, Arcane Lighthouse), Ghostly Prison and Aura support (Spirit Mantle with protection from creatures, Raffine's Guidance from the graveyard, Transcendent Envoy, Starfield Mystic, Kor Spiritdancer, Killian, Ink Duelist). 44 Silverquill cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC3f: Quandrix Unlimited complete (2026-11-25)
 
 - A fuzz run with the three finished Strixhaven decks found that "counter it unless its controller pays" offered paying without the mana in the pool; the shared choice check now requires it (as the engine already did).

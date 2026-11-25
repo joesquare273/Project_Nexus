@@ -1787,3 +1787,105 @@ describe('SOC3f: Quandrix Unlimited (Yavimaya Bloomsage, Opal Palace)', () => {
     expect([s.cards[cmdr]!.zone, s.cards[cmdr]!.counters]).toEqual(['battlefield', 2]);
   });
 });
+
+describe('SOC4a: Silverquill Influence (removal, lands, Aura support)', () => {
+  const castable = (s: GameState, id: string) => getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === id);
+  const hits = (ts: readonly unknown[], id: string) => ts.some((t) => (t as { kind?: string; card?: string } | undefined)?.card === id);
+  const aura = (s: GameState, who: 'P1' | 'P2', defId: string, on: string) => put(s, who, defId, 'battlefield', { attachedTo: on });
+
+  it('Vanishing Verse exiles only a monocolored permanent; Anguished Unmaking exiles and costs 3 life; Fracture destroys an enchantment', () => {
+    let s = newGame();
+    const mono = put(s, 'P2', 'rank-rat');
+    const gold = put(s, 'P2', 'killian-ink-duelist');
+    const verse = put(s, 'P1', 'vanishing-verse', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    const targets = castable(s, verse).flatMap((a) => (a.type === 'CastSpell' ? a.targets ?? [] : []));
+    expect(hits(targets, mono)).toBe(true);
+    expect(hits(targets, gold)).toBe(false);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: verse, targets: [card(mono)] }).state;
+    expect(s.cards[mono]!.zone).toBe('exile');
+    const unmaking = put(s, 'P1', 'anguished-unmaking', 'hand');
+    mana(s, 'P1', { W: 1, B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: unmaking, targets: [card(gold)] }).state;
+    expect([s.cards[gold]!.zone, s.players.P1!.life]).toEqual(['exile', 17]);
+    const prison = put(s, 'P2', 'ghostly-prison');
+    const fracture = put(s, 'P1', 'fracture', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fracture, targets: [card(prison)] }).state;
+    expect(s.cards[prison]!.zone).toBe('graveyard');
+  });
+
+  it('Winds of Rath destroys only creatures that aren\'t enchanted', () => {
+    let s = newGame();
+    const bare = put(s, 'P2', 'rank-rat');
+    const dressed = put(s, 'P2', 'rank-rat');
+    aura(s, 'P1', 'spirit-mantle', dressed);
+    const winds = put(s, 'P1', 'winds-of-rath', 'hand');
+    mana(s, 'P1', { W: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: winds, targets: [] }).state;
+    expect([s.cards[bare]!.zone, s.cards[dressed]!.zone]).toEqual(['graveyard', 'battlefield']);
+  });
+
+  it('Kor Spiritdancer: +2/+2 per Aura on it and may draw on an Aura spell; Spirit Mantle gives protection from creatures; Transcendent Envoy and Starfield Mystic reduce Aura costs', () => {
+    let s = newGame();
+    const dancer = put(s, 'P1', 'kor-spiritdancer');
+    put(s, 'P1', 'transcendent-envoy');
+    const mystic = put(s, 'P1', 'starfield-mystic');
+    const mantle = put(s, 'P1', 'spirit-mantle', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { W: 1 }); // {1}{W} less {1} (Envoy) less {1} (Mystic, generic only)
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mantle, targets: [card(dancer)] }).state;
+    expect(s.cards[mantle]!.attachedTo).toBe(dancer);
+    expect(s.players.P1!.hand.length).toBe(hand); // cast one, drew one
+    expect([powerOf(s, s.cards[dancer]!), toughnessOf(s, s.cards[dancer]!)]).toEqual([3, 5]);
+    expect(hasKeyword(s, s.cards[dancer]!, 'ProtectionFromCreatures')).toBe(true);
+    const fracture = put(s, 'P1', 'fracture', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fracture, targets: [card(mantle)] }).state;
+    expect([s.cards[mantle]!.zone, s.cards[mystic]!.counters]).toEqual(['graveyard', 1]);
+  });
+
+  it('Raffine\'s Guidance can be cast from the graveyard for {2}{W}, and not for that cost from the hand', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const inHand = put(s, 'P1', 'raffines-guidance', 'hand');
+    const dead = put(s, 'P1', 'raffines-guidance', 'graveyard');
+    mana(s, 'P1', { W: 1, C: 2 });
+    expect(castable(s, inHand).some((a) => a.type === 'CastSpell' && a.alternative)).toBe(false);
+    const fromYard = castable(s, dead).find((a) => a.type === 'CastSpell' && hits(a.targets ?? [], rat));
+    expect(fromYard).toBeDefined();
+    s = cast(s, fromYard!).state;
+    expect([s.cards[dead]!.zone, s.cards[dead]!.attachedTo, powerOf(s, s.cards[rat]!)]).toEqual(['battlefield', rat, 2]);
+  });
+
+  it('Killian, Ink Duelist: spells that target a creature cost {2} less', () => {
+    const s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const prison = put(s, 'P2', 'ghostly-prison');
+    const unmaking = put(s, 'P1', 'anguished-unmaking', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    expect(castable(s, unmaking)).toEqual([]);
+    put(s, 'P1', 'killian-ink-duelist');
+    const targets = castable(s, unmaking).flatMap((a) => (a.type === 'CastSpell' ? a.targets ?? [] : []));
+    expect(hits(targets, rat)).toBe(true);
+    expect(hits(targets, prison)).toBe(false);
+  });
+
+  it('War Room pays life equal to the commander\'s colors to draw; Arcane Lighthouse strips hexproof from opponents\' creatures', () => {
+    let s = newGame();
+    const room = put(s, 'P1', 'war-room');
+    const cmdr = put(s, 'P1', 'killian-ink-duelist', 'command');
+    s.cards[cmdr]!.isCommander = true;
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 3 });
+    s = cast(s, activate(s, room)!).state;
+    expect([s.players.P1!.life, s.players.P1!.hand.length - hand]).toEqual([18, 1]);
+    s.cardDefs['hexproof-rat'] = { ...s.cardDefs['rank-rat']!, id: 'hexproof-rat', keywords: ['Hexproof'] };
+    const rat = put(s, 'P2', 'hexproof-rat');
+    const mine = put(s, 'P1', 'hexproof-rat');
+    const light = put(s, 'P1', 'arcane-lighthouse');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, activate(s, light)!).state;
+    expect([hasKeyword(s, s.cards[rat]!, 'Hexproof'), hasKeyword(s, s.cards[mine]!, 'Hexproof')]).toEqual([false, true]);
+  });
+});

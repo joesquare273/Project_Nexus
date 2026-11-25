@@ -299,6 +299,7 @@ const PLAYER_FIELDS = {
   keptMana: 'copy',
   flashTurn: 'copy',
   lifeManaTurn: 'copy',
+  lighthouseTurn: 'copy',
   opalMana: 'copy',
   xSpellsThisTurn: 'copy',
   cardLeftGraveyardTurn: 'copy',

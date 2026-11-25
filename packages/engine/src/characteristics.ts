@@ -66,6 +66,16 @@ export function equipmentOn(s: GameState, creature: InstanceId): CardInstance[] 
   return battlefieldCards(s).filter((e) => e.attachedTo === creature && isEquipment(s, e));
 }
 
+/** Enchanted: an Aura on the battlefield is attached to it. */
+export function isEnchanted(s: GameState, c: CardInstance): boolean {
+  return c.zone === 'battlefield' && aurasOn(s, c.id).length > 0;
+}
+
+/** The Auras attached to a permanent. */
+export function aurasOn(s: GameState, id: InstanceId): CardInstance[] {
+  return Object.values(s.cards).filter((x) => x.zone === 'battlefield' && x.attachedTo === id && !x.phasedOut && (currentDefinition(s, x).subtypes ?? []).includes('Aura'));
+}
+
 export function isEquipped(s: GameState, c: CardInstance): boolean {
   return c.zone === 'battlefield' && equipmentOn(s, c.id).length > 0;
 }
@@ -208,6 +218,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       const mine = s.players[player]!.hand.length;
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated && s.players[pid]!.hand.length > mine).length;
     }
+    case 'AurasAttachedToThis':
+      return source ? aurasOn(s, source).length : 0;
+    case 'AurasYouControl':
+      return s.players[player]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === player && !x.phasedOut && (currentDefinition(s, x).subtypes ?? []).includes('Aura')).length;
     case 'TappedCreaturesOfEnchantedController': {
       const host = source ? s.cards[s.cards[source]?.attachedTo ?? ''] : undefined;
       if (!host) return 0;
@@ -425,6 +439,11 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   if (countersOf(c, 'indestructible') > 0) out.keywords.add('Indestructible');
   // "Loses flying" wins over grants (a simplification of layer 6 timestamps).
   for (const k of removed) out.keywords.delete(k);
+  // Arcane Lighthouse: "creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud".
+  if (currentDefinition(s, c).types.includes('creature') && s.turnOrder.some((pid) => pid !== c.controller && s.players[pid]!.lighthouseTurn === s.turnNumber)) {
+    out.keywords.delete('Hexproof');
+    out.keywords.delete('Shroud');
+  }
   // -1/-1 counters (rule 122.1a); they and +1/+1 counters annihilate as a state-based action.
   const minus = countersOf(c, '-1/-1');
   out.power += (c.counters ?? 0) - minus;
@@ -464,6 +483,8 @@ export function protectedFrom(s: GameState, c: CardInstance, source: CardInstanc
   const fromTypes = currentDefinition(s, c).protectionFromSubtypes;
   if (fromTypes && source.zone === 'battlefield' && fromTypes.some((t) => subtypesOf(s, source).includes(t))) return true;
   if (fromTypes && source.zone !== 'battlefield' && fromTypes.some((t) => currentDefinition(s, source).subtypes?.includes(t))) return true;
+  // Spirit Mantle: protection from creatures (a creature permanent, a creature spell, or an ability of one).
+  if (hasKeyword(s, c, 'ProtectionFromCreatures') && currentDefinition(s, source).types.includes('creature')) return true;
   if (currentDefinition(s, c).protectionFromMulticolored && colorsOf(currentDefinition(s, source)).length >= 2) return true;
   return colorsOf(currentDefinition(s, source)).some((color) => hasKeyword(s, c, PROTECTION[color]));
 }

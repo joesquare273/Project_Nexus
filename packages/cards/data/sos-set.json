@@ -322,7 +322,7 @@
   {"id":"culling-ritual","name":"Culling Ritual","types":["sorcery"],"manaCost":"{2}{B}{G}","colorIdentity":["B","G"],"printing":{"set":"soa","number":"62"},"notBuilt":true},
   {"id":"deflecting-palm","name":"Deflecting Palm","types":["instant"],"manaCost":"{R}{W}","colorIdentity":["R","W"],"printing":{"set":"soa","number":"63"},"notBuilt":true},
   {"id":"expressive-iteration","name":"Expressive Iteration","types":["sorcery"],"manaCost":"{U}{R}","colorIdentity":["R","U"],"printing":{"set":"soa","number":"64"},"effects":[{"effect":"LookTopHandBottomExile","target":"You"}]},
-  {"id":"fracture","name":"Fracture","types":["instant"],"manaCost":"{W}{B}","colorIdentity":["B","W"],"printing":{"set":"soa","number":"65"},"notBuilt":true},
+  {"id":"fracture","name":"Fracture","types":["instant"],"manaCost":"{W}{B}","colorIdentity":["B","W"],"printing":{"set":"soa","number":"65"},"effects":[{"effect":"Destroy","target":"TargetPermanent","filter":{"types":["artifact","enchantment","planeswalker"]}}]},
   {"id":"archaeomancer","name":"Archaeomancer","types":["creature"],"subtypes":["Human","Wizard"],"manaCost":"{2}{U}{U}","power":1,"toughness":2,"colorIdentity":["U"],"printing":{"set":"spg","number":"149"},"notBuilt":true},
   {"id":"murmuring-mystic","name":"Murmuring Mystic","types":["creature"],"subtypes":["Human","Wizard"],"manaCost":"{3}{U}","power":1,"toughness":5,"colorIdentity":["U"],"printing":{"set":"spg","number":"151"},"notBuilt":true},
   {"id":"grim-haruspex","name":"Grim Haruspex","types":["creature"],"subtypes":["Human","Wizard"],"manaCost":"{2}{B}","power":3,"toughness":2,"colorIdentity":["B"],"printing":{"set":"spg","number":"152"},"notBuilt":true},

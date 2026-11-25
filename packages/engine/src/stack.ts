@@ -388,9 +388,17 @@ export function modeProblem(def: CardDefinition, choice: SpellChoice, s?: GameSt
 }
 
 /** Why a player can't use a card's alternative cost right now, or null if they can. */
+/** War Room: the number of colors in the color identity of the commanders this player owns. */
+export function commanderColorCount(s: GameState, playerId: PlayerId): number {
+  const colors = new Set<string>();
+  for (const x of Object.values(s.cards)) if (x.isCommander && x.owner === playerId) for (const color of defOf(s, x).colorIdentity ?? []) colors.add(color);
+  return colors.size;
+}
+
 export function alternativeCostProblem(s: GameState, def: CardDefinition, playerId: PlayerId, cardId?: InstanceId): string | null {
   const alt = def.alternativeCost;
   if (!alt) return `${def.name} has no alternative cost.`;
+  if (alt.onlyFromGraveyard && (!cardId || s.cards[cardId]?.zone !== 'graveyard')) return `${def.name} can be cast this way only from your graveyard.`;
   const meets = (c: CardInstance) => c.controller === playerId && matchesObject(s, alt.ifControls, c, { controller: playerId });
   if (alt.ifControls && !battlefield(s).some(meets)) {
     return `You don't meet the condition for ${def.name}'s alternative cost.`;
@@ -1296,6 +1304,8 @@ export function spellCost(
         // "The second spell you cast each turn": this would be spell number (cast so far + 1).
         if (r.nthSpell !== undefined && (s.players[payer!]!.spellsCastThisTurn ?? 0) + 1 !== r.nthSpell) continue;
         if (r.firstLegendaryCreature && (s.players[payer!]!.legendaryCreatureSpellsThisTurn ?? 0) > 0) continue;
+        // Killian, Ink Duelist: "Spells you cast that target a creature cost {2} less."
+        if (r.ifTargetsCreature && !targets.some((t) => t.kind === 'card' && isCreatureOnBattlefield(s, s.cards[t.card]))) continue;
         if (r.firstXSpell && (!((parseManaCost(def.manaCost).x ?? 0) > 0) || (s.players[payer!]!.xSpellsThisTurn ?? 0) > 0)) continue;
         cost = reduceGeneric(cost, r.generic * (r.perCount ? countOf(s, r.perCount, source.controller, source.id) : 1));
       }
@@ -1829,6 +1839,7 @@ export function activationProblem(s: GameState, playerId: PlayerId, c: CardInsta
   if (spec.cost.exileGraveyard && graveyardCostCandidates(s, playerId, spec, c.id).length < spec.cost.exileGraveyard.amount) return 'Not enough creature cards in your graveyard to exile.';
   if (spec.cost.mill && player(s, playerId).library.length < spec.cost.mill) return 'Not enough cards in your library to mill for that cost.';
   if (spec.cost.life !== undefined && player(s, playerId).life < spec.cost.life) return "You don't have enough life to pay.";
+  if (spec.cost.lifeCommanderColors && player(s, playerId).life < commanderColorCount(s, playerId)) return "You don't have enough life to pay.";
   if (spec.oncePerTurn && index !== undefined && c.activatedTurns?.[index] === s.turnNumber) return 'That can be activated only once each turn.';
   if (spec.exhaust && index !== undefined && c.exhausted?.includes(index)) return 'That exhaust ability has already been activated.';
   if (spec.ifLoyaltyAmongAtLeast && battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && subtypesOf(s, x).includes(spec.ifLoyaltyAmongAtLeast!.subtype)).reduce((n, x) => n + (x.namedCounters?.loyalty ?? 0), 0) < spec.ifLoyaltyAmongAtLeast.atLeast) return 'Not enough loyalty among your planeswalkers of that type.';
@@ -2115,6 +2126,7 @@ export function activateAbility(
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
+  if (spec.cost.lifeCommanderColors && commanderColorCount(s, playerId) > 0) changeLife(ctx, playerId, -commanderColorCount(s, playerId));
   // Raubahn's ward: targeting him with an ability costs life equal to his power.
   const wardLifeCost = wardLife(s, targets, playerId);
   if (wardLifeCost > 0) {
@@ -4648,6 +4660,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'OpponentsCreaturesLoseHexproof':
+      player(s, item.controller).lighthouseTurn = s.turnNumber;
+      return;
     case 'Surveil':
     case 'Scry':
       if (effect.returnIfManaValueAtMostLifeGained) r.surveilReturnAtMost = player(s, item.controller).lifeGainedThisTurn ?? 0;
