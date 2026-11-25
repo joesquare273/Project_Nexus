@@ -742,3 +742,11 @@ same in play unless the enchanted creature loses all abilities, when real
 annihilator would stop and this trigger doesn't. The card is an Aura without
 the Kindred type or the Eldrazi subtype, which only matters for effects that
 look for Eldrazi.
+
+## 2026-11-25: Herald of Amity's free Aura (simplification)
+
+Herald of Amity exiles the top eight cards and lets you cast an Aura from
+among them free. The choice gives a "cast it right now" permission, and the
+other seven go on the bottom at once. If you choose an Aura and then don't
+cast it, it stays in exile instead of going to the bottom with the rest
+(like cascade, above).

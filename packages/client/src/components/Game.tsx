@@ -1567,8 +1567,12 @@ function PromptBar(p: PromptProps) {
               ? 'creature to attach it to'
             : c.purpose === 'link'
               ? 'creature to choose'
+            : c.purpose === 'auraHost'
+              ? `permanent for ${c.attachCard ? cardName(s, c.attachCard) : 'it'} to ${c.min === 0 ? 'be attached to (or none)' : 'enchant'}`
+            : c.purpose === 'battlefieldElseHand'
+              ? 'to put onto the battlefield (choose none to put it into your hand)'
             : c.purpose === 'attachToTarget'
-              ? `Equipment to attach to ${c.attachHost ? cardName(s, c.attachHost) : 'that creature'}${c.unattachAtEndStep ? ' (it comes off at the next end step)' : ''}; choose none to skip`
+              ? `${c.cards.length === 1 ? cardName(s, c.cards[0]!) : 'Equipment'} to attach to ${c.attachHost ? cardName(s, c.attachHost) : 'that creature'}${c.unattachAtEndStep ? ' (it comes off at the next end step)' : ''}; choose none to skip`
             : c.purpose === 'counterUpTo'
               ? `to put a ${c.counter ?? '+1/+1'} counter on (${c.counterCount} left); choose none to stop`
             : c.purpose === 'castOrTreasure'
@@ -1576,7 +1580,7 @@ function PromptBar(p: PromptProps) {
             : c.purpose === 'memories'
               ? (s.resolving?.item.controller === YOU ? 'to put into your hand' : 'to put on the bottom of the caster’s library')
             : c.purpose === 'castFree'
-              ? 'from your hand to cast right now without paying its mana cost (or none)'
+              ? 'to cast right now without paying its mana cost (or none)'
             : c.purpose === 'removeLore'
               ? 'Sagas to remove a lore counter from (this gets a +1/+1 counter for each)'
             : c.purpose === 'exileFromGraveyard'

@@ -142,8 +142,14 @@ export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[]
     if (zeroToughness.length + lethal.length > 0) changed = true;
 
     // Auras need a legal enchanted object; Equipment merely becomes unattached.
+    // An Aura that entered without being cast is still choosing what it enchants (rule 303.4f).
+    const choosingHost = new Set([
+      ...(s.pending.kind === 'chooseCards' && s.pending.purpose === 'auraHost' && s.pending.attachCard ? [s.pending.attachCard] : []),
+      ...(s.resolving?.choiceQueue ?? []).filter((q) => q.purpose === 'auraHost' && q.attachCard).map((q) => q.attachCard!),
+    ]);
     for (const c of battlefield(s)) {
       const def = defOf(s, c);
+      if (def.subtypes?.includes('Aura') && !c.attachedTo && choosingHost.has(c.id)) continue;
       if (def.subtypes?.includes('Aura') && (!c.attachedTo || !canAttach(s, c, s.cards[c.attachedTo]))) {
         putIntoGraveyard(ctx, c.id); changed = true;
       } else if (c.attachedTo && !canAttach(s, c, s.cards[c.attachedTo])) {

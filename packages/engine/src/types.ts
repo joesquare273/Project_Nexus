@@ -669,6 +669,10 @@ export const EFFECT_KINDS = [
   'OtherTokensBecomeCopy',
   /** Expressive Iteration: look at the top three cards; one into your hand, one on the bottom, and exile the last, which you may play this turn. */
   'LookTopHandBottomExile',
+  /** Herald of Amity: exile the top `amount` cards; you may cast a spell matching `filter` from among them without paying its mana cost; the rest go on the bottom in a random order. */
+  'ExileTopCastOneFree',
+  /** Ajani's Chosen: you may attach the triggering Aura to the token this ability created. */
+  'AttachSubjectToCreatedToken',
   /** The target players win the game: every other player loses. */
   'WinGame',
   /** "Until your next turn, damage dealt to that player or a permanent they control is doubled" (Lightning, Army of One). */
@@ -1318,6 +1322,15 @@ export interface EffectSpec {
   flags?: TemporaryFlag[];
   /** ReturnToBattlefield: enter attached to a creature returned for this chosen-target index. */
   attachToReturnedTarget?: number;
+  /** ReturnToBattlefield: attached to the ability's triggering creature (Gift of Immortality's delayed return). */
+  attachToSubject?: boolean;
+  /** ReturnToBattlefield in a reflexive trigger: attached to the token the first part created (Forum Filibuster; fixed as `attachToCard`). */
+  attachToCreatedToken?: boolean;
+  attachToCard?: InstanceId;
+  /** RevealUntil: you may put the found card onto the battlefield; if you don't, it goes into your hand (Songbirds' Blessing). */
+  mayBattlefieldElseHand?: boolean;
+  /** LookAtTopPutMatching onto the battlefield: an Equipment put this way may be attached to a creature you control (Armored Skyhunter). */
+  attachEquipmentToYourCreature?: boolean;
   /** ReturnToBattlefield: extra +1/+1 counters. */
   counters?: number;
   /** AddCounters, ReturnToBattlefield, or KeepAndSacrificeRest's vow: a named counter. */
@@ -3540,7 +3553,7 @@ export interface CardChoice {
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
-  purpose: 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom' | 'tokenModel' | 'castOneFree' | 'denyCast';
+  purpose: 'auraHost' | 'battlefieldElseHand' | 'devourOnEntry' | 'tap' | 'search' | 'digLands' | 'removeCountersOnEntry' | 'attachToSource' | 'artifactCopy' | 'hideaway' | 'copyOnEntry' | 'fateBottom' | 'handSize' | 'discard' | 'sacrifice' | 'keep' | 'battlefield' | 'destroy' | 'hand' | 'reanimate' | 'keepVow' | 'library' | 'offerDraw' | 'payHalfLife' | 'payToAvoidCounter' | 'handToTop' | 'distributeCounter' | 'divideDamage' | 'addCounters' | 'lookTop' | 'exileFromGraveyard' | 'castFree' | 'removeLore' | 'memories' | 'castOrTreasure' | 'counterUpTo' | 'attachToTarget' | 'bounce' | 'link' | 'counter' | 'attachSource' | 'mayDraw' | 'mark' | 'dredge' | 'discardOrSacrifice' | 'separatePiles' | 'choosePile' | 'manifestDread' | 'exiledToGraveyard' | 'amass' | 'giveToOpponent' | 'wheel' | 'revealOutside' | 'pickOutside' | 'wardDiscard' | 'wardSacrifice' | 'shuffleIntoLibrary' | 'copyCard' | 'iterateHand' | 'iterateBottom' | 'tokenModel' | 'castOneFree' | 'denyCast';
   /** The cards to choose from. */
   cards: InstanceId[];
   min: number;
@@ -3585,6 +3598,8 @@ export interface CardChoice {
   attackDefender?: PlayerId;
   /** lookTop: the cards not chosen stay on top of the library. */
   restOnTop?: boolean;
+  /** lookTop: an Equipment put onto the battlefield may be attached to a creature you control (Armored Skyhunter). */
+  attachEquipment?: boolean;
   /** hand: the cards not chosen go into the graveyard instead of on the bottom of the library. */
   restToGraveyard?: boolean;
   /** At most one card of each of these types (Tragic Arrogance). */
@@ -3596,6 +3611,10 @@ export interface CardChoice {
   tokenFor?: PlayerId;
   /** attachToTarget: the creature the chosen Equipment is attached to, and whether it comes off at the next end step. */
   attachHost?: InstanceId;
+  /** auraHost: the Aura (or Equipment) that gets attached to the chosen permanent (rule 303.4f). */
+  attachCard?: InstanceId;
+  /** castFree: the other cards exiled with it go on the bottom of the library in a random order once the choice is made (Herald of Amity). */
+  restToBottom?: InstanceId[];
   unattachAtEndStep?: boolean;
   /** The chosen cards' total mana value can't be more than this (Phoenix, Warden of Fire). */
   maxTotalManaValue?: number;

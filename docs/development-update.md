@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC4e: Silverquill Influence, part five (2026-11-25)
+
+- Auras put onto the battlefield without being cast now choose what they enchant as they enter (rule 303.4f), and stay where they were with nothing to enchant. Screams from Within, Ghoulish Impetus, Gift of Immortality, Forum Filibuster, Ajani's Chosen, Armored Skyhunter, Songbirds' Blessing and Herald of Amity. 12 Silverquill cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC4d: Silverquill Influence, part four (2026-11-25)
 
 - Angelic Destiny, Sage's Reverie, Chains of Custody, Sheltered by Ghosts, Flickering Ward (protection from the chosen color), Darksteel Mutation (type-setting), Land Tax, Keen Duelist, Shielded by Faith and Pearl-Ear. 20 Silverquill cards left. docs/strixhaven.md.

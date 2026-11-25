@@ -388,6 +388,20 @@ export function modeProblem(def: CardDefinition, choice: SpellChoice, s?: GameSt
 }
 
 /** Why a player can't use a card's alternative cost right now, or null if they can. */
+/**
+ * Rule 303.4f: an Aura put onto the battlefield without being cast — its controller-to-be chooses
+ * what it enchants (not targeted). The permanents it could legally enchant; none means it stays where it is.
+ */
+export function auraHosts(s: GameState, auraId: InstanceId, controller: PlayerId): InstanceId[] {
+  const aura = s.cards[auraId]!;
+  const as = { ...aura, controller };
+  return battlefield(s).filter((h) => !h.phasedOut && canAttach(s, as, h)).map((h) => h.id);
+}
+
+function isAuraCard(s: GameState, id: InstanceId): boolean {
+  return !!defOf(s, s.cards[id]!).subtypes?.includes('Aura');
+}
+
 /** War Room: the number of colors in the color identity of the commanders this player owns. */
 export function commanderColorCount(s: GameState, playerId: PlayerId): number {
   const colors = new Set<string>();
@@ -2257,7 +2271,7 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
         : [];
     case 'ThisCardFromBattlefield': {
       const c = item.kind === 'ability' ? s.cards[item.source] : undefined;
-      return item.kind === 'ability' && c?.zone === 'graveyard' && (item.sourceObject === undefined || (c.zoneChanges ?? 0) === item.sourceObject + (item.sourceZone === 'graveyard' ? 0 : 1))
+      return item.kind === 'ability' && c?.zone === 'graveyard' && (item.sourceObject === undefined || [item.sourceObject, item.sourceObject + 1].includes(c.zoneChanges ?? 0))
         ? [{ kind: 'card', card: item.source }]
         : [];
     }
@@ -3279,6 +3293,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
       }
       const rest = revealed.filter((id) => !found.includes(id));
+      // Songbirds' Blessing: "You may put that card onto the battlefield. If you don't, put it into your hand."
+      if (effect.mayBattlefieldElseHand) {
+        if (found.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'battlefieldElseHand', cards: found, min: 0, max: found.length, restToBottom: rest }];
+        else { for (const id of rest) library.splice(library.indexOf(id), 1); shuffleInPlace(s, rest); library.push(...rest); }
+        return;
+      }
       for (const id of found) {
         r.revealedManaValue = manaValue(parseManaCost(defOf(s, s.cards[id]!).manaCost));
         if (effect.fromMovedPermanentController || effect.toBattlefield) {
@@ -3449,6 +3469,25 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         return canEverCast(d) && !d.types.includes('land') && objectManaValue(s, s.cards[id]!) <= amount;
       });
       if (cards.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castFree', cards, min: 0, max: 1 }];
+      return;
+    }
+    case 'ExileTopCastOneFree': {
+      const top = topOfLibrary(s, item.controller, amount);
+      for (const id of top) moveCard(ctx, id, 'exile');
+      const exiled = top.filter((id) => s.cards[id]!.zone === 'exile');
+      const castable = exiled.filter((id) => { const d = defOf(s, s.cards[id]!); return canEverCast(d) && !d.types.includes('land') && matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller }); });
+      if (castable.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'castFree', cards: castable, min: 0, max: 1, restToBottom: exiled }];
+      else {
+        shuffleInPlace(s, exiled);
+        for (const id of exiled) { moveCard(ctx, id, 'library'); const lib = player(s, s.cards[id]!.owner).library; lib.splice(lib.indexOf(id), 1); lib.push(id); }
+      }
+      return;
+    }
+    case 'AttachSubjectToCreatedToken': {
+      // Ajani's Chosen: "If that enchantment is an Aura, you may attach it to the token."
+      const aura = item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+      const token = r.createdTokens.at(-1);
+      if (aura?.zone === 'battlefield' && token && isAuraCard(s, aura.id) && canAttach(s, aura, s.cards[token])) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'attachToTarget', cards: [aura.id], min: 0, max: 1, attachHost: token }];
       return;
     }
     case 'RemoveLoreFromSagas': {
@@ -4100,7 +4139,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const attacking = effect.lookAttacking && defender && s.combat ? { lookAttacking: true, attackDefender: defender } : {};
       // Atraxa: one card for each card type.
       const max = effect.anyNumber ? matching.length : effect.onePerType ? Math.min(effect.onePerType.length, matching.length) : Math.min(effect.takeIfGainedLife && s.players[item.controller]!.lifeGainedThisTurn ? effect.takeIfGainedLife : 1, matching.length);
-      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max, ...(effect.maxTotalManaValue !== undefined ? { maxTotalManaValue: effect.maxTotalManaValue } : {}), looked: top, ...(effect.onePerType ? { onePerType: effect.onePerType } : {}), ...(effect.lookEntersTapped || effect.lookAttacking ? { lookTapped: true } : {}), ...attacking, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
+      r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'lookTop', cards: matching, min: 0, max, ...(effect.maxTotalManaValue !== undefined ? { maxTotalManaValue: effect.maxTotalManaValue } : {}), looked: top, ...(effect.onePerType ? { onePerType: effect.onePerType } : {}), ...(effect.lookEntersTapped || effect.lookAttacking ? { lookTapped: true } : {}), ...attacking, lookTo: effect.lookTo ?? 'hand', ...(effect.attachOneToThis ? { attachOneToSource: true } : {}), ...(effect.attachEquipmentToYourCreature ? { attachEquipment: true } : {}), ...(effect.restStayOnTop ? { restOnTop: true } : {}), ...(effect.restToGraveyard ? { restToGraveyard: true } : {}) }];
       return;
     }
     case 'DestroyAttachedEquipment': {
@@ -4114,6 +4153,8 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const spec = structuredClone(effect.trigger!);
       // "Put that many counters": the number is fixed as the reflexive trigger is created.
       for (const e of spec.effects) if (typeof e.amount === 'object' && 'of' in e.amount && e.amount.of === 'nonlandExiledThisWay') e.amount = r.nonlandExiledThisWay ?? 0;
+      // Forum Filibuster: "attached to that token".
+      for (const e of spec.effects) if (e.attachToCreatedToken) { const token = r.createdTokens.at(-1); if (!token) return; e.attachToCard = token; }
       s.triggerQueue.push({source,ability:-1,controller:item.controller,sourceZone:item.kind==='ability'?item.sourceZone:'stack',sourceObject:item.kind==='ability'?item.sourceObject:c.zoneChanges,spec});
       return;
     }
@@ -4705,10 +4746,15 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (c.zone !== 'graveyard' && !(c.zone === 'exile' && (effect.target === 'TargetCardExiledWithSource' || (effect.target === 'PreviousTarget' && r.exiledCards?.includes(id))))) continue;
         const linked = effect.attachToReturnedTarget === undefined ? undefined : item.targets[effect.attachToReturnedTarget];
         const candidate = linked?.kind === 'card' ? s.cards[linked.card] : undefined;
-        const host = candidate && r.returnedObjects?.[candidate.id] === (candidate.zoneChanges ?? 0) ? candidate : undefined;
-        const attaching = effect.attachToReturnedTarget !== undefined;
+        const subjectHost = effect.attachToSubject && item.kind === 'ability' && item.subject ? s.cards[item.subject] : undefined;
+        const tokenHost = effect.attachToCard ? s.cards[effect.attachToCard] : undefined;
+        const host = subjectHost?.zone === 'battlefield' ? subjectHost : tokenHost?.zone === 'battlefield' ? tokenHost : candidate && r.returnedObjects?.[candidate.id] === (candidate.zoneChanges ?? 0) ? candidate : undefined;
+        const attaching = effect.attachToReturnedTarget !== undefined || !!effect.attachToSubject || !!effect.attachToCard || !!effect.attachToCreatedToken;
         // Illegal Auras stay in the graveyard; Equipment still enters unattached.
-        if (attaching && defOf(s, c).subtypes?.includes('Aura') && !canAttach(s, c, host)) continue;
+        if (attaching && defOf(s, c).subtypes?.includes('Aura') && !canAttach(s, { ...c, controller: effect.underYourControl ? item.controller : c.controller }, host)) continue;
+        // Any other Aura chooses what it enchants as it enters; with nothing legal it stays put (rule 303.4f).
+        const hosts = !attaching && isAuraCard(s, id) ? auraHosts(s, id, effect.underYourControl ? item.controller : c.owner) : undefined;
+        if (hosts && hosts.length === 0) continue;
         const defenders = effect.attacking && s.combat ? alivePlayers(s).filter((p) => p !== item.controller) : [];
         if (defenders.length > 1 && !r.attackingDefender) {
           s.pending = { kind: 'chooseDefender', player: item.controller, card: id, defenders };
@@ -4720,6 +4766,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         r.returnedObjects[id] = c.zoneChanges ?? 0;
         if (effect.underYourControl) c.controller = item.controller;
         if (attaching && host && canAttach(s, c, host)) attach(ctx, id, host.id);
+        if (hosts) r.choiceQueue = [{ player: c.controller, purpose: 'auraHost', cards: hosts, min: 1, max: 1, attachCard: id }, ...(r.choiceQueue ?? [])];
         c.summoningSick = true;
         if ((effect.entersTapped && !landEntersUntapped(s, c)) || entersTapped(s, c)) c.tapped = true;
         if (effect.losesAbilities) c.lostAbilities = true;
@@ -5485,9 +5532,19 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   } else if (pending.purpose === 'lookTop') {
     const library = player(s, pending.player).library;
+    const attachChoices: CardChoice[] = [];
     for (const id of cards) {
       if (!library.includes(id)) continue;
+      // An Aura with nothing to enchant stays in the library (rule 303.4f), and goes to the bottom with the rest.
+      const hosts = pending.lookTo === 'battlefield' && isAuraCard(s, id) ? auraHosts(s, id, pending.player) : undefined;
+      if (hosts && hosts.length === 0) continue;
       moveCard(ctx, id, pending.lookTo === 'battlefield' ? 'battlefield' : 'hand');
+      if (hosts) attachChoices.push({ player: pending.player, purpose: 'auraHost', cards: hosts, min: 1, max: 1, attachCard: id });
+      // Armored Skyhunter: "If an Equipment is put onto the battlefield this way, you may attach it to a creature you control."
+      if (pending.attachEquipment && s.cards[id]!.zone === 'battlefield' && isEquipment(s, s.cards[id]!)) {
+        const yours = battlefield(s).filter((x) => x.controller === pending.player && isCreatureOnBattlefield(s, x)).map((x) => x.id);
+        if (yours.length) attachChoices.push({ player: pending.player, purpose: 'auraHost', cards: yours, min: 0, max: 1, attachCard: id });
+      }
       if (pending.lookTo === 'battlefield') {
         const c = s.cards[id]!;
         c.controller = pending.player;
@@ -5506,14 +5563,37 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
       }
     }
     // The rest go on the bottom of the library in a random order (or stay on top, or go into the graveyard).
-    if (pending.restToGraveyard) for (const id of pending.looked ?? pending.cards) if (!cards.includes(id) && library.includes(id)) moveCard(ctx, id, 'graveyard');
-    const rest = pending.restOnTop ? [] : (pending.looked ?? pending.cards).filter((id) => !cards.includes(id) && library.includes(id));
+    if (pending.restToGraveyard) for (const id of pending.looked ?? pending.cards) if (library.includes(id)) moveCard(ctx, id, 'graveyard');
+    const rest = pending.restOnTop ? [] : (pending.looked ?? pending.cards).filter((id) => library.includes(id));
+    if (attachChoices.length) r.choiceQueue = [...attachChoices, ...(r.choiceQueue ?? [])];
     for (const id of rest) library.splice(library.indexOf(id), 1);
     shuffleInPlace(s, rest);
     library.push(...rest);
     // Gilgamesh: "you may attach one of them to a Samurai you control" (to Gilgamesh himself here).
     const put = cards.filter((id) => s.cards[id]!.zone === 'battlefield' && isEquipment(s, s.cards[id]!));
     if (pending.attachOneToSource && put.length) r.choiceQueue = [{ player: pending.player, purpose: 'attachToSource', cards: put, min: 0, max: 1 }, ...(r.choiceQueue ?? [])];
+  } else if (pending.purpose === 'auraHost') {
+    // Rule 303.4f: the Aura (or Skyhunter's Equipment) is attached to the chosen permanent.
+    const it = pending.attachCard ? s.cards[pending.attachCard] : undefined;
+    for (const id of cards) if (it?.zone === 'battlefield') attach(ctx, it.id, id);
+  } else if (pending.purpose === 'battlefieldElseHand') {
+    // Songbirds' Blessing: the chosen card onto the battlefield (an Aura chooses what it enchants); otherwise into your hand.
+    for (const id of pending.cards) {
+      const c = s.cards[id]!;
+      if (c.zone !== 'library') continue;
+      const hosts = cards.includes(id) && isAuraCard(s, id) ? auraHosts(s, id, pending.player) : undefined;
+      if (!cards.includes(id) || (hosts && hosts.length === 0)) { moveCard(ctx, id, 'hand'); continue; }
+      moveCard(ctx, id, 'battlefield');
+      c.controller = pending.player;
+      if (entersTapped(s, c)) c.tapped = true;
+      if (hosts) r.choiceQueue = [{ player: pending.player, purpose: 'auraHost', cards: hosts, min: 1, max: 1, attachCard: id }, ...(r.choiceQueue ?? [])];
+    }
+    const rest = pending.restToBottom ?? [];
+    const library = player(s, pending.player).library;
+    const still = rest.filter((id) => library.includes(id));
+    for (const id of still) library.splice(library.indexOf(id), 1);
+    shuffleInPlace(s, still);
+    library.push(...still);
   } else if (pending.purpose === 'attachToSource') {
     const source = sourceOf(r.item);
     const host = s.cards[source]!;
@@ -5692,6 +5772,12 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     }
   } else if (pending.purpose === 'castFree') {
     for (const id of cards) s.cards[id]!.castPermission = { player: pending.player, turn: s.turnNumber, free: true, ignoreTiming: true, ...(s.cards[id]!.zone === 'hand' ? { fromHand: true } : {}), immediate: true };
+    // Herald of Amity: "Then put the rest on the bottom of your library in a random order."
+    if (pending.restToBottom) {
+      const rest = pending.restToBottom.filter((id) => !cards.includes(id) && s.cards[id]!.zone === 'exile');
+      shuffleInPlace(s, rest);
+      for (const id of rest) { moveCard(ctx, id, 'library'); const lib = player(s, s.cards[id]!.owner).library; lib.splice(lib.indexOf(id), 1); lib.push(id); }
+    }
   } else if (pending.purpose === 'removeLore') {
     let removed = 0;
     for (const id of cards) {

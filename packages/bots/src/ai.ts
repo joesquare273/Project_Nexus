@@ -614,6 +614,18 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'bounce') return p.min === 0 ? pick([]) : pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
   if (p.purpose === 'counter' || p.purpose === 'attachSource') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   if (p.purpose === 'link') return pick([...p.cards].sort((a, b) => value(s, s.cards[a]!) - value(s, s.cards[b]!)).slice(0, 1));
+  // An Aura entering without being cast: a harmful one on the opponents' best creature, a helpful one (or Equipment) on ours.
+  if (p.purpose === 'auraHost') {
+    if (p.min === 0 && !p.cards.length) return pick([]);
+    const it = p.attachCard ? s.cards[p.attachCard] : undefined;
+    const statics = it ? def(s, it).statics ?? [] : [];
+    const harmful = statics.some((st) => (typeof st.power === 'number' && st.power < 0) || st.goaded || st.doesntUntap || st.losesAllAbilities || st.cantAttackOrBlock);
+    const mine = (id: string) => s.cards[id]!.controller === me;
+    const pool = p.cards.filter((id) => (harmful ? !mine(id) : mine(id)));
+    return pick([...(pool.length ? pool : p.cards)].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
+  }
+  // Songbirds' Blessing: onto the battlefield.
+  if (p.purpose === 'battlefieldElseHand') return pick([...p.cards]);
   // Unexpected Request: lend the borrowed creature our best Equipment.
   if (p.purpose === 'attachToTarget') return pick([...p.cards].sort((a, b) => value(s, s.cards[b]!) - value(s, s.cards[a]!)).slice(0, 1));
   // Esper Terra: as many lore counters as allowed (each one is another chapter).

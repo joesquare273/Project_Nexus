@@ -2140,3 +2140,107 @@ describe('SOC4d: Silverquill Influence (Auras and upkeep enchantments)', () => {
     expect(s.cards[shield]!.attachedTo).toBe(next);
   });
 });
+
+describe('SOC4e: Silverquill Influence (Auras entering without being cast)', () => {
+  const onAura = (s: GameState, who: 'P1' | 'P2', defId: string, on: string) => put(s, who, defId, 'battlefield', { attachedTo: on });
+  /** Answers card choices by purpose (the first card otherwise) and settles everything else. */
+  const resolveAll = (s: GameState, answers: Record<string, string[]> = {}, opts: Parameters<typeof settle>[1] = {}): GameState => {
+    for (let guard = 0; guard < 50; guard++) {
+      s = settle(s, opts).state;
+      const p = s.pending;
+      if (p.kind !== 'chooseCards') return s;
+      const pick = answers[p.purpose]?.filter((id) => p.cards.includes(id)) ?? p.cards.slice(0, Math.max(p.min, 1));
+      s = act(s, { type: 'ChooseCards', player: p.player, cards: pick.slice(0, p.max) });
+    }
+    return s;
+  };
+  const dies = (s: GameState, id: string) => { s.cards[id]!.damage = 99; return act(s, { type: 'PassPriority', player: s.pending.kind === 'priority' ? s.pending.player : 'P1' }); };
+
+  it('Screams from Within: when its creature dies it returns and enchants another creature, chosen as it enters', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const foe = put(s, 'P2', 'killian-ink-duelist');
+    const screams = onAura(s, 'P1', 'screams-from-within', rat);
+    s = resolveAll(act(s, { type: 'PassPriority', player: 'P1' }), { auraHost: [foe] });
+    expect([s.cards[rat]!.zone, s.cards[screams]!.zone, s.cards[screams]!.attachedTo, powerOf(s, s.cards[foe]!)]).toEqual(['graveyard', 'battlefield', foe, 1]);
+  });
+
+  it('Screams from Within stays in the graveyard when there is nothing to enchant', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const screams = onAura(s, 'P1', 'screams-from-within', rat);
+    s = resolveAll(act(s, { type: 'PassPriority', player: 'P1' }));
+    expect(s.cards[screams]!.zone).toBe('graveyard');
+  });
+
+  it('Ghoulish Impetus returns at the next end step; Gift of Immortality returns the creature, then itself attached to it', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const foe = put(s, 'P2', 'killian-ink-duelist');
+    const ghoul = onAura(s, 'P1', 'ghoulish-impetus', rat);
+    const other = put(s, 'P1', 'rank-rat');
+    const gift = onAura(s, 'P1', 'gift-of-immortality', other);
+    s = resolveAll(dies(s, rat));
+    s.cards[other]!.damage = 99;
+    s = resolveAll(act(s, { type: 'PassPriority', player: s.pending.kind === 'priority' ? s.pending.player : 'P1' }));
+    expect([s.cards[ghoul]!.zone, s.cards[other]!.zone, s.cards[gift]!.zone]).toEqual(['graveyard', 'battlefield', 'graveyard']);
+    s = goTo(s, 'end');
+    s = resolveAll(s, { auraHost: [foe] });
+    expect([s.cards[ghoul]!.attachedTo, s.cards[gift]!.attachedTo]).toEqual([foe, other]);
+  });
+
+  it('Ajani\'s Chosen makes a Cat when an enchantment enters, and may move the Aura onto it', () => {
+    let s = newGame();
+    put(s, 'P1', 'ajanis-chosen');
+    const rat = put(s, 'P1', 'rank-rat');
+    const mantle = put(s, 'P1', 'spirit-mantle', 'hand');
+    mana(s, 'P1', { W: 1, C: 1 });
+    s = resolveAll(cast(s, { type: 'CastSpell', player: 'P1', card: mantle, targets: [card(rat)] }).state, { attachToTarget: [mantle] });
+    const cat = Object.values(s.cards).find((c) => c.defId === 'cat-token-soc');
+    expect(cat && s.cards[mantle]!.attachedTo).toBe(cat!.id);
+  });
+
+  it('Forum Filibuster: an Inkling each upkeep, and a returned Aura attached to it', () => {
+    let s = newGame();
+    put(s, 'P2', 'forum-filibuster');
+    const mantle = put(s, 'P2', 'spirit-mantle', 'graveyard');
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep', { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === mantle) ?? o[0]! });
+    s = resolveAll(s, {}, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === mantle) ?? o[0]! });
+    const ink = Object.values(s.cards).find((c) => c.defId === 'inkling-token-soc' && c.zone === 'battlefield');
+    expect([ink?.controller, s.cards[mantle]!.attachedTo]).toEqual(['P2', ink?.id]);
+  });
+
+  it('Armored Skyhunter puts an Aura from the top six onto the battlefield; Songbirds\' Blessing finds one when its creature attacks', () => {
+    let s = newGame();
+    const hunter = put(s, 'P1', 'armored-skyhunter');
+    const mantle = put(s, 'P1', 'spirit-mantle', 'library');
+    s = goTo(s, 'declareAttackers');
+    s = resolveAll(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: hunter, defender: 'P2' }] }), { lookTop: [mantle], auraHost: [hunter] });
+    expect(s.cards[mantle]!.attachedTo).toBe(hunter);
+    let t = newGame();
+    const rat = put(t, 'P1', 'rank-rat');
+    onAura(t, 'P1', 'songbirds-blessing', rat);
+    const found = put(t, 'P1', 'spirit-mantle', 'library');
+    t = goTo(t, 'declareAttackers');
+    t = resolveAll(act(t, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: rat, defender: 'P2' }] }), { battlefieldElseHand: [found], auraHost: [rat] });
+    expect(t.cards[found]!.attachedTo).toBe(rat);
+  });
+
+  it('Herald of Amity: casts an Aura from the top eight for free, the rest go to the bottom; it gets +X/+X attacking', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const mantle = put(s, 'P1', 'spirit-mantle', 'library');
+    const herald = put(s, 'P1', 'herald-of-amity', 'hand');
+    mana(s, 'P1', { W: 1, C: 3 });
+    s = resolveAll(cast(s, { type: 'CastSpell', player: 'P1', card: herald }).state, { castFree: [mantle] });
+    expect(s.cards[mantle]!.castPermission?.free).toBe(true);
+    expect(Object.values(s.cards).filter((c) => c.owner === 'P1' && c.zone === 'exile').length).toBe(1);
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: mantle, targets: [card(rat)] }).state;
+    expect(s.cards[mantle]!.attachedTo).toBe(rat);
+    s = goTo(s, 'declareAttackers');
+    s.cards[herald]!.summoningSick = false;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: herald, defender: 'P2' }] })).state;
+    expect(powerOf(s, s.cards[herald]!)).toBe(2 + 1); // a 2/2, +1/+1 for one Aura
+  });
+});
