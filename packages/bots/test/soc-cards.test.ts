@@ -1499,3 +1499,87 @@ describe('SOC3b: Quandrix Unlimited (first {X} spell each turn, Fractals)', () =
     expect([s.activePlayer, s.cards[prodigy]!.counters, s.players.P1!.hand.length - before]).toEqual(['P1', 1, 1]);
   });
 });
+
+describe('SOC3c: Quandrix Unlimited (lands, mana and odd/even)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Animist\'s Awakening puts the lands among the top X onto the battlefield tapped, untapped with spell mastery; Open the Way\'s X is at most the players', () => {
+    let s = newGame();
+    s.players.P1!.library = [];
+    const ids = [put(s, 'P1', 'rank-rat', 'library'), put(s, 'P1', 'forest', 'library'), put(s, 'P1', 'island', 'library')];
+    for (let i = 0; i < 2; i++) put(s, 'P1', 'abrade', 'graveyard');
+    const aw = put(s, 'P1', 'animists-awakening', 'hand');
+    mana(s, 'P1', { G: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: aw, x: 3 }).state;
+    expect([s.cards[ids[1]!]!.zone, s.cards[ids[1]!]!.tapped, s.cards[ids[2]!]!.zone, s.players.P1!.library]).toEqual(['battlefield', false, 'battlefield', [ids[0]]]);
+    const way = put(s, 'P1', 'open-the-way', 'hand');
+    mana(s, 'P1', { G: 2, C: 5 });
+    expect(Math.max(...getLegalActions(s).filter((a) => a.type === 'CastSpell' && a.card === way).map((a) => (a.type === 'CastSpell' ? a.x ?? 0 : 0)))).toBe(2);
+  });
+
+  it('Mana Bloom: X charge counters, one mana per turn, back to hand when empty', () => {
+    let s = newGame();
+    const bloom = put(s, 'P1', 'mana-bloom', 'hand');
+    mana(s, 'P1', { G: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: bloom, x: 1 }).state;
+    expect(s.cards[bloom]!.namedCounters?.charge).toBe(1);
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: bloom, mana: 'R' });
+    expect(s.players.P1!.manaPool.R).toBe(1);
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state;
+    s = settle(goTo(s, 'end')).state;
+    s = settle(goTo(s, 'upkeep')).state;
+    expect([s.activePlayer, s.cards[bloom]!.zone]).toEqual(['P1', 'hand']);
+  });
+
+  it('Troyan\'s mana pays only for big or {X} spells; Alchemist\'s Refuge lets you cast sorceries at instant speed', () => {
+    let s = newGame();
+    const troyan = put(s, 'P1', 'troyan-gutsy-explorer');
+    s.cards[troyan]!.summoningSick = false;
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === troyan && a.ability === 0)!);
+    s = settle(s).state;
+    expect(s.players.P1!.restrictedMana?.bigOrXSpell?.G).toBe(1);
+    const small = put(s, 'P1', 'rank-rat', 'hand');
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === small)).toBe(false);
+    const stroke = put(s, 'P1', 'stroke-of-genius', 'hand');
+    mana(s, 'P1', { C: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === stroke && a.x === 0)).toBe(true);
+    const refuge = put(s, 'P1', 'alchemists-refuge');
+    s.players.P1!.restrictedMana = undefined;
+    s.players.P1!.manaPool = { W: 0, U: 1, B: 0, R: 0, G: 1, C: 0 };
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === refuge)!).state;
+    s = settle(goTo(s, 'end')).state;
+    const sorcery = put(s, 'P1', 'mana-geyser', 'hand');
+    mana(s, 'P1', { R: 2, C: 3 });
+    expect(getLegalActions({ ...s, pending: { kind: 'priority', player: 'P1', passes: 0 } } as GameState).some((a) => a.type === 'CastSpell' && a.card === sorcery)).toBe(true);
+  });
+
+  it('Zimone\'s Hypothesis: a +1/+1 counter, then creatures with power of the chosen parity return to hand', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat'); // 1
+    const theirs = put(s, 'P2', 'hungry-graffalon'); // 3
+    const even = put(s, 'P2', 'rank-rat');
+    const hyp = put(s, 'P1', 'zimones-hypothesis', 'hand');
+    mana(s, 'P1', { U: 2, C: 3 });
+    s = settle(act(s, { type: 'CastSpell', player: 'P1', card: hyp })).state;
+    s = act(s, { type: 'ChooseCards', player: 'P1', cards: [even] }); // their rat becomes 2/2
+    s = settle(act(s, { type: 'ChooseOption', player: 'P1', option: 'Odd' })).state;
+    expect([s.cards[rat]!.zone, s.cards[theirs]!.zone, s.cards[even]!.zone]).toEqual(['hand', 'hand', 'battlefield']);
+  });
+
+  it('Guardian Augmenter: commander creatures get +2/+2 and hexproof; Zimone, Quandrix Prodigy draws two with eight lands', () => {
+    let s = newGame();
+    put(s, 'P1', 'guardian-augmenter');
+    const cmdr = put(s, 'P1', 'rank-rat');
+    s.cards[cmdr]!.isCommander = true;
+    expect([powerOf(s, s.cards[cmdr]!), hasKeyword(s, s.cards[cmdr]!, 'Hexproof')]).toEqual([3, true]);
+    const zimone = put(s, 'P1', 'zimone-quandrix-prodigy');
+    s.cards[zimone]!.summoningSick = false;
+    for (let i = 0; i < 8; i++) put(s, 'P1', 'forest');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { C: 4 });
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === zimone && a.ability === 1)!).state;
+    expect(s.players.P1!.hand.length - hand).toBe(2);
+    void onField;
+  });
+});

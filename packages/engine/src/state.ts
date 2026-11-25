@@ -877,7 +877,7 @@ export function attach(ctx: Ctx, equipment: InstanceId, creature: InstanceId): v
 /** Adds one mana; `restricted` mana goes to its own pool and can only pay for what it says. */
 export function addMana(ctx: Ctx, playerId: PlayerId, mana: ManaType, source: InstanceId, restricted?: 'equipment' | 'noncreatureSpell' | 'artifact' | ManaRestriction): void {
   const p = player(ctx.s, playerId);
-  if (restricted === 'artifactSpell' || restricted === 'artifactAbility' || restricted === 'notFromHand' || restricted === 'planeswalkerSpell' || restricted === 'instantOrSorcerySpell') ((p.restrictedMana ??= {})[restricted] ??= emptyManaPool())[mana] += 1;
+  if (restricted === 'artifactSpell' || restricted === 'artifactAbility' || restricted === 'notFromHand' || restricted === 'planeswalkerSpell' || restricted === 'instantOrSorcerySpell' || restricted === 'bigOrXSpell') ((p.restrictedMana ??= {})[restricted] ??= emptyManaPool())[mana] += 1;
   else if (restricted === 'equipment') p.equipmentMana[mana] += 1;
   else if (restricted === 'artifact') (p.artifactMana ??= emptyManaPool())[mana] += 1;
   else if (restricted === 'noncreatureSpell') p.noncreatureSpellMana[mana] += 1;

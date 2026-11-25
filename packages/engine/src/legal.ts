@@ -394,7 +394,8 @@ function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alterna
   if (!cost.x) return [undefined];
   const available = availableMana(s, playerId, c);
   const base = cost.generic + MANA_TYPES.reduce((n, t) => n + (cost[t] ?? 0), 0);
-  const most = Math.min(MAX_X, Math.floor((available - base) / cost.x));
+  // Open the Way: "X can't be greater than the number of players in the game."
+  const most = Math.min(MAX_X, def.maxXIsPlayers ? s.turnOrder.length : MAX_X, Math.floor((available - base) / cost.x));
   return Array.from({ length: Math.max(0, most) + 1 }, (_, i) => i);
 }
 

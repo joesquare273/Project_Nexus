@@ -419,6 +419,14 @@ function effectText(e: EffectSpec): string {
       return `exile the top card of your library as many times as you choose; if their total mana value is ${amountText(e.amount)} or less, you may cast any number of spells from among them without paying their mana costs`;
     case 'CastCopyOfTriggeringCardFree':
       return 'copy the exiled card; you may cast the copy without paying its mana cost';
+    case 'CastAsThoughFlashThisTurn':
+      return 'you may cast spells this turn as though they had flash';
+    case 'RevealTopLandsToBattlefield':
+      return `reveal the top ${amountText(e.amount)} cards of your library; put all land cards from among them onto the battlefield tapped and the rest on the bottom in a random order`;
+    case 'UntapLandsPutThisWay':
+      return 'untap those lands';
+    case 'ReturnCreaturesOfChosenParity':
+      return "choose odd or even; return each creature with power of the chosen quality to its owner's hand";
     case 'OtherTokensBecomeCopy':
       return 'you may choose a token you control; each other token you control becomes a copy of it';
     case 'LookTopHandBottomExile':

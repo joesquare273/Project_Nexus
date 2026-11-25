@@ -110,6 +110,8 @@ export function castsAtInstantSpeed(s: GameState, playerId: PlayerId, c: CardIns
   const statics = battlefield(s).filter((p) => !p.phasedOut).flatMap((p) => (defOf(s, p).statics ?? []).map((st) => ({ st, controller: p.controller })));
   if (statics.some(({ st, controller }) => st.opponentsCastAtSorcerySpeed && controller !== playerId)) return false;
   if (hasInstantTiming(def)) return true;
+  // Alchemist's Refuge: "You may cast spells this turn as though they had flash."
+  if (s.players[playerId]?.flashTurn === s.turnNumber) return true;
   return def.types.includes('creature') && c.owner === playerId && c.zone !== 'battlefield' && statics.some(({ st, controller }) => st.ownCreatureCardsHaveFlash && controller === playerId);
 }
 
@@ -753,7 +755,9 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 /** Whether the pool can pay a cost (counting restricted mana that's allowed to pay for it). */
 /** The restricted mana that can pay for a spell: artifact-spell mana, and mana for spells cast from anywhere other than your hand. */
 export function spellManaRestrictions(def: CardDefinition, from: string): ManaRestriction[] {
-  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(def.types.includes('instant') || def.types.includes('sorcery') ? ['instantOrSorcerySpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : [])];
+  return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(def.types.includes('instant') || def.types.includes('sorcery') ? ['instantOrSorcerySpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : []),
+    // Troyan: "spells with mana value 5 or greater or spells with {X} in their mana costs".
+    ...(manaValue(parseManaCost(def.manaCost)) >= 5 || (parseManaCost(def.manaCost).x ?? 0) > 0 ? ['bigOrXSpell' as const] : [])];
 }
 
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
@@ -828,7 +832,10 @@ export function activateManaAbility(
   const ability = def.manaAbility;
   // "Remove a charge counter from this: Add one mana of any color": no tapping, so being tapped or summoning sick doesn't matter.
   if (ability?.removeCounter) {
+    // Mana Bloom: "Activate only once each turn."
+    if (ability.oncePerTurn && c.manaAbilityTurn === s.turnNumber) reject('That mana ability can be activated only once each turn.');
     if (removeCounters(ctx, id, ability.removeCounter, 1) === 0) reject('There is no counter to remove.');
+    if (ability.oncePerTurn) c.manaAbilityTurn = s.turnNumber;
     addMana(ctx, playerId, mana, id);
     kinnanBonus(ctx, playerId, c, mana);
     return;
@@ -1397,6 +1404,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
+  if (def.maxXIsPlayers && (choice.x ?? 0) > s.turnOrder.length) reject("X can't be greater than the number of players in the game.");
   checkTargets(s, spellEffects(def, choice, targets.length), targets, playerId, id, choice.x !== undefined ? { x: choice.x } : {});
   const costCards = choice.costCards ?? [];
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
@@ -4440,6 +4448,31 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, asCopy: true };
       return;
     }
+    case 'CastAsThoughFlashThisTurn':
+      for (const pid of targetPlayers(targets).length ? targetPlayers(targets) : [item.controller]) player(s, pid).flashTurn = s.turnNumber;
+      return;
+    case 'RevealTopLandsToBattlefield': {
+      const library = player(s, item.controller).library;
+      const revealed = topOfLibrary(s, item.controller, amount);
+      for (const id of revealed) ctx.ev.push({ type: 'CardRevealed', player: item.controller, card: id, defId: s.cards[id]!.defId });
+      const lands = revealed.filter((id) => hasType(s, s.cards[id]!, 'land'));
+      for (const id of lands) {
+        moveCard(ctx, id, 'battlefield');
+        if (s.cards[id]?.zone === 'battlefield') s.cards[id]!.tapped = true;
+      }
+      r.landsPutThisWay = lands.filter((id) => s.cards[id]?.zone === 'battlefield');
+      const rest = revealed.filter((id) => !lands.includes(id) && s.cards[id]?.zone === 'library');
+      for (const id of rest) library.splice(library.indexOf(id), 1);
+      shuffleInPlace(s, rest);
+      library.push(...rest);
+      return;
+    }
+    case 'UntapLandsPutThisWay':
+      for (const id of r.landsPutThisWay ?? []) if (s.cards[id]?.zone === 'battlefield') untap(ctx, s.cards[id]!);
+      return;
+    case 'ReturnCreaturesOfChosenParity':
+      s.pending = { kind: 'chooseOption', player: item.controller, card: source, options: ['Odd', 'Even'], resume: { kind: 'priority', player: item.controller, passes: 0 }, forResolution: 'parity' };
+      return;
     case 'OtherTokensBecomeCopy': {
       const tokens = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && c.isToken).map((c) => c.id);
       if (tokens.length > 1) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'tokenModel', cards: tokens, min: 0, max: 1 }];
@@ -5983,6 +6016,15 @@ export function chooseResolutionOption(ctx: Ctx, playerId: PlayerId, option: str
       s.pending = { ...pending, player: next };
       return;
     }
+    s.pending = pending.resume;
+    continueResolving(ctx);
+    return;
+  }
+  if (pending.forResolution === 'parity') {
+    // Zimone's Hypothesis: "Return each creature with power of the chosen quality to its owner's hand. (Zero is even.)"
+    ctx.ev.push({ type: 'OptionChosen', player: playerId, card: pending.card, option });
+    const odd = option === 'Odd';
+    for (const c of battlefield(s).filter((x) => !x.phasedOut && isCreatureOnBattlefield(s, x) && (Math.abs(powerOf(s, x)) % 2 === 1) === odd)) moveCard(ctx, c.id, 'hand');
     s.pending = pending.resume;
     continueResolving(ctx);
     return;

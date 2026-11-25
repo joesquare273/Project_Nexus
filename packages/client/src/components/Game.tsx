@@ -1657,6 +1657,8 @@ function PromptBar(p: PromptProps) {
       ? `${cardName(s, pending.card)}: choose a creature type.`
       : pending.forResolution === 'keyword'
       ? `${cardName(s, pending.card)}: choose the ability it gains.`
+      : pending.forResolution === 'parity'
+      ? `${cardName(s, pending.card)}: choose odd or even. Each creature with power of that quality returns to its owner's hand (zero is even).`
       : pending.forResolution === 'pile'
       ? `${cardName(s, pending.card)}: choose the pile that goes into its caster’s graveyard. They may cast a spell from the other pile free and keep the rest.`
       : pending.forResolution === 'exileMore'

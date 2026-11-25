@@ -43,7 +43,7 @@ export interface Animation {
 export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][]; /** Monocolored hybrid ({2/W}): each is paid with that color or with two generic mana (rule 107.4e); mana value 2. */ monoHybrid?: ManaType[] } & Partial<Record<ManaType, number>>;
 
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
-export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell' | 'instantOrSorcerySpell';
+export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell' | 'instantOrSorcerySpell' | 'bigOrXSpell';
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -637,6 +637,14 @@ export const EFFECT_KINDS = [
   'ExileTopAsManyAsYouChoose',
   /** Surge to Victory: copy the triggering card (in exile); you may cast the copy without paying its mana cost. */
   'CastCopyOfTriggeringCardFree',
+  /** Alchemist's Refuge: "You may cast spells this turn as though they had flash." */
+  'CastAsThoughFlashThisTurn',
+  /** Animist's Awakening: reveal the top `amount` cards; the lands go onto the battlefield tapped, the rest on the bottom in a random order. */
+  'RevealTopLandsToBattlefield',
+  /** Spell mastery: untap the lands put onto the battlefield earlier in this spell. */
+  'UntapLandsPutThisWay',
+  /** Zimone's Hypothesis: choose odd or even; return each creature with power of that quality to its owner's hand. */
+  'ReturnCreaturesOfChosenParity',
   /** Brudiclad: "you may choose a token you control. If you do, each other token you control becomes a copy of that token." */
   'OtherTokensBecomeCopy',
   /** Expressive Iteration: look at the top three cards; one into your hand, one on the bottom, and exile the last, which you may play this turn. */
@@ -2366,6 +2374,8 @@ export interface CardDefinition {
      * summoning sick, once per counter.
      */
     removeCounter?: AnyCounter;
+    /** "Activate only once each turn" (Mana Bloom). */
+    oncePerTurn?: boolean;
     /** `addCounter` happens before the mana is counted ("Put a charge counter on this artifact. Add X mana, where X is the number of charge counters"). */
     addCounterFirst?: boolean;
     /** "Add {G} for each +1/+1 counter on this creature" (none when it has no counters). */
@@ -2461,6 +2471,8 @@ export interface CardDefinition {
   flashbackDiscard?: number;
   /** "Flashback—[cost], Pay N life" (Deep Analysis). */
   flashbackLife?: number;
+  /** "X can't be greater than the number of players in the game" (Open the Way). */
+  maxXIsPlayers?: boolean;
   /** Strive (Twinflame): the spell costs this much more for each target beyond the first. */
   strive?: string;
   /** "Threshold — You can't cast this spell unless there are seven or more cards in your graveyard" (Proft, Sinister Mastermind). */
@@ -2972,6 +2984,8 @@ export interface CardInstance {
   rebounding?: boolean;
   /** Suspended (rule 702.62): exiled with time counters; one comes off each upkeep, and with the last you may cast it free. */
   suspended?: boolean;
+  /** The turn its once-each-turn mana ability was last activated (Mana Bloom). */
+  manaAbilityTurn?: number;
   /** Only on the stack: use the Adventure's characteristics instead of the creature's. */
   adventureSpell?: boolean;
   /** The controller of a resolved Adventure may cast its creature while it stays in exile. */
@@ -3091,6 +3105,8 @@ export interface PlayerState {
   keptMana?: { turn: number; pool: Partial<Record<ManaType, number>> };
   /** The greatest mana value among instant and sorcery spells cast this turn (Rootha, Mastering the Moment). */
   greatestInstantOrSorceryManaValueThisTurn?: number;
+  /** Alchemist's Refuge: this turn, the player may cast spells as though they had flash. */
+  flashTurn?: number;
   /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */
   paradigms?: InstanceId[];
   /** Summon: Brynhildr: "when you next cast a creature spell this turn, it gains haste until end of turn" (the turn). */
@@ -3379,6 +3395,8 @@ export interface Resolving {
   piles?: { down: InstanceId[]; up: InstanceId[]; other?: InstanceId[] };
   /** Plargg and Nassari: the cards exiled, and how many spells may be cast from among the rest. */
   denyPool?: { cards: InstanceId[]; spells: number };
+  /** Animist's Awakening: the lands put onto the battlefield this way. */
+  landsPutThisWay?: InstanceId[];
   /** ExileToCastCopyWithBudget: the budget this resolution's copies share. */
   castBudget?: string;
   /** The mana value of the card RevealUntil found. */
@@ -3566,7 +3584,7 @@ export type Pending =
   /** "As this enters, choose a card type" (Cloud Key): one of `options`. */
   | { kind: 'chooseCardType'; player: PlayerId; card: InstanceId; options: CardType[]; resume: Pending }
   /** "As this enters, choose Mardu or Jeskai". */
-  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' | 'exileMore' | 'pile' }
+  | { kind: 'chooseOption'; player: PlayerId; card: InstanceId; options: string[]; resume: Pending; /** Chosen as a spell or ability resolves ("choose a creature type"). */ forResolution?: 'creatureType' | 'keyword' | 'vote' | 'exileMore' | 'pile' | 'parity' }
   /**
    * Your commander went to `zone` (graveyard, exile, hand or library): move it to
    * the command zone, or leave it there (rule 903.9). `resume` continues afterwards.

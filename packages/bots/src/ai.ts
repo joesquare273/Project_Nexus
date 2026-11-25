@@ -802,6 +802,11 @@ export function basicAi(_seed = 0): Bot {
         const worth = up.reduce((n, id) => n + (s.cards[id] ? value(s, s.cards[id]!) : 0), 0);
         return options.find((a) => a.option === (worth >= up.length * 2 ? 'Face-up pile' : 'Face-down pile')) ?? options[0] ?? legal[0]!;
       }
+      // Zimone's Hypothesis: bounce the parity that hits more of the opponents' creatures than ours.
+      if (pending.forResolution === 'parity') {
+        const score = (odd: boolean) => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && def(s, c).types.includes('creature') && (Math.abs(powerOf(s, c)) % 2 === 1) === odd).reduce((n, c) => n + (c.controller === pending.player ? -1 : 1), 0);
+        return options.find((a) => a.option === (score(true) >= score(false) ? 'Odd' : 'Even')) ?? options[0] ?? legal[0]!;
+      }
       // Dance with Calamity: keep exiling while the total is comfortably under 13.
       if (pending.forResolution === 'exileMore') {
         const total = s.resolving?.exiledAsChosen?.total ?? 0;

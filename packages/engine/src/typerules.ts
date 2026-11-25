@@ -142,6 +142,7 @@ export function manaChoices(s: GameState, c: CardInstance): ManaType[] {
   if (ability?.amountPerCounter && manaAbilityAmount(c, def) === 0) return [];
   // "Remove a charge counter: Add one mana": nothing to remove, no mana.
   if (ability?.removeCounter && manaCounters(c, def) === 0) return [];
+  if (ability?.oncePerTurn && c.manaAbilityTurn === s.turnNumber) return [];
   // "Activate only if you control five or more lands."
   if (ability?.ifLandsAtLeast && yours().filter((x) => currentDefinition(s, x).types.includes('land')).length < ability.ifLandsAtLeast) return [];
   // "Add one mana of the chosen color" (Crossroads Village): nothing until a color is chosen.
