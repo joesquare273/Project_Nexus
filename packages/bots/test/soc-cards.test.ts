@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
-import { act, cast, fight, goTo, mana, newGame, nextStep, put, settle } from './kit-helpers.ts';
+import { act, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
 const activate = (s: GameState, id: string) => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === id);
@@ -1887,5 +1887,86 @@ describe('SOC4a: Silverquill Influence (removal, lands, Aura support)', () => {
     mana(s, 'P1', { C: 1 });
     s = cast(s, activate(s, light)!).state;
     expect([hasKeyword(s, s.cards[rat]!, 'Hexproof'), hasKeyword(s, s.cards[mine]!, 'Hexproof')]).toEqual([false, true]);
+  });
+});
+
+describe('SOC4b: Silverquill Influence (goad Auras, Killian, constellation)', () => {
+  const onAura = (s: GameState, who: 'P1' | 'P2', defId: string, on: string) => put(s, who, defId, 'battlefield', { attachedTo: on });
+  const prison = (s: GameState, target?: string) => {
+    const id = put(s, 'P1', 'ghostly-prison', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    const pick = target ? { targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === target)! } : {};
+    return cast(s, { type: 'CastSpell', player: 'P1', card: id, targets: [] }, pick as never).state;
+  };
+
+  it('Coercive Impetus: +1/+1, goaded (it must attack), and you draw and lose 1 life when it attacks', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    onAura(s, 'P1', 'coercive-impetus', rat);
+    expect(powerOf(s, s.cards[rat]!)).toBe(2);
+    s = goTo(s, 'declareAttackers');
+    expect(rejected(s, { type: 'DeclareAttackers', player: 'P1', attacks: [] })).toMatch(/attack/i);
+    const hand = s.players.P1!.hand.length;
+    s = fight(s, [{ attacker: rat, defender: 'P2' }]).state;
+    expect([s.players.P1!.hand.length - hand, s.players.P1!.life, s.players.P2!.life]).toEqual([1, 19, 18]);
+  });
+
+  it('Parasitic Impetus: the enchanted creature\'s controller loses 2 and the Aura\'s controller gains 2; Martial Impetus pumps the other attackers', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const other = put(s, 'P1', 'rank-rat');
+    onAura(s, 'P2', 'parasitic-impetus', rat);
+    onAura(s, 'P1', 'martial-impetus', rat);
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: rat, defender: 'P2' }, { attacker: other, defender: 'P2' }] })).state;
+    expect([s.players.P1!.life, s.players.P2!.life]).toEqual([18, 22]);
+    expect([powerOf(s, s.cards[rat]!), powerOf(s, s.cards[other]!)]).toEqual([4, 2]);
+  });
+
+  it('Killian, Decisive Mentor: an enchantment entering taps and goads up to one creature until your next turn; enchanted attackers draw a card', () => {
+    let s = newGame();
+    put(s, 'P1', 'killian-decisive-mentor');
+    const theirs = put(s, 'P2', 'rank-rat');
+    s = prison(s, theirs);
+    expect([s.cards[theirs]!.tapped, s.cards[theirs]!.goadedUntil]).toEqual([true, ['P1']]);
+    const mine = put(s, 'P1', 'rank-rat');
+    onAura(s, 'P1', 'spirit-mantle', mine);
+    const hand = s.players.P1!.hand.length;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: mine, defender: 'P2' }] })).state;
+    expect(s.players.P1!.hand.length - hand).toBe(1);
+  });
+
+  it('Archon of Sun\'s Grace makes a lifelink Pegasus and Doomwake Giant shrinks opponents\' creatures when an enchantment enters', () => {
+    let s = newGame();
+    put(s, 'P1', 'archon-of-suns-grace');
+    put(s, 'P1', 'doomwake-giant');
+    const rat = put(s, 'P2', 'rank-rat');
+    s = prison(s);
+    const pegasus = Object.values(s.cards).find((c) => c.defId === 'pegasus-token-soc' && c.zone === 'battlefield');
+    expect(pegasus && hasKeyword(s, pegasus, 'Lifelink')).toBe(true);
+    expect(s.cards[rat]!.zone).toBe('graveyard');
+  });
+
+  it('Eldrazi Conscription: +10/+10 and trample, and the defending player sacrifices two permanents; Redemption Arc exiles its creature', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    onAura(s, 'P1', 'eldrazi-conscription', rat);
+    expect([powerOf(s, s.cards[rat]!), hasKeyword(s, s.cards[rat]!, 'Trample')]).toEqual([11, true]);
+    const a = put(s, 'P2', 'plains');
+    const b = put(s, 'P2', 'plains');
+    put(s, 'P2', 'plains');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: rat, defender: 'P2' }] })).state;
+    expect([s.pending.kind, (s.pending as { player?: string }).player]).toEqual(['chooseCards', 'P2']);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P2', cards: [a, b] })).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone]).toEqual(['graveyard', 'graveyard']);
+    let t = newGame();
+    const foe = put(t, 'P2', 'rank-rat');
+    const arc = onAura(t, 'P1', 'redemption-arc', foe);
+    expect(hasKeyword(t, t.cards[foe]!, 'Indestructible')).toBe(true);
+    mana(t, 'P1', { W: 1, C: 1 });
+    t = cast(t, activate(t, arc)!).state;
+    expect(t.cards[foe]!.zone).toBe('exile');
   });
 });

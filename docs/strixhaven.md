@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9), SOC3c lands, mana and odd/even (10), SOC3d Tanazir, Oversimplify, Commands, Otter, Shotcaller (6), SOC3e Ooze, Primo, Unbound Flourishing, mana rocks (6), SOC3f Bloomsage, Opal Palace (2): **Quandrix Unlimited complete (2026-11-25)**; SOC4a Silverquill Influence removal, lands and Aura support (14) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9), SOC3c lands, mana and odd/even (10), SOC3d Tanazir, Oversimplify, Commands, Otter, Shotcaller (6), SOC3e Ooze, Primo, Unbound Flourishing, mana rocks (6), SOC3f Bloomsage, Opal Palace (2): **Quandrix Unlimited complete (2026-11-25)**; SOC4a Silverquill Influence removal, lands and Aura support (14), SOC4b goad Auras, Killian, Decisive Mentor, constellation (8) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -765,4 +765,22 @@ and Killian, Ink Duelist. 44 Silverquill cards left.
 - **Raffine's Guidance:** alternativeCost `onlyFromGraveyard` with
   `fromGraveyard`: {2}{W} from the graveyard, never from the hand.
 - **Killian, Ink Duelist:** spellCostReduction `ifTargetsCreature`.
+
+
+## SOC4b: Silverquill Influence, part two (built 2026-11-25)
+
+Coercive Impetus, Martial Impetus, Parasitic Impetus, Redemption Arc,
+Eldrazi Conscription, Killian, Decisive Mentor (the commander), Archon of
+Sun's Grace and Doomwake Giant. 36 Silverquill cards left.
+
+- **Goad until your next turn:** the `Goad` effect (CardInstance
+  `goadedUntil`, cleared at the start of the goading player's turn). The
+  Impetus Auras and Redemption Arc use the existing `goaded` static.
+- **Filters:** `enchantedByYou` (an Aura you control is attached: Killian's
+  "creatures that are enchanted by an Aura you control attack") and
+  `attackingOpponent` (attacking one of your opponents, not a planeswalker:
+  Martial Impetus).
+- **Pegasus token:** `pegasus-token-soc` (tsoc 5).
+- **Eldrazi Conscription:** annihilator 2 is the Aura's attack trigger, and
+  the card has no Kindred type or Eldrazi subtype yet (docs/decisions.md).
 

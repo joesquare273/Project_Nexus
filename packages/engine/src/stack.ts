@@ -3198,6 +3198,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     case 'Tap':
       for (const id of onBattlefield) if (!s.cards[id]!.tapped) tap(ctx, s.cards[id]!);
       return;
+    case 'Goad':
+      for (const id of onBattlefield) s.cards[id]!.goadedUntil = [...new Set([...(s.cards[id]!.goadedUntil ?? []), item.controller])];
+      return;
     case 'TapOrUntap':
       for (const id of onBattlefield) {
         const c = s.cards[id]!;

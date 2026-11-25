@@ -732,3 +732,13 @@ The engine has no regeneration shields yet (rule 701.19), so "can't be
 regenerated" changes nothing (Winds of Rath, Damn, Pongify, Putrefy, Rapid
 Hybridization, Snuff Out). No built card makes a regeneration shield; when
 one does, these clauses need building with it.
+
+## 2026-11-25: Eldrazi Conscription's annihilator (simplification)
+
+The engine has no annihilator keyword and no Kindred card type. Eldrazi
+Conscription's "annihilator 2" is the Aura's own trigger ("whenever enchanted
+creature attacks, defending player sacrifices two permanents"). That is the
+same in play unless the enchanted creature loses all abilities, when real
+annihilator would stop and this trigger doesn't. The card is an Aura without
+the Kindred type or the Eldrazi subtype, which only matters for effects that
+look for Eldrazi.

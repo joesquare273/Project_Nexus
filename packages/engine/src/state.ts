@@ -300,6 +300,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.animated;
   delete c.addedSubtypes;
   delete c.goadedForever;
+  delete c.goadedUntil;
   if (from === 'battlefield' && c.prepared) unprepare(ctx, id);
   delete c.turnSubtypes;
   delete c.linkedCreature;

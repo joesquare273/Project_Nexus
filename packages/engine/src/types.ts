@@ -320,6 +320,8 @@ export const EFFECT_KINDS = [
   'Destroy',
   'Exile',
   'Tap',
+  /** Goad (rule 701.15): until the goading player's next turn, the creature attacks each combat if able and attacks a player other than that player if able. */
+  'Goad',
   /** "Tap or untap target creature": taps it if it's untapped, untaps it if it's tapped (with `optional`, "you may"; tapping a tapped creature or untapping an untapped one would do nothing, so that's the whole choice). */
   'TapOrUntap',
   'ReturnToHand',
@@ -1703,6 +1705,10 @@ export interface ObjectFilter {
   equipped?: boolean;
   /** Enchanted: an Aura is attached to it (Winds of Rath: "creatures that aren't enchanted"). */
   enchanted?: boolean;
+  /** Enchanted by an Aura the filter's controller controls (Killian, Decisive Mentor; Eriette). */
+  enchantedByYou?: boolean;
+  /** Attacking a player who is an opponent of the filter's controller (Martial Impetus). */
+  attackingOpponent?: boolean;
   /** Exactly one color (Vanishing Verse). */
   monocolored?: boolean;
   /** Is the creature the ability's source Equipment is attached to ("equipped creature"). */
@@ -2869,6 +2875,8 @@ export interface CardInstance {
   prepareSpellOf?: { card: InstanceId; object: number };
   /** Goaded by these players for the rest of the game (Dack Fayden, Helping Hand). */
   goadedForever?: PlayerId[];
+  /** Goaded until each of these players' next turn (the Goad effect: Killian, Decisive Mentor). */
+  goadedUntil?: PlayerId[];
   /** Face down by manifest or cloak (rule 701.34): a creature card can be turned face up for its mana cost. */
   manifested?: boolean;
   /** Face down with ward {2}: cast using disguise, or cloaked (rules 702.168, 701.58). */

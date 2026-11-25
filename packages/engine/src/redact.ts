@@ -200,6 +200,7 @@ const CARD_FIELDS = {
   chosenCardType: 'copy',
   chosenOption: 'copy',
   goadedForever: 'copy',
+  goadedUntil: 'copy',
   prepared: 'copy',
   outsideGame: 'copy',
   flashbackTurn: 'copy',

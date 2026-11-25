@@ -42,6 +42,8 @@ export function enterStep(ctx: Ctx, step: Step): void {
     case 'untap': {
       // Phasing happens first (rule 502.1).
       phaseInFor(ctx, s.activePlayer);
+      // "Until your next turn": goad from this player ends (rule 701.15a).
+      for (const c of Object.values(s.cards)) if (c.goadedUntil?.includes(s.activePlayer)) { c.goadedUntil = c.goadedUntil.filter((p) => p !== s.activePlayer); if (!c.goadedUntil.length) delete c.goadedUntil; }
       const untapped: string[] = [];
       for (const c of battlefield(s)) {
         if (c.controller !== s.activePlayer) continue;

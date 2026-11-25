@@ -93,7 +93,7 @@ export function canAttackPlayer(s: GameState, c: CardInstance, defender: PlayerI
 /** Each continuous goad effect imposes attack and defender requirements, rather than a restriction. */
 export function hasGoad(s: GameState): boolean {
   return continuousSources(s).some(source=>!source.phasedOut && currentDefinition(s, source).statics?.some(st=>st.goaded))
-    || battlefield(s).some((c) => !!c.goadedForever?.length);
+    || battlefield(s).some((c) => !!c.goadedForever?.length || !!c.goadedUntil?.length);
 }
 
 export function hasAttackRequirements(s: GameState): boolean {
@@ -116,6 +116,8 @@ export function goadedBy(s: GameState, c: CardInstance): PlayerId[] {
   }
   // "Goaded for the rest of the game" (Dack Fayden), while the goading player is still in the game.
   for (const p of c.goadedForever ?? []) if (!s.players[p]?.eliminated) players.add(p);
+  // Goaded until that player's next turn.
+  for (const p of c.goadedUntil ?? []) if (!s.players[p]?.eliminated) players.add(p);
   return [...players];
 }
 

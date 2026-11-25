@@ -233,6 +233,8 @@ function effectText(e: EffectSpec): string {
       return `${you ? 'you lose' : `${who} loses`} ${n} life`;
     case 'Tap':
       return `tap ${who}`;
+    case 'Goad':
+      return `goad ${who}`;
     case 'TapOrUntap':
       return `tap or untap ${who}`;
     case 'ReturnToHand':

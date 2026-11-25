@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC4b: Silverquill Influence, part two (2026-11-25)
+
+- The goad Auras (Coercive, Martial and Parasitic Impetus, Redemption Arc), Eldrazi Conscription, the commander Killian, Decisive Mentor (goad until your next turn), Archon of Sun's Grace and Doomwake Giant. 36 Silverquill cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC4a: Silverquill Influence, part one (2026-11-25)
 
 - 14 Silverquill cards: removal (Fracture, Vanishing Verse, Anguished Unmaking, Winds of Rath), lands (Silverquill Campus, War Room, Arcane Lighthouse), Ghostly Prison and Aura support (Spirit Mantle with protection from creatures, Raffine's Guidance from the graveyard, Transcendent Envoy, Starfield Mystic, Kor Spiritdancer, Killian, Ink Duelist). 44 Silverquill cards left. docs/strixhaven.md.
