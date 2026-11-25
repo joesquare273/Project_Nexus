@@ -567,10 +567,14 @@ export function checkTargets(
  */
 export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets: readonly Target[]): string | null {
   const seen = new Map<string, { cards: Set<string>; owners: Set<string> }>();
+  const groupPlayers = new Map<string, string>();
   for (let i = 0; i < needs.length; i++) {
     const group = needs[i]!.group;
     const t = targets[i];
+    // Quandrix Command: the player chosen for the phrase, whose graveyard the cards must come from.
+    if (group && t?.kind === 'player') groupPlayers.set(group, t.player);
     if (!group || t?.kind !== 'card') continue;
+    if (needs[i]!.groupOwnerIsTargetPlayer && groupPlayers.has(group) && s.cards[t.card]?.owner !== groupPlayers.get(group)) return "Choose cards from that player's graveyard.";
     const g = seen.get(group) ?? { cards: new Set(), owners: new Set() };
     if (g.cards.has(t.card)) return 'Choose different targets.';
     // A permanent's controller ("target permanent that player controls"), a card's owner elsewhere.
@@ -1405,6 +1409,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ? c.castPermission
     : undefined;
   if (def.maxXIsPlayers && (choice.x ?? 0) > s.turnOrder.length) reject("X can't be greater than the number of players in the game.");
+  const divided = divideProblem(def, choice, targets);
+  if (divided) reject(divided);
   checkTargets(s, spellEffects(def, choice, targets.length), targets, playerId, id, choice.x !== undefined ? { x: choice.x } : {});
   const costCards = choice.costCards ?? [];
   const exileCost = alternative && !!def.alternativeCost?.exileFromHand;
@@ -1642,6 +1648,18 @@ export function foretellProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   if (!defOf(s, c).foretell) return `${defOf(s, c).name} doesn't have foretell.`;
   if (s.activePlayer !== playerId) return 'You can only foretell during your turn.';
   if (!canPayFromPool(s, playerId, FORETELL_COST)) return 'Foretelling costs {2}. Add the mana first.';
+  return null;
+}
+
+/** Dividing N among targets (Grove's Bounty, Magma Opus): each target gets at least one, so no more targets than N. */
+export function divideProblem(def: CardDefinition, choice: SpellChoice, targets: readonly Target[]): string | null {
+  const effects = spellEffects(def, choice, targets.length);
+  const slots = choosingEffects(effects);
+  for (const d of effects.filter((e) => e.effect === 'DivideDamage' && e.amongTargets && e.amongGroup)) {
+    const n = typeof d.amount === 'number' ? d.amount : d.amount && typeof d.amount === 'object' && 'of' in d.amount && d.amount.of === 'x' ? (choice.x ?? 0) : undefined;
+    const chosen = slots.filter((e, i) => e.group === d.amongGroup && targets[i] && targets[i]!.kind !== 'none').length;
+    if (n !== undefined && chosen > n) return `Choose at most ${n} target${n === 1 ? '' : 's'} to divide among.`;
+  }
   return null;
 }
 
@@ -2336,6 +2354,8 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? (r.item.kind === 'spell' ? (r.item.colorsSpent ?? 0) : (s.cards[sourceOf(r.item)]?.colorsSpentToCast ?? 0))
               : a.of === 'subjectColorsSpent'
               ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.colorsSpentToCast ?? 0) : 0)
+              : a.of === 'previousTargetPlusOneCounters'
+              ? (r.previousTarget?.kind === 'card' ? (s.cards[r.previousTarget.card]?.counters ?? 0) : 0)
               : a.of === 'subjectX'
               ? (r.item.kind === 'ability' && r.item.subject ? (s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === (r.item as AbilityItem).subject)?.x ?? s.cards[r.item.subject]?.xPaid ?? 0) : 0)
               : a.of === 'previousTargetCommanderCasts'
@@ -2650,11 +2670,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         const remaining = amount - picked.length;
         const to = (id: string): Target => (s.players[id] ? { kind: 'player', player: id } : { kind: 'card', card: id });
         if (remaining <= 0 || picked.length === 1) {
-          for (const id of picked) dealDamage(ctx, source, to(id), picked.length === 1 ? amount : 1, false);
+          for (const id of picked) {
+            const n = picked.length === 1 ? amount : 1;
+            // Grove's Bounty: +1/+1 counters instead of damage.
+            if (effect.divideCounters) { if (s.cards[id]) addCounters(ctx, id, n, item.controller); }
+            else dealDamage(ctx, source, to(id), n, false);
+          }
           return;
         }
-        r.distribution = { source, remaining, assigned, damage: true };
-        r.choiceQueue = [{ player: item.controller, purpose: 'divideDamage', cards: picked, min: 1, max: 1, counterCount: remaining }];
+        r.distribution = { source, remaining, assigned, ...(effect.divideCounters ? {} : { damage: true as const }) };
+        r.choiceQueue = [{ player: item.controller, purpose: 'divideDamage', cards: picked, min: 1, max: 1, counterCount: remaining, ...(effect.divideCounters ? { divideCounters: true } : {}) }];
         return;
       }
       const candidates = battlefield(s).filter((c) => isCreatureOnBattlefield(s, c) && matchesObject(s, effect.filter, c, { controller: item.controller, source })
@@ -2923,11 +2948,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         // "You may exile that card from your graveyard" (Currency Converter): exiled with this permanent.
         if (effect.exileLinked && (s.cards[id]!.zone as string) === 'exile') s.cards[id]!.exiledWith = { source, sourceObject: item.kind === 'ability' ? (item.sourceObject ?? 0) : (s.cards[source]?.zoneChanges ?? 0) };
       }
+      const exiledPower = new Map<string, number>();
       for (const id of onBattlefield) {
         const c = s.cards[id]!;
         const { name } = defOf(s, c);
         const controller = c.controller;
+        const powerBefore = isCreatureOnBattlefield(s, c) ? powerOf(s, c) : 0;
         moveCard(ctx, id, 'exile');
+        if (effect.eachPlayerTokenOfExiledPower && s.cards[id]?.zone === 'exile') exiledPower.set(controller, (exiledPower.get(controller) ?? 0) + powerBefore);
         if (effect.returnAtNextEndStep && s.cards[id]?.zone === 'exile') s.cards[id]!.returnFromExileAtEndStep = true;
         // Skyclave Apparition: a permanent exiled with this.
         if (effect.exileLinked && s.cards[id]?.zone === 'exile') s.cards[id]!.exiledWith = { source, sourceObject: item.kind === 'ability' ? (item.sourceObject ?? 0) : (s.cards[source]?.zoneChanges ?? 0) };
@@ -2940,6 +2968,13 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const other of battlefield(s)) {
           if (other.isToken && other.controller === controller && defOf(s, other).name === name) moveCard(ctx, other.id, 'exile');
         }
+      }
+      // Oversimplify: each player, whatever they lost, gets a Fractal with counters equal to the power they lost.
+      if (effect.eachPlayerTokenOfExiledPower) for (const pid of aliveFromActive(s)) {
+        const token = createToken(ctx, effect.eachPlayerTokenOfExiledPower, pid);
+        r.createdTokens.push(token);
+        const n = Math.max(0, exiledPower.get(pid) ?? 0);
+        if (n > 0 && s.cards[token]?.zone === 'battlefield') addCounters(ctx, token, n, pid);
       }
       return;
     case 'ExileGraveyard':
@@ -3099,6 +3134,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
     }
     case 'ShuffleIntoLibrary':
     case 'ShuffleIntoLibraryReveal':
+      // Quandrix Command: target cards in a graveyard.
+      if (effect.effect === 'ShuffleIntoLibrary') for (const id of cards) {
+        if (s.cards[id]?.zone !== 'graveyard') continue;
+        moveCard(ctx, id, 'library');
+        shuffleInPlace(s, s.players[s.cards[id]!.owner]!.library);
+      }
       for (const id of onBattlefield) {
         const owner = s.cards[id]!.owner;
         const library = s.players[owner]!.library;
@@ -3156,6 +3197,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         if (effect.removeAtEndStep && s.cards[id]!.zone === 'battlefield') s.cards[id]!.removeCountersAtEndStep = { counter: effect.counter ?? '+1/+1', amount };
         // Sazh Katzroy: "then double the number of +1/+1 counters on that creature".
         if (effect.thenDouble && s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, s.cards[id]!.counters ?? 0, item.controller);
+        if (effect.thenGrantKeywords && s.cards[id]!.zone === 'battlefield') s.temporaryEffects.push({ source, affected: id, keywords: [...effect.thenGrantKeywords] });
       }
       return;
     }
@@ -4069,7 +4111,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       // PuPu UFO: "base power becomes equal to" a number; its base toughness stays the printed one.
       for (const id of onBattlefield) {
         // Biomass Mutation: "base power and toughness X/X" (both from the amount).
-        const pt: [number, number] = effect.powerFromAmount ? [amount, effect.toughnessFromAmount ? amount : defOf(s, s.cards[id]!).toughness ?? 0] : [effect.power!, effect.toughness!];
+        const src = s.cards[source];
+        if (effect.ptFromSource && (!src || src.zone !== 'battlefield')) return;
+        const pt: [number, number] = effect.ptFromSource ? [powerOf(s, src!), toughnessOf(s, src!)] : effect.powerFromAmount ? [amount, effect.toughnessFromAmount ? amount : defOf(s, s.cards[id]!).toughness ?? 0] : [effect.power!, effect.toughness!];
         s.temporaryEffects.push({ source, affected: id, basePowerToughness: pt, timestamp });
       }
       return;
@@ -4446,6 +4490,26 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       const c = subject ? s.cards[subject] : undefined;
       if (!c || c.zone !== 'exile' || !isSpellCard(defOf(s, c))) return;
       c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, asCopy: true };
+      return;
+    }
+    case 'MoveAllCounters': {
+      // Nexus Mentality: from the earlier target onto this one.
+      const fromT = r.previousTarget;
+      const from = fromT?.kind === 'card' ? s.cards[fromT.card] : undefined;
+      if (!from || from.zone !== 'battlefield') return;
+      for (const id of onBattlefield) {
+        if (id === from.id) continue;
+        for (const [kind, n] of allCounters(from)) {
+          const moved = removeCounters(ctx, from.id, kind, n);
+          if (moved > 0) addCounters(ctx, id, moved, item.controller, kind === '+1/+1' ? undefined : kind);
+        }
+      }
+      return;
+    }
+    case 'RemoveAllCountersDraw': {
+      let removed = 0;
+      for (const id of onBattlefield) for (const [kind, n] of allCounters(s.cards[id]!)) removed += removeCounters(ctx, id, kind, n);
+      if (removed > 0) drawCards(ctx, item.controller, removed);
       return;
     }
     case 'CastAsThoughFlashThisTurn':
@@ -5274,6 +5338,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
     if (recipient && remaining > 0) r.choiceQueue = [{ ...pending, cards: [...pending.cards], min: 1, counterCount: remaining }, ...(r.choiceQueue ?? [])];
     else {
       for (const [to, n] of Object.entries(assigned)) {
+        if (!distribution.damage) { if (s.cards[to]?.zone === 'battlefield') addCounters(ctx, to, n, r.item.controller); continue; }
         if (s.players[to]) { if (!s.players[to]!.eliminated) dealDamage(ctx, distribution.source, { kind: 'player', player: to }, n, false); }
         else if (s.cards[to]!.zone === 'battlefield') dealDamage(ctx, distribution.source, { kind: 'card', card: to }, n, false);
       }

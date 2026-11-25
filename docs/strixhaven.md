@@ -105,7 +105,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9), SOC3c lands, mana and odd/even (10) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9), SOC3c lands, mana and odd/even (10), SOC3d Tanazir, Oversimplify, Commands, Otter, Shotcaller (6) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |
@@ -681,3 +681,23 @@ Hypothesis and Alchemist's Refuge.
   zero is even).
 
 Still to build in Quandrix Unlimited after SOC3c: 14 cards.
+
+## SOC3d: Quandrix Unlimited, part four (built 2026-11-25)
+
+Tanazir Quandrix, Oversimplify, Quandrix Command, Nexus Mentality, Elusive
+Otter and Striding Shotcaller.
+
+- The amount `previousTargetPlusOneCounters` (Tanazir doubles a creature's
+  counters); SetBasePT `ptFromSource` (its attack trigger).
+- Exile `eachPlayerTokenOfExiledPower` (Oversimplify: every player gets a
+  Fractal, with counters for the power they lost).
+- `groupOwnerIsTargetPlayer` (Quandrix Command: the cards must come from the
+  target player's graveyard); ShuffleIntoLibrary works on graveyard cards.
+- `MoveAllCounters` and `RemoveAllCountersDraw` (Nexus Mentality, both modes
+  with a commander).
+- DivideDamage `divideCounters` (Grove's Bounty divides X +1/+1 counters among
+  any number of your creatures, at most X of them: `divideProblem`, also used
+  for legal actions); `cantBeBlockedByLesserPower` (Elusive Otter).
+- AddCounters `thenGrantKeywords` (Run the Play's flying).
+
+Still to build in Quandrix Unlimited after SOC3d: 8 cards.

@@ -1583,3 +1583,91 @@ describe('SOC3c: Quandrix Unlimited (lands, mana and odd/even)', () => {
     void onField;
   });
 });
+
+describe('SOC3d: Quandrix Unlimited (Tanazir, Oversimplify, Commands, Otter, Shotcaller)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Tanazir doubles a creature\'s counters as it enters, and on attack other creatures take its base power and toughness', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    s.cards[rat]!.counters = 3;
+    const tz = put(s, 'P1', 'tanazir-quandrix', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: tz }, { targets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === rat)! }).state;
+    expect(s.cards[rat]!.counters).toBe(6);
+    s.cards[tz]!.summoningSick = false;
+    s = settle(goTo(s, 'declareAttackers')).state;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: tz, defender: 'P2' }] })).state;
+    // Base 4/4 plus six counters.
+    expect([powerOf(s, s.cards[rat]!), toughnessOf(s, s.cards[rat]!)]).toEqual([10, 10]);
+  });
+
+  it('Oversimplify exiles all creatures; each player gets a Fractal with counters for the power they lost', () => {
+    let s = newGame();
+    put(s, 'P1', 'rank-rat');
+    put(s, 'P2', 'hungry-graffalon');
+    put(s, 'P2', 'rank-rat');
+    const os = put(s, 'P1', 'oversimplify', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: os }).state;
+    expect([onField(s, 'fractal-token-sos', 'P1').map((c) => c.counters), onField(s, 'fractal-token-sos', 'P2').map((c) => c.counters)]).toEqual([[1], [4]]);
+  });
+
+  it('Quandrix Command: target player shuffles up to three target cards from their own graveyard; plus two counters', () => {
+    let s = newGame();
+    const theirs = [put(s, 'P2', 'rank-rat', 'graveyard'), put(s, 'P2', 'abrade', 'graveyard')];
+    const mine = put(s, 'P1', 'rank-rat', 'graveyard');
+    const rat = put(s, 'P1', 'rank-rat');
+    const qc = put(s, 'P1', 'quandrix-command', 'hand');
+    mana(s, 'P1', { G: 1, U: 1, C: 1 });
+    const none = { kind: 'none' } as const;
+    expect(() => act(s, { type: 'CastSpell', player: 'P1', card: qc, modes: [2, 3], targets: [card(rat), { kind: 'player', player: 'P2' }, card(theirs[0]!), card(mine), none] })).toThrow();
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: qc, modes: [2, 3], targets: [card(rat), { kind: 'player', player: 'P2' }, card(theirs[0]!), card(theirs[1]!), none] }).state;
+    expect([s.cards[rat]!.counters, s.cards[theirs[0]!]!.zone, s.cards[theirs[1]!]!.zone, s.cards[mine]!.zone]).toEqual([2, 'library', 'library', 'graveyard']);
+  });
+
+  it('Nexus Mentality moves all counters, or removes them to draw; both with a commander', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    s.cards[a]!.counters = 3;
+    const nm = put(s, 'P1', 'nexus-mentality', 'hand');
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: nm, modes: [0], targets: [card(a), card(b)] }).state;
+    expect([s.cards[a]!.counters ?? 0, s.cards[b]!.counters]).toEqual([0, 3]);
+    const nm2 = put(s, 'P1', 'nexus-mentality', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: nm2, modes: [1], targets: [card(b)] }).state;
+    expect([s.cards[b]!.counters ?? 0, s.players.P1!.hand.length - hand]).toEqual([0, 2]); // three drawn, the spell cast
+  });
+
+  it('Grove\'s Bounty divides X counters among your creatures (no more targets than X); Elusive Otter can\'t be blocked by smaller creatures', () => {
+    let s = newGame();
+    const otter = put(s, 'P1', 'elusive-otter-groves-bounty', 'hand');
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    mana(s, 'P1', { G: 1, C: 3 });
+    expect(getLegalActions(s).some((x) => x.type === 'CastSpell' && x.card === otter && x.adventure && x.x === 1 && x.targets?.length === 2)).toBe(false);
+    s = act(s, { type: 'CastSpell', player: 'P1', card: otter, adventure: true, x: 3, targets: [card(a), card(b)] });
+    s = settle(s).state;
+    expect((s.pending as { divideCounters?: boolean }).divideCounters).toBe(true);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [b] })).state;
+    expect([s.cards[a]!.counters, s.cards[b]!.counters, s.cards[otter]!.zone]).toEqual([1, 2, 'exile']);
+  });
+
+  it('Striding Shotcaller becomes prepared on combat damage; Run the Play puts counters on X creatures with flying and draws', () => {
+    let s = newGame();
+    const caller = put(s, 'P1', 'striding-shotcaller-run-the-play');
+    const rat = put(s, 'P1', 'rank-rat');
+    s.cards[rat]!.summoningSick = false;
+    s = fight(s, [{ attacker: rat, defender: 'P2' }]).state;
+    expect(s.cards[caller]!.prepared).toBe(true);
+    s = settle(goTo(s, 'main2')).state;
+    const copy = Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === caller)!;
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { G: 1, U: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: copy.id, x: 1, targets: [card(rat)] }).state;
+    expect([s.cards[rat]!.counters, hasKeyword(s, s.cards[rat]!, 'Flying'), s.players.P1!.hand.length - hand]).toEqual([1, true, 1]);
+  });
+});

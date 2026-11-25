@@ -419,6 +419,10 @@ function effectText(e: EffectSpec): string {
       return `exile the top card of your library as many times as you choose; if their total mana value is ${amountText(e.amount)} or less, you may cast any number of spells from among them without paying their mana costs`;
     case 'CastCopyOfTriggeringCardFree':
       return 'copy the exiled card; you may cast the copy without paying its mana cost';
+    case 'MoveAllCounters':
+      return 'move all counters from the first target onto the second';
+    case 'RemoveAllCountersDraw':
+      return 'remove all counters from it; draw a card for each counter removed this way';
     case 'CastAsThoughFlashThisTurn':
       return 'you may cast spells this turn as though they had flash';
     case 'RevealTopLandsToBattlefield':

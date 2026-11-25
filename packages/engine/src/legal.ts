@@ -49,6 +49,7 @@ import {
   improviseCandidates,
   foretellProblem,
   suspendProblem,
+  divideProblem,
   graveyardWay,
   castGroupsFor,
   graveyardCastSources,
@@ -249,6 +250,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         for (const count of targetCountChoices(s, def, choice, playerId, c.id)) {
         const found = targetCombosWithSlots(s, spellEffects(def, choice, count), playerId, c.id, x);
         for (const targets of found.combos) {
+          if (divideProblem(def, choice, targets)) continue;
           const baseCost = spellCost(s, def, from, targets, c, alternative, x ?? 0, { kicks, player: playerId, ...permission, ...(adventure ? { adventure: true } : {}), ...(modes.mode !== undefined ? { mode: modes.mode } : {}) });
           for (const costCards of discards) {
             // "Or pay {2}": the extra mana when nothing is sacrificed.

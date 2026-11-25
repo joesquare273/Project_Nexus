@@ -130,6 +130,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
       'previousTargetHandSize',
       'previousTargetCommanderCasts',
       'subjectX',
+      'previousTargetPlusOneCounters',
       'x',
       'lifeLostThisWay',
       'drawnThisWay',
@@ -376,7 +377,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   }
   if (e.effect === 'GrantFlags' && !e.flags?.length) err('GrantFlags needs flags.');
   for (const f of e.flags ?? []) if (!TEMPORARY_FLAGS.includes(f)) err(`unknown flag "${f}".`);
-  if (e.effect === 'SetBasePT' && !e.powerFromAmount && (!Number.isInteger(e.power) || !Number.isInteger(e.toughness))) err('SetBasePT needs integer power and toughness.');
+  if (e.effect === 'SetBasePT' && !e.powerFromAmount && !e.ptFromSource && (!Number.isInteger(e.power) || !Number.isInteger(e.toughness))) err('SetBasePT needs integer power and toughness.');
   if (e.effect === 'AddCounters' && e.optional && (e.amount !== 1 || !CHOSEN_TARGET_KINDS.includes(e.target))) err('optional AddCounters needs one counter on a chosen target.');
   if (e.effect === 'ModifyPT' && e.power === undefined && e.toughness === undefined && !e.powerFromAmount && !e.toughnessFromAmount && !e.multiplyPT) err('ModifyPT needs power or toughness.');
   if (ABILITY_ONLY_TARGETS.has(e.target) && !inAbility) err(`"${e.target}" can only be used in abilities.`);
@@ -403,7 +404,7 @@ function validateEffect(e: EffectSpec, inAbility: boolean, err: Err): void {
   if (e.anyKind && e.effect !== 'MoveCounters' && e.effect !== 'RemoveCounters') err('anyKind is only for MoveCounters and RemoveCounters.');
   if (e.anyKind && e.allCounters) err('MoveCounters moves one counter (anyKind) or all of them (allCounters), not both.');
   if (e.countersOf && e.effect !== 'PutLastCounters') err('countersOf is only for PutLastCounters.');
-  if (e.damageSource && e.effect !== 'DealDamage' && e.effect !== 'Fight') err('damageSource is only for DealDamage and Fight.');
+  if (e.damageSource && e.effect !== 'DealDamage' && e.effect !== 'Fight' && e.effect !== 'MoveAllCounters') err('damageSource is only for DealDamage, Fight and MoveAllCounters.');
   if (e.ifYouControl) validateFilter(e.ifYouControl.filter, err);
   if (e.toughnessFromAmount && ((e.effect !== 'ModifyPT' && e.effect !== 'SetBasePT') || e.amount === undefined)) err('toughnessFromAmount is only for ModifyPT or SetBasePT with an amount.');
   if (e.powerFromAmount && ((e.effect !== 'ModifyPT' && e.effect !== 'SetBasePT') || e.amount === undefined)) err('powerFromAmount is only for ModifyPT or SetBasePT with an amount.');

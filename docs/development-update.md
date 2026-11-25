@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC3d: Quandrix Unlimited, part four (2026-11-25)
+
+- Tanazir Quandrix, Oversimplify, Quandrix Command, Nexus Mentality, Elusive Otter (dividing counters) and Striding Shotcaller. 8 Quandrix cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC3c: Quandrix Unlimited, part three (2026-11-25)
 
 - 10 cards: Troyan's restricted mana, Alchemist's Refuge's flash, Mana Bloom, Open the Way, Animist's Awakening, Zimone's Hypothesis and more. 14 Quandrix cards left. docs/strixhaven.md.

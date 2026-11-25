@@ -1593,7 +1593,7 @@ function PromptBar(p: PromptProps) {
                   : c.purpose === 'reanimate' ? 'from the caster’s graveyard to return to the battlefield'
                   : c.purpose === 'addCounters' ? `to receive a ${c.counter ?? '+1/+1'} counter each`
                   : c.purpose === 'distributeCounter' ? `to receive one +1/+1 counter (${c.counterCount} remain to assign); choose none to finish`
-                  : c.purpose === 'divideDamage' ? `to be dealt 1 damage (${c.counterCount} left to divide)${c.min === 0 ? '; choose none to deal no damage' : ''}`
+                  : c.purpose === 'divideDamage' ? `${c.divideCounters ? 'to get a +1/+1 counter' : 'to be dealt 1 damage'} (${c.counterCount} left to divide)${c.min === 0 ? '; choose none to deal no damage' : ''}`
                   : c.purpose === 'copyOnEntry' ? 'for your entering creature to copy; choose none to have it enter as itself'
                   : c.purpose === 'attachToSource' ? 'to attach to the creature (an Equipment you control); choose none to skip'
                   : c.purpose === 'devourOnEntry' ? 'to sacrifice (devour); the entering creature gets three +1/+1 counters for each'

@@ -47,6 +47,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
       if (spec.cantBeBlocked && staticAffects(s, source, spec, attacker)) return false;
       if (spec.yourSmallCreaturesCantBeBlocked && source.controller === attacker.controller && !source.phasedOut && (powerOf(s, attacker) <= 1 || toughnessOf(s, attacker) <= 1)) return false;
       if (spec.cantBeBlockedByGreaterPower && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) > powerOf(s, attacker)) return false;
+      if (spec.cantBeBlockedByLesserPower && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) < powerOf(s, attacker)) return false;
       const most = spec.cantBeBlockedByPowerAtMost;
       if (most !== undefined && staticAffects(s, source, spec, attacker) && powerOf(s, blocker) <= most) return false;
     }

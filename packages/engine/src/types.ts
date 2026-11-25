@@ -637,6 +637,10 @@ export const EFFECT_KINDS = [
   'ExileTopAsManyAsYouChoose',
   /** Surge to Victory: copy the triggering card (in exile); you may cast the copy without paying its mana cost. */
   'CastCopyOfTriggeringCardFree',
+  /** Nexus Mentality: move all counters from the previous target onto this target. */
+  'MoveAllCounters',
+  /** Nexus Mentality: remove all counters from the target; draw a card for each counter removed. */
+  'RemoveAllCountersDraw',
   /** Alchemist's Refuge: "You may cast spells this turn as though they had flash." */
   'CastAsThoughFlashThisTurn',
   /** Animist's Awakening: reveal the top `amount` cards; the lands go onto the battlefield tapped, the rest on the bottom in a random order. */
@@ -948,6 +952,8 @@ export type Amount =
         | 'previousTargetHandSize'
         /** The X of the triggering spell (Nev: "put X +1/+1 counters"). */
         | 'subjectX'
+        /** The +1/+1 counters on the previous target (Tanazir Quandrix: "double the number of +1/+1 counters on target creature"). */
+        | 'previousTargetPlusOneCounters'
         /** How many times the previous target player has cast a commander from the command zone (Commander's Insight). */
         | 'previousTargetCommanderCasts'
         /** The value chosen for {X} (for a permanent's abilities, the X it was cast with). */
@@ -1474,6 +1480,16 @@ export interface EffectSpec {
   groupOwnersDiffer?: boolean;
   /** The targets of this group all belong to one player ("from a single graveyard"). */
   groupSameOwner?: boolean;
+  /** With `group`: the cards must be owned by the player chosen for that phrase's player target (Quandrix Command: "target player shuffles up to three target cards from their graveyard"). */
+  groupOwnerIsTargetPlayer?: boolean;
+  /** AddCounters: those creatures also gain these keywords until end of turn (Run the Play: flying). */
+  thenGrantKeywords?: Keyword[];
+  /** SetBasePT: base power and toughness equal to the source's power and toughness (Tanazir Quandrix). */
+  ptFromSource?: boolean;
+  /** Exile: each player creates this token and puts +1/+1 counters on it equal to the total power of the creatures they controlled exiled this way (Oversimplify). */
+  eachPlayerTokenOfExiledPower?: CardDefId;
+  /** DivideDamage with `amongTargets`: +1/+1 counters are divided instead of damage (Grove's Bounty). */
+  divideCounters?: boolean;
   /** ReturnToBattlefield: under your control instead of its owner's. */
   underYourControl?: boolean;
   /** ReturnToBattlefield, ExileAndReturn: the card enters with its back face up ("return it to the battlefield transformed"). */
@@ -2190,6 +2206,8 @@ export interface StaticSpec {
   cantBeBlocked?: boolean;
   /** A blocker with greater power than the affected attacker cannot block it. */
   cantBeBlockedByGreaterPower?: boolean;
+  /** "Creatures with power less than this creature's power can't block it" (Elusive Otter). */
+  cantBeBlockedByLesserPower?: boolean;
   /** Conqueror's Flail: while it applies, its controller's opponents can't cast spells during that player's turn. */
   opponentsCantCastDuringYourTurn?: boolean;
   /**
@@ -3435,6 +3453,8 @@ export interface CardChoice {
   /** addCounters: a named counter instead of +1/+1. */
   counter?: CounterKind;
   /** Counter-distribution progress for the board. */
+  /** divideDamage: +1/+1 counters are divided, not damage (Grove's Bounty). */
+  divideCounters?: boolean;
   counterCount?: number;
   player: PlayerId;
   /** What happens to the chosen cards: discarded, sacrificed, kept (and the other candidates sacrificed), or put onto the battlefield. */
