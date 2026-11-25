@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC4d: Silverquill Influence, part four (2026-11-25)
+
+- Angelic Destiny, Sage's Reverie, Chains of Custody, Sheltered by Ghosts, Flickering Ward (protection from the chosen color), Darksteel Mutation (type-setting), Land Tax, Keen Duelist, Shielded by Faith and Pearl-Ear. 20 Silverquill cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC4c: Silverquill Influence, part three (2026-11-25)
 
 - Combat Calligrapher, Eriette, Nils (attack tax per counter), Tomik, Firemane Commando and Breena: "can't attack you" restrictions, a per-creature attack tax (the browser's attack hint mentions it), and triggers for any player attacking one of your opponents. 30 Silverquill cards left. docs/strixhaven.md.

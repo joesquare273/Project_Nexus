@@ -2042,3 +2042,101 @@ describe('SOC4c: Silverquill Influence (attack restrictions and attack triggers)
     expect([s.players.P1!.hand.length - hand, s.cards[rat]!.counters]).toEqual([1, 2]);
   });
 });
+
+describe('SOC4d: Silverquill Influence (Auras and upkeep enchantments)', () => {
+  const onAura = (s: GameState, who: 'P1' | 'P2', defId: string, on: string) => put(s, who, defId, 'battlefield', { attachedTo: on });
+  const pickCard = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t.some((x) => x.card === id))! });
+
+  it('Angelic Destiny: +4/+4, flying, first strike, an Angel; when the creature dies, the Aura returns to its owner\'s hand', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const destiny = onAura(s, 'P1', 'angelic-destiny', rat);
+    const c = () => s.cards[rat]!;
+    expect([powerOf(s, c()), hasKeyword(s, c(), 'Flying'), hasKeyword(s, c(), 'FirstStrike')]).toEqual([5, true, true]);
+    s.cards[rat]!.damage = 5;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect([s.cards[rat]!.zone, s.cards[destiny]!.zone]).toEqual(['graveyard', 'hand']);
+  });
+
+  it('Sage\'s Reverie draws and pumps for each Aura you control on a creature; Pearl-Ear makes it cheaper and draws for targeting a modified creature', () => {
+    let s = newGame();
+    put(s, 'P1', 'pearl-ear-imperial-advisor');
+    const rat = put(s, 'P1', 'rank-rat');
+    onAura(s, 'P1', 'spirit-mantle', rat);
+    const reverie = put(s, 'P1', 'sages-reverie', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { W: 1, C: 2 }); // {3}{W} less {1} for one Aura
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: reverie, targets: [card(rat)] }).state;
+    expect(s.players.P1!.hand.length - hand).toBe(-1 + 1 + 2); // cast it; Pearl-Ear draws 1; Reverie draws 2
+    expect(powerOf(s, s.cards[rat]!)).toBe(1 + 1 + 2);
+  });
+
+  it('Chains of Custody exiles an opponent\'s permanent until it leaves; Sheltered by Ghosts gives +1/+0, lifelink and ward', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const foe = put(s, 'P2', 'ghostly-prison');
+    const chains = put(s, 'P1', 'chains-of-custody', 'hand');
+    mana(s, 'P1', { W: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: chains, targets: [card(rat)] }, pickCard(foe) as never).state;
+    expect([s.cards[foe]!.zone, s.cards[chains]!.attachedTo]).toEqual(['exile', rat]);
+    const fracture = put(s, 'P1', 'fracture', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fracture, targets: [card(chains)] }).state;
+    expect(s.cards[foe]!.zone).toBe('battlefield');
+    const other = put(s, 'P1', 'rank-rat');
+    onAura(s, 'P1', 'sheltered-by-ghosts', other);
+    expect([powerOf(s, s.cards[other]!), hasKeyword(s, s.cards[other]!, 'Lifelink')]).toEqual([2, true]);
+  });
+
+  it('Flickering Ward: protection from the chosen color, which doesn\'t remove it; {W} returns it to hand', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const ward = onAura(s, 'P1', 'flickering-ward', rat);
+    s.cards[ward]!.chosenColor = 'W';
+    expect(hasKeyword(s, s.cards[rat]!, 'ProtectionFromWhite')).toBe(true);
+    mana(s, 'P1', { W: 1 });
+    s = cast(s, activate(s, ward)!).state;
+    expect(s.cards[ward]!.zone).toBe('hand');
+    const again = onAura(s, 'P1', 'flickering-ward', rat);
+    s.cards[again]!.chosenColor = 'W';
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(s.cards[again]!.attachedTo).toBe(rat);
+  });
+
+  it('Darksteel Mutation: an indestructible 0/1 Insect artifact creature with no other abilities', () => {
+    const s = newGame();
+    const killian = put(s, 'P2', 'killian-ink-duelist');
+    onAura(s, 'P1', 'darksteel-mutation', killian);
+    const c = s.cards[killian]!;
+    const def = currentDefinition(s, c);
+    expect([def.types, def.subtypes, powerOf(s, c), toughnessOf(s, c)]).toEqual([['artifact', 'creature'], ['Insect'], 0, 1]);
+    expect([hasKeyword(s, c, 'Indestructible'), hasKeyword(s, c, 'Lifelink'), hasKeyword(s, c, 'Menace')]).toEqual([true, false, false]);
+  });
+
+  it('Land Tax finds up to three basic lands when an opponent has more lands; Keen Duelist trades reveals', () => {
+    let s = newGame();
+    put(s, 'P2', 'land-tax');
+    put(s, 'P2', 'keen-duelist');
+    put(s, 'P1', 'plains');
+    for (let i = 0; i < 3; i++) put(s, 'P2', 'plains', 'library');
+    const mineTop = put(s, 'P1', 'anguished-unmaking', 'library'); // mana value 3
+    const hand = s.players.P2!.hand.length;
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep', { targets: (o) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P1') ?? o[0]! });
+    expect(s.activePlayer).toBe('P2');
+    expect(s.cards[mineTop]!.zone).toBe('hand');
+    expect(s.players.P2!.life).toBe(17);
+    expect(s.players.P2!.hand.length - hand).toBe(3 + 1); // three Plains, and its own revealed card
+  });
+
+  it('Shielded by Faith: indestructible, and it may move onto a creature that enters', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const shield = onAura(s, 'P1', 'shielded-by-faith', rat);
+    expect(hasKeyword(s, s.cards[rat]!, 'Indestructible')).toBe(true);
+    const next = put(s, 'P1', 'rank-rat', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: next }).state;
+    expect(s.cards[shield]!.attachedTo).toBe(next);
+  });
+});

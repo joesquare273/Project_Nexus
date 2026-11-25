@@ -162,6 +162,8 @@ export const TARGET_KINDS = [
   'CreatedTokens',
   /** The card the ability belongs to. Abilities only. */
   'This',
+  /** This card, if it went from the battlefield to a graveyard since the ability triggered ("when enchanted creature dies, return this card to its owner's hand"). */
+  'ThisCardFromBattlefield',
   /** The object the trigger event happened to ("attach this Equipment to it"). Triggered abilities only. */
   'TriggeringObject',
   /** The card the trigger event happened to, in the graveyard it went to ("return it to the battlefield"). */
@@ -243,6 +245,8 @@ export const EFFECT_KINDS = [
   'ExileTopOfLibrary',
   /** Reveal the top card of your library and put it into your hand; you lose life equal to its mana value (Dark Confidant). */
   'RevealTopToHandLoseLife',
+  /** Keen Duelist: you and the target opponent each reveal your top card, each lose life equal to the mana value of the other's card, and each put yours into your hand. */
+  'KeenDuel',
   /**
    * Meld (rule 701.42): if you own and control this permanent and a creature
    * named its meld partner, exile both, then put them onto the battlefield as
@@ -843,6 +847,8 @@ export const COUNT_KINDS = [
   'AurasAttachedToThis',
   /** Auras you control (Herald of Amity, Eriette). */
   'AurasYouControl',
+  /** Auras you control that are attached to creatures (Sage's Reverie). */
+  'AurasYouControlAttachedToCreatures',
   'SoldiersYouControl',
   /** Opponents who control a creature with power 4 or greater (Summon: Yojimbo). */
   'OpponentsWithPower4Creature',
@@ -1894,6 +1900,8 @@ export interface TriggerSpec {
   ifSpellTargetsCreature?: boolean;
   /** SpellCast: only if the spell targets only this permanent (Mirrorwing Dragon). */
   ifSpellTargetsOnlySource?: boolean;
+  /** SpellCast: only if the spell targets a permanent matching this (Pearl-Ear: "an Aura spell that targets a modified permanent you control"). */
+  ifSpellTargetsMatching?: ObjectFilter;
   ifSourceGotCountersThisTurn?: boolean;
   /** "If you're the monarch" (an intervening "if": Ginger, Queen of Sweets). */
   ifYouAreMonarch?: boolean;
@@ -2312,6 +2320,10 @@ export interface StaticSpec {
   attackTax?: number;
   /** Nils, Discipline Enforcer: each creature with counters attacking you costs its controller {X}, X = the counters on it. */
   attackTaxPerCounter?: boolean;
+  /** Flickering Ward: the affected creature has protection from the source's chosen color (which doesn't remove the source). */
+  protectionFromChosenColor?: boolean;
+  /** Darksteel Mutation (layer 4): the affected permanent has exactly these card types. */
+  setCardTypes?: CardType[];
   /** "[Matching creatures] can't attack you or planeswalkers you control" (Combat Calligrapher, Eriette); checked from this permanent's controller's view. */
   cantAttackYou?: ObjectFilter;
   /**

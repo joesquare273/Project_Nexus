@@ -220,6 +220,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'AurasAttachedToThis':
       return source ? aurasOn(s, source).length : 0;
+    case 'AurasYouControlAttachedToCreatures':
+      return s.players[player]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === player && !x.phasedOut && (currentDefinition(s, x).subtypes ?? []).includes('Aura') && !!x.attachedTo && s.cards[x.attachedTo]?.zone === 'battlefield' && currentDefinition(s, s.cards[x.attachedTo]!).types.includes('creature')).length;
     case 'AurasYouControl':
       return s.players[player]!.battlefield.map((id) => s.cards[id]!).filter((x) => x.controller === player && !x.phasedOut && (currentDefinition(s, x).subtypes ?? []).includes('Aura')).length;
     case 'TappedCreaturesOfEnchantedController': {
@@ -417,6 +419,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
       // Moraug: "+1/+0 for each time it has attacked this turn".
       if (spec.powerPerAttackThisTurn && c.attacksThisTurn?.turn === s.turnNumber) out.power += spec.powerPerAttackThisTurn * c.attacksThisTurn.n;
       for (const k of spec.keywords ?? []) out.keywords.add(k);
+      if (spec.protectionFromChosenColor && source.chosenColor) out.keywords.add(PROTECTION[source.chosenColor]);
       out.ward += spec.ward ?? 0;
       removed.push(...(spec.removeKeywords ?? []));
     }

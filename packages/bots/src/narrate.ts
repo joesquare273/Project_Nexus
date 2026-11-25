@@ -32,6 +32,7 @@ const TARGET_TEXT: Record<EffectSpec['target'], string> = {
   DefendingPlayer: 'the defending player',
   CreatedTokens: 'the token',
   This: 'this card',
+  ThisCardFromBattlefield: 'this card',
   AllPermanents: 'all permanents',
   TriggeringObject: 'that creature',
   TriggeringObjects: 'those creatures',
@@ -481,6 +482,8 @@ function effectText(e: EffectSpec): string {
     case 'LookAtTopPutMatching': return `look at the top ${typeof e.amount === 'number' ? e.amount : 'X'} cards of your library; you may put ${e.anyNumber ? 'any number of' : 'one'} ${subjectText(e.filter ?? {}, 'card')} ${e.lookTo === 'battlefield' ? 'onto the battlefield' : 'into your hand'}, and the rest on the bottom in a random order`;
     case 'DestroyAttachedEquipment': return 'destroy up to one Equipment attached to that creature';
     case 'ExileTopOfLibrary': return `exile the top ${typeof e.amount === 'number' ? e.amount : 'X'} cards of their library`;
+    case 'KeenDuel':
+      return 'you and target opponent each reveal the top card of your library, each lose life equal to the mana value of the card the other revealed, and each put yours into your hand';
     case 'RevealTopToHandLoseLife': return 'reveal the top card of your library and put it into your hand; you lose life equal to its mana value';
     case 'ReturnFromGraveyardToHand': return `return ${e.amount === undefined || e.amount === 1 ? 'a' : e.amount} ${subjectText(e.filter ?? {}, 'card')} from your graveyard to your hand`;
     case 'FlipCoin': return 'flip a coin';

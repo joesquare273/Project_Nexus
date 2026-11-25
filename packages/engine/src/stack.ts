@@ -2255,6 +2255,12 @@ function resolveTargets(s: GameState, effect: EffectSpec, r: Resolving, chosen: 
       return item.kind === 'ability' && s.cards[item.source]!.zone === item.sourceZone
         ? [{ kind: 'card', card: item.source }]
         : [];
+    case 'ThisCardFromBattlefield': {
+      const c = item.kind === 'ability' ? s.cards[item.source] : undefined;
+      return item.kind === 'ability' && c?.zone === 'graveyard' && (item.sourceObject === undefined || (c.zoneChanges ?? 0) === item.sourceObject + (item.sourceZone === 'graveyard' ? 0 : 1))
+        ? [{ kind: 'card', card: item.source }]
+        : [];
+    }
     case 'PreviousTarget':
       return r.previousTarget ? [r.previousTarget] : [];
     case 'PreviousTargetController': {
@@ -3939,6 +3945,21 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of player(s, pid).library.slice(0, amount)) moveCard(ctx, id, 'exile');
       }
       return;
+    case 'KeenDuel': {
+      const opponent = targets.find((t) => t.kind === 'player');
+      if (!opponent || opponent.kind !== 'player') return;
+      const mine = player(s, item.controller).library[0];
+      const theirs = player(s, opponent.player).library[0];
+      for (const [who, top] of [[item.controller, mine], [opponent.player, theirs]] as const) if (top) ctx.ev.push({ type: 'CardRevealed', player: who, card: top, defId: s.cards[top]!.defId });
+      const mv = (id: InstanceId | undefined) => (id ? objectManaValue(s, s.cards[id]!) : 0);
+      const youLose = mv(theirs);
+      const theyLose = mv(mine);
+      if (youLose > 0) changeLife(ctx, item.controller, -youLose);
+      if (theyLose > 0) changeLife(ctx, opponent.player, -theyLose);
+      if (mine) moveCard(ctx, mine, 'hand');
+      if (theirs) moveCard(ctx, theirs, 'hand');
+      return;
+    }
     case 'RevealTopToHandLoseLife': {
       const top = player(s, item.controller).library[0];
       if (!top) return;

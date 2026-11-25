@@ -860,7 +860,9 @@ export function becomeMonarch(ctx: Ctx, playerId: PlayerId): void {
 export function canAttach(s: GameState, attachment: CardInstance, host: CardInstance | undefined): boolean {
   if (!host || host.zone !== 'battlefield' || host.phasedOut || attachment.id === host.id) return false;
   // Protection: not enchanted or equipped by anything of that color (rule 702.16c, d).
-  if (protectedFrom(s, host, attachment)) return false;
+  // Flickering Ward: "This effect doesn't remove this Aura."
+  const ownProtection = attachment.attachedTo === host.id && !!defOf(s, attachment).statics?.some((st) => st.protectionFromChosenColor);
+  if (!ownProtection && protectedFrom(s, host, attachment)) return false;
   const def = defOf(s, attachment);
   if (def.subtypes?.includes('Aura')) return matchesObject(s, def.enchant ?? { types: ['creature'] }, host, { controller: attachment.controller, source: attachment.id });
   return def.subtypes?.includes('Equipment') === true && isCreatureOnBattlefield(s, host) && !hasType(s, attachment, 'creature');

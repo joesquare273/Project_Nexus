@@ -55,7 +55,7 @@ export function continuousSources(s: GameState): CardInstance[] {
   const cached = sourceCache.get(s);
   if (cached?.version === version && cached.count === count && cached.defs === s.cardDefs) return cached.sources;
   const sources = s.turnOrder.flatMap(p=>s.players[p]!.battlefield.map(id=>s.cards[id]!)).filter(c=>
-    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.planeswalkersHave || st.addSubtypes || st.setCreatureTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.enchantedBecomesCreature || st.noncreatureIfGraveyardBelow !== undefined));
+    copiableDefinition(s,c).statics?.some(st=>st.goaded || st.planeswalkersHave || st.addSubtypes || st.setCreatureTypes || st.setCardTypes || st.setColors || st.losesAllAbilities || st.artifactsAreFoods || st.enchantedBecomesCreature || st.noncreatureIfGraveyardBelow !== undefined));
   sourceCache.set(s,{version,count,defs:s.cardDefs,sources});
   return sources;
 }
@@ -225,7 +225,7 @@ function definitionWithEffects(s: GameState, c: CardInstance): CardDefinition {
   for (const source of continuousSources(s)) {
     if (source.phasedOut || (source.id !== c.id && source.attachedTo !== c.id)) continue;
     for (const spec of copiableDefinition(s,source).statics ?? []) {
-      if (spec.zone || spec.affects === 'EachMatching' || !(spec.addSubtypes || spec.setCreatureTypes || spec.setColors || spec.losesAllAbilities || spec.noncreatureIfGraveyardBelow !== undefined)) continue;
+      if (spec.zone || spec.affects === 'EachMatching' || !(spec.addSubtypes || spec.setCardTypes || spec.setCreatureTypes || spec.setColors || spec.losesAllAbilities || spec.noncreatureIfGraveyardBelow !== undefined)) continue;
       if ((spec.affects === 'Self' ? source.id : source.attachedTo) !== c.id) continue;
       if (spec.conditions?.some(condition =>
         condition === 'yourTurn' ? s.activePlayer !== source.controller :
@@ -241,6 +241,8 @@ function definitionWithEffects(s: GameState, c: CardInstance): CardDefinition {
     if (spec.noncreatureIfGraveyardBelow !== undefined && s.players[source.controller]!.graveyard.length < spec.noncreatureIfGraveyardBelow) {
       change(); out.types = out.types.filter(t => t !== 'creature'); out.subtypes = (out.subtypes ?? []).filter(t => !CREATURE_SUBTYPES.has(t));
     }
+    // Darksteel Mutation: "is an Insect artifact creature ... and it loses all other card types and creature types".
+    if (spec.setCardTypes) { change(); out.types = [...spec.setCardTypes]; out.subtypes = (out.subtypes ?? []).filter((t) => CREATURE_SUBTYPES.has(t)); }
     if (spec.setCreatureTypes && out.types.includes('creature')) { change(); out.subtypes = [...(out.subtypes ?? []).filter(t=>!CREATURE_SUBTYPES.has(t)), ...spec.setCreatureTypes]; }
     if (spec.addSubtypes) { change(); out.subtypes = [...new Set([...(out.subtypes ?? []), ...spec.addSubtypes])]; }
     if (spec.setColors) { change(); out.colors = [...spec.setColors]; }
