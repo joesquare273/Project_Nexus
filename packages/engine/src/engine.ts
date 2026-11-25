@@ -7,7 +7,7 @@ import { chooseCopy, chooseResolutionOption, chooseEntryCopy, chooseEntryCounter
 import { chooseTriggerModes, chooseTriggerTargets, orderTriggers, placeTriggers } from './triggers.ts';
 import { chooseDredge, discardToHandSize, passPriority } from './turn.ts';
 import { bottomCards, mulligan } from './mulligan.ts';
-import { cloneState, dealDamage, moveCard, reject, RuleError, type Ctx } from './state.ts';
+import { changeLife, cloneState, dealDamage, moveCard, reject, RuleError, type Ctx } from './state.ts';
 import type { Action, ActionResult, GameState } from './types.ts';
 
 function requirePriority(s: GameState, playerId: string): void {
@@ -119,6 +119,20 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         activateManaAbility(ctx, action.player, action.card, action.mana, action.output, action.payWith, action.tapCreature, action.grantedBy, action.sacrifice);
         s.pending = { kind: 'priority', player: action.player, passes: 0 };
         break;
+      case 'PayLifeForMana': {
+        // Like a mana ability: also while deciding whether to pay a cost or paying to attack.
+        const p = s.players[action.player]!;
+        if (p.lifeManaTurn !== s.turnNumber) reject('You can pay life for mana only after casting Channel this turn.');
+        if (p.life < 1) reject("You don't have enough life to pay.");
+        const payingToKeep = s.pending.kind === 'chooseCards' && s.pending.purpose === 'payToAvoidCounter';
+        const elsewhere = (s.pending.kind === 'decide' || s.pending.kind === 'declareAttackers' || payingToKeep) && 'player' in s.pending && s.pending.player === action.player;
+        if (!elsewhere) requirePriority(s, action.player);
+        changeLife(ctx, action.player, -1);
+        // No card is the source of this mana.
+        s.players[action.player]!.manaPool.C += 1;
+        if (!elsewhere) s.pending = { kind: 'priority', player: action.player, passes: 0 };
+        break;
+      }
       case 'Suspend':
         requirePriority(s, action.player);
         suspend(ctx, action.player, action.card);

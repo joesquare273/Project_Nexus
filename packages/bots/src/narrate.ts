@@ -419,6 +419,8 @@ function effectText(e: EffectSpec): string {
       return `exile the top card of your library as many times as you choose; if their total mana value is ${amountText(e.amount)} or less, you may cast any number of spells from among them without paying their mana costs`;
     case 'CastCopyOfTriggeringCardFree':
       return 'copy the exiled card; you may cast the copy without paying its mana cost';
+    case 'LifeForColorlessThisTurn':
+      return 'until end of turn, any time you could activate a mana ability, you may pay 1 life; if you do, add {C}';
     case 'DoubleSpellX':
       return 'double the value of X';
     case 'CopyTriggeringAbility':

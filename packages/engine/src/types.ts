@@ -637,6 +637,8 @@ export const EFFECT_KINDS = [
   'ExileTopAsManyAsYouChoose',
   /** Surge to Victory: copy the triggering card (in exile); you may cast the copy without paying its mana cost. */
   'CastCopyOfTriggeringCardFree',
+  /** Channel: "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}." */
+  'LifeForColorlessThisTurn',
   /** Unbound Flourishing: double the value of X of the triggering spell. */
   'DoubleSpellX',
   /** Unbound Flourishing: copy the triggering activated ability (on the stack). */
@@ -1328,6 +1330,12 @@ export interface EffectSpec {
   if?: 'castFromGraveyard' | 'notCastFromGraveyard' | 'castFromExile' | 'castFromHand' | 'notCastFromHand' | 'kicked' | 'notKicked' | 'controlChanged';
   /** AddMana without manaType: the colors the player may choose from (default any color). */
   manaTypes?: Color[];
+  /** AddMana: one mana of any color in your commander's color identity (Opal Palace); none if it has no colors. */
+  commanderIdentityColors?: boolean;
+  /** AddMana: if this mana is spent to cast your commander, it enters with additional +1/+1 counters equal to the times it's been cast from the command zone (Opal Palace). */
+  opalMana?: boolean;
+  /** Only if the previous target's power is at least this (Yavimaya Bloomsage: "if that creature has power 7 or greater"). */
+  ifPreviousTargetPowerAtLeast?: number;
   /** Only happens if the source's power is at least this ("if Cloud has power 7 or greater"). */
   ifSourcePowerAtLeast?: number;
   /** Only happens if the source has at least this many +1/+1 counters ("then if it has three or more +1/+1 counters on it"). */
@@ -3139,6 +3147,10 @@ export interface PlayerState {
   greatestInstantOrSorceryManaValueThisTurn?: number;
   /** Alchemist's Refuge: this turn, the player may cast spells as though they had flash. */
   flashTurn?: number;
+  /** Channel (Yavimaya Bloomsage): this turn, any time they could activate a mana ability, they may pay 1 life for {C}. */
+  lifeManaTurn?: number;
+  /** Opal Palace's mana still in the pool this step, by type. */
+  opalMana?: Partial<Record<ManaType, number>>;
   /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */
   paradigms?: InstanceId[];
   /** Summon: Brynhildr: "when you next cast a creature spell this turn, it gains haste until end of turn" (the turn). */
@@ -3587,7 +3599,7 @@ export interface CombatState {
 /** Whose decision the game is waiting on. */
 export type Pending =
   | { kind: 'copyCreature'; player: PlayerId; source: InstanceId; target: InstanceId; sourceObject: number; targetObject: number; effect: EffectSpec }
-  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[] }
+  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[]; /** Opal Palace's mana: tracked for the commander bonus. */ opal?: boolean }
   /** `purpose`: who decides the Fate card (default), who picks with you for Memories Returning, or Shinryu's rival. */
   | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[]; purpose?: 'fate' | 'memories' | 'rival' | 'piles' | 'deny' }
   /** `entered`: the creature is already on the battlefield (Winota's Human); choosing only adds it to combat. */
@@ -3806,6 +3818,8 @@ export type Action =
   | { type: 'Foretell'; player: PlayerId; card: InstanceId }
   /** Suspend: pay the suspend cost and exile the card from your hand with time counters (a special action, rule 116.2f). */
   | { type: 'Suspend'; player: PlayerId; card: InstanceId }
+  /** Channel: pay 1 life, add {C} (any time you could activate a mana ability this turn). */
+  | { type: 'PayLifeForMana'; player: PlayerId }
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }

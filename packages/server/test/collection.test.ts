@@ -3,6 +3,7 @@
 // as the database functions.
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { SOC_PRECONS, preconFullyBuilt } from '@nexus/cards';
 import { MemoryAccounts } from '../src/accounts.ts';
 import { deckProblem, type DeckInput } from '../src/collection.ts';
 import { ECONOMY, FIRST_DAY_SHARDS } from '../src/economy.ts';
@@ -166,9 +167,11 @@ describe('the free starter precon', () => {
     const before = await (await call('token-alice', '/api/starter')).json();
     expect(before.claimed).toBe(false);
     // Every set's precons: Final Fantasy's four, Edge of Eternities' two, Reality Fracture's one, and the Strixhaven decks built so far.
-    expect(before.choices).toHaveLength(9);
-    expect(before.choices.map((c: { set: string }) => c.set)).toEqual(['Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Edge of Eternities', 'Edge of Eternities', 'Reality Fracture', 'Secrets of Strixhaven', 'Secrets of Strixhaven']);
-    expect(before.choices.slice(-2).map((c: { name: string }) => c.name)).toEqual(['Lorehold Spirit', 'Prismari Artistry']);
+    const strixhaven = SOC_PRECONS.filter(preconFullyBuilt).map((d) => d.name);
+    expect(strixhaven).toEqual(['Lorehold Spirit', 'Prismari Artistry', 'Quandrix Unlimited']);
+    expect(before.choices).toHaveLength(7 + strixhaven.length);
+    expect(before.choices.map((c: { set: string }) => c.set)).toEqual(['Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Edge of Eternities', 'Edge of Eternities', 'Reality Fracture', ...strixhaven.map(() => 'Secrets of Strixhaven')]);
+    expect(before.choices.slice(7).map((c: { name: string }) => c.name)).toEqual(strixhaven);
     const name = before.choices[1].name;
     const r = await call('token-alice', '/api/starter', 'POST', { precon: name });
     expect(r.status).toBe(200);
@@ -199,7 +202,7 @@ describe('the free starter precon', () => {
   it('refuses anything but one of the precons', async () => {
     const { call } = await withAccounts();
     // Secrets of Strixhaven's decks are sold, but aren't a starter until their cards are built.
-    for (const precon of ['Cloud', '', 5, undefined, 'Quandrix Unlimited']) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
+    for (const precon of ['Cloud', '', 5, undefined, 'Silverquill Influence']) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(false);
   });
 });

@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC3f: Quandrix Unlimited complete (2026-11-25)
+
+- A fuzz run with the three finished Strixhaven decks found that "counter it unless its controller pays" offered paying without the mana in the pool; the shared choice check now requires it (as the engine already did).
+- Yavimaya Bloomsage (Channel: pay 1 life for {C}) and Opal Palace (commander mana that adds counters). Quandrix Unlimited is the third complete Strixhaven deck: a free starter choice and a deck the bots can play. docs/strixhaven.md.
+
 ### Fix: Buster Sword's free cast was passed away in the browser (2026-11-25)
 
 - User report: Buster Sword didn't work in game. After its combat damage trigger you chose a spell to cast free, but the browser's automatic passing gave up priority in the combat damage step (it only stops on your turn in your main phases), which ends a "cast it right now" permission. The browser now always stops while you have one, which also covers Jodah, discover, cascade, Surge to Victory, Dance with Calamity and Plargg and Nassari. The prompt says "cast right now" instead of "this turn". Test: client/test/priority-stops.test.ts.

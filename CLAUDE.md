@@ -53,7 +53,7 @@ this repo, not only in local memory.
   pack-only SOA/SPG/SOC cards); its packs are in (MTGJSON print sheets,
   `sos-boosters.json`); its five Commander decks are imported
   (`import-precons.ts soc`, `soc.json`, `soc-precons.json`; in the Store; each
-  becomes a free starter once fully built: Lorehold Spirit and Prismari Artistry are, 2026-11-24); their cards and the main set's card groups are planned
+  becomes a free starter once fully built: Lorehold Spirit and Prismari Artistry are (2026-11-24), and Quandrix Unlimited (2026-11-25)); their cards and the main set's card groups are planned
   in docs/strixhaven.md.
 - **The tutorial uses the Starter Kits** (`packages/client/src/tutorial/`);
   keep it working when engine behavior changes (its test walks the lesson).

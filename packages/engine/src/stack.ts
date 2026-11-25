@@ -645,6 +645,10 @@ export interface ManaUse {
   artifact?: boolean;
   /** The other restricted pools that can pay for this. */
   restricted?: ManaRestriction[];
+  /** Casting a commander: Opal Palace's mana is spent first, as its controller would. */
+  forCommander?: boolean;
+  /** Filled with how much of Opal Palace's mana was spent. */
+  opalSpent?: number;
   /** Filled with the mana of each type that was spent (converge). */
   spentOut?: Partial<Record<ManaType, number>>;
   /** How many {B} to pay with 2 life each ({B/P}, K'rrik), as the player chose; unset: only what mana can't cover. */
@@ -747,6 +751,15 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
         spentScryMana?.push(...used);
         const consumed = new Set(used);
         p.creatureScryMana = p.creatureScryMana.filter(unit => !consumed.has(unit));
+      }
+    }
+    // Opal Palace's mana: a commander takes it first; anything else takes other mana first.
+    const opal = p.opalMana?.[t] ?? 0;
+    if (opal > 0 && n > 0) {
+      const used = use.forCommander ? Math.min(n, opal) : Math.max(0, n - (p.manaPool[t] - opal));
+      if (used > 0) {
+        p.opalMana![t] = opal - used;
+        use.opalSpent = (use.opalSpent ?? 0) + used;
       }
     }
     p.manaPool[t] -= n;
@@ -1496,6 +1509,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
       if (canPayFromPool(s, playerId, tried, use)) cost = tried;
     }
   }
+  if (c.isCommander) use.forCommander = true;
   const manaSpent = payMana(ctx, playerId, cost, use, spentScryMana);
   const colorsSpent = COLORS.filter((color) => (use.spentOut![color] ?? 0) > 0).length;
   if (alternative && def.alternativeCost?.life) changeLife(ctx, playerId, -def.alternativeCost.life);
@@ -1553,6 +1567,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (permission?.ownerLosesLife) changeLife(ctx, c.owner, -manaValue(parseManaCost(def.manaCost)));
   const sacrificeLater = !!permission?.hasteSacrifice && def.types.includes('creature');
   moveCard(ctx, id, 'stack');
+  // Opal Palace: "it enters with a number of additional +1/+1 counters equal to the number of times it's been cast from the command zone this game".
+  if (c.isCommander && (use.opalSpent ?? 0) > 0) c.extraCountersOnEnter = (c.extraCountersOnEnter ?? 0) + (player(s, c.owner).commanderCasts[id] ?? 0);
   if (choice.adventure) c.adventureSpell = true;
   if (from === 'graveyard') c.castFromGraveyard = true;
   const caster = player(s, playerId);
@@ -2488,6 +2504,8 @@ function queueChoices(s: GameState, effect: EffectSpec, r: Resolving, players: P
 /** Why a set of chosen cards doesn't fit a choice, or null if it does. */
 export function choiceProblem(s: GameState, choice: CardChoice, cards: InstanceId[]): string | null {
   if (choice.purpose === 'distributeCounter' && cards.some((id) => !isCreatureOnBattlefield(s, s.cards[id]))) return 'Choose a creature still on the battlefield.';
+  // "Counter it unless its controller pays {2}": paying needs that mana in the pool first.
+  if (choice.purpose === 'payToAvoidCounter' && cards.length > 0 && (choice.payGeneric ?? 0) > 0 && !canPayFromPool(s, choice.player, parseManaCost(`{${choice.payGeneric}}`))) return `Tap mana for {${choice.payGeneric}} first, or don't pay.`;
   // Divided damage: a creature or planeswalker still on the battlefield, or a player still in the game.
   if (choice.purpose === 'divideDamage' && cards.some((id) => (s.players[id] ? s.players[id]!.eliminated : !(s.cards[id]?.zone === 'battlefield' && (isCreatureOnBattlefield(s, s.cards[id]) || hasType(s, s.cards[id]!, 'planeswalker')))))) return 'Choose a creature, planeswalker or player still in the game.';
   if (new Set(cards).size !== cards.length || cards.some((id) => !choice.cards.includes(id))) return 'Choose from the cards offered.';
@@ -4209,7 +4227,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         }
         return;
       }
-      if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(effect.manaTypes ? { options: [...effect.manaTypes] } : {}) };
+      // Opal Palace: a color in the commander's color identity (none if it has no colors).
+      const identity = effect.commanderIdentityColors && recipient?.kind === 'player'
+        ? COLORS.filter((color) => Object.values(s.cards).some((x) => x.isCommander && x.owner === recipient.player && (defOf(s, x).colorIdentity ?? []).includes(color)))
+        : undefined;
+      if (identity && identity.length === 0) return;
+      if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(identity ? { options: identity } : effect.manaTypes ? { options: [...effect.manaTypes] } : {}), ...(effect.opalMana ? { opal: true } : {}) };
       return;
     }
     case 'CopyCreature': {
@@ -4499,6 +4522,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, asCopy: true };
       return;
     }
+    case 'LifeForColorlessThisTurn':
+      player(s, item.controller).lifeManaTurn = s.turnNumber;
+      return;
     case 'DoubleSpellX': {
       const spell = item.kind === 'ability' ? s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === item.subject) : undefined;
       if (spell) spell.x = (spell.x ?? 0) * 2;
@@ -5031,6 +5057,10 @@ function continueResolving(ctx: Ctx): void {
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
     if (effect.ifVoid !== undefined && (s.voidTurn === s.turnNumber) !== effect.ifVoid) continue;
     if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x ?? s.cards[item.source]?.xPaid) ?? 0) < effect.ifXAtLeast) continue;
+    if (effect.ifPreviousTargetPowerAtLeast !== undefined) {
+      const t = r.previousTarget?.kind === 'card' ? s.cards[r.previousTarget.card] : undefined;
+      if (!t || !isCreatureOnBattlefield(s, t) || powerOf(s, t) < effect.ifPreviousTargetPowerAtLeast) continue;
+    }
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifSubjectManaSpentOverSourcePowerOrToughness && (item.kind !== 'ability' || !manaSpentOverPowerOrToughness(s, item.source, item.amount ?? 0))) continue;
@@ -5907,6 +5937,10 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
   if (pending.kind !== 'chooseMana' || pending.player !== playerId || !s.resolving || !COLORS.includes(mana as never)) reject('Choose a color of mana for the resolving ability.');
   if (pending.options && !pending.options.includes(mana as never)) reject(`Choose one of: ${pending.options.join(', ')}.`);
   if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
+  if (pending.opal && !s.players[pending.recipient]!.eliminated) {
+    const p = s.players[pending.recipient]!;
+    p.opalMana = { ...p.opalMana, [mana]: (p.opalMana?.[mana] ?? 0) + pending.amount };
+  }
   s.pending = { kind: 'priority', player: s.activePlayer, passes: 0 };
   continueResolving(ctx);
 }

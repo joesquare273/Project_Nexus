@@ -718,3 +718,10 @@ recorded again.
   without asking, and only attacking the player, not a planeswalker they
   control. The card says "you may" and "that player or a planeswalker they
   control"; this is still to do (Muddle and the Equipment that grant it).
+
+## 2026-11-25: Opal Palace's mana (payment choice)
+
+- Mana payment is automatic, so the player doesn't pick which mana pays a
+  cost. With Opal Palace's mana in the pool, casting a commander spends it
+  first and anything else spends other mana first, which is what its
+  controller would choose.

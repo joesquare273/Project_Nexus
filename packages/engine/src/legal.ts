@@ -454,6 +454,8 @@ export function manaAbilityActions(s: GameState, player: PlayerId): Action[] {
 
 function manaAbilities(s: GameState, player: PlayerId): Action[] {
   const actions: Action[] = [];
+  // Channel (Yavimaya Bloomsage): pay 1 life, add {C}, any time a mana ability could be activated this turn.
+  if (s.players[player]?.lifeManaTurn === s.turnNumber && s.players[player]!.life >= 1) actions.push({ type: 'PayLifeForMana', player });
   for (const c of Object.values(s.cards).filter((card) => card.zone === 'battlefield' && !card.phasedOut && card.controller === player && !staticRule(s, card, 'cantActivateAbilities'))) {
     const id = c.id;
     const def = currentDefinition(s, c);

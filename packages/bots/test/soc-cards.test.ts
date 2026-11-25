@@ -1746,3 +1746,44 @@ describe('SOC3e: Quandrix Unlimited (Kinetic Ooze, Primo, Zimone, Unbound Flouri
     expect(s.players.P1!.restrictedMana?.xCost?.C).toBe(2);
   });
 });
+
+describe('SOC3f: Quandrix Unlimited (Yavimaya Bloomsage, Opal Palace)', () => {
+  it('Yavimaya Bloomsage: a counter at your end step, prepared if that creature has power 7; Channel lets you pay 1 life for {C} this turn', () => {
+    let s = newGame();
+    const sage = put(s, 'P1', 'yavimaya-bloomsage-channel');
+    const big = put(s, 'P1', 'rank-rat');
+    s.cards[big]!.counters = 5; // 6/6 before the counter
+    const pick = { targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.kind === 'card' && t[0].card === big)! };
+    s = settle(goTo(s, 'end', pick as never), pick as never).state;
+    expect([s.cards[big]!.counters, s.cards[sage]!.prepared]).toEqual([6, true]);
+    let t = newGame();
+    t.players.P1!.lifeManaTurn = undefined;
+    const sage2 = put(t, 'P1', 'yavimaya-bloomsage-channel');
+    t.cards[sage2]!.prepared = true;
+    const copy = Object.values(t.cards).find((c) => c.prepareSpellOf?.card === sage2);
+    if (copy) {
+      mana(t, 'P1', { G: 2 });
+      t = cast(t, { type: 'CastSpell', player: 'P1', card: copy.id }).state;
+    } else t.players.P1!.lifeManaTurn = t.turnNumber;
+    expect(getLegalActions(t).some((a) => a.type === 'PayLifeForMana')).toBe(true);
+    t = act(t, { type: 'PayLifeForMana', player: 'P1' });
+    expect([t.players.P1!.life, t.players.P1!.manaPool.C]).toEqual([19, 1]);
+  });
+
+  it('Opal Palace: mana of the commander\'s colors; spent on the commander, it enters with a counter per command-zone cast', () => {
+    let s = newGame();
+    const palace = put(s, 'P1', 'opal-palace');
+    const cmdr = put(s, 'P1', 'rank-rat', 'command');
+    s.cards[cmdr]!.isCommander = true;
+    s.players.P1!.commanderCasts = { [cmdr]: 1 };
+    mana(s, 'P1', { C: 1 });
+    s = act(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === palace)!);
+    s = settle(s).state;
+    expect([s.pending.kind, (s.pending as { options?: string[] }).options]).toEqual(['chooseMana', ['B']]);
+    s = settle(act(s, { type: 'ChooseMana', player: 'P1', mana: 'B' })).state;
+    expect(s.players.P1!.opalMana?.B).toBe(1);
+    mana(s, 'P1', { C: 3 }); // {1}{B} plus {2} commander tax
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: cmdr }).state;
+    expect([s.cards[cmdr]!.zone, s.cards[cmdr]!.counters]).toEqual(['battlefield', 2]);
+  });
+});

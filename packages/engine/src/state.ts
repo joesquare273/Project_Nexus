@@ -910,6 +910,7 @@ export function emptyAllManaPools(s: GameState): void {
     s.players[id]!.noncreatureSpellMana = emptyManaPool();
     delete s.players[id]!.artifactMana;
     delete s.players[id]!.restrictedMana;
+    delete s.players[id]!.opalMana;
     if (kept > 0) s.players[id]!.manaPool.C = kept;
     // Rousing Refrain: that mana stays until end of turn (as much of it as is still unspent).
     const lasting = p.keptMana?.turn === s.turnNumber ? p.keptMana.pool : undefined;

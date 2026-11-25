@@ -1832,6 +1832,10 @@ function PromptBar(p: PromptProps) {
       buttons = [...(canHold ? [holdButton] : []), { label: 'Pass priority', onClick: () => p.submit([{ type: 'PassPriority', player: ME }]), primary: true }];
     }
   }
+  // Channel (Yavimaya Bloomsage): any time you could activate a mana ability this turn, 1 life for {C}.
+  if (p.yourMove && !p.menu && p.session.legal().some((a) => a.type === 'PayLifeForMana' && a.player === ME)) {
+    buttons = [{ label: 'Pay 1 life: add {C}', onClick: () => p.submit([{ type: 'PayLifeForMana', player: ME }]) }, ...buttons];
+  }
 
   return (
     <div className={`prompt ${p.yourMove ? 'yours' : ''} ${p.busy ? 'busy' : ''} ${p.menu ? 'modal-choice ability-menu' : pending.kind === 'chooseModes' ? 'modal-choice' : ''}`}>
