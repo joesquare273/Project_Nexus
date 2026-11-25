@@ -2244,3 +2244,120 @@ describe('SOC4e: Silverquill Influence (Auras entering without being cast)', () 
     expect(powerOf(s, s.cards[herald]!)).toBe(2 + 1); // a 2/2, +1/+1 for one Aura
   });
 });
+
+describe('SOC4f: Silverquill Influence (Scriv, prepared cards, Chirography, Inkshield, Shadrix)', () => {
+  const copyOf = (s: GameState, creature: string) => Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === creature);
+  const pickCard = (id: string) => ({ targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t.some((x) => x.card === id)) ?? o[0]! });
+  const choose = (s: GameState, cards: string[]) => settle(act(s, { type: 'ChooseCards', player: (s.pending as { player: string }).player, cards })).state;
+
+  it('Scriv makes a Contract on an opponent\'s creature; attacking you with it costs its controller 2 life', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const scriv = put(s, 'P1', 'scriv-the-obligator', 'hand');
+    mana(s, 'P1', { W: 1, B: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: scriv }, pickCard(rat) as never).state;
+    const contract = Object.values(s.cards).find((c) => c.defId === 'contract-token-soc' && c.zone === 'battlefield');
+    expect(contract?.attachedTo).toBe(rat);
+    s = goTo(s, 'end');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker: rat, defender: 'P1' }] })).state;
+    expect([s.players.P2!.life, powerOf(s, s.cards[rat]!)]).toEqual([18, 1]);
+  });
+
+  it('A Contract\'s creature attacking one of your opponents gets +2/+0', () => {
+    let s = newGame(3);
+    const rat = put(s, 'P2', 'rank-rat');
+    put(s, 'P1', 'contract-token-soc', 'battlefield', { attachedTo: rat, isToken: true });
+    s = goTo(s, 'end');
+    s = goTo(s, 'declareAttackers');
+    expect(s.activePlayer).toBe('P2');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker: rat, defender: 'P3' }] })).state;
+    expect([s.players.P2!.life, powerOf(s, s.cards[rat]!)]).toEqual([20, 3]);
+  });
+
+  it('Eiganjo Dynastorian is prepared by attacking with two; Replenish returns your enchantment cards (Auras choose what to enchant)', () => {
+    let s = newGame();
+    const fox = put(s, 'P1', 'eiganjo-dynastorian-replenish');
+    const rat = put(s, 'P1', 'rank-rat');
+    const prison = put(s, 'P1', 'ghostly-prison', 'graveyard');
+    const mantle = put(s, 'P1', 'spirit-mantle', 'graveyard');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: fox, defender: 'P2' }, { attacker: rat, defender: 'P2' }] })).state;
+    expect(s.cards[fox]!.prepared).toBe(true);
+    s = goTo(s, 'main2');
+    mana(s, 'P1', { W: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: copyOf(s, fox)!.id }).state;
+    if (s.pending.kind === 'chooseCards') s = choose(s, [rat]);
+    expect([s.cards[prison]!.zone, s.cards[mantle]!.attachedTo]).toEqual(['battlefield', rat]);
+  });
+
+  it('Defacing Duskmage is prepared when an opponent draws their second card in a turn; Vandal\'s Edit draws two and each player loses 2', () => {
+    let s = newGame();
+    const mage = put(s, 'P1', 'defacing-duskmage-vandals-edit');
+    const stroke = put(s, 'P1', 'stroke-of-genius', 'hand');
+    mana(s, 'P1', { U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: stroke, x: 2, targets: [{ kind: 'player', player: 'P2' }] }).state;
+    expect(s.cards[mage]!.prepared).toBe(true);
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { W: 1, B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: copyOf(s, mage)!.id }).state;
+    expect([s.players.P1!.hand.length - hand, s.players.P1!.life, s.players.P2!.life]).toEqual([2, 18, 18]);
+  });
+
+  it('Intermediate Chirography: an Inkling; level 2 counters on first life loss each turn; level 3 an Inkling when a modified creature died', () => {
+    let s = newGame();
+    const chiro = put(s, 'P1', 'intermediate-chirography', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: chiro }).state;
+    const inklings = () => Object.values(s.cards).filter((c) => c.defId === 'inkling-token-soc' && c.zone === 'battlefield');
+    expect(inklings().length).toBe(1);
+    mana(s, 'P1', { B: 2, C: 3 });
+    s = cast(s, activate(s, chiro)!).state;
+    s = cast(s, activate(s, chiro)!).state;
+    expect(s.cards[chiro]!.classLevel).toBe(3);
+    const rat = put(s, 'P1', 'rank-rat');
+    const unmaking = put(s, 'P1', 'anguished-unmaking', 'hand');
+    const foe = put(s, 'P2', 'ghostly-prison');
+    mana(s, 'P1', { W: 1, B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: unmaking, targets: [card(foe)] }, pickCard(rat) as never).state;
+    expect(s.cards[rat]!.counters).toBe(1); // first life loss this turn
+    s.cards[rat]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    s = goTo(s, 'end');
+    s = settle(s).state;
+    expect(inklings().length).toBe(2);
+  });
+
+  it('Inkshield prevents combat damage to you and makes an Inkling for each 1 prevented', () => {
+    let s = newGame();
+    const attacker = put(s, 'P2', 'killian-ink-duelist');
+    s = goTo(s, 'end');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker, defender: 'P1' }] })).state;
+    s = act(s, { type: 'PassPriority', player: 'P2' });
+    const shield = put(s, 'P1', 'inkshield', 'hand');
+    mana(s, 'P1', { W: 1, B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: shield, targets: [] }).state;
+    s = goTo(s, 'combatDamage');
+    s = settle(s).state;
+    expect(s.players.P1!.life).toBe(20);
+    expect(Object.values(s.cards).filter((c) => c.defId === 'inkling-token-soc' && c.controller === 'P1').length).toBe(2);
+  });
+
+  it('Shadrix Silverquill: two modes at the beginning of combat, each targeting a different player', () => {
+    let s = newGame();
+    put(s, 'P1', 'shadrix-silverquill');
+    const rat = put(s, 'P1', 'rank-rat');
+    s = goTo(s, 'beginCombat');
+    for (let guard = 0; guard < 10 && s.pending.kind !== 'priority'; guard++) {
+      if (s.pending.kind === 'chooseModes') s = act(s, { type: 'ChooseModes', player: 'P1', modes: [1, 2] });
+      else if (s.pending.kind === 'chooseTargets') {
+        const options = getLegalActions(s).filter((a) => a.type === 'ChooseTargets');
+        expect(options.every((a) => a.type === 'ChooseTargets' && new Set(a.targets.map((t) => (t as { player?: string }).player)).size === a.targets.length)).toBe(true);
+        s = act(s, options.find((a) => a.type === 'ChooseTargets' && (a.targets[0] as { player?: string }).player === 'P2' && (a.targets[1] as { player?: string }).player === 'P1')!);
+      } else s = settle(s).state;
+    }
+    s = settle(s).state;
+    expect([s.players.P2!.life, s.cards[rat]!.counters]).toEqual([19, 1]);
+  });
+});

@@ -301,6 +301,8 @@ const PLAYER_FIELDS = {
   flashTurn: 'copy',
   lifeManaTurn: 'copy',
   lighthouseTurn: 'copy',
+  modifiedCreatureDiedTurn: 'copy',
+  inkshield: 'copy',
   opalMana: 'copy',
   xSpellsThisTurn: 'copy',
   cardLeftGraveyardTurn: 'copy',

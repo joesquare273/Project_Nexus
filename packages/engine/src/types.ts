@@ -247,6 +247,8 @@ export const EFFECT_KINDS = [
   'RevealTopToHandLoseLife',
   /** Keen Duelist: you and the target opponent each reveal your top card, each lose life equal to the mana value of the other's card, and each put yours into your hand. */
   'KeenDuel',
+  /** Inkshield: prevent all combat damage to you this turn; for each 1 prevented, create `token`. */
+  'PreventCombatDamageToYouMakeTokens',
   /**
    * Meld (rule 701.42): if you own and control this permanent and a creature
    * named its meld partner, exile both, then put them onto the battlefield as
@@ -1302,6 +1304,10 @@ export interface EffectSpec {
   ifVoid?: boolean;
   /** Only during your turn (true) or only when it isn't your turn (false): Zealous Display. */
   ifYourTurn?: boolean;
+  /** In an attack trigger: only if (true) or unless (false) the triggering creature attacks one of your opponents, not a planeswalker (Scriv's Contract). */
+  ifAttackingYourOpponent?: boolean;
+  /** CreateToken: an Aura token enters attached to the previous target (Scriv: "a Contract attached to target creature an opponent controls"). */
+  attachToPreviousTarget?: boolean;
   /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number; not?: boolean };
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
@@ -1645,6 +1651,8 @@ export const TRIGGER_EVENTS = [
   'AbilityActivated',
   /** One or more opponents lost life (use with `oneOrMore`). */
   'OpponentLosesLife',
+  /** You lost life (with `firstTimeEachTurn`: the first time this turn; Intermediate Chirography). */
+  'YouLoseLife',
   /** You gained life (once per life-gain event; lifelink damage is one event per source). */
   'LifeGained',
   /**
@@ -1845,7 +1853,7 @@ export interface TriggerSpec {
   blockingMatching?: ObjectFilter;
   /** SpellCast: only your Nth spell this turn ("whenever you cast your second spell each turn"). */
   nthSpellThisTurn?: number;
-  /** LifeGained: only the first time you gain life each turn (Leech Collector). */
+  /** LifeGained or YouLoseLife: only the first time each turn (Leech Collector, Intermediate Chirography). */
   firstTimeEachTurn?: boolean;
   /** Intervening "if this creature isn't prepared". */
   ifNotPrepared?: boolean;
@@ -1983,6 +1991,10 @@ export interface TriggerSpec {
   bothIfCommander?: boolean;
   /** "Choose two" (Craftwork Crusher): how many modes, chosen as it triggers. */
   chooseModes?: { min: number; max: number };
+  /** Shadrix Silverquill: "each mode must target a different player". */
+  modesTargetDifferentPlayers?: boolean;
+  /** EndStep: only if a modified creature died under your control this turn (Intermediate Chirography). */
+  ifModifiedCreatureDiedThisTurn?: boolean;
   effects: EffectSpec[];
 }
 
@@ -3214,6 +3226,10 @@ export interface PlayerState {
   lifeManaTurn?: number;
   /** Arcane Lighthouse: the turn this player's opponents' creatures lose hexproof and shroud. */
   lighthouseTurn?: number;
+  /** Intermediate Chirography: the turn a modified creature died under this player's control. */
+  modifiedCreatureDiedTurn?: number;
+  /** Inkshield: this turn, combat damage to this player is prevented, and each 1 prevented makes this token for them. */
+  inkshield?: { turn: number; token: CardDefId };
   /** Opal Palace's mana still in the pool this step, by type. */
   opalMana?: Partial<Record<ManaType, number>>;
   /** Paradigm: the exiled cards (one per name) whose copies this player may cast at the beginning of each of their first main phases. */

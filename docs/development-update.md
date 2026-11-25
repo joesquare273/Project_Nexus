@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC4f: Silverquill Influence, part six (2026-11-25)
+
+- Scriv (Contract Aura tokens), Eiganjo Dynastorian and Defacing Duskmage (prepared), Intermediate Chirography, Inkshield and Shadrix Silverquill (each mode targets a different player). 6 Silverquill cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC4e: Silverquill Influence, part five (2026-11-25)
 
 - Auras put onto the battlefield without being cast now choose what they enchant as they enter (rule 303.4f), and stay where they were with nothing to enchant. Screams from Within, Ghoulish Impetus, Gift of Immortality, Forum Filibuster, Ajani's Chosen, Armored Skyhunter, Songbirds' Blessing and Herald of Amity. 12 Silverquill cards left. docs/strixhaven.md.

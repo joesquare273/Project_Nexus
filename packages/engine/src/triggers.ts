@@ -163,6 +163,7 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         break;
       case 'LifeChanged':
         if (e.to < e.from) out.push({ when: 'OpponentLosesLife', at, subjectController: e.player, amount: e.from - e.to });
+        if (e.to < e.from) out.push({ when: 'YouLoseLife', at, subjectController: e.player, amount: e.from - e.to });
         if (e.to > e.from) out.push({ when: 'LifeGained', at, subjectController: e.player, amount: e.to - e.from });
         break;
       case 'AttackDeclared': {
@@ -360,6 +361,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   // "Whenever one or more opponents lose life".
   if (o.when === 'OpponentLosesLife') return o.subjectController !== undefined && o.subjectController !== controller;
+  // "Whenever you lose life for the first time each turn": this loss is all the life lost this turn.
+  if (o.when === 'YouLoseLife') return o.subjectController === controller && (!spec.firstTimeEachTurn || (s.players[controller]!.lifeLostThisTurn ?? 0) === o.amount);
   if (o.when === 'OpponentCommitsCrime') return o.subjectController !== undefined && o.subjectController !== controller;
   // "For the first time each turn": this gain is all the life gained this turn.
   if (o.when === 'LifeGained') return o.subjectController === controller && (!spec.firstTimeEachTurn || (s.players[controller]!.lifeGainedThisTurn ?? 0) === o.amount);
@@ -458,6 +461,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'SpellCast' && o.copied && !spec.orCopied) return false;
   if (spec.ifSourceUntapped && s.cards[source]?.tapped) return false;
   if (spec.ifSpellTargetsCreature && !spellTargetsCreature(s, o.subject)) return false;
+  if (spec.ifModifiedCreatureDiedThisTurn && s.players[controller]!.modifiedCreatureDiedTurn !== s.turnNumber) return false;
   if (spec.ifSpellTargetsMatching) {
     const item = s.stack.find((x) => x.kind === 'spell' && x.card === o.subject);
     if (!(item?.targets ?? []).some((t) => t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && matchesObject(s, spec.ifSpellTargetsMatching, s.cards[t.card]!, { controller, source }))) return false;
@@ -770,6 +774,13 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 }
 
 /** Legal choices for each target of a queued trigger, in effect order. */
+/** Shadrix Silverquill: "Each mode must target a different player". */
+export function differentPlayersProblem(spec: TriggerSpec, targets: readonly Target[]): boolean {
+  if (!spec.modesTargetDifferentPlayers) return false;
+  const players = targets.filter((t) => t.kind === 'player').map((t) => (t as { player: PlayerId }).player);
+  return new Set(players).size !== players.length;
+}
+
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
   const context = { ...(t.defender ? { defender: t.defender } : {}), ...(t.subject ? { subject: t.subject } : {}), ...(t.amount !== undefined ? { amount: t.amount } : {}), ...(s.cards[t.source]?.xPaid !== undefined ? { x: s.cards[t.source]!.xPaid } : {}), triggered: true };
   return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source, context));
@@ -874,6 +885,7 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   const pending = s.pending;
   if (pending.kind !== 'chooseTargets' || pending.player !== playerId) reject('You are not choosing targets right now.');
   const t = s.triggerQueue[0]!;
+  if (differentPlayersProblem(specOf(s, t), targets)) reject('Each mode must target a different player.');
   checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, {
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),

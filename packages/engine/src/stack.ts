@@ -3878,6 +3878,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
             s.combat.attacks.push({ attacker: id, defender });
             ctx.ev.push({ type: 'CreatureEnteredAttacking', card: id, defender });
           }
+          // Scriv: the Contract enters attached to the creature chosen as the target.
+          const host = effect.attachToPreviousTarget && r.previousTarget?.kind === 'card' ? s.cards[r.previousTarget.card] : undefined;
+          if (host && canAttach(s, s.cards[id]!, host)) attach(ctx, id, host.id);
           r.createdTokens.push(id);
         }
         // Quina, Qu Gourmet: "those tokens plus a 1/1 green Frog" (one Frog per Quina, per creation).
@@ -3983,6 +3986,9 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const pid of targetPlayers(targets)) {
         for (const id of player(s, pid).library.slice(0, amount)) moveCard(ctx, id, 'exile');
       }
+      return;
+    case 'PreventCombatDamageToYouMakeTokens':
+      if (effect.token) player(s, item.controller).inkshield = { turn: s.turnNumber, token: effect.token };
       return;
     case 'KeenDuel': {
       const opponent = targets.find((t) => t.kind === 'player');
@@ -5153,6 +5159,11 @@ function continueResolving(ctx: Ctx): void {
       if (!t || !isCreatureOnBattlefield(s, t) || powerOf(s, t) < effect.ifPreviousTargetPowerAtLeast) continue;
     }
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
+    if (effect.ifAttackingYourOpponent !== undefined) {
+      const attack = item.kind === 'ability' && item.subject ? s.combat?.attacks.find((a) => a.attacker === item.subject) : undefined;
+      const atOpponent = !!attack && !attack.planeswalker && attack.defender !== item.controller;
+      if (atOpponent !== effect.ifAttackingYourOpponent) continue;
+    }
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifSubjectManaSpentOverSourcePowerOrToughness && (item.kind !== 'ability' || !manaSpentOverPowerOrToughness(s, item.source, item.amount ?? 0))) continue;
     if (effect.ifSubjectHadCounters && subjectAmount(s, item, 'subjectCounters') === 0) continue;

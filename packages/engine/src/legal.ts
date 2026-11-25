@@ -70,7 +70,7 @@ import {
 } from './stack.ts';
 import { battlefield, alivePlayers, hasKeyword, hasType, staticRule } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
-import { triggerModeOptions, triggerTargetOptions } from './triggers.ts';
+import { differentPlayersProblem, triggerModeOptions, triggerTargetOptions } from './triggers.ts';
 import { canReveal, manaAbilityAmount, manaCounters, grantedManaAbilities, legendaryManaCreatures, manaChoices, tapFreeManaAbility, tapOtherManaTypes } from './typerules.ts';
 import { COLORS, MANA_TYPES, type Action, type ActivatedSpec, type Block, type CardDefinition, type CardInstance, type EffectSpec, type GameState, type InstanceId, type ManaCost, type PlayerId, type Target } from './types.ts';
 
@@ -572,7 +572,7 @@ export function getLegalActions(s: GameState): Action[] {
       const needs = choosingEffects(queuedTriggerSpec(s, t).effects);
       // As for spells: past the listed combinations, each slot's options come along (Kinetic Ooze's "any number of other target creatures").
       const options = triggerTargetOptions(s, t);
-      const valid = (ts: Target[]) => !groupProblem(s, needs, ts);
+      const valid = (ts: Target[]) => !groupProblem(s, needs, ts) && !differentPlayersProblem(queuedTriggerSpec(s, t), ts);
       let combos: Target[][] = [[]];
       let truncated = false;
       for (const choices of options) {

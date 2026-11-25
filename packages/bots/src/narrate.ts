@@ -486,6 +486,8 @@ function effectText(e: EffectSpec): string {
       return `exile the top ${n} cards of your library; you may cast a spell from among them without paying its mana cost, then put the rest on the bottom in a random order`;
     case 'AttachSubjectToCreatedToken':
       return 'if that enchantment is an Aura, you may attach it to the token';
+    case 'PreventCombatDamageToYouMakeTokens':
+      return 'prevent all combat damage that would be dealt to you this turn; for each 1 damage prevented this way, create a token';
     case 'KeenDuel':
       return 'you and target opponent each reveal the top card of your library, each lose life equal to the mana value of the card the other revealed, and each put yours into your hand';
     case 'RevealTopToHandLoseLife': return 'reveal the top card of your library and put it into your hand; you lose life equal to its mana value';
@@ -706,6 +708,7 @@ function triggerCondition(t: TriggerSpec): string {
     AbilityActivated: 'has an ability activated',
     Sacrificed: 'is sacrificed',
     OpponentLosesLife: '',
+    YouLoseLife: '',
     LifeGained: '',
     OpponentCommitsCrime: '',
     TurnedFaceUp: 'is turned face up',
@@ -718,6 +721,7 @@ function triggerCondition(t: TriggerSpec): string {
   if (t.when === 'OpponentsDealtCombatDamageYourTurn') return 'When one or more of your opponents are dealt combat damage during your turn';
   if (t.when === 'OpponentDealtNoncombatDamage') return 'Whenever one or more opponents are dealt noncombat damage';
   if (t.when === 'OpponentLosesLife') return 'Whenever one or more opponents lose life';
+  if (t.when === 'YouLoseLife') return t.firstTimeEachTurn ? 'Whenever you lose life for the first time each turn' : 'Whenever you lose life';
   if (t.when === 'OpponentCommitsCrime') return 'Whenever an opponent commits a crime';
   if (t.when === 'AttackersUnblocked') return "Whenever one or more creatures an opponent controls attack you and aren't blocked";
   if (t.when === 'Chapter') return `Chapter ${(t.chapters ?? []).map((n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][n] ?? n).join(', ')}`;

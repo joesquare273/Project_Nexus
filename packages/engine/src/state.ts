@@ -4,7 +4,7 @@ import type { ManaRestriction } from './types.ts';
 // clones the input first, so callers never see partial mutations.
 
 import { backFaceDefinition, copiableDefinition, copyLook, currentDefinition as defOf, faceDownCharacteristics } from './cardface.ts';
-import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, protectedFrom, protectedFromType, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
+import { allCounters, characteristics, countOf, countersOf, hasFlag, hasKeyword, isModified, protectedFrom, protectedFromType, staticAffects, powerOf, subtypesOf } from './characteristics.ts';
 import { matchesObject } from './filters.ts';
 import { entersTapped, objectManaValue } from './typerules.ts';
 import {
@@ -195,6 +195,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastDefinition = from === 'battlefield' && (c.copy || c.transformed || c.addedSubtypes) ? defOf(s,c) : undefined;
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
+  const wasModified = from === 'battlefield' && to === 'graveyard' && !!lastTypes?.includes('creature') && isModified(s, c);
   // A copy of a spell ceases to exist when it leaves the stack (rule 707.10a).
   // A copy of a permanent spell becomes a token as it resolves (rule 707.10a, 111.12).
   if (c.spellCopy && from === 'stack' && to === 'battlefield') {
@@ -267,6 +268,7 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   if (from === 'battlefield' && to === 'graveyard' && lastTypes?.includes('creature')) {
     s.creaturesDiedThisTurn += 1;
     s.creatureDeathsByController = { ...s.creatureDeathsByController, [c.controller]: (s.creatureDeathsByController?.[c.controller] ?? 0) + 1 };
+    if (wasModified) player(s, c.controller).modifiedCreatureDiedTurn = s.turnNumber;
   }
   c.zone = to;
   if (to === 'graveyard') c.graveyardArrival = { turn: s.turnNumber, from };
@@ -570,6 +572,12 @@ export function dealDamage(ctx: Ctx, sourceId: InstanceId, target: Target, amoun
   if (!unpreventable && target.kind === 'player' && protectedFromType(s, target.player, source)) return;
   // "You have protection from each of your opponents": their sources can't damage you (Absolute Virtue).
   if (!unpreventable && target.kind === 'player' && source.controller !== target.player && playerProtectedFromOpponents(s, target.player)) return;
+  // Inkshield: "Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this way, create ..."
+  const ink = target.kind === 'player' ? s.players[target.player]!.inkshield : undefined;
+  if (!unpreventable && combat && target.kind === 'player' && ink?.turn === s.turnNumber) {
+    for (let i = 0; i < amount; i++) createToken(ctx, ink.token, target.player);
+    return;
+  }
   if (target.kind === 'card' && s.cards[target.card]!.zone === 'battlefield') {
     const victim = s.cards[target.card]!;
     // Protection prevents damage from sources of that color (rule 702.16e).
