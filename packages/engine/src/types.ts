@@ -1465,6 +1465,8 @@ export interface EffectSpec {
   ifWonFlip?: boolean;
   /** Only if a permanent was sacrificed earlier in this spell ("Sacrifice a creature. If you do, ..."). */
   ifSacrificed?: boolean;
+  /** AddCounters on AllPermanents: the controller chooses one of them to get all `amount` counters ("put two +1/+1 counters on a creature you control": Breena). */
+  chooseOne?: boolean;
   /** "Up to one target": the target may be left out. */
   upTo?: boolean;
   /** Only if this effect's controller sacrificed something earlier in it ("If you sacrificed a creature this way"). */
@@ -1705,6 +1707,8 @@ export interface ObjectFilter {
   equipped?: boolean;
   /** Enchanted: an Aura is attached to it (Winds of Rath: "creatures that aren't enchanted"). */
   enchanted?: boolean;
+  /** Controlled by the player in this seat of the turn order (Nils: "for each player, ... up to one target creature that player controls"). */
+  controllerSeat?: number;
   /** Enchanted by an Aura the filter's controller controls (Killian, Decisive Mentor; Eriette). */
   enchantedByYou?: boolean;
   /** Attacking a player who is an opponent of the filter's controller (Martial Impetus). */
@@ -1837,6 +1841,12 @@ export interface TriggerSpec {
   /** BecomesTarget: only when a spell targets it, not an ability (Goldspan Dragon). */
   bySpell?: boolean;
   attackingYouAtLeast?: number;
+  /** YouAttack byOpponent: at most this many of the attackers attack you (Firemane Commando: "if none of those creatures attacked you"). */
+  attackingYouAtMost?: number;
+  /** YouAttackPlayer: any player (you included) attacked one of your opponents (Combat Calligrapher, Breena). */
+  anyPlayerAttacksOpponent?: boolean;
+  /** Breena: only if the attacked opponent has more life than another of your opponents. */
+  ifDefenderLifeAboveAnotherOpponent?: boolean;
   /** Attacks: only a creature attacking alone. */
   alone?: boolean;
   /** YouAttack: how many attacking creatures it takes. */
@@ -2300,6 +2310,10 @@ export interface StaticSpec {
   cantActivateAbilities?: boolean;
   /** Propaganda: creatures can't attack you unless their controller pays this much generic mana for each. */
   attackTax?: number;
+  /** Nils, Discipline Enforcer: each creature with counters attacking you costs its controller {X}, X = the counters on it. */
+  attackTaxPerCounter?: boolean;
+  /** "[Matching creatures] can't attack you or planeswalkers you control" (Combat Calligrapher, Eriette); checked from this permanent's controller's view. */
+  cantAttackYou?: ObjectFilter;
   /**
    * Only while these hold: "during your turn", "as long as it's equipped",
    * "as long as equipped creature is legendary".

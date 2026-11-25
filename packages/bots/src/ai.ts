@@ -768,7 +768,7 @@ export function basicAi(_seed = 0): Bot {
       if (tax > 0) {
         const taps = planTaps(s, me, { generic: tax });
         if (taps && taps.length > 0) return tapActions(me, taps)[0]!;
-        if (!taps) attacks = completeRequiredAttacks(s, me, attacks.filter((a) => attackTaxFor(s, a.defender) === 0));
+        if (!taps) attacks = completeRequiredAttacks(s, me, attacks.filter((a) => attackTaxFor(s, a.defender, s.cards[a.attacker]) === 0));
       }
       return { type: 'DeclareAttackers', player: me, attacks };
     }

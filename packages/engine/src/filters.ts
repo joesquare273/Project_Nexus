@@ -96,6 +96,7 @@ export function matchesObject(
   if (f.attackingYou && !s.combat?.attacks.some((a) => a.attacker === obj.id && a.defender === from.controller)) return false;
   if (f.equipped !== undefined && isEquipped(s, obj) !== f.equipped) return false;
   if (f.enchanted !== undefined && isEnchanted(s, obj) !== f.enchanted) return false;
+  if (f.controllerSeat !== undefined && s.turnOrder[f.controllerSeat] !== obj.controller) return false;
   if (f.enchantedByYou && !(obj.zone === 'battlefield' && aurasOn(s, obj.id).some((a) => a.controller === from.controller))) return false;
   if (f.attackingOpponent && !s.combat?.attacks.some((a) => a.attacker === obj.id && !a.planeswalker && a.defender !== from.controller)) return false;
   if (f.monocolored && colorsOf(def).length !== 1) return false;

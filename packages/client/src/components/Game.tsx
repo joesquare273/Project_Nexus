@@ -1767,6 +1767,9 @@ function PromptBar(p: PromptProps) {
     };
     const taxed = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated && attackTaxFor(s, o) > 0);
     if (taxed.length > 0) text += ` Attacking ${taxed.map((o) => `${o} costs {${attackTaxFor(s, o)}}`).join(', ')} for each creature.`;
+    // Nils: creatures with counters cost {X} more each, X = their counters.
+    const perCounter = p.session.opponents.filter((o) => !p.view.players[o]!.eliminated && [...p.canAttackIds].some((id) => attackTaxFor(s, o, s.cards[id]!) > attackTaxFor(s, o)));
+    if (perCounter.length > 0) text += ` Attacking ${perCounter.join(', ')} with a creature that has counters costs {X} more, X = its counters.`;
     buttons = [
       { label: 'Select all', onClick: () => p.setAttackers(all) },
       { label: 'No attack', onClick: () => declare(new Map()) },

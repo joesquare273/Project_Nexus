@@ -3,6 +3,7 @@
 
 import { canPayFromPool, payMana } from './stack.ts';
 import { continuousSources, currentDefinition } from './cardface.ts';
+import { matchesObject } from './filters.ts';
 import { colorsOf } from './typerules.ts';
 import { isBasicLand } from './typerules.ts';
 import { enterStep, givePriority } from './turn.ts';
@@ -87,7 +88,16 @@ export function canAnyAttack(s: GameState, playerId: PlayerId): boolean {
 
 /** A surviving Promise of Loyalty creature cannot attack the spell's controller. */
 export function canAttackPlayer(s: GameState, c: CardInstance, defender: PlayerId): boolean {
-  return !c.vowTo?.includes(defender);
+  if (c.vowTo?.includes(defender)) return false;
+  // "Inklings can't attack you or planeswalkers you control" (Combat Calligrapher, Eriette).
+  for (const id of s.players[defender]?.battlefield ?? []) {
+    const source = s.cards[id]!;
+    if (source.controller !== defender || source.phasedOut) continue;
+    for (const st of currentDefinition(s, source).statics ?? []) {
+      if (st.cantAttackYou && matchesObject(s, st.cantAttackYou, c, { controller: defender, source: source.id })) return false;
+    }
+  }
+  return true;
 }
 
 /** Each continuous goad effect imposes attack and defender requirements, rather than a restriction. */
@@ -130,9 +140,9 @@ export function requiredAttackDefenders(s: GameState, c: CardInstance): PlayerId
   const goaders = goadedBy(s,c);
   // Encore: "attacks that opponent this turn if able".
   const encore = mustAttackPlayerNow(s, c);
-  if (encore && canAttack(s, c, c.controller) && canAttackPlayer(s, c, encore) && attackTaxFor(s, encore) === 0) return [encore];
+  if (encore && canAttack(s, c, c.controller) && canAttackPlayer(s, c, encore) && attackTaxFor(s, encore, c) === 0) return [encore];
   if ((!goaders.length && !hasFlag(s,c,'mustAttack')) || !canAttack(s,c,c.controller)) return [];
-  const free = alivePlayers(s).filter(p=>p!==c.controller && canAttackPlayer(s,c,p) && attackTaxFor(s,p)===0);
+  const free = alivePlayers(s).filter(p=>p!==c.controller && canAttackPlayer(s,c,p) && attackTaxFor(s,p,c)===0);
   const best = Math.max(0,...free.map(p=>goadScore(goaders,p)));
   return free.filter(p=>goadScore(goaders,p)===best);
 }
@@ -166,18 +176,22 @@ export function completeRequiredAttacks(s: GameState, player: PlayerId, attacks:
 }
 
 /** What attacking this player costs for each creature (Propaganda, Summon: Yojimbo). */
-export function attackTaxFor(s: GameState, defender: PlayerId): number {
+export function attackTaxFor(s: GameState, defender: PlayerId, attacker?: CardInstance): number {
   let tax = (s.players[defender]!.attackTaxes ?? []).reduce((n, k) => n + k, 0);
   for (const c of s.players[defender]!.battlefield.map((id) => s.cards[id]!)) {
-    if (c.controller !== defender) continue;
-    for (const st of currentDefinition(s, c).statics ?? []) tax += st.attackTax ?? 0;
+    if (c.controller !== defender || c.phasedOut) continue;
+    for (const st of currentDefinition(s, c).statics ?? []) {
+      tax += st.attackTax ?? 0;
+      // Nils, Discipline Enforcer: "unless its controller pays {X}, where X is the number of counters on that creature".
+      if (st.attackTaxPerCounter && attacker) tax += totalCounters(attacker);
+    }
   }
   return tax;
 }
 
 /** The total generic mana a set of attacks costs. */
 export function attackTax(s: GameState, attacks: readonly Attack[]): number {
-  return attacks.reduce((n, a) => n + (s.players[a.defender] ? attackTaxFor(s, a.defender) : 0), 0);
+  return attacks.reduce((n, a) => n + (s.players[a.defender] ? attackTaxFor(s, a.defender, s.cards[a.attacker]) : 0), 0);
 }
 
 export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]): void {

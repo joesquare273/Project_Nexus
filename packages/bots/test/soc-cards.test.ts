@@ -1,7 +1,7 @@
 // The Secrets of Strixhaven Commander decks (SOC), built deck by deck (docs/strixhaven.md).
 
 import { describe, expect, it } from 'vitest';
-import { currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { attackTaxFor, canAttackPlayer, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -1968,5 +1968,77 @@ describe('SOC4b: Silverquill Influence (goad Auras, Killian, constellation)', ()
     mana(t, 'P1', { W: 1, C: 1 });
     t = cast(t, activate(t, arc)!).state;
     expect(t.cards[foe]!.zone).toBe('exile');
+  });
+});
+
+describe('SOC4c: Silverquill Influence (attack restrictions and attack triggers)', () => {
+  const attack = (s: GameState, who: string, attacks: { attacker: string; defender: string }[]) => settle(act(goTo(s, 'declareAttackers'), { type: 'DeclareAttackers', player: who, attacks })).state;
+  const longest = { targets: (o: { kind: string }[][]) => o.reduce((a, b) => (b.length > a.length ? b : a)) };
+
+  it('Combat Calligrapher: Inklings can\'t attack you, and a player attacking your opponent creates a tapped 2/1 Inkling attacking them', () => {
+    let s = newGame();
+    put(s, 'P1', 'combat-calligrapher');
+    const ink = put(s, 'P2', 'inkling-token-soc', 'battlefield', { isToken: true });
+    expect(canAttackPlayer(s, s.cards[ink]!, 'P1')).toBe(false);
+    const rat = put(s, 'P1', 'rank-rat');
+    s = attack(s, 'P1', [{ attacker: rat, defender: 'P2' }]);
+    const made = Object.values(s.cards).filter((c) => c.defId === 'inkling-token-soc' && c.controller === 'P1');
+    expect(made.length).toBe(1);
+    expect([made[0]!.tapped, s.combat?.attacks.some((a) => a.attacker === made[0]!.id && a.defender === 'P2')]).toEqual([true, true]);
+  });
+
+  it('Eriette: creatures enchanted by your Auras can\'t attack you; your end step drains for each Aura', () => {
+    let s = newGame();
+    put(s, 'P1', 'eriette-of-the-charmed-apple');
+    const foe = put(s, 'P2', 'rank-rat');
+    put(s, 'P1', 'spirit-mantle', 'battlefield', { attachedTo: foe });
+    expect(canAttackPlayer(s, s.cards[foe]!, 'P1')).toBe(false);
+    s = settle(goTo(s, 'end')).state;
+    expect([s.players.P1!.life, s.players.P2!.life]).toEqual([21, 19]);
+  });
+
+  it('Nils: a +1/+1 counter on up to one creature of each player at your end step; attacking you costs {X} per counter', () => {
+    let s = newGame();
+    put(s, 'P1', 'nils-discipline-enforcer');
+    const mine = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'rank-rat');
+    const both = { targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t.some((x) => x.card === mine) && t.some((x) => x.card === theirs)) ?? longest.targets(o) };
+    s = settle(goTo(s, 'end', both as never), both as never).state;
+    expect([s.cards[mine]!.counters, s.cards[theirs]!.counters]).toEqual([1, 1]);
+    expect(attackTaxFor(s, 'P1', s.cards[theirs]!)).toBe(1);
+    s.cards[theirs]!.counters = 3;
+    expect(attackTaxFor(s, 'P1', s.cards[theirs]!)).toBe(3);
+    expect(attackTaxFor(s, 'P1')).toBe(0);
+  });
+
+  it('Firemane Commando draws when you attack with two or more; Tomik punishes an opponent attacking you with two or more', () => {
+    let s = newGame();
+    put(s, 'P1', 'firemane-commando');
+    put(s, 'P1', 'tomik-wielder-of-law');
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    const hand = s.players.P1!.hand.length;
+    s = attack(s, 'P1', [{ attacker: a, defender: 'P2' }, { attacker: b, defender: 'P2' }]);
+    expect(s.players.P1!.hand.length - hand).toBe(1);
+    const x = put(s, 'P2', 'rank-rat');
+    const y = put(s, 'P2', 'rank-rat');
+    s = goTo(s, 'end');
+    s = goTo(s, 'declareAttackers');
+    expect(s.activePlayer).toBe('P2');
+    const mine = s.players.P1!.hand.length;
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker: x, defender: 'P1' }, { attacker: y, defender: 'P1' }] })).state;
+    expect([s.players.P2!.life, s.players.P1!.hand.length - mine]).toEqual([15, 1]); // 2 combat damage, then 3 from Tomik
+  });
+
+  it('Breena: a player attacking an opponent with more life than another opponent draws, and you put two +1/+1 counters on a creature you control', () => {
+    let s = newGame(3);
+    put(s, 'P1', 'breena-the-demagogue');
+    const rat = put(s, 'P1', 'rank-rat');
+    s.players.P3!.life = 15;
+    const hand = s.players.P1!.hand.length;
+    s = attack(s, 'P1', [{ attacker: rat, defender: 'P2' }]);
+    expect(s.pending.kind).toBe('chooseCards');
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [rat] })).state;
+    expect([s.players.P1!.hand.length - hand, s.cards[rat]!.counters]).toEqual([1, 2]);
   });
 });

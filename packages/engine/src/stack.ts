@@ -3216,6 +3216,11 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     case 'AddCounters': {
+      // Breena: "put two +1/+1 counters on a creature you control" (chosen, not targeted).
+      if (effect.chooseOne) {
+        if (onBattlefield.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'addCounters', cards: onBattlefield, min: 1, max: 1, counterCount: amount, ...(effect.counter ? { counter: effect.counter } : {}) }];
+        return;
+      }
       if (effect.optional) {
         if (onBattlefield.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'addCounters', cards: onBattlefield, min: 0, max: onBattlefield.length, ...(effect.counter ? { counter: effect.counter } : {}) }];
         return;
@@ -5378,7 +5383,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   if (pending.purpose === 'fateBottom') {
     finishFate(ctx, r, cards[0]!);
   } else if (pending.purpose === 'addCounters') {
-    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, 1, r.item.controller, pending.counter);
+    for (const id of cards) if (s.cards[id]!.zone === 'battlefield') addCounters(ctx, id, pending.counterCount ?? 1, r.item.controller, pending.counter);
   } else if (pending.purpose === 'distributeCounter') {
     const distribution = r.distribution!;
     const recipient = cards[0];

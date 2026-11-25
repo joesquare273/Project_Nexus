@@ -369,9 +369,21 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   // Blitz: "When this creature dies, draw a card" only comes with the blitz cost.
   if (spec.ifBlitzed && !s.cards[source]!.blitzed) return false;
   if (spec.ifEvoked && !s.cards[source]!.evoked) return false;
-  if (o.when === 'YouAttackPlayer') return o.subjectController === controller;
+  if (o.when === 'YouAttackPlayer') {
+    // "Whenever a player attacks one of your opponents" (Combat Calligrapher, Breena).
+    if (spec.anyPlayerAttacksOpponent) {
+      if (!o.defender || o.defender === controller) return false;
+      if (spec.ifDefenderLifeAboveAnotherOpponent) {
+        const life = s.players[o.defender]!.life;
+        return s.turnOrder.some((p) => p !== controller && p !== o.defender && !s.players[p]!.eliminated && s.players[p]!.life < life);
+      }
+      return true;
+    }
+    return o.subjectController === controller;
+  }
   if (o.when === 'YouAttack') {
     // Mangara: "whenever an opponent attacks with creatures, if two or more of those creatures are attacking you".
+    if (spec.byOpponent && spec.attackingYouAtMost !== undefined) return o.subjectController !== controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1) && (o.attacking?.[controller] ?? 0) <= spec.attackingYouAtMost;
     if (spec.byOpponent) return o.subjectController !== controller && (o.attacking?.[controller] ?? 0) >= (spec.attackingYouAtLeast ?? 1);
     return o.subjectController === controller && (o.attackers ?? 0) >= (spec.attackersAtLeast ?? 1);
   }

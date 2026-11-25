@@ -648,14 +648,14 @@ export function getLegalActions(s: GameState): Action[] {
       const pool = MANA_TYPES.reduce((n, t) => n + s.players[player]!.manaPool[t], 0);
       let taxed = false;
       for (const defender of defenders) {
-        const tax = attackTaxFor(s, defender);
-        if (tax > 0) taxed = true;
-        // Attacks into Propaganda are listed once the mana for them is in the pool.
-        const affordable = tax === 0 ? attackers.length : Math.floor(pool / tax);
-        for (const a of affordable > 0 ? attackers.filter((c) => canAttackPlayer(s, c, defender)) : []) {
+        // Attacks into Propaganda (or Nils, per creature) are listed once the mana for them is in the pool.
+        const taxes = new Map(attackers.map((c) => [c.id, attackTaxFor(s, defender, c)]));
+        if ([...taxes.values()].some((t) => t > 0)) taxed = true;
+        for (const a of attackers.filter((c) => canAttackPlayer(s, c, defender) && taxes.get(c.id)! <= pool)) {
           actions.push({ type: 'DeclareAttackers', player, attacks: [{ attacker: a.id, defender }] });
         }
-        if (attackers.length > 1 && affordable >= attackers.length && attackers.every((c) => canAttackPlayer(s, c, defender))) {
+        const allTax = [...taxes.values()].reduce((n, t) => n + t, 0);
+        if (attackers.length > 1 && allTax <= pool && attackers.every((c) => canAttackPlayer(s, c, defender))) {
           actions.push({
             type: 'DeclareAttackers',
             player,
