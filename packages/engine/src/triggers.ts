@@ -4,7 +4,7 @@
 // receive priority: the active player's first, then the others' in turn order,
 // so the last player's resolve first (rule 603.3b).
 
-import { checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
+import { activatedAbilities, checkTargets, choosingEffects, queuedTriggerSpec, targetOptions } from './stack.ts';
 import { randomInt } from './rng.ts';
 import { parseManaCost } from './cost.ts';
 import { characteristics, countOf, countersOf, manaSpentOverPowerOrToughness } from './characteristics.ts';
@@ -33,6 +33,8 @@ interface Occurrence {
   copied?: boolean;
   /** BecomesTarget: the spell or ability doing the targeting (for ward). */
   targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
+  subjectAbility?: string;
+  abilityHasX?: boolean;
   lastTypes?: CardType[];
   damageSource?: DamageSourceSnapshot;
   when: TriggerEvent;
@@ -141,7 +143,11 @@ function occurrencesIn(s: GameState, events: readonly GameEvent[]): Occurrence[]
         out.push({ when: 'Draws', at, drawer: e.player, ...(e.n !== undefined ? { drawNumber: e.n } : {}) });
         break;
       case 'AbilityActivated':
-        out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller, ...(e.loyalty !== undefined ? { loyalty: e.loyalty } : {}) });
+        {
+          const spec = s.cards[e.card] ? activatedAbilities(defOf(s, s.cards[e.card]!))[e.ability] : undefined;
+          const abilityHasX = !!spec && ((parseManaCost(spec.cost.mana).x ?? 0) > 0 || !!spec.cost.removeCounter?.amountX || !!spec.loyaltyX);
+          out.push({ when: 'AbilityActivated', at, subject: e.card, subjectController: e.controller, subjectAbility: e.item, abilityHasX, ...(e.loyalty !== undefined ? { loyalty: e.loyalty } : {}) });
+        }
         if (isCrime(s, e.controller, e.targets)) out.push({ when: 'OpponentCommitsCrime', at, subjectController: e.controller });
         for (const t of e.targets) if (t.kind === 'card') out.push({ when: 'BecomesTarget', at, subject: t.card, by: e.controller, targetedBy: { kind: 'ability', item: e.item } });
         break;
@@ -344,6 +350,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   }
   if (o.when === 'BecomesTarget' && spec.byOpponent && o.by === controller) return false;
   if (o.when === 'BecomesTarget' && spec.bySpell && o.targetedBy?.kind !== 'spell') return false;
+  if (spec.ifAbilityCostHasX && !o.abilityHasX) return false;
   if (o.when === 'OpponentsDealtCombatDamageYourTurn') return o.defender !== undefined && o.defender !== controller && s.activePlayer === controller;
   if (o.when === 'OpponentDealtNoncombatDamage') return o.defender !== undefined && o.defender !== controller;
   if (o.when === 'AttackersUnblocked') return o.defender === controller && o.subjectController !== controller;
@@ -385,6 +392,8 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
     if (spec.ifPlayerDealtCombatDamageThisTurn !== undefined && !s.turnOrder.some((pid) => (s.players[pid]!.combatDamageThisTurn ?? 0) >= spec.ifPlayerDealtCombatDamageThisTurn!)) return false;
     if (spec.ifSourceGotCountersThisTurn && s.cards[source]!.countersTurn !== s.turnNumber) return false;
     if (spec.ifYouAreMonarch && s.monarch !== controller) return false;
+    // Zimone, All-Questioning: "you control a prime number of lands".
+    if (spec.ifLandsYouControlPrime && !isPrime(battlefield(s).filter((c) => c.controller === controller && !c.phasedOut && defOf(s, c).types.includes('land')).length)) return false;
     if (spec.ifYouPutCounterOnCreatureThisTurn && s.players[controller]!.counterOnCreatureTurn !== s.turnNumber) return false;
     // "If a player lost 4 or more life this turn" (an intervening "if", rule 603.4).
     if (
@@ -552,6 +561,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
           // Collect every object of the batch ("tap those creatures").
           const first = batchFirst.get(batchKey);
           if (first && o.subject && !first.subjects!.includes(o.subject)) first.subjects!.push(o.subject);
+          if (first && spec.sumBatchAmount) first.amount = (first.amount ?? 0) + (o.amount ?? 0);
           return;
         }
         batched.add(batchKey);
@@ -562,6 +572,16 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
       }
       // "Do this only once each turn": marked when the cost is paid (see decide).
       if (spec.oncePerTurnWhenPaid && s.triggeredThisTurn.includes(key)) return;
+      // "Any number of target creatures" on a triggered ability (Kinetic Ooze): one "up to one" slot per possible target.
+      if (spec.effects?.some((e) => e.anyNumberOfTargets)) {
+        const context = { ...(o.defender ? { defender: o.defender } : {}), ...(o.subject ? { subject: o.subject } : {}), ...(c.xPaid !== undefined ? { x: c.xPaid } : {}), triggered: true };
+        spec = { ...spec, effects: spec.effects.flatMap((e) => {
+          if (!e.anyNumberOfTargets) return [e];
+          const slot = { ...e, anyNumberOfTargets: false, upTo: true, group: e.group ?? 'any' };
+          const n = targetOptions(s, slot, controller, c.id, context).filter((t) => t.kind !== 'none').length;
+          return Array.from({ length: n }, () => ({ ...slot }));
+        }) };
+      }
       if (spec.supportX) {
         const slots = Math.min(c.xPaid ?? 0, battlefield(s).filter(x => x.id !== c.id && defOf(s,x).types.includes('creature')).length);
         spec = { ...spec, supportX: false, effects: Array.from({ length: slots }, () => ({ effect: 'AddCounters', amount: 1, target: 'TargetCreature', filter: { other: true }, upTo: true, group: 'support' })) };
@@ -577,6 +597,7 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
         ...(o.defender ? { defender: o.defender } : {}),
         ...(o.subject ? { subject: o.subject } : {}),
         ...(o.targetedBy ? { targetedBy: o.targetedBy } : {}),
+        ...(o.subjectAbility ? { subjectAbility: o.subjectAbility } : {}),
         ...(o.amount !== undefined ? { amount: o.amount } : {}),
         // "Choose one at random" is decided as it triggers.
         ...(spec.randomModes ? { mode: randomInt(s, spec.randomModes.length) } : {}),
@@ -713,6 +734,8 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     ...(t.lastSourceCounterKinds !== undefined ? { lastSourceCounterKinds: t.lastSourceCounterKinds } : {}),
     ability: t.ability,
     sourceZone: t.sourceZone,
+    // A permanent cast with {X} keeps it for its abilities ("mana value X or less": Kinetic Ooze).
+    ...(s.cards[t.source]?.xPaid !== undefined ? { x: s.cards[t.source]!.xPaid } : {}),
     controller: t.controller,
     targets,
     targetObjects: targets.map(t=>t.kind==='card' ? s.cards[t.card]?.zoneChanges??0 : null),
@@ -720,6 +743,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
     ...(t.targetedBy ? { targetedBy: t.targetedBy } : {}),
+    ...(t.subjectAbility ? { subjectAbility: t.subjectAbility } : {}),
     ...(t.subjects ? { subjects: [...t.subjects] } : {}),
     ...(t.amount !== undefined ? { amount: t.amount } : {}),
     ...(t.mode !== undefined ? { mode: t.mode } : {}),
@@ -731,7 +755,7 @@ function pushAbility(ctx: Ctx, t: QueuedTrigger, targets: Target[]): void {
 
 /** Legal choices for each target of a queued trigger, in effect order. */
 export function triggerTargetOptions(s: GameState, t: QueuedTrigger): Target[][] {
-  const context = { ...(t.defender ? { defender: t.defender } : {}), ...(t.subject ? { subject: t.subject } : {}), ...(t.amount !== undefined ? { amount: t.amount } : {}), triggered: true };
+  const context = { ...(t.defender ? { defender: t.defender } : {}), ...(t.subject ? { subject: t.subject } : {}), ...(t.amount !== undefined ? { amount: t.amount } : {}), ...(s.cards[t.source]?.xPaid !== undefined ? { x: s.cards[t.source]!.xPaid } : {}), triggered: true };
   return choosingEffects(specOf(s, t).effects).map((e) => targetOptions(s, e, t.controller, t.source, context));
 }
 
@@ -837,6 +861,8 @@ export function chooseTriggerTargets(ctx: Ctx, playerId: PlayerId, targets: Targ
   checkTargets(s, specOf(s, t).effects, targets, playerId, t.source, {
     ...(t.defender ? { defender: t.defender } : {}),
     ...(t.subject ? { subject: t.subject } : {}),
+    ...(t.amount !== undefined ? { amount: t.amount } : {}),
+    ...(s.cards[t.source]?.xPaid !== undefined ? { x: s.cards[t.source]!.xPaid } : {}),
     triggered: true,
   });
   s.triggerQueue.shift();
@@ -849,4 +875,10 @@ function spellTargetsCreature(s: GameState, spell: InstanceId | undefined): bool
   const item = s.stack.find((x) => x.kind === 'spell' && x.card === spell);
   if (!item) return false;
   return (item.targets ?? []).some((t) => t.kind === 'card' && s.cards[t.card]?.zone === 'battlefield' && defOf(s, s.cards[t.card]!).types.includes('creature'));
+}
+
+function isPrime(n: number): boolean {
+  if (n < 2) return false;
+  for (let d = 2; d * d <= n; d++) if (n % d === 0) return false;
+  return true;
 }

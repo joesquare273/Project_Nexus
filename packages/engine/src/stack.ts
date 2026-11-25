@@ -761,7 +761,9 @@ export function payMana(ctx: Ctx, playerId: PlayerId, cost: ManaCost, use: ManaU
 export function spellManaRestrictions(def: CardDefinition, from: string): ManaRestriction[] {
   return [...(def.types.includes('artifact') ? ['artifactSpell' as const] : []), ...(def.types.includes('planeswalker') ? ['planeswalkerSpell' as const] : []), ...(def.types.includes('instant') || def.types.includes('sorcery') ? ['instantOrSorcerySpell' as const] : []), ...(from !== 'hand' ? ['notFromHand' as const] : []),
     // Troyan: "spells with mana value 5 or greater or spells with {X} in their mana costs".
-    ...(manaValue(parseManaCost(def.manaCost)) >= 5 || (parseManaCost(def.manaCost).x ?? 0) > 0 ? ['bigOrXSpell' as const] : [])];
+    ...(manaValue(parseManaCost(def.manaCost)) >= 5 || (parseManaCost(def.manaCost).x ?? 0) > 0 ? ['bigOrXSpell' as const] : []),
+    // Elementalist's Palette: "Spend this mana only on costs that contain {X}."
+    ...((parseManaCost(def.manaCost).x ?? 0) > 0 ? ['xCost' as const] : [])];
 }
 
 export function canPayFromPool(s: GameState, playerId: PlayerId, cost: ManaCost, use: ManaUse = {}): boolean {
@@ -1651,6 +1653,11 @@ export function foretellProblem(s: GameState, playerId: PlayerId, c: CardInstanc
   return null;
 }
 
+/** The restricted mana an activated ability's cost may use: artifact-ability mana, and mana for costs containing {X} (Elementalist's Palette). */
+export function abilityRestrictions(s: GameState, c: CardInstance, spec: ActivatedSpec): ManaRestriction[] {
+  return [...(hasType(s, c, 'artifact') ? ['artifactAbility' as const] : []), ...((parseManaCost(spec.cost.mana).x ?? 0) > 0 ? ['xCost' as const] : [])];
+}
+
 /** Dividing N among targets (Grove's Bounty, Magma Opus): each target gets at least one, so no more targets than N. */
 export function divideProblem(def: CardDefinition, choice: SpellChoice, targets: readonly Target[]): string | null {
   const effects = spellEffects(def, choice, targets.length);
@@ -2088,7 +2095,7 @@ export function activateAbility(
     checkDiscardCost(s, playerId, spec.cost.discardX ? costCards.length : spec.cost.discard ?? 0, costCards, id, spec.cost.discardFilter);
   }
   if (rc && !rc.from && (!counterToRemove(c, rc.counter) || countersOf(c, counterToRemove(c, rc.counter)!) < (rc.amount ?? 1))) reject(`There ${rc.amount && rc.amount > 1 ? `aren't ${rc.amount} counters` : "is no counter"} to remove for that.`);
-  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact'), ...(hasType(s, c, 'artifact') ? { restricted: ['artifactAbility' as const] } : {}) });
+  payMana(ctx, playerId, abilityCost(s, spec, targets, c, x ?? 0), { equipment: spec.equip ?? false, artifact: hasType(s, c, 'artifact'), ...(abilityRestrictions(s, c, spec).length ? { restricted: abilityRestrictions(s, c, spec) } : {}) });
   if (spec.equip && s.activePlayer === playerId) player(s, playerId).equipActivatedTurn = s.turnNumber;
   if (creatureTargets.some((target) => s.cards[target]!.controller === playerId)) player(s, playerId).friendlyTargetAbilityTurn = s.turnNumber;
   if (spec.cost.life) changeLife(ctx, playerId, -spec.cost.life);
@@ -4492,6 +4499,19 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       c.castPermission = { player: item.controller, turn: s.turnNumber, free: true, ignoreTiming: true, immediate: true, asCopy: true };
       return;
     }
+    case 'DoubleSpellX': {
+      const spell = item.kind === 'ability' ? s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === item.subject) : undefined;
+      if (spell) spell.x = (spell.x ?? 0) * 2;
+      return;
+    }
+    case 'CopyTriggeringAbility': {
+      const original = item.kind === 'ability' && item.subjectAbility ? s.stack.find((x): x is AbilityItem => x.kind === 'ability' && x.id === item.subjectAbility) : undefined;
+      if (!original || original.activatedSpec?.cantBeCopied) return;
+      const copy = { ...structuredClone(original), id: newId(s, 's') };
+      s.stack.push(copy);
+      askCopyTargets(s, r, [copy.id]);
+      return;
+    }
     case 'MoveAllCounters': {
       // Nexus Mentality: from the earlier target onto this one.
       const fromT = r.previousTarget;
@@ -5010,7 +5030,7 @@ function continueResolving(ctx: Ctx): void {
     }
     if (effect.ifRevolt !== undefined && (s.players[item.controller]!.permanentLeftTurn === s.turnNumber) !== effect.ifRevolt) continue;
     if (effect.ifVoid !== undefined && (s.voidTurn === s.turnNumber) !== effect.ifVoid) continue;
-    if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x) ?? 0) < effect.ifXAtLeast) continue;
+    if (effect.ifXAtLeast !== undefined && ((item.kind === 'spell' ? item.x : item.x ?? s.cards[item.source]?.xPaid) ?? 0) < effect.ifXAtLeast) continue;
     if (effect.ifYourTurn !== undefined && (s.activePlayer === r.item.controller) !== effect.ifYourTurn) continue;
     if (effect.ifCount && (countOf(s, effect.ifCount.count, item.controller, sourceOf(item)) >= effect.ifCount.atLeast) === !!effect.ifCount.not) continue;
     if (effect.ifSubjectManaSpentOverSourcePowerOrToughness && (item.kind !== 'ability' || !manaSpentOverPowerOrToughness(s, item.source, item.amount ?? 0))) continue;
@@ -5167,7 +5187,7 @@ export function resolveTop(ctx: Ctx): void {
       if (item.paragonRider) c.paragonRider = true;
       c.colorsSpentToCast = item.colorsSpent ?? 0;
       if (item.kicks) c.kicksPaid = item.kicks;
-      if (def.entersWithXCounters) addCounters(ctx, c.id, item.x ?? 0, item.controller, def.entersWithCounterKind);
+      if (def.entersWithXCounters) addCounters(ctx, c.id, (item.x ?? 0) * (def.entersWithXCountersTimes ?? 1), item.controller, def.entersWithCounterKind);
       if (def.entersWithCountersFromManaSpent) addCounters(ctx, c.id, item.manaSpent, item.controller);
       if (def.entersWithCountersFromCount) addCounters(ctx, c.id, countOf(s, def.entersWithCountersFromCount, item.controller, c.id), item.controller);
       // Sunburst (rule 702.44): +1/+1 counters on a creature, charge counters on anything else.

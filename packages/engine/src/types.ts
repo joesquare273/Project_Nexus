@@ -43,7 +43,7 @@ export interface Animation {
 export type ManaCost = { generic: number; x?: number; /** {B/P}: how many of the {B} may be paid with 2 life each instead. */ phyrexianB?: number; /** {W/P}, {U/P}, {R/P}, {G/P}: how many of that color may be paid with 2 life each (only when the mana isn't there). */ phyrexian?: Partial<Record<'W' | 'U' | 'R' | 'G', number>>; /** Hybrid symbols ({U/R}): each is paid with either color (rule 107.4e). */ hybrid?: [ManaType, ManaType][]; /** Monocolored hybrid ({2/W}): each is paid with that color or with two generic mana (rule 107.4e); mana value 2. */ monoHybrid?: ManaType[] } & Partial<Record<ManaType, number>>;
 
 /** What some mana can only be spent on: artifact spells (Steelswarm Operator), abilities of artifact sources, or spells cast from anywhere other than your hand (Mmmenon). */
-export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell' | 'instantOrSorcerySpell' | 'bigOrXSpell';
+export type ManaRestriction = 'artifactSpell' | 'artifactAbility' | 'notFromHand' | 'planeswalkerSpell' | 'instantOrSorcerySpell' | 'bigOrXSpell' | 'xCost';
 
 export const CARD_TYPES = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker', 'instant', 'sorcery'] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -637,6 +637,10 @@ export const EFFECT_KINDS = [
   'ExileTopAsManyAsYouChoose',
   /** Surge to Victory: copy the triggering card (in exile); you may cast the copy without paying its mana cost. */
   'CastCopyOfTriggeringCardFree',
+  /** Unbound Flourishing: double the value of X of the triggering spell. */
+  'DoubleSpellX',
+  /** Unbound Flourishing: copy the triggering activated ability (on the stack). */
+  'CopyTriggeringAbility',
   /** Nexus Mentality: move all counters from the previous target onto this target. */
   'MoveAllCounters',
   /** Nexus Mentality: remove all counters from the target; draw a card for each counter removed. */
@@ -1700,6 +1704,8 @@ export interface ObjectFilter {
   manaValueIsX?: boolean;
   /** Has {X} in its mana cost. */
   hasXInManaCost?: boolean;
+  /** Base power exactly this (Primo: "creatures you control with base power 0"). */
+  basePower?: number;
   /** Mana value at most the life its controller gained this turn (Moseo, Vein's New Dean). */
   manaValueAtMostLifeGained?: boolean;
   /** Mana value at most the triggering event's amount ("where X is the amount of damage this creature dealt to that player": Venerable Warsinger). */
@@ -1754,6 +1760,12 @@ export interface TriggerSpec {
   eminence?: boolean;
   /** Support X: target slots are fixed when the entry trigger is queued. */
   supportX?: boolean;
+  /** "Whenever one or more ..." with `oneOrMore`: the batch's amounts are added up (Primo: "equal to the damage dealt"). */
+  sumBatchAmount?: boolean;
+  /** AbilityActivated: only for an activated ability whose cost contains {X} (Unbound Flourishing). */
+  ifAbilityCostHasX?: boolean;
+  /** Only if you control a prime number of lands (Zimone, All-Questioning). */
+  ifLandsYouControlPrime?: boolean;
   when: TriggerEvent;
   /** The zone a spell was cast or a land was played from. */
   fromZone?: ZoneName;
@@ -2686,6 +2698,8 @@ export interface CardDefinition {
   entersWithCounters?: number;
   /** "This creature enters with X +1/+1 counters on it" (Walking Ballista). */
   entersWithXCounters?: boolean;
+  /** With `entersWithXCounters`: that many times X (Primo: "twice X"). */
+  entersWithXCountersTimes?: number;
   /** "You may have this creature enter as a copy of any creature on the battlefield" (Altered Ego). */
   entersAsCopy?: boolean;
   /** With `entersAsCopy`: a copy of an artifact or a creature, and an artifact in addition to its other types (Phyrexian Metamorph). */
@@ -3280,6 +3294,8 @@ export interface AbilityItem {
   subject?: InstanceId;
   /** Ward: the spell or ability that targeted the source. */
   targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
+  /** AbilityActivated triggers: the activated ability on the stack (Unbound Flourishing copies it). */
+  subjectAbility?: string;
   /** Damage triggers: how much damage was dealt; SpellCast triggers: the mana spent on the spell. */
   amount?: number;
   /** "Choose one at random": which of `randomModes` came up. */
@@ -3315,6 +3331,8 @@ export interface QueuedTrigger {
   subject?: InstanceId;
   /** Ward: the spell or ability that targeted the source. */
   targetedBy?: { kind: 'spell'; card: InstanceId } | { kind: 'ability'; item: string };
+  /** AbilityActivated triggers: the activated ability on the stack (Unbound Flourishing copies it). */
+  subjectAbility?: string;
   /** Damage triggers: how much damage was dealt. */
   amount?: number;
   /** "Choose one at random": which of `randomModes` came up. */
@@ -3791,7 +3809,8 @@ export type Action =
   | { type: 'PassPriority'; player: PlayerId }
   | { type: 'DeclareAttackers'; player: PlayerId; attacks: Attack[] }
   | { type: 'DeclareBlockers'; player: PlayerId; blocks: Block[] }
-  | { type: 'ChooseTargets'; player: PlayerId; targets: Target[] }
+  /** `targetSlots`: as for CastSpell, each slot's choices when the listed combinations were cut short (ignored when submitted). */
+  | { type: 'ChooseTargets'; player: PlayerId; targets: Target[]; targetSlots?: Target[][] }
   | { type: 'ChooseDefender'; player: PlayerId; defender: PlayerId }
   | { type: 'ChooseModes'; player: PlayerId; modes: number[] }
   | { type: 'ChooseColor'; player: PlayerId; color: Color }

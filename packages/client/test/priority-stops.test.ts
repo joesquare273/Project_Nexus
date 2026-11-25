@@ -82,3 +82,16 @@ describe.each([2, 3, 4])('priority controls with %i players', (players) => {
     expect(session.state.stack).toHaveLength(1);
   });
 });
+
+describe('a spell you may cast right now', () => {
+  it('stops for Buster Sword\'s free cast after combat damage instead of passing it away', () => {
+    const session = emptySession(2);
+    const s = session.state;
+    s.step = 'combatDamage';
+    const id = put(s, YOU, CARD_IDS_BY_NAME['Sol Ring'] ?? 'sol-ring', 'hand');
+    s.cards[id]!.castPermission = { player: YOU, turn: s.turnNumber, free: true, ignoreTiming: true, fromHand: true, immediate: true };
+    expect(session.plays().some((p) => p.card === id)).toBe(true);
+    expect(session.advance()).toBe('you');
+    expect(s.cards[id]!.castPermission).toBeDefined();
+  });
+});

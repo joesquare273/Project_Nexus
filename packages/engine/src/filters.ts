@@ -114,6 +114,7 @@ export function matchesObject(
   }
   if (f.manaValueAtMost !== undefined && objectManaValue(s, obj) > f.manaValueAtMost) return false;
   if (f.manaValueAtMostX && objectManaValue(s, obj) > (from.x ?? 0)) return false;
+  if (f.basePower !== undefined && (currentDefinition(s, obj).power ?? 0) !== f.basePower) return false;
   if (f.hasXInManaCost && !((parseManaCost(currentDefinition(s, obj).manaCost).x ?? 0) > 0)) return false;
   if (f.manaValueIsX && objectManaValue(s, obj) !== (from.x ?? 0)) return false;
   if (f.subtypeIsSourceChosenOption && !(from.source && s.cards[from.source]?.chosenOption && subtypesOf(s, obj).includes(s.cards[from.source]!.chosenOption!))) return false;

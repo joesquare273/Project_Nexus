@@ -50,6 +50,7 @@ import {
   foretellProblem,
   suspendProblem,
   divideProblem,
+  abilityRestrictions,
   graveyardWay,
   castGroupsFor,
   graveyardCastSources,
@@ -435,7 +436,7 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
             cost: abilityCost(s, spec, targets, c, x ?? 0),
             forEquipment: spec.equip ?? false,
             forArtifact: hasType(s, c, 'artifact'),
-            ...(hasType(s, c, 'artifact') ? { restricted: ['artifactAbility' as const] } : {}),
+            ...(abilityRestrictions(s, c, spec).length ? { restricted: abilityRestrictions(s, c, spec) } : {}),
           });
          }
         }
@@ -567,7 +568,17 @@ export function getLegalActions(s: GameState): Action[] {
       const player = pending.player;
       const t = s.triggerQueue[0]!;
       const needs = choosingEffects(queuedTriggerSpec(s, t).effects);
-      return combine(triggerTargetOptions(s, t), (ts) => !groupProblem(s, needs, ts)).map((targets): Action => ({ type: 'ChooseTargets', player, targets }));
+      // As for spells: past the listed combinations, each slot's options come along (Kinetic Ooze's "any number of other target creatures").
+      const options = triggerTargetOptions(s, t);
+      const valid = (ts: Target[]) => !groupProblem(s, needs, ts);
+      let combos: Target[][] = [[]];
+      let truncated = false;
+      for (const choices of options) {
+        const all = combos.flatMap((combo) => choices.map((x) => [...combo, x])).filter(valid);
+        if (all.length > MAX_TARGET_COMBOS) truncated = true;
+        combos = all.slice(0, MAX_TARGET_COMBOS);
+      }
+      return combos.map((targets): Action => ({ type: 'ChooseTargets', player, targets, ...(truncated ? { targetSlots: options } : {}) }));
     }
 
     case 'decide': {

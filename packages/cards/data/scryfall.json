@@ -24842,6 +24842,28 @@
     "scryfallId": "972dfe0d-1f8a-4e18-bcd8-c1ff6266c01a",
     "relatedTokens": []
   },
+  "primo-the-indivisible-token-soc": {
+    "name": "Primo, the Indivisible",
+    "typeLine": "Token Legendary Creature — Fractal",
+    "oracleText": "",
+    "set": "tsoc",
+    "number": "24",
+    "artist": "Michele Giorgi",
+    "image": {
+      "small": "https://cards.scryfall.io/small/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571",
+      "normal": "https://cards.scryfall.io/normal/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571",
+      "large": "https://cards.scryfall.io/large/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571",
+      "artCrop": "https://cards.scryfall.io/art_crop/front/c/9/c990db6b-e1f2-4802-b8b1-80a8b768be0e.jpg?1783903571"
+    },
+    "scryfallUri": "https://scryfall.com/card/tsoc/24/primo-the-indivisible?utm_source=api",
+    "scryfallId": "c990db6b-e1f2-4802-b8b1-80a8b768be0e",
+    "relatedTokens": [
+      {
+        "name": "Primo, the Indivisible",
+        "scryfallId": "c990db6b-e1f2-4802-b8b1-80a8b768be0e"
+      }
+    ]
+  },
   "primo-the-unbounded": {
     "name": "Primo, the Unbounded",
     "typeLine": "Legendary Creature — Fractal Wolf",

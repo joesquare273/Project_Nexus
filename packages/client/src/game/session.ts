@@ -354,6 +354,12 @@ export class GameSession {
   private worthStopping(): boolean {
     const s = this.state;
     const YOU = this.actor();
+    // A spell you may cast right now, as something resolves (Buster Sword, Jodah, discover, cascade):
+    // passing would throw that permission away, so always stop for it.
+    const now = Object.values(s.cards).some((c) => (c.castPermission?.immediate && c.castPermission.player === YOU && c.castPermission.turn === s.turnNumber)
+      || (c.playableFromExile?.immediate && c.playableFromExile.player === YOU))
+      || (s.castGroups ?? []).some((g) => g.immediate && g.player === YOU && g.turn === s.turnNumber);
+    if (now) return true;
     const top = s.stack.at(-1);
     // Your own spell or ability on top: pass for you, unless you're holding priority
     // and could still add something at instant speed (otherwise there's nothing to hold it for).

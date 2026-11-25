@@ -18,6 +18,14 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Fix: Buster Sword's free cast was passed away in the browser (2026-11-25)
+
+- User report: Buster Sword didn't work in game. After its combat damage trigger you chose a spell to cast free, but the browser's automatic passing gave up priority in the combat damage step (it only stops on your turn in your main phases), which ends a "cast it right now" permission. The browser now always stops while you have one, which also covers Jodah, discover, cascade, Surge to Victory, Dance with Calamity and Plargg and Nassari. The prompt says "cast right now" instead of "this turn". Test: client/test/priority-stops.test.ts.
+
+### Strixhaven Commander SOC3e: Quandrix Unlimited, part five (2026-11-25)
+
+- Kinetic Ooze (any number of targets on a trigger), Primo, Zimone, All-Questioning, Unbound Flourishing, Brass Infiniscope and Elementalist's Palette. 2 Quandrix cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC3d: Quandrix Unlimited, part four (2026-11-25)
 
 - Tanazir Quandrix, Oversimplify, Quandrix Command, Nexus Mentality, Elusive Otter (dividing counters) and Striding Shotcaller. 8 Quandrix cards left. docs/strixhaven.md.

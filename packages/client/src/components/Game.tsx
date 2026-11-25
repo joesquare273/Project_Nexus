@@ -320,12 +320,14 @@ export function Game({
       };
     }
     const t = s.triggerQueue[0]!;
+    const open = choices.find((a) => a.targetSlots);
     return {
       title: `${cardName(s, t.source)}: ${triggerText(queuedTriggerSpec(s, t))}`,
-      choices: choices.map((a) => [a]),
+      choices: open ? [[open]] : choices.map((a) => [a]),
       targets: choices.map((a) => a.targets),
       chosen: [],
       ...(choices[0] ? { slots: targetSlotEffects(s, choices[0]).map(targetDescription) } : {}),
+      ...(open?.targetSlots ? { slotOptions: open.targetSlots } : {}),
     };
   }, [yourMove, pending, legal, s]);
   const activeTargeting = targeting ?? triggerTargeting;
@@ -1574,7 +1576,7 @@ function PromptBar(p: PromptProps) {
             : c.purpose === 'memories'
               ? (s.resolving?.item.controller === YOU ? 'to put into your hand' : 'to put on the bottom of the caster’s library')
             : c.purpose === 'castFree'
-              ? 'from your hand to cast this turn without paying its mana cost (or none)'
+              ? 'from your hand to cast right now without paying its mana cost (or none)'
             : c.purpose === 'removeLore'
               ? 'Sagas to remove a lore counter from (this gets a +1/+1 counter for each)'
             : c.purpose === 'exileFromGraveyard'

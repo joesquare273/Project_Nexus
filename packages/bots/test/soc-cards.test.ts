@@ -1671,3 +1671,78 @@ describe('SOC3d: Quandrix Unlimited (Tanazir, Oversimplify, Commands, Otter, Sho
     expect([s.cards[rat]!.counters, hasKeyword(s, s.cards[rat]!, 'Flying'), s.players.P1!.hand.length - hand]).toEqual([1, true, 1]);
   });
 });
+
+describe('SOC3e: Quandrix Unlimited (Kinetic Ooze, Primo, Zimone, Unbound Flourishing, mana rocks)', () => {
+  const onField = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+
+  it('Kinetic Ooze: destroys an artifact or enchantment with mana value X or less, draws at 5, and doubles counters on any number of other creatures at 10', () => {
+    let s = newGame();
+    const lib = put(s, 'P2', 'mana-bloom'); // mana value 1
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    s.cards[a]!.counters = 2;
+    s.cards[b]!.counters = 1;
+    const ooze = put(s, 'P1', 'kinetic-ooze', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { G: 1, C: 10 });
+    const want = [card(lib), card(a), card(b)];
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: ooze, x: 10 }, { targets: (o) => o.find((t) => JSON.stringify(t) === JSON.stringify(want))! }).state;
+    expect([s.cards[lib]!.zone, s.cards[a]!.counters, s.cards[b]!.counters, s.cards[ooze]!.counters, s.players.P1!.hand.length - hand]).toEqual(['graveyard', 4, 2, 10, 0]);
+  });
+
+  it('Primo enters with twice X counters; creatures with base power 0 hitting a player make a Fractal with that much', () => {
+    let s = newGame();
+    const primo = put(s, 'P1', 'primo-the-unbounded', 'hand');
+    mana(s, 'P1', { G: 2, U: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: primo, x: 2 }).state;
+    expect(s.cards[primo]!.counters).toBe(4);
+    const fractal = put(s, 'P1', 'fractal-token-sos');
+    s.cards[fractal]!.isToken = true;
+    s.cards[fractal]!.counters = 3;
+    s.cards[fractal]!.summoningSick = false;
+    s.cards[primo]!.summoningSick = false;
+    s = fight(s, [{ attacker: fractal, defender: 'P2' }, { attacker: primo, defender: 'P2' }]).state;
+    // Primo is a 0/0 too, so its own damage counts: 3 + 4.
+    expect(onField(s, 'fractal-token-sos').map((c) => c.counters).sort()).toEqual([3, 7]);
+  });
+
+  it('Unbound Flourishing doubles X of permanent spells and copies {X} instants and sorceries', () => {
+    let s = newGame();
+    put(s, 'P1', 'unbound-flourishing');
+    const serpent = put(s, 'P1', 'stonecoil-serpent', 'hand');
+    mana(s, 'P1', { C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: serpent, x: 2 }).state;
+    expect(s.cards[serpent]!.counters).toBe(4);
+    const stroke = put(s, 'P1', 'stroke-of-genius', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: stroke, x: 2, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect(s.players.P1!.hand.length - hand).toBe(3); // 2 + 2 drawn, the spell cast
+  });
+
+  it('Zimone, All-Questioning: with a land played and a prime number of lands, Primo, the Indivisible with that many counters', () => {
+    let s = newGame();
+    put(s, 'P1', 'zimone-all-questioning');
+    put(s, 'P1', 'forest');
+    const land = put(s, 'P1', 'island', 'hand');
+    s = settle(act(s, { type: 'PlayLand', player: 'P1', card: land })).state;
+    s = settle(goTo(s, 'end')).state;
+    expect(onField(s, 'primo-the-indivisible-token-soc').map((c) => c.counters)).toEqual([2]);
+  });
+
+  it('Elementalist\'s Palette: two charge counters per {X} spell, and colorless mana for {X} costs only; Brass Infiniscope draws on the next {X} spell', () => {
+    let s = newGame();
+    const palette = put(s, 'P1', 'elementalists-palette');
+    const scope = put(s, 'P1', 'brass-infiniscope');
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === scope)!).state;
+    expect(s.players.P1!.manaPool.C).toBe(2);
+    const stroke = put(s, 'P1', 'stroke-of-genius', 'hand');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { U: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: stroke, x: 0, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect(s.cards[palette]!.namedCounters?.charge).toBe(2);
+    expect(s.players.P1!.hand.length - hand).toBe(0); // drew one from Infiniscope, cast the spell
+    s = cast(s, getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === palette)!).state;
+    expect(s.players.P1!.restrictedMana?.xCost?.C).toBe(2);
+  });
+});
