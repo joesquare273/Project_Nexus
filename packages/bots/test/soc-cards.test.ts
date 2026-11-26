@@ -2585,3 +2585,100 @@ describe('SOC5a: Witherbloom Pestilence (sacrifice outlets, death triggers, remo
     expect([t.cards[rat]!.zone, t.players.P1!.hand.length - hand]).toEqual(['graveyard', 1]);
   });
 });
+
+describe('SOC5b: Witherbloom Pestilence (Pests, lifegain payoffs, Decayed, Bloodghast)', () => {
+  const field = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+  const kill = (s: GameState, id: string) => { s.cards[id]!.damage = 99; return settle(act(s, { type: 'PassPriority', player: s.pending.kind === 'priority' ? s.pending.player : 'P1' })).state; };
+
+  it('Blight Mound: a Pest when a nontoken creature of yours dies; the Pest gains 1 life when it dies; attacking Pests get +1/+0 and menace', () => {
+    let s = newGame();
+    put(s, 'P1', 'blight-mound');
+    const rat = put(s, 'P1', 'rank-rat');
+    s = kill(s, rat);
+    const pest = field(s, 'pest-token-soc')[0]!;
+    expect(pest).toBeDefined();
+    pest.summoningSick = false;
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: pest.id, defender: 'P2' }] })).state;
+    expect([powerOf(s, s.cards[pest.id]!), hasKeyword(s, s.cards[pest.id]!, 'Menace')]).toEqual([2, true]);
+    s = kill(s, pest.id);
+    expect(s.players.P1!.life).toBe(21);
+  });
+
+  it('Feral Appetite exiles a graveyard card and makes a Pest only for a creature card; attacking Pests have deathtouch', () => {
+    let s = newGame();
+    const appetite = put(s, 'P1', 'feral-appetite');
+    const deadCreature = put(s, 'P2', 'rank-rat', 'graveyard');
+    const deadSpell = put(s, 'P2', 'fracture', 'graveyard');
+    mana(s, 'P1', { G: 2, C: 2 });
+    const aimed = (id: string) => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === appetite && (a.targets ?? []).some((x) => x.kind === 'card' && x.card === id))!;
+    s = cast(s, aimed(deadSpell)).state;
+    expect([s.cards[deadSpell]!.zone, field(s, 'pest-token-soc').length]).toEqual(['exile', 0]);
+    s = cast(s, aimed(deadCreature)).state;
+    expect([s.cards[deadCreature]!.zone, field(s, 'pest-token-soc').length]).toEqual(['exile', 1]);
+  });
+
+  it('Pest Rescuer: a Pest at each upkeep without one, and life gained is one more', () => {
+    let s = newGame();
+    put(s, 'P1', 'pest-rescuer');
+    const charm = put(s, 'P1', 'witherbloom-charm', 'hand');
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 1, targets: [] }).state;
+    expect(s.players.P1!.life).toBe(26);
+    s = goTo(s, 'end');
+    s = goTo(s, 'draw');
+    expect(field(s, 'pest-token-soc').length).toBe(1);
+  });
+
+  it('Trudge Garden pays {2} for a Fungus Beast when you gain life; Defiling Daemogoth drains for the life gained at your end step', () => {
+    let s = newGame();
+    put(s, 'P1', 'trudge-garden');
+    put(s, 'P1', 'defiling-daemogoth');
+    const charm = put(s, 'P1', 'witherbloom-charm', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, C: 2 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 1, targets: [] }).state;
+    expect(field(s, 'fungus-beast-token-soc').length).toBe(1);
+    s = settle(goTo(s, 'end')).state;
+    expect(s.players.P2!.life).toBe(15);
+  });
+
+  it('Jadar makes a decayed Zombie at your end step; decayed creatures can\'t block and are sacrificed after attacking', () => {
+    let s = newGame();
+    put(s, 'P1', 'jadar-ghoulcaller-of-nephalia');
+    s = settle(goTo(s, 'end')).state;
+    const zombie = field(s, 'zombie-decayed-token-soc')[0]!;
+    expect(zombie).toBeDefined();
+    const attacker = put(s, 'P2', 'rank-rat');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P2', attacks: [{ attacker, defender: 'P1' }] })).state;
+    s = nextStep(s);
+    expect(getLegalActions(s).some((a) => a.type === 'DeclareBlockers' && a.blocks.some((b) => b.blocker === zombie.id))).toBe(false);
+    let t = newGame();
+    const z = put(t, 'P1', 'zombie-decayed-token-soc', 'battlefield', { isToken: true });
+    const p = fight(t, [{ attacker: z, defender: 'P2' }]).state;
+    t = goTo(p, 'main2');
+    expect(t.cards[z]?.zone ?? 'gone').not.toBe('battlefield');
+  });
+
+  it('Bloodghast can\'t block, has haste once an opponent is at 10 life or less, and returns on landfall', () => {
+    const s = newGame();
+    const ghast = put(s, 'P1', 'bloodghast');
+    expect([currentDefinition(s, s.cards[ghast]!).cantBlock, hasKeyword(s, s.cards[ghast]!, 'Haste')]).toEqual([true, false]);
+    s.players.P2!.life = 10;
+    expect(hasKeyword(s, s.cards[ghast]!, 'Haste')).toBe(true);
+    let t = newGame();
+    const dead = put(t, 'P1', 'bloodghast', 'graveyard');
+    const land = put(t, 'P1', 'plains', 'hand');
+    t = settle(act(t, { type: 'PlayLand', player: 'P1', card: land })).state;
+    expect(t.cards[dead]!.zone).toBe('battlefield');
+  });
+
+  it('Beledros Witherbloom: a Pest every upkeep, and pay 10 life once each turn to untap your lands', () => {
+    let s = newGame();
+    const beledros = put(s, 'P1', 'beledros-witherbloom');
+    const land = put(s, 'P1', 'plains', 'battlefield', { tapped: true });
+    s = cast(s, activate(s, beledros)!).state;
+    expect([s.players.P1!.life, s.cards[land]!.tapped]).toEqual([10, false]);
+    expect(activate(s, beledros)).toBeUndefined();
+  });
+});

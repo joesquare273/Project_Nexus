@@ -55,7 +55,7 @@ export function canBlock(s: GameState, blocker: CardInstance, attacker: CardInst
   }
   // Drone tokens: "can block only creatures with flying".
   if (currentDefinition(s, blocker).canBlockOnlyFlying && !hasKeyword(s, attacker, 'Flying')) return false;
-  if (currentDefinition(s, blocker).cantBlock) return false;
+  if (currentDefinition(s, blocker).cantBlock || hasKeyword(s, blocker, 'Decayed')) return false;
   if (hasKeyword(s, attacker, 'Flying') && !hasKeyword(s, blocker, 'Flying') && !hasKeyword(s, blocker, 'Reach')) {
     return false;
   }
@@ -231,6 +231,8 @@ export function declareAttackers(ctx: Ctx, playerId: PlayerId, attacks: Attack[]
     const c = s.cards[a.attacker]!;
     if (!hasKeyword(s, c, 'Vigilance')) tap(ctx, c);
     c.attackedTurn = s.turnNumber;
+    // Decayed: "When it attacks, sacrifice it at end of combat."
+    if (hasKeyword(s, c, 'Decayed')) c.sacrificeAtEndOfCombat = true;
     if (subtypesOf(s, c).includes('Spacecraft')) s.players[playerId]!.spacecraftAttackedTurn = s.turnNumber;
     c.attacksThisTurn = { turn: s.turnNumber, n: (c.attacksThisTurn?.turn === s.turnNumber ? c.attacksThisTurn.n : 0) + 1 };
     ctx.ev.push({ type: 'AttackDeclared', attacker: a.attacker, defendingPlayer: a.defender });

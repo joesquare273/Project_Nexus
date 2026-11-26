@@ -525,6 +525,10 @@ export function changeLife(ctx: Ctx, playerId: PlayerId, delta: number): void {
   if (delta > 0 && battlefield(ctx.s).some((c) => c.controller !== playerId && !c.phasedOut && defOf(ctx.s, c).statics?.some((st) => st.opponentsCantGainLife))) return;
   // The Wind Crystal: each one its controller controls doubles life they'd gain (rule 614.1a).
   if (delta > 0) {
+    // Pest Rescuer's "+1" goes first, then doubling: the order that gains the most (the player chooses, rule 616.1).
+    for (const c of battlefield(ctx.s)) {
+      if (c.controller === playerId && !c.phasedOut) for (const st of defOf(ctx.s, c).statics ?? []) delta += st.lifeGainPlus ?? 0;
+    }
     for (const c of battlefield(ctx.s)) {
       if (c.controller === playerId && !c.phasedOut && defOf(ctx.s, c).statics?.some((st) => st.doubleLifeGain)) delta *= 2;
     }

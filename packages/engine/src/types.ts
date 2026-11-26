@@ -69,6 +69,8 @@ export const KEYWORDS = [
   'FirstStrike',
   'DoubleStrike',
   'Menace',
+  /** Decayed (rule 702.147): it can't block, and when it attacks it's sacrificed at end of combat. */
+  'Decayed',
   /** Prowess (rule 702.108): "Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn" (added to its triggers by currentDefinition). */
   'Prowess',
   /** Increment: "Whenever you cast a spell, if the amount of mana you spent to cast it is greater than this creature's power or toughness, put a +1/+1 counter on this creature" (added to its triggers by currentDefinition). */
@@ -2353,6 +2355,8 @@ export interface StaticSpec {
   attackTax?: number;
   /** Nils, Discipline Enforcer: each creature with counters attacking you costs its controller {X}, X = the counters on it. */
   attackTaxPerCounter?: boolean;
+  /** Pest Rescuer: "If you would gain life, you gain that much life plus N instead." */
+  lifeGainPlus?: number;
   /** Flickering Ward: the affected creature has protection from the source's chosen color (which doesn't remove the source). */
   protectionFromChosenColor?: boolean;
   /** Darksteel Mutation (layer 4): the affected permanent has exactly these card types. */
@@ -2367,7 +2371,7 @@ export interface StaticSpec {
   /** `twoSpellsThisTurn`: "as long as you've cast two or more spells this turn". */
   /** `corrupted`: as long as an opponent has three or more poison counters. */
   /** `threshold`: seven or more cards in your graveyard. `opponentDealtNoncombatDamage`: an opponent was dealt noncombat damage this turn. */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage' | /** Infusion: "as long as you gained life this turn". */ 'gainedLifeThisTurn')[];
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage' | /** Infusion: "as long as you gained life this turn". */ 'gainedLifeThisTurn' | /** Bloodghast: "as long as an opponent has 10 or less life". */ 'opponentAtMostTenLife')[];
   /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Mardu"). */
   ifChosenOption?: string;
   /** "Planeswalkers you control have '[−2]: ...'": loyalty abilities this gives each planeswalker its controller controls (the "Way of the ..." enchantments). */
