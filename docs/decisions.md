@@ -759,3 +759,11 @@ it as the Aura spell resolves: the creature card comes back under your
 control with Animate Dead attached. The difference is that no one can respond
 between the Aura entering and the creature returning (for example, by
 exiling the card from the graveyard).
+
+## 2026-11-26: Battles and player counters (Final Act)
+
+The engine has no battle cards (none of the imported sets has one), so
+Final Act's "Destroy all battles" mode can be chosen but never finds
+anything. Its "Each opponent loses all counters" removes poison counters,
+the only counters a player can have here; energy, experience and other
+player counters aren't in the engine yet.

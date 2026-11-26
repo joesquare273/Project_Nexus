@@ -936,7 +936,8 @@ export function activateManaAbility(
 
 /** "{T}, Sacrifice a land: Add {R}{R}": the lands a player could sacrifice for it. */
 export function manaSacrificeLands(s: GameState, playerId: PlayerId, source: InstanceId): InstanceId[] {
-  return battlefield(s).filter((l) => l.id !== source && l.controller === playerId && !l.phasedOut && hasType(s, l, 'land')).map((l) => l.id);
+  const filter = s.cards[source] ? defOf(s, s.cards[source]!).manaAbility?.sacrificeFilter : undefined;
+  return battlefield(s).filter((l) => l.id !== source && l.controller === playerId && !l.phasedOut && (filter ? matchesObject(s, filter, l, { controller: playerId, source }) : hasType(s, l, 'land'))).map((l) => l.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -4022,6 +4023,12 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       }
       return;
     }
+    case 'ExileAllGraveyards':
+      for (const pid of alivePlayers(s)) for (const id of [...player(s, pid).graveyard]) moveCard(ctx, id, 'exile');
+      return;
+    case 'OpponentsLoseAllCounters':
+      for (const pid of alivePlayers(s)) if (pid !== item.controller) delete player(s, pid).poison;
+      return;
     case 'PreventCombatDamageToYouMakeTokens':
       if (effect.token) player(s, item.controller).inkshield = { turn: s.turnNumber, token: effect.token };
       return;

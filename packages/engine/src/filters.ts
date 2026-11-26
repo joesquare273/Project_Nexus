@@ -44,6 +44,7 @@ export function matchesObject(
   const def = definition ?? currentDefinition(s, obj);
   if (f.other && obj.id === from.source) return false;
   if (f.notOwnedByYou && obj.owner === from.controller) return false;
+  if (f.ownedByYou && obj.owner !== from.controller) return false;
   if (f.linkedToSource || f.notLinkedToSource) {
     const linked = from.source ? s.cards[from.source]?.linkedCreature : undefined;
     const isLinked = !!linked && linked.card === obj.id;

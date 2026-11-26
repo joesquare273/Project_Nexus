@@ -92,6 +92,13 @@ function eliminatePlayer(ctx: Ctx, playerId: PlayerId, reason: EliminationReason
  * them means that Saga's chapter ability has already triggered.
  */
 export function applyStateBasedActions(ctx: Ctx, unscanned: readonly GameEvent[] = []): boolean {
+  // Ascend (rule 702.131b): ten or more permanents while you control one with ascend gives the city's blessing for good.
+  for (const pid of ctx.s.turnOrder) {
+    const p = ctx.s.players[pid]!;
+    if (p.cityBlessing || p.eliminated) continue;
+    const mine = battlefield(ctx.s).filter((c) => c.controller === pid && !c.phasedOut);
+    if (mine.length >= 10 && mine.some((c) => defOf(ctx.s, c).ascend)) p.cityBlessing = true;
+  }
   const s = ctx.s;
   let eliminatedAny = false;
   for (;;) {

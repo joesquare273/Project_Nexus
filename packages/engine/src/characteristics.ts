@@ -114,6 +114,10 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
       }).length;
     case 'CardTypesInAllGraveyards':
       return new Set(s.turnOrder.flatMap((pid) => s.players[pid]!.graveyard.flatMap((id) => def(s, s.cards[id]!).types))).size;
+    case 'CreaturesYouControlDiedThisTurn':
+      return s.creatureDeathsByController?.[player] ?? 0;
+    case 'PermanentsPutIntoGraveyardThisTurn':
+      return s.permanentsToGraveyardThisTurn ?? 0;
     case 'CreaturesDiedThisTurn':
       return s.creaturesDiedThisTurn;
     case 'OpponentCreaturesDiedThisTurn':
@@ -166,6 +170,8 @@ export function countOf(s: GameState, kind: CountKind, player: PlayerId, source?
     }
     case 'Opponents':
       return s.turnOrder.filter((pid) => pid !== player && !s.players[pid]!.eliminated).length;
+    case 'NontokenCreaturesEnteredUnderYourControlThisTurn':
+      return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length + (s.enteredAndLeftThisTurn?.[player] ?? 0);
     case 'NontokenCreaturesYouControlThatEnteredThisTurn':
       return yours().filter((c) => creature(c) && !c.isToken && c.enteredTurn === s.turnNumber).length;
     case 'GreatestToughnessAmongYourCreatures':
@@ -331,6 +337,7 @@ export function staticAffects(s: GameState, source: CardInstance, spec: StaticSp
   // Threshold: seven or more cards in your graveyard.
   if (spec.conditions?.includes('threshold') && s.players[source.controller]!.graveyard.length < 7) return false;
   if (spec.conditions?.includes('gainedLifeThisTurn') && !s.players[source.controller]!.lifeGainedThisTurn) return false;
+  if (spec.conditions?.includes('cityBlessing') && !s.players[source.controller]!.cityBlessing) return false;
   if (spec.conditions?.includes('opponentAtMostTenLife') && !s.turnOrder.some((p) => p !== source.controller && !s.players[p]!.eliminated && s.players[p]!.life <= 10)) return false;
   if (spec.ifClassLevelAtLeast !== undefined && (source.classLevel ?? 1) < spec.ifClassLevelAtLeast) return false;
   if (spec.conditions?.includes('opponentDealtNoncombatDamage') && !s.turnOrder.some((pid) => pid !== source.controller && s.players[pid]!.noncombatDamageTurn === s.turnNumber)) return false;
@@ -365,6 +372,7 @@ function staticApplies(s: GameState, source: CardInstance, spec: StaticSpec): In
     if (condition === 'twoSpellsThisTurn' && (s.players[source.controller]!.spellsCastThisTurn ?? 0) < 2) return null;
     if (condition === 'twoNoncreatureSpellsThisTurn' && (s.players[source.controller]!.noncreatureSpellsThisTurn ?? 0) < 2) return null;
     if (condition === 'gainedLifeThisTurn' && !s.players[source.controller]!.lifeGainedThisTurn) return null;
+    if (condition === 'cityBlessing' && !s.players[source.controller]!.cityBlessing) return null;
     if (condition === 'opponentAtMostTenLife' && !s.turnOrder.some((p) => p !== source.controller && !s.players[p]!.eliminated && s.players[p]!.life <= 10)) return null;
   }
   return affected;

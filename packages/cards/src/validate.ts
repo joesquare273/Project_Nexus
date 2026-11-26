@@ -173,7 +173,7 @@ function validateAmount(a: Amount | undefined, err: Err): void {
 function validateFilter(f: ObjectFilter | undefined, err: Err): void {
   if (!f) return;
   for (const type of [...(f.types ?? []), ...(f.nonTypes ?? [])]) {
-    if (!CARD_TYPES.includes(type)) err(`unknown type "${type}" in a filter.`);
+    if (!CARD_TYPES.includes(type) && !(UNBUILT_TYPES as readonly string[]).includes(type)) err(`unknown type "${type}" in a filter.`);
   }
   for (const cat of f.categories ?? []) {
     if (!CARD_CATEGORIES.includes(cat)) err(`unknown category "${cat}" (use ${CARD_CATEGORIES.join(', ')}).`);
@@ -522,7 +522,7 @@ function validateStatic(st: StaticSpec, err: Err): void {
     e('extraCounters must be a whole number on an EachMatching static ability.');
   }
   for (const cond of st.conditions ?? []) {
-    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking', 'corrupted', 'threshold', 'opponentDealtNoncombatDamage', 'gainedLifeThisTurn', 'opponentAtMostTenLife'].includes(cond)) e(`unknown condition "${cond}".`);
+    if (!['yourTurn', 'equipped', 'legendary', 'twoNoncreatureSpellsThisTurn', 'twoSpellsThisTurn', 'attached', 'attacking', 'corrupted', 'threshold', 'opponentDealtNoncombatDamage', 'gainedLifeThisTurn', 'opponentAtMostTenLife', 'cityBlessing'].includes(cond)) e(`unknown condition "${cond}".`);
   }
   if (st.grantsMana && (st.affects === 'Self' || st.grantsMana.length === 0 || st.grantsMana.some((m) => !MANA_TYPES.includes(m)))) e('grantsMana needs valid mana types, on EquippedCreature or EachMatching.');
   for (const k of st.removeKeywords ?? []) if (!KEYWORDS.includes(k)) e(`unknown keyword "${k}".`);

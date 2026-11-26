@@ -69,6 +69,8 @@ export const KEYWORDS = [
   'FirstStrike',
   'DoubleStrike',
   'Menace',
+  /** Shadow (rule 702.28): it can block or be blocked by only creatures with shadow. */
+  'Shadow',
   /** Decayed (rule 702.147): it can't block, and when it attacks it's sacrificed at end of combat. */
   'Decayed',
   /** Prowess (rule 702.108): "Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn" (added to its triggers by currentDefinition). */
@@ -249,6 +251,10 @@ export const EFFECT_KINDS = [
   'RevealTopToHandLoseLife',
   /** Keen Duelist: you and the target opponent each reveal your top card, each lose life equal to the mana value of the other's card, and each put yours into your hand. */
   'KeenDuel',
+  /** Final Act: "Each opponent loses all counters" (their poison counters, the only player counters here). */
+  'OpponentsLoseAllCounters',
+  /** Final Act: exile every graveyard. */
+  'ExileAllGraveyards',
   /** Animate Dead: "When this Aura leaves the battlefield, that creature's controller sacrifices it." */
   'SacrificeAnimatedCreature',
   /** Inkshield: prevent all combat damage to you this turn; for each 1 prevented, create `token`. */
@@ -857,6 +863,12 @@ export const COUNT_KINDS = [
   'AurasAttachedToThis',
   /** Auras you control (Herald of Amity, Eriette). */
   'AurasYouControl',
+  /** Creatures that died under your control this turn (Gorma). */
+  'CreaturesYouControlDiedThisTurn',
+  /** Nontoken creatures you had enter under your control this turn, including any that have left since (Gyome). */
+  'NontokenCreaturesEnteredUnderYourControlThisTurn',
+  /** Permanents put into a graveyard from the battlefield this turn (gravestorm). */
+  'PermanentsPutIntoGraveyardThisTurn',
   /** Auras you control that are attached to creatures (Sage's Reverie). */
   'AurasYouControlAttachedToCreatures',
   'SoldiersYouControl',
@@ -1746,6 +1758,8 @@ export interface ObjectFilter {
   controllerSeat?: number;
   /** Enchanted by an Aura the filter's controller controls (Killian, Decisive Mentor; Eriette). */
   enchantedByYou?: boolean;
+  /** Owned by the filter's controller ("put into your graveyard": Nether Traitor). */
+  ownedByYou?: boolean;
   /** Attacking a player who is an opponent of the filter's controller (Martial Impetus). */
   attackingOpponent?: boolean;
   /** Exactly one color (Vanishing Verse). */
@@ -2371,7 +2385,7 @@ export interface StaticSpec {
   /** `twoSpellsThisTurn`: "as long as you've cast two or more spells this turn". */
   /** `corrupted`: as long as an opponent has three or more poison counters. */
   /** `threshold`: seven or more cards in your graveyard. `opponentDealtNoncombatDamage`: an opponent was dealt noncombat damage this turn. */
-  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage' | /** Infusion: "as long as you gained life this turn". */ 'gainedLifeThisTurn' | /** Bloodghast: "as long as an opponent has 10 or less life". */ 'opponentAtMostTenLife')[];
+  conditions?: ('yourTurn' | 'equipped' | 'legendary' | 'twoNoncreatureSpellsThisTurn' | 'twoSpellsThisTurn' | 'attached' | 'attacking' | 'corrupted' | 'threshold' | 'opponentDealtNoncombatDamage' | /** Infusion: "as long as you gained life this turn". */ 'gainedLifeThisTurn' | /** Bloodghast: "as long as an opponent has 10 or less life". */ 'opponentAtMostTenLife' | /** Ascend: "as long as you have the city's blessing". */ 'cityBlessing')[];
   /** Only while the option chosen as the source entered is this one (Windcrag Siege: "Mardu"). */
   ifChosenOption?: string;
   /** "Planeswalkers you control have '[−2]: ...'": loyalty abilities this gives each planeswalker its controller controls (the "Way of the ..." enchantments). */
@@ -2509,6 +2523,8 @@ export interface CardDefinition {
     ifLandsAtLeast?: number;
     /** "{T}, Sacrifice a land: Add {R}{R}" (Evendo Brushrazer): the land is chosen with the action (`sacrifice`). */
     sacrificeLand?: boolean;
+    /** With `sacrificeLand`: what may be sacrificed instead of a land (Gilded Goose: "Sacrifice a Food"). */
+    sacrificeFilter?: ObjectFilter;
     /** Spire of Industry: "Add one mana of any color. Activate only if you control an artifact." */
     anyColorIfControls?: ObjectFilter;
     /** Producing one of these costs 1 life ("{T}, Pay 1 life: Add one mana of any color"). */
@@ -2821,6 +2837,8 @@ export interface CardDefinition {
   devourLand?: number;
   /** Devour N (rule 702.82): as it enters from being cast, you may sacrifice any number of creatures; it enters with N times that many +1/+1 counters (Mycoloth). */
   devour?: number;
+  /** Ascend (rule 702.131): while you control this and ten or more permanents, you get the city's blessing. */
+  ascend?: boolean;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
   saga?: number;
   /** The kind of those counters (entersWithCounters or entersWithXCounters), if not +1/+1 ("enters with a page counter on it", "X charge counters"). */
@@ -3258,6 +3276,8 @@ export interface PlayerState {
   lifeManaTurn?: number;
   /** Arcane Lighthouse: the turn this player's opponents' creatures lose hexproof and shroud. */
   lighthouseTurn?: number;
+  /** Ascend (rule 702.131): the city's blessing, kept for the rest of the game. */
+  cityBlessing?: boolean;
   /** Intermediate Chirography: the turn a modified creature died under this player's control. */
   modifiedCreatureDiedTurn?: number;
   /** Inkshield: this turn, combat damage to this player is prevented, and each 1 prevented makes this token for them. */
@@ -3852,6 +3872,10 @@ export interface GameState {
   attackBans?: { attacker: PlayerId; controller: PlayerId; subtype: string; turn: number }[];
   /** Creatures put into a graveyard from the battlefield this turn. */
   creaturesDiedThisTurn: number;
+  /** Gravestorm: permanents put into a graveyard from the battlefield this turn. */
+  permanentsToGraveyardThisTurn?: number;
+  /** Nontoken creatures that entered this turn and have left again, by the player who controlled them (Gyome). */
+  enteredAndLeftThisTurn?: Record<PlayerId, number>;
   /** Numbers the copies of spells (their ids). */
   nextCopyId?: number;
   /** Creatures that died this turn, by the player who controlled them (Sidequest: Hunt the Mark). */

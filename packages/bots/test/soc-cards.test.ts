@@ -2788,3 +2788,92 @@ describe('SOC5c: Witherbloom Pestilence (sacrifice payoffs, devour, lords, Comma
     expect(field(s, 'pest-token-soc').length).toBe(2);
   });
 });
+
+describe('SOC5d: Witherbloom Pestilence (modal removal, Gorma, Shadow, Food, ascend, gravestorm)', () => {
+  const field = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+  const kill = (s: GameState, id: string) => { s.cards[id]!.damage = 99; return settle(act(s, { type: 'PassPriority', player: s.pending.kind === 'priority' ? s.pending.player : 'P1' })).state; };
+
+  it('Casualties of War destroys one target of each chosen type; Final Act destroys all creatures and exiles all graveyards', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const prison = put(s, 'P2', 'ghostly-prison');
+    const land = put(s, 'P2', 'plains');
+    const war = put(s, 'P1', 'casualties-of-war', 'hand');
+    mana(s, 'P1', { B: 2, G: 2, C: 2 });
+    const all = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === war && JSON.stringify(a.modes) === JSON.stringify([1, 2, 3]));
+    expect(all).toBeDefined();
+    s = cast(s, { ...all!, targets: [card(rat), card(prison), card(land)] } as never).state;
+    expect([s.cards[rat]!.zone, s.cards[prison]!.zone, s.cards[land]!.zone]).toEqual(['graveyard', 'graveyard', 'graveyard']);
+    const mine = put(s, 'P1', 'rank-rat');
+    s.players.P2!.poison = 3;
+    const act2 = put(s, 'P1', 'final-act', 'hand');
+    mana(s, 'P1', { B: 2, C: 4 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: act2, modes: [0, 3, 4], targets: [] }).state;
+    expect([s.cards[mine]!.zone, s.cards[rat]!.zone, s.players.P2!.poison ?? 0]).toEqual(['exile', 'exile', 0]);
+  });
+
+  it('Gorma grows when your other creatures die, and your nontoken creatures enter with a counter per creature of yours that died this turn', () => {
+    let s = newGame();
+    const gorma = put(s, 'P1', 'gorma-the-gullet');
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    s = kill(s, a);
+    s = kill(s, b);
+    expect(s.cards[gorma]!.counters).toBe(2);
+    const next = put(s, 'P1', 'rank-rat', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: next }).state;
+    expect(s.cards[next]!.counters).toBe(2);
+  });
+
+  it('Nether Traitor has shadow (only shadow creatures block it) and returns for {B} when another creature of yours dies', () => {
+    let s = newGame();
+    const traitor = put(s, 'P1', 'nether-traitor', 'graveyard');
+    const rat = put(s, 'P1', 'rank-rat');
+    mana(s, 'P1', { B: 1 });
+    s = kill(s, rat);
+    expect(s.cards[traitor]!.zone).toBe('battlefield');
+    expect(hasKeyword(s, s.cards[traitor]!, 'Shadow')).toBe(true);
+  });
+
+  it('Gilded Goose makes Food and sacrifices one for mana of any color; Gyome makes Food for each nontoken creature that entered this turn', () => {
+    let s = newGame();
+    const goose = put(s, 'P1', 'gilded-goose', 'hand');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: goose }).state;
+    const food = field(s, 'food-token-soc')[0]!;
+    expect(food).toBeDefined();
+    s.cards[goose]!.summoningSick = false;
+    const tapFood = getLegalActions(s).find((a) => a.type === 'ActivateManaAbility' && a.card === goose && a.mana === 'B');
+    expect(tapFood && 'sacrifice' in tapFood ? tapFood.sacrifice : undefined).toBe(food.id);
+    s = act(s, tapFood!);
+    expect([s.players.P1!.manaPool.B, s.cards[food.id]?.zone ?? 'gone']).not.toContain('battlefield');
+    put(s, 'P1', 'gyome-master-chef');
+    s = settle(goTo(s, 'end')).state;
+    expect(field(s, 'food-token-soc').length).toBe(1); // the Goose entered this turn
+  });
+
+  it('Tendershoot Dryad: a Saproling every upkeep; with the city\'s blessing (ten permanents), Saprolings get +2/+2', () => {
+    let s = newGame();
+    put(s, 'P1', 'tendershoot-dryad');
+    const sap = put(s, 'P1', 'saproling-token-soc', 'battlefield', { isToken: true });
+    expect(powerOf(s, s.cards[sap]!)).toBe(1);
+    for (let i = 0; i < 8; i++) put(s, 'P1', 'plains');
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect([s.players.P1!.cityBlessing, powerOf(s, s.cards[sap]!)]).toEqual([true, 3]);
+  });
+
+  it('Ominous Harvest has gravestorm: a copy for each permanent put into a graveyard from the battlefield this turn', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    s = kill(s, a);
+    s = kill(s, b);
+    s = goTo(s, 'main2');
+    const harvest = put(s, 'P1', 'ominous-harvest', 'hand');
+    mana(s, 'P1', { B: 1, C: 2 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: harvest, targets: [{ kind: 'player', player: 'P1' }] }).state;
+    expect([s.players.P1!.hand.length - hand, s.players.P1!.life]).toEqual([-1 + 3, 17]);
+  });
+});
