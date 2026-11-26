@@ -780,7 +780,7 @@ export function Game({
         } else if (canAttackPlayer(s, s.cards[id]!, currentDefender)) {
           next.set(id, currentDefender);
           if (pw) nextPw.set(id, pw);
-        } else return showError('A vow prevents this creature from attacking that opponent.');
+        } else return showError(`This creature can't attack ${currentDefender === YOU ? 'you' : currentDefender}.`);
         setAttackers(next);
         setAttackPw(nextPw);
         return;

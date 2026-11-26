@@ -2450,6 +2450,8 @@ export interface CardDefinition {
   manaAbility?: {
     /** "{T}, Sacrifice this: Add ..." (Treasure). */
     sacrifice?: boolean;
+    /** No {T} in the cost ("Sacrifice this creature: Add {C}": Eldrazi Spawn): being tapped or summoning sick doesn't matter. */
+    noTap?: boolean;
     /** "{T}, Exile this artifact: Add {U}" (Ether), and its "when you next cast an instant or sorcery spell this turn, copy that spell". */
     exileSelf?: boolean;
     copyNextInstantOrSorcery?: boolean;
@@ -2633,7 +2635,7 @@ export interface CardDefinition {
    */
   /** `perMatching`: affinity, {1} less for each permanent you control matching it ("for each Town you control"). */
   /** `ifCastAnotherSpell`: "if you've cast another spell this turn" (Gigastorm Titan). */
-  costReduction?: { generic: number; ifTargetsTappedCreature?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If you've cast a noncreature spell this turn" (Traxos, Academy Guardian). */ ifCastNoncreatureThisTurn?: true; /** "If you control a legendary creature" (Wrath of the Bloodmane). */ ifYouControl?: ObjectFilter; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
+  costReduction?: { generic: number; ifTargetsTappedCreature?: true; /** "If you gained life this turn" (Mortality Spear). */ ifGainedLifeThisTurn?: true; perCount?: CountKind; perMatching?: ObjectFilter; ifOpponentGraveyardAtLeast?: number; ifCastAnotherSpell?: true; /** "If your opponents control N or more creatures" (Lashwhip Predator). */ ifOpponentsControlCreatures?: number; /** "During your turn" (Mental Modulation). */ ifYourTurn?: true; /** "If you've cast a noncreature spell this turn" (Traxos, Academy Guardian). */ ifCastNoncreatureThisTurn?: true; /** "If you control a legendary creature" (Wrath of the Bloodmane). */ ifYouControl?: ObjectFilter; /** "If it targets a blocking creature" (Dark Endurance). */ ifTargetsBlockingCreature?: true; /** Void: "if a nonland permanent left the battlefield this turn or a spell was warped this turn". */ ifVoid?: true };
   /** "Choose two" / "Choose one or more": how many of `modes` the caster picks. Default: exactly one. */
   /** `maxWithCommander`: more modes if you control a commander as you cast it (Akroma's Will). */
   chooseModes?: { min: number; max: number; maxWithCommander?: number };

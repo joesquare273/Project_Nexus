@@ -103,7 +103,7 @@ export function isBasicLand(def: CardDefinition): boolean {
 }
 
 /** A mana ability paid by removing counters ("Remove a charge counter from this: Add one mana of any color") instead of tapping. */
-export const tapFreeManaAbility = (def: CardDefinition): boolean => !!def.manaAbility?.removeCounter;
+export const tapFreeManaAbility = (def: CardDefinition): boolean => !!def.manaAbility?.removeCounter || !!def.manaAbility?.noTap;
 
 /** How many times a counter-removing mana ability can still be activated: the counters of its kind on the permanent. */
 export function manaCounters(c: CardInstance, def: CardDefinition): number {

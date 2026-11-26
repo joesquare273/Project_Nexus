@@ -885,6 +885,13 @@ export function activateManaAbility(
     kinnanBonus(ctx, playerId, c, mana);
     return;
   }
+  // Eldrazi Spawn: "Sacrifice this creature: Add {C}" has no {T}.
+  if (ability?.noTap) {
+    const n = manaAbilityAmount(c, def, s);
+    if (ability.sacrifice) sacrifice(ctx, id);
+    for (let i = 0; i < n; i++) addMana(ctx, playerId, mana, id);
+    return;
+  }
   if (c.tapped) reject('That permanent is already tapped.');
   if (hasType(s, c, 'creature') && c.summoningSick && !hasKeyword(s, c, 'Haste')) {
     reject('Creatures with summoning sickness can’t use tap abilities.');
@@ -1282,6 +1289,7 @@ export function spellCost(
   }
   if (def.costReduction?.ifVoid && card && s.voidTurn === s.turnNumber) cost = reduceGeneric(cost, def.costReduction.generic);
   if (def.costReduction?.ifYourTurn && card && s.activePlayer === payer) cost = reduceGeneric(cost, def.costReduction.generic);
+  if (def.costReduction?.ifGainedLifeThisTurn && card && (s.players[payer!]!.lifeGainedThisTurn ?? 0) > 0) cost = reduceGeneric(cost, def.costReduction.generic);
   // Thalia, the Survivor: "Noncreature spells your opponents cast cost {1} more to cast."
   if (card && payer && !def.types.includes('creature')) {
     for (const x of battlefield(s)) {

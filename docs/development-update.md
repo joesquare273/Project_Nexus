@@ -18,6 +18,11 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC5a: Witherbloom Pestilence, part one (2026-11-26)
+
+- 17 Witherbloom cards: sacrifice outlets (Viscera Seer, Sakura-Tribe Elder, Yahenni, Dina, Soul Steeper), death triggers (Blood Artist, Zulaport Cutthroat, Moldervine Reclamation, Pawn of Ulamog, Haywire Mite), removal (Assassin's Trophy, Mortality Spear, Witherbloom Charm), Awakening Zone, Ophiomancer, Teacher's Pest and two lands. Mana abilities without {T} (Eldrazi Spawn) now work while tapped or summoning sick. 36 Witherbloom cards left. docs/strixhaven.md.
+- The browser's message for a creature that can't attack the chosen player no longer blames a vow (it also covers "can't attack you" effects).
+
 ### Strixhaven Commander SOC4g: Silverquill Influence complete (2026-11-26)
 
 - Bestow (Eidolon of Countless Battles), escape with a graveyard picker (Sentinel's Eyes), Animate Dead, Hateful Eidolon, replicate (Changing Loyalty) and granted activated abilities (Fallen Ideal). Silverquill Influence is the fourth complete Strixhaven deck: a free starter choice and a deck the bots can play. docs/strixhaven.md.

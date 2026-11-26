@@ -2466,3 +2466,122 @@ describe('SOC4g: Silverquill Influence (bestow, escape, Animate Dead, replicate,
     expect(s.cards[ideal]!.zone).toBe('hand');
   });
 });
+
+describe('SOC5a: Witherbloom Pestilence (sacrifice outlets, death triggers, removal, lands)', () => {
+  const kill = (s: GameState, id: string, opts: Parameters<typeof settle>[1] = {}) => { s.cards[id]!.damage = 99; return settle(act(s, { type: 'PassPriority', player: 'P1' }), opts).state; };
+  const atP2 = { targets: (o: { kind: string; player?: string }[][]) => o.find((t) => t[0]?.kind === 'player' && t[0].player === 'P2') ?? o[0]! };
+  const sacWith = (s: GameState, source: string, fodder: string) => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === source && (a.costCards ?? []).includes(fodder));
+
+  it('Blood Artist, Zulaport Cutthroat and Moldervine Reclamation all trigger on a creature of yours dying', () => {
+    let s = newGame();
+    put(s, 'P1', 'blood-artist');
+    put(s, 'P1', 'zulaport-cutthroat');
+    put(s, 'P1', 'moldervine-reclamation');
+    const rat = put(s, 'P1', 'rank-rat');
+    const hand = s.players.P1!.hand.length;
+    s = kill(s, rat, atP2 as never);
+    expect([s.players.P1!.life, s.players.P2!.life, s.players.P1!.hand.length - hand]).toEqual([23, 18, 1]);
+  });
+
+  it('Viscera Seer sacrifices to scry; Sakura-Tribe Elder fetches a tapped basic; Yahenni grows and turns indestructible', () => {
+    let s = newGame();
+    const seer = put(s, 'P1', 'viscera-seer');
+    const rat = put(s, 'P1', 'rank-rat');
+    s = settle(act(s, sacWith(s, seer, rat)!), { surveilToGraveyard: false }).state;
+    expect(s.cards[rat]!.zone).toBe('graveyard');
+    const elder = put(s, 'P1', 'sakura-tribe-elder');
+    const plains = put(s, 'P1', 'plains', 'library');
+    s = cast(s, activate(s, elder)!).state;
+    expect([s.cards[elder]!.zone, s.cards[plains]!.zone, s.cards[plains]!.tapped]).toEqual(['graveyard', 'battlefield', true]);
+    const yahenni = put(s, 'P1', 'yahenni-undying-partisan');
+    const foe = put(s, 'P2', 'rank-rat');
+    s = kill(s, foe);
+    expect(s.cards[yahenni]!.counters).toBe(1);
+    const fodder = put(s, 'P1', 'rank-rat');
+    s = cast(s, sacWith(s, yahenni, fodder)!).state;
+    expect(hasKeyword(s, s.cards[yahenni]!, 'Indestructible')).toBe(true);
+  });
+
+  it('Assassin\'s Trophy destroys an opponent\'s permanent and they may find a basic land; Mortality Spear is cheaper after you gain life', () => {
+    let s = newGame();
+    const prison = put(s, 'P2', 'ghostly-prison');
+    const basic = put(s, 'P2', 'plains', 'library');
+    const trophy = put(s, 'P1', 'assassins-trophy', 'hand');
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: trophy, targets: [card(prison)] }).state;
+    expect([s.cards[prison]!.zone, s.cards[basic]!.zone]).toEqual(['graveyard', 'battlefield']);
+    const spear = put(s, 'P1', 'mortality-spear', 'hand');
+    const rat = put(s, 'P2', 'rank-rat');
+    mana(s, 'P1', { B: 1, G: 1 });
+    expect(getLegalActions(s).some((a) => a.type === 'CastSpell' && a.card === spear)).toBe(false);
+    s.players.P1!.lifeGainedThisTurn = 1;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: spear, targets: [card(rat)] }).state;
+    expect(s.cards[rat]!.zone).toBe('graveyard');
+  });
+
+  it('Haywire Mite exiles a noncreature artifact or enchantment and gains 2 when it dies; Pawn of Ulamog makes Spawn that sacrifice for {C}', () => {
+    let s = newGame();
+    const mite = put(s, 'P1', 'haywire-mite');
+    const prison = put(s, 'P2', 'ghostly-prison');
+    put(s, 'P1', 'pawn-of-ulamog');
+    mana(s, 'P1', { G: 1 });
+    s = cast(s, activate(s, mite)!).state;
+    expect([s.cards[prison]!.zone, s.cards[mite]!.zone, s.players.P1!.life]).toEqual(['exile', 'graveyard', 22]);
+    const spawn = Object.values(s.cards).find((c) => c.defId === 'eldrazi-spawn-token-soc' && c.zone === 'battlefield');
+    expect(spawn).toBeDefined();
+    s = act(s, { type: 'ActivateManaAbility', player: 'P1', card: spawn!.id, mana: 'C' });
+    expect([s.players.P1!.manaPool.C, s.cards[spawn!.id]?.zone ?? 'gone']).not.toContain('battlefield');
+    expect(s.players.P1!.manaPool.C).toBe(1);
+  });
+
+  it('Ophiomancer makes a deathtouch Snake each upkeep if you have none; Awakening Zone may make a Spawn on your upkeep', () => {
+    let s = newGame();
+    put(s, 'P1', 'ophiomancer');
+    put(s, 'P2', 'awakening-zone');
+    s = goTo(s, 'end');
+    s = goTo(s, 'draw');
+    const snakes = Object.values(s.cards).filter((c) => c.defId === 'snake-token-soc' && c.zone === 'battlefield');
+    expect(snakes.length).toBe(1);
+    expect(hasKeyword(s, snakes[0]!, 'Deathtouch')).toBe(true);
+    expect(Object.values(s.cards).some((c) => c.defId === 'eldrazi-spawn-token-soc' && c.controller === 'P2')).toBe(true);
+  });
+
+  it('Dina, Soul Steeper drains when you gain life and grows by a sacrificed creature\'s power; Witherbloom Charm\'s modes', () => {
+    let s = newGame();
+    const dina = put(s, 'P1', 'dina-soul-steeper');
+    const charm = put(s, 'P1', 'witherbloom-charm', 'hand');
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm, mode: 1, targets: [] }).state;
+    expect([s.players.P1!.life, s.players.P2!.life]).toEqual([25, 19]);
+    const big = put(s, 'P1', 'killian-ink-duelist');
+    mana(s, 'P1', { C: 1 });
+    s = cast(s, sacWith(s, dina, big)!).state;
+    expect(powerOf(s, s.cards[dina]!)).toBe(1 + 2);
+    const charm2 = put(s, 'P1', 'witherbloom-charm', 'hand');
+    const fodder = put(s, 'P1', 'rank-rat');
+    const hand = s.players.P1!.hand.length;
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: charm2, mode: 0, targets: [] }).state;
+    if (s.pending.kind === 'chooseCards') s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [fodder] })).state;
+    expect([s.cards[fodder]!.zone, s.players.P1!.hand.length - hand]).toEqual(['graveyard', -1 + 2]);
+  });
+
+  it('Teacher\'s Pest gains 1 life attacking and returns from the graveyard tapped; Grim Backwoods sacrifices a creature to draw', () => {
+    let s = newGame();
+    const pest = put(s, 'P1', 'teachers-pest');
+    s = goTo(s, 'declareAttackers');
+    s = settle(act(s, { type: 'DeclareAttackers', player: 'P1', attacks: [{ attacker: pest, defender: 'P2' }] })).state;
+    expect(s.players.P1!.life).toBe(21);
+    let t = newGame();
+    const dead = put(t, 'P1', 'teachers-pest', 'graveyard');
+    mana(t, 'P1', { B: 1, G: 1 });
+    t = cast(t, activate(t, dead)!).state;
+    expect([t.cards[dead]!.zone, t.cards[dead]!.tapped]).toEqual(['battlefield', true]);
+    const woods = put(t, 'P1', 'grim-backwoods');
+    const rat = put(t, 'P1', 'rank-rat');
+    const hand = t.players.P1!.hand.length;
+    mana(t, 'P1', { B: 1, G: 1, C: 2 });
+    t = cast(t, sacWith(t, woods, rat)!).state;
+    expect([t.cards[rat]!.zone, t.players.P1!.hand.length - hand]).toEqual(['graveyard', 1]);
+  });
+});
