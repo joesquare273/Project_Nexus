@@ -745,7 +745,11 @@ function chooseCardsToPick(s: GameState, me: PlayerId, legal: Action[]): Action 
   if (p.purpose === 'attachToSource') return pick(byValue.slice(-1));
   // Sin: take every opponent's counters, and our own only when they aren't +1/+1 counters on our creatures.
   // Devour land: eat about half our lands, so the creature survives and we can still cast spells.
-  if (p.purpose === 'devourOnEntry') return pick(p.cards.slice(0, Math.max(1, Math.floor(p.cards.length / 2))));
+  // Devour: half our lands (devour land), or only our creature tokens (devour).
+  if (p.purpose === 'devourOnEntry') {
+    const creatures = p.cards.every((id) => def(s, s.cards[id]!).types.includes('creature') && !def(s, s.cards[id]!).types.includes('land'));
+    return pick(creatures ? p.cards.filter((id) => s.cards[id]!.isToken) : p.cards.slice(0, Math.max(1, Math.floor(p.cards.length / 2))));
+  }
   if (p.purpose === 'removeCountersOnEntry') return pick(p.cards.filter((id) => s.cards[id]!.controller !== me || !s.cards[id]!.counters));
   // Keep: our best, or an opponent's worst when we choose for them. Respect "one of each type".
   const ours = s.cards[p.cards[0]!]!.controller === me;

@@ -145,6 +145,22 @@ cards left.
 - **Bloodghast:** static condition `opponentAtMostTenLife`; landfall from the
   graveyard.
 
+## SOC5c: Witherbloom Pestilence, part three (built 2026-11-26)
+
+Smothering Abomination, Merchant of Venom, Dina, Essence Brewer, Wight of the
+Reliquary, Ohran Frostfang, Creakwood Liege, Mycoloth, Ribtruss Roaster,
+Eccentric Pestfinder (Turn Stones), Woe Strider and Witherbloom Command.
+13 Witherbloom cards left.
+
+- **Devour N** (Mycoloth, Ribtruss Roaster): `def.devour`, alongside devour
+  land; as it enters from being cast, you choose any number of your creatures
+  to sacrifice (the browser says how many counters each gives; the bots only
+  devour tokens).
+- **Escape with counters:** `escape.counters` (Woe Strider).
+- **Data fixes:** Creakwood Liege's hybrid cost {1}{B/G}{B/G}{B/G} and
+  Smothering Abomination's devoid (no colors) were missing from the import.
+- **Tokens:** Saproling (tsoc 18), Worm (tsoc 26), Goat (tsoc 4).
+
 ## Commander decks (imported 2026-11-20)
 
 The five college decks, imported with
@@ -235,7 +251,7 @@ drawn pack shows.
 | Import | Main set cards and images (SOS 1-281) | Done (2026-11-20) |
 | Packs | Play and Collector Boosters, Packs tab, Collection binder | Done (2026-11-20) |
 | Commander | The Commander decks (SOC): import, Store, Collection | Done (2026-11-20) |
-| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9), SOC3c lands, mana and odd/even (10), SOC3d Tanazir, Oversimplify, Commands, Otter, Shotcaller (6), SOC3e Ooze, Primo, Unbound Flourishing, mana rocks (6), SOC3f Bloomsage, Opal Palace (2): **Quandrix Unlimited complete (2026-11-25)**; SOC4a Silverquill Influence removal, lands and Aura support (14), SOC4b goad Auras, Killian, Decisive Mentor, constellation (8), SOC4c attack restrictions and attack triggers (6), SOC4d Auras and upkeep enchantments (10), SOC4e Auras entering without being cast (8), SOC4f Scriv, prepared cards, Chirography, Inkshield, Shadrix (6), SOC4g bestow, escape, Animate Dead, replicate (6): **Silverquill Influence complete (2026-11-26)**; SOC5a Witherbloom Pestilence sacrifice outlets, death triggers, removal, lands (17), SOC5b Pests, lifegain payoffs, Decayed, Bloodghast (11) | In progress |
+| SOC1-SOC5 | The decks' cards, one group per deck (each split in parts): SOC1a Lorehold Spirit lands, spells and sacrifice creatures (16), SOC1b recursion and creatures (12), SOC1c Quintorius and friends (5), SOC1d discard and exile tricks (5), SOC1e Warsinger, Sevinne, Ao, Skyclave (4), SOC1f Bitterthorn, Excava, Quintorius Loremaster (3), SOC1g Hofri, Guardian Scalelord, Study Hall (3), SOC1h Augusta, Spirit of Resilience, Serra Paragon (3), SOC1i Classes and voting (2): **Lorehold Spirit complete (2026-11-24)**; SOC2a Prismari Artistry lands, spells and magecraft (16), SOC2b cascade and spell-cast creatures (11), SOC2c token copies, demonstrate and spell copies (7), SOC2d trigger doubling, Goldspan, prepared (7), SOC2e the commander Rootha, Stormsinger, Furygale, Twinflame (4), SOC2f any number of targets, Brudiclad (1), SOC2g Muddle, Surge to Victory, Dance with Calamity (3), SOC2h Magma Opus, Mirrorwing Dragon (2), SOC2i suspend, piles, Plargg and Nassari (3): **Prismari Artistry complete (2026-11-24)**; SOC3a Quandrix Unlimited {X} creatures, counters and spells (23), SOC3b first {X} spell each turn, Fractals (9), SOC3c lands, mana and odd/even (10), SOC3d Tanazir, Oversimplify, Commands, Otter, Shotcaller (6), SOC3e Ooze, Primo, Unbound Flourishing, mana rocks (6), SOC3f Bloomsage, Opal Palace (2): **Quandrix Unlimited complete (2026-11-25)**; SOC4a Silverquill Influence removal, lands and Aura support (14), SOC4b goad Auras, Killian, Decisive Mentor, constellation (8), SOC4c attack restrictions and attack triggers (6), SOC4d Auras and upkeep enchantments (10), SOC4e Auras entering without being cast (8), SOC4f Scriv, prepared cards, Chirography, Inkshield, Shadrix (6), SOC4g bestow, escape, Animate Dead, replicate (6): **Silverquill Influence complete (2026-11-26)**; SOC5a Witherbloom Pestilence sacrifice outlets, death triggers, removal, lands (17), SOC5b Pests, lifegain payoffs, Decayed, Bloodghast (11), SOC5c sacrifice payoffs, devour, lords, Command (12) | In progress |
 | SOS1 | Lands (13, and SOC's five Turbulent lands) | Done (2026-11-20) |
 | SOS2 | Prepared (37, in color batches): SOS2a white and blue (14), SOS2b black and red (13), SOS2c green, multicolor and colorless (10) | Done (2026-11-21) |
 | SOS3 | Increment and Opus (19): SOS3a Opus (10), SOS3b Increment (8 of 9) done 2026-11-21; Tester of the Tangential waits for an {X} trigger cost | Nearly done |

@@ -2613,7 +2613,7 @@ export interface CardDefinition {
   /** Replicate (rule 702.56): with `multikicker` as the replicate cost; when cast, copy it for each time that was paid (copies of a permanent spell become tokens). */
   replicate?: boolean;
   /** Escape (rule 702.138): cast from your graveyard for `cost`, exiling `exileOthers` other cards from your graveyard (chosen with `costCards`). */
-  escape?: { cost: string; exileOthers: number };
+  escape?: { cost: string; exileOthers: number; /** "Escapes with N +1/+1 counters on it" (Woe Strider). */ counters?: number };
   /** Animate Dead: an Aura spell that targets a creature card in a graveyard; as it enters, that card returns under your control with this attached. */
   enchantGraveyardCreature?: boolean;
   /** Kicker that changes the spell (Tear Asunder): kicked, these effects (and their targets) replace its effects. */
@@ -2819,6 +2819,8 @@ export interface CardDefinition {
   loyalty?: number;
   /** Devour land N (rule 702.82): as it enters from being cast, you may sacrifice any number of lands; it enters with N times that many +1/+1 counters (Famished Worldsire). */
   devourLand?: number;
+  /** Devour N (rule 702.82): as it enters from being cast, you may sacrifice any number of creatures; it enters with N times that many +1/+1 counters (Mycoloth). */
+  devour?: number;
   /** A Saga (rule 714): its final chapter number. Chapter abilities are triggers with `when: 'Chapter'`. */
   saga?: number;
   /** The kind of those counters (entersWithCounters or entersWithXCounters), if not +1/+1 ("enters with a page counter on it", "X charge counters"). */

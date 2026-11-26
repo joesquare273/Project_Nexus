@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC5c: Witherbloom Pestilence, part three (2026-11-26)
+
+- Smothering Abomination, Merchant of Venom, Dina, Essence Brewer, Wight of the Reliquary, Ohran Frostfang, Creakwood Liege, Mycoloth and Ribtruss Roaster (devour), Eccentric Pestfinder, Woe Strider (escapes with counters) and Witherbloom Command. 13 Witherbloom cards left. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC5b: Witherbloom Pestilence, part two (2026-11-26)
 
 - Pests and lifegain: Feral Appetite, Blight Mound, Pest Rescuer (+1 life), Beledros Witherbloom, Trudge Garden, Veinwitch Coven, Defiling Daemogoth, Blossoming Bogbeast, Witch of the Moors; the Decayed keyword (Jadar's Zombies) and Bloodghast. 25 Witherbloom cards left. docs/strixhaven.md.

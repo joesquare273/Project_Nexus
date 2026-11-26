@@ -1655,6 +1655,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     ...(alternative ? { alternative } : {}),
     castFrom: from,
     ...(way === 'flashback' ? { flashback: true } : {}),
+    // Woe Strider: "escapes with two +1/+1 counters on it".
+    ...(way === 'escape' && def.escape?.counters ? { extraEntryCounters: def.escape.counters } : {}),
     manaSpent,
     // Recorded for every spell: Converge counts its own colors, and Magmablood Archaic counts any instant's or sorcery's.
     colorsSpent,
@@ -5306,10 +5308,12 @@ export function resolveTop(ctx: Ctx): void {
       }
       item.entryCopy = null;
     }
-    if (entering.devourLand && item.entryCounters === undefined) {
-      const lands = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && hasType(s, c, 'land')).map((c) => c.id);
+    if ((entering.devourLand || entering.devour) && item.entryCounters === undefined) {
+      // Devour land: your lands. Devour: your creatures.
+      const kind = entering.devourLand ? 'land' : 'creature';
+      const lands = battlefield(s).filter((c) => c.controller === item.controller && !c.phasedOut && hasType(s, c, kind)).map((c) => c.id);
       if (lands.length) {
-        s.pending = { kind: 'chooseCards', purpose: 'devourOnEntry', player: item.controller, cards: lands, min: 0, max: lands.length, item: item.id };
+        s.pending = { kind: 'chooseCards', purpose: 'devourOnEntry', player: item.controller, cards: lands, min: 0, max: lands.length, item: item.id, counterCount: entering.devourLand ?? entering.devour ?? 1 };
         return;
       }
       item.entryCounters = 0;
@@ -6163,7 +6167,7 @@ export function chooseEntryCopy(ctx: Ctx, playerId: PlayerId, cards: InstanceId[
 /** The ChooseCards answer for devour: sacrifice the chosen lands; it enters with N times that many +1/+1 counters. */
 export function chooseDevour(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): void {
   const s = ctx.s, p = s.pending, item = s.stack.at(-1);
-  if (p.kind !== 'chooseCards' || p.purpose !== 'devourOnEntry' || p.player !== playerId) reject('You are not choosing lands to devour.');
+  if (p.kind !== 'chooseCards' || p.purpose !== 'devourOnEntry' || p.player !== playerId) reject('You are not choosing permanents to devour.');
   if (item?.kind !== 'spell' || item.id !== p.item) throw new Error('The entering spell is not on top of the stack.');
   const problem = choiceProblem(s, p, cards);
   if (problem) reject(problem);
@@ -6173,7 +6177,8 @@ export function chooseDevour(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]):
     sacrifice(ctx, id);
     eaten++;
   }
-  item.entryCounters = eaten * (defOf(s, s.cards[item.card]!).devourLand ?? 0);
+  const entering = defOf(s, s.cards[item.card]!);
+  item.entryCounters = eaten * (entering.devourLand ?? entering.devour ?? 0);
   s.pending = { kind: 'priority', player: playerId, passes: 0 };
   resolveTop(ctx);
 }

@@ -2682,3 +2682,109 @@ describe('SOC5b: Witherbloom Pestilence (Pests, lifegain payoffs, Decayed, Blood
     expect(activate(s, beledros)).toBeUndefined();
   });
 });
+
+describe('SOC5c: Witherbloom Pestilence (sacrifice payoffs, devour, lords, Command)', () => {
+  const field = (s: GameState, defId: string, who = 'P1') => Object.values(s.cards).filter((c) => c.zone === 'battlefield' && c.controller === who && c.defId === defId);
+  const sacWith = (s: GameState, source: string, fodder: string) => getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === source && (a.costCards ?? []).includes(fodder));
+
+  it('Merchant of Venom: each player sacrifices a creature as it enters, and it grows with each sacrifice; Smothering Abomination draws for yours and is colorless', () => {
+    let s = newGame();
+    put(s, 'P1', 'smothering-abomination');
+    const mine = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'rank-rat');
+    const merchant = put(s, 'P1', 'merchant-of-venom', 'hand');
+    mana(s, 'P1', { B: 1, C: 3 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: merchant }).state;
+    while (s.pending.kind === 'chooseCards') {
+      const p = s.pending as { player: string; cards: string[] };
+      s = settle(act(s, { type: 'ChooseCards', player: p.player, cards: [p.cards.includes(mine) ? mine : p.cards.includes(theirs) ? theirs : p.cards[0]!] })).state;
+    }
+    expect([s.cards[mine]!.zone, s.cards[theirs]!.zone, s.cards[merchant]!.counters]).toEqual(['graveyard', 'graveyard', 2]);
+    expect(s.players.P1!.hand.length - hand).toBe(-1 + 1);
+    expect(currentDefinition(s, Object.values(s.cards).find((c) => c.defId === 'smothering-abomination')!).colors).toEqual([]);
+  });
+
+  it('Dina, Essence Brewer draws once a turn for sacrifices and turns a sacrificed creature\'s power into life and counters', () => {
+    let s = newGame();
+    const dina = put(s, 'P1', 'dina-essence-brewer');
+    const big = put(s, 'P1', 'killian-ink-duelist');
+    const target = put(s, 'P1', 'rank-rat');
+    mana(s, 'P1', { C: 2 });
+    const hand = s.players.P1!.hand.length;
+    const act1 = getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === dina && (a.costCards ?? []).includes(big) && (a.targets ?? []).some((t) => t.kind === 'card' && t.card === target));
+    s = cast(s, act1!).state;
+    expect([s.players.P1!.life, s.cards[target]!.counters, s.players.P1!.hand.length - hand]).toEqual([22, 2, 1]);
+  });
+
+  it('Mycoloth devours creatures for two counters each and makes that many Saprolings each upkeep; Ribtruss Roaster makes Pests', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    const myco = put(s, 'P1', 'mycoloth', 'hand');
+    mana(s, 'P1', { G: 2, C: 3 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: myco });
+    s = settle(s).state;
+    expect([s.pending.kind, (s.pending as { purpose?: string }).purpose]).toEqual(['chooseCards', 'devourOnEntry']);
+    s = settle(act(s, { type: 'ChooseCards', player: 'P1', cards: [a, b] })).state;
+    expect(s.cards[myco]!.counters).toBe(4);
+    s = goTo(s, 'end');
+    s = goTo(s, 'upkeep'); // P2's turn
+    s = goTo(s, 'end');
+    s = goTo(s, 'draw'); // P1's next turn, after the upkeep
+    expect(s.activePlayer).toBe('P1');
+    expect(field(s, 'saproling-token-soc').length).toBe(4);
+  });
+
+  it('Creakwood Liege pumps your other black and green creatures (+2/+2 for both colors); Ohran Frostfang gives attackers deathtouch', () => {
+    const s = newGame();
+    put(s, 'P1', 'creakwood-liege');
+    put(s, 'P1', 'ohran-frostfang');
+    const gold = put(s, 'P1', 'dina-soul-steeper');
+    const black = put(s, 'P1', 'rank-rat');
+    expect([powerOf(s, s.cards[gold]!), powerOf(s, s.cards[black]!)]).toEqual([1 + 2, 1 + 1]);
+  });
+
+  it('Woe Strider makes a Goat, sacrifices to scry, and escapes with two +1/+1 counters', () => {
+    let s = newGame();
+    const strider = put(s, 'P1', 'woe-strider', 'graveyard');
+    for (let i = 0; i < 4; i++) put(s, 'P1', 'plains', 'graveyard');
+    mana(s, 'P1', { B: 2, C: 3 });
+    const escape = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === strider);
+    expect(escape).toBeDefined();
+    s = cast(s, escape!).state;
+    expect([s.cards[strider]!.zone, s.cards[strider]!.counters, field(s, 'goat-token-soc').length]).toEqual(['battlefield', 2, 1]);
+    const goat = field(s, 'goat-token-soc')[0]!;
+    s = settle(act(s, sacWith(s, strider, goat.id)!), { surveilToGraveyard: false }).state;
+    expect(s.cards[goat.id]?.zone ?? 'gone').not.toBe('battlefield');
+  });
+
+  it('Witherbloom Command: choose two — drain 2 and shrink a creature', () => {
+    let s = newGame();
+    const rat = put(s, 'P2', 'rank-rat');
+    const cmd = put(s, 'P1', 'witherbloom-command', 'hand');
+    mana(s, 'P1', { B: 1, G: 1 });
+    const option = getLegalActions(s).find((a) => a.type === 'CastSpell' && a.card === cmd && JSON.stringify(a.modes) === JSON.stringify([2, 3]) && (a.targets ?? []).some((t) => t.kind === 'card' && t.card === rat));
+    s = cast(s, option!).state;
+    expect([s.cards[rat]!.zone, s.players.P1!.life, s.players.P2!.life]).toEqual(['graveyard', 22, 18]);
+  });
+
+  it('Eccentric Pestfinder is prepared after you gain life; Turn Stones makes a Pest for each opponent', () => {
+    let s = newGame(3);
+    const finder = put(s, 'P1', 'eccentric-pestfinder-turn-stones');
+    s.players.P1!.lifeGainedThisTurn = 2;
+    s = settle(goTo(s, 'end')).state;
+    expect(s.cards[finder]!.prepared).toBe(true);
+    s = goTo(s, 'end');
+    s = goTo(s, 'main1');
+    s = goTo(s, 'end');
+    s = goTo(s, 'main1');
+    s = goTo(s, 'end');
+    s = goTo(s, 'main1');
+    expect(s.activePlayer).toBe('P1');
+    const copy = Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === finder)!;
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: copy.id }).state;
+    expect(field(s, 'pest-token-soc').length).toBe(2);
+  });
+});
