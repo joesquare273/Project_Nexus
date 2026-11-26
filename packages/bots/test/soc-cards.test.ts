@@ -2361,3 +2361,108 @@ describe('SOC4f: Silverquill Influence (Scriv, prepared cards, Chirography, Inks
     expect([s.players.P2!.life, s.cards[rat]!.counters]).toEqual([19, 1]);
   });
 });
+
+describe('SOC4g: Silverquill Influence (bestow, escape, Animate Dead, replicate, granted abilities)', () => {
+  const casts = (s: GameState, id: string) => getLegalActions(s).filter((a): a is Extract<typeof a, { type: 'CastSpell' }> => a.type === 'CastSpell' && a.card === id);
+  const onAura = (s: GameState, who: 'P1' | 'P2', defId: string, on: string) => put(s, who, defId, 'battlefield', { attachedTo: on });
+
+  it('Eidolon of Countless Battles: bestowed it is an Aura giving +X/+X; when its creature dies it stays as a creature', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const eidolon = put(s, 'P1', 'eidolon-of-countless-battles', 'hand');
+    mana(s, 'P1', { W: 2, C: 2 });
+    const bestow = casts(s, eidolon).find((a) => a.alternative && (a.targets ?? []).some((t) => t.kind === 'card' && t.card === rat));
+    expect(bestow).toBeDefined();
+    s = cast(s, bestow!).state;
+    const def = currentDefinition(s, s.cards[eidolon]!);
+    expect([s.cards[eidolon]!.attachedTo, def.types.includes('creature'), def.subtypes?.includes('Aura')]).toEqual([rat, false, true]);
+    expect(powerOf(s, s.cards[rat]!)).toBe(1 + 1 + 1); // one creature, one Aura
+    s.cards[rat]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect([s.cards[eidolon]!.zone, currentDefinition(s, s.cards[eidolon]!).types.includes('creature'), powerOf(s, s.cards[eidolon]!)]).toEqual(['battlefield', true, 1]);
+  });
+
+  it('A bestowed Eidolon whose target is gone resolves as a creature', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const eidolon = put(s, 'P1', 'eidolon-of-countless-battles', 'hand');
+    mana(s, 'P1', { W: 2, C: 2 });
+    s = act(s, casts(s, eidolon).find((a) => a.alternative)!);
+    s.players.P1!.battlefield = s.players.P1!.battlefield.filter((id) => id !== rat);
+    s.players.P1!.graveyard.push(rat);
+    s.cards[rat]!.zone = 'graveyard';
+    s = settle(s).state;
+    expect([s.cards[eidolon]!.zone, s.cards[eidolon]!.attachedTo, currentDefinition(s, s.cards[eidolon]!).types.includes('creature')]).toEqual(['battlefield', undefined, true]);
+  });
+
+  it('Sentinel\'s Eyes escapes from the graveyard, exiling any two other graveyard cards', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const eyes = put(s, 'P1', 'sentinels-eyes', 'graveyard');
+    const a = put(s, 'P1', 'fracture', 'graveyard');
+    const b = put(s, 'P1', 'plains', 'graveyard');
+    const c = put(s, 'P1', 'vanishing-verse', 'graveyard');
+    mana(s, 'P1', { W: 1 });
+    const escape = casts(s, eyes).find((x) => (x.targets ?? []).some((t) => t.kind === 'card' && t.card === rat));
+    expect([escape?.costPool?.length, escape?.costCards?.length]).toEqual([3, 2]);
+    s = cast(s, { ...escape!, costCards: [b, c] }).state;
+    expect([s.cards[eyes]!.attachedTo, s.cards[a]!.zone, s.cards[b]!.zone, s.cards[c]!.zone]).toEqual([rat, 'graveyard', 'exile', 'exile']);
+    expect(hasKeyword(s, s.cards[rat]!, 'Vigilance')).toBe(true);
+  });
+
+  it('Animate Dead returns a creature card from any graveyard under your control with -1/-0; it\'s sacrificed when the Aura leaves', () => {
+    let s = newGame();
+    const dead = put(s, 'P2', 'killian-ink-duelist', 'graveyard');
+    const animate = put(s, 'P1', 'animate-dead', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: animate, targets: [card(dead)] }).state;
+    expect([s.cards[dead]!.zone, s.cards[dead]!.controller, s.cards[animate]!.attachedTo, powerOf(s, s.cards[dead]!)]).toEqual(['battlefield', 'P1', dead, 1]);
+    const fracture = put(s, 'P1', 'fracture', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fracture, targets: [card(animate)] }).state;
+    expect([s.cards[dead]!.zone, s.players.P2!.graveyard.includes(dead)]).toEqual(['graveyard', true]);
+  });
+
+  it('Hateful Eidolon draws a card for each of your Auras that was on a creature that died', () => {
+    let s = newGame();
+    put(s, 'P1', 'hateful-eidolon');
+    const rat = put(s, 'P2', 'rank-rat');
+    onAura(s, 'P1', 'spirit-mantle', rat);
+    onAura(s, 'P1', 'raffines-guidance', rat);
+    onAura(s, 'P2', 'spirit-mantle', rat);
+    const hand = s.players.P1!.hand.length;
+    s.cards[rat]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect(s.players.P1!.hand.length - hand).toBe(2);
+  });
+
+  it('Changing Loyalty: replicate copies (Aura tokens) can enchant other creatures; when one dies, it returns under your control', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'rank-rat');
+    const theirs = put(s, 'P2', 'killian-ink-duelist');
+    const loyalty = put(s, 'P1', 'changing-loyalty', 'hand');
+    mana(s, 'P1', { B: 1, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: loyalty, kicks: 1, targets: [card(mine)] }, { copyTargets: (o) => o.find((t) => t[0]?.kind === 'card' && t[0].card === theirs) ?? o[0]! }).state;
+    const copy = Object.values(s.cards).find((c) => c.defId === 'changing-loyalty' && c.isToken && c.zone === 'battlefield');
+    expect([s.cards[loyalty]!.attachedTo, copy?.attachedTo]).toEqual([mine, theirs]);
+    s.cards[theirs]!.damage = 99;
+    s = settle(act(s, { type: 'PassPriority', player: 'P1' })).state;
+    expect([s.cards[theirs]!.zone, s.cards[theirs]!.controller]).toEqual(['battlefield', 'P1']);
+  });
+
+  it('Fallen Ideal: flying and "Sacrifice a creature: +2/+1"; it returns to hand when put into a graveyard', () => {
+    let s = newGame();
+    const rat = put(s, 'P1', 'rank-rat');
+    const fodder = put(s, 'P1', 'rank-rat');
+    const ideal = onAura(s, 'P1', 'fallen-ideal', rat);
+    expect(hasKeyword(s, s.cards[rat]!, 'Flying')).toBe(true);
+    const sac = getLegalActions(s).find((a) => a.type === 'ActivateAbility' && a.card === rat && (a.costCards ?? []).includes(fodder));
+    expect(sac).toBeDefined();
+    s = cast(s, sac!).state;
+    expect([s.cards[fodder]!.zone, powerOf(s, s.cards[rat]!), toughnessOf(s, s.cards[rat]!)]).toEqual(['graveyard', 3, 2]);
+    const fracture = put(s, 'P1', 'fracture', 'hand');
+    mana(s, 'P1', { W: 1, B: 1 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: fracture, targets: [card(ideal)] }).state;
+    expect(s.cards[ideal]!.zone).toBe('hand');
+  });
+});

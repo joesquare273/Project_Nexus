@@ -750,3 +750,12 @@ among them free. The choice gives a "cast it right now" permission, and the
 other seven go on the bottom at once. If you choose an Aura and then don't
 cast it, it stays in exile instead of going to the bottom with the rest
 (like cascade, above).
+
+## 2026-11-26: Animate Dead's return (simplification)
+
+Animate Dead's Oracle text returns the creature with a triggered ability
+("When this Aura enters, if it's on the battlefield, ..."). The engine does
+it as the Aura spell resolves: the creature card comes back under your
+control with Animate Dead attached. The difference is that no one can respond
+between the Aura entering and the creature returning (for example, by
+exiling the card from the graveyard).

@@ -488,6 +488,8 @@ function effectText(e: EffectSpec): string {
       return 'if that enchantment is an Aura, you may attach it to the token';
     case 'PreventCombatDamageToYouMakeTokens':
       return 'prevent all combat damage that would be dealt to you this turn; for each 1 damage prevented this way, create a token';
+    case 'SacrificeAnimatedCreature':
+      return "that creature's controller sacrifices it";
     case 'KeenDuel':
       return 'you and target opponent each reveal the top card of your library, each lose life equal to the mana value of the card the other revealed, and each put yours into your hand';
     case 'RevealTopToHandLoseLife': return 'reveal the top card of your library and put it into your hand; you lose life equal to its mana value';

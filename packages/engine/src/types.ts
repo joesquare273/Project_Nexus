@@ -247,6 +247,8 @@ export const EFFECT_KINDS = [
   'RevealTopToHandLoseLife',
   /** Keen Duelist: you and the target opponent each reveal your top card, each lose life equal to the mana value of the other's card, and each put yours into your hand. */
   'KeenDuel',
+  /** Animate Dead: "When this Aura leaves the battlefield, that creature's controller sacrifices it." */
+  'SacrificeAnimatedCreature',
   /** Inkshield: prevent all combat damage to you this turn; for each 1 prevented, create `token`. */
   'PreventCombatDamageToYouMakeTokens',
   /**
@@ -980,6 +982,10 @@ export type Amount =
         | 'previousTargetHandSize'
         /** The X of the triggering spell (Nev: "put X +1/+1 counters"). */
         | 'subjectX'
+        /** Times the triggering spell's kicker or replicate cost was paid (replicate). */
+        | 'subjectKicks'
+        /** The Auras you controlled that were attached to the triggering creature as it died (Hateful Eidolon). */
+        | 'subjectAurasYouControlled'
         /** The +1/+1 counters on the previous target (Tanazir Quandrix: "double the number of +1/+1 counters on target creature"). */
         | 'previousTargetPlusOneCounters'
         /** How many times the previous target player has cast a commander from the command zone (Commander's Insight). */
@@ -1995,6 +2001,8 @@ export interface TriggerSpec {
   modesTargetDifferentPlayers?: boolean;
   /** EndStep: only if a modified creature died under your control this turn (Intermediate Chirography). */
   ifModifiedCreatureDiedThisTurn?: boolean;
+  /** Dies: only if Auras were attached to it as it died (Hateful Eidolon: "whenever an enchanted creature dies"). */
+  ifSubjectWasEnchanted?: boolean;
   effects: EffectSpec[];
 }
 
@@ -2364,6 +2372,8 @@ export interface StaticSpec {
   ifChosenOption?: string;
   /** "Planeswalkers you control have '[−2]: ...'": loyalty abilities this gives each planeswalker its controller controls (the "Way of the ..." enchantments). */
   planeswalkersHave?: ActivatedSpec[];
+  /** EquippedCreature: the enchanted creature has these activated abilities (Fallen Ideal). */
+  grantsActivated?: ActivatedSpec[];
   /** "Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty" (Sanctum Lurker). */
   planeswalkersSurviveZeroLoyalty?: boolean;
   /** "Must be blocked if able" while this applies (The Masamune). */
@@ -2594,6 +2604,12 @@ export interface CardDefinition {
   retrace?: boolean;
   /** Dredge N (rule 702.52): instead of your draw step's draw, mill N and return this card from your graveyard to your hand. */
   dredge?: number;
+  /** Replicate (rule 702.56): with `multikicker` as the replicate cost; when cast, copy it for each time that was paid (copies of a permanent spell become tokens). */
+  replicate?: boolean;
+  /** Escape (rule 702.138): cast from your graveyard for `cost`, exiling `exileOthers` other cards from your graveyard (chosen with `costCards`). */
+  escape?: { cost: string; exileOthers: number };
+  /** Animate Dead: an Aura spell that targets a creature card in a graveyard; as it enters, that card returns under your control with this attached. */
+  enchantGraveyardCreature?: boolean;
   /** Kicker that changes the spell (Tear Asunder): kicked, these effects (and their targets) replace its effects. */
   kickedEffects?: EffectSpec[];
   /** Alternative characteristics used only when casting/resolving the Adventure (rule 715). */
@@ -2665,6 +2681,8 @@ export interface CardDefinition {
     exileFromHand?: ObjectFilter;
     /** Evoke (rule 702.74): the permanent remembers it was evoked (`ifEvoked` triggers sacrifice it). */
     evoke?: boolean;
+    /** Bestow (rule 702.103): cast as an Aura spell with enchant creature; it's a creature again when unattached. */
+    bestow?: boolean;
   };
   /** "This spell can't be countered." */
   cantBeCountered?: boolean;
@@ -2928,6 +2946,12 @@ export interface CardInstance {
   goadedForever?: PlayerId[];
   /** Goaded until each of these players' next turn (the Goad effect: Killian, Decisive Mentor). */
   goadedUntil?: PlayerId[];
+  /** Cast for its bestow cost: an Aura while on the stack or attached (rule 702.103). */
+  bestowed?: boolean;
+  /** Animate Dead: returned with this Aura (that Aura object); it's sacrificed when the Aura leaves. */
+  animatedBy?: { aura: InstanceId; object: number };
+  /** As it last left the battlefield: the controllers of the Auras attached to it (Hateful Eidolon). */
+  lastAurasBy?: PlayerId[];
   /** Face down by manifest or cloak (rule 701.34): a creature card can be turned face up for its mana cost. */
   manifested?: boolean;
   /** Face down with ward {2}: cast using disguise, or cloaked (rules 702.168, 701.58). */
@@ -3885,6 +3909,8 @@ export type Action =
       improvise?: InstanceId[];
       /** Delve: cards in your graveyard to exile as part of the payment. */
       delve?: InstanceId[];
+      /** Only in legal actions: every card that can pay the `costCards` cost (escape: any other graveyard cards); any legal set may be submitted. */
+      costPool?: InstanceId[];
       /** Times kicker (or multikicker) is paid. */
       kicks?: number;
       /** Escalate: untapped creatures you control to tap, one per mode beyond the first. */

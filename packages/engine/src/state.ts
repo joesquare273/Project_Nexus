@@ -195,6 +195,11 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   const lastDefinition = from === 'battlefield' && (c.copy || c.transformed || c.addedSubtypes) ? defOf(s,c) : undefined;
   const lastTypes = from === 'battlefield' ? [...defOf(s, c).types] : undefined;
   const lastPower = from === 'battlefield' && lastTypes?.includes('creature') ? powerOf(s, c) : undefined;
+  // Hateful Eidolon: the controllers of the Auras on it as it left.
+  if (from === 'battlefield') {
+    const auras = Object.values(s.cards).filter((x) => x.zone === 'battlefield' && x.attachedTo === id && !x.phasedOut && !!defOf(s, x).subtypes?.includes('Aura')).map((x) => x.controller);
+    if (auras.length) c.lastAurasBy = auras; else delete c.lastAurasBy;
+  }
   const wasModified = from === 'battlefield' && to === 'graveyard' && !!lastTypes?.includes('creature') && isModified(s, c);
   // A copy of a spell ceases to exist when it leaves the stack (rule 707.10a).
   // A copy of a permanent spell becomes a token as it resolves (rule 707.10a, 111.12).
@@ -303,6 +308,9 @@ export function moveCard(ctx: Ctx, id: InstanceId, to: ZoneName, opts: { silent?
   delete c.addedSubtypes;
   delete c.goadedForever;
   delete c.goadedUntil;
+  delete c.animatedBy;
+  // Bestow: only an Aura spell's move onto the battlefield keeps it.
+  if (!(from === 'stack' && to === 'battlefield')) delete c.bestowed;
   if (from === 'battlefield' && c.prepared) unprepare(ctx, id);
   delete c.turnSubtypes;
   delete c.linkedCreature;
@@ -872,6 +880,8 @@ export function canAttach(s: GameState, attachment: CardInstance, host: CardInst
   const ownProtection = attachment.attachedTo === host.id && !!defOf(s, attachment).statics?.some((st) => st.protectionFromChosenColor);
   if (!ownProtection && protectedFrom(s, host, attachment)) return false;
   const def = defOf(s, attachment);
+  // Bestow: a bestowed permanent attaches as an Aura with enchant creature (rule 702.103).
+  if (attachment.bestowed) return isCreatureOnBattlefield(s, host);
   if (def.subtypes?.includes('Aura')) return matchesObject(s, def.enchant ?? { types: ['creature'] }, host, { controller: attachment.controller, source: attachment.id });
   return def.subtypes?.includes('Equipment') === true && isCreatureOnBattlefield(s, host) && !hasType(s, attachment, 'creature');
 }

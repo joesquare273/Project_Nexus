@@ -168,7 +168,7 @@ describe('the free starter precon', () => {
     expect(before.claimed).toBe(false);
     // Every set's precons: Final Fantasy's four, Edge of Eternities' two, Reality Fracture's one, and the Strixhaven decks built so far.
     const strixhaven = SOC_PRECONS.filter(preconFullyBuilt).map((d) => d.name);
-    expect(strixhaven).toEqual(['Lorehold Spirit', 'Prismari Artistry', 'Quandrix Unlimited']);
+    expect(strixhaven).toEqual(['Lorehold Spirit', 'Prismari Artistry', 'Quandrix Unlimited', 'Silverquill Influence']);
     expect(before.choices).toHaveLength(7 + strixhaven.length);
     expect(before.choices.map((c: { set: string }) => c.set)).toEqual(['Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Final Fantasy', 'Edge of Eternities', 'Edge of Eternities', 'Reality Fracture', ...strixhaven.map(() => 'Secrets of Strixhaven')]);
     expect(before.choices.slice(7).map((c: { name: string }) => c.name)).toEqual(strixhaven);
@@ -202,7 +202,7 @@ describe('the free starter precon', () => {
   it('refuses anything but one of the precons', async () => {
     const { call } = await withAccounts();
     // Secrets of Strixhaven's decks are sold, but aren't a starter until their cards are built.
-    for (const precon of ['Cloud', '', 5, undefined, 'Silverquill Influence']) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
+    for (const precon of ['Cloud', '', 5, undefined, 'Witherbloom Pestilence']) expect((await call('token-alice', '/api/starter', 'POST', { precon })).status).toBe(400);
     expect((await (await call('token-alice', '/api/starter')).json()).claimed).toBe(false);
   });
 });

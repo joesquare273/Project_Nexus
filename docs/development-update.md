@@ -18,6 +18,10 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC4g: Silverquill Influence complete (2026-11-26)
+
+- Bestow (Eidolon of Countless Battles), escape with a graveyard picker (Sentinel's Eyes), Animate Dead, Hateful Eidolon, replicate (Changing Loyalty) and granted activated abilities (Fallen Ideal). Silverquill Influence is the fourth complete Strixhaven deck: a free starter choice and a deck the bots can play. docs/strixhaven.md.
+
 ### Strixhaven Commander SOC4f: Silverquill Influence, part six (2026-11-25)
 
 - Scriv (Contract Aura tokens), Eiganjo Dynastorian and Defacing Duskmage (prepared), Intermediate Chirography, Inkshield and Shadrix Silverquill (each mode targets a different player). 6 Silverquill cards left. docs/strixhaven.md.

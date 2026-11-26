@@ -461,6 +461,7 @@ function triggersOn(spec: TriggerSpec, o: Occurrence, s: GameState, source: Inst
   if (o.when === 'SpellCast' && o.copied && !spec.orCopied) return false;
   if (spec.ifSourceUntapped && s.cards[source]?.tapped) return false;
   if (spec.ifSpellTargetsCreature && !spellTargetsCreature(s, o.subject)) return false;
+  if (spec.ifSubjectWasEnchanted && !(o.subject && s.cards[o.subject]?.lastAurasBy?.length)) return false;
   if (spec.ifModifiedCreatureDiedThisTurn && s.players[controller]!.modifiedCreatureDiedTurn !== s.turnNumber) return false;
   if (spec.ifSpellTargetsMatching) {
     const item = s.stack.find((x) => x.kind === 'spell' && x.card === o.subject);

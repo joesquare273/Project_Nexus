@@ -530,6 +530,20 @@ export function Game({
     const costOf = (c: PlayChoice) => JSON.stringify('costCards' in c.action ? (c.action.costCards ?? []) : []);
     const forMode = play.choices.filter((c) => modeKey === undefined || keyOf(c) === modeKey);
     const costKeys = [...new Set(forMode.map(costOf))];
+    // Escape: exile any other cards from your graveyard, chosen one at a time (the engine checks the set).
+    const pooled = forMode.map((c) => c.action).find((a): a is Extract<Action, { type: 'CastSpell' }> => a.type === 'CastSpell' && !!a.costPool);
+    if (costKey === undefined && pooled?.costPool) {
+      const need = pooled.costCards?.length ?? 0;
+      const pickNext = (chosen: InstanceId[]) => {
+        if (chosen.length >= need) { startPlay(play, modeKey, JSON.stringify(chosen)); return; }
+        setMenu({
+          title: `${def.name}: exile which card from your graveyard? (${chosen.length + 1} of ${need})`,
+          options: pooled.costPool!.filter((id) => !chosen.includes(id)).map((id) => ({ label: cardName(s, id), pick: () => pickNext([...chosen, id]) })),
+        });
+      };
+      pickNext([]);
+      return;
+    }
     if (costKey === undefined && costKeys.length > 1) {
       const ability = play.kind === 'ability' ? activatedAbilities(def)[play.ability ?? -1] : undefined;
       const spellSacrifice = play.kind !== 'ability' && (!!def.additionalCost?.sacrifice || !!def.kickerSacrifice);
@@ -553,7 +567,9 @@ export function Game({
       });
       return;
     }
-    const forCost = forMode.filter((c) => costKey === undefined || costOf(c) === costKey);
+    const forCost = pooled?.costPool && costKey !== undefined
+      ? forMode.map((c) => (c.action.type === 'CastSpell' ? { ...c, action: { ...c.action, costCards: JSON.parse(costKey) as InstanceId[] } } : c))
+      : forMode.filter((c) => costKey === undefined || costOf(c) === costKey);
     // "Any number of target creatures" (Twinflame): how many targets first.
     const counts = [...new Set(forCost.map((c) => c.targets.length))].sort((a, b) => a - b);
     if (countKey === undefined && counts.length > 1 && [...(def.effects ?? []), ...(def.modes ?? []).flat()].some((e) => e.anyNumberOfTargets)) {

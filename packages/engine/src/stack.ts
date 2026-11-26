@@ -292,6 +292,10 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}, targ
 function spellEffectsBase(def: CardDefinition, choice: SpellChoice): EffectSpec[] {
   def = spellDefinition(def, choice.adventure);
   if (choice.alternative && def.alternativeCost?.effects) return def.alternativeCost.effects;
+  // Bestow: an Aura spell that targets a creature (rule 702.103b).
+  if (choice.alternative && def.alternativeCost?.bestow) return [{ effect: 'Attach', target: 'TargetPermanent', filter: { types: ['creature'] } }];
+  // Animate Dead: "Enchant creature card in a graveyard".
+  if (def.enchantGraveyardCreature) return [{ effect: 'ChooseTarget', target: 'TargetCardInGraveyard', filter: { types: ['creature'] } }, ...(def.effects ?? [])];
   if (def.modes && def.chooseModes) return [...(choice.modes ?? [])].sort((a, b) => a - b).flatMap((m) => def.modes![m] ?? []);
   if (def.modes) return def.modes[choice.mode ?? 0] ?? [];
   if (def.kickedEffects && (choice.kicks ?? 0) > 0) return def.kickedEffects;
@@ -1002,7 +1006,7 @@ export function addCosts(a: ManaCost, b: ManaCost): ManaCost {
 }
 
 /** How a card in a graveyard can be cast: flashback, blitz (Sabin), a permission (Gearhulk, Emet-Selch), or Edgar's static. */
-export type GraveyardWay = 'flashback' | 'retrace' | 'blitz' | 'permission' | 'static' | 'adventure' | 'group';
+export type GraveyardWay = 'flashback' | 'retrace' | 'escape' | 'blitz' | 'permission' | 'static' | 'adventure' | 'group';
 
 export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, adventure = false): GraveyardWay | null {
   if (c.zone !== 'graveyard') return null;
@@ -1012,6 +1016,7 @@ export function graveyardWay(s: GameState, playerId: PlayerId, c: CardInstance, 
   const def = spellDefinition(defOf(s, c), adventure);
   if (def.flashback || (c.flashbackTurn === s.turnNumber && def.manaCost !== undefined)) return 'flashback';
   if (def.retrace) return 'retrace';
+  if (def.escape) return 'escape';
   if (def.alternativeCost?.fromGraveyard) return 'blitz';
   if (graveyardCastStatic(s, playerId, c, undefined, adventure)) return 'static';
   return null;
@@ -1236,6 +1241,8 @@ export function spellCost(
       ? permission.manaCost
     : alternative
       ? def.alternativeCost?.mana
+      : way === 'escape'
+        ? def.escape!.cost
       : way === 'flashback'
         ? def.flashback ?? def.manaCost
         : from === 'exile' && card?.foretoldTurn !== undefined
@@ -1443,7 +1450,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (group && choice.graveyardSource) reject('Choose one casting permission.');
   if (choice.graveyardSource && (from !== 'graveyard' || c.owner !== playerId || !graveyardCastStatic(s, playerId, c, choice.graveyardSource, choice.adventure))) reject('That graveyard-casting permission is not available.');
   if (way === 'blitz' && !alternative) reject(`${def.name} can only be cast from your graveyard for its blitz cost.`);
-  if (from === 'graveyard' && alternative && way === 'flashback') reject("That alternative cost can't be used from the graveyard.");
+  if (from === 'graveyard' && alternative && (way === 'flashback' || way === 'escape')) reject("That alternative cost can't be used from the graveyard.");
   const permission = !group && !choice.graveyardSource && (from === 'graveyard' || from === 'exile' || (from === 'hand' && !!c.castPermission?.fromHand)) && c.castPermission?.player === playerId && c.castPermission.turn === s.turnNumber
     ? c.castPermission
     : undefined;
@@ -1465,6 +1472,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (!ways.some((way) => way.length === costCards.length && way.every((k, i) => costCards[i] === k))) {
       reject(ways.length === 0 ? `You have nothing to sacrifice for ${def.name}.` : `Choose a permanent to sacrifice for ${def.name}.`);
     }
+  } else if (way === 'escape') {
+    // Escape: exile this many other cards from your graveyard (rule 702.138).
+    const others = player(s, playerId).graveyard.filter((k) => k !== id);
+    if (costCards.length !== def.escape!.exileOthers || new Set(costCards).size !== costCards.length || costCards.some((k) => !others.includes(k))) reject(`Choose ${def.escape!.exileOthers} other cards in your graveyard to exile for ${def.name}'s escape.`);
   } else {
     // Retrace: a land card, in addition to its other costs.
     const discardCount = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (way === 'retrace' ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);
@@ -1551,7 +1562,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
       if (s.cards[paid]!.zone === 'hand') ctx.ev.push({ type: 'CardRevealed', player: playerId, card: paid, defId: s.cards[paid]!.defId });
       continue;
     }
-    if (exileCost) moveCard(ctx, paid, 'exile');
+    if (exileCost || way === 'escape') moveCard(ctx, paid, 'exile');
     else if (sacrificing && def.kickerReturnsToHand && kicks > 0 && !def.additionalCost?.sacrifice) moveCard(ctx, paid, 'hand');
     else if (sacrificing) sacrifice(ctx, paid);
     else discard(ctx, paid);
@@ -1591,6 +1602,8 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
   if (permission?.ownerLosesLife) changeLife(ctx, c.owner, -manaValue(parseManaCost(def.manaCost)));
   const sacrificeLater = !!permission?.hasteSacrifice && def.types.includes('creature');
   moveCard(ctx, id, 'stack');
+  // Bestow: it's an Aura spell from now on (rule 702.103b).
+  if (alternative && def.alternativeCost?.bestow) c.bestowed = true;
   // Opal Palace: "it enters with a number of additional +1/+1 counters equal to the number of times it's been cast from the command zone this game".
   if (c.isCommander && (use.opalSpent ?? 0) > 0) c.extraCountersOnEnter = (c.extraCountersOnEnter ?? 0) + (player(s, c.owner).commanderCasts[id] ?? 0);
   if (choice.adventure) c.adventureSpell = true;
@@ -2411,6 +2424,10 @@ function resolvedAmount(s: GameState, effect: EffectSpec, r: Resolving): number 
               ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.colorsSpentToCast ?? 0) : 0)
               : a.of === 'previousTargetPlusOneCounters'
               ? (r.previousTarget?.kind === 'card' ? (s.cards[r.previousTarget.card]?.counters ?? 0) : 0)
+              : a.of === 'subjectKicks'
+              ? (r.item.kind === 'ability' && r.item.subject ? (s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === (r.item as AbilityItem).subject)?.kicks ?? 0) : 0)
+              : a.of === 'subjectAurasYouControlled'
+              ? (r.item.kind === 'ability' && r.item.subject ? (s.cards[r.item.subject]?.lastAurasBy ?? []).filter((p) => p === r.item.controller).length : 0)
               : a.of === 'subjectX'
               ? (r.item.kind === 'ability' && r.item.subject ? (s.stack.find((i): i is SpellItem => i.kind === 'spell' && i.card === (r.item as AbilityItem).subject)?.x ?? s.cards[r.item.subject]?.xPaid ?? 0) : 0)
               : a.of === 'previousTargetCommanderCasts'
@@ -3987,6 +4004,14 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         for (const id of player(s, pid).library.slice(0, amount)) moveCard(ctx, id, 'exile');
       }
       return;
+    case 'SacrificeAnimatedCreature': {
+      // Animate Dead: "When this Aura leaves the battlefield, that creature's controller sacrifices it."
+      const object = item.kind === 'ability' ? item.sourceObject : undefined;
+      for (const c of battlefield(s)) {
+        if (c.animatedBy?.aura === source && (object === undefined || [object, object - 1].includes(c.animatedBy.object))) sacrifice(ctx, c.id);
+      }
+      return;
+    }
     case 'PreventCombatDamageToYouMakeTokens':
       if (effect.token) player(s, item.controller).inkshield = { turn: s.turnNumber, token: effect.token };
       return;
@@ -5259,7 +5284,7 @@ export function resolveTop(ctx: Ctx): void {
   const s = ctx.s;
   const item = s.stack.at(-1);
   if (!item) return;
-  const fizzled = allTargetsIllegal(s, item);
+  let fizzled = allTargetsIllegal(s, item);
 
   if (item.kind === 'spell') {
     const entering = defOf(s, s.cards[item.card]!);
@@ -5291,6 +5316,9 @@ export function resolveTop(ctx: Ctx): void {
     }
     s.stack.pop();
     const c = s.cards[item.card]!;
+    // Bestow: with its target gone, it isn't an Aura spell any more; it resolves as a creature (rule 702.103e).
+    const unbestowed = fizzled && !!c.bestowed;
+    if (unbestowed) { delete c.bestowed; fizzled = false; }
     const def = defOf(s, c);
     const permanent = isPermanentCard(def);
     ctx.ev.push({ type: 'StackItemResolved', item: item.id, card: c.id, fizzled: fizzled && (!permanent || !!def.enchant) });
@@ -5329,7 +5357,16 @@ export function resolveTop(ctx: Ctx): void {
       if (item.castFrom === 'graveyard') c.castFromGraveyard = true;
       c.controller = item.controller;
       const host = item.targets[0];
-      if (def.enchant && host?.kind === 'card') attach(ctx,c.id,host.card);
+      // Animate Dead: the creature card returns under your control with this Aura attached to it.
+      if (def.enchantGraveyardCreature && host?.kind === 'card' && s.cards[host.card]?.zone === 'graveyard') {
+        const back = s.cards[host.card]!;
+        moveCard(ctx, back.id, 'battlefield', { controller: item.controller });
+        back.controller = item.controller;
+        back.summoningSick = true;
+        if (entersTapped(s, back)) back.tapped = true;
+        back.animatedBy = { aura: c.id, object: c.zoneChanges ?? 0 };
+        attach(ctx, c.id, back.id);
+      } else if (def.enchant && host?.kind === 'card' && !unbestowed) attach(ctx,c.id,host.card);
       c.summoningSick = true;
       if (entersTapped(s, c) || item.entersTapped) c.tapped = true;
       if (item.finalityOnEnter) addCounters(ctx, c.id, 1, item.controller, 'finality');

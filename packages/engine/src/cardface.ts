@@ -49,6 +49,20 @@ export function backFaceDefinition(def: CardDefinition): CardDefinition {
 // with layer-4/5 abilities. Entry/attachment timestamps and battlefield size
 // invalidate the index; conditions and source identity are still read live.
 const sourceCache = new WeakMap<GameState, { version: number; count: number; defs: GameState['cardDefs']; sources: CardInstance[] }>();
+const NO_SOURCES: CardInstance[] = [];
+const grantCache = new WeakMap<GameState, { version: number; defs: GameState['cardDefs']; sources: CardInstance[] }>();
+
+/** Permanents whose statics give the permanent they're attached to activated abilities (Fallen Ideal). */
+function grantSources(s: GameState): CardInstance[] {
+  // Entering the battlefield takes a new timestamp; a source that left is filtered out by its zone where used.
+  const version = s.effectTimestamp ?? 0;
+  const cached = grantCache.get(s);
+  if (cached?.version === version && cached.defs === s.cardDefs) return cached.sources;
+  const sources = s.turnOrder.flatMap((p) => s.players[p]!.battlefield.map((id) => s.cards[id]!)).filter((c) => copiableDefinition(s, c).statics?.some((st) => st.grantsActivated));
+  grantCache.set(s, { version, defs: s.cardDefs, sources });
+  return sources;
+}
+
 export function continuousSources(s: GameState): CardInstance[] {
   const count = s.turnOrder.reduce((n,p)=>n+s.players[p]!.battlefield.length,0);
   const version = s.effectTimestamp ?? 0;
@@ -113,6 +127,9 @@ const SUSPEND_TRIGGERS: TriggerSpec[] = [
 ];
 
 /** Demonstrate (rule 702.144a): you may copy the spell; then an opponent copies it too. */
+/** Replicate (rule 702.56a): "When you cast this spell, copy it for each time you paid its replicate cost." */
+const REPLICATE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, effects: [{ effect: 'CopySpell', target: 'You', amount: { of: 'subjectKicks' } }] };
+
 const DEMONSTRATE_TRIGGER: TriggerSpec = { when: 'SpellCast', zone: 'stack', what: { self: true }, optional: true, effects: [{ effect: 'CopySpell', target: 'You', demonstrate: true }] };
 
 export function currentDefinition(s: GameState, c: CardInstance): CardDefinition {
@@ -128,6 +145,18 @@ export function currentDefinition(s: GameState, c: CardInstance): CardDefinition
   const cascade = out.keywords?.filter((k) => k === 'Cascade').length ?? 0;
   if (cascade) out = { ...out, triggers: [...(out.triggers ?? []), ...Array<TriggerSpec>(cascade).fill(CASCADE_TRIGGER)] };
   if (out.keywords?.includes('Demonstrate')) out = { ...out, triggers: [...(out.triggers ?? []), DEMONSTRATE_TRIGGER] };
+  if (out.replicate) out = { ...out, triggers: [...(out.triggers ?? []), REPLICATE_TRIGGER] };
+  // Bestow (rule 702.103b, f): an Aura spell, and an Aura while attached; otherwise the creature it is.
+  if (c.bestowed && (c.zone === 'stack' || (c.zone === 'battlefield' && c.attachedTo))) {
+    out = { ...out, types: out.types.filter((t) => t !== 'creature'), subtypes: [...(out.subtypes ?? []).filter((t) => !CREATURE_SUBTYPES.has(t)), 'Aura'], enchant: { types: ['creature'] } };
+  }
+  // Fallen Ideal: "Enchanted creature has 'Sacrifice a creature: ...'" (after its own abilities).
+  const granters = c.zone === 'battlefield' ? grantSources(s) : NO_SOURCES;
+  if (granters.length) {
+    // Only permanents that grant abilities (cached per state, usually none) are looked at.
+    const granted = granters.filter((src) => src.attachedTo === c.id && src.zone === 'battlefield' && !src.phasedOut).flatMap((src) => (copiableDefinition(s, src).statics ?? []).filter((st) => st.affects === 'EquippedCreature').flatMap((st) => st.grantsActivated ?? []));
+    if (granted.length) out = { ...out, activated: [...(out.activated ?? []), ...granted] };
+  }
   // Suspend (rule 702.62a): while it's exiled with time counters, its two triggered abilities.
   if (c.suspended && c.zone === 'exile') out = { ...out, triggers: [...(out.triggers ?? []), ...SUSPEND_TRIGGERS] };
   const increment = out.keywords?.filter((k) => k === 'Increment').length ?? 0;

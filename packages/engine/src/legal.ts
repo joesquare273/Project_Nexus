@@ -215,7 +215,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
     const alternatives = way === 'blitz' ? [true] : [false];
     // Cast without paying its mana cost: X is 0 and alternative costs cannot be combined.
     const free = !permission.castGroup && !permission.graveyardSource && (from === 'graveyard' || from === 'exile') && c.castPermission?.player===playerId && c.castPermission.turn === s.turnNumber && !!c.castPermission.free;
-    if (def.alternativeCost && way !== 'flashback' && way !== 'blitz' && !free && !alternativeCostProblem(s, def, playerId, c.id)) alternatives.push(true);
+    if (def.alternativeCost && way !== 'flashback' && way !== 'escape' && way !== 'blitz' && !free && !alternativeCostProblem(s, def, playerId, c.id)) alternatives.push(true);
     for (const modes of modeChoices(def, s, playerId)) {
       for (const alternative of alternatives) {
        for (const x of free ? [undefined] : xChoices(s, playerId, def, alternative, c)) {
@@ -239,7 +239,12 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         // "As an additional cost, discard a card" (or blitz's discard): each way to pay it.
         const retrace = way === 'retrace';
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (retrace ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);
-        const discards = alternative && def.alternativeCost?.exileFromHand
+        // Escape: any other cards in your graveyard; the first ones are listed, and `costPool` offers every choice.
+        const escapePool = way === 'escape' ? s.players[playerId]!.graveyard.filter((k) => k !== c.id) : undefined;
+        if (escapePool && escapePool.length < def.escape!.exileOthers) continue;
+        const discards = escapePool
+          ? [escapePool.slice(0, def.escape!.exileOthers)]
+          : alternative && def.alternativeCost?.exileFromHand
           ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
           : def.additionalCost?.chooseCreatureOrWarped
             ? encounterChoices(s, playerId).map((id) => [id])
@@ -261,7 +266,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
             if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
             for (const pay of payments.get(paymentKey)!) {
               out.push({
-                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...pay.extra, ...(found.slots ? { targetSlots: found.slots } : {}) },
+                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...(escapePool ? { costPool: escapePool } : {}), ...pay.extra, ...(found.slots ? { targetSlots: found.slots } : {}) },
                 cost: pay.cost,
                 forEquipment: isEquipment(s, c),
                 forNoncreatureSpell: !def.types.includes('creature'),

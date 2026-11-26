@@ -47,7 +47,7 @@ describe.each([1, 2, 3])('a browser session with %i opponent(s)', (opponents) =>
       expect(decisions).toBeGreaterThan(0);
       expect(session.log.length).toBeGreaterThan(10);
     }
-  }, 60_000);
+  }, 120_000); // 4-player games run close to a minute on a busy machine
 });
 
 describe('GameSession', () => {

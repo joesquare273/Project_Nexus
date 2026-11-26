@@ -443,7 +443,7 @@ export function characteristics(s: GameState, c: CardInstance): Characteristics 
   // "Loses flying" wins over grants (a simplification of layer 6 timestamps).
   for (const k of removed) out.keywords.delete(k);
   // Arcane Lighthouse: "creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud".
-  if (currentDefinition(s, c).types.includes('creature') && s.turnOrder.some((pid) => pid !== c.controller && s.players[pid]!.lighthouseTurn === s.turnNumber)) {
+  if (s.turnOrder.some((pid) => pid !== c.controller && s.players[pid]!.lighthouseTurn === s.turnNumber) && currentDefinition(s, c).types.includes('creature')) {
     out.keywords.delete('Hexproof');
     out.keywords.delete('Shroud');
   }
