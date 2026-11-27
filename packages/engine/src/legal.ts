@@ -13,6 +13,7 @@ import { isEquipment, totalCounters } from './characteristics.ts';
 import { attackTaxFor, attackersFor, blockersNeeded, blockProblem, canBlock } from './combat.ts';
 import { hasFlag } from './characteristics.ts';
 import { canPay, manaValue, parseManaCost } from './cost.ts';
+import { matchesObject } from './filters.ts';
 import {
   canChooseCopy,
   abilityCost,
@@ -67,6 +68,7 @@ import {
   spellSacrificeChoices,
   additionalManaFor,
   addCosts,
+  expandAbilityTargets,
 } from './stack.ts';
 import { battlefield, alivePlayers, hasKeyword, hasType, staticRule } from './state.ts';
 import { cardsToBottom } from './mulligan.ts';
@@ -240,10 +242,14 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
         const retrace = way === 'retrace';
         const discard = (def.additionalCost?.discard ?? 0) + (alternative ? (def.alternativeCost?.discard ?? 0) : 0) + (retrace ? 1 : 0) + (way === 'flashback' ? def.flashbackDiscard ?? 0 : 0);
         // Escape: any other cards in your graveyard; the first ones are listed, and `costPool` offers every choice.
-        const escapePool = way === 'escape' ? s.players[playerId]!.graveyard.filter((k) => k !== c.id) : undefined;
-        if (escapePool && escapePool.length < def.escape!.exileOthers) continue;
+        const escapePool = way === 'escape' ? s.players[playerId]!.graveyard.filter((k) => k !== c.id)
+          // Sacrifice X creatures: any X of them, chosen from the pool.
+          : def.additionalCost?.sacrificeX ? battlefield(s).filter((k) => k.controller === playerId && !k.phasedOut && matchesObject(s, def.additionalCost!.sacrificeX, k, { controller: playerId })).map((k) => k.id)
+          : undefined;
+        const poolNeed = way === 'escape' ? def.escape!.exileOthers : (x ?? 0);
+        if (escapePool && escapePool.length < poolNeed) continue;
         const discards = escapePool
-          ? [escapePool.slice(0, def.escape!.exileOthers)]
+          ? [escapePool.slice(0, poolNeed)]
           : alternative && def.alternativeCost?.exileFromHand
           ? exileFromHandChoices(s, def, playerId, c.id).map((id) => [id])
           : def.additionalCost?.chooseCreatureOrWarped
@@ -266,7 +272,7 @@ export function spellOptions(s: GameState, playerId: PlayerId): CostedOption[] {
             if (!payments.has(paymentKey)) payments.set(paymentKey, helpedPayments(s, playerId, def, c, cost, tapCreatures));
             for (const pay of payments.get(paymentKey)!) {
               out.push({
-                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...(escapePool ? { costPool: escapePool } : {}), ...pay.extra, ...(found.slots ? { targetSlots: found.slots } : {}) },
+                action: { type: 'CastSpell', player: playerId, card: c.id, targets, ...choice, ...(costCards.length ? { costCards } : {}), ...(escapePool && poolNeed > 0 ? { costPool: escapePool } : {}), ...pay.extra, ...(found.slots ? { targetSlots: found.slots } : {}) },
                 cost: pay.cost,
                 forEquipment: isEquipment(s, c),
                 forNoncreatureSpell: !def.types.includes('creature'),
@@ -398,6 +404,11 @@ const MAX_X = 12;
  * untapped mana sources could pay. [undefined] for spells without X.
  */
 function xChoices(s: GameState, playerId: PlayerId, def: CardDefinition, alternative: boolean, c: CardInstance): (number | undefined)[] {
+  // "Sacrifice X creatures": X from none to all you could sacrifice.
+  if (def.additionalCost?.sacrificeX) {
+    const able = battlefield(s).filter((x) => x.controller === playerId && !x.phasedOut && matchesObject(s, def.additionalCost!.sacrificeX, x, { controller: playerId })).length;
+    return Array.from({ length: Math.min(MAX_X, able) + 1 }, (_, i) => i);
+  }
   const cost = parseManaCost(alternative ? def.alternativeCost?.mana : def.manaCost);
   if (!cost.x) return [undefined];
   const available = availableMana(s, playerId, c);
@@ -431,9 +442,12 @@ export function abilityOptions(s: GameState, playerId: PlayerId): CostedOption[]
   // Unearth works from the graveyard.
   const cards = [...battlefield(s).filter(c=>c.controller===playerId), ...[...p.hand,...p.graveyard,...p.command].map(id=>s.cards[id]!)];
   for (const c of cards) {
-    activatedAbilities(currentDefinition(s, c)).forEach((spec, ability) => {
-      if (activationProblem(s, playerId, c, spec, ability)) return;
+    activatedAbilities(currentDefinition(s, c)).forEach((printed, ability) => {
+      if (activationProblem(s, playerId, c, printed, ability)) return;
+      const spec = expandAbilityTargets(s, printed, playerId, c.id);
       for (const targets of targetCombos(s, spec.effects, playerId, c.id)) {
+        // "Any number of target players": each one at most once.
+        if (groupProblem(s, choosingEffects(spec.effects), targets)) continue;
         for (const costCards of costCardChoices(s, playerId, spec, c.id)) {
          for (const x of abilityXChoices(s, playerId, spec, costCards, c)) {
           out.push({

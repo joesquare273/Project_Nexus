@@ -172,6 +172,8 @@ export function completeRequiredAttacks(s: GameState, player: PlayerId, attacks:
     if (!required.length) continue;
     const a=out.find(a=>a.attacker===c.id);
     if (!a) out.push({attacker:c.id,defender:required[0]!});
+    // Furygale Flocking: a token made for one opponent attacks that opponent if able.
+    else if (mustAttackPlayerNow(s, c) && !required.includes(a.defender)) { a.defender = required[0]!; delete a.planeswalker; }
     else if(goadScore(goadedBy(s,c),a.defender)<goadScore(goadedBy(s,c),required[0]!)) a.defender=required[0]!;
   }
   return out;

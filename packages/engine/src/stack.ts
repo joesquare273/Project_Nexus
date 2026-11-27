@@ -286,7 +286,7 @@ export function spellEffects(def: CardDefinition, choice: SpellChoice = {}, targ
   }
   if (!effects.some((e) => e.repeatX)) return effects;
   // "Up to X targets": one "up to one" target per X.
-  return effects.flatMap((e) => (e.repeatX ? Array.from({ length: choice.x ?? 0 }, () => ({ ...e, repeatX: false, upTo: true, group: e.group ?? 'x' })) : [e]));
+  return effects.flatMap((e) => (e.repeatX ? Array.from({ length: choice.x ?? 0 }, () => ({ ...e, repeatX: false, upTo: !e.exactX, group: e.group ?? 'x' })) : [e]));
 }
 
 function spellEffectsBase(def: CardDefinition, choice: SpellChoice): EffectSpec[] {
@@ -598,7 +598,15 @@ export function groupProblem(s: GameState, needs: readonly EffectSpec[], targets
     const group = needs[i]!.group;
     const t = targets[i];
     // Quandrix Command: the player chosen for the phrase, whose graveyard the cards must come from.
-    if (group && t?.kind === 'player') groupPlayers.set(group, t.player);
+    if (group && t?.kind === 'player') {
+      // "Any number of target players": each player once.
+      const key = `${group}#players`;
+      const g = seen.get(key) ?? { cards: new Set(), owners: new Set() };
+      if (g.cards.has(t.player)) return 'Choose different targets.';
+      g.cards.add(t.player);
+      seen.set(key, g);
+      groupPlayers.set(group, t.player);
+    }
     if (!group || t?.kind !== 'card') continue;
     if (needs[i]!.groupOwnerIsTargetPlayer && groupPlayers.has(group) && s.cards[t.card]?.owner !== groupPlayers.get(group)) return "Choose cards from that player's graveyard.";
     const g = seen.get(group) ?? { cards: new Set(), owners: new Set() };
@@ -1481,6 +1489,10 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
     if (!ways.some((way) => way.length === costCards.length && way.every((k, i) => costCards[i] === k))) {
       reject(ways.length === 0 ? `You have nothing to sacrifice for ${def.name}.` : `Choose a permanent to sacrifice for ${def.name}.`);
     }
+  } else if (def.additionalCost?.sacrificeX) {
+    // "Sacrifice X creatures": X is the number sacrificed.
+    const able = battlefield(s).filter((c) => c.controller === playerId && !c.phasedOut && matchesObject(s, def.additionalCost!.sacrificeX, c, { controller: playerId })).map((c) => c.id);
+    if (costCards.length !== (choice.x ?? 0) || new Set(costCards).size !== costCards.length || costCards.some((k) => !able.includes(k))) reject(`Choose ${choice.x ?? 0} creatures you control to sacrifice for ${def.name}.`);
   } else if (way === 'escape') {
     // Escape: exile this many other cards from your graveyard (rule 702.138).
     const others = player(s, playerId).graveyard.filter((k) => k !== id);
@@ -1572,6 +1584,7 @@ export function castSpell(ctx: Ctx, playerId: PlayerId, id: InstanceId, targets:
       continue;
     }
     if (exileCost || way === 'escape') moveCard(ctx, paid, 'exile');
+    else if (def.additionalCost?.sacrificeX) sacrifice(ctx, paid);
     else if (sacrificing && def.kickerReturnsToHand && kicks > 0 && !def.additionalCost?.sacrifice) moveCard(ctx, paid, 'hand');
     else if (sacrificing) sacrifice(ctx, paid);
     else discard(ctx, paid);
@@ -2101,6 +2114,17 @@ export function subsets<T>(items: readonly T[], min: number, max: number, cap = 
   return out;
 }
 
+/** "Any number of target players" on an activated ability (Priest of Forgotten Gods): one "up to one" slot per possible target. */
+export function expandAbilityTargets(s: GameState, spec: ActivatedSpec, controller: PlayerId, source: InstanceId): ActivatedSpec {
+  if (!spec.effects.some((e) => e.anyNumberOfTargets)) return spec;
+  return { ...spec, effects: spec.effects.flatMap((e) => {
+    if (!e.anyNumberOfTargets) return [e];
+    const slot = { ...e, anyNumberOfTargets: false, upTo: true, group: e.group ?? 'any' };
+    const n = targetOptions(s, slot, controller, source).filter((t) => t.kind !== 'none').length;
+    return Array.from({ length: n }, () => ({ ...slot }));
+  }) };
+}
+
 export function activateAbility(
   ctx: Ctx,
   playerId: PlayerId,
@@ -2113,11 +2137,14 @@ export function activateAbility(
   const s = ctx.s;
   const c = card(s, id);
   const sourceObject = c.zoneChanges ?? 0;
-  const spec = activatedAbilities(defOf(s, c))[index];
+  const printed = activatedAbilities(defOf(s, c))[index];
+  const spec = printed ? expandAbilityTargets(s, printed, playerId, id) : printed;
   if (!spec) reject('That card has no such ability.');
   const problem = activationProblem(s, playerId, c, spec, index);
   if (problem) reject(problem);
   checkTargets(s, spec.effects, targets, playerId, id);
+  const grouped = groupProblem(s, choosingEffects(spec.effects), targets);
+  if (grouped) reject(grouped);
   const hasX = !!parseManaCost(spec.cost.mana).x || !!spec.cost.removeCounter?.amountX || !!spec.loyaltyX;
   if (spec.loyaltyX && (xChosen ?? 0) > (c.namedCounters?.loyalty ?? 0)) reject(`That needs ${xChosen} loyalty.`);
   if (!hasX && !spec.cost.discardX && !spec.cost.tapUntapped?.countX && xChosen !== undefined && xChosen !== 0) reject('That ability has no X to choose.');
@@ -2700,7 +2727,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       return;
     }
     case 'ReturnFromGraveyardToHand': {
-      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }));
+      const candidates = player(s, item.controller).graveyard.filter((id) => matchesObject(s, effect.filter, s.cards[id]!, { controller: item.controller, source }) && !(effect.excludeSacrificedThisWay && r.sacrificedCards?.includes(id)));
       const n = Math.min(effect.amount === undefined ? 1 : amount, candidates.length);
       if (n === 0) return;
       r.choiceQueue = [...(r.choiceQueue ?? []), { player: item.controller, purpose: 'hand', cards: candidates, min: effect.optional ? 0 : n, max: n }];
@@ -2936,6 +2963,16 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
       for (const t of targets) if (t.kind === 'player') changeLife(ctx, t.player, amount);
       return;
     case 'LoseLife':
+      // Priest of Forgotten Gods: "each lose 2 life and sacrifice a creature of their choice".
+      if (effect.thenSacrifice) {
+        for (const t of targets) {
+          if (t.kind !== 'player' || s.players[t.player]!.eliminated) continue;
+          changeLife(ctx, t.player, -amount);
+          const theirs = battlefield(s).filter((c) => c.controller === t.player && !c.phasedOut && matchesObject(s, effect.thenSacrifice, c, { controller: t.player })).map((c) => c.id);
+          if (theirs.length) r.choiceQueue = [...(r.choiceQueue ?? []), { player: t.player, purpose: 'sacrifice', cards: theirs, min: 1, max: 1 }];
+        }
+        return;
+      }
       for (const t of targets) {
         if (t.kind !== 'player') continue;
         if (effect.perOpponentWhoChoseNone && !opponentsWhoChoseNone(s, r).includes(t.player)) continue;
@@ -4362,7 +4399,7 @@ function applyEffect(ctx: Ctx, effect: EffectSpec, r: Resolving, targets: Target
         ? COLORS.filter((color) => Object.values(s.cards).some((x) => x.isCommander && x.owner === recipient.player && (defOf(s, x).colorIdentity ?? []).includes(color)))
         : undefined;
       if (identity && identity.length === 0) return;
-      if (recipient?.kind === 'player') s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(identity ? { options: identity } : effect.manaTypes ? { options: [...effect.manaTypes] } : {}), ...(effect.opalMana ? { opal: true } : {}) };
+      if (recipient?.kind === 'player' && amount > 0) s.pending = { kind: 'chooseMana', player: recipient.player, recipient: recipient.player, amount, ...(identity ? { options: identity } : effect.manaTypes ? { options: [...effect.manaTypes] } : {}), ...(effect.opalMana ? { opal: true } : {}), ...(effect.chooseEach ? { each: true } : {}) };
       return;
     }
     case 'CopyCreature': {
@@ -6033,6 +6070,7 @@ export function chooseCards(ctx: Ctx, playerId: PlayerId, cards: InstanceId[]): 
   }
   else if (pending.purpose === 'sacrifice') {
     for (const id of cards) sacrifice(ctx, id);
+    r.sacrificedCards = [...(r.sacrificedCards ?? []), ...cards];
     if (cards.length > 0) r.sacrificedAny = true;
     if (cards.length > 0) r.sacrificedBy = [...(r.sacrificedBy ?? []), pending.player];
   }
@@ -6133,6 +6171,12 @@ export function chooseMana(ctx: Ctx, playerId: PlayerId, mana: ManaType): void {
   const s = ctx.s, pending = s.pending;
   if (pending.kind !== 'chooseMana' || pending.player !== playerId || !s.resolving || !COLORS.includes(mana as never)) reject('Choose a color of mana for the resolving ability.');
   if (pending.options && !pending.options.includes(mana as never)) reject(`Choose one of: ${pending.options.join(', ')}.`);
+  // Culling Ritual: one mana at a time, each of its own chosen type.
+  if (pending.each && pending.amount > 1) {
+    if (!s.players[pending.recipient]!.eliminated) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
+    s.pending = { ...pending, amount: pending.amount - 1 };
+    return;
+  }
   if (!s.players[pending.recipient]!.eliminated) for (let i=0; i<pending.amount; i++) addMana(ctx, pending.recipient, mana, sourceOf(s.resolving.item));
   if (pending.opal && !s.players[pending.recipient]!.eliminated) {
     const p = s.players[pending.recipient]!;

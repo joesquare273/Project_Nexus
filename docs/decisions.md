@@ -767,3 +767,9 @@ Final Act's "Destroy all battles" mode can be chosen but never finds
 anything. Its "Each opponent loses all counters" removes poison counters,
 the only counters a player can have here; energy, experience and other
 player counters aren't in the engine yet.
+
+## 2026-11-27: Stensian Sanguinist's "this combat" (simplification)
+
+Stensian Sanguinist's delayed trigger ("whenever that creature deals combat
+damage to a player this combat") lasts the rest of the turn. With a second
+combat phase that turn, damage in the later combat would prepare it too.

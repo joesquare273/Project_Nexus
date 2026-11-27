@@ -1,7 +1,7 @@
 // The Secrets of Strixhaven Commander decks (SOC), built deck by deck (docs/strixhaven.md).
 
 import { describe, expect, it } from 'vitest';
-import { attackTaxFor, canAttackPlayer, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
+import { attackTaxFor, canAttackPlayer, completeRequiredAttacks, currentDefinition, getLegalActions, hasKeyword, powerOf, toughnessOf, type GameState } from '@nexus/engine';
 import { act, cast, fight, goTo, mana, newGame, nextStep, put, rejected, settle } from './kit-helpers.ts';
 
 const card = (id: string) => ({ kind: 'card' as const, card: id });
@@ -2875,5 +2875,111 @@ describe('SOC5d: Witherbloom Pestilence (modal removal, Gorma, Shadow, Food, asc
     const hand = s.players.P1!.hand.length;
     s = cast(s, { type: 'CastSpell', player: 'P1', card: harvest, targets: [{ kind: 'player', player: 'P1' }] }).state;
     expect([s.players.P1!.hand.length - hand, s.players.P1!.life]).toEqual([-1 + 3, 17]);
+  });
+});
+
+describe('SOC5e: Witherbloom Pestilence (Priest, Culling Ritual, Deadly Brew, Stensian Sanguinist)', () => {
+  const choose = (s: GameState, pick: (cards: string[], purpose: string, player: string) => string[]) => {
+    for (let guard = 0; guard < 20 && (s.pending.kind === 'chooseCards' || s.pending.kind === 'chooseMana'); guard++) {
+      const p = s.pending as { kind: string; player: string; cards?: string[]; purpose?: string; options?: string[] };
+      s = p.kind === 'chooseMana'
+        ? settle(act(s, { type: 'ChooseMana', player: p.player, mana: (p.options?.[0] ?? 'B') as never })).state
+        : settle(act(s, { type: 'ChooseCards', player: p.player, cards: pick(p.cards!, p.purpose!, p.player) })).state;
+    }
+    return s;
+  };
+
+  it('Priest of Forgotten Gods: sacrifice two others; any number of target players each lose 2 and sacrifice a creature; you add {B}{B} and draw', () => {
+    let s = newGame(3);
+    const priest = put(s, 'P1', 'priest-of-forgotten-gods');
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    const x = put(s, 'P2', 'rank-rat');
+    const y = put(s, 'P3', 'rank-rat');
+    const both = getLegalActions(s).find((o) => o.type === 'ActivateAbility' && o.card === priest && (o.costCards ?? []).length === 2 && (o.targets ?? []).filter((t) => t.kind === 'player').length === 2 && !(o.targets ?? []).some((t) => t.kind === 'player' && t.player === 'P1'));
+    expect(both).toBeDefined();
+    const hand = s.players.P1!.hand.length;
+    s = act(s, both!);
+    s = choose(settle(s).state, (cards) => cards.slice(0, 1));
+    expect([s.cards[a]!.zone, s.cards[b]!.zone, s.cards[x]!.zone, s.cards[y]!.zone]).toEqual(['graveyard', 'graveyard', 'graveyard', 'graveyard']);
+    expect([s.players.P2!.life, s.players.P3!.life, s.players.P1!.manaPool.B, s.players.P1!.hand.length - hand]).toEqual([18, 18, 2, 1]);
+  });
+
+  it('Culling Ritual destroys each nonland permanent with mana value 2 or less and adds {B} or {G} for each, chosen one at a time', () => {
+    let s = newGame();
+    put(s, 'P2', 'rank-rat');
+    put(s, 'P2', 'rank-rat');
+    const keep = put(s, 'P2', 'ghostly-prison');
+    const ritual = put(s, 'P1', 'culling-ritual', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, C: 2 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: ritual });
+    s = settle(s).state;
+    expect([s.pending.kind, (s.pending as { amount?: number }).amount]).toEqual(['chooseMana', 2]);
+    s = act(s, { type: 'ChooseMana', player: 'P1', mana: 'B' });
+    expect([s.pending.kind, (s.pending as { amount?: number }).amount]).toEqual(['chooseMana', 1]);
+    s = settle(act(s, { type: 'ChooseMana', player: 'P1', mana: 'G' })).state;
+    expect([s.players.P1!.manaPool.B, s.players.P1!.manaPool.G, s.cards[keep]!.zone]).toEqual([1, 1, 'battlefield']);
+  });
+
+  it('Deadly Brew: each player sacrifices a creature or planeswalker; you may return another permanent card from your graveyard', () => {
+    let s = newGame();
+    const mine = put(s, 'P1', 'rank-rat');
+    put(s, 'P2', 'rank-rat');
+    const old = put(s, 'P1', 'ghostly-prison', 'graveyard');
+    const brew = put(s, 'P1', 'deadly-brew', 'hand');
+    mana(s, 'P1', { B: 1, G: 1 });
+    s = act(s, { type: 'CastSpell', player: 'P1', card: brew });
+    let offered: string[] = [];
+    s = choose(settle(s).state, (cards, purpose) => { if (purpose === 'hand') offered = cards; return purpose === 'hand' ? [old] : cards.slice(0, 1); });
+    expect(offered.includes(mine)).toBe(false);
+    expect([s.cards[mine]!.zone, s.cards[old]!.zone]).toEqual(['graveyard', 'hand']);
+  });
+
+  it('Immoral Bargain: sacrifice X creatures (any X of them) to destroy exactly X target nonland permanents', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    const c = put(s, 'P1', 'rank-rat');
+    const foe1 = put(s, 'P2', 'ghostly-prison');
+    const foe2 = put(s, 'P2', 'killian-ink-duelist');
+    const bargain = put(s, 'P1', 'immoral-bargain', 'hand');
+    mana(s, 'P1', { B: 1, G: 1, C: 1 });
+    const two = getLegalActions(s).find((o) => o.type === 'CastSpell' && o.card === bargain && o.x === 2 && (o.targets ?? []).length === 2 && (o.targets ?? []).every((t) => t.kind === 'card' && [foe1, foe2].includes(t.card)));
+    expect([two?.type === 'CastSpell' ? two.costPool?.length : undefined]).toEqual([3]);
+    s = cast(s, { ...two!, costCards: [b, c] } as never).state;
+    expect([s.cards[a]!.zone, s.cards[b]!.zone, s.cards[c]!.zone, s.cards[foe1]!.zone, s.cards[foe2]!.zone]).toEqual(['battlefield', 'graveyard', 'graveyard', 'graveyard', 'graveyard']);
+  });
+
+  it('Plumb the Forbidden copies itself for each creature sacrificed as you cast it', () => {
+    let s = newGame();
+    const a = put(s, 'P1', 'rank-rat');
+    const b = put(s, 'P1', 'rank-rat');
+    const plumb = put(s, 'P1', 'plumb-the-forbidden', 'hand');
+    mana(s, 'P1', { B: 1, C: 1 });
+    const hand = s.players.P1!.hand.length;
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: plumb, x: 2, costCards: [a, b], targets: [] }).state;
+    expect([s.cards[a]!.zone, s.players.P1!.hand.length - hand, s.players.P1!.life]).toEqual(['graveyard', -1 + 3, 17]);
+  });
+
+  it('Stensian Sanguinist gives an attacker deathtouch and is prepared when that creature deals combat damage to a player; Exsanguinate drains X', () => {
+    let s = newGame();
+    const sang = put(s, 'P1', 'stensian-sanguinist-exsanguinate');
+    const rat = put(s, 'P1', 'rank-rat');
+    const pick = { targets: (o: { kind: string; card?: string }[][]) => o.find((t) => t[0]?.card === rat) ?? o[0]! };
+    s = fight(s, [{ attacker: rat, defender: 'P2' }], {}, pick as never).state;
+    expect(s.cards[sang]!.prepared).toBe(true);
+    s = goTo(s, 'main2');
+    const copy = Object.values(s.cards).find((c) => c.zone === 'exile' && c.prepareSpellOf?.card === sang)!;
+    mana(s, 'P1', { B: 2, C: 3 });
+    s = cast(s, { type: 'CastSpell', player: 'P1', card: copy.id, x: 3 }).state;
+    expect([s.players.P2!.life, s.players.P1!.life]).toEqual([20 - 1 - 3, 23]);
+  });
+});
+
+describe('Fix: a token that must attack one opponent (Furygale Flocking)', () => {
+  it('completing the attacks sends it at that opponent, not another', () => {
+    const s = newGame(3);
+    const token = put(s, 'P1', 'rank-rat', 'battlefield', { isToken: true, mustAttackPlayer: { turn: s.turnNumber, player: 'P3' } });
+    expect(completeRequiredAttacks(s, 'P1', [{ attacker: token, defender: 'P2' }])).toEqual([{ attacker: token, defender: 'P3' }]);
   });
 });

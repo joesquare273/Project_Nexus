@@ -1134,6 +1134,8 @@ export interface EffectSpec {
   attackingEachOpponent?: boolean;
   /** "Up to X targets" (Pest Infestation): the effect is repeated once per X chosen, each an "up to one" target of one group. */
   repeatX?: boolean;
+  /** With `repeatX`: exactly X targets, not up to X (Immoral Bargain). */
+  exactX?: boolean;
   /** "Any number of target ..." (Twinflame): the caster chooses how many targets; this effect stands for one slot per target chosen (`spellEffects` with the target count). */
   anyNumberOfTargets?: boolean;
   /** Sacrifice: only permanents sharing a card type with the cards chosen in the last choice (Braids). */
@@ -1328,6 +1330,12 @@ export interface EffectSpec {
   ifAttackingYourOpponent?: boolean;
   /** CreateToken: an Aura token enters attached to the previous target (Scriv: "a Contract attached to target creature an opponent controls"). */
   attachToPreviousTarget?: boolean;
+  /** LoseLife: then each of those players sacrifices a permanent matching this, of their choice (Priest of Forgotten Gods). */
+  thenSacrifice?: ObjectFilter;
+  /** ReturnFromGraveyardToHand: not a card sacrificed earlier in this resolution (Deadly Brew: "another permanent card"). */
+  excludeSacrificedThisWay?: boolean;
+  /** AddMana with `manaTypes`: each mana's type is chosen separately (Culling Ritual: "Add {B} or {G} for each"). */
+  chooseEach?: boolean;
   /** Only if (or with `not`, unless) a count is at least `atLeast` ("if seven or more land cards are in your graveyard"). */
   ifCount?: { count: CountKind; atLeast: number; not?: boolean };
   /** LookAtTopPutMatching: where the chosen cards go, and whether any number may be chosen (otherwise up to one). */
@@ -2019,6 +2027,8 @@ export interface TriggerSpec {
   ifModifiedCreatureDiedThisTurn?: boolean;
   /** Dies: only if Auras were attached to it as it died (Hateful Eidolon: "whenever an enchanted creature dies"). */
   ifSubjectWasEnchanted?: boolean;
+  /** A delayed trigger that kept a target: only events of that object (Stensian Sanguinist: "whenever that creature deals combat damage"). */
+  onlyKeptSubject?: boolean;
   effects: EffectSpec[];
 }
 
@@ -2715,7 +2725,7 @@ export interface CardDefinition {
    * permanent matching `sacrifice` (chosen with `costCards`); with `orMana`,
    * paying that mana instead of sacrificing ("sacrifice a legendary creature or pay {2}").
    */
-  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string; /** "Behold a Jace or pay {1}": a permanent with this subtype you control, or a card with it in your hand (chosen with `costCards`), or `orMana`. */ behold?: string; /** "Choose a creature you control or a warped creature card you own in exile" (Close Encounter): chosen with `costCards`; nothing happens to it. */ chooseCreatureOrWarped?: boolean };
+  additionalCost?: { discard?: number; lifeX?: boolean; sacrifice?: ObjectFilter; orMana?: string; /** "Behold a Jace or pay {1}": a permanent with this subtype you control, or a card with it in your hand (chosen with `costCards`), or `orMana`. */ behold?: string; /** "Choose a creature you control or a warped creature card you own in exile" (Close Encounter): chosen with `costCards`; nothing happens to it. */ chooseCreatureOrWarped?: boolean; /** "Sacrifice X creatures" (Immoral Bargain) or "you may sacrifice one or more creatures" (Plumb the Forbidden): X is how many, chosen with `costCards`. */ sacrificeX?: ObjectFilter };
   /** "Kicker—Sacrifice an artifact or creature": with `kicker` "{0}", kicking sacrifices a permanent matching this (chosen with `costCards`). */
   kickerSacrifice?: ObjectFilter;
   /** Protection from multicolored (Stonecoil Serpent): from sources with two or more colors. */
@@ -3556,6 +3566,8 @@ export interface Resolving {
   sacrificedAny?: boolean;
   /** Players who sacrificed something to this spell or ability ("if you sacrificed a creature this way"). */
   sacrificedBy?: PlayerId[];
+  /** The permanents sacrificed during this resolution (Deadly Brew: "another permanent card"). */
+  sacrificedCards?: InstanceId[];
   /** Nonland cards each player discarded to this spell or ability (Garruk, Veiled Butcher). */
   nonlandDiscarded?: Record<PlayerId, number>;
   /** Life players lost to this spell or ability's effects so far. */
@@ -3738,7 +3750,7 @@ export interface CombatState {
 /** Whose decision the game is waiting on. */
 export type Pending =
   | { kind: 'copyCreature'; player: PlayerId; source: InstanceId; target: InstanceId; sourceObject: number; targetObject: number; effect: EffectSpec }
-  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[]; /** Opal Palace's mana: tracked for the commander bonus. */ opal?: boolean }
+  | { kind: 'chooseMana'; player: PlayerId; recipient: PlayerId; amount: number; options?: Color[]; /** Opal Palace's mana: tracked for the commander bonus. */ opal?: boolean; /** Each mana is chosen separately (`amount` left). */ each?: boolean }
   /** `purpose`: who decides the Fate card (default), who picks with you for Memories Returning, or Shinryu's rival. */
   | { kind: 'chooseOpponent'; player: PlayerId; opponents: PlayerId[]; purpose?: 'fate' | 'memories' | 'rival' | 'piles' | 'deny' }
   /** `entered`: the creature is already on the battlefield (Winota's Human); choosing only adds it to combat. */

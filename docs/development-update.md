@@ -18,6 +18,12 @@ offer basic lands only; Sprouting Goblin, Nature's Lore, Skyshroud Claim and
 Farseek offer any land with the named basic land type, as their Oracle text
 says.
 
+### Strixhaven Commander SOC5e: Witherbloom Pestilence complete; all five decks built (2026-11-27)
+
+- Priest of Forgotten Gods (any number of target players on an ability), Culling Ritual (each mana chosen separately), Deadly Brew, Stensian Sanguinist, Immoral Bargain and Plumb the Forbidden (sacrifice X creatures). Witherbloom Pestilence is the fifth complete Strixhaven deck; all five are free starter choices and bot decks. docs/strixhaven.md.
+- Fix: a target group ("any number of target players") no longer accepts the same player twice.
+- Fix (found by a fuzz run with all five Strixhaven decks): when a bot's attack included a Furygale Flocking token, the token could be sent at the wrong opponent; completing the attacks now sends it at the opponent it was made for.
+
 ### Strixhaven Commander SOC5d: Witherbloom Pestilence, part four (2026-11-26)
 
 - Casualties of War, Final Act, Gorma, Nether Traitor (shadow), Gyome, Gilded Goose (sacrifice a Food for mana), Tendershoot Dryad (ascend) and Ominous Harvest (gravestorm). 6 Witherbloom cards left. docs/strixhaven.md.

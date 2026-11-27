@@ -672,6 +672,8 @@ export function detectTriggers(ctx: Ctx, events: readonly GameEvent[]): void {
     for (const d of s.delayedTriggers ?? []) {
       const lasts = d.emblem || d.turn === s.turnNumber || (d.untilYourNextTurn && !(s.activePlayer === d.controller && s.turnNumber > d.turn));
       if (!lasts || s.players[d.controller]!.eliminated || !triggersOn(d.spec, o, s, d.source, d.controller)) continue;
+      // "Whenever that creature ...": only the object the delayed trigger kept.
+      if (d.spec.onlyKeptSubject && (!d.subject || o.subject !== d.subject)) continue;
       // "When you next ...": only the first time, then it's gone.
       if (d.next) s.delayedTriggers = (s.delayedTriggers ?? []).filter((x) => x !== d);
       found.push({
